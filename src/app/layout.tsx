@@ -5,6 +5,9 @@ import { inter } from "@/fonts/fonts";
 export const metadata: Metadata = {
   title: "Negoco CRM",
   description: "Negoco CRM",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
