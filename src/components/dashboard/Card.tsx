@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
+import { NumberTicker } from "../ui/number-ticker";
 
 interface Props {
   title: string;
@@ -64,9 +65,10 @@ export default function DashboardCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1">
-        <h4 className="text-4xl font-bold text-[var(--primary-color-950)]">
-          {value}
-        </h4>
+        <NumberTicker
+          value={parseInt(value)}
+          className="whitespace-pre-wrap text-4xl font-bold text-[var(--primary-color-950)] tracking-tighter"
+        />
       </CardContent>
       <CardFooter>
         <p className="text-sm text-gray-500 self-end">{description}</p>

@@ -81,7 +81,10 @@ export function SidebarComponent() {
                         : ""
                     } text-lg gap-4 hover:bg-[var(--primary-color-400)] hover:text-white transition-colors duration-200 ease-in-out`}
                   >
-                    <Link href={item.url}>
+                    <Link
+                      href={item.url}
+                      className="inline-flex items-center gap-2"
+                    >
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>

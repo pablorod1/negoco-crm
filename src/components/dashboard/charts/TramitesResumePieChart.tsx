@@ -61,7 +61,7 @@ export function TramitesResumePieChart() {
           <PieChart>
             <ChartLegend content={<ChartLegendContent />} />
             <ChartTooltip
-              cursor={false}
+              cursor={true}
               content={<ChartTooltipContent hideLabel />}
             />
             <Pie
