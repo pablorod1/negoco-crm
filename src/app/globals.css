@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 :root {
+  --background: #f9fafb;
+
   --primary-color-50: #eff5ff;
   --primary-color-100: #dbe8fe;
   --primary-color-200: #bfd7fe;
@@ -38,8 +40,25 @@
   --info-color: #0dcaf0;
 }
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
+/* Estilo para navegadores webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--primary-color-50);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color-500);
+  border-radius: 8px;
+  border: 3px solid var(--primary-color-50);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--primary-color-50);
+  border-radius: 8px;
 }
 
 @layer base {
@@ -179,5 +198,5 @@ body {
 
 .animate-size {
   interpolate-size: allow-keywords;
-  transition: height 0.3s ease, width 0.3s ease;
+  transition: height 0.5s ease-in-out, width 0.5s ease-in-out;
 }

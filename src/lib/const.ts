@@ -77,7 +77,7 @@ export const COMPANIES = [
 ];
 
 export const LIQUIDEZ_STATUS = [
-  "Pendiente de cobro",
-  "Cobrado por comercializadora",
+  "Pendiente de Cobro",
+  "Cobrado por Comercializadora",
   "Pagado al comercial",
 ];

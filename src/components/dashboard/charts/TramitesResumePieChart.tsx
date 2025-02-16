@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { TrendingUp } from "lucide-react";
 import { Label, Pie, PieChart } from "recharts";
 
 import {
@@ -20,99 +19,270 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-const chartData = [
-  { type: "active", value: 200, fill: "var(--success-color)" },
-  { type: "pending", value: 287, fill: "var(--warning-color)" },
-];
+import { getActivePendingTramites } from "@/lib/libsql/data/tramites/getTramites";
 
 const chartConfig = {
   tramites: {
     label: "Tramites",
   },
-
   active: {
     label: "Activos",
-    color: "hsl(var(--chart-2))",
+    color: "var(--primary-color-700)",
   },
   pending: {
     label: "Pendientes",
-    color: "hsl(var(--chart-3))",
+    color: "var(--primary-color-400)",
   },
 } satisfies ChartConfig;
 
-export function TramitesResumePieChart() {
-  const totalTramites = React.useMemo(() => {
-    return chartData.reduce((acc, curr) => acc + curr.value, 0);
+const pieData = [
+  {
+    id: "active",
+    type: "active",
+    label: "Activos",
+    fill: "var(--primary-color-700)",
+  },
+  {
+    id: "pending",
+    type: "pending",
+    label: "Pendientes",
+    fill: "var(--primary-color-400)",
+  },
+];
+
+interface Data {
+  total: number;
+  active: {
+    value: number;
+    difference: number;
+  };
+  pending: {
+    value: number;
+    difference: number;
+  };
+}
+
+export function TramitesResumePieChart({ loading }: { loading: boolean }) {
+  const [tramites, setTramites] = React.useState<Data>();
+  const [currentWeek, setCurrentWeek] = React.useState<string>("");
+  const [activePercentage, setActivePercentage] = React.useState<number>(0);
+
+  const getCurrentWeek = React.useCallback(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+
+    // Calcular la fecha del lunes de la semana actual
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - dayOfWeek + 1); // Restar el número de días hasta llegar al lunes
+
+    // Calcular la fecha del domingo de la semana actual
+    const lastDayOfWeek = new Date(firstDayOfWeek);
+    lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6); // Sumar 6 días para obtener el domingo
+
+    // Formatear las fechas de inicio y fin de la semana
+    const firstDayFormatted = firstDayOfWeek.toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "short",
+    });
+    const lastDayFormatted = lastDayOfWeek.toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "short",
+    });
+
+    // Concatenar el rango de fechas para mostrar
+    const currentWeek = `${firstDayFormatted} - ${lastDayFormatted} ${today.getFullYear()}`;
+    setCurrentWeek(currentWeek);
   }, []);
 
+  const getCompletionMessage = (activePercentage: number): string => {
+    if (activePercentage >= 100) {
+      return "🎉 ¡Felicidades! Has completado todos tus trámites. 🎉";
+    }
+    if (activePercentage >= 80) {
+      return "¡Buen trabajo! Estás cerca de completar todos tus trámites. 👍";
+    }
+    if (activePercentage >= 50) {
+      return "Vas por buen camino, sigue así para completar más trámites. 🚀";
+    }
+    return "Aún tienes algunos trámites por completar. ¡Ánimo! 💪";
+  };
+
+  const calculateActivePercentage = (tramites: Data): number => {
+    const total = tramites.total;
+    const active = tramites.active.value;
+    return (active / total) * 100;
+  };
+
+  const fetchTramites = React.useCallback(async () => {
+    try {
+      const data = await getActivePendingTramites("current_week");
+      setTramites(data);
+      setActivePercentage(calculateActivePercentage(data));
+    } catch (error) {
+      console.error("Error al obtener trámites:", error);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchTramites();
+    getCurrentWeek();
+  }, [fetchTramites, getCurrentWeek]);
+
+  const chartData = React.useMemo(() => {
+    if (tramites) {
+      return pieData.map((item) => {
+        const value =
+          item.type === "active"
+            ? tramites.active.value
+            : tramites.pending.value;
+        return {
+          ...item,
+          value,
+        };
+      });
+    }
+  }, [tramites]);
+
   return (
-    <Card className="flex flex-col h-full">
-      <CardHeader className="items-center pb-0">
-        <CardTitle className="text-xl text-[var(--primary-color-800)]">
+    <Card
+      className={`flex flex-col relative h-full backdrop-blur-lg bg-white/80 shadow-[0_2px_6px_rgba(0,0,0,0.14)] transition-all duration-200 ${
+        loading ? "bg-gray-200 border-0" : "bg-white/80 border border-white/10"
+      } `}
+    >
+      <div
+        className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-500 ${
+          loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
+        }`}
+      >
+        <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
+      </div>
+      <CardHeader
+        className={` items-center pb-0 transition-opacity duration-500 ${
+          loading ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <CardTitle className="text-xl text-[var(--primary-color-800)] text-center">
           Resumen de Ventas
         </CardTitle>
-        <CardDescription>20 Ene - 27 Ene 2025</CardDescription>
+        <CardDescription className="text-center">{currentWeek}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
-        >
-          <PieChart>
-            <ChartLegend content={<ChartLegendContent />} />
-            <ChartTooltip
-              cursor={true}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Pie
-              data={chartData}
-              dataKey="value"
-              nameKey="type"
-              innerRadius={60}
-              strokeWidth={5}
-            >
-              <Label
-                content={({ viewBox }) => {
-                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                    return (
-                      <text
-                        x={viewBox.cx}
-                        y={viewBox.cy}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        <tspan
+      <CardContent
+        className={` flex-1 pb-0 transition-opacity duration-500  ${
+          loading ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        {tramites && (tramites.active.value || tramites.pending.value) ? (
+          <ChartContainer
+            config={chartConfig}
+            className="mx-auto aspect-square max-h-[250px]"
+          >
+            <PieChart>
+              <ChartLegend
+                content={<ChartLegendContent />}
+                layout="horizontal"
+                align="center"
+              />
+              <ChartTooltip cursor={true} content={<ChartTooltipContent />} />
+              <Pie
+                data={chartData}
+                dataKey="value"
+                nameKey="type"
+                innerRadius={60}
+                strokeWidth={5}
+              >
+                <Label
+                  content={({ viewBox }) => {
+                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                      return (
+                        <text
                           x={viewBox.cx}
                           y={viewBox.cy}
-                          className="fill-foreground text-4xl font-bold text-[var(--primary-color-950)]"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
                         >
-                          {totalTramites.toLocaleString()}
-                        </tspan>
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy || 0) + 24}
-                          className="fill-muted-foreground"
-                        >
-                          Tramites
-                        </tspan>
-                      </text>
-                    );
-                  }
-                }}
-              />
-            </Pie>
-          </PieChart>
-        </ChartContainer>
+                          <tspan
+                            x={viewBox.cx}
+                            y={viewBox.cy}
+                            className="fill-foreground text-4xl font-bold text-[var(--primary-color-950)]"
+                          >
+                            {tramites.total.toLocaleString()}
+                          </tspan>
+                          <tspan
+                            x={viewBox.cx}
+                            y={(viewBox.cy || 0) + 24}
+                            className="fill-muted-foreground"
+                          >
+                            Trámites
+                          </tspan>
+                        </text>
+                      );
+                    }
+                  }}
+                />
+              </Pie>
+            </PieChart>
+          </ChartContainer>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center gap-4">
+              <svg
+                fill="#ffffff"
+                width="120px"
+                height="120px"
+                viewBox="0 0 24.00 24.00"
+                id="chart-pie"
+                data-name="Flat Color"
+                xmlns="http://www.w3.org/2000/svg"
+                className="icon flat-color"
+              >
+                <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
+                <g
+                  id="SVGRepo_tracerCarrier"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  stroke="#CCCCCC"
+                  strokeWidth="0.048"
+                ></g>
+                <g id="SVGRepo_iconCarrier">
+                  <ellipse
+                    id="secondary"
+                    cx="10.22"
+                    cy="13.78"
+                    rx="8.25"
+                    ry="8.17"
+                    transform="translate(-6.75 11.26) rotate(-45)"
+                    fill="#3b82f6"
+                  ></ellipse>
+                  <path
+                    id="primary"
+                    d="M22,14a12,12,0,0,1-2.12,6.81A1,1,0,0,1,18.4,21l-8-6.72a1,1,0,0,1-.36-.77V3.05a1,1,0,0,1,1.11-1A12,12,0,0,1,22,14Z"
+                    fill="#172e54"
+                  ></path>
+                </g>
+              </svg>
+              <span className="font-medium text-muted-foreground text-center">
+                No hay trámites para mostrar
+              </span>
+            </div>
+          </div>
+        )}
       </CardContent>
-      <CardFooter className="flex-col items-center gap-2 text-sm">
-        <div className="flex items-center gap-2 font-medium leading-none">
-          <span>Tus ventas han aumentado un 5,2%</span>
-          <TrendingUp stroke="var(--success-color)" className="size-4" />
-        </div>
-        <div className="leading-none text-muted-foreground">
-          Mostrando trámites de la última semana
-        </div>
-      </CardFooter>
+      {tramites ? (
+        <CardFooter
+          className={`flex-col items-center gap-2 text-sm ${
+            loading ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          <div className="flex items-center gap-2 font-medium leading-none text-center">
+            <span className="text-sm text-gray-600">
+              {getCompletionMessage(activePercentage)}
+            </span>
+          </div>
+          <div className="leading-none text-gray-500 text-xs">
+            Mostrando trámites de la última semana
+          </div>
+        </CardFooter>
+      ) : null}
     </Card>
   );
 }

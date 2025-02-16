@@ -7,18 +7,18 @@ import {
   useDisclosure,
 } from "@heroui/react";
 import { PlusIcon } from "lucide-react";
-import { ContractDB, TramiteDB } from "@/lib/types";
+import { ContractDB } from "@/lib/types";
 import React from "react";
 
 import ContractForm from "./ContractForm";
 
 interface Props {
-  tramite: TramiteDB;
+  tramite_id: string;
   onCreateContract: (contract: ContractDB) => void;
 }
 
 export default function CreateContractDrawer({
-  tramite,
+  tramite_id,
   onCreateContract,
 }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
@@ -44,11 +44,14 @@ export default function CreateContractDrawer({
         </div>
       </button>
       <Drawer
-        hideCloseButton
         size="5xl"
+        isDismissable={false}
         isOpen={isOpen}
         onClose={onClose}
         placement="bottom"
+        classNames={{
+          base: "max-w-[1200px] w-full !mx-auto",
+        }}
       >
         <DrawerContent>
           {(onClose) => (
@@ -61,7 +64,7 @@ export default function CreateContractDrawer({
               <DrawerBody>
                 <ContractForm
                   onCreateContract={handleAddContract}
-                  tramite_id={tramite.id}
+                  tramite_id={tramite_id}
                   onCancel={onClose}
                 />
               </DrawerBody>

@@ -5,6 +5,8 @@ interface StepperProps {
   currentStep: number;
 }
 
+const stepsTexts = ["Comercial", "Cliente", "Contratos", "Documentos"];
+
 export const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
   return (
     <div className="w-full relative">
@@ -39,13 +41,13 @@ export const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
                 i + 1
               )}
             </div>
-            <div className="text-xs mt-1">{`Paso ${i + 1}`}</div>
+            <div className="text-xs mt-1">{stepsTexts[i]}</div>
           </div>
         ))}
       </div>
       <div className="w-[98%] ms-1 bg-gray-200 rounded-full h-2.5 absolute top-3 left-0 z-0">
         <div
-          className=" bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"
+          className="bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"
           style={{ width: `${(currentStep / (steps - 1)) * 100}%` }}
           role="progressbar"
           aria-valuenow={(currentStep / (steps - 1)) * 100}

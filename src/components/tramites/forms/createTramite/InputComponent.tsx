@@ -52,6 +52,8 @@ interface InputProps {
   type: string;
   isRequired?: boolean;
   startContent?: React.ReactNode;
+  endContent?: React.ReactNode;
+  value?: string;
 }
 
 export const InputComponent: React.FC<InputProps> = ({
@@ -62,6 +64,8 @@ export const InputComponent: React.FC<InputProps> = ({
   type,
   isRequired,
   startContent,
+  endContent,
+  value,
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -70,11 +74,13 @@ export const InputComponent: React.FC<InputProps> = ({
         name={name}
         label={label}
         type={type}
+        value={value}
         size="lg"
         radius="sm"
         isRequired={isRequired}
         errorMessage=""
         startContent={startContent}
+        endContent={endContent}
         color={errors ? "danger" : "default"}
       />
       {errors && <p className="text-red-600 text-sm ms-1">{errors}</p>}

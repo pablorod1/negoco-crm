@@ -2,30 +2,30 @@ export type TramiteDB = {
   id: string;
   creation_date: string;
   tramitation_date: string;
+  activation_date: string;
   renovation_date: string;
   sales_name: string;
-  comision_sales: number;
+  comision_sales_person: number;
   comision: number;
   status: Status;
   liquidez_status: LiquidezStatus;
-  notes: string[];
+  notes: string | string[];
   client_id: string;
-  user_id: string;
 };
 
 export const createEmptyTramiteDB = (): TramiteDB => ({
-  id: "",
+  id: `BEE-${Math.floor(Math.random() * 10000)}`,
   creation_date: new Date().toISOString(),
   tramitation_date: "",
   renovation_date: "",
+  activation_date: "",
   sales_name: "",
-  comision_sales: 0,
+  comision_sales_person: 0,
   comision: 0,
   status: "Borrador",
   liquidez_status: null,
-  notes: [],
+  notes: [], // Ensure notes is initialized as an empty array
   client_id: "",
-  user_id: "",
 });
 
 export type ClientDB = {
@@ -38,11 +38,11 @@ export type ClientDB = {
   address: string;
   document_type: string;
   document_number: string;
-  user_id: string;
+  IBAN: string;
 };
 
 export const createEmptyClientDB = (): ClientDB => ({
-  id: "",
+  id: `CLI-${Math.floor(Math.random() * 10000)}`,
   name: "",
   last_name: "",
   type: "",
@@ -51,7 +51,7 @@ export const createEmptyClientDB = (): ClientDB => ({
   address: "",
   document_type: "",
   document_number: "",
-  user_id: "",
+  IBAN: "",
 });
 
 export type SignerDB = {
@@ -98,7 +98,7 @@ export type ContractDB = {
 };
 
 export const createEmptyContractDB = (): ContractDB => ({
-  id: "",
+  id: `CTR-${Math.floor(Math.random() * 10000)}`,
   type: "",
   province: "",
   city: "",
@@ -116,6 +116,74 @@ export const createEmptyContractDB = (): ContractDB => ({
   pot6: 0,
   description: "",
   tramite_id: "",
+});
+
+export type TramiteFile = {
+  id: string;
+  tramite_id: string;
+  filename: string;
+  size: number;
+  extension: string;
+  upload_date: string;
+  download_url: string;
+  preview_url: string | null;
+};
+
+export const createEmptyTramiteFile = (): TramiteFile => ({
+  id: "",
+  tramite_id: "",
+  filename: "",
+  size: 0,
+  extension: "",
+  upload_date: new Date().toISOString(),
+  download_url: "",
+  preview_url: null,
+});
+
+export type DocumentacionFile = {
+  id: string;
+  name: string;
+  size: number;
+  extension: string;
+  upload_date: string;
+  download_url: string;
+  preview_url: string | null;
+  folder_name: string;
+  type: "file" | "folder";
+};
+
+export type TramiteVM = {
+  id: string;
+  creation_date: string;
+  renovation_date: string;
+  sales_name: string;
+  client_name: string;
+  client_email: string;
+  CUPS: string[];
+  company: string[];
+  plan: string[];
+  contract_type: string[];
+  consumption: number[];
+  comision_sales_person: number;
+  comision: number;
+  status: string;
+  liquidez_status: string;
+};
+
+export type EditTramiteFormData = {
+  tramite: TramiteDB;
+  client: ClientDB;
+  contracts: ContractDB[];
+  signer: SignerDB;
+  files?: TramiteFile[];
+};
+
+export const createEmptyTramiteForm = (): EditTramiteFormData => ({
+  tramite: createEmptyTramiteDB(),
+  client: createEmptyClientDB(),
+  contracts: [],
+  signer: createEmptySignerDB(),
+  files: [],
 });
 
 export type Status =

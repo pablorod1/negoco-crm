@@ -78,9 +78,27 @@ const chartConfig = {
 export function TeamTramitesBarChart() {
   const [timeRange, setTimeRange] = React.useState("90d");
   const [comercial, setComercial] = React.useState("");
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 600) {
+        setScrolled(true);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   return (
-    <Card className="h-full">
+    <Card
+      className={`relative h-full backdrop-blur-lg bg-white/80 border border-white/20 shadow-[0_2px_6px_rgba(0,0,0,0.14)] transition-all duration-500 ${
+        scrolled ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-12"
+      }`}
+    >
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
         <div className="grid flex-1 gap-1 text-center sm:text-left">
           <CardTitle className="text-xl text-[var(--primary-color-800)]">

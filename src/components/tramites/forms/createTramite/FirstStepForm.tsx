@@ -28,7 +28,6 @@ export default function FirstStepForm({
   setTramite,
   onSubmitSuccess,
   tramite,
-  client,
   onCancel,
 }: Props) {
   const [errors, setErrors] = useState<FirstFormError>(
@@ -52,12 +51,10 @@ export default function FirstStepForm({
       setTramite({
         ...tramite,
         sales_name: formData.sales_name,
-        client_id: client.id,
       });
       setClient((prevState) => ({
         ...prevState,
         type: formData.client_type,
-        user_id: "",
       }));
       onSubmitSuccess();
     }

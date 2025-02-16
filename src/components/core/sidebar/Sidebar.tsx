@@ -1,5 +1,5 @@
 "use client";
-import { Inbox, LayoutDashboard, FilesIcon, Users } from "lucide-react";
+import { LayoutDashboard, Users, ReceiptText, Folder } from "lucide-react";
 
 import {
   Sidebar,
@@ -27,12 +27,12 @@ const items = [
   {
     title: "Trámites",
     url: "/tramites",
-    icon: Inbox,
+    icon: ReceiptText,
   },
   {
     title: "Documentación",
     url: "/documentacion",
-    icon: FilesIcon,
+    icon: Folder,
   },
   {
     title: "Colaboradores",
@@ -81,10 +81,7 @@ export function SidebarComponent() {
                         : ""
                     } text-lg gap-4 hover:bg-[var(--primary-color-400)] hover:text-white transition-colors duration-200 ease-in-out`}
                   >
-                    <Link
-                      href={item.url}
-                      className="inline-flex items-center gap-2"
-                    >
+                    <Link href={item.url} className="inline-flex items-center">
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>

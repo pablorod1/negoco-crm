@@ -1,6 +1,5 @@
 import { STATUS_TYPES } from "@/lib/const";
 import { Divider } from "@heroui/divider";
-import { useState } from "react";
 import { ContractDB, TramiteDB } from "@/lib/types";
 
 import ButtonGroupComponent from "./ButtonGroupComponent";
@@ -15,6 +14,8 @@ interface Props {
   setTramite: React.Dispatch<React.SetStateAction<TramiteDB>>;
   onSubmit: () => void;
   onCancel: () => void;
+  contracts: ContractDB[];
+  setContracts: React.Dispatch<React.SetStateAction<ContractDB[]>>;
 }
 
 export default function ThirdStepForm({
@@ -23,9 +24,9 @@ export default function ThirdStepForm({
   tramite,
   setTramite,
   onCancel,
+  contracts,
+  setContracts,
 }: Props) {
-  const [contracts, setContracts] = useState<ContractDB[]>([]);
-
   const handleFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     setTramite((prevState) => ({
@@ -36,6 +37,13 @@ export default function ThirdStepForm({
 
   const handleAddContract = (newContract: ContractDB) => {
     setContracts([...contracts, newContract]);
+  };
+
+  const handleUpdateContract = (updatedContract: ContractDB) => {
+    const updatedContracts = contracts.map((contract) =>
+      contract.id === updatedContract.id ? updatedContract : contract
+    );
+    setContracts(updatedContracts);
   };
 
   return (
@@ -57,11 +65,15 @@ export default function ThirdStepForm({
         <h3 className="mb-4">Contratos</h3>
         <div className="flex items-start gap-4 w-full">
           <CreateContractDrawer
-            tramite={tramite}
+            tramite_id={tramite.id}
             onCreateContract={handleAddContract}
           />
           {contracts.map((contract, index) => (
-            <ContractPreview key={index} contract={contract} />
+            <ContractPreview
+              key={index}
+              contract={contract}
+              onSavingContract={handleUpdateContract}
+            />
           ))}
         </div>
       </form>

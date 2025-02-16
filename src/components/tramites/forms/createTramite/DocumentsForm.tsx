@@ -1,4 +1,4 @@
-import { XIcon, UploadCloud, File, FileIcon } from "lucide-react";
+import { XIcon, UploadCloud, FileIcon } from "lucide-react";
 import Image from "next/image";
 import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
@@ -35,10 +35,9 @@ export default function DocumentsForm({
 
   return (
     <div className="w-full">
-      <h3 className="mb-4">Documentos</h3>
       <div
         {...getRootProps()}
-        className={`overflow-hidden relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer transition-colors
+        className={`overflow-hidden relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-lg cursor-pointer transition-colors
           ${
             isDragActive
               ? "border-[var(--primary-color)] bg-[var(--primary-50)]"
