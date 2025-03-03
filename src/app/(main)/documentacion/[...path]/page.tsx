@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
 import { getFilesFromFolder } from "@/lib/libsql/data/documentacion/getFiles";
-import { DocumentacionFile } from "@/lib/types";
-import toast from "react-hot-toast";
+import { DocumentacionFile } from "@/lib/core/types";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import LoadingComponent from "@/components/documentacion/LoadingComponent";
 import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
 import { FileGrid } from "@/components/documentacion/FileGrid";
+import { showCustomToast } from "@/components/core/CustomToast";
+import { CircleX } from "lucide-react";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -48,7 +49,13 @@ export default function FolderPage() {
         setFolders(foldersResponse.data as string[]);
       }
     } catch (error) {
-      toast.error("Error obteniendo archivos");
+      showCustomToast({
+        title: "Error al obtener los archivos",
+        message: "Inténtalo de nuevo más tarde",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
       console.error("Error obteniendo archivos:", error);
     } finally {
       setIsLoading(false);

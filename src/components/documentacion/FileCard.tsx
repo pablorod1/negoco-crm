@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical } from "lucide-react";
+import { CheckCircle, CircleX, CloudAlert, MoreVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,14 +9,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DocumentacionFile } from "@/lib/types";
+import { DocumentacionFile } from "@/lib/core/types";
 import { deleteFile } from "@/lib/firebase/data/deleteFile";
-import toast from "react-hot-toast";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
 import Image from "next/image";
 import { Tooltip } from "@heroui/tooltip";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/core/format";
+import { showCustomToast } from "../core/CustomToast";
 
 function formatFileSize(bytes: number): string {
   const units = ["B", "KB", "MB", "GB"];
@@ -78,15 +78,33 @@ export function FileCard({
         file.name
       );
 
-      if (!success) {
-        toast.error(errors);
+      if (!success && errors) {
+        showCustomToast({
+          title: "Error al descargar el archivo",
+          message: errors,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CloudAlert,
+        });
         return;
       }
 
-      toast.success("Archivo descargado correctamente");
+      showCustomToast({
+        title: "Archivo descargado",
+        message: "El archivo ha sido descargado correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CheckCircle,
+      });
     } catch (error) {
       console.error("Error downloading file:", error);
-      toast.error("Error descargando archivo");
+      showCustomToast({
+        title: "Error al descargar el archivo",
+        message: "Inténtalo de nuevo más tarde",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CloudAlert,
+      });
     }
   };
 
@@ -98,16 +116,34 @@ export function FileCard({
         file.id
       );
 
-      if (!success) {
-        toast.error(errors);
+      if (!success && errors) {
+        showCustomToast({
+          title: "Error eliminando archivo",
+          message: errors,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
         return;
       }
 
-      toast.success("Archivo eliminado correctamente");
+      showCustomToast({
+        title: "Archivo eliminado",
+        message: "El archivo ha sido eliminado correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CheckCircle,
+      });
       refreshDocumentacion();
     } catch (error) {
       console.error("Error eliminando archivo:", error);
-      toast.error("Error eliminando archivo");
+      showCustomToast({
+        title: "Error eliminando archivo",
+        message: "Inténtalo de nuevo más tarde",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
     }
   };
 

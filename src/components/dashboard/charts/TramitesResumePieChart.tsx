@@ -20,6 +20,8 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { getActivePendingTramites } from "@/lib/libsql/data/tramites/getTramites";
+import { User } from "@/lib/core/types";
+import { Spinner } from "@heroui/react";
 
 const chartConfig = {
   tramites: {
@@ -62,10 +64,17 @@ interface Data {
   };
 }
 
-export function TramitesResumePieChart({ loading }: { loading: boolean }) {
+export function TramitesResumePieChart({
+  userData,
+  loading,
+}: {
+  userData: User;
+  loading: boolean;
+}) {
   const [tramites, setTramites] = React.useState<Data>();
   const [currentWeek, setCurrentWeek] = React.useState<string>("");
   const [activePercentage, setActivePercentage] = React.useState<number>(0);
+  const [loadingData, setLoadingData] = React.useState<boolean>(true);
 
   const getCurrentWeek = React.useCallback(() => {
     const today = new Date();
@@ -114,14 +123,17 @@ export function TramitesResumePieChart({ loading }: { loading: boolean }) {
   };
 
   const fetchTramites = React.useCallback(async () => {
+    setLoadingData(true);
     try {
-      const data = await getActivePendingTramites("current_week");
+      const data = await getActivePendingTramites(true, userData);
       setTramites(data);
       setActivePercentage(calculateActivePercentage(data));
     } catch (error) {
       console.error("Error al obtener trámites:", error);
+    } finally {
+      setTimeout(() => setLoadingData(false), 300);
     }
-  }, []);
+  }, [userData]);
 
   React.useEffect(() => {
     fetchTramites();
@@ -145,19 +157,19 @@ export function TramitesResumePieChart({ loading }: { loading: boolean }) {
 
   return (
     <Card
-      className={`flex flex-col relative h-full backdrop-blur-lg bg-white/80 shadow-[0_2px_6px_rgba(0,0,0,0.14)] transition-all duration-200 ${
-        loading ? "bg-gray-200 border-0" : "bg-white/80 border border-white/10"
+      className={`flex flex-col relative h-full border-0 backdrop-blur-lg  shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-colors duration-300 ${
+        loading ? "bg-gray-200 " : "bg-white "
       } `}
     >
       <div
-        className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-500 ${
+        className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300 ${
           loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
         }`}
       >
         <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
       </div>
       <CardHeader
-        className={` items-center pb-0 transition-opacity duration-500 ${
+        className={` items-center pb-0 transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
@@ -222,6 +234,10 @@ export function TramitesResumePieChart({ loading }: { loading: boolean }) {
               </Pie>
             </PieChart>
           </ChartContainer>
+        ) : !loading && loadingData ? (
+          <div className="w-full h-full flex justify-center items-center">
+            <Spinner size="lg" label="Cargando..." color="primary" />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-4">
@@ -269,7 +285,7 @@ export function TramitesResumePieChart({ loading }: { loading: boolean }) {
       </CardContent>
       {tramites ? (
         <CardFooter
-          className={`flex-col items-center gap-2 text-sm ${
+          className={`flex-col items-center gap-2 text-sm transition-opacity duration-300 ${
             loading ? "opacity-0" : "opacity-100"
           }`}
         >

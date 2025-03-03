@@ -2,7 +2,7 @@ import { tursoClient } from "../../client";
 
 export const getFilesFromFolder = async (folder_name: string) => {
   try {
-    const response = await tursoClient().execute({
+    const response = await tursoClient.execute({
       sql: `
         SELECT id, name, size, extension, upload_date, download_url, preview_url, type
         FROM documentacion_files
@@ -30,7 +30,7 @@ export const getFilesFromFolder = async (folder_name: string) => {
 
 export const getRecentlyFiles = async () => {
   try {
-    const response = await tursoClient().execute(
+    const response = await tursoClient.execute(
       `
         SELECT id, name, size, extension, upload_date, download_url, preview_url, type, folder_name
         FROM documentacion_files
@@ -58,7 +58,7 @@ export const getRecentlyFiles = async () => {
 
 export const getFilesByName = async (name: string) => {
   try {
-    const response = await tursoClient().execute({
+    const response = await tursoClient.execute({
       sql: `
         SELECT id, name, size, extension, upload_date, download_url, preview_url, type, folder_name
         FROM documentacion_files

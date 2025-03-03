@@ -115,16 +115,24 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
   };
 
   return (
-    <Card className="relative h-full backdrop-blur-lg border border-white/20 shadow-[0_2px_6px_rgba(0,0,0,0.14)] bg-white/80">
+    <Card
+      className={`flex flex-col justify-between relative h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-colors duration-300 ${
+        loading ? "bg-gray-200 " : "bg-white "
+      }`}
+    >
       <div
-        className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-500 ${
+        className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300 ${
           loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
         }`}
       >
         <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
       </div>
 
-      <CardHeader className={loading ? "opacity-0" : "opacity-100"}>
+      <CardHeader
+        className={`transition-opacity duration-300 ${
+          loading ? "opacity-0" : "opacity-100"
+        }`}
+      >
         <CardTitle className="text-xl text-[var(--primary-color-800)]">
           Resumen de Ventas 2025
         </CardTitle>
@@ -133,10 +141,14 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
         </CardDescription>
       </CardHeader>
 
-      <CardContent className={loading ? "opacity-0" : "opacity-100"}>
+      <CardContent
+        className={`transition-opacity duration-300  ${
+          loading ? "opacity-0" : "opacity-100"
+        }`}
+      >
         {chartData.length > 0 ? (
           <ChartContainer
-            className="max-h-[220px] h-full w-full"
+            className="max-h-[260px] h-auto w-full"
             config={chartConfig}
           >
             <BarChart data={chartData}>
@@ -151,12 +163,7 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
                 className="capitalize"
               />
               <ChartLegend content={<ChartLegendContent />} />
-              <ChartTooltip
-                cursor={false}
-                content={
-                  <ChartTooltipContent labelKey="tramites" indicator="dot" />
-                }
-              />
+              <ChartTooltip content={<ChartTooltipContent />} />
               {chartData.some((data) => data.active > 0) && (
                 <Bar
                   dataKey="active"
@@ -181,7 +188,7 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
       </CardContent>
 
       <CardFooter
-        className={`flex-col items-start gap-2 text-sm ${
+        className={`flex-col items-start gap-2 text-sm transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >

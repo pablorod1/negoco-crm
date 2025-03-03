@@ -1,5 +1,11 @@
 import { storage } from "@/firebaseConfig";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+  deleteObject,
+  getDownloadURL,
+  listAll,
+  ref,
+  uploadBytes,
+} from "firebase/storage";
 
 export async function uploadFile(
   file: File,
@@ -42,6 +48,29 @@ export async function uploadFiles(
     return Promise.all(uploads);
   } catch (error) {
     console.error("Error subiendo archivos:", error);
+    throw error;
+  }
+}
+
+export async function uploadAvatar(
+  file: File,
+  folder_name?: string
+): Promise<{ downloadURL: string }> {
+  try {
+    const folderRef = ref(storage, `avatars/${folder_name}`);
+
+    // Delete existing files in folder
+    const files = await listAll(folderRef);
+    await Promise.all(files.items.map((fileRef) => deleteObject(fileRef)));
+
+    // Upload new file
+    const storageRef = ref(storage, `avatars/${folder_name}/${file.name}`);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+
+    return { downloadURL };
+  } catch (error) {
+    console.error("Error subiendo archivo:", error);
     throw error;
   }
 }

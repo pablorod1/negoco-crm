@@ -5,7 +5,7 @@ import {
   EditTramiteFormData,
   SignerDB,
   TramiteDB,
-} from "@/lib/types";
+} from "@/lib/core/types";
 
 export interface UpdatedFields {
   tramite?: Partial<TramiteDB>;

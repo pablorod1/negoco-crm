@@ -1,4 +1,5 @@
-import { FilterX, ChevronDownIcon } from "lucide-react";
+"use client";
+import { FilterX, ChevronDownIcon, Settings2 } from "lucide-react";
 import {
   Dropdown,
   DropdownItem,
@@ -6,13 +7,81 @@ import {
   DropdownTrigger,
   Button,
 } from "@heroui/react";
-import { COMPANIES, CONTRACT_TYPES, STATUS_TYPES } from "@/lib/const";
-import { type Status } from "@/lib/types";
+import {
+  COMPANIES,
+  CONTRACT_TYPES,
+  LIQUIDEZ_STATUS,
+  STATUS_TYPES,
+} from "@/lib/core/const";
+import { type Status } from "@/lib/core/types";
+import { Table } from "@tanstack/react-table";
 
-export function FilterButton({ onPress }: { onPress: () => void }) {
+interface ColumnSelectorProps<TData> {
+  table: Table<TData>;
+  selectedColumns: string[];
+  setSelectedColumns: (value: string[]) => void;
+}
+
+export function ColumnSelector<TData>({
+  table,
+  setSelectedColumns,
+  selectedColumns,
+}: ColumnSelectorProps<TData>) {
   return (
-    <Button isIconOnly variant="ghost" color="danger" onPress={onPress}>
-      <FilterX className="h-4 w-4" />
+    <Dropdown>
+      <DropdownTrigger asChild>
+        <Button size="sm">
+          <Settings2 size={20} />
+          Filtrar columnas
+        </Button>
+      </DropdownTrigger>
+      <DropdownMenu
+        selectedKeys={selectedColumns}
+        onSelectionChange={(selected) => {
+          setSelectedColumns(Array.from(selected) as string[]);
+        }}
+        selectionMode="multiple"
+        className="w-[250px]"
+      >
+        {table
+          .getAllColumns()
+          .filter(
+            (column) =>
+              typeof column.accessorFn !== "undefined" && column.getCanHide()
+          )
+          .map((column) => {
+            return (
+              <DropdownItem
+                key={column.id}
+                onPress={() => column.toggleVisibility(!column.getIsVisible())}
+                className="capitalize"
+              >
+                {column.id}
+              </DropdownItem>
+            );
+          })}
+      </DropdownMenu>
+    </Dropdown>
+  );
+}
+
+export function FilterButton({
+  onPress,
+  disabled,
+}: {
+  onPress: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <Button
+      radius="sm"
+      variant="ghost"
+      color="danger"
+      onPress={onPress}
+      isDisabled={disabled}
+      startContent={<FilterX size={20} />}
+    >
+      Quitar filtros
     </Button>
   );
 }
@@ -25,12 +94,13 @@ export function CompanyDropdown({
   onSelectionChange: (value: string[]) => void;
 }) {
   return (
-    <Dropdown>
+    <Dropdown radius="sm">
       <DropdownTrigger aria-label="Compañía">
         <Button
           endContent={
             <ChevronDownIcon width={12} height={12} className="text-gray-500" />
           }
+          radius="sm"
           variant="bordered"
         >
           <span className="block max-w-44 w-full text-ellipsis overflow-hidden whitespace-nowrap">
@@ -68,13 +138,14 @@ export function StatusDropdown({
   onSelectionChange: (value: Status[]) => void;
 }) {
   return (
-    <Dropdown>
+    <Dropdown radius="sm">
       <DropdownTrigger aria-label="Estado">
         <Button
           endContent={
             <ChevronDownIcon width={12} height={12} className="text-gray-500" />
           }
           variant="bordered"
+          radius="sm"
         >
           <span className="block max-w-44 w-full text-ellipsis overflow-hidden whitespace-nowrap">
             {selected.length > 0 ? selected.join(", ") : "Estado"}
@@ -101,6 +172,48 @@ export function StatusDropdown({
   );
 }
 
+export function LiquidezStatusDropdown({
+  selected,
+  onSelectionChange,
+}: {
+  selected: string[];
+  onSelectionChange: (value: Status[]) => void;
+}) {
+  return (
+    <Dropdown radius="sm">
+      <DropdownTrigger aria-label="Estado">
+        <Button
+          endContent={
+            <ChevronDownIcon width={12} height={12} className="text-gray-500" />
+          }
+          variant="bordered"
+          radius="sm"
+        >
+          <span className="block max-w-44 w-full text-ellipsis overflow-hidden whitespace-nowrap">
+            {selected.length > 0 ? selected.join(", ") : "Estado"}
+          </span>
+        </Button>
+      </DropdownTrigger>
+      <DropdownMenu
+        disallowEmptySelection={false}
+        aria-label="Estado"
+        closeOnSelect={false}
+        selectedKeys={selected}
+        selectionMode="multiple"
+        onSelectionChange={(selected) =>
+          onSelectionChange(Array.from(selected) as Status[])
+        }
+      >
+        {LIQUIDEZ_STATUS.map((status) => (
+          <DropdownItem key={status} className="capitalize">
+            {status}
+          </DropdownItem>
+        ))}
+      </DropdownMenu>
+    </Dropdown>
+  );
+}
+
 export function ContractTypeDropdown({
   selected,
   onSelectionChange,
@@ -109,9 +222,10 @@ export function ContractTypeDropdown({
   onSelectionChange: (value: string[]) => void;
 }) {
   return (
-    <Dropdown>
+    <Dropdown radius="sm">
       <DropdownTrigger aria-label="Tipo de contrato">
         <Button
+          radius="sm"
           endContent={
             <ChevronDownIcon width={12} height={12} className="text-gray-500" />
           }

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Search } from "lucide-react";
-import { DocumentacionFile } from "@/lib/types";
+import { DocumentacionFile } from "@/lib/core/types";
 import {
   Modal,
   ModalBody,
@@ -97,6 +97,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
         placement="top"
         hideCloseButton
         size="5xl"
+        radius="sm"
         isOpen={isOpen}
         onClose={handleClose}
       >
@@ -105,6 +106,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
             <Input
               size="lg"
               type="text"
+              radius="sm"
               placeholder="Buscar archivos..."
               value={filterValue}
               onChange={handleInputChange}

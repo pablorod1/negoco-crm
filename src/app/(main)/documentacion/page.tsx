@@ -8,10 +8,12 @@ import {
   getFilesFromFolder,
   getRecentlyFiles,
 } from "@/lib/libsql/data/documentacion/getFiles";
-import { DocumentacionFile } from "@/lib/types";
+import { DocumentacionFile, User } from "@/lib/core/types";
 import { useCallback, useEffect, useState } from "react";
+import { useUser } from "@/contexts/UserContext";
 
 export default function DocumentacionPage() {
+  const { userData } = useUser();
   const [folders, setFolders] = useState<string[]>([]);
   const [files, setFiles] = useState<DocumentacionFile[]>([]);
   const [recentlyFiles, setRecentlyFiles] = useState<DocumentacionFile[]>([]);
@@ -65,11 +67,12 @@ export default function DocumentacionPage() {
             folders={folders}
             currentPath=""
             folderPath={[]}
+            userData={userData as User}
           />
         </div>
       ) : (
         <div className="flex flex-col items-center gap-4">
-          <EmptyDocumentacion />
+          <EmptyDocumentacion userData={userData as User} />
         </div>
       )}
     </>

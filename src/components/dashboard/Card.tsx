@@ -37,13 +37,13 @@ const DashboardCard = ({
 
   return (
     <Card
-      className={`relative h-auto backdrop-blur-lg   shadow-[0_2px_6px_rgba(0,0,0,0.14)] group transition-all duration-500 ${
-        loading ? "bg-gray-200 border-0" : "bg-white/80 border border-white/10"
+      className={`relative h-auto backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
+        loading ? "bg-gray-200" : "bg-white"
       } `}
     >
       {/* Skeleton con transición de opacidad */}
       <div
-        className={`absolute inset-0 flex items-center justify-center rounded-lg transition-opacity duration-500 ${
+        className={`absolute inset-0 flex items-center justify-center rounded-lg transition-opacity duration-300 ${
           loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
         }`}
       >
@@ -52,8 +52,8 @@ const DashboardCard = ({
 
       {/* Contenido principal con opacidad transicionada */}
       <div
-        className={`relative h-full p-6 flex flex-col transition-opacity duration-500 ${
-          loading ? "opacity-0" : "opacity-100 z-50"
+        className={`relative h-full p-6 flex flex-col transition-opacity duration-300 ${
+          loading ? "opacity-0" : "opacity-100 "
         }`}
       >
         {/* Elementos decorativos de fondo */}
@@ -79,7 +79,7 @@ const DashboardCard = ({
             {title}
           </h3>
           <div
-            className={`p-2 rounded-xl backdrop-blur-md bg-white/90 shadow-lg 
+            className={`p-2 rounded-lg backdrop-blur-md bg-white/90 shadow-md 
             transform group-hover:-translate-y-1 group-hover:rotate-3 transition-all duration-300
             ${getBackgroundColor(color)} bg-opacity-10`}
           >
@@ -93,11 +93,11 @@ const DashboardCard = ({
             {value ? (
               <NumberTicker
                 value={value}
-                className={`text-5xl font-bold text-[var(--primary-color-800)] tracking-tight`}
+                className={`text-5xl font-bold text-[var(--primary-color-800)] tracking-tight `}
               />
             ) : (
               <span
-                className={`text-5xl font-bold text-[var(--primary-color-800)] tracking-tight`}
+                className={`text-5xl font-bold text-[var(--primary-color-800)] tracking-tight `}
               >
                 0
               </span>

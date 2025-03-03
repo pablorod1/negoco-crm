@@ -1,6 +1,11 @@
 "use client";
-import { LayoutDashboard, Users, ReceiptText, Folder } from "lucide-react";
-
+import {
+  LayoutDashboard,
+  Users,
+  ReceiptText,
+  Folder,
+  Coins,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,12 +16,12 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import Image from "next/image";
 import Link from "next/link";
 import { NavUser } from "./NavUser";
 import { usePathname } from "next/navigation";
+import { useUser } from "@/contexts/UserContext";
 
 const items = [
   {
@@ -41,37 +46,78 @@ const items = [
   },
 ];
 
+const direccionItems = [
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Trámites",
+    url: "/tramites",
+    icon: ReceiptText,
+  },
+  {
+    title: "Liquidez",
+    url: "/liquidez",
+    icon: Coins,
+  },
+  {
+    title: "Documentación",
+    url: "/documentacion",
+    icon: Folder,
+  },
+  {
+    title: "Colaboradores",
+    url: "/colaboradores",
+    icon: Users,
+  },
+];
+
+const DEFAULT_LOGO = "/logo.webp";
+
 export function SidebarComponent() {
-  const { open } = useSidebar();
   const pathname = usePathname();
+  const { userData } = useUser();
+
+  // Obtener el logo de forma segura
+  const organizationLogo = userData?.organization?.logo || DEFAULT_LOGO;
+
+  const getItemsByRole = () => {
+    if (userData) {
+      if (userData.role === "admin" || userData.role === "1") {
+        return direccionItems;
+      } else {
+        return items;
+      }
+    }
+
+    return items;
+  };
+
   return (
     <Sidebar id="sidebar-menu" collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="py-4">
         <Link href="/">
-          {open ? (
+          <div className="flex items-center gap-2 w-auto">
             <Image
-              src="/logo.webp"
-              alt="Negoco CRM"
-              width={633}
-              height={200}
+              src={organizationLogo}
+              alt="Logo"
+              width={50}
+              height={50}
               priority
-              className="w-full"
             />
-          ) : (
-            <Image
-              src={"/logo_sin_letras.webp"}
-              alt="Negoco CRM"
-              width={512}
-              height={488}
-            />
-          )}
+            <h2 className="text-3xl font-bold">
+              {userData?.organization?.name || "Nombre de la organización"}
+            </h2>
+          </div>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-8">
-              {items.map((item) => (
+              {getItemsByRole().map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -93,13 +139,7 @@ export function SidebarComponent() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser
-          user={{
-            name: "Pablo Rodríguez Albarrán",
-            email: "pablorodriguezalbarran2000@gmail.com",
-            avatar: "",
-          }}
-        />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );

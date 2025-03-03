@@ -1,148 +1,184 @@
 "use client";
-import { CheckCircle, CoinsIcon, TriangleAlert, Users } from "lucide-react";
-import DashboardCard from "./Card";
-import { TramitesResumePieChart } from "./charts/TramitesResumePieChart";
-import { ComisionesChart } from "./charts/ComisionesChart";
-import { YearlyTramitesBarChart } from "./charts/YearlyTramitesBarChart";
-import RenewableTramitesCalendar from "./RenewableTramitesCalendar";
-import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
+
 import React from "react";
 import {
   getActivePendingTramites,
   getClientsCount,
   getComisionesPendientes,
 } from "@/lib/libsql/data/tramites/getTramites";
-import { PersonalTramitesChart } from "./charts/MonthlyTramitesBarChart";
+import { useUser } from "@/contexts/UserContext";
+import {
+  BackofficeView,
+  ComercialView,
+  DireccionView,
+} from "./DashboardBentoGridViews";
+import { Button, Spinner } from "@heroui/react";
+import toast from "react-hot-toast";
+import AvatarComponent from "../core/AvatarComponent";
+import { Bell, CheckCircle, Folder, User } from "lucide-react";
 
-interface DashboardCardValue {
+export interface DashboardCardValue {
   value: number;
   difference: number;
 }
 
+interface DashboardData {
+  clients: DashboardCardValue;
+  activeTramites: DashboardCardValue;
+  pendingTramites: DashboardCardValue;
+  comisionesPendientes: number;
+}
+
+const initialDashboardData: DashboardData = {
+  clients: { value: 0, difference: 0 },
+  activeTramites: { value: 0, difference: 0 },
+  pendingTramites: { value: 0, difference: 0 },
+  comisionesPendientes: 0,
+};
+
 export default function DashboardBentoGrid() {
-  const [clients, setClients] = React.useState<DashboardCardValue>();
-  const [activeTramites, setActiveTramites] =
-    React.useState<DashboardCardValue>();
-  const [pendingTramites, setPendingTramites] =
-    React.useState<DashboardCardValue>();
-  const [comisionesPendientes, setComisionesPendientes] = React.useState(0);
+  const { userData } = useUser();
+  const [dashboardData, setDashboardData] =
+    React.useState<DashboardData>(initialDashboardData);
   const [loading, setLoading] = React.useState(true);
+  const isFirstRender = React.useRef(true);
 
-  const fetchTramites = React.useCallback(async () => {
-    try {
-      const { active, pending } = await getActivePendingTramites();
-      setActiveTramites(active);
-      setPendingTramites(pending);
-    } catch (error) {
-      console.error("Error al obtener trámites:", error);
+  const isBackOffice = userData?.role === "1";
+  const isComercial = userData?.role === "2";
+
+  const fetchData = React.useCallback(async () => {
+    if (!userData || loading) {
+      return;
     }
-  }, []);
 
-  const fetchClients = React.useCallback(async () => {
     try {
-      const clients = await getClientsCount();
-      setClients(clients);
-    } catch (error) {
-      console.error("Error al obtener el total de clientes:", error);
-    }
-  }, []);
-
-  const fetchComisionesPendientes = React.useCallback(async () => {
-    try {
-      const totalComisiones = await getComisionesPendientes();
-      setComisionesPendientes(totalComisiones);
-    } catch (error) {
-      console.error(
-        "Error al obtener el total de comisiones pendientes:",
-        error
+      const [clients, { active, pending }, totalComisiones] = await Promise.all(
+        [
+          getClientsCount(userData),
+          getActivePendingTramites(false, userData),
+          getComisionesPendientes(userData),
+        ]
       );
-    }
-  }, []);
 
-  const formatDifferenceText = (difference: number) => {
-    if (difference > 50) {
-      return `¡Increíble! 🚀 Has aumentado en un ${difference}% respecto al mes pasado.`;
-    } else if (difference > 0) {
-      return `¡Buen trabajo! Has logrado un ${difference}% más que el mes pasado. 💪`;
-    } else if (difference < -50) {
-      return `📉 Cuidado, has bajado un ${Math.abs(
-        difference
-      )}% respecto al mes pasado.`;
-    } else if (difference < 0) {
-      return `Este mes tienes un ${Math.abs(
-        difference
-      )}% menos que el mes pasado.`;
-    } else {
-      return `Te has mantenido igual que el mes pasado. 🔄`;
+      setDashboardData({
+        clients,
+        activeTramites: active,
+        pendingTramites: pending,
+        comisionesPendientes: totalComisiones,
+      });
+
+      if (
+        isFirstRender.current &&
+        userData.notifications &&
+        userData.notifications > 0
+      ) {
+        toast(`Tienes ${userData.notifications} notificaciones pendientes`, {
+          icon: "🔔",
+          duration: 3000,
+          position: "top-center",
+        });
+        isFirstRender.current = false;
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setDashboardData(initialDashboardData);
     }
-  };
+  }, [loading, userData]);
 
   React.useEffect(() => {
-    fetchClients();
-    fetchTramites();
-    fetchComisionesPendientes();
-    setTimeout(() => setLoading(false), 300);
-  }, [fetchClients, fetchTramites, fetchComisionesPendientes]);
+    if (userData) {
+      fetchData();
+      const timer = setTimeout(() => setLoading(false), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setLoading(false);
+    }
+  }, [fetchData, userData]);
+
+  if (!userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner
+          label="Cargando..."
+          color="primary"
+          size="lg"
+          className="text-xl"
+        />
+      </div>
+    );
+  }
+
+  const commonProps = {
+    userData,
+    loading,
+    clients: dashboardData.clients,
+    activeTramites: dashboardData.activeTramites,
+    pendingTramites: dashboardData.pendingTramites,
+  };
+
   return (
-    <div className="mx-4 md:mx-8 xl:mx-12 p-2 md:p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch w-full">
-        <div className="col-span-1 sm:row-span-2 xl:row-span-2 z-50 animate-size">
-          <TramitesResumePieChart loading={loading} />
+    <section className="mx-4 md:mx-8 xl:mx-12 px-2 py-8">
+      <div
+        className={`flex items-center justify-between mb-6 bg-gradient-to-br from-[var(--primary-color-600)] to-[var(--primary-color-400)] p-4 rounded-full shadow-md overflow-hidden flex-nowrap animate-size  ${
+          loading ? "w-32 h-32" : "w-auto"
+        }`}
+      >
+        <div className="flex items-center gap-4 flex-nowrap">
+          <AvatarComponent
+            className={`size-24 !rounded-full shadow-md transition-transform duration-300 ${
+              loading ? "scale-80" : "scale-100"
+            }`}
+            userData={userData}
+            textSize="text-2xl"
+          />
+          <div className="ml-4 flex flex-col flex-nowrap">
+            <h1 className="text-3xl font-bold text-white text-nowrap">
+              Bienvenido, {userData.name} 👋
+            </h1>
+            {userData.notifications ? (
+              <p className="text-sm text-red-500 flex items-center text-nowrap">
+                <Bell className="w-5 h-5 mr-2" /> Tienes{" "}
+                {userData.notifications} notificaciones pendientes
+              </p>
+            ) : (
+              <p className="text-base text-gray-100 flex items-center text-nowrap">
+                <CheckCircle className="w-5 h-5 mr-2" /> No tienes
+                notificaciones pendientes
+              </p>
+            )}
+          </div>
         </div>
-
-        <DashboardCard
-          title="Clientes"
-          value={clients && clients.value}
-          description={clients && formatDifferenceText(clients.difference)}
-          icon={<Users stroke="var(--primary-color-800)" />}
-          loading={loading}
-        />
-        <DashboardCard
-          title="Trámites Activos"
-          value={activeTramites && activeTramites.value}
-          description={
-            activeTramites && formatDifferenceText(activeTramites.difference)
-          }
-          icon={<CheckCircle stroke="var(--primary-color-800)" />}
-          loading={loading}
-        />
-        <DashboardCard
-          title="Trámites Pendientes"
-          value={pendingTramites && pendingTramites.value}
-          icon={<TriangleAlert stroke="var(--primary-color-800)" />}
-          description={
-            pendingTramites && formatDifferenceText(pendingTramites.difference)
-          }
-          loading={loading}
-        />
-        <DashboardCard
-          title="Comisiones Pendientes"
-          value={comisionesPendientes}
-          description="Total de comisiones pendientes por cobrar."
-          icon={<CoinsIcon stroke="var(--primary-color-800)" />}
-          loading={loading}
-        />
-
-        <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-1 z-50">
-          <ComisionesChart loading={loading} />
-        </div>
-
-        <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-2 z-50">
-          <YearlyTramitesBarChart loading={loading} />
-        </div>
-
-        <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-2">
-          <RenewableTramitesCalendar loading={loading} />
-        </div>
-
-        <div className="col-span-1 sm:col-span-2 xl:col-span-4">
-          <PersonalTramitesChart loading={loading} />
-        </div>
-
-        <div className="col-span-1 sm:col-span-2 xl:col-span-4">
-          <TeamTramitesBarChart />
+        <div className="flex items-center gap-4 flex-nowrap mr-24">
+          <Button
+            variant="solid"
+            radius="sm"
+            startContent={<Folder className="size-5" />}
+          >
+            Documentación
+          </Button>
+          <Button
+            variant="solid"
+            radius="sm"
+            startContent={<User className="size-5" />}
+          >
+            Ver perfil
+          </Button>
         </div>
       </div>
-    </div>
+
+      {isComercial ? (
+        <ComercialView
+          {...commonProps}
+          comisionesPendientes={dashboardData.comisionesPendientes}
+        />
+      ) : isBackOffice ? (
+        <BackofficeView {...commonProps} />
+      ) : (
+        <DireccionView
+          {...commonProps}
+          comisionesPendientes={dashboardData.comisionesPendientes}
+        />
+      )}
+    </section>
   );
 }

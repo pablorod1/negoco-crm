@@ -17,13 +17,13 @@ import {
 
 interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
-  loading: boolean;
+  dataLoaded: boolean;
   columns: ColumnDef<TData, TValue>[];
 }
 
 export function TableContent<TData, TValue>({
   table,
-  loading,
+  dataLoaded,
   columns,
 }: TableContentProps<TData, TValue>) {
   return (
@@ -49,7 +49,9 @@ export function TableContent<TData, TValue>({
           ))}
         </TableHeader>
         <TableBody>
-          {!loading && table.getRowModel().rows?.length ? (
+          {table.getRowModel().rows &&
+          table.getRowModel().rows.length > 0 &&
+          dataLoaded ? (
             table.getRowModel().rows.map((row, index) => (
               <motion.tr
                 key={row.id}
@@ -67,51 +69,34 @@ export function TableContent<TData, TValue>({
                 ))}
               </motion.tr>
             ))
+          ) : table.getRowModel().rows &&
+            table.getRowModel().rows.length > 0 &&
+            !dataLoaded ? (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-gray-500"
+              >
+                <Spinner
+                  size="lg"
+                  label="Cargando..."
+                  color="primary"
+                  className="text-base font-bold"
+                />
+              </TableCell>
+            </TableRow>
           ) : (
-            <LoadingOrEmptyState
-              loading={loading}
-              columnsLength={columns.length}
-            />
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-gray-500"
+              >
+                No se encontraron resultados
+              </TableCell>
+            </TableRow>
           )}
         </TableBody>
       </Table>
     </CardContent>
-  );
-}
-
-function LoadingOrEmptyState({
-  loading,
-  columnsLength,
-}: {
-  loading: boolean;
-  columnsLength: number;
-}) {
-  if (loading) {
-    return (
-      <TableRow>
-        <TableCell
-          colSpan={columnsLength}
-          className="h-24 text-center text-gray-500"
-        >
-          <Spinner
-            size="lg"
-            label="Cargando..."
-            color="primary"
-            className="text-base font-bold"
-          />
-        </TableCell>
-      </TableRow>
-    );
-  }
-
-  return (
-    <TableRow>
-      <TableCell
-        colSpan={columnsLength}
-        className="h-24 text-center text-gray-500"
-      >
-        No se encontraron resultados
-      </TableCell>
-    </TableRow>
   );
 }

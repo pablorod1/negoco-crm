@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical } from "lucide-react";
+import { CheckCircle, CircleX, MoreVertical } from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,9 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { deleteFolder } from "@/lib/firebase/data/deleteFolder";
-import toast from "react-hot-toast";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import Image from "next/image";
+import { showCustomToast } from "../core/CustomToast";
 
 interface FolderCardProps {
   name: string;
@@ -30,16 +30,34 @@ export function FolderCard({ name, currentPath }: FolderCardProps) {
         `${currentPath ? `${currentPath}/` : ""}${name}`
       );
 
-      if (!success) {
-        toast.error(errors);
+      if (!success && errors) {
+        showCustomToast({
+          title: "Error eliminando carpeta",
+          message: errors[0],
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
         return;
       }
 
-      toast.success("Carpeta eliminada correctamente");
+      showCustomToast({
+        title: "Carpeta eliminada",
+        message: "La carpeta ha sido eliminada correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CheckCircle,
+      });
       refreshDocumentacion();
     } catch (error) {
       console.error("Error eliminando carpeta:", error);
-      toast.error("Error eliminando carpeta");
+      showCustomToast({
+        title: "Error eliminando carpeta",
+        message: "Inténtalo de nuevo más tarde",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
     }
   };
   return (

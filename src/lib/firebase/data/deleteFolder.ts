@@ -34,7 +34,7 @@ export const deleteFolder = async (
 
   const query = `DELETE FROM documentacion_files WHERE folder_name = ?`;
   // 2. Delete folder from database
-  await tursoClient().execute({
+  await tursoClient.execute({
     sql: query,
     args: [folderPath],
   });

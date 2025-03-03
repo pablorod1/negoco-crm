@@ -1,4 +1,4 @@
-import { DocumentacionFile } from "@/lib/types";
+import { DocumentacionFile } from "@/lib/core/types";
 import { tursoClient } from "../../client";
 import { uploadFiles } from "@/lib/firebase/data/uploadFiles";
 
@@ -51,7 +51,7 @@ export const addDocumentacionFiles = async (
       file.type,
     ]);
 
-    await tursoClient().execute({
+    await tursoClient.execute({
       sql: query,
       args: params,
     });

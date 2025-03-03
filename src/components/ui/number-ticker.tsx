@@ -3,7 +3,7 @@
 import { useInView, useMotionValue, useSpring } from "motion/react";
 import { ComponentPropsWithoutRef, useEffect, useRef } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/core/utils";
 
 interface NumberTickerProps extends ComponentPropsWithoutRef<"span"> {
   value: number;
@@ -45,7 +45,7 @@ export function NumberTicker({
           }).format(Number(latest.toFixed(decimalPlaces)));
         }
       }),
-    [springValue, decimalPlaces],
+    [springValue, decimalPlaces]
   );
 
   return (
@@ -53,7 +53,7 @@ export function NumberTicker({
       ref={ref}
       className={cn(
         "inline-block tabular-nums tracking-wider text-black dark:text-white",
-        className,
+        className
       )}
       {...props}
     />

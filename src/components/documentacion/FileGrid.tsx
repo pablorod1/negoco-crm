@@ -4,7 +4,7 @@ import { ArrowLeft, Grid2X2, List } from "lucide-react";
 
 import { FileCard } from "./FileCard";
 import { Button } from "@heroui/react";
-import { DocumentacionFile } from "@/lib/types";
+import { DocumentacionFile, User } from "@/lib/core/types";
 import { FolderCard } from "./FolderCard";
 import { BreadcrumbItem, Breadcrumbs, Divider } from "@heroui/react";
 import UploadFileModal from "./UploadFileModal";
@@ -14,6 +14,7 @@ interface FileGridProps {
   files?: DocumentacionFile[];
   recentlyFiles?: DocumentacionFile[];
   folders: string[];
+  userData: User;
   currentPath: string;
   folderPath?: string[];
   handleBack?: () => void;
@@ -30,6 +31,7 @@ export function FileGrid({
   folderPath,
   recentlyFiles,
   handleBack,
+  userData,
 }: FileGridProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   return (
@@ -81,7 +83,7 @@ export function FileGrid({
               <Grid2X2 className="h-4 w-4" />
             )}
           </Button>
-          <UploadFileModal />
+          {userData.role !== "2" && <UploadFileModal />}
         </div>
       </div>
       <div className="flex flex-col gap-12 w-full">

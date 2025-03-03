@@ -1,13 +1,15 @@
-import { DocumentType } from "../types";
+import { DocumentType, User } from "../core/types";
 
 export type FirstForm = {
   sales_name: string;
   client_type: string;
+  user_id: string;
 };
 
-export const createEmptyFirstForm = (): FirstForm => ({
-  sales_name: "",
+export const createEmptyFirstForm = (userData: User): FirstForm => ({
+  sales_name: userData.name,
   client_type: "",
+  user_id: userData.id,
 });
 
 export type FirstFormError = {

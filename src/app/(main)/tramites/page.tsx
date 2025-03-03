@@ -1,11 +1,33 @@
 "use client";
-import { columns } from "../../../components/tramites/table/columns";
-import { DataTable } from "../../../components/tramites/table/Table";
+import {
+  ComercialTramiteColumns,
+  SubComercialTramitesColumns,
+  TramiteColumns,
+} from "@/components/tramites/table/TramiteColumns";
+import { DataTable } from "@/components/tramites/table/Table";
+import { useUser } from "@/contexts/UserContext";
+import { useEffect, useState } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { TramiteVM } from "@/lib/core/types";
 
 export default function TramitesPage() {
+  const { userData } = useUser();
+  const [columns, setColumns] = useState<ColumnDef<TramiteVM>[]>([]);
+
+  useEffect(() => {
+    if (userData) {
+      if (userData.role === "2" && userData.super_id) {
+        setColumns(SubComercialTramitesColumns);
+      } else if (userData.role === "2" && !userData.super_id) {
+        setColumns(ComercialTramiteColumns);
+      } else if (userData.role === "1" || userData.role === "admin") {
+        setColumns(TramiteColumns);
+      }
+    }
+  }, [userData]);
   return (
     <section className="pb-12">
-      <DataTable columns={columns} />
+      <DataTable title="Trámites" columns={columns} />
     </section>
   );
 }

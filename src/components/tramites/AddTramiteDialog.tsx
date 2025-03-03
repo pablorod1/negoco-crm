@@ -1,9 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useTramites } from "@/contexts/TramitesContext";
-import { motion } from "framer-motion";
 
-import FirstStepForm from "./forms/createTramite/FirstStepForm";
+import FirstStepForm from "./createTramite/forms/FirstStepForm";
 import {
   ClientDB,
   ContractDB,
@@ -12,12 +11,13 @@ import {
   createEmptyTramiteDB,
   SignerDB,
   TramiteDB,
-} from "@/lib/types";
+  User,
+} from "@/lib/core/types";
 
-import SecondStepForm from "./forms/createTramite/SecondStepForm";
-import ThirdStepForm from "./forms/createTramite/ThirdStepForm";
+import SecondStepForm from "./createTramite/forms/SecondStepForm";
+import ThirdStepForm from "./createTramite/forms/ThirdStepForm";
 import { Stepper } from "./Stepper";
-import FourthStepForm from "./forms/createTramite/FourthStepForm";
+import FourthStepForm from "./createTramite/forms/FourthStepForm";
 
 import {
   Modal,
@@ -26,24 +26,30 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import toast from "react-hot-toast";
-import { addCompleteTramite } from "@/lib/libsql/data/addData";
-import { Plus } from "lucide-react";
+import { addCompleteTramite } from "@/lib/libsql/data/tramites/addTramites";
+import { CheckCircle, CircleX, Plus } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
+import { Button } from "@heroui/react";
+import { showCustomToast } from "../core/CustomToast";
 
 export default function AddTramiteDialog() {
+  const { userData } = useUser();
   const [activeTab, setActiveTab] = useState(0);
-  const [tramite, setTramite] = useState<TramiteDB>(createEmptyTramiteDB());
+  const [tramite, setTramite] = useState<TramiteDB>(
+    createEmptyTramiteDB(userData as User)
+  );
   const [client, setClient] = useState<ClientDB>(createEmptyClientDB());
   const [signer, setSigner] = useState<SignerDB>(createEmptySignerDB());
   const [contracts, setContracts] = useState<ContractDB[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
+  const [loading, setLoading] = useState(false);
   const { isOpen, onClose, onOpen } = useDisclosure();
   const { refreshTramites } = useTramites();
 
   const handleOpen = () => {
     onOpen();
     setActiveTab(0);
-    setTramite(createEmptyTramiteDB());
+    setTramite(createEmptyTramiteDB(userData as User));
     setClient(createEmptyClientDB());
     setSigner(createEmptySignerDB());
     setContracts([]);
@@ -75,6 +81,7 @@ export default function AddTramiteDialog() {
   };
 
   const handleSubmit = async () => {
+    setLoading(true);
     try {
       const { success, error } = await addCompleteTramite(
         tramite,
@@ -85,17 +92,37 @@ export default function AddTramiteDialog() {
       );
 
       if (success) {
-        toast.success("Trámite añadido correctamente");
+        showCustomToast({
+          title: "Trámite añadido",
+          message: "El trámite ha sido añadido correctamente",
+          iconColor: "var(--success-color)",
+          iconSize: 24,
+          icon: CheckCircle,
+        });
         refreshTramites();
         onClose();
         return;
       }
 
-      toast.error(`Error al añadir trámite: ${error}`);
+      showCustomToast({
+        title: "Error al añadir trámite",
+        message: error,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
       onClose();
     } catch (error) {
       console.error("Error al añadir trámite:", error);
-      toast.error("Error desconocido al añadir trámite");
+      showCustomToast({
+        title: "Error al añadir trámite",
+        message: "Inténtalo de nuevo más tarde",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+    } finally {
+      setLoading(false);
     }
   };
   const formElements = [
@@ -126,6 +153,7 @@ export default function AddTramiteDialog() {
       onCancel={onClose}
       contracts={contracts}
       setContracts={setContracts}
+      userData={userData as User}
     />,
     <FourthStepForm
       key={4}
@@ -136,23 +164,25 @@ export default function AddTramiteDialog() {
       onCancel={onClose}
       documents={documents}
       setDocuments={setDocuments}
+      loading={loading}
     />,
   ];
 
   return (
     <>
-      <motion.button
-        onClick={handleOpen}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="w-fit text-nowrap flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl font-medium shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-colors"
+      <Button
+        onPress={handleOpen}
+        color="primary"
+        radius="sm"
+        className="shadow-md"
       >
         <Plus size={20} />
         <span>Nuevo Trámite</span>
-      </motion.button>
+      </Button>
 
       <Modal
         isDismissable={false}
+        radius="sm"
         hideCloseButton
         inert={!isOpen}
         isOpen={isOpen}

@@ -9,93 +9,98 @@ import {
   getSortedRowModel,
   getFilteredRowModel,
   type SortingState,
+  VisibilityState,
 } from "@tanstack/react-table";
-import { type TramiteVM } from "@/lib/types";
+import { User, type TramiteVM } from "@/lib/core/types";
 import { getTramites } from "@/lib/libsql/data/tramites/getTramites";
 import { TableLayout } from "./TableLayout";
 import { TableContent } from "./TableContent";
-import { DataTablePagination } from "./data-table-pagination";
+import { DataTablePagination } from "./DataTablePagination";
 import { useTableFilters } from "@/hooks/use-table-filters";
 import { useTablePagination } from "@/hooks/use-table-pagination";
 import { useTramites } from "@/contexts/TramitesContext";
-import TramitesHeader from "../TramitesHeader";
+import TramitesHeader from "./TableHeader";
+import { useUser } from "@/contexts/UserContext";
+import { useSearchParams } from "next/navigation";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
+  title: string;
 }
 
 export function DataTable<TData, TValue>({
   columns,
+  title,
 }: DataTableProps<TData, TValue>) {
+  const params = useSearchParams();
+  const id = params.get("id");
+  const { userData, loading } = useUser();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [tramites, setTramites] = useState<TramiteVM[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [loadedData, setLoadedData] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   const {
     filterValue,
     companyFilter,
     statusFilter,
+    liquidezStatusFilter,
     contractTypeFilter,
+    selectedColumns,
     setFilterValue,
     setCompanyFilter,
     setStatusFilter,
     setContractTypeFilter,
+    setLiquidezStatusFilter,
     resetFilters,
-  } = useTableFilters();
+    setSelectedColumns,
+  } = useTableFilters(id || "");
 
   const { pagination, setPagination } = useTablePagination();
 
   const { setRefreshTramites } = useTramites();
 
   const fetchTramites = useCallback(async () => {
-    if (!isInitialized) return;
-
-    setLoading(true);
-    try {
-      const data = await getTramites(
-        pagination.pageIndex,
-        pagination.pageSize,
-        filterValue,
-        companyFilter,
-        statusFilter,
-        contractTypeFilter
-      );
-      setTramites(data || []);
-    } catch (error) {
-      console.error("Error al obtener trámites:", error);
-    } finally {
-      setLoading(false);
+    if (!loading && userData) {
+      try {
+        const data = await getTramites(
+          pagination.pageIndex,
+          pagination.pageSize,
+          userData,
+          filterValue,
+          companyFilter,
+          title === "Trámites" ? statusFilter : ["Activo", "Baja"],
+          liquidezStatusFilter,
+          contractTypeFilter
+        );
+        setTramites(data || []);
+        setTimeout(() => setLoadedData(true), 1000);
+      } catch (error) {
+        console.error("Error al obtener trámites:", error);
+      }
     }
   }, [
-    isInitialized,
     pagination.pageIndex,
     pagination.pageSize,
     filterValue,
     companyFilter,
     statusFilter,
+    liquidezStatusFilter,
     contractTypeFilter,
+    userData,
+    loading,
+    title,
   ]);
 
-  // Inicialización
   useEffect(() => {
-    setIsInitialized(true);
-    return () => setIsInitialized(false);
-  }, []);
-
-  useEffect(() => {
-    if (isInitialized) {
-      const cleanup = setRefreshTramites(fetchTramites);
-      return () => cleanup();
-    }
-  }, [fetchTramites, setRefreshTramites, isInitialized]);
+    const cleanup = setRefreshTramites(fetchTramites);
+    return () => cleanup();
+  }, [fetchTramites, setRefreshTramites]);
 
   // Fetch de datos
   useEffect(() => {
-    if (isInitialized) {
-      fetchTramites();
-    }
-  }, [fetchTramites, isInitialized]);
+    fetchTramites();
+  }, [fetchTramites]);
 
   const tableConfig = useMemo(
     () => ({
@@ -107,50 +112,65 @@ export function DataTable<TData, TValue>({
       getFilteredRowModel: getFilteredRowModel(),
       onSortingChange: setSorting,
       onPaginationChange: setPagination,
+      onColumnVisibilityChange: setColumnVisibility,
       state: {
         sorting,
         pagination,
+        columnVisibility,
       },
     }),
-    [tramites, columns, sorting, pagination, setPagination]
+    [tramites, columns, sorting, pagination, setPagination, columnVisibility]
   );
 
   const table = useReactTable(tableConfig);
 
+  // Función personalizada para manejar el reseteo de filtros
+  const handleResetFilters = useCallback(() => {
+    resetFilters();
+  }, [resetFilters]);
+
   const toolbarProps = useMemo(
     () => ({
       filterValue,
+      title,
       companyFilter,
       statusFilter,
+      liquidezStatusFilter,
       contractTypeFilter,
+      selectedColumns,
       setFilterValue,
       setCompanyFilter,
       setStatusFilter,
+      setLiquidezStatusFilter,
       setContractTypeFilter,
-      resetFilters,
+      setSelectedColumns,
+      resetFilters: handleResetFilters,
+      userData: userData || ({} as User),
     }),
     [
       filterValue,
+      title,
       companyFilter,
       statusFilter,
+      liquidezStatusFilter,
       contractTypeFilter,
+      selectedColumns,
       setFilterValue,
       setCompanyFilter,
       setStatusFilter,
+      setLiquidezStatusFilter,
       setContractTypeFilter,
-      resetFilters,
+      handleResetFilters,
+      setSelectedColumns,
+      userData,
     ]
   );
 
-  if (!isInitialized) {
-    return null;
-  }
-
   return (
     <div className="flex flex-col gap-4 bg-gray-50 w-full h-full">
-      <TramitesHeader {...toolbarProps} />
+      <TramitesHeader table={table} {...toolbarProps} />
       <TableLayout>
-        <TableContent table={table} loading={loading} columns={columns} />
+        <TableContent table={table} dataLoaded={loadedData} columns={columns} />
         <div className="mt-6">
           <DataTablePagination table={table} />
         </div>

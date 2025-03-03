@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/core/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { es } from "date-fns/locale";
 
 interface Props {
   className?: string;
@@ -56,6 +57,8 @@ export function DateRangePicker({ className, date, setDateRange }: Props) {
             selected={date}
             onSelect={setDateRange}
             numberOfMonths={2}
+            locale={es}
+            className="capitalize"
           />
         </PopoverContent>
       </Popover>

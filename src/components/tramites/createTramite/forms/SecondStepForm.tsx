@@ -1,0 +1,298 @@
+import { CARGOS, DOCUMENT_TYPES } from "@/lib/core/const";
+import {
+  createEmptySecondForm,
+  createEmptySecondFormError,
+  createEmptySignerForm,
+  SecondForm,
+  SecondFormError,
+  SignerForm,
+  createEmptySignerFormError,
+  SignerFormError,
+} from "@/lib/validation/validation.types";
+import {
+  secondFormValidation,
+  signerFormValidation,
+} from "@/lib/validation/create-tramite/form-validation";
+
+import { Divider } from "@heroui/divider";
+import React, { useState } from "react";
+import { ClientDB, SignerDB } from "@/lib/core/types";
+import FormWrapper from "../FormWrapper";
+import ButtonGroupComponent from "../ButtonGroupComponent";
+import { InputComponent, SelectComponent } from "../InputComponent";
+
+interface Props {
+  client: ClientDB;
+  setClient: React.Dispatch<React.SetStateAction<ClientDB>>;
+  setSigner: React.Dispatch<React.SetStateAction<SignerDB>>;
+  onSecondSubmitSuccess: () => void;
+  onBack: () => void;
+  onCancel: () => void;
+}
+
+export default function SecondStepForm({
+  client,
+  setClient,
+  setSigner,
+  onSecondSubmitSuccess,
+  onBack,
+  onCancel,
+}: Props) {
+  const [errors, setErrors] = useState<SecondFormError>(
+    createEmptySecondFormError
+  );
+  const [formData, setFormData] = useState<SecondForm>(createEmptySecondForm);
+  const [signerData, setSignerData] = useState<SignerForm>(
+    createEmptySignerForm
+  );
+  const [signerErrors, setSignerErrors] = useState<SignerFormError>(
+    createEmptySignerFormError
+  );
+
+  const handleFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    if (name.includes("signer")) {
+      setSignerData((prevState) => ({
+        ...prevState,
+        [name.split(".")[1]]: value,
+      }));
+      setSignerErrors((prevState) => ({
+        ...prevState,
+        [name.split(".")[1]]: "",
+      }));
+    } else {
+      setFormData((prevState) => ({
+        ...prevState,
+        [name]: value,
+      }));
+      setErrors((prevState) => ({
+        ...prevState,
+        [name]: "",
+      }));
+    }
+  };
+
+  const handleSecondSubmit = () => {
+    if (
+      client.type === "Empresa" ||
+      client.type === "Comunidad de Propietarios"
+    ) {
+      const signerFormValidationResult = signerFormValidation(signerData);
+      const formValidationResult = secondFormValidation(formData);
+      setErrors(formValidationResult.errors);
+      // Update signer errors while preserving the rest of the state
+      setSignerErrors(signerFormValidationResult.errors);
+      if (
+        signerFormValidationResult.succeeded &&
+        formValidationResult.succeeded
+      ) {
+        setSigner((prevState) => ({
+          ...prevState,
+          name: signerData.name,
+          last_name: signerData.last_name,
+          email: signerData.email,
+          phone: signerData.phone,
+          document_number: signerData.document_number,
+          cargo: signerData.cargo || null,
+        }));
+
+        setClient((prevState) => ({
+          ...prevState,
+          name: formData.name,
+          last_name: formData.last_name || "",
+          email: formData.email,
+          phone: formData.phone,
+          IBAN: formData.IBAN,
+          address: formData.address,
+          document_type: formData.document_type,
+          document_number: formData.document_number,
+        }));
+
+        onSecondSubmitSuccess();
+      }
+    }
+
+    const formValidationResult = secondFormValidation(formData);
+
+    setErrors(formValidationResult.errors);
+
+    if (formValidationResult.succeeded) {
+      setClient((prevState) => ({
+        ...prevState,
+        name: formData.name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone,
+        IBAN: formData.IBAN,
+        address: formData.address,
+        document_type: formData.document_type,
+        document_number: formData.document_number,
+      }));
+      onSecondSubmitSuccess();
+    }
+  };
+
+  return (
+    <FormWrapper>
+      <form className="w-full">
+        <div className="flex flex-col gap-y-4 w-full">
+          <h2 className="text-xl font-semibold text-[var(--primary-color-500)]">
+            Datos {client.type === "Empresa" ? "de la empresa" : "del cliente"}
+          </h2>
+          <div className="flex items-stretch gap-4 w-full">
+            <SelectComponent
+              name="document_type"
+              items={
+                DOCUMENT_TYPES[client.type as keyof typeof DOCUMENT_TYPES]
+                  .documentTypes
+              }
+              onChange={handleFieldChange}
+              errors={errors.document_type}
+              label="Tipo de documento"
+              isRequired
+              selectedKey={formData.document_type}
+            />
+
+            <InputComponent
+              name="document_number"
+              label="Número de documento"
+              onChange={handleFieldChange}
+              errors={errors.document_number}
+              type="text"
+              isRequired
+            />
+
+            <InputComponent
+              name="name"
+              label="Nombre"
+              onChange={handleFieldChange}
+              type="text"
+              errors={errors.name}
+              isRequired
+            />
+
+            {client.type !== "Empresa" &&
+              client.type !== "Comunidad de Propietarios" && (
+                <InputComponent
+                  name="last_name"
+                  label="Apellidos"
+                  onChange={handleFieldChange}
+                  type="text"
+                />
+              )}
+          </div>
+          <div className="flex items-stretch gap-4 w-full">
+            <InputComponent
+              name="email"
+              label="Correo Electrónico"
+              onChange={handleFieldChange}
+              type="email"
+              errors={errors.email}
+              isRequired
+            />
+
+            <InputComponent
+              name="phone"
+              label="Teléfono"
+              onChange={handleFieldChange}
+              type="number"
+              errors={errors.phone}
+              isRequired
+            />
+          </div>
+          <div className="flex items-stretch gap-4 w-full">
+            <InputComponent
+              name="address"
+              label="Dirección Fiscal"
+              onChange={handleFieldChange}
+              type="text"
+              errors={errors.address}
+              isRequired
+            />
+            <InputComponent
+              name="IBAN"
+              label="Número de cuenta"
+              onChange={handleFieldChange}
+              type="text"
+              errors={errors.IBAN}
+              isRequired
+            />
+          </div>
+        </div>
+        {(client.type === "Empresa" ||
+          client.type === "Comunidad de Propietarios") && (
+          <>
+            <Divider className="my-4" />
+            <div className="flex flex-col gap-y-4 w-full">
+              <h2 className="text-xl font-semibold text-[var(--primary-color-500)]">
+                Datos de la persona firmante
+              </h2>
+              <div className="flex items-stretch gap-4 w-full">
+                <InputComponent
+                  name="signer.document_number"
+                  label="Número de documento"
+                  onChange={handleFieldChange}
+                  type="text"
+                  errors={signerErrors.document_number}
+                  isRequired
+                />
+                <InputComponent
+                  name="signer.name"
+                  label="Nombre"
+                  onChange={handleFieldChange}
+                  type="text"
+                  errors={signerErrors.name}
+                  isRequired
+                />
+
+                <InputComponent
+                  name="signer.last_name"
+                  label="Apellidos"
+                  onChange={handleFieldChange}
+                  type="text"
+                  errors={signerErrors.last_name}
+                  isRequired
+                />
+              </div>
+              <div className="flex items-stretch gap-4 w-full">
+                <InputComponent
+                  name="signer.email"
+                  label="Correo Electrónico"
+                  onChange={handleFieldChange}
+                  type="email"
+                  errors={signerErrors.email}
+                  isRequired
+                />
+                <InputComponent
+                  name="signer.phone"
+                  label="Teléfono"
+                  onChange={handleFieldChange}
+                  type="number"
+                  errors={signerErrors.phone}
+                  isRequired
+                />
+
+                {client.type === "Comunidad de Propietarios" && (
+                  <SelectComponent
+                    name="signer.cargo"
+                    items={CARGOS}
+                    onChange={handleFieldChange}
+                    label="Cargo"
+                    selectedKey={signerData.cargo}
+                  />
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </form>
+      <ButtonGroupComponent
+        onCancel={onCancel}
+        onBack={onBack}
+        onSubmit={handleSecondSubmit}
+      />
+    </FormWrapper>
+  );
+}

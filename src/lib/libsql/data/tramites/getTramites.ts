@@ -5,21 +5,51 @@ import {
   TramiteDB,
   TramiteFile,
   TramiteVM,
-} from "@/lib/types";
+  User,
+} from "@/lib/core/types";
 import { tursoClient } from "../../client";
 import { DateRange } from "react-day-picker";
 
 async function executeQuery<T>(query: string, args: string[]): Promise<T[]> {
-  const result = await tursoClient().execute({ sql: query, args });
+  const result = await tursoClient.execute({ sql: query, args });
   return result.rows as T[]; // TypeScript ya sabe que rows es del tipo correcto
 }
+
+export const checkIfComercialHasSubcomerciales = async (
+  userData: Partial<User> | User
+) => {
+  try {
+    const rs = await tursoClient.execute({
+      sql: `SELECT id FROM user WHERE super_id = ?;`,
+      args: [userData.id as string],
+    });
+
+    if (rs.rows.length === 0) {
+      return {
+        success: false,
+      };
+    }
+
+    return {
+      success: true,
+      ids: rs.rows.map((row) => row.id as string),
+    };
+  } catch (error) {
+    console.error("Error al obtener subcomerciales:", error);
+    return {
+      success: false,
+    };
+  }
+};
 
 export const getTramites = async (
   page: number,
   rowsPerPage: number,
+  userData: User,
   filterValue?: string,
   companyFilter?: string[],
   statusFilter?: string[],
+  liquidezStatusFilter?: string[],
   contractTypeFilter?: string[]
 ): Promise<TramiteVM[]> => {
   try {
@@ -37,6 +67,7 @@ export const getTramites = async (
           c.name AS client_name,
           c.last_name AS client_last_name,
           c.email AS client_email,
+          c.id AS client_id,
           COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
           COALESCE(GROUP_CONCAT(DISTINCT con.company), '') AS companies,
           COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
@@ -52,6 +83,23 @@ export const getTramites = async (
 
     const filters: string[] = [];
     const params: (string | number)[] = [];
+
+    if (userData.role === "2") {
+      const subcomerciales = await checkIfComercialHasSubcomerciales(userData);
+      if (subcomerciales.success && subcomerciales.ids) {
+        filters.push(
+          `( t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
+            .map(() => "?")
+            .join(", ")})))`
+        );
+        params.push(userData.id, ...subcomerciales.ids);
+      } else {
+        filters.push(`t.user_id = ?`);
+        params.push(userData.id);
+      }
+    } else {
+      // For other roles, show all their own tramites but only non-Borrador tramites from others
+    }
 
     // Dynamic filter generation
     const addTextFilter = (fields: string[], value: string) => {
@@ -70,6 +118,7 @@ export const getTramites = async (
           `c.name || ' ' || c.last_name`,
           "c.email",
           "t.sales_name",
+          "t.id",
           "con.CUPS",
         ],
         filterValue
@@ -87,6 +136,7 @@ export const getTramites = async (
     addArrayFilter("con.company", companyFilter);
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
+    addArrayFilter("t.liquidez_status", liquidezStatusFilter);
 
     if (filters.length > 0) {
       query += ` WHERE ` + filters.join(" AND ");
@@ -104,7 +154,7 @@ export const getTramites = async (
     query += ` LIMIT ? OFFSET ?;`;
     params.push(rowsPerPage, offset);
 
-    const rs = await tursoClient().execute({
+    const rs = await tursoClient.execute({
       sql: query,
       args: params,
     });
@@ -131,6 +181,7 @@ export const getTramites = async (
           row.client_last_name || ""
         }`.trim(),
         client_email: row.client_email as string,
+        client_id: row.client_id as string,
         CUPS: parseArray(row.CUPS as string),
         company: parseArray(row.companies as string),
         plan: parseArray(row.plans as string),
@@ -173,6 +224,7 @@ export const getTramiteByID = async (
       ]),
       executeQuery<ClientDB>(
         `SELECT * FROM clients WHERE id = (SELECT client_id FROM tramites WHERE id = ?)`,
+
         [tramite_id]
       ),
       executeQuery<ContractDB>(`SELECT * FROM contracts WHERE tramite_id = ?`, [
@@ -213,34 +265,47 @@ export const getTramiteByID = async (
   }
 };
 
-export const getClientsCount = async (): Promise<{
+export const getClientsCount = async (
+  userData: User
+): Promise<{
   value: number;
   difference: number;
 }> => {
   try {
-    const rs = await tursoClient().execute(
-      `WITH current_week AS (
-          SELECT COUNT(DISTINCT t.client_id) AS total
-          FROM tramites t
-          WHERE strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', 'now')
+    const query = `
+      WITH current_week AS (
+        SELECT COUNT(DISTINCT t.client_id) AS total
+        FROM tramites t
+        WHERE t.status != 'Borrador' 
+        AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', 'now')
+        ${userData.role === "2" ? "AND t.user_id = ?" : ""}
       ),
       previous_week AS (
-          SELECT COUNT(DISTINCT t.client_id) AS total
-          FROM tramites t
-          WHERE strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', 'now', '-1 month')
+        SELECT COUNT(DISTINCT t.client_id) AS total
+        FROM tramites t
+        WHERE t.status != 'Borrador'
+        AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', 'now', '-1 month')
+        ${userData.role === "2" ? "AND t.user_id = ?" : ""}
       ),
       all_time AS (
-          SELECT COUNT(DISTINCT t.client_id) AS total
-          FROM tramites t
+        SELECT COUNT(DISTINCT t.client_id) AS total
+        FROM tramites t
+        WHERE t.status != 'Borrador'
+        ${userData.role === "2" ? "AND t.user_id = ?" : ""}
       )
       SELECT 
-          at.total AS total,
-          COALESCE(cw.total, 0) AS current_total,
-          COALESCE(pw.total, 0) AS prev_total
+        at.total AS total,
+        COALESCE(cw.total, 0) AS current_total,
+        COALESCE(pw.total, 0) AS prev_total
       FROM all_time at
       LEFT JOIN current_week cw ON 1=1
-      LEFT JOIN previous_week pw ON 1=1;`
-    );
+      LEFT JOIN previous_week pw ON 1=1;
+    `;
+
+    const params: string[] =
+      userData.role === "2" ? [userData.id, userData.id, userData.id] : [];
+
+    const rs = await tursoClient.execute({ sql: query, args: params });
 
     const current = rs.rows[0] || { total: 0, current_total: 0, prev_total: 0 };
 
@@ -248,16 +313,16 @@ export const getClientsCount = async (): Promise<{
       currentValue: number,
       previousValue: number
     ) => {
-      if (previousValue === 0) return currentValue > 0 ? currentValue * 100 : 0; // Evita división por 0
+      if (previousValue === 0) return currentValue > 0 ? 100 : 0;
       return ((currentValue - previousValue) / previousValue) * 100;
     };
 
     return {
-      value: current.total as number, // Total de clientes en todas las semanas
+      value: current.total as number,
       difference: calculatePercentage(
         Number(current.current_total),
         Number(current.prev_total)
-      ), // Diferencia entre semana actual y anterior
+      ),
     };
   } catch (error) {
     console.error("Error al obtener el total de clientes:", error);
@@ -269,7 +334,8 @@ export const getClientsCount = async (): Promise<{
 };
 
 export const getActivePendingTramites = async (
-  current_week?: "current_week"
+  current_week: boolean,
+  userData: User
 ): Promise<{
   total: number;
   active: { value: number; difference: number };
@@ -282,24 +348,45 @@ export const getActivePendingTramites = async (
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'Activo' THEN 1 ELSE 0 END) AS active,
               SUM(CASE WHEN status = 'Pendiente de Firma' THEN 1 ELSE 0 END) AS pending
-          FROM tramites
+          FROM tramites WHERE status NOT LIKE 'Borrador'
     `;
 
-    // Si se pasa 'current_week', filtra solo por la semana actual
+    const params: (string | number)[] = [];
+
     if (current_week) {
-      query += ` WHERE strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now')`;
+      query += ` AND strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now')`;
     }
 
-    query += `
-      ),
+    if (userData.role === "2") {
+      const subcomerciales = await checkIfComercialHasSubcomerciales(userData);
+      query += ` AND`;
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` (user_id = ? OR user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")}))`;
+        params.push(userData.id, ...subcomerciales.ids);
+      } else {
+        query += ` user_id = ?`;
+        params.push(userData.id);
+      }
+    }
+
+    query += `),
       previous_data AS (
           SELECT 
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'Activo' THEN 1 ELSE 0 END) AS active,
               SUM(CASE WHEN status = 'Pendiente de Firma' THEN 1 ELSE 0 END) AS pending
-          FROM tramites
-          WHERE strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now', '-1 month')
-      )
+          FROM tramites WHERE status NOT LIKE 'Borrador'
+          AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now', '-1 month')
+    `;
+
+    if (userData.role !== "admin" && userData.role !== "1") {
+      query += ` AND user_id = ?`;
+      params.push(userData.id);
+    }
+
+    query += `)
       SELECT 
           cd.total AS total,
           cd.active AS active, 
@@ -310,7 +397,7 @@ export const getActivePendingTramites = async (
       LEFT JOIN previous_data pd ON 1=1;
     `;
 
-    const rs = await tursoClient().execute(query);
+    const rs = await tursoClient.execute({ sql: query, args: params });
 
     const current = rs.rows[0] || {
       total: 0,
@@ -320,7 +407,6 @@ export const getActivePendingTramites = async (
       prev_pending: 0,
     };
 
-    // Cálculo del porcentaje de diferencia entre los valores actuales y previos
     const calculatePercentage = (
       currentValue: number,
       previousValue: number
@@ -329,7 +415,6 @@ export const getActivePendingTramites = async (
       return ((currentValue - previousValue) / previousValue) * 100;
     };
 
-    // Siempre comparamos con el mes anterior
     const activeDifference = calculatePercentage(
       Number(current.active),
       Number(current.prev_active)
@@ -362,6 +447,7 @@ export const getActivePendingTramites = async (
 };
 
 export const getActiveTramitesByUserID = async (
+  userData: Partial<User> | User,
   time_range?:
     | "year"
     | "current_month"
@@ -378,6 +464,21 @@ export const getActiveTramitesByUserID = async (
           COUNT(*) as value
       FROM tramites
       WHERE status = 'Activo'`;
+
+    const params: (string | number)[] = [];
+
+    if (userData.role === "2") {
+      const subcomerciales = await checkIfComercialHasSubcomerciales(userData);
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")}))`;
+        params.push(userData.id as string, ...subcomerciales.ids);
+      } else {
+        query += ` AND user_id = ?`;
+        params.push(userData.id as string);
+      }
+    }
 
     let groupBy = "";
 
@@ -417,12 +518,11 @@ export const getActiveTramitesByUserID = async (
     }
     query += ` ORDER BY date(creation_date)`;
 
-    const params: string[] = [];
     if (date_range?.from && date_range?.to) {
       params.push(date_range.from.toISOString(), date_range.to.toISOString());
     }
 
-    const rs = await tursoClient().execute({ sql: query, args: params });
+    const rs = await tursoClient.execute({ sql: query, args: params });
     const results = new Map<string, number>();
 
     // Procesar resultados según el time_range
@@ -546,23 +646,44 @@ export const getActiveTramitesByUserID = async (
   }
 };
 
-export const getTramitesCountByStatus = async (): Promise<
+export const getTramitesCountByStatus = async (
+  userData: User
+): Promise<
   {
     status: string;
     total: number;
   }[]
 > => {
   try {
-    const rs = await tursoClient().execute(
-      `SELECT status, COUNT(*) AS total 
-     FROM tramites 
-     WHERE status <> 'Borrador'
-     GROUP BY status;`
-    );
+    let query = `
+      SELECT 
+          status,
+          COUNT(*) AS total
+      FROM tramites 
+    `;
+
+    const params: (string | number)[] = [];
+
+    if (userData.role === "2") {
+      const subcomerciales = await checkIfComercialHasSubcomerciales(userData);
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` WHERE (user_id = ? OR (status != 'Borrador' AND user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})))`;
+        params.push(userData.id, ...subcomerciales.ids);
+      } else {
+        query += ` WHERE user_id = ?`;
+        params.push(userData.id);
+      }
+    }
+
+    query += ` GROUP BY status;`;
+
+    const rs = await tursoClient.execute({ sql: query, args: params });
 
     return rs.rows.map((row) => ({
       status: row.status as string,
-      total: (row.total as number) || 0,
+      total: row.total as number,
     }));
   } catch (error) {
     console.error("Error al obtener el total de trámites por estado:", error);
@@ -570,11 +691,34 @@ export const getTramitesCountByStatus = async (): Promise<
   }
 };
 
-export const getComisionesPendientes = async (): Promise<number> => {
+export const getComisionesPendientes = async (
+  userData: User
+): Promise<number> => {
   try {
-    const rs = await tursoClient().execute(
-      "SELECT SUM(CASE WHEN liquidez_status = 'Pendiente de Cobro' THEN 1 ELSE 0 END) AS total FROM tramites;"
-    );
+    let query = `
+      SELECT SUM(CASE WHEN liquidez_status IN (${
+        userData.role === "2"
+          ? "'Pendiente de Cobro', 'Cobrado por Comercializadora'"
+          : "'Pendiente de Cobro'"
+      }) THEN 1 ELSE 0 END) AS total
+      FROM tramites`;
+
+    const params: (string | number)[] = [];
+
+    if (userData.role === "2") {
+      const subcomerciales = await checkIfComercialHasSubcomerciales(userData);
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` WHERE user_id = ? OR user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})`;
+        params.push(userData.id, ...subcomerciales.ids);
+      } else {
+        query += ` WHERE user_id = ?`;
+        params.push(userData.id);
+      }
+    }
+
+    const rs = await tursoClient.execute({ sql: query, args: params });
 
     return rs.rows[0].total as number;
   } catch (error) {
@@ -583,19 +727,37 @@ export const getComisionesPendientes = async (): Promise<number> => {
   }
 };
 
-export const getMonthlyComisiones = async (): Promise<
-  { month: string; total: number }[]
-> => {
+export const getMonthlyComisiones = async (
+  userData: User
+): Promise<{ month: string; total: number }[]> => {
   try {
-    const rs = await tursoClient().execute(
-      `SELECT 
+    let query = `
+      SELECT 
           strftime('%Y-%m', creation_date) AS month_key,
-          SUM(comision) AS total
+          SUM(${
+            userData.role === "2" ? "comision_sales_person" : "comision"
+          }) AS total
       FROM tramites
-      WHERE strftime('%Y', creation_date) = strftime('%Y', 'now') -- Filtra solo el año actual
-      GROUP BY month_key
-      ORDER BY month_key ASC;`
-    );
+      WHERE strftime('%Y', creation_date) = strftime('%Y', 'now')`;
+
+    const params: (string | number)[] = [];
+
+    if (userData.role === "2") {
+      const subcomerciales = await checkIfComercialHasSubcomerciales(userData);
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")}))`;
+        params.push(userData.id, ...subcomerciales.ids);
+      } else {
+        query += ` AND user_id = ?`;
+        params.push(userData.id);
+      }
+    }
+
+    query += ` GROUP BY month_key ORDER BY month_key ASC`;
+
+    const rs = await tursoClient.execute({ sql: query, args: params });
 
     // Mapeo de los nombres de los meses
     const monthNames = [
@@ -637,15 +799,16 @@ export const getMonthlyComisiones = async (): Promise<
 };
 
 export const getRenewableTramites = async (): Promise<
-  { tramite_id: string; renovationDate: string }[]
+  { id: string; renovationDate: string; sales_name: string }[]
 > => {
   try {
-    const rs = await tursoClient().execute(
-      `SELECT id, renovation_date AS renovationDate FROM tramites WHERE status = 'Activo';`
+    const rs = await tursoClient.execute(
+      `SELECT id, sales_name, renovation_date AS renovationDate FROM tramites WHERE status = 'Activo';`
     );
 
     return rs.rows.map((row) => ({
-      tramite_id: row.id as string,
+      id: row.id as string,
+      sales_name: row.sales_name as string,
       renovationDate: row.renovationDate as string,
     }));
   } catch (error) {
@@ -658,7 +821,7 @@ export const getMonthlyActivePendingTramites = async (): Promise<
   { month: string; active: number; pending: number }[]
 > => {
   try {
-    const rs = await tursoClient().execute(`
+    const rs = await tursoClient.execute(`
       WITH months AS (
         SELECT '01' AS month, 'Enero' AS month_name UNION ALL
         SELECT '02', 'Febrero' UNION ALL
@@ -691,6 +854,79 @@ export const getMonthlyActivePendingTramites = async (): Promise<
     }));
   } catch (error) {
     console.error("Error al obtener trámites activos y pendientes:", error);
+    return [];
+  }
+};
+
+export const getTeamTramites = async (
+  userData: User,
+  time_range?:
+    | "year"
+    | "current_month"
+    | "current_week"
+    | "last_week"
+    | "90d"
+    | undefined
+): Promise<
+  {
+    user: Partial<User>;
+    active: number;
+  }[]
+> => {
+  try {
+    let query = `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.image,
+        u.role,
+        u.super_id,
+        COUNT(CASE WHEN t.status = 'Activo' THEN 1 END) as active
+      FROM user u
+      LEFT JOIN tramites t ON u.id = t.user_id
+    `;
+    const params: (string | number)[] = [];
+
+    if (userData.role === "2") {
+      // Para comerciales, obtener stats de sus subcomerciales
+      query += ` WHERE u.super_id = ?`;
+      params.push(userData.id);
+    } else {
+      // Para otros roles, obtener stats de todos los usuarios excepto él mismo
+      query += ` WHERE u.id != ?`;
+      params.push(userData.id);
+    }
+
+    if (time_range === "current_month") {
+      query += ` AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', 'now')`;
+    } else if (time_range === "current_week") {
+      query += ` AND strftime('%Y-%W', t.creation_date) = strftime('%Y-%W', 'now')`;
+    } else if (time_range === "last_week") {
+      query += ` AND strftime('%Y-%W', t.creation_date) = strftime('%Y-%W', 'now', '-7 days')`;
+    } else if (time_range === "90d") {
+      query += ` AND t.creation_date >= date('now', '-90 days')`;
+    } else if (time_range === "year") {
+      query += ` AND strftime('%Y', t.creation_date) = strftime('%Y', 'now')`;
+    }
+
+    query += ` GROUP BY u.id, u.name, u.email, u.role, u.super_id, u.image;`;
+
+    const rs = await tursoClient.execute({ sql: query, args: params });
+
+    return rs.rows.map((row) => ({
+      user: {
+        id: row.id as string,
+        name: row.name as string,
+        email: row.email as string,
+        image: row.image as string,
+        role: row.role as string,
+        super_id: row.super_id as string,
+      },
+      active: (row.active as number) || 0,
+    }));
+  } catch (error) {
+    console.error("Error al obtener trámites del equipo:", error);
     return [];
   }
 };
