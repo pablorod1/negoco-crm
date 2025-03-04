@@ -13,7 +13,7 @@ export const getTursoClient = (req: NextRequest) => {
 
   // Construir el nombre de la variable de entorno
   const tursoUrlEnv =
-    subdomain === "localhost:3000"
+    subdomain === "localhost:3000" || subdomain === "negoco"
       ? "NEXT_TURSO_DB_URL"
       : `NEXT_TURSO_DB_URL_${subdomain.toUpperCase()}`;
   const tursoAuthTokenEnv =

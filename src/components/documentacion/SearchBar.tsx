@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import {
@@ -30,23 +30,18 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
   };
 
   // Debounced search function
-  const debouncedSearch = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout;
-      return (value: string) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          if (value.trim()) {
-            fetchFiles(value);
-          } else {
-            setFiles([]);
-            setIsLoading(false);
-          }
-        }, 300);
-      };
-    })(),
-    []
-  );
+  let timeoutId: NodeJS.Timeout;
+  const debouncedSearch = (value: string) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      if (value.trim()) {
+        fetchFiles(value);
+      } else {
+        setFiles([]);
+        setIsLoading(false);
+      }
+    }, 300);
+  };
 
   const fetchFiles = async (searchTerm: string) => {
     try {
@@ -78,7 +73,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
     const value = e.target.value;
     setFilterValue(value);
     setIsLoading(true);
-    debouncedSearch(value);
+    debouncedSearch(value); // trigger the debounced search
   };
 
   // Handle escape key
