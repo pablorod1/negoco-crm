@@ -17,7 +17,7 @@ export const getTursoClient = (req: NextRequest) => {
       ? "NEXT_TURSO_DB_URL"
       : `NEXT_TURSO_DB_URL_${subdomain.toUpperCase()}`;
   const tursoAuthTokenEnv =
-    subdomain === "localhost:3000"
+    subdomain === "localhost:3000" || subdomain === "negoco"
       ? "NEXT_TURSO_DB_AUTH_TOKEN"
       : `NEXT_TURSO_DB_AUTH_TOKEN_${subdomain.toUpperCase()}`;
 
