@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
-import { getFilesFromFolder } from "@/lib/libsql/data/documentacion/getFiles";
-import { DocumentacionFile } from "@/lib/core/types";
+import { DocumentacionFile, User } from "@/lib/core/types";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import LoadingComponent from "@/components/documentacion/LoadingComponent";
 import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
 import { FileGrid } from "@/components/documentacion/FileGrid";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleX } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -24,6 +24,7 @@ const getParentPath = (currentPath: string[]): string => {
 };
 
 export default function FolderPage() {
+  const { userData } = useUser();
   const router = useRouter();
   const { path } = useParams();
   const { setRefreshDocumentacion, isLoading, setIsLoading } =
@@ -39,12 +40,25 @@ export default function FolderPage() {
   const fetchFiles = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [filesResponse, foldersResponse] = await Promise.all([
-        getFilesFromFolder(currentPath),
-        getSubFoldersFromFolder(currentPath),
+      const filesRes = await fetch(`/api/documentacion/get/files`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ folder_name: currentPath }),
+      });
+      const [{ data: files }, foldersResponse] = await Promise.all([
+        filesRes.json(),
+        getSubFoldersFromFolder(
+          currentPath,
+          userData?.organization.id as string
+        ),
       ]);
 
-      setFiles(filesResponse as DocumentacionFile[]);
+      if (files) {
+        setFiles(files as DocumentacionFile[]);
+      }
+
       if (foldersResponse.success) {
         setFolders(foldersResponse.data as string[]);
       }
@@ -60,7 +74,7 @@ export default function FolderPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPath, setIsLoading]);
+  }, [currentPath, setIsLoading, userData]);
 
   useEffect(() => {
     return setRefreshDocumentacion(fetchFiles);
@@ -87,10 +101,11 @@ export default function FolderPage() {
             folders={folders}
             currentPath={currentPath}
             handleBack={handleBack}
+            userData={userData as User}
           />
         </div>
       ) : (
-        <EmptyDocumentacion />
+        <EmptyDocumentacion userData={userData as User} />
       )}
     </>
   );

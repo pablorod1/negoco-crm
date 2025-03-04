@@ -101,7 +101,12 @@ export function FileGrid({
               }
             >
               {recentlyFiles.map((file: DocumentacionFile, index) => (
-                <FileCard view={viewMode} key={index} file={file} />
+                <FileCard
+                  view={viewMode}
+                  key={index}
+                  file={file}
+                  userData={userData}
+                />
               ))}
             </div>
           </div>
@@ -124,6 +129,7 @@ export function FileGrid({
                   key={index}
                   name={folder}
                   currentPath={currentPath}
+                  userData={userData as User}
                 />
               ))}
             </div>
@@ -143,7 +149,12 @@ export function FileGrid({
               }
             >
               {files.map((file: DocumentacionFile, index) => (
-                <FileCard view={viewMode} key={index} file={file} />
+                <FileCard
+                  userData={userData}
+                  view={viewMode}
+                  key={index}
+                  file={file}
+                />
               ))}
             </div>
           </div>

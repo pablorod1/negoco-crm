@@ -9,7 +9,6 @@ import {
   STATUS_TYPES,
 } from "@/lib/core/const";
 import React, { useEffect } from "react";
-import { getUsers } from "@/lib/libsql/data/colaboradores/getUsers";
 
 interface Props {
   setFormData: React.Dispatch<React.SetStateAction<EditTramiteFormData>>;
@@ -59,7 +58,12 @@ export default function TramiteForm({
 
   useEffect(() => {
     const fetchComerciales = async () => {
-      const { data, success } = await getUsers(userData);
+      const res = await fetch(
+        `/api/users/get/users${
+          userData ? `?role=${userData.role}&id=${userData.id}` : ""
+        }`
+      );
+      const { success, data } = await res.json();
 
       if (!success) {
         return;

@@ -9,7 +9,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import AddTramiteDialog from "../AddTramiteDialog";
-import { getTramitesCountByStatus } from "@/lib/libsql/data/tramites/getTramites";
 import { Input, Tooltip } from "@heroui/react";
 import { Status, User } from "@/lib/core/types";
 import {
@@ -82,13 +81,29 @@ const TramitesHeader = <TData,>({
   };
 
   const fetchTramites = useCallback(async () => {
-    const tramites = await getTramitesCountByStatus(userData);
-    if (tramites) {
-      setTramites(tramites);
-      setTotalTramites(
-        tramites.reduce((acc, tramite) => acc + tramite.total, 0)
-      );
+    const response = await fetch(`/api/tramites/get/tramites-count-by-status`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: userData.id,
+        role: userData.role,
+      }),
+    });
+    const { data, success, error } = await response.json();
+
+    if (!success) {
+      console.error("Error fetching tramites count:", error);
+      return;
     }
+
+    setTramites(data as Tramite[]);
+    const totalTramites = data.reduce(
+      (acc: number, curr: Tramite) => acc + curr.total,
+      0
+    );
+    setTotalTramites(totalTramites);
   }, [userData]);
 
   useEffect(() => {

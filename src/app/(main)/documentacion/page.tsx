@@ -4,10 +4,6 @@ import { FileGrid } from "@/components/documentacion/FileGrid";
 import LoadingComponent from "@/components/documentacion/LoadingComponent";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
-import {
-  getFilesFromFolder,
-  getRecentlyFiles,
-} from "@/lib/libsql/data/documentacion/getFiles";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { useCallback, useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
@@ -23,30 +19,61 @@ export default function DocumentacionPage() {
   const fetchFolders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [filesResponse, foldersResponse, recentlyFilesResponse] =
-        await Promise.all([
-          getFilesFromFolder("/"),
-          getSubFoldersFromFolder(""),
-          getRecentlyFiles(),
-        ]);
+      const filesRes = await fetch(`/api/documentacion/get/files`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ folder_name: "/" }),
+      });
+
+      const recentlyFilesRes = await fetch(
+        `/api/documentacion/get/recently-files`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const [
+        { data: files, success: filesSuccess, error: filesError },
+        foldersResponse,
+        {
+          data: recentlyFiles,
+          success: recentlyFilesSuccess,
+          error: recentlyFilesError,
+        },
+      ] = await Promise.all([
+        filesRes.json(),
+        getSubFoldersFromFolder("", userData?.organization.id as string),
+        recentlyFilesRes.json(),
+      ]);
 
       if (foldersResponse.success) {
         setFolders(foldersResponse.data as string[]);
       }
 
-      if (filesResponse) {
-        setFiles(filesResponse as DocumentacionFile[]);
+      if (filesSuccess) {
+        setFiles(files as DocumentacionFile[]);
+      } else {
+        console.error("Error fetching files:", filesError);
+        setFiles([]);
       }
 
-      if (recentlyFilesResponse) {
-        setRecentlyFiles(recentlyFilesResponse as DocumentacionFile[]);
+      if (recentlyFilesSuccess) {
+        setRecentlyFiles(recentlyFiles as DocumentacionFile[]);
+      } else {
+        console.error("Error fetching recently files:", recentlyFilesError);
+        setRecentlyFiles([]);
       }
     } catch (error) {
       console.error("Error fetching folders:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [setIsLoading]);
+  }, [setIsLoading, userData]);
 
   useEffect(() => {
     return setRefreshDocumentacion(fetchFolders);

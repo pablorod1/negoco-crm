@@ -26,7 +26,6 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import { addCompleteTramite } from "@/lib/libsql/data/tramites/addTramites";
 import { CheckCircle, CircleX, Plus } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@heroui/react";
@@ -83,40 +82,59 @@ export default function AddTramiteDialog() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const { success, error } = await addCompleteTramite(
-        tramite,
-        client,
-        signer,
-        contracts,
-        documents
-      );
+      const formData = new FormData();
 
-      if (success) {
+      // Append files first
+      documents.forEach((doc) => {
+        formData.append("files", doc);
+      });
+
+      // Append JSONs
+      formData.append("userData", JSON.stringify(userData));
+      formData.append("client", JSON.stringify(client));
+      formData.append("tramite", JSON.stringify(tramite));
+
+      // Optional fields
+      if (signer) {
+        formData.append("signer", JSON.stringify(signer));
+      }
+      if (contracts.length > 0) {
+        formData.append("contracts", JSON.stringify(contracts));
+      }
+
+      const res = await fetch("/api/tramites/add", {
+        method: "POST",
+        body: formData, // Directly use FormData
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
         showCustomToast({
-          title: "Trámite añadido",
-          message: "El trámite ha sido añadido correctamente",
-          iconColor: "var(--success-color)",
+          title: "Error al añadir trámite",
+          message: error || "Error desconocido",
+          iconColor: "var(--danger-color)",
           iconSize: 24,
-          icon: CheckCircle,
+          icon: CircleX,
         });
-        refreshTramites();
-        onClose();
         return;
       }
 
       showCustomToast({
-        title: "Error al añadir trámite",
-        message: error,
-        iconColor: "var(--danger-color)",
+        title: "Trámite añadido",
+        message: "El trámite ha sido añadido correctamente",
+        iconColor: "var(--success-color)",
         iconSize: 24,
-        icon: CircleX,
+        icon: CheckCircle,
       });
+
+      refreshTramites();
       onClose();
     } catch (error) {
-      console.error("Error al añadir trámite:", error);
+      console.error("Submission error:", error);
       showCustomToast({
-        title: "Error al añadir trámite",
-        message: "Inténtalo de nuevo más tarde",
+        title: "Error de Conexión",
+        message: "No se pudo completar la solicitud",
         iconColor: "var(--danger-color)",
         iconSize: 24,
         icon: CircleX,

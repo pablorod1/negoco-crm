@@ -3,7 +3,6 @@ import { useState } from "react";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
 import { Button } from "@heroui/react";
 import { authClient } from "@/lib/auth/auth-client";
-import { updateShouldResetPassword } from "@/lib/libsql/data/auth/updateUser";
 import { User } from "@/lib/core/types";
 import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle } from "lucide-react";
@@ -39,9 +38,18 @@ export default function UpdatePassword({ userData, refreshUserData }: Props) {
         return;
       }
 
-      await updateShouldResetPassword(userData);
+      const res = await fetch(`/api/users/update/should-reset-pass`, {
+        method: "PATCH",
+        body: JSON.stringify({ userData }),
+      });
 
-      refreshUserData();
+      const { success, error } = await res.json();
+
+      if (!success) {
+        console.error(error);
+        return;
+      }
+
       showCustomToast({
         title: "Contraseña actualizada",
         message: "Tu contraseña ha sido actualizada correctamente",
@@ -49,6 +57,9 @@ export default function UpdatePassword({ userData, refreshUserData }: Props) {
         iconSize: 24,
         icon: CheckCircle,
       });
+      refreshUserData();
+      setCurrentPassword("");
+      setNewPassword("");
     } catch (error) {
       console.error(error);
     }

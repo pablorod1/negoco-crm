@@ -12,7 +12,6 @@ import {
   VisibilityState,
 } from "@tanstack/react-table";
 import { User, type TramiteVM } from "@/lib/core/types";
-import { getTramites } from "@/lib/libsql/data/tramites/getTramites";
 import { TableLayout } from "./TableLayout";
 import { TableContent } from "./TableContent";
 import { DataTablePagination } from "./DataTablePagination";
@@ -34,7 +33,7 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const params = useSearchParams();
   const id = params.get("id");
-  const { userData, loading } = useUser();
+  const { userData } = useUser();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [tramites, setTramites] = useState<TramiteVM[]>([]);
   const [loadedData, setLoadedData] = useState(false);
@@ -61,18 +60,32 @@ export function DataTable<TData, TValue>({
   const { setRefreshTramites } = useTramites();
 
   const fetchTramites = useCallback(async () => {
-    if (!loading && userData) {
+    if (userData) {
       try {
-        const data = await getTramites(
-          pagination.pageIndex,
-          pagination.pageSize,
-          userData,
-          filterValue,
-          companyFilter,
-          title === "Trámites" ? statusFilter : ["Activo", "Baja"],
-          liquidezStatusFilter,
-          contractTypeFilter
-        );
+        const res = await fetch(`/api/tramites/get/paginated-tramites`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            page: pagination.pageIndex || 1,
+            rowsPerPage: pagination.pageSize,
+            user_id: userData.id,
+            user_role: userData.role,
+            filterValue,
+            companyFilter,
+            statusFilter:
+              title === "Trámites" ? statusFilter : ["Activo", "Baja"],
+            liquidezStatusFilter,
+            contractTypeFilter,
+          }),
+        });
+        const { success, data, error } = await res.json();
+        if (!success && error) {
+          console.error("Error al obtener trámites:", error);
+          return;
+        }
+
         setTramites(data || []);
         setTimeout(() => setLoadedData(true), 1000);
       } catch (error) {
@@ -88,14 +101,25 @@ export function DataTable<TData, TValue>({
     liquidezStatusFilter,
     contractTypeFilter,
     userData,
-    loading,
     title,
   ]);
 
+  // Consolidated useEffect for data fetching and refresh
   useEffect(() => {
     const cleanup = setRefreshTramites(fetchTramites);
+    fetchTramites(); // Initial fetch
     return () => cleanup();
-  }, [fetchTramites, setRefreshTramites]);
+  }, [
+    fetchTramites,
+    setRefreshTramites,
+    pagination.pageIndex,
+    pagination.pageSize,
+    filterValue,
+    companyFilter,
+    statusFilter,
+    liquidezStatusFilter,
+    contractTypeFilter,
+  ]);
 
   // Fetch de datos
   useEffect(() => {

@@ -12,11 +12,12 @@ import {
 } from "lucide-react";
 import { Tooltip } from "@heroui/tooltip";
 import { Chip } from "@heroui/chip";
-import { TramiteVM } from "@/lib/core/types";
+import { TramiteVM, User } from "@/lib/core/types";
 import EditTramiteDialog from "../EditTramiteDialog";
 import RenewTramiteConfirmationDialog from "../RenewTramiteConfirmationDialog";
 import { copyLink } from "@/lib/core/utils";
 import DeleteTramiteConfirmationModal from "../DeleteTramiteConfirmationModal";
+import { useUser } from "@/contexts/UserContext";
 
 const getOneMonthBeforeRenovationDate = (renovation_date: string) => {
   // check if today is one month before the renovation date
@@ -26,6 +27,17 @@ const getOneMonthBeforeRenovationDate = (renovation_date: string) => {
   oneMonthBefore.setMonth(renovationDate.getMonth() - 1);
 
   return today.getTime() > oneMonthBefore.getTime();
+};
+
+const DeleteTramiteWithUserData = ({ tramite }: { tramite: TramiteVM }) => {
+  const { userData } = useUser();
+
+  return (
+    <DeleteTramiteConfirmationModal
+      tramite={tramite}
+      userData={userData as User}
+    />
+  );
 };
 
 export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
@@ -846,7 +858,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
           </PopoverTrigger>
           <PopoverContent className="w-[200px]">
             <div className="flex flex-col items-start w-full">
-              <DeleteTramiteConfirmationModal tramite={row.original} />
+              <DeleteTramiteWithUserData tramite={row.original} />
               <EditTramiteDialog tramite_id={row.original.id} />
               {getOneMonthBeforeRenovationDate(
                 row.original.renovation_date

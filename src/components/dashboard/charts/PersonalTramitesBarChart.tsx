@@ -26,11 +26,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateRangePicker } from "../DateRangePicker";
-import { getActiveTramitesByUserID } from "@/lib/libsql/data/tramites/getTramites";
 import { DateRange } from "react-day-picker";
 import { Button } from "@heroui/react";
 import { CalendarOff } from "lucide-react";
-import { User } from "@/lib/core/types";
+import { TimeRange, User } from "@/lib/core/types";
 
 const chartConfig = {
   tramites: {
@@ -43,8 +42,8 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 interface TramitesData {
-  month: string;
-  active: number;
+  field: string;
+  value: number;
 }
 
 export function PersonalTramitesChart({
@@ -54,24 +53,27 @@ export function PersonalTramitesChart({
   loading: boolean;
   userData: User;
 }) {
-  const [timeRange, setTimeRange] = React.useState<
-    "year" | "current_month" | "current_week" | "last_week" | "90d" | undefined
-  >("year");
+  const [timeRange, setTimeRange] = React.useState<TimeRange>("year");
   const [dateRange, setDateRange] = React.useState<DateRange>();
   const [chartData, setChartData] = React.useState<TramitesData[]>([]);
 
   const fetchData = React.useCallback(async () => {
     try {
-      const res = await getActiveTramitesByUserID(
-        userData,
-        timeRange,
-        dateRange
-      );
-      const transformedData = res.map((item) => ({
-        month: item.field,
-        active: item.value,
-      }));
-      setChartData(transformedData);
+      const res = await fetch(`/api/tramites/get/active-tramites-by-user-id`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          role: userData.role,
+          id: userData.id,
+          time_range: timeRange,
+          date_range: dateRange,
+        }),
+      });
+
+      const data = await res.json();
+      setChartData(data.data);
     } catch (error) {
       console.error("Error fetching personal tramites data:", error);
     }
@@ -163,7 +165,7 @@ export function PersonalTramitesChart({
         </Select>
       </CardHeader>
       <CardContent
-        className={`transition-opacity duration-300 ${
+        className={`transition-opacity duration-300 w-full ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
@@ -171,15 +173,13 @@ export function PersonalTramitesChart({
           config={chartConfig}
           className=" max-h-[260px] h-auto w-full py-4"
         >
-          <AreaChart accessibilityLayer data={chartData}>
+          <AreaChart data={chartData}>
             <CartesianGrid vertical={false} />
 
             <ChartTooltip
               content={
                 <ChartTooltipContent className="capitalize" indicator="dot" />
               }
-              cursor={false}
-              defaultIndex={1}
             />
 
             <defs>
@@ -198,16 +198,16 @@ export function PersonalTramitesChart({
             </defs>
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
-              type="category"
+              dataKey="field"
               tickLine={false}
               axisLine={false}
               tickMargin={24}
-              minTickGap={12}
-              className="!px-12 capitalize"
+              minTickGap={3}
+              tickFormatter={(value) => value.slice(0, 3)}
+              className=" capitalize overflow-visible"
             />
             <Area
-              dataKey="active"
+              dataKey="value"
               type="monotone"
               fill="url(#fillActive)"
               fillOpacity={0.4}

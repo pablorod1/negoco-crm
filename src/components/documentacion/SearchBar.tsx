@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Search } from "lucide-react";
-import { DocumentacionFile } from "@/lib/core/types";
+import { DocumentacionFile, User } from "@/lib/core/types";
 import {
   Modal,
   ModalBody,
@@ -10,13 +10,14 @@ import {
 } from "@heroui/modal";
 import { Button, Input, Spinner } from "@heroui/react";
 import { FileCard } from "./FileCard";
-import { getFilesByName } from "@/lib/libsql/data/documentacion/getFiles";
+import { useUser } from "@/contexts/UserContext";
 
 interface SearchBarProps {
   recentlyFiles?: DocumentacionFile[];
 }
 
 export default function SearchBar({ recentlyFiles }: SearchBarProps) {
+  const { userData } = useUser();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [files, setFiles] = useState<DocumentacionFile[]>([]);
   const [filterValue, setFilterValue] = useState("");
@@ -50,8 +51,21 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
   const fetchFiles = async (searchTerm: string) => {
     try {
       setIsLoading(true);
-      const response = await getFilesByName(searchTerm);
-      setFiles(response as DocumentacionFile[]);
+      const response = await fetch(`/api/documentacion/get/files-by-name`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: searchTerm }),
+      });
+      const { data, success } = await response.json();
+
+      if (success) {
+        setFiles(data as DocumentacionFile[]);
+      } else {
+        console.error("Error fetching files:", data);
+        setFiles([]);
+      }
     } catch (error) {
       console.error("Error fetching files:", error);
       setFiles([]);
@@ -133,7 +147,12 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
                       encontrados
                     </h2>
                     {files.map((file) => (
-                      <FileCard view="list" key={file.id} file={file} />
+                      <FileCard
+                        userData={userData as User}
+                        view="list"
+                        key={file.id}
+                        file={file}
+                      />
                     ))}
                   </>
                 ) : filterValue ? (
@@ -144,7 +163,12 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
                       Archivos recientes
                     </h2>
                     {recentlyFiles?.map((file) => (
-                      <FileCard view="list" key={file.id} file={file} />
+                      <FileCard
+                        userData={userData as User}
+                        view="list"
+                        key={file.id}
+                        file={file}
+                      />
                     ))}
                   </div>
                 )}

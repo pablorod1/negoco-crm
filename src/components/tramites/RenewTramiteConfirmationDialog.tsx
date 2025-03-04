@@ -11,7 +11,6 @@ import {
 import { Button } from "@heroui/react";
 
 import EditTramiteDialog from "./EditTramiteDialog";
-import { renewTramite } from "@/lib/libsql/data/tramites/updateTramites";
 import { useTramites } from "@/contexts/TramitesContext";
 import { showCustomToast } from "../core/CustomToast";
 
@@ -25,7 +24,15 @@ export default function RenewTramiteConfirmationDialog({ tramite_id }: Props) {
 
   const handleRenewTramite = async () => {
     try {
-      const { success, error } = await renewTramite(tramite_id);
+      const res = await fetch(`/api/tramites/renew`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: tramite_id }),
+      });
+
+      const { success, error } = await res.json();
 
       if (!success && error) {
         showCustomToast({

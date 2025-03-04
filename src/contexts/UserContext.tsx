@@ -9,7 +9,6 @@ import {
 } from "react";
 import { Spinner } from "@heroui/spinner";
 import { User } from "@/lib/core/types";
-import { getUserById } from "@/lib/libsql/data/colaboradores/getUsers";
 import { authClient } from "@/lib/auth/auth-client";
 
 interface UserContextType {
@@ -34,8 +33,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const fetchedData = await getUserById(userID);
-      setUserData(fetchedData || null);
+      const res = await fetch(`/api/users/get/user-by-id?id=${userID}`);
+      const { success, data, error } = await res.json();
+      if (!success) {
+        throw new Error(error || "Error fetching user data");
+      }
+
+      setUserData(data || null);
     } catch (error) {
       console.error("Error fetching user data:", error);
       setUserData(null);

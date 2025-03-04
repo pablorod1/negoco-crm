@@ -1,11 +1,6 @@
 "use client";
 
 import React from "react";
-import {
-  getActivePendingTramites,
-  getClientsCount,
-  getComisionesPendientes,
-} from "@/lib/libsql/data/tramites/getTramites";
 import { useUser } from "@/contexts/UserContext";
 import {
   BackofficeView,
@@ -52,18 +47,51 @@ export default function DashboardBentoGrid() {
     }
 
     try {
-      const [clients, { active, pending }, totalComisiones] = await Promise.all(
-        [
-          getClientsCount(userData),
-          getActivePendingTramites(false, userData),
-          getComisionesPendientes(userData),
-        ]
+      const clientsRes = await fetch(`/api/tramites/get/clients-count`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: userData.id, role: userData.role }),
+      });
+      const activePendingRes = await fetch(
+        `
+        /api/tramites/get/active-pending`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            current_week: false,
+            role: userData.role,
+            id: userData.id,
+          }),
+        }
       );
+
+      const comisionesRes = await fetch(
+        `
+        /api/tramites/get/comisiones-pendientes`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: userData.id, role: userData.role }),
+        }
+      );
+      const [{ data: clients }, { data }, { data: totalComisiones }] =
+        await Promise.all([
+          clientsRes.json(),
+          activePendingRes.json(),
+          comisionesRes.json(),
+        ]);
 
       setDashboardData({
         clients,
-        activeTramites: active,
-        pendingTramites: pending,
+        activeTramites: data.active,
+        pendingTramites: data.pending,
         comisionesPendientes: totalComisiones,
       });
 

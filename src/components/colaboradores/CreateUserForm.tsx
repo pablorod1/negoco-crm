@@ -2,12 +2,9 @@ import React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Select, SelectItem } from "@heroui/react";
-import { auth } from "@/lib/auth/auth";
 import { authClient } from "@/lib/auth/auth-client";
 import { ROLES } from "@/lib/core/const";
 import { useUser } from "@/contexts/UserContext";
-import { getUsers } from "@/lib/libsql/data/colaboradores/getUsers";
-import { addSuperToUser } from "@/lib/libsql/data/auth/updateUser";
 import { showCustomToast } from "../core/CustomToast";
 import { UserRoundCheck, UserRoundX } from "lucide-react";
 
@@ -43,19 +40,19 @@ export default function CreateUserForm({
   const [comerciales, setComerciales] = useState<Comercial[]>([]);
 
   const fetchComerciales = useCallback(async () => {
-    const { data, success } = await getUsers(userData);
+    const res = await fetch(
+      `/api/users/get/users${
+        userData ? `?role=${userData.role}&id=${userData.id}` : ""
+      }`
+    );
+    const { success, data } = await res.json();
 
     if (!success) {
       console.error("Error fetching comerciales");
     }
 
     if (data) {
-      setComerciales(
-        data.map((comercial) => ({
-          id: comercial.id,
-          name: comercial.name,
-        }))
-      );
+      setComerciales(data);
     }
   }, [userData]);
 
@@ -79,12 +76,16 @@ export default function CreateUserForm({
     userId: string,
     organizationId: string
   ) => {
-    await auth.api.addMember({
-      body: {
+    await fetch("/api/users/add/member", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         userId,
         organizationId,
-        role: "member",
-      },
+        role: formData.role,
+      }),
     });
   };
 
@@ -137,10 +138,18 @@ export default function CreateUserForm({
         );
 
         if (formData.super_id) {
-          const { success, error } = await addSuperToUser(
-            data.user.id,
-            formData.super_id
-          );
+          const res = await fetch("/api/users/add/super", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              user_id: data.user.id,
+              super_id: formData.super_id,
+            }),
+          });
+
+          const { success, error } = await res.json();
 
           if (!success && error) {
             showCustomToast({

@@ -11,26 +11,36 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deleteFolder } from "@/lib/firebase/data/deleteFolder";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import Image from "next/image";
 import { showCustomToast } from "../core/CustomToast";
+import { User } from "@/lib/core/types";
 
 interface FolderCardProps {
   name: string;
   currentPath: string;
+  userData: User;
 }
 
-export function FolderCard({ name, currentPath }: FolderCardProps) {
+export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
   const { refreshDocumentacion } = useDocumentacion();
 
   const handleDelete = async () => {
     try {
-      const { success, errors } = await deleteFolder(
-        `${currentPath ? `${currentPath}/` : ""}${name}`
-      );
+      const res = await fetch("/api/documentacion/delete/folder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          folder_path: `${currentPath ? `${currentPath}/` : ""}${name}`,
+          organization_id: userData.organization.id,
+        }),
+      });
 
-      if (!success && errors) {
+      const { success, errors } = await res.json();
+
+      if (!success) {
         showCustomToast({
           title: "Error eliminando carpeta",
           message: errors[0],

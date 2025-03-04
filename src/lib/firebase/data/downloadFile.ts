@@ -3,10 +3,14 @@ import { getDownloadURL, ref } from "firebase/storage";
 
 export const downloadFile = async (
   folder_name: string,
-  file_name: string
+  file_name: string,
+  organization_id: string
 ): Promise<{ success: boolean; errors?: string }> => {
   try {
-    const fileRef = ref(storage, `documentacion/${folder_name}/${file_name}`);
+    const fileRef = ref(
+      storage,
+      `${organization_id}/documentacion/${folder_name}/${file_name}`
+    );
     const url = await getDownloadURL(fileRef);
     const response = await fetch(url);
     if (!response.ok) {

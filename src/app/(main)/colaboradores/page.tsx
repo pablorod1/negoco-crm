@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useState } from "react";
 import CreateUserModal from "@/components/colaboradores/CreateUserModal";
 import UsersGridTable from "@/components/colaboradores/UsersGrid";
-import { getUsers } from "@/lib/libsql/data/colaboradores/getUsers";
 import { User } from "@/lib/core/types";
 import { useUser } from "@/contexts/UserContext";
 import { useUsers } from "@/contexts/UsersContext"; // Importar el nuevo contexto
@@ -34,7 +33,12 @@ export default function ColaboradoresPage() {
     setState((prev) => ({ ...prev, loading: true }));
 
     try {
-      const { data, success } = await getUsers(userData);
+      const res = await fetch(
+        `/api/users/get/users${
+          userData ? `?role=${userData.role}&id=${userData.id}` : ""
+        }`
+      );
+      const { success, data } = await res.json();
 
       if (!success) {
         throw new Error("Error al obtener los usuarios");
@@ -54,7 +58,7 @@ export default function ColaboradoresPage() {
       }));
       showCustomToast({
         title: "Error al obtener los usuarios",
-        message: error + "Inténtalo de nuevo más tarde",
+        message: error + " Inténtalo de nuevo más tarde",
         icon: CircleX,
         iconColor: "var(--danger-color)",
         iconSize: 24,

@@ -1,8 +1,6 @@
 import { User } from "@/lib/core/types";
 import AvatarComponent from "../core/AvatarComponent";
 import { useState } from "react";
-import { updateAvatarUser } from "@/lib/libsql/data/auth/updateUser";
-import { deleteAvatar } from "@/lib/firebase/data/deleteFile";
 import { Button } from "@heroui/react";
 import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle, FileX2 } from "lucide-react";
@@ -14,10 +12,13 @@ interface Props {
 
 export default function UploadAvatar({ userData, refreshUserData }: Props) {
   const [loading, setLoading] = useState(false);
+
   const handleUploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoading(true);
     if (e.target.files?.length) {
       const file = e.target.files[0];
+
+      // Validación de tipo de archivo
       if (
         file.type !== "image/png" &&
         file.type !== "image/jpeg" &&
@@ -30,30 +31,42 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
           iconSize: 24,
           icon: FileX2,
         });
+        setLoading(false);
         return;
       }
+
       if (userData) {
         try {
-          const { success, error } = await updateAvatarUser(userData.id, file);
+          // Crear FormData para enviar el archivo
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("userData", JSON.stringify(userData));
+
+          const res = await fetch(`/api/users/update/avatar`, {
+            method: "PATCH",
+            body: formData,
+          });
+
+          const { success, error } = await res.json();
 
           if (!success) {
             showCustomToast({
               title: "Error al subir la imagen",
-              message: error,
+              message: error || "Error desconocido",
               iconColor: "var(--danger-color)",
               iconSize: 24,
               icon: FileX2,
             });
             console.error(error);
+          } else {
+            showCustomToast({
+              title: "Imagen subida correctamente",
+              message: "La imagen se ha subido correctamente",
+              iconColor: "var(--success-color)",
+              iconSize: 24,
+              icon: CheckCircle,
+            });
           }
-
-          showCustomToast({
-            title: "Imagen subida correctamente",
-            message: "La imagen se ha subido correctamente",
-            iconColor: "var(--success-color)",
-            iconSize: 24,
-            icon: CheckCircle,
-          });
         } catch (error) {
           showCustomToast({
             title: "Error al subir la imagen",
@@ -75,9 +88,20 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
     setLoading(true);
     if (userData) {
       try {
-        const { success, errors } = await deleteAvatar(userData.id);
+        const response = await fetch(`/api/users/delete/avatar`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userData.id,
+            organization_id: userData.organization.id,
+          }),
+        });
 
-        if (!success && errors) {
+        const { success, errors } = await response.json();
+
+        if (!success) {
           showCustomToast({
             title: "Error eliminando la imagen",
             message: errors,
@@ -86,15 +110,15 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
             icon: FileX2,
           });
           console.error(errors);
+        } else {
+          showCustomToast({
+            title: "Imagen eliminada correctamente",
+            message: "La imagen ha sido eliminada correctamente",
+            iconColor: "var(--success-color)",
+            iconSize: 24,
+            icon: CheckCircle,
+          });
         }
-
-        showCustomToast({
-          title: "Imagen eliminada correctamente",
-          message: "La imagen ha sido eliminada correctamente",
-          iconColor: "var(--success-color)",
-          iconSize: 24,
-          icon: CheckCircle,
-        });
       } catch (error) {
         showCustomToast({
           title: "Error eliminando la imagen",
@@ -110,11 +134,12 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
       }
     }
   };
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
         <AvatarComponent
-          className="size-24 !rounded-full"
+          className="size-32 !rounded-full"
           textSize="text-4xl"
           userData={userData as User}
         />

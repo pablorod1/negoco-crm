@@ -5,13 +5,14 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { getAllFoldersWithPaths } from "@/lib/firebase/data/getFolders";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import Image from "next/image";
+import { useUser } from "@/contexts/UserContext";
 
 interface FolderStructure {
   path: string;
@@ -28,6 +29,7 @@ interface FolderGroup {
 }
 
 export default function DocumentacionSidebar() {
+  const { userData } = useUser();
   const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(["/"])
@@ -49,7 +51,9 @@ export default function DocumentacionSidebar() {
 
   const fetchFolders = React.useCallback(async () => {
     try {
-      const { success, data: folders } = await getAllFoldersWithPaths();
+      const { success, data: folders } = await getAllFoldersWithPaths(
+        userData?.organization.id as string
+      );
       if (success && folders) {
         const folderMap: Record<string, FolderStructure> = {};
         const groups: Record<string, FolderGroup> = {
@@ -116,7 +120,7 @@ export default function DocumentacionSidebar() {
     } catch (error) {
       console.error("Error fetching folders:", error);
     }
-  }, []);
+  }, [userData]);
 
   useEffect(() => {
     return setRefreshDocumentacion(fetchFolders);
@@ -153,11 +157,9 @@ export default function DocumentacionSidebar() {
             </div>
           </Link>
           <Button
-            size="sm"
-            variant="flat"
+            size="icon"
             className="bg-transparent"
-            isIconOnly
-            onPress={() => {
+            onClick={() => {
               if (subfolder.subfolders.length > 0) {
                 toggleFolder(subfolder.path);
               }
@@ -217,10 +219,7 @@ export default function DocumentacionSidebar() {
               disabled={folderGroups.length < 2}
             >
               <CollapsibleTrigger asChild className="mb-1">
-                <Button
-                  variant="flat"
-                  className="w-full justify-between bg-transparent"
-                >
+                <Button variant="ghost" className="w-full flex justify-start">
                   <span className="flex items-center gap-4">
                     <Image
                       src="/file-icons/folder.png"
@@ -261,11 +260,10 @@ export default function DocumentacionSidebar() {
                             </div>
                           </Link>
                           <Button
-                            size="sm"
-                            variant="flat"
-                            className="bg-transparent"
-                            isIconOnly
-                            onPress={() => {
+                            variant="ghost"
+                            size="icon"
+                            className="text-black"
+                            onClick={() => {
                               if (group.subfolders.length > 0) {
                                 toggleFolder(group.path);
                               }
@@ -277,9 +275,7 @@ export default function DocumentacionSidebar() {
                               ) : (
                                 <ChevronRight className="h-4 w-4" />
                               )
-                            ) : (
-                              <div className="w-4" />
-                            )}
+                            ) : null}
                           </Button>
                         </div>
 

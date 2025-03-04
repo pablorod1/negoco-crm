@@ -42,8 +42,8 @@ export default function LoginForm() {
         setError(error.message as string);
         return;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
+      console.error("Error al iniciar sesión:", error);
       setError("Error desconocido");
     } finally {
       setIsLoading(false);

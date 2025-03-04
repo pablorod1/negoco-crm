@@ -1,4 +1,5 @@
 import { storage } from "@/firebaseConfig";
+import { User } from "@/lib/core/types";
 import {
   deleteObject,
   getDownloadURL,
@@ -54,17 +55,23 @@ export async function uploadFiles(
 
 export async function uploadAvatar(
   file: File,
-  folder_name?: string
+  userData: User
 ): Promise<{ downloadURL: string }> {
   try {
-    const folderRef = ref(storage, `avatars/${folder_name}`);
+    const folderRef = ref(
+      storage,
+      `${userData.organization.id}/avatars/${userData.id}`
+    );
 
     // Delete existing files in folder
     const files = await listAll(folderRef);
     await Promise.all(files.items.map((fileRef) => deleteObject(fileRef)));
 
     // Upload new file
-    const storageRef = ref(storage, `avatars/${folder_name}/${file.name}`);
+    const storageRef = ref(
+      storage,
+      `${userData.organization.id}/avatars/${userData.id}/${file.name}`
+    );
     await uploadBytes(storageRef, file);
     const downloadURL = await getDownloadURL(storageRef);
 

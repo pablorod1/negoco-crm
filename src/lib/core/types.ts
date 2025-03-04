@@ -245,3 +245,11 @@ export type Cargo =
   | null;
 
 export type DocumentType = "DNI" | "NIE" | "CIF" | "Otro" | "";
+
+export type TimeRange =
+  | "year"
+  | "current_month"
+  | "current_week"
+  | "last_week"
+  | "90d"
+  | undefined;

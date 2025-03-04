@@ -1,4 +1,13 @@
-import { auth } from "@/lib/auth/auth"; // path to your auth file
 import { toNextJsHandler } from "better-auth/next-js";
+import { NextRequest } from "next/server";
+import { getAuth } from "@/lib/auth/auth";
 
-export const { POST, GET } = toNextJsHandler(auth.handler);
+export async function POST(req: NextRequest) {
+  const auth = getAuth(req);
+  return toNextJsHandler(auth.handler).POST(req);
+}
+
+export async function GET(req: NextRequest) {
+  const auth = getAuth(req);
+  return toNextJsHandler(auth.handler).GET(req);
+}

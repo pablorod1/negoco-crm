@@ -10,12 +10,11 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import React from "react";
-import { getMonthlyComisiones } from "@/lib/libsql/data/tramites/getTramites";
 import { Euro } from "lucide-react";
 import { User } from "@/lib/core/types";
 
 const chartConfig = {
-  comision: {
+  total: {
     icon: Euro,
     label: "Comisión",
     color: "var(--primary-color-500)",
@@ -25,7 +24,7 @@ const chartConfig = {
 const createEmptyData = () => {
   return Array.from({ length: 12 }, (_, i) => ({
     month: new Date(2025, i).toLocaleString("default", { month: "long" }),
-    comision: 0,
+    total: 0,
   }));
 };
 
@@ -37,29 +36,30 @@ export function ComisionesChart({
   loading: boolean;
 }) {
   const [chartData, setChartData] =
-    React.useState<{ month: string; comision: number }[]>(createEmptyData);
+    React.useState<{ month: string; total: number }[]>(createEmptyData);
 
   // Función para obtener los datos de comisiones
   const fetchComisiones = React.useCallback(async () => {
     if (!loading) {
       try {
-        const rs = await getMonthlyComisiones(userData);
-        setChartData((prev) => {
-          return prev.map((item) => {
-            // Convertimos el nombre del mes a formato que coincida con los datos de rs
-            const data = rs.find((r) =>
-              r.month.toLowerCase().includes(item.month.toLowerCase())
-            );
+        const res = await fetch(
+          `
+          /api/tramites/get/monthly-comisiones
+          `,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id: userData.id, role: userData.role }),
+          }
+        );
+        const { success, data, error } = await res.json();
 
-            if (data) {
-              return {
-                ...item,
-                comision: data.total,
-              };
-            }
-            return item;
-          });
-        });
+        if (!success && error) {
+          throw new Error(error);
+        }
+        setChartData(data);
       } catch (error) {
         console.error("Error al obtener comisiones:", error);
       }
@@ -140,7 +140,7 @@ export function ComisionesChart({
                 </linearGradient>
               </defs>
               <Area
-                dataKey="comision"
+                dataKey="total"
                 type="monotone"
                 fill="url(#fillDesktop)"
                 fillOpacity={0.4}

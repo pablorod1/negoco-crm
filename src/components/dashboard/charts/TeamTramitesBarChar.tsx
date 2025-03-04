@@ -26,10 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User } from "@/lib/core/types";
-import {
-  getActiveTramitesByUserID,
-  getTeamTramites,
-} from "@/lib/libsql/data/tramites/getTramites";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const chartConfig = {
@@ -75,19 +71,40 @@ export function TeamTramitesBarChart({
   const fetchTramites = React.useCallback(async () => {
     try {
       if (selectedComercial === "all") {
-        const data = await getTeamTramites(userData);
-        setChartData(data as Data[]);
-        setComerciales([...data.map((item) => item.user as User)]);
-      } else {
-        const rawData = await getActiveTramitesByUserID(
-          { id: selectedComercial, role: "2" },
-          timeRange
+        const res = await fetch(
+          `/api/tramites/get/team-tramites?time_range=${timeRange}&userData=${JSON.stringify(
+            userData
+          )}`
         );
-        const transformedData: Data[] = rawData.map((item) => ({
-          user: { name: item.field },
-          active: item.value,
-        }));
-        setChartData(transformedData);
+        const { data, success, error } = await res.json();
+
+        if (!success && error) {
+          throw new Error(error || "Error fetching tramites");
+        }
+        setChartData(data as Data[]);
+        setComerciales([...data.map((item: Data) => item.user as User)]);
+      } else {
+        const res = await fetch(
+          `/api/tramites/get/active-tramites-by-user-id`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              role: userData.role,
+              id: selectedComercial,
+              time_range: timeRange,
+            }),
+          }
+        );
+        const { data, success, error } = await res.json();
+
+        if (!success && error) {
+          throw new Error(error || "Error fetching tramites");
+        }
+
+        setChartData(data);
       }
     } catch (error) {
       console.error("Error al obtener trámites:", error);

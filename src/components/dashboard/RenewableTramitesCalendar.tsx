@@ -4,9 +4,9 @@ import { Calendar } from "../ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { CalendarDays, RefreshCwOff } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
-import { getRenewableTramites } from "@/lib/libsql/data/tramites/getTramites";
 import TramiteRenovable from "./TramiteRenovable";
 import { es } from "date-fns/locale";
+import { User } from "@/lib/core/types";
 
 interface RenewableTramite {
   id: string;
@@ -16,8 +16,10 @@ interface RenewableTramite {
 
 export default function RenewableTramitesCalendar({
   loading,
+  userData,
 }: {
   loading: boolean;
+  userData: User;
 }) {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [renewableDates, setRenewableDates] = React.useState<
@@ -26,12 +28,19 @@ export default function RenewableTramitesCalendar({
 
   const fetchTramites = React.useCallback(async () => {
     try {
-      const data = await getRenewableTramites();
+      const res = await fetch(`
+        /api/tramites/get/renewable?userData=${JSON.stringify(userData)}
+      `);
+      const { data, success, error } = await res.json();
+
+      if (!success && error) {
+        throw new Error(error || "Error al obtener trámites renovables");
+      }
       setRenewableDates(data);
     } catch (error) {
       console.error("Error al obtener trámites renovables:", error);
     }
-  }, []);
+  }, [userData]);
 
   React.useEffect(() => {
     fetchTramites();

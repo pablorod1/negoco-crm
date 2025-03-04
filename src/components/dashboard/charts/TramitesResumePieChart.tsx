@@ -19,7 +19,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { getActivePendingTramites } from "@/lib/libsql/data/tramites/getTramites";
 import { User } from "@/lib/core/types";
 import { Spinner } from "@heroui/react";
 
@@ -125,7 +124,21 @@ export function TramitesResumePieChart({
   const fetchTramites = React.useCallback(async () => {
     setLoadingData(true);
     try {
-      const data = await getActivePendingTramites(true, userData);
+      const res = await fetch(`/api/tramites/get/active-pending`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          current_week: true,
+          role: userData.role,
+          id: userData.id,
+        }),
+      });
+      const { data, success, error } = await res.json();
+      if (!success) {
+        throw new Error(error || "Error al obtener trámites");
+      }
       setTramites(data);
       setActivePercentage(calculateActivePercentage(data));
     } catch (error) {

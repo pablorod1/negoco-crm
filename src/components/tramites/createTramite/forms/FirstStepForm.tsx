@@ -14,7 +14,6 @@ import ButtonGroupComponent from "../ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import { SelectComponent } from "../InputComponent";
 import { useUser } from "@/contexts/UserContext";
-import { getUsers } from "@/lib/libsql/data/colaboradores/getUsers";
 
 interface Props {
   setClient: React.Dispatch<React.SetStateAction<ClientDB>>;
@@ -43,7 +42,12 @@ export default function FirstStepForm({
 
   useEffect(() => {
     const fetchComerciales = async () => {
-      const { data, success } = await getUsers(userData);
+      const res = await fetch(
+        `/api/users/get/users${
+          userData ? `?role=${userData.role}&id=${userData.id}` : ""
+        }`
+      );
+      const { success, data } = await res.json();
 
       if (!success) {
         return;

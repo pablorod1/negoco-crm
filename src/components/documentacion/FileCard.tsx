@@ -9,8 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DocumentacionFile } from "@/lib/core/types";
-import { deleteFile } from "@/lib/firebase/data/deleteFile";
+import { DocumentacionFile, User } from "@/lib/core/types";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
 import Image from "next/image";
@@ -34,9 +33,11 @@ function formatFileSize(bytes: number): string {
 export function FileCard({
   file,
   view,
+  userData,
 }: {
   file: DocumentacionFile;
   view: "grid" | "list";
+  userData: User;
 }) {
   const { refreshDocumentacion } = useDocumentacion();
 
@@ -75,7 +76,8 @@ export function FileCard({
     try {
       const { success, errors } = await downloadFile(
         file.folder_name,
-        file.name
+        file.name,
+        userData.organization.id
       );
 
       if (!success && errors) {
@@ -110,13 +112,22 @@ export function FileCard({
 
   const handleDelete = async () => {
     try {
-      const { success, errors } = await deleteFile(
-        file.folder_name,
-        file.name,
-        file.id
-      );
+      const res = await fetch("/api/documentacion/delete/file", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          folder_path: file.folder_name,
+          file_name: file.name,
+          file_id: file.id,
+          organization_id: userData.organization.id,
+        }),
+      });
 
-      if (!success && errors) {
+      const { success, errors } = await res.json();
+
+      if (!success) {
         showCustomToast({
           title: "Error eliminando archivo",
           message: errors,

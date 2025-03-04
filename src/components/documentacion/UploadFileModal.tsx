@@ -1,5 +1,4 @@
 import { getAllFoldersWithPaths } from "@/lib/firebase/data/getFolders";
-import { addDocumentacionFiles } from "@/lib/libsql/data/documentacion/uploadFileData";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import {
@@ -15,6 +14,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import { Spinner } from "@heroui/react";
+import { useUser } from "@/contexts/UserContext";
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -35,6 +35,7 @@ interface FolderGroup {
 }
 
 export default function UploadFileModal() {
+  const { userData } = useUser();
   const { refreshDocumentacion } = useDocumentacion();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [files, setFiles] = useState<FileWithPreview[]>([]);
@@ -62,7 +63,9 @@ export default function UploadFileModal() {
 
   useEffect(() => {
     const fetchAllFolders = async () => {
-      const { success, data: folders } = await getAllFoldersWithPaths();
+      const { success, data: folders } = await getAllFoldersWithPaths(
+        userData?.organization.id as string
+      );
       if (success && folders) {
         const folderMap: Record<string, FolderStructure> = {};
         const groups: Record<string, FolderGroup> = {
@@ -131,7 +134,7 @@ export default function UploadFileModal() {
     };
 
     fetchAllFolders();
-  }, []);
+  }, [userData]);
 
   const removeFile = (index: number) => {
     setFiles((prev) => {
@@ -161,10 +164,17 @@ export default function UploadFileModal() {
   const handleUpload = async () => {
     try {
       setIsUploading(true);
-      const { success, error } = await addDocumentacionFiles(
-        files,
-        getUploadFilePath()
-      );
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
+      formData.append("folder_name", getUploadFilePath());
+      formData.append("organization_id", userData?.organization.id as string);
+      const response = await fetch("/api/documentacion/add", {
+        method: "POST",
+        body: formData,
+      });
+      const { success, error } = await response.json();
       if (!success) {
         throw new Error(error);
       }

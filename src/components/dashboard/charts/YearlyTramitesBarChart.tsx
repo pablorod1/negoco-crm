@@ -17,12 +17,11 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import React from "react";
-import { getMonthlyActivePendingTramites } from "@/lib/libsql/data/tramites/getTramites";
 
 const chartConfig: ChartConfig = {
   tramites: { label: "Trámites" },
   active: { label: "Activos", color: "var(--primary-color-700)" },
-  pending: { label: "Pendientes", color: "var(--primary-color-400)" },
+  baja: { label: "Bajas", color: "var(--danger-color)" },
 };
 
 // Generar un array con los 12 meses en español, asegurando que siempre hay datos.
@@ -30,7 +29,7 @@ const createEmptyData = () =>
   Array.from({ length: 12 }, (_, i) => ({
     month: new Date(2025, i).toLocaleString("es-ES", { month: "long" }),
     active: 0,
-    pending: 0,
+    baja: 0,
   }));
 
 export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
@@ -39,7 +38,15 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
   React.useEffect(() => {
     const fetchTramites = async () => {
       try {
-        const data = await getMonthlyActivePendingTramites();
+        const res = await fetch(`
+          /api/tramites/get/monthly-active-pending`);
+
+        const { data, success, error } = await res.json();
+
+        if (!success && error) {
+          console.error("Error al obtener trámites:", error);
+          return;
+        }
         setChartData(data);
       } catch (error) {
         console.error("Error al obtener trámites:", error);
@@ -164,20 +171,14 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
               />
               <ChartLegend content={<ChartLegendContent />} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              {chartData.some((data) => data.active > 0) && (
-                <Bar
-                  dataKey="active"
-                  fill="var(--primary-color-700)"
-                  radius={4}
-                />
-              )}
-              {chartData.some((data) => data.pending > 0) && (
-                <Bar
-                  dataKey="pending"
-                  fill="var(--primary-color-400)"
-                  radius={4}
-                />
-              )}
+
+              <Bar
+                dataKey="active"
+                fill="var(--primary-color-700)"
+                radius={4}
+              />
+
+              <Bar dataKey="baja" fill="var(--danger-color)" radius={4} />
             </BarChart>
           </ChartContainer>
         ) : (

@@ -1,6 +1,37 @@
-import { Client, createClient } from "@libsql/client";
+import { createClient } from "@libsql/client";
+import { NextRequest } from "next/server";
 
-export const tursoClient: Client = createClient({
-  url: process.env.NEXT_PUBLIC_TURSO_DB_URL as string,
-  authToken: process.env.NEXT_PUBLIC_TURSO_DB_AUTH_TOKEN as string,
-});
+export const getTursoClient = (req: NextRequest) => {
+  // Obtener el host desde la cabecera "host"
+  const host = req.headers.get("host");
+  if (!host) {
+    throw new Error("No host found in request headers");
+  }
+
+  // Extraer el subdominio (client1, client2, etc.)
+  const subdomain = host.split(".")[0];
+
+  // Construir el nombre de la variable de entorno
+  const tursoUrlEnv =
+    subdomain === "localhost:3000"
+      ? "NEXT_TURSO_DB_URL"
+      : `NEXT_TURSO_DB_URL_${subdomain.toUpperCase()}`;
+  const tursoAuthTokenEnv =
+    subdomain === "localhost:3000"
+      ? "NEXT_TURSO_DB_AUTH_TOKEN"
+      : `NEXT_TURSO_DB_AUTH_TOKEN_${subdomain.toUpperCase()}`;
+
+  // Obtener las variables de entorno dinámicas
+  const tursoUrl = process.env[tursoUrlEnv];
+  const tursoAuthToken = process.env[tursoAuthTokenEnv];
+
+  if (!tursoUrl || !tursoAuthToken) {
+    throw new Error(`Missing Turso configuration for subdomain: ${subdomain}`);
+  }
+
+  // Crear el cliente de Turso
+  return createClient({
+    url: tursoUrl,
+    authToken: tursoAuthToken,
+  });
+};

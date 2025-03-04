@@ -8,7 +8,6 @@ import { YearlyTramitesBarChart } from "./charts/YearlyTramitesBarChart";
 import RenewableTramitesCalendar from "./RenewableTramitesCalendar";
 import { PersonalTramitesChart } from "./charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
-import { checkIfComercialHasSubcomerciales } from "@/lib/libsql/data/tramites/getTramites";
 import { useCallback, useEffect, useState } from "react";
 
 interface Props {
@@ -93,7 +92,10 @@ export const DireccionView = ({
       </div>
 
       <div className="col-span-1 sm:col-span-4 xl:col-span-2 row-span-2">
-        <RenewableTramitesCalendar loading={loading} />
+        <RenewableTramitesCalendar
+          loading={loading}
+          userData={userData as User}
+        />
       </div>
       {/* <div className="col-span-1 sm:col-span-2 2xl:col-span-2 row-span-2">
           <h2>Comparativas Resume</h2>
@@ -118,7 +120,14 @@ export const ComercialView = ({
 }: Props) => {
   const [hasSubComerciales, setComercialHasSubComerciales] = useState(false);
   const comercialHasSubComerciales = useCallback(async () => {
-    const { success } = await checkIfComercialHasSubcomerciales(userData);
+    const res = await fetch(`/api/users/get/subcomerciales`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: userData.id }),
+    });
+    const { success } = await res.json();
     if (success) {
       setComercialHasSubComerciales(true);
     } else {
@@ -172,7 +181,10 @@ export const ComercialView = ({
       </div>
 
       <div className="col-span-1 sm:col-span-2 row-span-2">
-        <RenewableTramitesCalendar loading={loading} />
+        <RenewableTramitesCalendar
+          loading={loading}
+          userData={userData as User}
+        />
       </div>
       {hasSubComerciales ? (
         <div className="col-span-1 sm:col-span-2 row-span-2">
@@ -253,7 +265,10 @@ export const BackofficeView = ({
       </div>
 
       <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-2">
-        <RenewableTramitesCalendar loading={loading} />
+        <RenewableTramitesCalendar
+          loading={loading}
+          userData={userData as User}
+        />
       </div>
 
       <div className="col-span-1 sm:col-span-2 xl:col-span-4">

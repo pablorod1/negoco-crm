@@ -16,12 +16,10 @@ import {
   getColorPriority,
   getLinkContext,
 } from "@/lib/core/notifications.helpers";
-import { getNotitications } from "@/lib/libsql/data/notifications/getNotifications";
-import { deleteNotification } from "@/lib/libsql/data/notifications/deleteNotification";
 import { showCustomToast } from "./CustomToast";
 
 export default function NotificationsMenu() {
-  const { userData } = useUser();
+  const { userData, refreshUserData } = useUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const handleDeleteNotification = async (
@@ -30,7 +28,14 @@ export default function NotificationsMenu() {
   ) => {
     e.preventDefault();
     try {
-      const { success, error } = await deleteNotification(id);
+      const res = await fetch(`/api/notifications/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+      const { success, error } = await res.json();
 
       if (!success && error) {
         showCustomToast({
@@ -51,6 +56,7 @@ export default function NotificationsMenu() {
         icon: CheckCircle,
       });
       fetchNotifications();
+      refreshUserData();
     } catch (error) {
       showCustomToast({
         title: "Error eliminando la notificación",
@@ -66,10 +72,16 @@ export default function NotificationsMenu() {
   const fetchNotifications = useCallback(async () => {
     if (userData) {
       try {
-        const data = await getNotitications(userData.id);
-
+        const res = await fetch(`/api/notifications/get/notifications`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: userData.id }),
+        });
+        const data = await res.json();
         if (data) {
-          setNotifications(data);
+          setNotifications(data.data || []);
         }
 
         if (userData.should_reset_password) {

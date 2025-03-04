@@ -15,6 +15,7 @@ export default function AvatarComponent({
       <AvatarImage
         src={userData.image as string}
         alt={userData.name as string}
+        className="w-full h-full object-cover object-center"
       />
       <AvatarFallback className={`rounded-lg ${textSize}`}>
         {userData.name.charAt(0).toUpperCase()}

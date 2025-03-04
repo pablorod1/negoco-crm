@@ -1,27 +1,24 @@
 "use client";
-import { getTramiteByID } from "@/lib/libsql/data/tramites/getTramites";
 import {
   EditTramiteFormData,
   createEmptyTramiteForm,
   ContractDB,
   User,
   SignerDB,
+  Notification,
 } from "@/lib/core/types";
 import { Button, Divider, Spinner } from "@heroui/react";
 import { useCallback, useEffect, useState } from "react";
 import { EditFormWrapper } from "../EditFormWrapper";
 import ContractPreview from "../../createTramite/ContractPreview";
 import { trackChanges } from "@/hooks/track-tramite-changes";
-import { updateTramiteComplete } from "@/lib/libsql/data/tramites/updateTramites";
 import NotesBoard from "../NotesBoard";
 import CreateContractDrawer from "../../createTramite/CreateContractDrawer";
-import { addContract } from "@/lib/libsql/data/tramites/addTramites";
 import { useTramites } from "@/contexts/TramitesContext";
 import TramiteForm from "./TramiteForm";
 import { useUser } from "@/contexts/UserContext";
 import EditClientForm from "./EditClientForm";
 import EditTramiteFiles from "./EditTramiteFiles";
-import { createNotification } from "@/lib/libsql/data/notifications/createNotification";
 import { generateTramiteUpdatedNotification } from "@/lib/core/notifications.helpers";
 import { CheckCircle, CircleX, PencilOff } from "lucide-react";
 import CancelEditTramiteConfirmationModal from "../CancelEditTramiteConfirmationModal";
@@ -46,7 +43,6 @@ export default function EditTramiteForm({
     createEmptyTramiteForm(userData as User)
   );
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [newContract, setNewContract] = useState<ContractDB | null>(null);
   const [loading, setLoading] = useState(false);
   const { refreshTramites } = useTramites();
 
@@ -61,7 +57,10 @@ export default function EditTramiteForm({
   };
 
   const handleCreateContract = (contract: ContractDB) => {
-    setNewContract(contract);
+    setFormData((prev) => ({
+      ...prev,
+      contracts: [...prev.contracts, contract],
+    }));
   };
 
   const checkRole = () => {
@@ -81,7 +80,8 @@ export default function EditTramiteForm({
   };
 
   const fetchTramite = useCallback(async () => {
-    const { data, success } = await getTramiteByID(tramite_id);
+    const res = await fetch(`/api/tramites/get/tramite-by-id?id=${tramite_id}`);
+    const { data, success } = await res.json();
     if (!success) {
       showCustomToast({
         title: "Error al obtener el trámite",
@@ -118,13 +118,6 @@ export default function EditTramiteForm({
     }));
   };
 
-  const handleUpdateNewContract = (contract: ContractDB) => {
-    setNewContract((prev) => ({
-      ...prev,
-      ...contract,
-    }));
-  };
-
   const handleUpdateNotes = (note: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -142,6 +135,20 @@ export default function EditTramiteForm({
       changes.tramite.comision = formData.tramite.comision;
       changes.tramite.comision_sales_person =
         formData.tramite.comision_sales_person;
+    }
+
+    if (
+      changes.tramite?.status === "Activo" &&
+      (!formData.tramite.comision || !formData.tramite.comision_sales_person)
+    ) {
+      showCustomToast({
+        title: "Error al actualizar trámite",
+        message: "Debes ingresar la comisión y el comercial de la comisión",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      setLoading(false);
     }
     if (
       !changes.client &&
@@ -163,30 +170,27 @@ export default function EditTramiteForm({
     }
 
     try {
-      const { success, error } = await updateTramiteComplete(
-        changes,
-        tramite_id,
-        formData.client.id,
-        formData.signer.id,
-        formData.contracts.map((c) => c.id),
-        uploadedFiles
+      const formattedData = new FormData();
+      formattedData.append("userData", JSON.stringify(userData));
+      formattedData.append("changes", JSON.stringify(changes));
+      formattedData.append("tramite_id", tramite_id);
+      formattedData.append("client_id", formData.client.id);
+      formattedData.append("signer_id", formData.signer.id);
+      formattedData.append(
+        "contract_ids",
+        JSON.stringify(formData.contracts.map((c) => c.id))
       );
+      uploadedFiles.forEach((file) => {
+        formattedData.append("files", file);
+      });
 
-      if (newContract) {
-        const { success: newContractSuccess, error: newContractError } =
-          await addContract(newContract, tramite_id);
+      const res = await fetch(`/api/tramites/update`, {
+        method: "POST",
 
-        if (!newContractSuccess) {
-          showCustomToast({
-            title: "Error al añadir contrato",
-            message: newContractError,
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          return;
-        }
-      }
+        body: formattedData,
+      });
+      const { success, error } = await res.json();
+
       if (!success) {
         showCustomToast({
           title: "Error al actualizar trámite",
@@ -198,14 +202,21 @@ export default function EditTramiteForm({
         return;
       }
 
-      const notification = generateTramiteUpdatedNotification(
+      const notification: Notification = generateTramiteUpdatedNotification(
         changes,
         uploadedFiles,
         tramite_id,
         formData.tramite.user_id
       );
+      const response = await fetch(`/api/notifications/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notification }), // Enviar la notificación correctamente
+      });
       const { success: NotificationSuccess, error: NotificationError } =
-        await createNotification(notification);
+        await response.json();
 
       if (!NotificationSuccess && NotificationError) {
         showCustomToast({
@@ -303,14 +314,6 @@ export default function EditTramiteForm({
                     tramite={formData.tramite}
                   />
                 ))}
-                {newContract && (
-                  <ContractPreview
-                    contract={newContract}
-                    onSavingContract={handleUpdateNewContract}
-                    userData={userData as User}
-                    tramite={formData.tramite}
-                  />
-                )}
               </>
             )}
           </div>

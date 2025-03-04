@@ -1,13 +1,15 @@
 import { storage } from "@/firebaseConfig";
 import { listAll, ref } from "firebase/storage";
 
-export const getFoldersFromDocumentacion = async (): Promise<{
+export const getFoldersFromDocumentacion = async (
+  organization_id: string
+): Promise<{
   success: boolean;
   errors?: string;
   data: string[];
 }> => {
   try {
-    const folderRef = ref(storage, "documentacion");
+    const folderRef = ref(storage, `${organization_id}/documentacion/`);
     const folders = await listAll(folderRef);
 
     if (folders.prefixes.length === 0) {
@@ -28,17 +30,19 @@ export const getFoldersFromDocumentacion = async (): Promise<{
   }
 };
 
-const ROOT_FOLDER = "documentacion";
-
-export async function getAllFoldersWithPaths() {
+export async function getAllFoldersWithPaths(organization_id: string) {
   try {
     const paths: string[] = [];
-    await traverseFolder(ROOT_FOLDER, paths);
+    await traverseFolder(
+      `${organization_id}/documentacion`,
+      paths,
+      organization_id
+    );
 
     // Convertimos las rutas para que sean relativas a la carpeta documentacion
     const relativePaths = paths.map((path) =>
-      path.startsWith(`${ROOT_FOLDER}/`)
-        ? path.slice(ROOT_FOLDER.length + 1)
+      path.startsWith(`${organization_id}/documentacion/`)
+        ? path.slice((organization_id + "/documentacion").length + 1)
         : ""
     );
 
@@ -65,7 +69,11 @@ export async function getAllFoldersWithPaths() {
   }
 }
 
-async function traverseFolder(folderPath: string, paths: string[]) {
+async function traverseFolder(
+  folderPath: string,
+  paths: string[],
+  organization_id: string
+) {
   const folderRef = ref(storage, folderPath);
 
   try {
@@ -73,7 +81,7 @@ async function traverseFolder(folderPath: string, paths: string[]) {
 
     // Solo agregamos la ruta si no es la carpeta raíz y contiene elementos
     if (
-      folderPath !== ROOT_FOLDER &&
+      folderPath !== `${organization_id}/documentacion` &&
       (result.prefixes.length > 0 || result.items.length > 0)
     ) {
       paths.push(folderPath);
@@ -81,7 +89,7 @@ async function traverseFolder(folderPath: string, paths: string[]) {
 
     // Recursivamente exploramos todas las subcarpetas
     for (const prefix of result.prefixes) {
-      await traverseFolder(prefix.fullPath, paths);
+      await traverseFolder(prefix.fullPath, paths, organization_id);
     }
   } catch (error) {
     console.error(`Error traversing folder ${folderPath}:`, error);
@@ -89,9 +97,14 @@ async function traverseFolder(folderPath: string, paths: string[]) {
   }
 }
 
-export async function getSubFoldersFromFolder(folderPath: string = "") {
+export async function getSubFoldersFromFolder(
+  folderPath: string = "",
+  organization_id: string
+) {
   try {
-    const fullPath = folderPath ? `${ROOT_FOLDER}/${folderPath}` : ROOT_FOLDER;
+    const fullPath = folderPath
+      ? `${organization_id}/documentacion/${folderPath}`
+      : `${organization_id}/documentacion`;
     const folderRef = ref(storage, fullPath);
     const result = await listAll(folderRef);
 
@@ -115,10 +128,14 @@ export async function getSubFoldersFromFolder(folderPath: string = "") {
 }
 
 export const getItemsCountFromFolder = async (
-  folder: string
+  folder: string,
+  organization_id: string
 ): Promise<{ success: boolean; items: number }> => {
   try {
-    const folderRef = ref(storage, `documentacion/${folder}/`);
+    const folderRef = ref(
+      storage,
+      `${organization_id}/documentacion/${folder}/`
+    );
     const items = await listAll(folderRef);
 
     if (items.items.length === 0) {

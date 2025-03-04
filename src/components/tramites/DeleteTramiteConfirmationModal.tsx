@@ -1,5 +1,4 @@
-import { TramiteVM } from "@/lib/core/types";
-import { deleteTramite } from "@/lib/libsql/data/tramites/deleteTramite";
+import { TramiteVM, User } from "@/lib/core/types";
 import {
   Modal,
   ModalBody,
@@ -16,19 +15,29 @@ import { useTramites } from "@/contexts/TramitesContext";
 
 export default function DeleteTramiteConfirmationModal({
   tramite,
+  userData,
 }: {
   tramite: TramiteVM;
+  userData: User;
 }) {
   const { isOpen, onClose, onOpen } = useDisclosure();
   const { refreshTramites } = useTramites();
 
   const handleDelete = async () => {
     try {
-      const { success, error } = await deleteTramite(
-        tramite.id,
-        tramite.client_id
-      );
+      const res = await fetch(`/api/tramites/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tramite_id: tramite.id,
+          client_id: tramite.client_id,
+          organization_id: userData.organization.id,
+        }),
+      });
 
+      const { success, error } = await res.json();
       if (!success && error) {
         showCustomToast({
           title: "Error",
