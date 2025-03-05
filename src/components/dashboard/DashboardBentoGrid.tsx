@@ -153,9 +153,8 @@ export default function DashboardBentoGrid() {
       >
         <div className="flex items-center gap-4 flex-nowrap">
           <AvatarComponent
-            className={`size-24 !rounded-full shadow-md transition-transform duration-300 ${
-              loading ? "scale-80" : "scale-100"
-            }`}
+            className={`size-24 !rounded-full shadow-md transition-transform duration-300
+               ${loading ? "scale-80" : "scale-100"}`}
             userData={userData}
             textSize="text-2xl"
           />

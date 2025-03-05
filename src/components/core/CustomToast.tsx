@@ -113,7 +113,7 @@ export const showCustomToast = ({
     (t) => (
       <div
         className={`max-w-md w-full duration-400 ${
-          t.visible ? "animate-appearance-in" : "animate-appereance-out"
+          t.visible ? "animate-appearance-in" : "animate-appearance-out"
         }`}
       >
         <CustomToast

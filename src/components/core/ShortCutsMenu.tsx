@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import AddTramiteDialog from "../tramites/AddTramiteDialog";
 
 export default function ShortcutsMenu() {
   const shortcuts = [
@@ -23,7 +24,9 @@ export default function ShortcutsMenu() {
       id: 1,
       icon: <LayoutDashboard size={24} />,
       label: "Dashboard",
-      color: "bg-blue-100 text-blue-600",
+      color:
+        "bg-[var(--primary-color-200)] text-[var(--primary-color-800)] border-[var(--primary-color-100)]",
+      link: <AddTramiteDialog shortcut />,
     },
     {
       id: 2,
@@ -79,14 +82,12 @@ export default function ShortcutsMenu() {
           <CardContent className="p-6">
             <div className="grid grid-cols-3 gap-4">
               {shortcuts.map((shortcut, index) => (
-                <Button
+                <div
                   key={index}
-                  variant="ghost"
-                  className={`flex items-center justify-center flex-col h-24 p-4 transition-all hover:scale-105 ${shortcut.color} border-none shadow-sm`}
+                  className={`${shortcut.color} relative flex items-center justify-center flex-col h-24 p-4 transition-all hover:scale-105 rounded-md border  shadow-md cursor-pointer`}
                 >
-                  <div className="mb-2">{shortcut.icon}</div>
-                  <span className="font-medium">{shortcut.label}</span>
-                </Button>
+                  {shortcut.link}
+                </div>
               ))}
             </div>
           </CardContent>

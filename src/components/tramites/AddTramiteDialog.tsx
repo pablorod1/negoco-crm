@@ -26,12 +26,12 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import { CheckCircle, CircleX, Plus } from "lucide-react";
+import { CheckCircle, CircleX, FilePlus2, Plus } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@heroui/react";
 import { showCustomToast } from "../core/CustomToast";
 
-export default function AddTramiteDialog() {
+export default function AddTramiteDialog({ shortcut }: { shortcut?: boolean }) {
   const { userData } = useUser();
   const [activeTab, setActiveTab] = useState(0);
   const [tramite, setTramite] = useState<TramiteDB>(
@@ -188,15 +188,22 @@ export default function AddTramiteDialog() {
 
   return (
     <>
-      <Button
-        onPress={handleOpen}
-        color="primary"
-        radius="sm"
-        className="shadow-md"
-      >
-        <Plus size={20} />
-        <span>Nuevo Trámite</span>
-      </Button>
+      {!shortcut ? (
+        <Button
+          onPress={handleOpen}
+          color="primary"
+          radius="sm"
+          className="shadow-md"
+        >
+          <Plus size={20} />
+          <span>Nuevo Trámite</span>
+        </Button>
+      ) : (
+        <div onClick={handleOpen} className="flex flex-col items-center gap-2">
+          <FilePlus2 size={24} />
+          <span className="text-nowrap">Crear trámite</span>
+        </div>
+      )}
 
       <Modal
         isDismissable={false}
