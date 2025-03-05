@@ -34,13 +34,11 @@ interface TableHeaderProps<TData> {
   statusFilter: string[];
   liquidezStatusFilter: string[];
   contractTypeFilter: string[];
-  selectedColumns: string[];
   setFilterValue: (value: string) => void;
   setCompanyFilter: (value: string[]) => void;
   setStatusFilter: (value: Status[]) => void;
   setLiquidezStatusFilter: (value: string[]) => void;
   setContractTypeFilter: (value: string[]) => void;
-  setSelectedColumns: (value: string[]) => void;
   resetFilters: () => void;
   userData: User;
   table: Table<TData>;
@@ -53,8 +51,6 @@ const TramitesHeader = <TData,>({
   statusFilter,
   liquidezStatusFilter,
   contractTypeFilter,
-  selectedColumns,
-  setSelectedColumns,
   setFilterValue,
   setCompanyFilter,
   setStatusFilter,
@@ -354,11 +350,7 @@ const TramitesHeader = <TData,>({
             </div>
           </div>
           <div className="flex justify-between items-center gap-2  w-full">
-            <ColumnSelector
-              selectedColumns={selectedColumns}
-              setSelectedColumns={setSelectedColumns}
-              table={table}
-            />
+            <ColumnSelector table={table} />
             <FilterButton disabled={!checkFilters()} onPress={resetFilters} />
           </div>
         </div>

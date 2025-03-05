@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, CircleX, CloudAlert, MoreVertical } from "lucide-react";
+import { CheckCircle, CloudAlert, MoreVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,12 +10,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DocumentacionFile, User } from "@/lib/core/types";
-import { useDocumentacion } from "@/contexts/DocumentacionContext";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
 import Image from "next/image";
 import { Tooltip } from "@heroui/tooltip";
 import { formatDateTime } from "@/lib/core/format";
 import { showCustomToast } from "../core/CustomToast";
+import DeleteFileConfirmationModal from "./DeleteFileConfirmationModal";
 
 function formatFileSize(bytes: number): string {
   const units = ["B", "KB", "MB", "GB"];
@@ -39,8 +39,6 @@ export function FileCard({
   view: "grid" | "list";
   userData: User;
 }) {
-  const { refreshDocumentacion } = useDocumentacion();
-
   const getFileIcon = (file: DocumentacionFile) => {
     switch (file.extension) {
       case "pdf":
@@ -110,59 +108,11 @@ export function FileCard({
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      const res = await fetch("/api/documentacion/delete/file", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          folder_path: file.folder_name,
-          file_name: file.name,
-          file_id: file.id,
-          organization_id: userData.organization.id,
-        }),
-      });
-
-      const { success, errors } = await res.json();
-
-      if (!success) {
-        showCustomToast({
-          title: "Error eliminando archivo",
-          message: errors,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
-      }
-
-      showCustomToast({
-        title: "Archivo eliminado",
-        message: "El archivo ha sido eliminado correctamente",
-        iconColor: "var(--success-color)",
-        iconSize: 24,
-        icon: CheckCircle,
-      });
-      refreshDocumentacion();
-    } catch (error) {
-      console.error("Error eliminando archivo:", error);
-      showCustomToast({
-        title: "Error eliminando archivo",
-        message: "Inténtalo de nuevo más tarde",
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-        icon: CircleX,
-      });
-    }
-  };
-
   return (
-    <Card className="relative overflow-hidden w-full">
+    <Card className="relative w-full">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-4">
             <div className="w-14 h-14 relative">
               <Image
                 src={getFileIcon(file) as string}
@@ -171,7 +121,7 @@ export function FileCard({
                 objectFit="contain"
               />
             </div>
-            <div>
+            <div className="w-full">
               <Tooltip
                 color="primary"
                 size="lg"
@@ -180,10 +130,8 @@ export function FileCard({
                 isDisabled={view === "list"}
               >
                 <h3
-                  className={`font-semibold text-lg ${
-                    view === "grid"
-                      ? "max-w-80 text-ellipsis overflow-hidden whitespace-nowrap"
-                      : ""
+                  className={`block text-ellipsis overflow-hidden whitespace-nowrap font-semibold text-lg ${
+                    view === "grid" ? "max-w-48 w-full" : ""
                   }`}
                 >
                   {file.name}
@@ -214,12 +162,7 @@ export function FileCard({
               >
                 Download
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer text-danger"
-                onClick={handleDelete}
-              >
-                Delete
-              </DropdownMenuItem>
+              <DeleteFileConfirmationModal userData={userData} file={file} />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

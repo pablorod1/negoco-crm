@@ -45,14 +45,12 @@ export function DataTable<TData, TValue>({
     statusFilter,
     liquidezStatusFilter,
     contractTypeFilter,
-    selectedColumns,
     setFilterValue,
     setCompanyFilter,
     setStatusFilter,
     setContractTypeFilter,
     setLiquidezStatusFilter,
     resetFilters,
-    setSelectedColumns,
   } = useTableFilters(id || "");
 
   const { pagination, setPagination } = useTablePagination();
@@ -161,13 +159,11 @@ export function DataTable<TData, TValue>({
       statusFilter,
       liquidezStatusFilter,
       contractTypeFilter,
-      selectedColumns,
       setFilterValue,
       setCompanyFilter,
       setStatusFilter,
       setLiquidezStatusFilter,
       setContractTypeFilter,
-      setSelectedColumns,
       resetFilters: handleResetFilters,
       userData: userData || ({} as User),
     }),
@@ -178,14 +174,12 @@ export function DataTable<TData, TValue>({
       statusFilter,
       liquidezStatusFilter,
       contractTypeFilter,
-      selectedColumns,
       setFilterValue,
       setCompanyFilter,
       setStatusFilter,
       setLiquidezStatusFilter,
       setContractTypeFilter,
       handleResetFilters,
-      setSelectedColumns,
       userData,
     ]
   );

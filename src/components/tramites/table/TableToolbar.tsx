@@ -15,18 +15,19 @@ import {
 } from "@/lib/core/const";
 import { type Status } from "@/lib/core/types";
 import { Table } from "@tanstack/react-table";
+import { useState } from "react";
 
 interface ColumnSelectorProps<TData> {
   table: Table<TData>;
-  selectedColumns: string[];
-  setSelectedColumns: (value: string[]) => void;
 }
 
-export function ColumnSelector<TData>({
-  table,
-  setSelectedColumns,
-  selectedColumns,
-}: ColumnSelectorProps<TData>) {
+export function ColumnSelector<TData>({ table }: ColumnSelectorProps<TData>) {
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(() =>
+    table
+      .getAllColumns()
+      .filter((column) => column.getIsVisible())
+      .map((column) => column.id)
+  );
   return (
     <Dropdown>
       <DropdownTrigger asChild>
@@ -37,6 +38,7 @@ export function ColumnSelector<TData>({
       </DropdownTrigger>
       <DropdownMenu
         selectedKeys={selectedColumns}
+        defaultSelectedKeys={selectedColumns}
         onSelectionChange={(selected) => {
           setSelectedColumns(Array.from(selected) as string[]);
         }}

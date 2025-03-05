@@ -40,13 +40,15 @@ export async function POST(req: NextRequest) {
     }
 
     let query = `
-      SELECT 
-          date(creation_date) as date,
-          COUNT(*) as value
-      FROM tramites
-      WHERE status = 'Activo'`;
+  SELECT 
+    date(creation_date) as date,
+    COUNT(CASE WHEN status = 'Activo' THEN 1 ELSE NULL END) as active,
+    COUNT(CASE WHEN status = 'Baja' THEN 1 ELSE NULL END) as baja
+  FROM tramites`;
 
+    const conditions: string[] = [];
     const params: (string | number)[] = [];
+    let groupBy: string | undefined;
 
     if (role === "2") {
       const subcomercialesRes = await fetch(
@@ -54,60 +56,69 @@ export async function POST(req: NextRequest) {
       );
       const subcomerciales = await subcomercialesRes.json();
       if (subcomerciales.success && subcomerciales.ids) {
-        query += ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
-          .map(() => "?")
-          .join(", ")}))`;
+        conditions.push(
+          `(user_id = ? OR user_id IN (${subcomerciales.ids
+            .map(() => "?")
+            .join(", ")}))`
+        );
         params.push(id as string, ...subcomerciales.ids);
       } else {
-        query += ` AND user_id = ?`;
+        conditions.push(`user_id = ?`);
         params.push(id as string);
       }
     }
 
-    let groupBy = "";
-
-    // Filtros de acuerdo al time_range
     if (time_range) {
       switch (time_range) {
         case "year":
-          query += ` AND creation_date >= date('now', 'start of year')`;
+          conditions.push(`creation_date >= date('now', 'start of year')`);
           groupBy = `strftime('%m', creation_date)`;
           break;
         case "current_month":
-          query += ` AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now')`;
+          conditions.push(
+            `strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now')`
+          );
           groupBy = `strftime('%d', creation_date)`;
           break;
         case "current_week":
-          query += ` AND strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now')`;
+          conditions.push(
+            `strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now')`
+          );
           groupBy = `strftime('%w', creation_date)`;
           break;
         case "last_week":
-          query += ` AND strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now', '-7 days')`;
+          conditions.push(
+            `strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now', '-7 days')`
+          );
           groupBy = `strftime('%w', creation_date)`;
           break;
         case "90d":
-          query += ` AND creation_date >= date('now', '-90 days')`;
+          conditions.push(`creation_date >= date('now', '-90 days')`);
           groupBy = `date(creation_date)`;
+
           break;
       }
     }
 
     if (date_range && date_range.from && date_range.to) {
-      query += ` AND date(creation_date) BETWEEN date(?) AND date(?)`;
+      conditions.push(`date(creation_date) BETWEEN date(?) AND date(?)`);
+      params.push(date_range.from.toString(), date_range.to.toString());
       groupBy = `date(creation_date)`;
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(" AND ")}`;
     }
 
     if (groupBy) {
       query += ` GROUP BY ${groupBy}`;
     }
+
     query += ` ORDER BY date(creation_date)`;
 
-    if (date_range && date_range.from && date_range.to) {
-      params.push(date_range.from.toString(), date_range.to.toString());
-    }
-
     const rs = await tursoClient.execute({ sql: query, args: params });
-    const results = new Map<string, number>();
+
+    const results = new Map<string, { active: number; baja: number }>();
 
     // Procesar resultados según el time_range
     if (time_range === "current_week" || time_range === "last_week") {
@@ -121,13 +132,16 @@ export async function POST(req: NextRequest) {
         const day = new Date(weekStart);
         day.setDate(weekStart.getDate() + i);
         const dayStr = day.toLocaleDateString("es-ES", { weekday: "long" });
-        results.set(dayStr, 0);
+        results.set(dayStr, { active: 0, baja: 0 });
       }
 
       rs.rows.forEach((row) => {
         const date = new Date(row.date as string);
         const dayStr = date.toLocaleDateString("es-ES", { weekday: "long" });
-        results.set(dayStr, Number(row.value));
+        results.set(dayStr, {
+          active: Number(row.active),
+          baja: Number(row.baja),
+        });
       });
     } else if (time_range === "current_month") {
       const daysInMonth = new Date(
@@ -138,13 +152,16 @@ export async function POST(req: NextRequest) {
 
       for (let i = 1; i <= daysInMonth; i++) {
         const dayStr = `${i}`;
-        results.set(dayStr, 0);
+        results.set(dayStr, { active: 0, baja: 0 });
       }
 
       rs.rows.forEach((row) => {
         const date = new Date(row.date as string);
         const dayStr = `${date.getDate()}`;
-        results.set(dayStr, Number(row.value));
+        results.set(dayStr, {
+          active: Number(row.active || 0),
+          baja: Number(row.baja || 0),
+        });
       });
     } else if (time_range === "year") {
       const months = [
@@ -162,23 +179,26 @@ export async function POST(req: NextRequest) {
         "Diciembre",
       ];
 
-      months.forEach((month) => results.set(month, 0));
+      months.forEach((month) => results.set(month, { active: 0, baja: 0 }));
 
       rs.rows.forEach((row) => {
         const date = new Date(row.date as string);
         const monthStr = months[date.getMonth()];
-        results.set(monthStr, Number(row.value));
+        results.set(monthStr, {
+          active: Number(row.active),
+          baja: Number(row.baja),
+        });
       });
     } else if (time_range === "90d") {
       const days = Array.from({ length: 90 }, (_, i) => i);
 
       days.forEach((day) => {
-        const date = new Date(Date.now() - day * 24 * 60 * 60 * 1000);
+        const date = new Date(day * 24 * 60 * 60 * 1000 - Date.now());
         const dayStr = date.toLocaleDateString("es-ES", {
           weekday: "long",
           day: "numeric",
         });
-        results.set(dayStr, 0);
+        results.set(dayStr, { active: 0, baja: 0 });
       });
 
       rs.rows.forEach((row) => {
@@ -187,7 +207,10 @@ export async function POST(req: NextRequest) {
           weekday: "long",
           day: "numeric",
         });
-        results.set(dayStr, Number(row.value));
+        results.set(dayStr, {
+          active: Number(row.active),
+          baja: Number(row.baja),
+        });
       });
     } else if (date_range && date_range.from && date_range.to) {
       const fromDate = new Date(date_range.from);
@@ -203,7 +226,7 @@ export async function POST(req: NextRequest) {
           weekday: "long",
           day: "numeric",
         }); // Ejemplo: "martes 13"
-        results.set(dateStr, 0);
+        results.set(dateStr, { active: 0, baja: 0 });
       }
 
       // Poblar los valores obtenidos de la consulta
@@ -215,16 +238,20 @@ export async function POST(req: NextRequest) {
         });
 
         if (results.has(dateStr)) {
-          results.set(dateStr, Number(row.value));
+          results.set(dateStr, {
+            active: Number(row.active),
+            baja: Number(row.baja),
+          });
         }
       });
     }
 
     return NextResponse.json({
       success: true,
-      data: Array.from(results.entries()).map(([field, value]) => ({
+      data: Array.from(results.entries()).map(([field, values]) => ({
         field,
-        active: value,
+        active: values.active,
+        baja: values.baja,
       })),
     });
   } catch (error) {

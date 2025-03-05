@@ -16,6 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import Image from "next/image";
 import Link from "next/link";
@@ -79,7 +80,7 @@ const DEFAULT_LOGO = "/logo.webp";
 export function SidebarComponent() {
   const pathname = usePathname();
   const { userData } = useUser();
-
+  const { open } = useSidebar();
   // Obtener el logo de forma segura
   const organizationLogo = userData?.organization?.logo || DEFAULT_LOGO;
 
@@ -96,19 +97,23 @@ export function SidebarComponent() {
   };
 
   return (
-    <Sidebar id="sidebar-menu" collapsible="icon">
+    <Sidebar variant="inset" id="sidebar-menu" collapsible="icon">
       <SidebarHeader className="py-4">
         <Link href="/">
-          <div className="flex items-center gap-2 w-auto">
+          <div className="flex items-center w-auto">
             <Image
               src={organizationLogo}
               alt="Logo"
-              width={50}
-              height={50}
+              width={60}
+              height={60}
               priority
             />
-            <h2 className="text-3xl font-bold">
-              {userData?.organization?.name || "Nombre de la organización"}
+            <h2
+              className={`block overflow-hidden text-3xl font-bold uppercase text-[var(--primary-color-800)] animate-size ${
+                open ? "w-auto" : "w-0"
+              }`}
+            >
+              {userData?.organization?.name}
             </h2>
           </div>
         </Link>

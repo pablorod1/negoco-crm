@@ -39,11 +39,16 @@ const chartConfig = {
     label: "Activos",
     color: "var(--primary-color-500)",
   },
+  baja: {
+    label: "Bajas",
+    color: "var(--danger-color)",
+  },
 } satisfies ChartConfig;
 
 interface TramitesData {
   field: string;
   active: number;
+  baja: number;
 }
 
 export function PersonalTramitesChart({
@@ -72,8 +77,12 @@ export function PersonalTramitesChart({
         }),
       });
 
-      const data = await res.json();
-      setChartData(data.data);
+      const { data, success, error } = await res.json();
+      if (!success) {
+        console.error("Error fetching personal tramites data:", error);
+        return;
+      }
+      setChartData(data);
     } catch (error) {
       console.error("Error fetching personal tramites data:", error);
     }
@@ -195,6 +204,19 @@ export function PersonalTramitesChart({
                   stopOpacity={0.1}
                 />
               </linearGradient>
+
+              <linearGradient id="fillBaja" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  stopColor="var(--danger-color)"
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="95%"
+                  stopColor="var(--bg-danger)"
+                  stopOpacity={0.1}
+                />
+              </linearGradient>
             </defs>
             <CartesianGrid vertical={false} />
             <XAxis
@@ -212,6 +234,13 @@ export function PersonalTramitesChart({
               fill="url(#fillActive)"
               fillOpacity={0.4}
               stroke="var(--primary-color-800)"
+            />
+            <Area
+              dataKey="baja"
+              type="monotone"
+              fill="url(#fillBaja)"
+              fillOpacity={0.4}
+              stroke="var(--danger-color)"
             />
             <ChartLegend content={<ChartLegendContent className="mt-6" />} />
           </AreaChart>

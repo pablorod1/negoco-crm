@@ -1,9 +1,15 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
 import { formatDate } from "@/lib/core/format";
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUpDown,
+  ArrowUpIcon,
+  Copy,
+  EllipsisVertical,
+} from "lucide-react";
 import { Chip } from "@heroui/chip";
 import { TramiteVM } from "@/lib/core/types";
 import EditTramiteDialog from "../EditTramiteDialog";
@@ -11,10 +17,12 @@ import { copyLink } from "@/lib/core/utils";
 
 export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
   {
+    id: "id",
     accessorKey: "id",
     header: "ID",
   },
   {
+    id: "Fecha de Creación",
     accessorKey: "creation_date",
     header: ({ column }) => {
       return (
@@ -51,10 +59,12 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comercial",
     accessorKey: "sales_name",
     header: "Comercial",
   },
   {
+    id: "Cliente",
     accessorKey: "client_name",
     header: "Cliente",
     cell: ({ row }) => {
@@ -69,6 +79,7 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "CUPS",
     accessorKey: "CUPS",
     header: "CUPS",
     cell: ({ row }) => {
@@ -89,6 +100,7 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Compañía",
     accessorKey: "company",
     header: "Compañía",
     cell: ({ row }) => {
@@ -107,6 +119,7 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comisión",
     accessorKey: "comision",
     header: ({}) => {
       return <span className="flex justify-end text-end">Comisión</span>;
@@ -122,6 +135,7 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comisión Comercial",
     accessorKey: "comision_sales_person",
     header: ({}) => {
       return (
@@ -141,6 +155,7 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Liquidez",
     accessorKey: "liquidez_status",
     header: ({}) => {
       return <span className="flex justify-end text-end">Liquidez</span>;
@@ -178,7 +193,18 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      return <EditTramiteDialog tramite_id={row.original.id} />;
+      return (
+        <Popover placement="bottom">
+          <PopoverTrigger asChild>
+            <Button color="default" variant="light" isIconOnly>
+              <EllipsisVertical size={20} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px]">
+            <EditTramiteDialog tramite_id={row.original.id} />
+          </PopoverContent>
+        </Popover>
+      );
     },
   },
 ];

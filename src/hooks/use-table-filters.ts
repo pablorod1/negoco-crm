@@ -8,7 +8,6 @@ export function useTableFilters(id?: string) {
   const [liquidezStatusFilter, setLiquidezStatusFilter] = useState<string[]>(
     []
   );
-  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 
   const resetFilters = () => {
     setCompanyFilter([]);
@@ -24,13 +23,11 @@ export function useTableFilters(id?: string) {
     statusFilter,
     contractTypeFilter,
     liquidezStatusFilter,
-    selectedColumns,
     setFilterValue,
     setCompanyFilter,
     setStatusFilter,
     setContractTypeFilter,
     resetFilters,
     setLiquidezStatusFilter,
-    setSelectedColumns,
   };
 }

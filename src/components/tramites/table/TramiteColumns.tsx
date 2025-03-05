@@ -42,10 +42,12 @@ const DeleteTramiteWithUserData = ({ tramite }: { tramite: TramiteVM }) => {
 
 export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
   {
+    id: "id",
     accessorKey: "id",
     header: "ID",
   },
   {
+    id: "Fecha de Creación",
     accessorKey: "creation_date",
     header: ({ column }) => {
       return (
@@ -82,6 +84,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Fecha de Renovación",
     accessorKey: "renovation_date",
     header: ({ column }) => {
       return (
@@ -124,10 +127,12 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comercial",
     accessorKey: "sales_name",
     header: "Comercial",
   },
   {
+    id: "Cliente",
     accessorKey: "client_name",
     header: "Cliente",
     cell: ({ row }) => {
@@ -155,6 +160,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "CUPS",
     accessorKey: "CUPS",
     header: "CUPS",
     cell: ({ row }) => {
@@ -185,6 +191,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Compañía",
     accessorKey: "company",
     header: "Compañía",
     cell: ({ row }) => {
@@ -204,6 +211,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
   },
 
   {
+    id: "Contrato",
     accessorKey: "contract_type",
     header: "Contrato",
     cell: ({ row }) => {
@@ -227,6 +235,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Estado",
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
@@ -287,10 +296,12 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
 
 export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
   {
+    id: "id",
     accessorKey: "id",
     header: "ID",
   },
   {
+    id: "Fecha de Creación",
     accessorKey: "creation_date",
     header: ({ column }) => {
       return (
@@ -327,6 +338,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Fecha de Renovación",
     accessorKey: "renovation_date",
     header: ({ column }) => {
       return (
@@ -369,10 +381,12 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comercial",
     accessorKey: "sales_name",
     header: "Comercial",
   },
   {
+    id: "Cliente",
     accessorKey: "client_name",
     header: "Cliente",
     cell: ({ row }) => {
@@ -400,6 +414,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "CUPS",
     accessorKey: "CUPS",
     header: "CUPS",
     cell: ({ row }) => {
@@ -430,6 +445,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Compañía",
     accessorKey: "company",
     header: "Compañía",
     cell: ({ row }) => {
@@ -449,6 +465,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
   },
 
   {
+    id: "Contrato",
     accessorKey: "contract_type",
     header: "Contrato",
     cell: ({ row }) => {
@@ -472,6 +489,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comisión",
     accessorKey: "comision_sales_person",
     header: "Comisión",
     cell: ({ row }) => {
@@ -488,6 +506,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
   },
 
   {
+    id: "Estado",
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
@@ -521,6 +540,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Liquidez",
     accessorKey: "liquidez_status",
     header: "Liquidez",
     cell: ({ row }) => {
@@ -570,10 +590,12 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
 
 export const TramiteColumns: ColumnDef<TramiteVM>[] = [
   {
+    id: "id",
     accessorKey: "id",
     header: "ID",
   },
   {
+    id: "Fecha de Creación",
     accessorKey: "creation_date",
     header: ({ column }) => {
       return (
@@ -610,6 +632,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Fecha de Renovación",
     accessorKey: "renovation_date",
     header: ({ column }) => {
       return (
@@ -652,10 +675,12 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comercial",
     accessorKey: "sales_name",
     header: "Comercial",
   },
   {
+    id: "Cliente",
     accessorKey: "client_name",
     header: "Cliente",
     cell: ({ row }) => {
@@ -683,6 +708,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "CUPS",
     accessorKey: "CUPS",
     header: "CUPS",
     cell: ({ row }) => {
@@ -713,6 +739,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Compañía",
     accessorKey: "company",
     header: "Compañía",
     cell: ({ row }) => {
@@ -732,6 +759,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
   },
 
   {
+    id: "Contrato",
     accessorKey: "contract_type",
     header: "Contrato",
     cell: ({ row }) => {
@@ -755,6 +783,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comisión",
     accessorKey: "comision",
     header: "Comisión",
     cell: ({ row }) => {
@@ -768,6 +797,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Comisión Comercial",
     accessorKey: "comision_sales_person",
     header: "Comisión Comercial",
     cell: ({ row }) => {
@@ -784,6 +814,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
   },
 
   {
+    id: "Estado",
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
@@ -817,6 +848,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
   },
   {
+    id: "Liquidez",
     accessorKey: "liquidez_status",
     header: "Liquidez",
     cell: ({ row }) => {
@@ -851,7 +883,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     cell: ({ row }) => {
       return (
         <Popover placement="bottom">
-          <PopoverTrigger>
+          <PopoverTrigger asChild>
             <Button color="default" variant="light" isIconOnly>
               <EllipsisVertical size={20} />
             </Button>
