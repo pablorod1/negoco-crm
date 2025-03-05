@@ -44,29 +44,12 @@ export async function POST(req: NextRequest) {
     date(creation_date) as date,
     COUNT(CASE WHEN status = 'Activo' THEN 1 ELSE NULL END) as active,
     COUNT(CASE WHEN status = 'Baja' THEN 1 ELSE NULL END) as baja
-  FROM tramites`;
+  FROM tramites
+  WHERE `;
 
-    const conditions: string[] = [];
-    const params: (string | number)[] = [];
+    const conditions: string[] = [`user_id = ?`];
+    const params: (string | number)[] = [id];
     let groupBy: string | undefined;
-
-    if (role === "2") {
-      const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales?id=${id}`
-      );
-      const subcomerciales = await subcomercialesRes.json();
-      if (subcomerciales.success && subcomerciales.ids) {
-        conditions.push(
-          `(user_id = ? OR user_id IN (${subcomerciales.ids
-            .map(() => "?")
-            .join(", ")}))`
-        );
-        params.push(id as string, ...subcomerciales.ids);
-      } else {
-        conditions.push(`user_id = ?`);
-        params.push(id as string);
-      }
-    }
 
     if (time_range) {
       switch (time_range) {
@@ -107,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(" AND ")}`;
+      query += ` ${conditions.join(" AND ")}`;
     }
 
     if (groupBy) {

@@ -6,22 +6,27 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  useDisclosure,
 } from "@heroui/modal";
 import { Button } from "@heroui/react";
 
 import EditTramiteDialog from "./EditTramiteDialog";
 import { useTramites } from "@/contexts/TramitesContext";
 import { showCustomToast } from "../core/CustomToast";
+import { useState } from "react";
 
 interface Props {
   tramite_id: string;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export default function RenewTramiteConfirmationDialog({ tramite_id }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+export default function RenewTramiteConfirmationDialog({
+  tramite_id,
+  isOpen,
+  onClose,
+}: Props) {
   const { refreshTramites } = useTramites();
-
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const handleRenewTramite = async () => {
     try {
       const res = await fetch(`/api/tramites/renew`, {
@@ -67,14 +72,6 @@ export default function RenewTramiteConfirmationDialog({ tramite_id }: Props) {
 
   return (
     <>
-      <Button
-        variant="faded"
-        isIconOnly
-        onPress={onOpen}
-        className="border-0 bg-transparent"
-      >
-        <RefreshCcw className="h-4 w-4 text-gray-500" />
-      </Button>
       <Modal
         size="xl"
         inert={!isOpen}
@@ -90,7 +87,9 @@ export default function RenewTramiteConfirmationDialog({ tramite_id }: Props) {
           </ModalHeader>
           <ModalBody className="flex flex-row items-center gap-4">
             <span>Tramite - {tramite_id}</span>
-            <EditTramiteDialog tramite_id={tramite_id} />
+            <Button onPress={() => setIsEditOpen(true)} variant="light">
+              Visualizar trámite
+            </Button>
           </ModalBody>
           <ModalFooter className="flex justify-end items-center gap-2">
             <Button variant="ghost" color="danger" onPress={onClose}>
@@ -102,6 +101,12 @@ export default function RenewTramiteConfirmationDialog({ tramite_id }: Props) {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      <EditTramiteDialog
+        tramite_id={tramite_id}
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+      />
     </>
   );
 }

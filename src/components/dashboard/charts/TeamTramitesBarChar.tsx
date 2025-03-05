@@ -36,15 +36,16 @@ const chartConfig = {
     label: "Activos",
     color: "var(--primary-color-700)",
   },
-  pending: {
-    label: "Pendientes",
-    color: "var(--primary-color-400)",
+  baja: {
+    label: "Bajas",
+    color: "var(--danger-color)",
   },
 } satisfies ChartConfig;
 
 interface Data {
   user: Partial<User>;
   active: number;
+  baja: number;
 }
 
 export function TeamTramitesBarChart({
@@ -272,6 +273,7 @@ export function TeamTramitesBarChart({
               }
             />
             <Bar dataKey="active" fill="var(--primary-color-700)" radius={4} />
+            <Bar dataKey="baja" fill="var(--danger-color)" radius={4} />
             <ChartLegend content={<ChartLegendContent />} />
           </BarChart>
         </ChartContainer>

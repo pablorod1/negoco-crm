@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
         u.image,
         u.role,
         u.super_id,
-        COUNT(CASE WHEN t.status = 'Activo' THEN 1 END) as active
+        COUNT(CASE WHEN t.status = 'Activo' THEN 1 END) as active,
+        COUNT(CASE WHEN t.status = 'Baja' THEN 1 END) as baja
       FROM user u
       LEFT JOIN tramites t ON u.id = t.user_id
     `;
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
           super_id: row.super_id as string,
         },
         active: (row.active as number) || 0,
+        baja: (row.baja as number) || 0,
       })),
     });
   } catch (error) {

@@ -300,23 +300,18 @@ export default function EditTramiteForm({
                 onCreateContract={handleCreateContract}
               />
             )}
-            {formData.contracts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center w-full h-12">
-                <p className="text-gray-500 text-base">No hay contratos</p>
-              </div>
-            ) : (
-              <>
-                {formData.contracts.map((contract, index) => (
-                  <ContractPreview
-                    userData={userData as User}
-                    key={index}
-                    contract={contract}
-                    onSavingContract={handleUpdateContract}
-                    tramite={formData.tramite}
-                  />
-                ))}
-              </>
-            )}
+
+            <>
+              {formData.contracts.map((contract, index) => (
+                <ContractPreview
+                  userData={userData as User}
+                  key={index}
+                  contract={contract}
+                  onSavingContract={handleUpdateContract}
+                  tramite={formData.tramite}
+                />
+              ))}
+            </>
           </div>
         </EditFormWrapper>
         <Divider className="bg-[var(--primary-color-300)]" />

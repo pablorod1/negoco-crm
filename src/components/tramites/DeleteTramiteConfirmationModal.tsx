@@ -1,3 +1,4 @@
+"use client";
 import { TramiteVM, User } from "@/lib/core/types";
 import {
   Modal,
@@ -5,23 +6,27 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  useDisclosure,
 } from "@heroui/modal";
 import { Button } from "@heroui/react";
-import { AlertTriangle, CheckCircle, CircleX, Trash } from "lucide-react";
+import { AlertTriangle, CheckCircle, CircleX } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
 import EditTramiteDialog from "./EditTramiteDialog";
 import { useTramites } from "@/contexts/TramitesContext";
+import { useState } from "react";
 
 export default function DeleteTramiteConfirmationModal({
   tramite,
   userData,
+  isOpen,
+  onClose,
 }: {
   tramite: TramiteVM;
   userData: User;
+  isOpen: boolean;
+  onClose: () => void;
 }) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
   const { refreshTramites } = useTramites();
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleDelete = async () => {
     try {
@@ -70,15 +75,6 @@ export default function DeleteTramiteConfirmationModal({
   };
   return (
     <>
-      <Button
-        variant="faded"
-        onPress={onOpen}
-        color="danger"
-        className="border-0 bg-transparent w-full flex justify-start gap-4"
-        startContent={<Trash className="h-4 w-4 text-red-500" />}
-      >
-        Eliminar
-      </Button>
       <Modal size="2xl" isOpen={isOpen} onClose={onClose}>
         <ModalContent>
           <ModalHeader className="flex items-start gap-4">
@@ -98,7 +94,9 @@ export default function DeleteTramiteConfirmationModal({
               Comprueba el trámite antes de eliminarlo. Esta acción no se puede
               deshacer.
             </span>
-            <EditTramiteDialog tramite_id={tramite.id} />
+            <Button onPress={() => setIsEditOpen(true)} variant="light">
+              Visualizar trámite
+            </Button>
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" color="default" onPress={onClose}>
@@ -110,6 +108,12 @@ export default function DeleteTramiteConfirmationModal({
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      <EditTramiteDialog
+        tramite_id={tramite.id}
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+      />
     </>
   );
 }

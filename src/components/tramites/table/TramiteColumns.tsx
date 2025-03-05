@@ -1,44 +1,14 @@
 "use client";
 
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { formatDate } from "@/lib/core/format";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUpDown,
-  ArrowUpIcon,
-  Copy,
-  EllipsisVertical,
-} from "lucide-react";
+import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
 import { Tooltip } from "@heroui/tooltip";
 import { Chip } from "@heroui/chip";
-import { TramiteVM, User } from "@/lib/core/types";
-import EditTramiteDialog from "../EditTramiteDialog";
-import RenewTramiteConfirmationDialog from "../RenewTramiteConfirmationDialog";
+import { TramiteVM } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
-import DeleteTramiteConfirmationModal from "../DeleteTramiteConfirmationModal";
-import { useUser } from "@/contexts/UserContext";
-
-const getOneMonthBeforeRenovationDate = (renovation_date: string) => {
-  // check if today is one month before the renovation date
-  const today = new Date();
-  const renovationDate = new Date(renovation_date);
-  const oneMonthBefore = new Date(renovationDate);
-  oneMonthBefore.setMonth(renovationDate.getMonth() - 1);
-
-  return today.getTime() > oneMonthBefore.getTime();
-};
-
-const DeleteTramiteWithUserData = ({ tramite }: { tramite: TramiteVM }) => {
-  const { userData } = useUser();
-
-  return (
-    <DeleteTramiteConfirmationModal
-      tramite={tramite}
-      userData={userData as User}
-    />
-  );
-};
+import TramiteDropdown from "./TramiteDropdown";
 
 export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
   {
@@ -271,25 +241,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      return (
-        <Popover placement="bottom" showArrow={true}>
-          <PopoverTrigger>
-            <Button>
-              <EllipsisVertical size={20} />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent>
-            <div className="flex flex-col">
-              <EditTramiteDialog tramite_id={row.original.id} />
-              {getOneMonthBeforeRenovationDate(
-                row.original.renovation_date
-              ) && (
-                <RenewTramiteConfirmationDialog tramite_id={row.original.id} />
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
+      return <TramiteDropdown tramite={row.original} />;
     },
   },
 ];
@@ -565,25 +517,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      return (
-        <Popover placement="bottom" showArrow={true}>
-          <PopoverTrigger>
-            <Button>
-              <EllipsisVertical size={20} />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent>
-            <div className="flex flex-col">
-              <EditTramiteDialog tramite_id={row.original.id} />
-              {getOneMonthBeforeRenovationDate(
-                row.original.renovation_date
-              ) && (
-                <RenewTramiteConfirmationDialog tramite_id={row.original.id} />
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
+      return <TramiteDropdown tramite={row.original} />;
     },
   },
 ];
@@ -881,26 +815,7 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      return (
-        <Popover placement="bottom">
-          <PopoverTrigger asChild>
-            <Button color="default" variant="light" isIconOnly>
-              <EllipsisVertical size={20} />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[200px]">
-            <div className="flex flex-col items-start w-full">
-              <DeleteTramiteWithUserData tramite={row.original} />
-              <EditTramiteDialog tramite_id={row.original.id} />
-              {getOneMonthBeforeRenovationDate(
-                row.original.renovation_date
-              ) && (
-                <RenewTramiteConfirmationDialog tramite_id={row.original.id} />
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
+      return <TramiteDropdown tramite={row.original} />;
     },
   },
 ];
