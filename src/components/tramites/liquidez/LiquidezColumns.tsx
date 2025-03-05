@@ -1,19 +1,13 @@
 "use client";
 
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
 import { formatDate } from "@/lib/core/format";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUpDown,
-  ArrowUpIcon,
-  Copy,
-  EllipsisVertical,
-} from "lucide-react";
+import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
 import { Chip } from "@heroui/chip";
 import { TramiteVM } from "@/lib/core/types";
-import EditTramiteDialog from "../EditTramiteDialog";
 import { copyLink } from "@/lib/core/utils";
+import LiquidezDropdown from "./LiquidezDropdown";
+import { Button } from "@heroui/react";
 
 export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
   {
@@ -193,18 +187,7 @@ export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      return (
-        <Popover placement="bottom">
-          <PopoverTrigger asChild>
-            <Button color="default" variant="light" isIconOnly>
-              <EllipsisVertical size={20} />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[200px]">
-            <EditTramiteDialog tramite_id={row.original.id} />
-          </PopoverContent>
-        </Popover>
-      );
+      return <LiquidezDropdown tramite={row.original} />;
     },
   },
 ];
