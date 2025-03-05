@@ -28,9 +28,21 @@ export default function RenewableTramitesCalendar({
 
   const fetchTramites = React.useCallback(async () => {
     try {
-      const res = await fetch(`
-        /api/tramites/get/renewable?userData=${JSON.stringify(userData)}
-      `);
+      const res = await fetch(
+        `
+        /api/tramites/get/renewable
+      `,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: userData.id,
+            role: userData.role,
+          }),
+        }
+      );
       const { data, success, error } = await res.json();
 
       if (!success && error) {

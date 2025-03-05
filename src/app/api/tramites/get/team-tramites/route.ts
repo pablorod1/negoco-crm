@@ -1,13 +1,22 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const userData = JSON.parse(searchParams.get("userData") || "{}");
-    const time_range = searchParams.get("time_range") || "year";
+    const {
+      id,
+      role,
+      time_range,
+    }: {
+      id: string;
+      role: string;
+      time_range: string;
+    } = await req.json();
+    // const searchParams = req.nextUrl.searchParams;
+    // const userData = JSON.parse(searchParams.get("userData") || "{}");
+    // const time_range = searchParams.get("time_range") || "year";
 
-    if (!userData.id || !userData.role) {
+    if (!id || !role) {
       return NextResponse.json(
         {
           success: false,
@@ -43,14 +52,14 @@ export async function GET(req: NextRequest) {
     `;
     const params: (string | number)[] = [];
 
-    if (userData.role === "2") {
+    if (role === "2") {
       // Para comerciales, obtener stats de sus subcomerciales
       query += ` WHERE u.super_id = ?`;
-      params.push(userData.id);
+      params.push(id);
     } else {
       // Para otros roles, obtener stats de todos los usuarios excepto él mismo
       query += ` WHERE u.id != ?`;
-      params.push(userData.id);
+      params.push(id);
     }
 
     if (time_range === "current_month") {

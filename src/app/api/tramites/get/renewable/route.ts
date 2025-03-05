@@ -1,12 +1,11 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const userData = JSON.parse(searchParams.get("userData") || "{}");
+    const { role, id } = await req.json();
 
-    if (!userData.id || !userData.role) {
+    if (!id || !role) {
       return NextResponse.json(
         {
           success: false,
@@ -31,19 +30,19 @@ export async function GET(req: NextRequest) {
     let query = `SELECT id, sales_name, renovation_date AS renovationDate FROM tramites WHERE status = 'Activo'`;
     const params: (string | number)[] = [];
 
-    if (userData.role === "2") {
+    if (role === "2") {
       const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales?id=${userData.id}`
+        `${req.nextUrl.origin}/api/users/get/subcomerciales?id=${id}`
       );
       const subcomerciales = await subcomercialesRes.json();
       if (subcomerciales.success && subcomerciales.ids) {
         query += ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")}))`;
-        params.push(userData.id, ...subcomerciales.ids);
+        params.push(id, ...subcomerciales.ids);
       } else {
         query += ` AND user_id = ?`;
-        params.push(userData.id);
+        params.push(id);
       }
     }
 

@@ -71,11 +71,17 @@ export function TeamTramitesBarChart({
   const fetchTramites = React.useCallback(async () => {
     try {
       if (selectedComercial === "all") {
-        const res = await fetch(
-          `/api/tramites/get/team-tramites?time_range=${timeRange}&userData=${JSON.stringify(
-            userData
-          )}`
-        );
+        const res = await fetch(`/api/tramites/get/team-tramites`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: userData.id,
+            role: userData.role,
+            time_range: timeRange,
+          }),
+        });
         const { data, success, error } = await res.json();
 
         if (!success && error) {
