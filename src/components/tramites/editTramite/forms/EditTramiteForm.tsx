@@ -149,6 +149,7 @@ export default function EditTramiteForm({
         icon: CircleX,
       });
       setLoading(false);
+      return;
     }
     if (
       !changes.client &&

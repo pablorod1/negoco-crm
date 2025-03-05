@@ -170,7 +170,9 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
                 className="capitalize"
               />
               <ChartLegend content={<ChartLegendContent />} />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip
+                content={<ChartTooltipContent indicator="line" />}
+              />
 
               <Bar
                 dataKey="active"

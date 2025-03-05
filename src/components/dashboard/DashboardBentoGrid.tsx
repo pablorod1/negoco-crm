@@ -159,12 +159,12 @@ export default function DashboardBentoGrid() {
             userData={userData}
             textSize="text-2xl"
           />
-          <div className="ml-4 flex flex-col flex-nowrap">
+          <div className="ml-4 flex flex-col flex-nowrap gap-2">
             <h1 className="text-3xl font-bold text-white text-nowrap">
               Bienvenido, {userData.name} 👋
             </h1>
             {userData.notifications ? (
-              <p className="text-sm text-red-500 flex items-center text-nowrap">
+              <p className="text-sm text-gray-50 flex items-center text-nowrap">
                 <Bell className="w-5 h-5 mr-2" /> Tienes{" "}
                 {userData.notifications} notificaciones pendientes
               </p>

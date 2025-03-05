@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
       success: true,
       data: Array.from(results.entries()).map(([field, value]) => ({
         field,
-        value,
+        active: value,
       })),
     });
   } catch (error) {

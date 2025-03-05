@@ -207,7 +207,9 @@ export function TramitesResumePieChart({
                 layout="horizontal"
                 align="center"
               />
-              <ChartTooltip cursor={true} content={<ChartTooltipContent />} />
+              <ChartTooltip
+                content={<ChartTooltipContent indicator="line" />}
+              />
               <Pie
                 data={chartData}
                 dataKey="value"

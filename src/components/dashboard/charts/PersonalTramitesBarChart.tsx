@@ -36,14 +36,14 @@ const chartConfig = {
     label: "Tramites",
   },
   active: {
-    label: "Trámites",
+    label: "Activos",
     color: "var(--primary-color-500)",
   },
 } satisfies ChartConfig;
 
 interface TramitesData {
   field: string;
-  value: number;
+  active: number;
 }
 
 export function PersonalTramitesChart({
@@ -173,12 +173,12 @@ export function PersonalTramitesChart({
           config={chartConfig}
           className=" max-h-[260px] h-auto w-full py-4"
         >
-          <AreaChart data={chartData}>
+          <AreaChart accessibilityLayer data={chartData}>
             <CartesianGrid vertical={false} />
 
             <ChartTooltip
               content={
-                <ChartTooltipContent className="capitalize" indicator="dot" />
+                <ChartTooltipContent className="capitalize" indicator="line" />
               }
             />
 
@@ -207,7 +207,7 @@ export function PersonalTramitesChart({
               className=" capitalize overflow-visible"
             />
             <Area
-              dataKey="value"
+              dataKey="active"
               type="monotone"
               fill="url(#fillActive)"
               fillOpacity={0.4}

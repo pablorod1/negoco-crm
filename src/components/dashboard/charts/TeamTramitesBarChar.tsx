@@ -264,7 +264,12 @@ export function TeamTramitesBarChart({
               className="capitalize"
             />
             <ChartTooltip
-              content={<ChartTooltipContent className="w-[200px] capitalize" />}
+              content={
+                <ChartTooltipContent
+                  indicator="line"
+                  className="w-[200px] capitalize"
+                />
+              }
             />
             <Bar dataKey="active" fill="var(--primary-color-700)" radius={4} />
             <ChartLegend content={<ChartLegendContent />} />
