@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import CreateUserModal from "@/components/colaboradores/CreateUserModal";
 import UsersGridTable from "@/components/colaboradores/UsersGrid";
 import { User } from "@/lib/core/types";
-import { useUser } from "@/contexts/UserContext";
-import { useUsers } from "@/contexts/UsersContext"; // Importar el nuevo contexto
+import { useUser } from "@/lib/contexts/UserContext";
+import { useUsers } from "@/lib/contexts/UsersContext"; // Importar el nuevo contexto
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleX } from "lucide-react";
 
@@ -33,11 +33,13 @@ export default function ColaboradoresPage() {
     setState((prev) => ({ ...prev, loading: true }));
 
     try {
-      const res = await fetch(
-        `/api/users/get/users${
-          userData ? `?role=${userData.role}&id=${userData.id}` : ""
-        }`
-      );
+      const res = await fetch(`/api/users/get/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: userData?.id, role: userData?.role }),
+      });
       const { success, data } = await res.json();
 
       if (!success) {

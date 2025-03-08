@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { authClient } from "@/lib/auth/auth-client";
 import { User } from "@/lib/core/types";
 import { showCustomToast } from "../core/CustomToast";

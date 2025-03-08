@@ -2,7 +2,7 @@ import { useState } from "react";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
 import { authClient } from "@/lib/auth/auth-client";
 import { User } from "@/lib/core/types";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle, CircleX, PencilOff } from "lucide-react";
 

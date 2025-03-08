@@ -15,11 +15,13 @@ import {
 import { LayoutGrid, List } from "lucide-react";
 import { User } from "@/lib/core/types";
 import { formatTimestamp } from "@/lib/core/format";
-import { Button, Chip, Spinner } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
+import { Spinner } from "@heroui/spinner";
 import { ROLES } from "@/lib/core/const";
 import AvatarComponent from "../core/AvatarComponent";
 import DeleteUserConfirmationModal from "./BanUserConfirmationModal";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import UnbanUserConfirmationModal from "./UnbanUserConfirmationModal";
 
 const columnHelper = createColumnHelper<User>();
@@ -147,7 +149,12 @@ function UsersGridTable({
     <section className="relative">
       {loading ? (
         <div className="w-full h-44 flex items-center justify-center">
-          <Spinner size="lg" label="Cargando..." color="primary" />
+          <Spinner
+            variant="gradient"
+            size="lg"
+            label="Cargando lista de usuarios..."
+            color="primary"
+          />
         </div>
       ) : (
         <>

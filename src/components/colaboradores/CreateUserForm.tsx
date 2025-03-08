@@ -1,10 +1,11 @@
 import React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input, Select, SelectItem } from "@heroui/react";
+import { Select, SelectItem } from "@heroui/select";
+import { Input } from "@heroui/input";
 import { authClient } from "@/lib/auth/auth-client";
 import { ROLES } from "@/lib/core/const";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import { showCustomToast } from "../core/CustomToast";
 import { UserRoundCheck, UserRoundX } from "lucide-react";
 
@@ -40,11 +41,13 @@ export default function CreateUserForm({
   const [comerciales, setComerciales] = useState<Comercial[]>([]);
 
   const fetchComerciales = useCallback(async () => {
-    const res = await fetch(
-      `/api/users/get/users${
-        userData ? `?role=${userData.role}&id=${userData.id}` : ""
-      }`
-    );
+    const res = await fetch(`/api/users/get/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: userData?.id, role: userData?.role }),
+    });
     const { success, data } = await res.json();
 
     if (!success) {
@@ -238,9 +241,7 @@ export default function CreateUserForm({
         label="Rol"
       >
         {ROLES.map((role, index) => (
-          <SelectItem key={index} value={index}>
-            {role}
-          </SelectItem>
+          <SelectItem key={index}>{role}</SelectItem>
         ))}
       </Select>
 
@@ -252,7 +253,7 @@ export default function CreateUserForm({
           selectedKeys={[formData.super_id]}
         >
           {comerciales.map((item) => (
-            <SelectItem key={item.id} value={item.id} textValue={item.name}>
+            <SelectItem key={item.id} textValue={item.name}>
               {item.name}
             </SelectItem>
           ))}

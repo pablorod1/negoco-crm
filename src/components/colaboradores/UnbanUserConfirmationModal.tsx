@@ -1,17 +1,17 @@
 import {
-  Button,
   Modal,
   ModalBody,
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Tooltip,
   useDisclosure,
-} from "@heroui/react";
+} from "@heroui/modal";
+import { Tooltip } from "@heroui/tooltip";
+import { Button } from "@heroui/button";
 import { showCustomToast } from "../core/CustomToast";
 import { authClient } from "@/lib/auth/auth-client";
 import { AlertTriangle, Ban, Unlock, UserRoundX } from "lucide-react";
-import { useUsers } from "@/contexts/UsersContext";
+import { useUsers } from "@/lib/contexts/UsersContext";
 
 interface Props {
   user_id: string;

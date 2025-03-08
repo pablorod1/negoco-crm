@@ -2,10 +2,10 @@
 import UpdatePassword from "@/components/profile/UpdatePassword";
 import UpdateUser from "@/components/profile/UpdateUser";
 import UploadAvatar from "@/components/profile/UploadAvatar";
-import { Button } from "@heroui/react";
-import { useUser } from "@/contexts/UserContext";
+import { Button } from "@heroui/button";
+import { useUser } from "@/lib/contexts/UserContext";
 import { User } from "@/lib/core/types";
-import { Divider } from "@heroui/react";
+import { Divider } from "@heroui/divider";
 import { authClient } from "@/lib/auth/auth-client";
 import { redirect } from "next/navigation";
 

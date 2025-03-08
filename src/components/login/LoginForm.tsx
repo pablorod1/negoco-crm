@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Checkbox, Input } from "@heroui/react";
+import { Input } from "@heroui/input";
+import { Checkbox } from "@heroui/checkbox";
 import { motion } from "framer-motion";
 import { Zap, Lock, Mail } from "lucide-react";
 import { authClient } from "@/lib/auth/auth-client";

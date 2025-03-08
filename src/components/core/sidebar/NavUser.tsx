@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth/auth-client";
 import { redirect } from "next/navigation";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import Link from "next/link";
 import AvatarComponent from "../AvatarComponent";
 

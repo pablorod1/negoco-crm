@@ -1,7 +1,7 @@
 import { User } from "@/lib/core/types";
 import AvatarComponent from "../core/AvatarComponent";
 import { useState } from "react";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle, FileX2 } from "lucide-react";
 
