@@ -5,6 +5,7 @@ import {
   ReceiptText,
   Folder,
   Coins,
+  NotebookPen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,7 +23,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { NavUser } from "./NavUser";
 import { usePathname } from "next/navigation";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
+import { Tooltip } from "@heroui/tooltip";
 
 const items = [
   {
@@ -52,6 +54,11 @@ const direccionItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Comparativas",
+    url: "/comparativas",
+    icon: NotebookPen,
   },
   {
     title: "Trámites",
@@ -124,19 +131,24 @@ export function SidebarComponent() {
             <SidebarMenu className="gap-8">
               {getItemsByRole().map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    className={`${
-                      pathname === item.url
-                        ? "bg-[var(--primary-color-500)] text-white"
-                        : ""
-                    } text-lg gap-4 hover:bg-[var(--primary-color-400)] hover:text-white transition-colors duration-200 ease-in-out`}
-                  >
-                    <Link href={item.url} className="inline-flex items-center">
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <Tooltip radius="full" color="primary" content={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={`${
+                        pathname === item.url
+                          ? "bg-[var(--primary-color-500)] text-white"
+                          : ""
+                      }  gap-4 hover:bg-[var(--primary-color-400)] hover:text-white transition-colors duration-200 ease-in-out`}
+                    >
+                      <Link
+                        href={item.url}
+                        className="inline-flex items-center"
+                      >
+                        <item.icon />
+                        <span className="text-base">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </Tooltip>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
