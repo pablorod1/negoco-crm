@@ -37,7 +37,7 @@ const DashboardCard = ({
 
   return (
     <Card
-      className={`relative h-auto backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
+      className={`relative h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
         loading ? "bg-gray-200" : "bg-white"
       } `}
     >

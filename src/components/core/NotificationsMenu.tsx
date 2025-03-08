@@ -6,9 +6,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Badge } from "@heroui/react";
+import { Badge } from "@heroui/badge";
 import { useCallback, useEffect, useState } from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import { formatDateTime } from "@/lib/core/format";
 import Link from "next/link";
 import { Notification } from "@/lib/core/types";

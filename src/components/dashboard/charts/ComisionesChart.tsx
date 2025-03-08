@@ -101,7 +101,7 @@ export function ComisionesChart({
       >
         {!loading && chartData.length > 0 && (
           <ChartContainer
-            className="aspect-auto h-[100px] w-full overflow-visible"
+            className="h-full max-h-[120px] w-full"
             config={chartConfig}
           >
             <AreaChart

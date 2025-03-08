@@ -144,7 +144,7 @@ export function TeamTramitesBarChart({
 
   return (
     <Card
-      className={`relative w-full h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
+      className={`flex flex-col justify-between relative w-full h-full  backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
         loading ? "bg-gray-200" : "bg-white"
       }`}
     >
@@ -156,7 +156,7 @@ export function TeamTramitesBarChart({
         <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
       </div>
       <CardHeader
-        className={`flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row transition-opacity duration-300 ${
+        className={`flex items-start justify-between gap-2  border-b py-5 sm:flex-row transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
@@ -166,86 +166,91 @@ export function TeamTramitesBarChart({
           </CardTitle>
           <CardDescription>{getDescription()}</CardDescription>
         </div>
-        <Select value={selectedComercial} onValueChange={setSelectedComercial}>
-          <SelectTrigger
-            className="w-[260px] rounded-lg sm:ml-auto py-2"
-            aria-label="Selecciona una opción"
-          >
-            <SelectValue placeholder="Vista General" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            <SelectItem value="all" key="all" className="rounded-lg mb-2">
-              Vista General
-            </SelectItem>
-            {comerciales.map((comercial) => (
-              <SelectItem
-                key={comercial.id}
-                value={comercial.id}
-                textValue={comercial.name}
-                className="rounded-lg"
-              >
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage
-                      src={comercial.image as string}
-                      alt={comercial.name}
-                    />
-                    <AvatarFallback className="rounded-lg bg-[var(--primary-color-100)] text-[var(--primary-color-800)]">
-                      {comercial.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span>{comercial.name}</span>
-                </div>
+        <div className="flex flex-row-reverse items-center 2xl:flex-col 2xl:items-end justify-end gap-2">
+          <Select value={timeRange} onValueChange={handleTimeRangeChange}>
+            <SelectTrigger
+              className="w-[160px] rounded-lg sm:ml-auto "
+              aria-label="Select a value"
+            >
+              <SelectValue placeholder="Este mes" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl ">
+              <SelectItem key="year" value="year" className="rounded-lg">
+                Este año
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={timeRange} onValueChange={handleTimeRangeChange}>
-          <SelectTrigger
-            className="w-[160px] rounded-lg sm:ml-auto "
-            aria-label="Select a value"
+              <SelectItem value="90d" className="rounded-lg" key="90d">
+                Últimos 90 días
+              </SelectItem>
+              <SelectItem
+                value="current_month"
+                className="rounded-lg"
+                key="current_month"
+              >
+                Este mes
+              </SelectItem>
+              <SelectItem
+                value="current_week"
+                className="rounded-lg"
+                key="current_week"
+              >
+                Esta semana
+              </SelectItem>
+              <SelectItem
+                value="last_week"
+                className="rounded-lg"
+                key="last_week"
+              >
+                La semana pasada
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={selectedComercial}
+            onValueChange={setSelectedComercial}
           >
-            <SelectValue placeholder="Este mes" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl ">
-            <SelectItem key="year" value="year" className="rounded-lg">
-              Este año
-            </SelectItem>
-            <SelectItem value="90d" className="rounded-lg" key="90d">
-              Últimos 90 días
-            </SelectItem>
-            <SelectItem
-              value="current_month"
-              className="rounded-lg"
-              key="current_month"
+            <SelectTrigger
+              className="w-[260px] rounded-lg sm:ml-auto py-2"
+              aria-label="Selecciona una opción"
             >
-              Este mes
-            </SelectItem>
-            <SelectItem
-              value="current_week"
-              className="rounded-lg"
-              key="current_week"
-            >
-              Esta semana
-            </SelectItem>
-            <SelectItem
-              value="last_week"
-              className="rounded-lg"
-              key="last_week"
-            >
-              La semana pasada
-            </SelectItem>
-          </SelectContent>
-        </Select>
+              <SelectValue placeholder="Vista General" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all" key="all" className="rounded-lg mb-2">
+                Vista General
+              </SelectItem>
+              {comerciales.map((comercial) => (
+                <SelectItem
+                  key={comercial.id}
+                  value={comercial.id}
+                  textValue={comercial.name}
+                  className="rounded-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage
+                        src={comercial.image as string}
+                        alt={comercial.name}
+                      />
+                      <AvatarFallback className="rounded-lg bg-[var(--primary-color-100)] text-[var(--primary-color-800)]">
+                        {comercial.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{comercial.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent
-        className={`flex flex-col lg:flex-row gap-8 justify-center w-full transition-opacity duration-300 ${
+        className={` w-full transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
         <ChartContainer
           config={chartConfig}
-          className="aspect-auto h-[300px] w-full py-4"
+          className="h-full max-h-[300px] w-full py-4"
         >
           <BarChart
             accessibilityLayer

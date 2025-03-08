@@ -16,7 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import AddTramiteDialog from "../tramites/AddTramiteDialog";
+import AddTramiteDialog from "../tramites/createTramite/AddTramiteDialog";
 
 export default function ShortcutsMenu() {
   const shortcuts = [

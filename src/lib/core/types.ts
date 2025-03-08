@@ -224,6 +224,98 @@ export interface Notification {
   user_id: string;
 }
 
+export interface ComparativaDB {
+  id: string;
+  client: string;
+  service: "Luz" | "Gas";
+  plan: ComparativaPlan[];
+  comision: {
+    fijo: number;
+    indexado: number;
+  };
+  comision_sales_person: {
+    fijo: number;
+    indexado: number;
+  };
+  notes: string[];
+  user_id: string;
+  creation_date: string;
+  status: ComparativaStatus;
+  tramite_id: string | undefined;
+}
+
+export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
+  id: `CMP-${Math.floor(Math.random() * 10000)}`,
+  client: "",
+  service: "Luz",
+  plan: [],
+  comision: {
+    fijo: 0,
+    indexado: 0,
+  },
+  comision_sales_person: {
+    fijo: 0,
+    indexado: 0,
+  },
+  notes: [],
+  user_id: userData ? userData.id : "",
+  creation_date: new Date().toISOString(),
+  status: "pending",
+  tramite_id: undefined,
+});
+
+export interface ComparativaVM {
+  id: string;
+  client: string;
+  service: "Luz" | "Gas";
+  plan: ComparativaPlan[];
+  comision: {
+    fijo: number;
+    indexado: number;
+  };
+  comision_sales_person: {
+    fijo: number;
+    indexado: number;
+  };
+  notes: string[];
+  user: Partial<User>;
+  creation_date: string;
+  status: ComparativaStatus;
+  tramite_id: string | undefined;
+  files: Partial<ComparativaFile>[];
+}
+
+export interface ComparativaRow {
+  id: string;
+  client: string;
+  service: "Luz" | "Gas";
+  plan: ComparativaPlan[];
+  comision: {
+    fijo: number;
+    indexado: number;
+  };
+  comision_sales_person: {
+    fijo: number;
+    indexado: number;
+  };
+  user: User;
+  creation_date: string;
+  status: ComparativaStatus;
+}
+
+export type ComparativaFile = {
+  id: string;
+  comparativa_id: string;
+  filename: string;
+  size: number;
+  extension: string;
+  upload_date: string;
+  download_url: string;
+  preview_url: string | null;
+};
+
+export type ComparativaPlan = "fijo" | "indexado";
+
 export type Status =
   | "Borrador"
   | "Tramitable"
@@ -238,6 +330,8 @@ export type LiquidezStatus =
   | "Cobrado por Comercializadora"
   | "Pagado al Comercial"
   | null;
+
+export type ComparativaStatus = "pending" | "completed" | "processed";
 
 export type Cargo =
   | "Presidente de la Comunidad"

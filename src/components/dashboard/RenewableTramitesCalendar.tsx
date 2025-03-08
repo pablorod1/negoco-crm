@@ -1,12 +1,11 @@
 "use client";
 import React from "react";
-import { Calendar } from "../ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { CalendarDays, RefreshCwOff } from "lucide-react";
-import { ScrollArea } from "../ui/scroll-area";
-import TramiteRenovable from "./TramiteRenovable";
-import { es } from "date-fns/locale";
 import { User } from "@/lib/core/types";
+import { DatePickerDemo } from "./DatePicker";
+import { Button } from "@heroui/button";
+import { AnimatedListDemo } from "../core/AnimatedList";
 
 interface RenewableTramite {
   id: string;
@@ -25,6 +24,9 @@ export default function RenewableTramitesCalendar({
   const [renewableDates, setRenewableDates] = React.useState<
     RenewableTramite[]
   >([]);
+  const [mostRecentRenewableDate, setMostRecentRenewableDate] = React.useState<
+    Date | undefined
+  >();
 
   const fetchTramites = React.useCallback(async () => {
     try {
@@ -44,11 +46,14 @@ export default function RenewableTramitesCalendar({
         }
       );
       const { data, success, error } = await res.json();
-
       if (!success && error) {
         throw new Error(error || "Error al obtener trámites renovables");
       }
       setRenewableDates(data);
+      if (data.length > 0) {
+        const mostRecentDate = new Date(data[0].renovationDate);
+        setMostRecentRenewableDate(mostRecentDate);
+      }
     } catch (error) {
       console.error("Error al obtener trámites renovables:", error);
     }
@@ -100,6 +105,10 @@ export default function RenewableTramitesCalendar({
       })
     : [];
 
+  const handleMostRecentRenewableDate = () => {
+    setDate(mostRecentRenewableDate);
+  };
+
   return (
     <Card
       className={`relative w-full h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
@@ -114,7 +123,7 @@ export default function RenewableTramitesCalendar({
         <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
       </div>
       <CardHeader
-        className={`transition-opacity duration-300 ${
+        className={`flex flex-row justify-between w-full transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
@@ -137,41 +146,54 @@ export default function RenewableTramitesCalendar({
             )}
           </CardTitle>
         </div>
-      </CardHeader>
-      <CardContent
-        className={`flex flex-col lg:flex-row gap-8 justify-center w-full transition-opacity duration-300 ${
-          loading ? "opacity-0" : "opacity-100"
-        }`}
-      >
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
+        <DatePickerDemo
+          date={date}
+          setDate={setDate}
           modifiers={{
             renewable: isRenewableDay,
             oneMonthBefore: isOneMonthBeforeRenovationDate,
           }}
           modifiersStyles={modifiersStyles}
-          className="rounded-md capitalize"
-          locale={es}
         />
-        <div className="w-full">
+      </CardHeader>
+      <CardContent
+        className={`flex flex-col lg:flex-row gap-8 justify-center h-full w-full transition-opacity duration-300 ${
+          loading ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <div className="w-full h-full">
           {date ? (
-            <div className="space-y-4 w-full">
+            <div className="space-y-4 w-full h-full">
               {filteredTramites.length > 0 ? (
-                <ScrollArea className="h-72 w-full rounded-md">
-                  <ul className="space-y-2">
-                    {filteredTramites.map((tramite, index) => (
-                      <TramiteRenovable key={index} tramite={tramite} />
-                    ))}
-                  </ul>
-                </ScrollArea>
+                // <ScrollArea className="h-72 w-full rounded-md">
+                //   <ul className="space-y-2">
+                //     {filteredTramites.map((tramite, index) => (
+                //       <TramiteRenovable key={index} tramite={tramite} />
+                //     ))}
+                //   </ul>
+                // </ScrollArea>
+                <AnimatedListDemo items={filteredTramites} />
               ) : (
-                <div className="w-full h-44 flex justify-center items-center flex-col gap-4">
-                  <RefreshCwOff className="size-16 mx-auto text-gray-300" />
-                  <p className="text-gray-500 text-center">
-                    No hay trámites renovables para esta fecha
-                  </p>
+                <div className="w-full h-full flex justify-center items-center flex-col ">
+                  <RefreshCwOff className="size-12 mb-2 text-gray-300" />
+                  {mostRecentRenewableDate && (
+                    <p className="text-gray-500 text-center">
+                      No hay trámites renovables para esta fecha
+                    </p>
+                  )}
+                  {mostRecentRenewableDate ? (
+                    <Button
+                      variant="light"
+                      color="primary"
+                      onPress={handleMostRecentRenewableDate}
+                    >
+                      Ver el próximo trámite renovable
+                    </Button>
+                  ) : (
+                    <p className="text-gray-500 italic">
+                      No hay trámites renovables
+                    </p>
+                  )}
                 </div>
               )}
             </div>

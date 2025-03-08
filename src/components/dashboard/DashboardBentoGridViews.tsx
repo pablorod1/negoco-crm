@@ -9,6 +9,7 @@ import RenewableTramitesCalendar from "./RenewableTramitesCalendar";
 import { PersonalTramitesChart } from "./charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
 import { useCallback, useEffect, useState } from "react";
+import { Card, CardHeader } from "../ui/card";
 
 interface Props {
   userData: User;
@@ -46,36 +47,35 @@ export const DireccionView = ({
   comisionesPendientes,
 }: Props) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-stretch ">
-      <div className="col-span-1 sm:row-span-2 animate-size">
-        <TramitesResumePieChart userData={userData} loading={loading} />
-      </div>
-
+    <div className="grid grid-cols-4 grid-rows-9 2xl:grid-rows-7 gap-6 ">
       <DashboardCard
         title="Clientes"
-        value={clients?.value}
+        value={clients.value}
         description={clients && formatDifferenceText(clients.difference)}
         icon={<Users stroke="var(--primary-color-800)" />}
         loading={loading}
       />
+
       <DashboardCard
         title="Trámites Activos"
-        value={activeTramites?.value}
+        value={activeTramites.value}
         description={
           activeTramites && formatDifferenceText(activeTramites.difference)
         }
         icon={<CheckCircle stroke="var(--primary-color-800)" />}
         loading={loading}
       />
+
       <DashboardCard
         title="Trámites Pendientes"
-        value={pendingTramites?.value}
+        value={pendingTramites.value}
         icon={<TriangleAlert stroke="var(--primary-color-800)" />}
         description={
           pendingTramites && formatDifferenceText(pendingTramites.difference)
         }
         loading={loading}
       />
+
       <DashboardCard
         title="Comisiones Pendientes"
         value={comisionesPendientes}
@@ -83,27 +83,41 @@ export const DireccionView = ({
         icon={<CoinsIcon stroke="var(--primary-color-800)" />}
         loading={loading}
       />
-      <div className="col-span-1 sm:col-span-2  row-span-1">
+
+      <div className="row-start-2 col-start-3">
+        <Card className="h-full w-full">
+          <CardHeader>Ratio Conversión</CardHeader>
+          {/* <ComparativasGlider /> */}
+        </Card>
+      </div>
+      <div className="row-start-2 col-start-4">
+        <Card className="h-full w-full">
+          <CardHeader>Objetivos</CardHeader>
+          {/* <ComparativasGlider /> */}
+        </Card>
+      </div>
+
+      <div className="col-span-2 row-span-2 row-start-2">
+        <Card className="h-full w-full">
+          <CardHeader>Comparativas</CardHeader>
+          {/* <ComparativasGlider /> */}
+        </Card>
+      </div>
+      <div className="col-span-2 row-span-2 col-start-1 row-start-4">
+        {/* <TramitesResumePieChart userData={userData} loading={loading} /> */}
+        <RenewableTramitesCalendar userData={userData} loading={loading} />
+      </div>
+
+      <div className="col-span-2 col-start-3 row-start-3">
         <ComisionesChart userData={userData} loading={loading} />
       </div>
-
-      <div className="col-span-1 sm:col-span-4 xl:col-span-2 row-span-2">
+      <div className="col-span-2 row-span-2 col-start-3 row-start-4">
         <YearlyTramitesBarChart loading={loading} />
       </div>
-
-      <div className="col-span-1 sm:col-span-4 xl:col-span-2 row-span-2">
-        <RenewableTramitesCalendar
-          loading={loading}
-          userData={userData as User}
-        />
-      </div>
-      {/* <div className="col-span-1 sm:col-span-2 2xl:col-span-2 row-span-2">
-          <h2>Comparativas Resume</h2>
-        </div> */}
-      <div className="col-span-1 sm:col-span-4 2xl:col-span-2">
+      <div className="col-span-4 2xl:col-span-2 row-span-2 row-start-6 col-start-1">
         <PersonalTramitesChart userData={userData} loading={loading} />
       </div>
-      <div className="col-span-1 sm:col-span-4 2xl:col-span-2 ">
+      <div className="col-span-4 2xl:col-span-2 row-span-2 col-start-1 2xl:col-start-3 row-start-8 2xl:row-start-6">
         <TeamTramitesBarChart loading={loading} userData={userData} />
       </div>
     </div>

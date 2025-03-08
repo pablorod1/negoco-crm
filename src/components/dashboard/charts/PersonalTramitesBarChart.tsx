@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { DateRangePicker } from "../DateRangePicker";
 import { DateRange } from "react-day-picker";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { CalendarOff } from "lucide-react";
 import { TimeRange, User } from "@/lib/core/types";
 
@@ -111,7 +111,7 @@ export function PersonalTramitesChart({
 
   return (
     <Card
-      className={`flex flex-col justify-between relative h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-300 ${
+      className={`flex flex-col justify-between relative h-full  backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-300 ${
         loading ? "bg-gray-200 " : "bg-white"
       } `}
     >
@@ -123,55 +123,67 @@ export function PersonalTramitesChart({
         <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
       </div>
       <CardHeader
-        className={`flex flex-wrap items-center gap-2 space-y-0 border-b py-5 sm:flex-row transition-opacity duration-300  ${
+        className={`flex  items-start justify-between border-b py-5 sm:flex-row transition-opacity duration-300  ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <div className="grid flex-1 gap-1 text-center sm:text-left">
+        <div className="flex flex-col gap-1 text-center sm:text-left">
           <CardTitle className="text-xl text-[var(--primary-color-800)]">
             Resumen de tus ventas
           </CardTitle>
           <CardDescription>Mostrando las ventas de 2025</CardDescription>
         </div>
-        {dateRange && (
-          <Button
-            onPress={resetDateRange}
-            isIconOnly
-            className="bg-transparent"
+        <div className="flex flex-row-reverse items-center 2xl:flex-col 2xl:items-end justify-end gap-2">
+          <Select
+            disabled={dateRange !== undefined}
+            value={timeRange}
+            onValueChange={handleTimeRangeChange}
           >
-            <CalendarOff width={20} height={20} stroke="var(--danger-color)" />
-          </Button>
-        )}
-        <DateRangePicker
-          className="rounded-lg"
-          date={dateRange}
-          setDateRange={handleDateRangeChange}
-        />
-        <Select value={timeRange} onValueChange={handleTimeRangeChange}>
-          <SelectTrigger
-            className="w-[160px] rounded-lg sm:ml-auto "
-            aria-label="Select a value"
-          >
-            <SelectValue placeholder="Este mes" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl ">
-            <SelectItem value="year" className="rounded-lg">
-              Este año
-            </SelectItem>
-            <SelectItem value="90d" className="rounded-lg">
-              Últimos 90 días
-            </SelectItem>
-            <SelectItem value="current_month" className="rounded-lg">
-              Este mes
-            </SelectItem>
-            <SelectItem value="current_week" className="rounded-lg">
-              Esta semana
-            </SelectItem>
-            <SelectItem value="last_week" className="rounded-lg">
-              La semana pasada
-            </SelectItem>
-          </SelectContent>
-        </Select>
+            <SelectTrigger
+              className="w-[160px] rounded-lg  "
+              aria-label="Select a value"
+            >
+              <SelectValue placeholder="Este mes" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl ">
+              <SelectItem value="year" className="rounded-lg">
+                Este año
+              </SelectItem>
+              <SelectItem value="90d" className="rounded-lg">
+                Últimos 90 días
+              </SelectItem>
+              <SelectItem value="current_month" className="rounded-lg">
+                Este mes
+              </SelectItem>
+              <SelectItem value="current_week" className="rounded-lg">
+                Esta semana
+              </SelectItem>
+              <SelectItem value="last_week" className="rounded-lg">
+                La semana pasada
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            {dateRange && (
+              <Button
+                onPress={resetDateRange}
+                isIconOnly
+                className="bg-transparent"
+              >
+                <CalendarOff
+                  width={20}
+                  height={20}
+                  stroke="var(--danger-color)"
+                />
+              </Button>
+            )}
+            <DateRangePicker
+              className="rounded-lg"
+              date={dateRange}
+              setDateRange={handleDateRangeChange}
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent
         className={`transition-opacity duration-300 w-full ${
@@ -180,7 +192,7 @@ export function PersonalTramitesChart({
       >
         <ChartContainer
           config={chartConfig}
-          className=" max-h-[260px] h-auto w-full py-4"
+          className=" max-h-[300px] h-full w-full py-4"
         >
           <AreaChart accessibilityLayer data={chartData}>
             <CartesianGrid vertical={false} />

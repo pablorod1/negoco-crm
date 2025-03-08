@@ -1,5 +1,5 @@
-import { UpdatedFields } from "@/hooks/track-tramite-changes";
-import { BadgeProps } from "@heroui/react";
+import { UpdatedFields } from "@/lib/hooks/track-tramite-changes";
+import { BadgeProps } from "@heroui/badge";
 import { Notification } from "./types";
 
 export const getColorPriority = (priority: number): BadgeProps["color"] => {

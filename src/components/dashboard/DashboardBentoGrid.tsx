@@ -1,16 +1,15 @@
 "use client";
 
 import React from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import {
   BackofficeView,
   ComercialView,
   DireccionView,
 } from "./DashboardBentoGridViews";
-import { Button, Spinner } from "@heroui/react";
+import { Spinner } from "@heroui/spinner";
 import toast from "react-hot-toast";
-import AvatarComponent from "../core/AvatarComponent";
-import { Bell, CheckCircle, Folder, User } from "lucide-react";
+import Hero from "./Hero";
 
 export interface DashboardCardValue {
   value: number;
@@ -146,53 +145,7 @@ export default function DashboardBentoGrid() {
 
   return (
     <section className="mx-4 md:mx-8 xl:mx-12 px-2 py-8">
-      <div
-        className={`flex items-center justify-between mb-6 bg-gradient-to-br from-[var(--primary-color-600)] to-[var(--primary-color-400)] p-4 rounded-full shadow-md overflow-hidden flex-nowrap animate-size  ${
-          loading ? "w-32 h-32" : "w-auto"
-        }`}
-      >
-        <div className="flex items-center gap-4 flex-nowrap">
-          <AvatarComponent
-            className={`size-24 !rounded-full shadow-md transition-transform duration-300
-               ${loading ? "scale-80" : "scale-100"}`}
-            userData={userData}
-            textSize="text-2xl"
-          />
-          <div className="ml-4 flex flex-col flex-nowrap gap-2">
-            <h1 className="text-3xl font-bold text-white text-nowrap">
-              Bienvenido, {userData.name} 👋
-            </h1>
-            {userData.notifications ? (
-              <p className="text-sm text-gray-50 flex items-center text-nowrap">
-                <Bell className="w-5 h-5 mr-2" /> Tienes{" "}
-                {userData.notifications} notificaciones pendientes
-              </p>
-            ) : (
-              <p className="text-base text-gray-100 flex items-center text-nowrap">
-                <CheckCircle className="w-5 h-5 mr-2" /> No tienes
-                notificaciones pendientes
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-4 flex-nowrap mr-24">
-          <Button
-            variant="solid"
-            radius="sm"
-            startContent={<Folder className="size-5" />}
-          >
-            Documentación
-          </Button>
-          <Button
-            variant="solid"
-            radius="sm"
-            startContent={<User className="size-5" />}
-          >
-            Ver perfil
-          </Button>
-        </div>
-      </div>
-
+      <Hero loading={loading} userData={userData} />
       {isComercial ? (
         <ComercialView
           {...commonProps}

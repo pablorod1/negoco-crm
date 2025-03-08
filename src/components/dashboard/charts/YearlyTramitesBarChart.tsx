@@ -17,11 +17,20 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import React from "react";
+import { Building, User } from "lucide-react";
 
 const chartConfig: ChartConfig = {
   tramites: { label: "Trámites" },
   active: { label: "Activos", color: "var(--primary-color-700)" },
   baja: { label: "Bajas", color: "var(--danger-color)" },
+  comision: {
+    label: "Comisión",
+    color: "var(--primary-color-500)",
+  },
+  comision_sales_person: {
+    label: "Comisión Comercial",
+    color: "var(--danger-color)",
+  },
 };
 
 // Generar un array con los 12 meses en español, asegurando que siempre hay datos.
@@ -30,6 +39,8 @@ const createEmptyData = () =>
     month: new Date(2025, i).toLocaleString("es-ES", { month: "long" }),
     active: 0,
     baja: 0,
+    comision: 0,
+    comision_sales_person: 0,
   }));
 
 export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
@@ -155,7 +166,7 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
       >
         {chartData.length > 0 ? (
           <ChartContainer
-            className="max-h-[260px] h-auto w-full"
+            className="max-h-[300px] h-full w-full"
             config={chartConfig}
           >
             <BarChart data={chartData}>
@@ -164,23 +175,66 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
                 dataKey="month"
                 tickLine={true}
                 tickSize={5}
-                tickMargin={10}
+                tickMargin={15}
                 axisLine={false}
                 tickFormatter={(value) => value.slice(0, 3)}
                 className="capitalize"
               />
-              <ChartLegend content={<ChartLegendContent />} />
+              <ChartLegend
+                content={<ChartLegendContent className="text-sm mt-4" />}
+              />
               <ChartTooltip
-                content={<ChartTooltipContent indicator="line" />}
+                content={
+                  <ChartTooltipContent
+                    className="w-52"
+                    indicator="line"
+                    formatter={(value, name, item, index) => (
+                      <>
+                        <div>
+                          {chartConfig[name as keyof typeof chartConfig]
+                            ?.label === "Comisión" ? (
+                            <Building size={14} />
+                          ) : (
+                            <User size={14} />
+                          )}
+                        </div>
+                        {chartConfig[name as keyof typeof chartConfig]?.label ||
+                          name}
+                        <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
+                          {value}
+                          <span className="font-normal text-muted-foreground">
+                            €
+                          </span>
+                        </div>
+                        {/* Add this after the last item */}
+                        {index === 1 && (
+                          <div className="mt-1.5 flex basis-full items-center border-t pt-1.5 text-xs font-medium text-foreground">
+                            Total
+                            <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
+                              {item.payload.comision -
+                                item.payload.comision_sales_person}
+                              <span className="font-normal text-muted-foreground">
+                                €
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  />
+                }
               />
 
               <Bar
-                dataKey="active"
-                fill="var(--primary-color-700)"
+                dataKey="comision"
+                fill="var(--primary-color-800)"
                 radius={4}
               />
-
-              <Bar dataKey="baja" fill="var(--danger-color)" radius={4} />
+              <Bar
+                dataKey="comision_sales_person"
+                fill="var(--primary-color-500)"
+                radius={4}
+              />
             </BarChart>
           </ChartContainer>
         ) : (

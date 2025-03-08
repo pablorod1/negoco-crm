@@ -20,7 +20,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { User } from "@/lib/core/types";
-import { Spinner } from "@heroui/react";
+import { Spinner } from "@heroui/spinner";
 
 const chartConfig = {
   tramites: {
