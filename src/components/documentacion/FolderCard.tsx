@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDocumentacion } from "@/contexts/DocumentacionContext";
+import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import Image from "next/image";
 import { showCustomToast } from "../core/CustomToast";
 import { User } from "@/lib/core/types";
@@ -82,8 +82,9 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
               <Image
                 src="/file-icons/folder.png"
                 alt="Folder icon"
-                layout="fill"
-                objectFit="contain"
+                width={512}
+                height={512}
+                className="max-w-14 w-full h-full"
               />
             </div>
             <div>

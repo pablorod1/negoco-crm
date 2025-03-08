@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
 import { DocumentacionFile, User } from "@/lib/core/types";
-import { useDocumentacion } from "@/contexts/DocumentacionContext";
+import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import LoadingComponent from "@/components/documentacion/LoadingComponent";
 import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
 import { FileGrid } from "@/components/documentacion/FileGrid";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleX } from "lucide-react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -39,6 +39,7 @@ export default function FolderPage() {
 
   const fetchFiles = useCallback(async () => {
     setIsLoading(true);
+    console.log(currentPath);
     try {
       const filesRes = await fetch(`/api/documentacion/get/files`, {
         method: "POST",

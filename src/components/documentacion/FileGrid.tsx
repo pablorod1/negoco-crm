@@ -3,10 +3,11 @@ import { useState } from "react";
 import { ArrowLeft, Grid2X2, List } from "lucide-react";
 
 import { FileCard } from "./FileCard";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { FolderCard } from "./FolderCard";
-import { BreadcrumbItem, Breadcrumbs, Divider } from "@heroui/react";
+import { BreadcrumbItem, Breadcrumbs } from "@heroui/breadcrumbs";
+import { Divider } from "@heroui/divider";
 import UploadFileModal from "./UploadFileModal";
 import SearchBar from "./SearchBar";
 

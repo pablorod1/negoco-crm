@@ -1,4 +1,4 @@
-import { storage } from "@/firebaseConfig";
+import { storage } from "@/lib/firebase/firebaseConfig";
 import { User } from "@/lib/core/types";
 import {
   deleteObject,

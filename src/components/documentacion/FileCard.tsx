@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 
-import { Tooltip } from "@heroui/react";
+import { Tooltip } from "@heroui/tooltip";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import Image from "next/image";
 import { formatDateTime } from "@/lib/core/format";
@@ -66,12 +66,13 @@ export function FileCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 relative">
+            <div className="relative">
               <Image
                 src={getFileIcon(file) as string}
                 alt={file.type}
-                layout="fill"
-                objectFit="contain"
+                width={512}
+                height={512}
+                className="max-w-20 w-full h-full"
               />
             </div>
             <div className="w-full">

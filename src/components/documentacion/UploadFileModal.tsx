@@ -12,9 +12,9 @@ import {
 import { Folder, ChevronRight, UploadIcon, ChevronDown } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { useDocumentacion } from "@/contexts/DocumentacionContext";
-import { Spinner } from "@heroui/react";
-import { useUser } from "@/contexts/UserContext";
+import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
+import { Spinner } from "@heroui/spinner";
+import { useUser } from "@/lib/contexts/UserContext";
 
 interface FileWithPreview extends File {
   preview?: string;

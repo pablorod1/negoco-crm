@@ -6,10 +6,10 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { AlertTriangle, CheckCircle, CircleX } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
-import { useDocumentacion } from "@/contexts/DocumentacionContext";
+import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 
 export default function DeleteFileConfirmationModal({
   file,

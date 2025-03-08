@@ -6,9 +6,9 @@ import {
   DropdownMenu,
   DropdownSection,
   DropdownItem,
-  Button,
-  useDisclosure,
-} from "@heroui/react";
+} from "@heroui/dropdown";
+import { useDisclosure } from "@heroui/modal";
+import { Button } from "@heroui/button";
 import {
   CheckCircle,
   CloudAlert,
@@ -141,7 +141,7 @@ export default function FileCardDropdown({
   const handleDownload = async () => {
     try {
       const { success, errors } = await downloadFile(
-        file.folder_name,
+        `documentacion/${file.folder_name}`,
         file.name,
         userData.organization.id
       );

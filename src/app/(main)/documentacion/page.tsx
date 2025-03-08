@@ -2,11 +2,11 @@
 import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
 import { FileGrid } from "@/components/documentacion/FileGrid";
 import LoadingComponent from "@/components/documentacion/LoadingComponent";
-import { useDocumentacion } from "@/contexts/DocumentacionContext";
+import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { useCallback, useEffect, useState } from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 
 export default function DocumentacionPage() {
   const { userData } = useUser();

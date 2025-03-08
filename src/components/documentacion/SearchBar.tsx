@@ -8,9 +8,11 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import { Button, Input, Spinner } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
+import { Spinner } from "@heroui/spinner";
 import { FileCard } from "./FileCard";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 
 interface SearchBarProps {
   recentlyFiles?: DocumentacionFile[];

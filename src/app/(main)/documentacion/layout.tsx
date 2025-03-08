@@ -1,4 +1,4 @@
-import { DocumentacionProvider } from "@/contexts/DocumentacionContext";
+import { DocumentacionProvider } from "@/lib/contexts/DocumentacionContext";
 import DocumentacionSidebar from "@/components/documentacion/DocumentacionSidebar";
 
 export default function DocumentacionLayout({

@@ -1,4 +1,4 @@
-import { storage } from "@/firebaseConfig";
+import { storage } from "@/lib/firebase/firebaseConfig";
 import { getDownloadURL, ref } from "firebase/storage";
 
 export const downloadFile = async (
@@ -9,7 +9,7 @@ export const downloadFile = async (
   try {
     const fileRef = ref(
       storage,
-      `${organization_id}/documentacion/${folder_name}/${file_name}`
+      `${organization_id}/${folder_name}/${file_name}`
     );
     const url = await getDownloadURL(fileRef);
     const response = await fetch(url);

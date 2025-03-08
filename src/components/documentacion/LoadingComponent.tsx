@@ -1,4 +1,4 @@
-import { Spinner } from "@heroui/react";
+import { Spinner } from "@heroui/spinner";
 
 export default function LoadingComponent() {
   return (
@@ -8,6 +8,7 @@ export default function LoadingComponent() {
         color="primary"
         label="Cargando..."
         className="text-3xl"
+        variant="gradient"
       />
     </div>
   );

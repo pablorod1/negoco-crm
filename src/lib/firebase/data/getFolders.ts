@@ -1,4 +1,4 @@
-import { storage } from "@/firebaseConfig";
+import { storage } from "@/lib/firebase/firebaseConfig";
 import { listAll, ref } from "firebase/storage";
 
 export const getFoldersFromDocumentacion = async (

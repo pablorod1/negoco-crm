@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { getAllFoldersWithPaths } from "@/lib/firebase/data/getFolders";
-import { useDocumentacion } from "@/contexts/DocumentacionContext";
+import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -12,7 +12,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import Image from "next/image";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 
 interface FolderStructure {
   path: string;

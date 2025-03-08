@@ -1,4 +1,4 @@
-import { storage } from "@/firebaseConfig";
+import { storage } from "@/lib/firebase/firebaseConfig";
 import { deleteObject, ref } from "firebase/storage";
 
 export const deleteFileFromStorage = async (
