@@ -7,10 +7,10 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 
-import EditTramiteDialog from "./EditTramiteDialog";
-import { useTramites } from "@/contexts/TramitesContext";
+import EditTramiteDialog from "./editTramite/EditTramiteDialog";
+import { useTramites } from "@/lib/contexts/TramitesContext";
 import { showCustomToast } from "../core/CustomToast";
 import { useState } from "react";
 

@@ -5,8 +5,8 @@ import {
   DropdownMenu,
   DropdownSection,
   DropdownItem,
-  Button,
-} from "@heroui/react";
+} from "@heroui/dropdown";
+import { Button } from "@heroui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
 import EditTramiteDialog from "../EditTramiteDialog";
 import { useState } from "react";

@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { useTramites } from "@/contexts/TramitesContext";
+import { useTramites } from "@/lib/contexts/TramitesContext";
 
-import FirstStepForm from "./createTramite/forms/FirstStepForm";
+import FirstStepForm from "../createTramite/forms/FirstStepForm";
 import {
   ClientDB,
   ContractDB,
@@ -14,10 +14,10 @@ import {
   User,
 } from "@/lib/core/types";
 
-import SecondStepForm from "./createTramite/forms/SecondStepForm";
-import ThirdStepForm from "./createTramite/forms/ThirdStepForm";
-import { Stepper } from "./Stepper";
-import FourthStepForm from "./createTramite/forms/FourthStepForm";
+import SecondStepForm from "../createTramite/forms/SecondStepForm";
+import ThirdStepForm from "../createTramite/forms/ThirdStepForm";
+import { CreateTramiteStepper } from "../CreateTramiteStepper";
+import FourthStepForm from "../createTramite/forms/FourthStepForm";
 
 import {
   Modal,
@@ -27,11 +27,18 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { CheckCircle, CircleX, FilePlus2, Plus } from "lucide-react";
-import { useUser } from "@/contexts/UserContext";
-import { Button } from "@heroui/react";
-import { showCustomToast } from "../core/CustomToast";
+import { useUser } from "@/lib/contexts/UserContext";
+import { Button } from "@heroui/button";
+import { showCustomToast } from "../../core/CustomToast";
+import { ButtonProps } from "@heroui/button";
 
-export default function AddTramiteDialog({ shortcut }: { shortcut?: boolean }) {
+export default function AddTramiteDialog({
+  shortcut,
+  color,
+}: {
+  shortcut?: boolean;
+  color?: ButtonProps["color"];
+}) {
   const { userData } = useUser();
   const [activeTab, setActiveTab] = useState(0);
   const [tramite, setTramite] = useState<TramiteDB>(
@@ -191,7 +198,7 @@ export default function AddTramiteDialog({ shortcut }: { shortcut?: boolean }) {
       {!shortcut ? (
         <Button
           onPress={handleOpen}
-          color="primary"
+          color={color ? color : "primary"}
           radius="sm"
           className="shadow-md"
         >
@@ -223,7 +230,7 @@ export default function AddTramiteDialog({ shortcut }: { shortcut?: boolean }) {
           }`}
         >
           <ModalHeader>
-            <Stepper steps={4} currentStep={activeTab} />
+            <CreateTramiteStepper steps={4} currentStep={activeTab} />
           </ModalHeader>
           <ModalBody>{formElements[activeTab]}</ModalBody>
         </ModalContent>

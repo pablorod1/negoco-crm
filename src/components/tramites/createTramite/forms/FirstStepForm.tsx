@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import ButtonGroupComponent from "../ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import { SelectComponent } from "../InputComponent";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 
 interface Props {
   setClient: React.Dispatch<React.SetStateAction<ClientDB>>;
@@ -42,11 +42,16 @@ export default function FirstStepForm({
 
   useEffect(() => {
     const fetchComerciales = async () => {
-      const res = await fetch(
-        `/api/users/get/users${
-          userData ? `?role=${userData.role}&id=${userData.id}` : ""
-        }`
-      );
+      const res = await fetch(`/api/users/get/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: userData?.id,
+          role: userData?.role,
+        }),
+      });
       const { success, data } = await res.json();
 
       if (!success) {
@@ -107,7 +112,11 @@ export default function FirstStepForm({
           <SelectComponent
             name="sales_name"
             label="Comercial"
-            selectedKey={formData.user_id}
+            selectedKey={
+              comerciales.find((comercial) => comercial.id === formData.user_id)
+                ? formData.user_id
+                : ""
+            }
             isRequired
             items={comerciales}
             onChange={handleSelectComercial}

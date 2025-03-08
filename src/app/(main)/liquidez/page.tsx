@@ -1,7 +1,7 @@
 "use client";
 import { LiquidezColumns } from "@/components/tramites/liquidez/LiquidezColumns";
 import { DataTable } from "@/components/tramites/table/Table";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import { useEffect } from "react";
 
 export default function LiquidezPage() {

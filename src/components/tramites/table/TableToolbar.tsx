@@ -5,15 +5,15 @@ import {
   DropdownItem,
   DropdownMenu,
   DropdownTrigger,
-  Button,
-} from "@heroui/react";
+} from "@heroui/dropdown";
+import { Button } from "@heroui/button";
 import {
   COMPANIES,
   CONTRACT_TYPES,
   LIQUIDEZ_STATUS,
   STATUS_TYPES,
 } from "@/lib/core/const";
-import { type Status } from "@/lib/core/types";
+import { ComparativaStatus, type Status } from "@/lib/core/types";
 import { Table } from "@tanstack/react-table";
 import { useState } from "react";
 
@@ -137,7 +137,7 @@ export function StatusDropdown({
   onSelectionChange,
 }: {
   selected: string[];
-  onSelectionChange: (value: Status[]) => void;
+  onSelectionChange: (value: (Status | ComparativaStatus)[]) => void;
 }) {
   return (
     <Dropdown radius="sm">

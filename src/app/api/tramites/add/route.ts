@@ -60,7 +60,13 @@ export async function POST(req: NextRequest) {
 
     const clientResult = await addClient(client, tursoClient);
     if (!clientResult.success) {
-      throw new Error(`Error al añadir cliente: ${clientResult.error}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: clientResult.error,
+        },
+        { status: 400 }
+      );
     }
 
     // Add signer if applicable
@@ -71,21 +77,39 @@ export async function POST(req: NextRequest) {
     ) {
       const signerResult = await addSigner(signer, tursoClient);
       if (!signerResult.success) {
-        throw new Error(`Error al añadir firmante: ${signerResult.error}`);
+        return NextResponse.json(
+          {
+            success: false,
+            error: signerResult.error,
+          },
+          { status: 400 }
+        );
       }
     }
 
     // Add tramite
     const tramiteResult = await addTramite(tramite, tursoClient);
     if (!tramiteResult.success) {
-      throw new Error(`Error al añadir trámite: ${tramiteResult.error}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: tramiteResult.error,
+        },
+        { status: 400 }
+      );
     }
 
     // Add contracts
     if (contracts && contracts.length > 0) {
       const contractsResult = await addContracts(contracts, tursoClient);
       if (!contractsResult.success) {
-        throw new Error(`Error al añadir contratos: ${contractsResult.error}`);
+        return NextResponse.json(
+          {
+            success: false,
+            error: contractsResult.error,
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -112,7 +136,13 @@ export async function POST(req: NextRequest) {
         });
       } catch (error) {
         console.error(`Error uploading file ${file.name}:`, error);
-        // Continúa con los siguientes archivos incluso si uno falla
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Error al subir archivo ${file.name}`,
+          },
+          { status: 500 }
+        );
       }
     }
 
@@ -120,8 +150,12 @@ export async function POST(req: NextRequest) {
     if (tramiteFiles.length > 0) {
       const insertResult = await addTramiteFiles(tramiteFiles, tursoClient);
       if (!insertResult.success) {
-        throw new Error(
-          `Error al guardar metadatos de archivos: ${insertResult.error}`
+        return NextResponse.json(
+          {
+            success: false,
+            error: insertResult.error,
+          },
+          { status: 400 }
         );
       }
     }

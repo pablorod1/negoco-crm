@@ -7,11 +7,11 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { AlertTriangle, CheckCircle, CircleX } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
-import EditTramiteDialog from "./EditTramiteDialog";
-import { useTramites } from "@/contexts/TramitesContext";
+import EditTramiteDialog from "./editTramite/EditTramiteDialog";
+import { useTramites } from "@/lib/contexts/TramitesContext";
 import { useState } from "react";
 
 export default function DeleteTramiteConfirmationModal({

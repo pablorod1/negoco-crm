@@ -7,7 +7,10 @@ interface StepperProps {
 
 const stepsTexts = ["Comercial", "Cliente", "Contratos", "Documentos"];
 
-export const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
+export const CreateTramiteStepper: React.FC<StepperProps> = ({
+  steps,
+  currentStep,
+}) => {
   return (
     <div className="w-full relative">
       <div className="flex justify-between mb-2 ">

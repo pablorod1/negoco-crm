@@ -5,14 +5,14 @@ import {
   DropdownMenu,
   DropdownSection,
   DropdownItem,
-  Button,
-  useDisclosure,
-} from "@heroui/react";
+} from "@heroui/dropdown";
+import { Button } from "@heroui/button";
+import { useDisclosure } from "@heroui/modal";
 import { MoreVertical, PencilLine, RefreshCcw } from "lucide-react";
 import DeleteTramiteConfirmationModal from "../DeleteTramiteConfirmationModal";
 import { useState } from "react";
-import EditTramiteDialog from "../EditTramiteDialog";
-import { useUser } from "@/contexts/UserContext";
+import EditTramiteDialog from "../editTramite/EditTramiteDialog";
+import { useUser } from "@/lib/contexts/UserContext";
 import RenewTramiteConfirmationDialog from "../RenewTramiteConfirmationDialog";
 
 type IconProps = React.SVGProps<SVGSVGElement>;

@@ -7,7 +7,7 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import { AlertTriangle, CircleX } from "lucide-react";
 
 interface Props {

@@ -8,8 +8,9 @@ import {
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
-import AddTramiteDialog from "../AddTramiteDialog";
-import { Input, Tooltip } from "@heroui/react";
+import AddTramiteDialog from "../createTramite/AddTramiteDialog";
+import { Input } from "@heroui/input";
+import { Tooltip } from "@heroui/tooltip";
 import { Status, User } from "@/lib/core/types";
 import {
   ColumnSelector,
@@ -298,7 +299,9 @@ const TramitesHeader = <TData,>({
                   {title === "Trámites" ? (
                     <StatusDropdown
                       selected={statusFilter}
-                      onSelectionChange={setStatusFilter}
+                      onSelectionChange={(value) =>
+                        setStatusFilter(value as Status[])
+                      }
                     />
                   ) : (
                     <LiquidezStatusDropdown

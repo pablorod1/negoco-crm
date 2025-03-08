@@ -1,7 +1,7 @@
 "use client";
 import { Modal, ModalBody, ModalContent } from "@heroui/modal";
 
-import EditTramiteForm from "./editTramite/forms/EditTramiteForm";
+import EditTramiteForm from "../editTramite/forms/EditTramiteForm";
 
 interface Props {
   tramite_id: string;

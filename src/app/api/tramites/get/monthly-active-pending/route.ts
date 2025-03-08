@@ -33,7 +33,9 @@ export async function GET(req: NextRequest) {
       SELECT 
         m.month_name AS month,
         COALESCE(SUM(CASE WHEN t.status = 'Activo' THEN 1 ELSE 0 END), 0) AS active,
-        COALESCE(SUM(CASE WHEN t.status = 'Baja' THEN 1 ELSE 0 END), 0) AS baja
+        COALESCE(SUM(CASE WHEN t.status = 'Baja' THEN 1 ELSE 0 END), 0) AS baja,
+        SUM(comision) AS comision,
+        SUM(comision_sales_person) AS comision_sales_person
       FROM months m
       LEFT JOIN tramites t ON strftime('%m', t.creation_date) = m.month
         AND strftime('%Y', t.creation_date) = strftime('%Y', 'now') -- Filtra solo el año actual
@@ -47,6 +49,8 @@ export async function GET(req: NextRequest) {
         month: row.month as string,
         active: row.active as number,
         baja: -(row.baja as number),
+        comision: row.comision as number,
+        comision_sales_person: row.comision_sales_person as number,
       })),
     });
   } catch (error) {

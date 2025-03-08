@@ -1,18 +1,19 @@
 "use client";
 import AvatarComponent from "@/components/core/AvatarComponent";
-import { User } from "@/lib/core/types";
-import { Input } from "@heroui/react";
+import { ComparativaPlan, User } from "@/lib/core/types";
+import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 
 interface SelectProps {
   name: string;
   label: string;
-  items: (string | User)[];
+  items: (string | User | ComparativaPlan)[];
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   errors?: string;
   selectedKey: string;
   isRequired?: boolean;
   disabled?: boolean;
+  multiple?: boolean;
 }
 export const SelectComponent: React.FC<SelectProps> = ({
   name,
@@ -23,6 +24,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
   label,
   isRequired,
   disabled,
+  multiple,
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -33,6 +35,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
         isRequired={isRequired}
         errorMessage=""
         radius="sm"
+        selectionMode={multiple ? "multiple" : "single"}
         label={label}
         onChange={onChange}
         isDisabled={disabled}
@@ -53,7 +56,6 @@ export const SelectComponent: React.FC<SelectProps> = ({
                 ) : null
               }
               key={key}
-              value={key}
               textValue={value}
             >
               {value}

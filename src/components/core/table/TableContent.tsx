@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Spinner } from "@heroui/react";
+import { Spinner } from "@heroui/spinner";
 import { motion } from "framer-motion";
 import {
   ColumnDef,
@@ -17,13 +17,13 @@ import {
 
 interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
-  dataLoaded: boolean;
+  loading: boolean;
   columns: ColumnDef<TData, TValue>[];
 }
 
 export function TableContent<TData, TValue>({
   table,
-  dataLoaded,
+  loading,
   columns,
 }: TableContentProps<TData, TValue>) {
   return (
@@ -49,9 +49,7 @@ export function TableContent<TData, TValue>({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows &&
-          table.getRowModel().rows.length > 0 &&
-          dataLoaded ? (
+          {table.getRowModel().rows && table.getRowModel().rows.length > 0 ? (
             table.getRowModel().rows.map((row, index) => (
               <motion.tr
                 key={row.id}
@@ -69,23 +67,29 @@ export function TableContent<TData, TValue>({
                 ))}
               </motion.tr>
             ))
-          ) : table.getRowModel().rows &&
-            table.getRowModel().rows.length > 0 &&
-            !dataLoaded ? (
+          ) : loading ? (
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-24 text-center text-gray-500"
+                className=" h-64 text-center text-gray-500"
               >
                 <Spinner
+                  variant="gradient"
                   size="lg"
-                  label="Cargando..."
                   color="primary"
                   className="text-base font-bold"
                 />
+                <div className="flex flex-col items-center">
+                  <span className="text-lg font-bold">Cargando datos...</span>
+                  <span className="text-sm">
+                    Por favor, espere un momento mientras se cargan los datos.
+                  </span>
+                </div>
               </TableCell>
             </TableRow>
-          ) : (
+          ) : !loading &&
+            table.getRowModel().rows &&
+            table.getRowModel().rows.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={columns.length}
@@ -94,7 +98,7 @@ export function TableContent<TData, TValue>({
                 No se encontraron resultados
               </TableCell>
             </TableRow>
-          )}
+          ) : null}
         </TableBody>
       </Table>
     </CardContent>

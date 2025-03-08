@@ -9,12 +9,16 @@ import {
   STATUS_TYPES,
 } from "@/lib/core/const";
 import React, { useEffect } from "react";
+import CheckComisionModal from "../../createTramite/CheckComisionModal";
 
 interface Props {
   setFormData: React.Dispatch<React.SetStateAction<EditTramiteFormData>>;
   tramite: TramiteDB;
   userData: User;
   loading: boolean;
+  checkComisionOpen: boolean;
+  setCheckComisionOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onSubmit: () => void;
 }
 
 export default function TramiteForm({
@@ -22,8 +26,12 @@ export default function TramiteForm({
   setFormData,
   userData,
   loading,
+  checkComisionOpen,
+  setCheckComisionOpen,
+  onSubmit,
 }: Props) {
   const [comerciales, setComerciales] = React.useState<User[]>([]);
+
   const handleFieldChange = (
     e:
       | React.ChangeEvent<HTMLInputElement>
@@ -58,11 +66,13 @@ export default function TramiteForm({
 
   useEffect(() => {
     const fetchComerciales = async () => {
-      const res = await fetch(
-        `/api/users/get/users${
-          userData ? `?role=${userData.role}&id=${userData.id}` : ""
-        }`
-      );
+      const res = await fetch(`/api/users/get/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: userData.id, role: userData.role }),
+      });
       const { success, data } = await res.json();
 
       if (!success) {
@@ -101,7 +111,11 @@ export default function TramiteForm({
         <SelectComponent
           name="sales_name"
           label="Comercial"
-          selectedKey={tramite.user_id}
+          selectedKey={
+            comerciales.find((comercial) => comercial.id === tramite.user_id)
+              ? tramite.user_id
+              : ""
+          }
           isRequired
           items={comerciales}
           onChange={handleSelectComercial}
@@ -149,6 +163,13 @@ export default function TramiteForm({
           />
         </div>
       )}
+
+      <CheckComisionModal
+        tramite={tramite}
+        isOpen={checkComisionOpen}
+        onSubmit={onSubmit}
+        onClose={() => setCheckComisionOpen(false)}
+      />
     </>
   );
 }

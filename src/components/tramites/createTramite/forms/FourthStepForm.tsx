@@ -5,7 +5,7 @@ import ButtonGroupComponent from "../ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import DocumentsForm from "./DocumentsForm";
 import NotesBoard from "../../editTramite/NotesBoard";
-import { Spinner } from "@heroui/react";
+import { Spinner } from "@heroui/spinner";
 
 interface Props {
   onBack: () => void;

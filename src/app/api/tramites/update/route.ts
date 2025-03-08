@@ -1,4 +1,4 @@
-import { UpdatedFields } from "@/hooks/track-tramite-changes";
+import { UpdatedFields } from "@/lib/hooks/track-tramite-changes";
 import { ACTIVATION_DATE, RENOVATION_DATE } from "@/lib/core/const";
 import { TramiteFile, User } from "@/lib/core/types";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";

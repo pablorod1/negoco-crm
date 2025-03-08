@@ -4,8 +4,8 @@ import {
   DrawerBody,
   DrawerContent,
   DrawerHeader,
-  useDisclosure,
-} from "@heroui/react";
+} from "@heroui/drawer";
+import { useDisclosure } from "@heroui/modal";
 import { Pencil } from "lucide-react";
 import { ContractDB } from "@/lib/core/types";
 import React from "react";

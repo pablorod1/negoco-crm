@@ -7,7 +7,7 @@ import { Chip } from "@heroui/chip";
 import { TramiteVM } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import LiquidezDropdown from "./LiquidezDropdown";
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 
 export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
   {

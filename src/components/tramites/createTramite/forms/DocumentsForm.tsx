@@ -34,7 +34,7 @@ export default function DocumentsForm({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full mb-4">
       <div
         {...getRootProps()}
         className={`overflow-hidden relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-lg cursor-pointer transition-colors
@@ -65,33 +65,35 @@ export default function DocumentsForm({
         </div>
       </div>
 
-      <div className="mt-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">
-          Archivos subidos
-        </h4>
-        <ul className="space-y-2">
-          {uploadedFiles.map((file, index) => (
-            <li
-              key={index}
-              className="flex items-center justify-between p-2 bg-gray-50 rounded"
-            >
-              <div className="flex items-center space-x-2">
-                <FileIcon width={16} height={16} />
-                <span className="text-sm">{file.name}</span>
-                <span className="text-xs text-gray-500">
-                  ({(file.size / 1024).toFixed(1)} KB)
-                </span>
-              </div>
-              <button
-                onClick={(e) => handleRemoveFile(e, file)}
-                className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+      {uploadedFiles.length > 0 && (
+        <div className="mt-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            Archivos subidos
+          </h4>
+          <ul className="space-y-2">
+            {uploadedFiles.map((file, index) => (
+              <li
+                key={index}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded"
               >
-                <XIcon width={16} height={16} stroke="var(--danger-color)" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+                <div className="flex items-center space-x-2">
+                  <FileIcon width={16} height={16} />
+                  <span className="text-sm">{file.name}</span>
+                  <span className="text-xs text-gray-500">
+                    ({(file.size / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => handleRemoveFile(e, file)}
+                  className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+                >
+                  <XIcon width={16} height={16} stroke="var(--danger-color)" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

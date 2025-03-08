@@ -7,8 +7,9 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import { Button, Progress } from "@heroui/react";
-import { Plus } from "lucide-react";
+import { Button } from "@heroui/button";
+import { Progress } from "@heroui/progress";
+import { PenLine } from "lucide-react";
 import { useState } from "react";
 
 interface Props {
@@ -29,14 +30,8 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
   };
   return (
     <>
-      <Button
-        size="lg"
-        variant="bordered"
-        color="primary"
-        className="border-dashed h-auto bg-[var(--primary-color-100)]"
-        onPress={onOpen}
-      >
-        <Plus size={24} />
+      <Button variant="bordered" radius="sm" onPress={onOpen}>
+        <PenLine size={16} />
         Crear nota
       </Button>
 
@@ -55,24 +50,26 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
           <ModalBody className="px-0">
             <div className="w-full relative">
               <textarea
-                maxLength={50}
+                aria-label="Escribe una nota"
+                maxLength={500}
                 rows={4}
-                placeholder="Escribe una nota... (máx. 50 caracteres)"
+                placeholder="Escribe una nota... (máx. 500 caracteres)"
                 spellCheck={false}
                 value={note}
                 onChange={handleNoteChange}
                 className="relative w-full focus:outline-none focus:ring-0 focus:border-0 resize-none bg-[var(--primary-color-50)] p-4"
               ></textarea>
               <Progress
+                aria-label="Contador de caracteres"
                 className="absolute bottom-1 z-50"
                 radius="none"
                 minValue={0}
-                maxValue={50}
+                maxValue={500}
                 value={note.length}
                 color={`${
-                  note.length === 50
+                  note.length === 500
                     ? "danger"
-                    : note.length >= 25
+                    : note.length >= 250
                     ? "warning"
                     : "primary"
                 }`}
@@ -80,10 +77,15 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button onPress={onClose} variant="ghost" color="danger">
+            <Button
+              onPress={onClose}
+              variant="light"
+              color="danger"
+              radius="sm"
+            >
               Cancelar
             </Button>
-            <Button onPress={handleCreateNote} color="primary">
+            <Button onPress={handleCreateNote} color="primary" radius="sm">
               Guardar
             </Button>
           </ModalFooter>

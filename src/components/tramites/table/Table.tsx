@@ -12,14 +12,14 @@ import {
   VisibilityState,
 } from "@tanstack/react-table";
 import { User, type TramiteVM } from "@/lib/core/types";
-import { TableLayout } from "./TableLayout";
-import { TableContent } from "./TableContent";
-import { DataTablePagination } from "./DataTablePagination";
-import { useTableFilters } from "@/hooks/use-table-filters";
-import { useTablePagination } from "@/hooks/use-table-pagination";
-import { useTramites } from "@/contexts/TramitesContext";
+import { TableLayout } from "../../core/table/TableLayout";
+import { TableContent } from "../../core/table/TableContent";
+import { DataTablePagination } from "../../core/table/DataTablePagination";
+import { useTableFilters } from "@/lib/hooks/use-table-filters";
+import { useTablePagination } from "@/lib/hooks/use-table-pagination";
+import { useTramites } from "@/lib/contexts/TramitesContext";
 import TramitesHeader from "./TableHeader";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import { useSearchParams } from "next/navigation";
 
 interface DataTableProps<TData, TValue> {

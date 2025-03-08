@@ -28,13 +28,13 @@ export default function EditTramiteFiles({
                 key={index}
                 className="flex flex-col bg-white rounded-lg shadow-md overflow-hidden w-56 transition-all duration-300 ease-in-out hover:shadow-lg"
               >
-                <div className="relative w-full h-16">
+                <div className="relative flex justify-center w-full h-auto mt-4">
                   {doc.extension === "pdf" ? (
                     <Image
                       src={"/file-icons/pdf.png"}
-                      objectFit="contain"
-                      objectPosition="center"
-                      layout="fill"
+                      width={512}
+                      height={512}
+                      className="max-w-16 w-full h-full"
                       alt={doc.filename}
                     />
                   ) : doc.extension === "png" ||
@@ -42,17 +42,17 @@ export default function EditTramiteFiles({
                     doc.extension.toLowerCase() === "jpeg" ? (
                     <Image
                       src={doc.download_url}
-                      objectFit="contain"
-                      objectPosition="center"
-                      layout="fill"
+                      width={512}
+                      height={512}
+                      className="max-w-16 w-full h-full"
                       alt={doc.filename}
                     />
                   ) : (
                     <Image
                       src={"/file-icons/file.png"}
-                      objectFit="contain"
-                      objectPosition="center"
-                      layout="fill"
+                      width={512}
+                      height={512}
+                      className="max-w-16 w-full h-full"
                       alt={doc.filename}
                     />
                   )}

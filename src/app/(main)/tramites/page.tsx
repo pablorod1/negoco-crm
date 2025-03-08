@@ -5,7 +5,7 @@ import {
   TramiteColumns,
 } from "@/components/tramites/table/TramiteColumns";
 import { DataTable } from "@/components/tramites/table/Table";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import { useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { TramiteVM } from "@/lib/core/types";

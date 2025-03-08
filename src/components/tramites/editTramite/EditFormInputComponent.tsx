@@ -1,5 +1,7 @@
 "use client";
-import { Button, Input, Select, SelectItem } from "@heroui/react";
+import { Select, SelectItem } from "@heroui/select";
+import { Input } from "@heroui/input";
+import { Button } from "@heroui/button";
 import { Pencil } from "lucide-react";
 import React, { useState } from "react";
 
@@ -141,7 +143,7 @@ export const EditSelectComponent: React.FC<SelectProps> = ({
               color={errors ? "danger" : "primary"}
             >
               {items.map((item) => (
-                <SelectItem key={item} value={item} textValue={item}>
+                <SelectItem key={item} textValue={item}>
                   {item}
                 </SelectItem>
               ))}

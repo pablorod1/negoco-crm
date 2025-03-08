@@ -7,16 +7,18 @@ import {
   SignerDB,
   Notification,
 } from "@/lib/core/types";
-import { Button, Divider, Spinner } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Divider } from "@heroui/divider";
+import { Spinner } from "@heroui/spinner";
 import { useCallback, useEffect, useState } from "react";
 import { EditFormWrapper } from "../EditFormWrapper";
 import ContractPreview from "../../createTramite/ContractPreview";
-import { trackChanges } from "@/hooks/track-tramite-changes";
+import { trackChanges } from "@/lib/hooks/track-tramite-changes";
 import NotesBoard from "../NotesBoard";
 import CreateContractDrawer from "../../createTramite/CreateContractDrawer";
-import { useTramites } from "@/contexts/TramitesContext";
+import { useTramites } from "@/lib/contexts/TramitesContext";
 import TramiteForm from "./TramiteForm";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/lib/contexts/UserContext";
 import EditClientForm from "./EditClientForm";
 import EditTramiteFiles from "./EditTramiteFiles";
 import { generateTramiteUpdatedNotification } from "@/lib/core/notifications.helpers";
@@ -35,6 +37,7 @@ export default function EditTramiteForm({
   onCancel,
   onSubmit,
 }: Props) {
+  const [checkComisionOpen, setCheckComisionOpen] = useState(false);
   const { userData } = useUser();
   const [formData, setFormData] = useState<EditTramiteFormData>(
     createEmptyTramiteForm(userData as User)
@@ -80,7 +83,13 @@ export default function EditTramiteForm({
   };
 
   const fetchTramite = useCallback(async () => {
-    const res = await fetch(`/api/tramites/get/tramite-by-id?id=${tramite_id}`);
+    const res = await fetch(`/api/tramites/get/tramite-by-id`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: tramite_id }),
+    });
     const { data, success } = await res.json();
     if (!success) {
       showCustomToast({
@@ -253,6 +262,10 @@ export default function EditTramiteForm({
     }
   };
 
+  const openCheckComisionModal = () => {
+    setCheckComisionOpen(true);
+  };
+
   const handleCancel = () => {
     if (!checkChanges()) {
       onCancel();
@@ -277,10 +290,13 @@ export default function EditTramiteForm({
           {formData.tramite.id}
         </h1>
         <TramiteForm
+          checkComisionOpen={checkComisionOpen}
+          setCheckComisionOpen={setCheckComisionOpen}
           tramite={formData.tramite}
           setFormData={setFormData}
           userData={userData as User}
           loading={loading}
+          onSubmit={handleSubmit}
         />
         <Divider className="bg-[var(--primary-color-300)]" />
         <div className="grid grid-cols-2 gap-4">
@@ -342,7 +358,12 @@ export default function EditTramiteForm({
             </Button>
           )}
           <Button
-            onPress={handleSubmit}
+            onPress={
+              formData.tramite.status !== "Tramitable" &&
+              formData.tramite.status !== "Borrador"
+                ? openCheckComisionModal
+                : handleSubmit
+            }
             variant="ghost"
             color="primary"
             radius="sm"

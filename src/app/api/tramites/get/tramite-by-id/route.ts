@@ -18,10 +18,9 @@ async function executeQuery<T>(
   return result.rows as T[]; // TypeScript ya sabe que rows es del tipo correcto
 }
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const id = searchParams.get("id");
+    const { id } = await req.json();
 
     if (!id) {
       return NextResponse.json(
