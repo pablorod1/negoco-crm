@@ -9,7 +9,10 @@ import React from "react";
 import { Select, SelectItem } from "@heroui/select";
 import ComparativaDropdown from "./ComparativaDropdown";
 
-export const SubcomercialComparativasColumns: ColumnDef<ComparativaRow>[] = [
+export const createSubcomercialComparativasColumns = (
+  handlePlanChange: (rowId: string, plan: ComparativaPlan) => void,
+  getSelectedPlan: (rowId: string) => ComparativaPlan | undefined
+): ColumnDef<ComparativaRow>[] => [
   {
     id: "id",
     accessorKey: "id",
@@ -87,6 +90,20 @@ export const SubcomercialComparativasColumns: ColumnDef<ComparativaRow>[] = [
     id: "Plan",
     accessorKey: "plan",
     header: "Plan",
+    cell: ({ row }) => {
+      const rowId = row.original.id;
+      const plans = row.original.plan;
+      const currentSelectedPlan = getSelectedPlan(rowId);
+
+      return (
+        <PlanCell
+          rowId={rowId}
+          plans={plans}
+          onPlanChange={handlePlanChange}
+          currentSelectedPlan={currentSelectedPlan}
+        />
+      );
+    },
   },
   {
     id: "Estado",
@@ -101,9 +118,9 @@ export const SubcomercialComparativasColumns: ColumnDef<ComparativaRow>[] = [
             row.original.status === "pending"
               ? "warning"
               : row.original.status === "completed"
-              ? "primary"
-              : row.original.status === "processed"
               ? "success"
+              : row.original.status === "processed"
+              ? "primary"
               : "default"
           }
         >
@@ -147,7 +164,7 @@ const PlanCell = ({
 
   // Si solo hay un plan, mostrar como texto
   if (plans.length === 1) {
-    return <span className="capitalize">{plans[0]}</span>;
+    return <span className="capitalize">{plans[0].toString()}</span>;
   }
 
   // Si hay múltiples planes, mostrar como desplegable
@@ -354,9 +371,9 @@ export const createComercialComparativasColumns = (
             row.original.status === "pending"
               ? "warning"
               : row.original.status === "completed"
-              ? "primary"
-              : row.original.status === "processed"
               ? "success"
+              : row.original.status === "processed"
+              ? "primary"
               : "default"
           }
         >
@@ -522,25 +539,28 @@ export const createComparativasColumns = (
     cell: ({ row }) => {
       return (
         <Chip
+          className="px-2"
           size="sm"
           variant="flat"
           color={
             row.original.status === "pending"
               ? "warning"
               : row.original.status === "completed"
-              ? "primary"
-              : row.original.status === "processed"
               ? "success"
+              : row.original.status === "processed"
+              ? "primary"
               : "default"
           }
         >
-          {row.original.status === "pending"
-            ? "Pendiente de Estudio"
-            : row.original.status === "completed"
-            ? "Estudio Realizado"
-            : row.original.status === "processed"
-            ? "Comparativa Tramitada"
-            : row.original.status}
+          <span className="font-semibold">
+            {row.original.status === "pending"
+              ? "Pendiente de Estudio"
+              : row.original.status === "completed"
+              ? "Estudio Realizado"
+              : row.original.status === "processed"
+              ? "Comparativa Tramitada"
+              : row.original.status}
+          </span>
         </Chip>
       );
     },

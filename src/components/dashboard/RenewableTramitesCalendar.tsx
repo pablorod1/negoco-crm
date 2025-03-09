@@ -5,7 +5,7 @@ import { CalendarDays, RefreshCwOff } from "lucide-react";
 import { User } from "@/lib/core/types";
 import { DatePickerDemo } from "./DatePicker";
 import { Button } from "@heroui/button";
-import { AnimatedListDemo } from "../core/AnimatedList";
+import { RenewableTramitesAnimatedList } from "./RenewableTramitesAnimatedList";
 
 interface RenewableTramite {
   id: string;
@@ -172,7 +172,7 @@ export default function RenewableTramitesCalendar({
                 //     ))}
                 //   </ul>
                 // </ScrollArea>
-                <AnimatedListDemo items={filteredTramites} />
+                <RenewableTramitesAnimatedList items={filteredTramites} />
               ) : (
                 <div className="w-full h-full flex justify-center items-center flex-col ">
                   <RefreshCwOff className="size-12 mb-2 text-gray-300" />

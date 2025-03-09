@@ -30,7 +30,13 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
   };
   return (
     <>
-      <Button variant="bordered" radius="sm" onPress={onOpen}>
+      <Button
+        className="!bg-transparent"
+        color="primary"
+        variant="light"
+        radius="sm"
+        onPress={onOpen}
+      >
         <PenLine size={16} />
         Crear nota
       </Button>
@@ -42,6 +48,7 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
         isOpen={isOpen}
         onClose={onClose}
         size="xl"
+        radius="sm"
       >
         <ModalContent>
           <ModalHeader className="text-[var(--primary-color-800)] text-xl pb-0">

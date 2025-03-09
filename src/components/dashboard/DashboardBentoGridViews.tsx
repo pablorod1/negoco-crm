@@ -10,6 +10,7 @@ import { PersonalTramitesChart } from "./charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardHeader } from "../ui/card";
+import { ComparativasResume } from "./ComparativasResume";
 
 interface Props {
   userData: User;
@@ -98,10 +99,7 @@ export const DireccionView = ({
       </div>
 
       <div className="col-span-2 row-span-2 row-start-2">
-        <Card className="h-full w-full">
-          <CardHeader>Comparativas</CardHeader>
-          {/* <ComparativasGlider /> */}
-        </Card>
+        <ComparativasResume userData={userData} loading={loading} />
       </div>
       <div className="col-span-2 row-span-2 col-start-1 row-start-4">
         {/* <TramitesResumePieChart userData={userData} loading={loading} /> */}

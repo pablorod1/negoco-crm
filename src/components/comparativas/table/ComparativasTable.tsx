@@ -70,7 +70,6 @@ export default function ComparativasTable<TData, TValue>({
         );
 
         const { success, data, error } = await res.json();
-        console.log("Comparativas data:", data);
         if (!success) {
           console.error("Error al obtener comparativas:", error);
           setComparativas([]);

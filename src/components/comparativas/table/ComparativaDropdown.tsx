@@ -8,7 +8,6 @@ import {
 import { Button } from "@heroui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
-import Link from "next/link";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -150,10 +149,10 @@ export default function ComparativaDropdown({
               key="edit"
               description="Visualizar, actualizar y tramitar la comparativa"
               startContent={<PencilLine className={iconClasses} />}
+              textValue="Visualizar Comparativa"
+              href={`/comparativas/${comparativa_id}`}
             >
-              <Link href={`/comparativas/${comparativa_id}`}>
-                Visualizar Comparativa
-              </Link>
+              Visualizar Comparativa
             </DropdownItem>
 
             {/* <DropdownItem
@@ -168,6 +167,7 @@ export default function ComparativaDropdown({
           {userData && userData.role === "admin" ? (
             <DropdownSection>
               <DropdownItem
+                textValue="Eliminar Comparativa"
                 key="delete"
                 onPress={() => console.log("Eliminar comparativa")}
                 className="text-danger"
