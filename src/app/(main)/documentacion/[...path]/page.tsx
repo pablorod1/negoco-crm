@@ -39,7 +39,6 @@ export default function FolderPage() {
 
   const fetchFiles = useCallback(async () => {
     setIsLoading(true);
-    console.log(currentPath);
     try {
       const filesRes = await fetch(`/api/documentacion/get/files`, {
         method: "POST",

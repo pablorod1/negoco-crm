@@ -20,7 +20,7 @@ export const getLinkContext = (context: string, link: string): string => {
     case "Password":
       return "/perfil";
     case "Comparativas":
-      return `/comparativas?id=${link}`;
+      return `/comparativas/${link}`;
     case "Tramites":
       return `/tramites?id=${link}`;
     default:
@@ -96,3 +96,60 @@ export const generateTramiteUpdatedNotification = (
   priority: 3,
   user_id: user_id,
 });
+
+export const generateComparativaNotificationMessage = (
+  notes: boolean | undefined,
+  status: string | undefined,
+  files: boolean | undefined
+) => {
+  const messages: string[] = [];
+
+  if (notes) {
+    messages.push("Se han añadido notas a la comparativa");
+  }
+
+  if (status) {
+    messages.push(
+      `Se ha actualizado el estado de la comparativa a ${
+        status === "pending"
+          ? "Pendiente de Estudio"
+          : status === "completed"
+          ? "Estudio Realizado"
+          : status === "processed"
+          ? "Comparativa Tramitada"
+          : "Desconocido"
+      }`
+    );
+  }
+
+  if (files) {
+    messages.push("Se han subido nuevos archivos a la comparativa");
+  }
+
+  if (messages.length > 1) {
+    return "Se han actualizado varios campos de la comparativa";
+  }
+
+  return messages.length > 0
+    ? messages.join(", ")
+    : "Se han realizado cambios en la comparativa";
+};
+
+export const generateComparativaUpdatedNotification = (
+  comparativa_id: string,
+  user_id: string,
+  notes?: boolean,
+  status?: string,
+  files?: boolean
+): Notification => {
+  return {
+    id: comparativa_id,
+    title: `Comparativa ${comparativa_id} actualizada`,
+    message: generateComparativaNotificationMessage(notes, status, files),
+    created_at: new Date().toISOString(),
+    context: "Comparativas",
+    link: comparativa_id,
+    priority: 3,
+    user_id: user_id,
+  };
+};

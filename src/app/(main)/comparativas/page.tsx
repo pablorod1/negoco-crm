@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import {
   createComercialComparativasColumns,
   createComparativasColumns,
-  SubcomercialComparativasColumns,
+  createSubcomercialComparativasColumns,
   useComparativasState,
 } from "@/components/comparativas/table/ComparativasColumns";
 
@@ -20,7 +20,12 @@ export default function ComparativasPage() {
   useEffect(() => {
     if (userData) {
       if (userData.role === "2" && userData.super_id) {
-        setColumns(SubcomercialComparativasColumns);
+        setColumns(
+          createSubcomercialComparativasColumns(
+            handlePlanChange,
+            getSelectedPlan
+          )
+        );
       } else if (userData.role === "2" && !userData.super_id) {
         setColumns(
           createComercialComparativasColumns(handlePlanChange, getSelectedPlan)

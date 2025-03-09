@@ -101,3 +101,36 @@ export const formatFileSize = (size: number): string => {
     return `${(size / (1024 * 1024)).toFixed(2)} MB`;
   }
 };
+
+export const formatComission = (comission: number): string => {
+  // Primero formateamos con toLocaleString para el formato español
+  let formatted = comission.toLocaleString("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  // Si por alguna razón no se está mostrando el separador de miles,
+  // podemos verificar manualmente si necesitamos agregar el punto
+  if (comission >= 1000 && !formatted.includes(".")) {
+    // Convertimos a string y manipulamos manualmente
+    const parts = formatted.split(",");
+    const integerPart = parts[0].replace(" €", "").replace("€", "");
+
+    // Formateamos manualmente el entero con puntos
+    let formattedInteger = "";
+    for (let i = integerPart.length - 1, count = 0; i >= 0; i--, count++) {
+      if (count > 0 && count % 3 === 0) {
+        formattedInteger = "." + formattedInteger;
+      }
+      formattedInteger = integerPart[i] + formattedInteger;
+    }
+
+    // Reconstruimos con la parte decimal
+    formatted = formattedInteger + "," + parts[1];
+  }
+
+  // Aseguramos que no haya espacio entre el número y el símbolo
+  return formatted.replace(" €", "€");
+};
