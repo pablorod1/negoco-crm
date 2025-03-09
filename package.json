@@ -13,7 +13,7 @@
     "@heroui/modal": "2.2.11",
     "@heroui/number-input": "^2.0.6",
     "@heroui/react": "^2.7.5",
-    "@heroui/select": "2.4.14",
+    "@heroui/select": "^2.4.16",
     "@heroui/spinner": "^2.2.13",
     "@heroui/system": "2.4.11",
     "@heroui/theme": "2.4.11",
