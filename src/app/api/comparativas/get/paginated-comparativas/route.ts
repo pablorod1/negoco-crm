@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
               c.status AS status,
               c.service AS service,
               CASE 
-                  WHEN c.plan LIKE '%,%' THEN json_array('fijo', 'indexado')
-                  ELSE json_array(c.plan)
+                WHEN c.plan LIKE '%,%' THEN json_array('fijo', 'indexado')
+                ELSE c.plan  -- Devolver el valor directamente, no como array
               END AS plan,
               u.name AS user_name,
               u.email AS user_email,

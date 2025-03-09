@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { user_id, user_role } = await req.json();
 
     if (!id || !user_id || !user_role) {

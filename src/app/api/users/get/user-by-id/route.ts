@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/lib/libsql/client";
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const id = searchParams.get("id");
+    const { id } = await req.json();
 
     if (!id) {
       return NextResponse.json(

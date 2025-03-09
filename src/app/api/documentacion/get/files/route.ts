@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    console.log("folder_name", folder_name);
     const response = await tursoClient.execute({
       sql: `
             SELECT id, name, size, extension, upload_date, download_url, preview_url, type
