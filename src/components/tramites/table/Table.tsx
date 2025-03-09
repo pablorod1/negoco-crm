@@ -36,7 +36,7 @@ export function DataTable<TData, TValue>({
   const { userData } = useUser();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [tramites, setTramites] = useState<TramiteVM[]>([]);
-  const [loadedData, setLoadedData] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   const {
@@ -85,9 +85,10 @@ export function DataTable<TData, TValue>({
         }
 
         setTramites(data || []);
-        setTimeout(() => setLoadedData(true), 1000);
       } catch (error) {
         console.error("Error al obtener trámites:", error);
+      } finally {
+        setLoading(false);
       }
     }
   }, [
@@ -188,7 +189,7 @@ export function DataTable<TData, TValue>({
     <div className="flex flex-col gap-4 bg-gray-50 w-full h-full">
       <TramitesHeader table={table} {...toolbarProps} />
       <TableLayout>
-        <TableContent table={table} dataLoaded={loadedData} columns={columns} />
+        <TableContent table={table} loading={loading} columns={columns} />
         <div className="mt-6">
           <DataTablePagination table={table} />
         </div>
