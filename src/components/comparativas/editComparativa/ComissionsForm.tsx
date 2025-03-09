@@ -39,30 +39,34 @@ const ComissionsForm = memo(
             Comisión {comparativa.user.organization?.name}
           </h3>
           <div className="flex items-center gap-2">
-            <NumberInput
-              radius="sm"
-              color="primary"
-              variant="bordered"
-              name="comision_fijo"
-              label="Precio Fijo"
-              value={formDataComissions.comision_fijo}
-              isRequired
-              onValueChange={(value) =>
-                handleFieldChange(value, "comision_fijo")
-              }
-            />
-            <NumberInput
-              radius="sm"
-              color="primary"
-              variant="bordered"
-              name="comision_indexado"
-              label="Precio Indexado"
-              value={formDataComissions.comision_indexado}
-              isRequired
-              onValueChange={(value) =>
-                handleFieldChange(value, "comision_indexado")
-              }
-            />
+            {comparativa.plan.includes("fijo") && (
+              <NumberInput
+                radius="sm"
+                color="primary"
+                variant="bordered"
+                name="comision_fijo"
+                label="Precio Fijo"
+                value={formDataComissions.comision_fijo}
+                isRequired
+                onValueChange={(value) =>
+                  handleFieldChange(value, "comision_fijo")
+                }
+              />
+            )}
+            {comparativa.plan.includes("indexado") && (
+              <NumberInput
+                radius="sm"
+                color="primary"
+                variant="bordered"
+                name="comision_indexado"
+                label="Precio Indexado"
+                value={formDataComissions.comision_indexado}
+                isRequired
+                onValueChange={(value) =>
+                  handleFieldChange(value, "comision_indexado")
+                }
+              />
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-2">
@@ -70,30 +74,34 @@ const ComissionsForm = memo(
             Comisión {comparativa.user.name}
           </h3>
           <div className="flex items-center gap-2">
-            <NumberInput
-              name="comision_sales_person_fijo"
-              label="Precio Fijo"
-              variant="bordered"
-              radius="sm"
-              color="primary"
-              value={formDataComissions.comision_sales_person_fijo}
-              isRequired
-              onValueChange={(value) =>
-                handleFieldChange(value, "comision_sales_person_fijo")
-              }
-            />
-            <NumberInput
-              variant="bordered"
-              radius="sm"
-              color="primary"
-              name="comision_sales_person_indexado"
-              label="Precio Indexado"
-              value={formDataComissions.comision_sales_person_indexado}
-              isRequired
-              onValueChange={(value) =>
-                handleFieldChange(value, "comision_sales_person_indexado")
-              }
-            />
+            {comparativa.plan.includes("fijo") && (
+              <NumberInput
+                name="comision_sales_person_fijo"
+                label="Precio Fijo"
+                variant="bordered"
+                radius="sm"
+                color="primary"
+                value={formDataComissions.comision_sales_person_fijo}
+                isRequired
+                onValueChange={(value) =>
+                  handleFieldChange(value, "comision_sales_person_fijo")
+                }
+              />
+            )}
+            {comparativa.plan.includes("indexado") && (
+              <NumberInput
+                variant="bordered"
+                radius="sm"
+                color="primary"
+                name="comision_sales_person_indexado"
+                label="Precio Indexado"
+                value={formDataComissions.comision_sales_person_indexado}
+                isRequired
+                onValueChange={(value) =>
+                  handleFieldChange(value, "comision_sales_person_indexado")
+                }
+              />
+            )}
           </div>
         </div>
       </div>

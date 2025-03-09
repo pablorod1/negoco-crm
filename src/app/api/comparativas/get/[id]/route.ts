@@ -2,13 +2,9 @@ import { ComparativaPlan } from "@/lib/core/types";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest) {
   try {
-    const { id } = await params;
-    const { user_id, user_role } = await req.json();
+    const { id, user_id, user_role } = await req.json();
 
     if (!id || !user_id || !user_role) {
       return NextResponse.json(
@@ -36,10 +32,17 @@ export async function POST(
 
     if (user_role === "2") {
       const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales?id=${id}`
+        `${req.nextUrl.origin}/api/users/get/subcomerciales`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: user_id }),
+        }
       );
       const subcomerciales = await subcomercialesRes.json();
-      const idsToInclude = [id];
+      const idsToInclude = [user_id];
 
       if (subcomerciales.success && subcomerciales.ids) {
         idsToInclude.push(...subcomerciales.ids);

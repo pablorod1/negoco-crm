@@ -35,7 +35,14 @@ export async function POST(req: NextRequest) {
 
     if (role === "2") {
       const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales?id=${id}`
+        `${req.nextUrl.origin}/api/users/get/subcomerciales`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id }),
+        }
       );
 
       const subcomerciales = await subcomercialesRes.json();

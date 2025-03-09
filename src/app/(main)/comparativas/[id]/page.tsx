@@ -76,6 +76,7 @@ export default function EditComparativaPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id,
           user_id: userData.id,
           user_role: userData.role,
         }),
