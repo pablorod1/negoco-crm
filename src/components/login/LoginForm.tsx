@@ -98,7 +98,7 @@ export default function LoginForm() {
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-900">Accede a tu cuenta</h2>
         <p className="mt-2 text-gray-600">
-          Ingresa tus credenciales para acceder a tu panel de consultoría
+          Ingresa tus credenciales para acceder a tu cuenta
         </p>
       </div>
 
