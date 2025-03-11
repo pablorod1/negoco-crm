@@ -10,18 +10,21 @@ import { useCallback, useMemo } from "react";
 interface FilesListProps {
   files: ComparativaFile[];
   comparativaId: string;
+  organization_id: string;
 }
 
-export const FilesList = ({ files, comparativaId }: FilesListProps) => {
+export const FilesList = ({
+  files,
+  comparativaId,
+  organization_id,
+}: FilesListProps) => {
   const handleDownloadFile = useCallback(
     async (filename: string) => {
       try {
         const { success, errors } = await downloadFile(
           `comparativas/${comparativaId}`,
           filename,
-          // Note: You'd need to get the organization ID from somewhere
-          // This is a placeholder that you'll need to address
-          "organization-id"
+          organization_id
         );
 
         if (!success) {
@@ -39,7 +42,7 @@ export const FilesList = ({ files, comparativaId }: FilesListProps) => {
         console.error(error);
       }
     },
-    [comparativaId]
+    [comparativaId, organization_id]
   );
 
   // Memoize the file list to prevent unnecessary re-renders

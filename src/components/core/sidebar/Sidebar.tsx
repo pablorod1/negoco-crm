@@ -107,16 +107,17 @@ export function SidebarComponent() {
     <Sidebar variant="inset" id="sidebar-menu" collapsible="icon">
       <SidebarHeader className="py-4">
         <Link href="/">
-          <div className="flex items-center w-auto">
+          <div className="flex items-center w-auto gap-2">
             <Image
               src={organizationLogo}
               alt="Logo"
               width={60}
               height={60}
               priority
+              className="w-full h-auto max-w-8"
             />
             <h2
-              className={`block overflow-hidden text-3xl font-bold uppercase text-[var(--primary-color-800)] animate-size ${
+              className={`block overflow-hidden text-3xl font-bold uppercase text-[var(--primary-color-400)] animate-size ${
                 open ? "w-auto" : "w-0"
               }`}
             >

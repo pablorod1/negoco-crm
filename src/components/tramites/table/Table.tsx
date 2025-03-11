@@ -147,6 +147,16 @@ export function DataTable<TData, TValue>({
 
   const table = useReactTable(tableConfig);
 
+  // console.log(
+  //   "CUPS",
+  //   table.getRowModel().rows.map((row) =>
+  //     row
+  //       .getAllCells()
+  //       .find((cell) => cell.column.id === "CUPS")
+  //       ?.getValue()
+  //   )
+  // );
+
   // Función personalizada para manejar el reseteo de filtros
   const handleResetFilters = useCallback(() => {
     resetFilters();

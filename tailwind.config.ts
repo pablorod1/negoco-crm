@@ -44,7 +44,10 @@ export default {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
@@ -75,8 +78,17 @@ export default {
         light: {
           colors: {
             primary: {
-              DEFAULT: "#0d6dfd",
-              foreground: "#fff",
+              50: "var(--primary-50)",
+              100: "var(--primary-100)",
+              200: "var(--primary-200)",
+              300: "var(--primary-300)",
+              400: "var(--primary-400)",
+              500: "var(--primary)",
+              600: "var(--primary-600)",
+              700: "var(--primary-700)",
+              800: "var(--primary-800)",
+              900: "var(--primary-900)",
+              foreground: "#000",
             },
             danger: {
               DEFAULT: "#dc3545",
@@ -84,7 +96,7 @@ export default {
             },
             default: {
               DEFAULT: "#ffffff",
-              foreground: "#0d6dfd",
+              foreground: "var(--primary)",
             },
           },
         },

@@ -16,10 +16,10 @@ import { showCustomToast } from "../../core/CustomToast";
 import { CheckCircle, CircleX, FilePlus2 } from "lucide-react";
 import { ComparativaVM, Notification, User } from "@/lib/core/types";
 import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
-import ComissionsForm from "./ComissionsForm";
+import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
+import { Spinner } from "@heroui/spinner";
 
 interface Props {
-  organization_id: string;
   onUpload: () => void;
   status: string;
   userData: User;
@@ -27,7 +27,6 @@ interface Props {
 }
 
 export default function UploadComparativaFilesModal({
-  organization_id,
   onUpload,
   status,
   userData,
@@ -36,14 +35,32 @@ export default function UploadComparativaFilesModal({
   const { isOpen, onClose, onOpen } = useDisclosure();
   const [estudioRealizado, setEstudioRealizado] = useState(true);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [formDataComissions, setFormDataComissions] = useState({
-    comision_fijo: comparativa.comision.fijo,
-    comision_indexado: comparativa.comision.indexado,
-    comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-    comision_sales_person_indexado: comparativa.comision_sales_person.indexado,
-  });
+  const [loading, setLoading] = useState(false);
+  const [formDataComissions, setFormDataComissions] = useState<
+    Partial<ComissionFormValues>
+  >(
+    comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
+      ? {
+          comision_fijo: comparativa.comision.fijo,
+          comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          comision_sales_person_indexado:
+            comparativa.comision_sales_person.indexado,
+        }
+      : comparativa.plan.includes("fijo")
+      ? {
+          comision_fijo: comparativa.comision.fijo,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+        }
+      : {
+          comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_indexado:
+            comparativa.comision_sales_person.indexado,
+        }
+  );
   const isAdmin = userData && userData.role === "admin";
   const isBackoffice = userData && userData.role === "1";
+  const organization_id = userData.organization.id;
 
   const handleCancel = () => {
     setUploadedFiles([]);
@@ -51,15 +68,14 @@ export default function UploadComparativaFilesModal({
   };
 
   const checkComissionsNotEmpty = () => {
-    return (
-      !formDataComissions.comision_fijo ||
-      !formDataComissions.comision_indexado ||
-      !formDataComissions.comision_sales_person_fijo ||
-      !formDataComissions.comision_sales_person_indexado
-    );
+    return Object.values(formDataComissions).some((value) => !value);
   };
 
   const handleSubmit = async () => {
+    if (!userData) {
+      return;
+    }
+    setLoading(true);
     try {
       if (estudioRealizado && checkComissionsNotEmpty()) {
         showCustomToast({
@@ -170,6 +186,8 @@ export default function UploadComparativaFilesModal({
         icon: CircleX,
       });
       console.error("Error subiendo archivos:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -201,6 +219,17 @@ export default function UploadComparativaFilesModal({
             </h2>
           </ModalHeader>
           <ModalBody>
+            {loading && (
+              <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-95 z-50">
+                <Spinner
+                  size="lg"
+                  variant="gradient"
+                  label="Subiendo archivos..."
+                  color="primary"
+                  className="text-lg"
+                />
+              </div>
+            )}
             <DocumentsForm
               uploadedFiles={uploadedFiles}
               setUploadedFiles={setUploadedFiles}

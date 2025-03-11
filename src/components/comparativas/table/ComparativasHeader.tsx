@@ -2,8 +2,8 @@
 
 import {
   ColumnSelector,
+  ComparativaStatusDropdown,
   FilterButton,
-  StatusDropdown,
 } from "@/components/tramites/table/TableToolbar";
 import { ComparativaStatus } from "@/lib/core/types";
 import { Input } from "@heroui/input";
@@ -11,6 +11,8 @@ import { Table } from "@tanstack/react-table";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Filter, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import AddComparativaDialog from "../createComparativa/AddComparativaDialog";
+import ExportTableModal from "@/components/core/ExportTableModal";
 
 interface Props<TData> {
   filterValue: string;
@@ -115,7 +117,7 @@ const ComparativasHeader = <TData,>({
                   ${filtersVisible ? "w-auto" : "w-0"}
                   `}
                 >
-                  <StatusDropdown
+                  <ComparativaStatusDropdown
                     selected={statusFilter}
                     onSelectionChange={(value) =>
                       setStatusFilter(value as ComparativaStatus[])
@@ -156,11 +158,15 @@ const ComparativasHeader = <TData,>({
               </div>
 
               {/* Add Comparativa Dialog */}
+              <AddComparativaDialog color="primary" />
             </div>
           </div>
           <div className="flex justify-between items-center gap-2  w-full">
             <ColumnSelector table={table} />
-            <FilterButton disabled={!checkFilters()} onPress={resetFilters} />
+            <div className="flex items-center gap-2">
+              <FilterButton disabled={!checkFilters()} onPress={resetFilters} />
+              <ExportTableModal name="comparativas" table={table} />
+            </div>
           </div>
         </div>
       </div>

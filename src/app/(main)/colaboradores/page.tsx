@@ -21,13 +21,7 @@ export default function ColaboradoresPage() {
     initialized: false,
   });
 
-  const checkIfAdmin = useCallback(() => {
-    if (!userData) {
-      return false;
-    }
-
-    return userData.role === "admin";
-  }, [userData]);
+  const isAdmin = userData && userData.role === "admin";
 
   const fetchData = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }));
@@ -100,9 +94,7 @@ export default function ColaboradoresPage() {
         <h1 className="text-4xl font-bold text-[var(--primary-color-500)] drop-shadow-sm">
           Gestión de Colaboradores
         </h1>
-        {checkIfAdmin() && (
-          <CreateUserModal onUserCreated={handleUserCreated} />
-        )}
+        {isAdmin && <CreateUserModal onUserCreated={handleUserCreated} />}
       </div>
       <UsersGridTable users={state.users} loading={state.loading} />
     </div>

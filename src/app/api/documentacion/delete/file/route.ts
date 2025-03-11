@@ -33,7 +33,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { success: firebaseSuccess, errors: firebaseErrors } =
-      await deleteFileFromStorage(folder_path, file_name, organization_id);
+      await deleteFileFromStorage(
+        "documentacion",
+        folder_path,
+        file_name,
+        organization_id
+      );
 
     const query = `DELETE FROM documentacion_files WHERE id = ?`;
     // 2. Delete folder from database

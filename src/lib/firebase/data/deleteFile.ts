@@ -2,6 +2,7 @@ import { storage } from "@/lib/firebase/firebaseConfig";
 import { deleteObject, ref } from "firebase/storage";
 
 export const deleteFileFromStorage = async (
+  parent_folder: string,
   folderPath: string,
   fileName: string,
   organization_id: string
@@ -11,7 +12,7 @@ export const deleteFileFromStorage = async (
 }> => {
   const fileRef = ref(
     storage,
-    `${organization_id}/documentacion/${folderPath}/${fileName}`
+    `${organization_id}/${parent_folder}/${folderPath}/${fileName}`
   );
 
   if (!fileRef) {

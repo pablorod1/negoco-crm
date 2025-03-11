@@ -2,11 +2,12 @@
 
 import { cn } from "@/lib/core/utils";
 import { AnimatedList } from "../magicui/animated-list";
-import { ExternalLink, RefreshCcw } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { formatDateTime } from "@/lib/core/format";
 import Link from "next/link";
-import { ComparativaVM } from "@/lib/core/types";
+import { ComparativaVM, User } from "@/lib/core/types";
 import { Chip } from "@heroui/chip";
+import AvatarComponent from "../core/AvatarComponent";
 
 const Notification = (comparativa: ComparativaVM) => {
   return (
@@ -31,32 +32,44 @@ const Notification = (comparativa: ComparativaVM) => {
             backgroundColor: "var(--primary-color-100)",
           }}
         >
-          <span className="text-lg">
-            <RefreshCcw className="text-[var(--primary-color-800)]" />
-          </span>
+          <AvatarComponent userData={comparativa.user as User} />
         </div>
         <div className="flex flex-col overflow-hidden w-full">
           <div className="flex justify-between items-center w-full">
             <figcaption className="flex flex-row items-center whitespace-pre text-lg font-medium dark:text-white ">
               <span className="text-sm sm:text-lg">{comparativa.client}</span>
               <span className="mx-1">·</span>
+              <span className="text-sm sm:text-lg">
+                {comparativa.user.name || "Desconocido"}
+              </span>
+
+              <span className="mx-1">·</span>
               <span className="text-xs text-gray-500">
                 {formatDateTime(comparativa.creation_date)}
               </span>
             </figcaption>
             <Chip
-              className="text-xs font-semibold "
               variant="flat"
               size="sm"
-              color="primary"
+              color={
+                comparativa.status === "pending"
+                  ? "warning"
+                  : comparativa.status === "completed"
+                  ? "success"
+                  : comparativa.status === "processed"
+                  ? "primary"
+                  : "default"
+              }
             >
-              {comparativa.status === "pending"
-                ? "Pendiente de Estudio"
-                : comparativa.status === "completed"
-                ? "Estudio Realizado"
-                : comparativa.status === "processed"
-                ? "Comparativa Tramitada"
-                : "Desconocido"}
+              <span className="font-semibold">
+                {comparativa.status === "pending"
+                  ? "Pendiente de Estudio"
+                  : comparativa.status === "completed"
+                  ? "Estudio Realizado"
+                  : comparativa.status === "processed"
+                  ? "Comparativa Tramitada"
+                  : "Desconocido"}
+              </span>
             </Chip>
           </div>
           <p className="flex items-center gap-2 text-[var(--primary-color-500)] text-sm font-normal dark:text-white/60 group-hover:underline">

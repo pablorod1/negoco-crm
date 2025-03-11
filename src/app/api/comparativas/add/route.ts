@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     const comparativa: ComparativaDB = JSON.parse(comparativaString);
 
-    if (!comparativa || !documents) {
+    if (!comparativa || !documents || !organization_id) {
       return NextResponse.json(
         {
           success: false,

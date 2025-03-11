@@ -21,16 +21,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const queryParams: (string | number)[] = [status, id];
+    const queryParams: (string | number)[] = [status];
 
     let query = `
       SELECT 
-        client, 
-        creation_date,
-        status,
-        id
-      FROM comparativas
-      WHERE status = ? AND user_id = ?
+        c.client, 
+        c.creation_date,
+        c.status,
+        c.id,
+        u.name as user_name,
+        u.image as user_image
+      FROM comparativas c
+      LEFT JOIN user u ON c.user_id = u.id
+      WHERE status = ?
     `;
 
     if (role === "2") {
@@ -52,8 +55,10 @@ export async function POST(req: NextRequest) {
         idsToInclude.push(...subcomerciales.ids);
       }
 
-      query += ` AND user_id IN (${idsToInclude.map(() => "?").join(", ")})`;
-      queryParams.push(...idsToInclude);
+      query += ` AND ( user_id = ? user_id IN (${idsToInclude
+        .map(() => "?")
+        .join(", ")})`;
+      queryParams.push(id, ...idsToInclude);
     }
 
     const response = await tursoClient.execute({
@@ -61,7 +66,19 @@ export async function POST(req: NextRequest) {
       args: queryParams,
     });
 
-    return NextResponse.json({ success: true, data: response.rows });
+    return NextResponse.json({
+      success: true,
+      data: response.rows.map((r) => ({
+        client: r.client,
+        creation_date: r.creation_date,
+        status: r.status,
+        id: r.id,
+        user: {
+          name: r.user_name,
+          image: r.user_image,
+        },
+      })),
+    });
   } catch (error) {
     console.error("Error al obtener comparativas:", error);
     return NextResponse.json(

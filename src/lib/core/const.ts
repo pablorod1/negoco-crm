@@ -30,6 +30,12 @@ export const STATUS_TYPES = [
   "Baja",
 ];
 
+export const COMPARATIVA_STATUS_TYPES = [
+  { key: "pending", label: "Pendiente de Estudio" },
+  { key: "completed", label: "Estudio Realizado" },
+  { key: "processed", label: "Comparativa Tramitada" },
+];
+
 export const COMERCIAL_STATUS_TYPES = ["Borrador", "Tramitable"];
 
 export const PLANS = [

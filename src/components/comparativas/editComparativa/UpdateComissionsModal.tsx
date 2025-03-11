@@ -9,10 +9,11 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { CheckCircle, CircleX, Coins } from "lucide-react";
-import ComissionsForm from "./ComissionsForm";
+import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
 import { ComparativaVM } from "@/lib/core/types";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
+import { Spinner } from "@heroui/spinner";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -24,12 +25,29 @@ export default function UpdateComissionsModal({
   onUpdate,
 }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
-  const [formDataComissions, setFormDataComissions] = useState({
-    comision_fijo: comparativa.comision.fijo,
-    comision_indexado: comparativa.comision.indexado,
-    comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-    comision_sales_person_indexado: comparativa.comision_sales_person.indexado,
-  });
+  const [loading, setLoading] = useState(false);
+  const [formDataComissions, setFormDataComissions] = useState<
+    Partial<ComissionFormValues>
+  >(
+    comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
+      ? {
+          comision_fijo: comparativa.comision.fijo,
+          comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          comision_sales_person_indexado:
+            comparativa.comision_sales_person.indexado,
+        }
+      : comparativa.plan.includes("fijo")
+      ? {
+          comision_fijo: comparativa.comision.fijo,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+        }
+      : {
+          comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_indexado:
+            comparativa.comision_sales_person.indexado,
+        }
+  );
 
   const checkEmptyComissions = () => {
     return Object.values(formDataComissions).some((value) => !value);
@@ -63,6 +81,7 @@ export default function UpdateComissionsModal({
   };
 
   const handleSubmit = async () => {
+    setLoading(true);
     try {
       if (checkEmptyComissions()) {
         showCustomToast({
@@ -121,6 +140,8 @@ export default function UpdateComissionsModal({
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
   return (
@@ -151,6 +172,17 @@ export default function UpdateComissionsModal({
             </h2>
           </ModalHeader>
           <ModalBody>
+            {loading && (
+              <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-15 ">
+                <Spinner
+                  size="lg"
+                  variant="gradient"
+                  label="Actualizando comisiones..."
+                  color="primary"
+                  className="text-lg"
+                />
+              </div>
+            )}
             <ComissionsForm
               comparativa={comparativa}
               setFormDataComissions={setFormDataComissions}

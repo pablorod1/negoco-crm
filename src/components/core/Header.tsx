@@ -1,6 +1,5 @@
 import { SidebarTrigger } from "../ui/sidebar";
 import NotificationsMenu from "./NotificationsMenu";
-import ShortcutsMenu from "./ShortCutsMenu";
 
 export default function Header() {
   return (
@@ -9,7 +8,6 @@ export default function Header() {
         <SidebarTrigger />
         <div className="flex items-center space-x-4">
           <NotificationsMenu />
-          <ShortcutsMenu />
         </div>
       </div>
     </header>

@@ -6,7 +6,6 @@ import {
   ComparativaVM,
   User,
 } from "@/lib/core/types";
-import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
 import {
   Calendar,
@@ -211,7 +210,7 @@ export default function EditComparativaPage() {
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge(comparativa.status)}
-          <Button variant="bordered">Editar</Button>
+          {/* <Button variant="bordered">Editar</Button> */}
         </div>
       </div>
 
@@ -237,7 +236,7 @@ export default function EditComparativaPage() {
             <Tabs defaultValue="notes">
               <TabsList
                 className={`grid mb-4 ${
-                  isAdmin || isBackOffice ? "grid-cols-2" : ""
+                  isAdmin || isBackOffice ? "grid-cols-2" : "grid-cols-1"
                 }`}
               >
                 <TabsTrigger
@@ -351,11 +350,11 @@ export default function EditComparativaPage() {
           <FilesList
             files={comparativa.files as ComparativaFile[]}
             comparativaId={comparativa.id}
+            organization_id={userData?.organization.id as string}
           />
         </CardContent>
         <CardFooter>
           <UploadComparativaFilesModal
-            organization_id={comparativa.user.organization?.id as string}
             onUpload={fetchComparativa}
             status={comparativa.status}
             userData={userData as User}

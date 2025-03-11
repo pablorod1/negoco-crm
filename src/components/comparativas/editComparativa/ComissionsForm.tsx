@@ -3,7 +3,7 @@ import { ComparativaVM } from "@/lib/core/types";
 import { NumberInput } from "@heroui/number-input";
 import { memo } from "react";
 
-interface ComissionFormValues {
+export interface ComissionFormValues {
   comision_fijo: number;
   comision_indexado: number;
   comision_sales_person_fijo: number;
@@ -12,9 +12,9 @@ interface ComissionFormValues {
 
 interface ComissionsFormProps {
   comparativa: ComparativaVM;
-  formDataComissions: ComissionFormValues;
+  formDataComissions: Partial<ComissionFormValues>;
   setFormDataComissions: React.Dispatch<
-    React.SetStateAction<ComissionFormValues>
+    React.SetStateAction<Partial<ComissionFormValues>>
   >;
 }
 

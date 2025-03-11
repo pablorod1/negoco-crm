@@ -22,6 +22,7 @@ import {
 } from "./TableToolbar";
 import { redirect } from "next/navigation";
 import { Table } from "@tanstack/react-table";
+import ExportTableModal from "@/components/core/ExportTableModal";
 
 interface Tramite {
   status: string;
@@ -354,7 +355,10 @@ const TramitesHeader = <TData,>({
           </div>
           <div className="flex justify-between items-center gap-2  w-full">
             <ColumnSelector table={table} />
-            <FilterButton disabled={!checkFilters()} onPress={resetFilters} />
+            <div className="flex items-center gap-2">
+              <FilterButton disabled={!checkFilters()} onPress={resetFilters} />
+              <ExportTableModal name={title} table={table} />
+            </div>
           </div>
         </div>
       </div>

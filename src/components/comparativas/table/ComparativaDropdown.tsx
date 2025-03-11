@@ -8,6 +8,9 @@ import {
 import { Button } from "@heroui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
+import { useDisclosure } from "@heroui/react";
+import DeleteComparativaConfirmationModal from "../DeleteComparativaConfirmationModal";
+import { ComparativaVM, User } from "@/lib/core/types";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -122,11 +125,12 @@ export const DeleteDocumentIcon = (props: IconProps) => {
 };
 
 export default function ComparativaDropdown({
-  comparativa_id,
+  comparativa,
 }: {
-  comparativa_id: string;
+  comparativa: ComparativaVM;
 }) {
   const { userData } = useUser();
+  const { isOpen, onClose, onOpen } = useDisclosure();
 
   const iconClasses =
     "text-xl text-default-500 pointer-events-none flex-shrink-0";
@@ -150,7 +154,7 @@ export default function ComparativaDropdown({
               description="Visualizar, actualizar y tramitar la comparativa"
               startContent={<PencilLine className={iconClasses} />}
               textValue="Visualizar Comparativa"
-              href={`/comparativas/${comparativa_id}`}
+              href={`/comparativas/${comparativa.id}`}
             >
               Visualizar Comparativa
             </DropdownItem>
@@ -169,7 +173,7 @@ export default function ComparativaDropdown({
               <DropdownItem
                 textValue="Eliminar Comparativa"
                 key="delete"
-                onPress={() => console.log("Eliminar comparativa")}
+                onPress={onOpen}
                 className="text-danger"
                 color="danger"
                 description="Eliminar la comparativa de forma permanente"
@@ -183,6 +187,13 @@ export default function ComparativaDropdown({
           ) : null}
         </DropdownMenu>
       </Dropdown>
+
+      <DeleteComparativaConfirmationModal
+        comparativa={comparativa}
+        isOpen={isOpen}
+        onClose={onClose}
+        userData={userData as User}
+      />
     </>
   );
 }

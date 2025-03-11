@@ -73,7 +73,6 @@ export const updateComparativaComissions = async (
 
     query += ` ${updates.length === 0 ? "" : updates.join(", ")} WHERE id = ?`;
     params.push(comparativa_id);
-    console.log(query, params);
     const response = await tursoClient.execute({
       sql: query,
       args: params,

@@ -2,14 +2,21 @@ import { User } from "@/lib/core/types";
 import DashboardCard from "./Card";
 import { TramitesResumePieChart } from "./charts/TramitesResumePieChart";
 import { DashboardCardValue } from "./DashboardBentoGrid";
-import { CheckCircle, CoinsIcon, TriangleAlert, Users } from "lucide-react";
+import {
+  CheckCircle,
+  CoinsIcon,
+  Construction,
+  Pickaxe,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 import { ComisionesChart } from "./charts/ComisionesChart";
 import { YearlyTramitesBarChart } from "./charts/YearlyTramitesBarChart";
 import RenewableTramitesCalendar from "./RenewableTramitesCalendar";
 import { PersonalTramitesChart } from "./charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardHeader } from "../ui/card";
+import { Card, CardContent, CardHeader } from "../ui/card";
 import { ComparativasResume } from "./ComparativasResume";
 
 interface Props {
@@ -87,14 +94,34 @@ export const DireccionView = ({
 
       <div className="row-start-2 col-start-3">
         <Card className="h-full w-full">
-          <CardHeader>Ratio Conversión</CardHeader>
-          {/* <ComparativasGlider /> */}
+          <CardHeader className="text-xl font-medium text-[var(--primary-color-800)]">
+            Ratio Conversión
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col justify-center items-center w-full h-full gap-2">
+              <Construction size={54} className="text-gray-500" />
+              <p className="text-center text-gray-500 text-sm">
+                Estamos trabajando en esta sección. Pronto podrás ver el ratio
+                de conversión de tus comparativas aquí.
+              </p>
+            </div>
+          </CardContent>
         </Card>
       </div>
       <div className="row-start-2 col-start-4">
         <Card className="h-full w-full">
-          <CardHeader>Objetivos</CardHeader>
-          {/* <ComparativasGlider /> */}
+          <CardHeader className="text-xl font-medium text-[var(--primary-color-800)]">
+            Objetivos
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col justify-center items-center w-full h-full gap-2">
+              <Pickaxe size={54} className="text-gray-500" />
+              <p className="text-center text-gray-500 text-sm">
+                Estamos trabajando en esta sección. Pronto podrás ver tus
+                objetivos y metas aquí.
+              </p>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
@@ -131,13 +158,14 @@ export const ComercialView = ({
   comisionesPendientes,
 }: Props) => {
   const [hasSubComerciales, setComercialHasSubComerciales] = useState(false);
+  const id = userData.id;
   const comercialHasSubComerciales = useCallback(async () => {
     const res = await fetch(`/api/users/get/subcomerciales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id: userData.id }),
+      body: JSON.stringify({ id }),
     });
     const { success } = await res.json();
     if (success) {
@@ -145,7 +173,7 @@ export const ComercialView = ({
     } else {
       setComercialHasSubComerciales(false);
     }
-  }, [userData]);
+  }, [id]);
 
   useEffect(() => {
     comercialHasSubComerciales();
@@ -204,7 +232,7 @@ export const ComercialView = ({
         </div>
       ) : (
         <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-2">
-          <h2>Comparativas Resume</h2>
+          <ComparativasResume userData={userData} loading={loading} />
         </div>
       )}
 
@@ -214,7 +242,7 @@ export const ComercialView = ({
             <TeamTramitesBarChart loading={loading} userData={userData} />
           </div>
           <div className="col-span-1 sm:col-span-1">
-            <h2>Comparativas Resume</h2>
+            <ComparativasResume userData={userData} loading={loading} />
           </div>
         </>
       ) : (
@@ -273,7 +301,7 @@ export const BackofficeView = ({
         loading={loading}
       />
       <div className="col-span-1  row-span-3 border border-gray-700">
-        <h2>Comparativas Resume</h2>
+        <ComparativasResume userData={userData} loading={loading} />
       </div>
 
       <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-2">

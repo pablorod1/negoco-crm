@@ -9,6 +9,7 @@ import {
 import { Button } from "@heroui/button";
 import {
   COMPANIES,
+  COMPARATIVA_STATUS_TYPES,
   CONTRACT_TYPES,
   LIQUIDEZ_STATUS,
   STATUS_TYPES,
@@ -167,6 +168,48 @@ export function StatusDropdown({
         {STATUS_TYPES.map((status) => (
           <DropdownItem key={status} className="capitalize">
             {status}
+          </DropdownItem>
+        ))}
+      </DropdownMenu>
+    </Dropdown>
+  );
+}
+
+export function ComparativaStatusDropdown({
+  selected,
+  onSelectionChange,
+}: {
+  selected: string[];
+  onSelectionChange: (value: ComparativaStatus[]) => void;
+}) {
+  return (
+    <Dropdown radius="sm">
+      <DropdownTrigger aria-label="Estado">
+        <Button
+          endContent={
+            <ChevronDownIcon width={12} height={12} className="text-gray-500" />
+          }
+          variant="bordered"
+          radius="sm"
+        >
+          <span className="block max-w-44 w-full text-ellipsis overflow-hidden whitespace-nowrap">
+            {selected.length > 0 ? selected.join(", ") : "Estado"}
+          </span>
+        </Button>
+      </DropdownTrigger>
+      <DropdownMenu
+        disallowEmptySelection={false}
+        aria-label="Estado"
+        closeOnSelect={false}
+        selectedKeys={selected}
+        selectionMode="multiple"
+        onSelectionChange={(selected) =>
+          onSelectionChange(Array.from(selected) as ComparativaStatus[])
+        }
+      >
+        {COMPARATIVA_STATUS_TYPES.map((status) => (
+          <DropdownItem key={status.key} className="capitalize">
+            {status.label}
           </DropdownItem>
         ))}
       </DropdownMenu>

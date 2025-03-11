@@ -1,4 +1,9 @@
-import { ComparativaPlan, ComparativaRow, User } from "@/lib/core/types";
+import {
+  ComparativaPlan,
+  ComparativaRow,
+  ComparativaVM,
+  User,
+} from "@/lib/core/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@heroui/button";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon } from "lucide-react";
@@ -6,8 +11,13 @@ import { formatDate } from "@/lib/core/format";
 import AvatarComponent from "@/components/core/AvatarComponent";
 import { Chip } from "@heroui/chip";
 import React from "react";
-import { Select, SelectItem } from "@heroui/select";
 import ComparativaDropdown from "./ComparativaDropdown";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 
 export const createSubcomercialComparativasColumns = (
   handlePlanChange: (rowId: string, plan: ComparativaPlan) => void,
@@ -138,7 +148,9 @@ export const createSubcomercialComparativasColumns = (
   {
     id: "actions",
     cell: ({ row }) => {
-      return <ComparativaDropdown comparativa_id={row.original.id} />;
+      return (
+        <ComparativaDropdown comparativa={row.original as ComparativaVM} />
+      );
     },
   },
 ];
@@ -169,21 +181,17 @@ const PlanCell = ({
 
   // Si hay múltiples planes, mostrar como desplegable
   return (
-    <Select
-      size="sm"
-      radius="sm"
-      className="w-32"
-      color="default"
-      variant="flat"
-      aria-label="Plan"
-      selectedKeys={[selectedPlan]}
-      onChange={(e) => handleChange(e.target.value)}
-    >
-      {plans.map((plan) => (
-        <SelectItem key={plan} className="capitalize">
-          {plan.toUpperCase()}
-        </SelectItem>
-      ))}
+    <Select aria-label="Plan" value={selectedPlan} onValueChange={handleChange}>
+      <SelectTrigger className="capitalize w-32">
+        {selectedPlan.toUpperCase()}
+      </SelectTrigger>
+      <SelectContent>
+        {plans.map((plan) => (
+          <SelectItem key={plan} value={plan} className="capitalize">
+            {plan.toUpperCase()}
+          </SelectItem>
+        ))}
+      </SelectContent>
     </Select>
   );
 };
@@ -391,7 +399,9 @@ export const createComercialComparativasColumns = (
   {
     id: "actions",
     cell: ({ row }) => {
-      return <ComparativaDropdown comparativa_id={row.original.id} />;
+      return (
+        <ComparativaDropdown comparativa={row.original as ComparativaVM} />
+      );
     },
   },
 ];
@@ -568,7 +578,9 @@ export const createComparativasColumns = (
   {
     id: "actions",
     cell: ({ row }) => {
-      return <ComparativaDropdown comparativa_id={row.original.id} />;
+      return (
+        <ComparativaDropdown comparativa={row.original as ComparativaVM} />
+      );
     },
   },
 ];

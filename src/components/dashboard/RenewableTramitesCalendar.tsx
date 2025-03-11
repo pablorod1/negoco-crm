@@ -165,16 +165,9 @@ export default function RenewableTramitesCalendar({
           {date ? (
             <div className="space-y-4 w-full h-full">
               {filteredTramites.length > 0 ? (
-                // <ScrollArea className="h-72 w-full rounded-md">
-                //   <ul className="space-y-2">
-                //     {filteredTramites.map((tramite, index) => (
-                //       <TramiteRenovable key={index} tramite={tramite} />
-                //     ))}
-                //   </ul>
-                // </ScrollArea>
                 <RenewableTramitesAnimatedList items={filteredTramites} />
               ) : (
-                <div className="w-full h-full flex justify-center items-center flex-col ">
+                <div className="w-full h-64 flex justify-center items-center flex-col ">
                   <RefreshCwOff className="size-12 mb-2 text-gray-300" />
                   {mostRecentRenewableDate && (
                     <p className="text-gray-500 text-center">

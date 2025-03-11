@@ -50,12 +50,16 @@ export const getAuth = (req: NextRequest) => {
         enabled: true,
       },
     },
+    session: {
+      expiresIn: 24 * 60 * 60 * 1000, // 24 hours
+    },
     plugins: [organization(), admin()],
     trustedOrigins: [
       "http://localhost:3000/api/auth",
       "http://localhost:3000",
       "http://beenergy.localhost:3000",
-      "https://negoco.vercel.app",
+      "https://negococloud.es",
+      "https://beenergy.negococloud.es",
     ],
   });
 };

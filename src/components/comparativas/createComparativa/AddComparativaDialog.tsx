@@ -21,6 +21,7 @@ import FirstStepForm from "./forms/FirstStepForm";
 import SecondStepForm from "./forms/SecondStepForm";
 import ThirdStepForm from "./forms/ThirdStepForm";
 import { showCustomToast } from "@/components/core/CustomToast";
+import { useComparativas } from "@/lib/contexts/ComparativasContext";
 
 export default function AddComparativaDialog({
   color,
@@ -28,6 +29,7 @@ export default function AddComparativaDialog({
   color?: ButtonProps["color"];
 }) {
   const { userData } = useUser();
+  const { refreshComparativas } = useComparativas();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const { isOpen, onClose, onOpen } = useDisclosure();
@@ -96,6 +98,7 @@ export default function AddComparativaDialog({
       console.error("Error al crear la comparativa:", error);
     } finally {
       setLoading(false);
+      refreshComparativas();
       onClose();
     }
   };

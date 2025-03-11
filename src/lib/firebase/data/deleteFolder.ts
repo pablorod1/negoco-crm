@@ -2,6 +2,7 @@ import { storage } from "@/lib/firebase/firebaseConfig";
 import { deleteObject, listAll, ref } from "firebase/storage";
 
 export const deleteFolderFromStorage = async (
+  parent_folder: string,
   folderPath: string,
   organization_id: string
 ): Promise<{
@@ -10,7 +11,7 @@ export const deleteFolderFromStorage = async (
 }> => {
   const folderRef = ref(
     storage,
-    `${organization_id}/documentacion/${folderPath}`
+    `${organization_id}/${parent_folder}/${folderPath}`
   );
 
   // 1. Get all files in folder

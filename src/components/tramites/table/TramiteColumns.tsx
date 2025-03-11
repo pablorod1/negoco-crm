@@ -13,6 +13,7 @@ import TramiteDropdown from "./TramiteDropdown";
 export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
   {
     id: "id",
+    accessorFn: (row) => row,
     accessorKey: "id",
     header: "ID",
   },

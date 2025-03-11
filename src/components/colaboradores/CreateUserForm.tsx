@@ -1,6 +1,7 @@
+"use client";
 import React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Input } from "@heroui/input";
 import { authClient } from "@/lib/auth/auth-client";
@@ -197,7 +198,7 @@ export default function CreateUserForm({
   };
 
   return (
-    <form className="space-y-6 w-full">
+    <form className="space-y-6 w-full py-2">
       <Input
         id="name"
         name="name"
@@ -207,6 +208,9 @@ export default function CreateUserForm({
         label="Nombre"
         placeholder="Ingrese el nombre"
         className="w-full"
+        color="primary"
+        variant="bordered"
+        radius="sm"
       />
 
       <Input
@@ -219,6 +223,9 @@ export default function CreateUserForm({
         label="Correo Electrónico"
         placeholder="correo@ejemplo.com"
         className="w-full"
+        color="primary"
+        variant="bordered"
+        radius="sm"
       />
 
       <Input
@@ -231,6 +238,9 @@ export default function CreateUserForm({
         label="Contraseña"
         placeholder="••••••••"
         className="w-full"
+        color="primary"
+        variant="bordered"
+        radius="sm"
       />
 
       <Select
@@ -239,9 +249,14 @@ export default function CreateUserForm({
         selectedKeys={[formData.role]}
         onChange={handleChange}
         label="Rol"
+        color="primary"
+        variant="bordered"
+        radius="sm"
       >
         {ROLES.map((role, index) => (
-          <SelectItem key={index}>{role}</SelectItem>
+          <SelectItem key={index} textValue={role}>
+            {role}
+          </SelectItem>
         ))}
       </Select>
 
@@ -251,6 +266,9 @@ export default function CreateUserForm({
           label="Comercial"
           onChange={handleChange}
           selectedKeys={[formData.super_id]}
+          color="primary"
+          variant="bordered"
+          radius="sm"
         >
           {comerciales.map((item) => (
             <SelectItem key={item.id} textValue={item.name}>
@@ -260,7 +278,12 @@ export default function CreateUserForm({
         </Select>
       )}
 
-      <Button onClick={handleSubmit} className="w-full" disabled={isLoading}>
+      <Button
+        onPress={handleSubmit}
+        className="w-full"
+        disabled={isLoading}
+        color="primary"
+      >
         {isLoading ? "Creando usuario..." : "Crear Usuario"}
       </Button>
     </form>
