@@ -55,9 +55,9 @@ export async function POST(req: NextRequest) {
         idsToInclude.push(...subcomerciales.ids);
       }
 
-      query += ` AND ( user_id = ? user_id IN (${idsToInclude
+      query += ` AND ( user_id = ? OR user_id IN (${idsToInclude
         .map(() => "?")
-        .join(", ")})`;
+        .join(", ")}))`;
       queryParams.push(id, ...idsToInclude);
     }
 

@@ -33,6 +33,11 @@ const items = [
     icon: LayoutDashboard,
   },
   {
+    title: "Comparativas",
+    url: "/comparativas",
+    icon: NotebookPen,
+  },
+  {
     title: "Trámites",
     url: "/tramites",
     icon: ReceiptText,

@@ -30,7 +30,7 @@ export default function ThirdStepForm({
   return (
     <FormWrapper>
       {loading && (
-        <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-15 ">
+        <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-95 ">
           <Spinner
             size="lg"
             variant="gradient"

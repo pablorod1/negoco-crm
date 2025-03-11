@@ -109,6 +109,8 @@ export default function DashboardBentoGrid() {
     } catch (error) {
       console.error("Error fetching data:", error);
       setDashboardData(initialDashboardData);
+    } finally {
+      setLoading(false);
     }
   }, [loading, userData]);
 
@@ -117,8 +119,6 @@ export default function DashboardBentoGrid() {
       fetchData();
       const timer = setTimeout(() => setLoading(false), 300);
       return () => clearTimeout(timer);
-    } else {
-      setLoading(false);
     }
   }, [fetchData, userData]);
 

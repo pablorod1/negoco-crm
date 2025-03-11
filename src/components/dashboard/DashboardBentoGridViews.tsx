@@ -92,13 +92,13 @@ export const DireccionView = ({
         loading={loading}
       />
 
-      <div className="row-start-2 col-start-3">
+      <div className="row-start-2 col-start-3 row-span-2">
         <Card className="h-full w-full">
           <CardHeader className="text-xl font-medium text-[var(--primary-color-800)]">
             Ratio Conversión
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col justify-center items-center w-full h-full gap-2">
+            <div className="flex flex-col justify-center items-center w-full h-80 gap-2">
               <Construction size={54} className="text-gray-500" />
               <p className="text-center text-gray-500 text-sm">
                 Estamos trabajando en esta sección. Pronto podrás ver el ratio
@@ -108,13 +108,13 @@ export const DireccionView = ({
           </CardContent>
         </Card>
       </div>
-      <div className="row-start-2 col-start-4">
+      <div className="row-start-2 col-start-4 row-span-2">
         <Card className="h-full w-full">
           <CardHeader className="text-xl font-medium text-[var(--primary-color-800)]">
             Objetivos
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col justify-center items-center w-full h-full gap-2">
+            <div className="flex flex-col justify-center items-center w-full h-80 gap-2">
               <Pickaxe size={54} className="text-gray-500" />
               <p className="text-center text-gray-500 text-sm">
                 Estamos trabajando en esta sección. Pronto podrás ver tus
@@ -126,18 +126,18 @@ export const DireccionView = ({
       </div>
 
       <div className="col-span-2 row-span-2 row-start-2">
-        <ComparativasResume userData={userData} loading={loading} />
+        <YearlyTramitesBarChart loading={loading} />
       </div>
       <div className="col-span-2 row-span-2 col-start-1 row-start-4">
         {/* <TramitesResumePieChart userData={userData} loading={loading} /> */}
         <RenewableTramitesCalendar userData={userData} loading={loading} />
       </div>
 
-      <div className="col-span-2 col-start-3 row-start-3">
+      {/* <div className="col-span-2 col-start-3 row-start-3">
         <ComisionesChart userData={userData} loading={loading} />
-      </div>
+      </div> */}
       <div className="col-span-2 row-span-2 col-start-3 row-start-4">
-        <YearlyTramitesBarChart loading={loading} />
+        <ComparativasResume userData={userData} loading={loading} />
       </div>
       <div className="col-span-4 2xl:col-span-2 row-span-2 row-start-6 col-start-1">
         <PersonalTramitesChart userData={userData} loading={loading} />
@@ -180,10 +180,6 @@ export const ComercialView = ({
   }, [comercialHasSubComerciales]);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch ">
-      <div className="col-span-1 sm:row-span-2 xl:row-span-2 animate-size">
-        <TramitesResumePieChart userData={userData} loading={loading} />
-      </div>
-
       <DashboardCard
         title="Clientes"
         value={clients?.value}
@@ -216,7 +212,39 @@ export const ComercialView = ({
         icon={<CoinsIcon stroke="var(--primary-color-800)" />}
         loading={loading}
       />
-      <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-1 ">
+      <div className="col-span-1 sm:row-span-2 xl:row-span-2 ">
+        <Card className="h-full w-full">
+          <CardHeader className="text-xl font-medium text-[var(--primary-color-800)]">
+            Objetivos
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col justify-center items-center w-full h-80 gap-2">
+              <Pickaxe size={54} className="text-gray-500" />
+              <p className="text-center text-gray-500 text-sm">
+                Estamos trabajando en esta sección. Pronto podrás ver tus
+                objetivos y metas aquí.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="col-span-1 sm:row-span-2 xl:row-span-2 col-start-2">
+        <Card className="h-full w-full">
+          <CardHeader className="text-xl font-medium text-[var(--primary-color-800)]">
+            Ratio Conversión
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col justify-center items-center w-full h-80 gap-2">
+              <Construction size={54} className="text-gray-500" />
+              <p className="text-center text-gray-500 text-sm">
+                Estamos trabajando en esta sección. Pronto podrás ver el ratio
+                de conversión de tus comparativas aquí.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="col-span-1 sm:col-span-2 xl:col-span-2 row-span-2 ">
         <ComisionesChart userData={userData} loading={loading} />
       </div>
 

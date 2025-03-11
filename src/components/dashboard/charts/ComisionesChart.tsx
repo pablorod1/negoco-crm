@@ -1,8 +1,13 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import { Line, LineChart, XAxis } from "recharts";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+} from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
@@ -12,6 +17,9 @@ import {
 import React from "react";
 import { Euro } from "lucide-react";
 import { User } from "@/lib/core/types";
+import { formatComission } from "@/lib/core/format";
+import { NumberTicker } from "@/components/ui/number-ticker";
+import { Spinner } from "@heroui/react";
 
 const chartConfig = {
   total: {
@@ -37,6 +45,7 @@ export function ComisionesChart({
 }) {
   const [chartData, setChartData] =
     React.useState<{ month: string; total: number }[]>(createEmptyData);
+  const [loadingData, setLoadingData] = React.useState(true);
 
   // Función para obtener los datos de comisiones
   const fetchComisiones = React.useCallback(async () => {
@@ -62,6 +71,8 @@ export function ComisionesChart({
         setChartData(data);
       } catch (error) {
         console.error("Error al obtener comisiones:", error);
+      } finally {
+        setLoadingData(false);
       }
     }
   }, [userData, loading]);
@@ -70,9 +81,24 @@ export function ComisionesChart({
     fetchComisiones();
   }, [fetchComisiones]);
 
+  const calculateDifference = () => {
+    const currentMonth = new Date().getMonth();
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const currentTotal = chartData[currentMonth].total;
+    const lastTotal = chartData[lastMonth].total;
+    const difference =
+      ((currentTotal - lastTotal) / lastTotal) * 100 === Infinity
+        ? 100
+        : ((currentTotal - lastTotal) / lastTotal) * 100;
+    return difference;
+  };
+
+  const currentMonthComision = chartData[new Date().getMonth()].total;
+  const difference = calculateDifference();
+
   return (
     <Card
-      className={`relative h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.12)] transition-colors duration-300 ${
+      className={`relative flex flex-col justify-between h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.12)] transition-colors duration-300 ${
         loading ? "bg-gray-200 " : "bg-white"
       }`}
     >
@@ -90,67 +116,85 @@ export function ComisionesChart({
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <CardTitle className="text-xl text-[var(--primary-color-800)]">
-          Resumen de Comisiones 2025
-        </CardTitle>
+        <div className="space-y-1 mb-2">
+          <h2 className="text-sm font-medium text-[var(--primary-color-300)]">
+            Total Comisiones
+          </h2>
+
+          {!loadingData ? (
+            <>
+              <NumberTicker
+                endContent="€"
+                value={currentMonthComision}
+                decimalPlaces={2}
+                className="text-3xl font-bold text-[var(--primary-color-800)]"
+              >
+                {formatComission(currentMonthComision)}
+              </NumberTicker>
+
+              <p
+                className={`text-sm ${
+                  difference >= 0 ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {difference >= 0 ? "+" : ""}
+                {difference.toFixed(1)}% respecto al mes anterior
+              </p>
+            </>
+          ) : (
+            <div className="h-12 w-24 bg-gray-200 rounded-md animate-pulse"></div>
+          )}
+        </div>
       </CardHeader>
       <CardContent
         className={`transition-opacity duration-300${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        {!loading && chartData.length > 0 && (
+        {!loadingData ? (
           <ChartContainer
-            className="h-full max-h-[120px] w-full"
             config={chartConfig}
+            className=" max-h-[200px] h-full w-full py-4"
           >
-            <AreaChart
-              accessibilityLayer
-              data={chartData}
-              margin={{ left: 12, right: 12 }}
-              height={100}
-            >
-              <CartesianGrid vertical={false} />
+            <LineChart accessibilityLayer data={chartData}>
               <XAxis
                 dataKey="month"
                 tickLine={false}
                 axisLine={false}
-                tickMargin={8}
+                tickMargin={12}
                 tickFormatter={(value) => value.slice(0, 3)}
-                className="capitalize"
               />
-              <ChartTooltip
-                cursor={false}
-                content={
-                  <ChartTooltipContent className="capitalize" indicator="dot" />
-                }
-              />
-              <defs>
-                <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--primary-color-400)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--primary-color-600)"
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-              </defs>
-              <Area
+              <ChartTooltip cursor={true} content={<ChartTooltipContent />} />
+              <Line
                 dataKey="total"
                 type="monotone"
-                fill="url(#fillDesktop)"
-                fillOpacity={0.4}
                 stroke="var(--primary-color-500)"
-                stackId="a"
+                strokeWidth={2}
+                dot={{
+                  fill: "var(--primary-color-500)",
+                }}
+                activeDot={{
+                  r: 6,
+                }}
               />
-            </AreaChart>
+            </LineChart>
           </ChartContainer>
+        ) : (
+          <div className=" h-full w-full flex justify-center items-center">
+            <Spinner
+              size="lg"
+              color="primary"
+              variant="gradient"
+              label="Cargando..."
+            />
+          </div>
         )}
       </CardContent>
+      <CardFooter>
+        <p className="text-xs text-gray-300">
+          * Comisiones acumuladas en el último año
+        </p>
+      </CardFooter>
     </Card>
   );
 }

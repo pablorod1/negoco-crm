@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { User } from "@/lib/core/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Users } from "lucide-react";
 
 const chartConfig = {
   tramites: {
@@ -144,7 +145,9 @@ export function TeamTramitesBarChart({
 
   return (
     <Card
-      className={`flex flex-col justify-between relative w-full h-full  backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
+      className={`flex flex-col ${
+        comerciales.length > 0 ? "justify-between" : ""
+      }  relative w-full h-full  backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
         loading ? "bg-gray-200" : "bg-white"
       }`}
     >
@@ -167,7 +170,11 @@ export function TeamTramitesBarChart({
           <CardDescription>{getDescription()}</CardDescription>
         </div>
         <div className="flex flex-row-reverse items-center 2xl:flex-col 2xl:items-end justify-end gap-2">
-          <Select value={timeRange} onValueChange={handleTimeRangeChange}>
+          <Select
+            value={timeRange}
+            onValueChange={handleTimeRangeChange}
+            disabled={loading || !comerciales || comerciales.length === 0}
+          >
             <SelectTrigger
               className="w-[160px] rounded-lg sm:ml-auto "
               aria-label="Select a value"
@@ -205,6 +212,12 @@ export function TeamTramitesBarChart({
             </SelectContent>
           </Select>
           <Select
+            disabled={
+              loading ||
+              !comerciales ||
+              comerciales.length === 0 ||
+              selectedComercial === "all"
+            }
             value={selectedComercial}
             onValueChange={setSelectedComercial}
           >
@@ -248,40 +261,59 @@ export function TeamTramitesBarChart({
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <ChartContainer
-          config={chartConfig}
-          className="h-full max-h-[300px] w-full py-4"
-        >
-          <BarChart
-            accessibilityLayer
-            data={chartData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
+        {comerciales && comerciales.length > 0 ? (
+          <ChartContainer
+            config={chartConfig}
+            className="h-full max-h-[300px] w-full py-4"
           >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="user.name"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              className="capitalize"
-            />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  indicator="line"
-                  className="w-[200px] capitalize"
-                />
-              }
-            />
-            <Bar dataKey="active" fill="var(--primary-color-700)" radius={4} />
-            <Bar dataKey="baja" fill="var(--danger-color)" radius={4} />
-            <ChartLegend content={<ChartLegendContent />} />
-          </BarChart>
-        </ChartContainer>
+            <BarChart
+              accessibilityLayer
+              data={chartData}
+              margin={{
+                left: 12,
+                right: 12,
+              }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="user.name"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={32}
+                className="capitalize"
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    indicator="line"
+                    className="w-[200px] capitalize"
+                  />
+                }
+              />
+              <Bar
+                dataKey="active"
+                fill="var(--primary-color-700)"
+                radius={4}
+              />
+              <Bar dataKey="baja" fill="var(--danger-color)" radius={4} />
+              <ChartLegend content={<ChartLegendContent />} />
+            </BarChart>
+          </ChartContainer>
+        ) : (
+          <div className="flex flex-col gap-2 items-center justify-center h-80 w-full">
+            <Users className="h-12 w-12 text-gray-500" />
+
+            <div className="flex flex-col items-center ">
+              <p className="text-lg text-gray-500">
+                Todavía no tienes comerciales en tu equipo
+              </p>
+              <p className="text-sm text-gray-400">
+                Aquí se mostrarán las ventas de tu equipo
+              </p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
