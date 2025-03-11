@@ -2,124 +2,183 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@heroui/input";
-import { Checkbox } from "@heroui/checkbox";
-import { motion } from "framer-motion";
-import { Zap, Lock, Mail } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
 import { authClient } from "@/lib/auth/auth-client";
+import Link from "next/link";
+
+// Validación de formulario optimizada
+type FormErrors = {
+  email?: string;
+  password?: string;
+  general?: string;
+};
 
 export default function LoginForm() {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const handleLoginSubmit = async () => {
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.email) {
+      newErrors.email = "El correo electrónico es obligatorio";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Por favor, introduce un correo electrónico válido";
+    }
+
+    if (!formData.password) {
+      newErrors.password = "La contraseña es obligatoria";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+
+    // Limpiar error cuando se edita el campo
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
     setIsLoading(true);
-    setError(null);
+    setErrors({});
 
     try {
       const { error } = await authClient.signIn.email(
         {
-          email,
-          password,
+          email: formData.email,
+          password: formData.password,
           callbackURL: "/",
         },
         {
-          onRequest: () => {
-            setIsLoading(true);
-          },
+          onRequest: () => setIsLoading(true),
           onResponse: () => {
             setIsLoading(false);
           },
           onError: (ctx) => {
-            setError(ctx.error.message || "Error desconocido");
+            setErrors({ general: ctx.error.message || "Error desconocido" });
           },
         }
       );
 
       if (error) {
-        setError(error.message as string);
-        return;
+        setErrors({ general: error.message as string });
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
-      setError("Error desconocido");
+      setErrors({
+        general:
+          "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-xl p-8 shadow-2xl max-w-md w-full"
-    >
-      <form className="flex flex-col gap-6">
-        {error && (
-          <div className="p-3 text-sm text-red-500 bg-red-100 rounded">
-            {error}
+    <div className="w-full">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-900">Accede a tu cuenta</h2>
+        <p className="mt-2 text-gray-600">
+          Ingresa tus credenciales para acceder a tu panel de consultoría
+        </p>
+      </div>
+
+      <form onSubmit={handleLoginSubmit} className="space-y-6">
+        {errors.general && (
+          <div className="p-4 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
+            <AlertCircle className="text-red-500 mt-0.5 shrink-0" size={18} />
+            <p className="text-sm text-red-700">{errors.general}</p>
           </div>
         )}
+
         <div className="space-y-2">
-          <Input
-            id="email"
-            label="Correo Electrónico"
-            labelPlacement="outside"
-            type="email"
-            size="lg"
-            radius="sm"
-            variant="faded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            startContent={<Mail size={18} />}
-          />
+          <Label htmlFor="email" className="text-sm font-medium">
+            Correo electrónico
+          </Label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+              <Mail size={18} />
+            </div>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="tu@empresa.com"
+              className={`pl-10 ${
+                errors.email ? "border-red-300 focus-visible:ring-red-500" : ""
+              }`}
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </div>
+          {errors.email && (
+            <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+          )}
         </div>
+
         <div className="space-y-2">
-          <Input
-            size="lg"
-            variant="faded"
-            label="Contraseña"
-            labelPlacement="outside"
-            id="password"
-            radius="sm"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            startContent={<Lock size={18} />}
-          />
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-medium">
+              Contraseña
+            </Label>
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-[var(--primary-color-600)] hover:text-[var(--primary-color-500)]"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+              <Lock size={18} />
+            </div>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              className={`pl-10 ${
+                errors.password
+                  ? "border-red-300 focus-visible:ring-red-500"
+                  : ""
+              }`}
+              value={formData.password}
+              onChange={handleChange}
+            />
+          </div>
+          {errors.password && (
+            <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+          )}
         </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="remember"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-          >
-            Recordarme
-          </Checkbox>
-        </div>
+
         <Button
-          onClick={handleLoginSubmit}
-          className="w-full bg-[var(--primary-color-500)] hover:bg-[var(--primary-color-600)]"
+          type="submit"
+          className="w-full flex items-center justify-center gap-2 bg-[var(--primary-color-600)] hover:bg-[var(--primary-color-700)]"
           disabled={isLoading}
         >
-          <Zap className="mr-2" size={18} />
           {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
+          <ArrowRight size={16} className={isLoading ? "opacity-0" : ""} />
         </Button>
       </form>
-      <div className="mt-6 text-center">
-        <a
-          href="/forgot-password"
-          className="text-sm text-[var(--primary-color-400)] hover:underline"
-        >
-          Forgot password?
-        </a>
-      </div>
-    </motion.div>
+    </div>
   );
 }

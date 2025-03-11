@@ -13,13 +13,7 @@ export default async function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* <head>
-        <Script
-          crossOrigin="anonymous"
-          src="//unpkg.com/react-scan/dist/auto.global.js"
-        />
-      </head> */}
-      {children}
+      <body>{children}</body>
     </html>
   );
 }

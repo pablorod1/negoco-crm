@@ -4,7 +4,6 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import { SidebarComponent } from "@/components/core/sidebar/Sidebar";
 import Header from "@/components/core/Header";
 import { Toaster } from "react-hot-toast";
-import { inter } from "@/fonts/fonts";
 import { Providers } from "../providers";
 import React, { useEffect, useState } from "react";
 
@@ -22,10 +21,7 @@ export default function MainLayout({
   }, []);
 
   return (
-    <body
-      data-client={activeOrganization}
-      className={`${inter.className} antialiased`}
-    >
+    <main data-client={activeOrganization}>
       <Providers>
         <Toaster position="bottom-right" />
         <SidebarComponent />
@@ -34,6 +30,6 @@ export default function MainLayout({
           {children}
         </SidebarInset>
       </Providers>
-    </body>
+    </main>
   );
 }

@@ -51,7 +51,7 @@ export const getAuth = (req: NextRequest) => {
       },
     },
     session: {
-      expiresIn: 24 * 60 * 60 * 1000, // 24 hours
+      expiresIn: 24 * 60 * 60,
     },
     plugins: [organization(), admin()],
     trustedOrigins: [
