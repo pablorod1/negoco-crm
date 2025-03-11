@@ -5,22 +5,26 @@ import { SidebarComponent } from "@/components/core/sidebar/Sidebar";
 import Header from "@/components/core/Header";
 import { Toaster } from "react-hot-toast";
 import { inter } from "@/fonts/fonts";
-
 import { Providers } from "../providers";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 export default function MainLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const activeOrganization = window
-    ? window.location.hostname.split(".")[0]
-    : "";
+  const [activeOrganization, setActiveOrganization] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setActiveOrganization(window.location.hostname.split(".")[0]);
+    }
+  }, []);
+
   return (
     <body
-      data-client={activeOrganization ? activeOrganization : ""}
-      className={`${inter.className} antialiased `}
+      data-client={activeOrganization}
+      className={`${inter.className} antialiased`}
     >
       <Providers>
         <Toaster position="bottom-right" />

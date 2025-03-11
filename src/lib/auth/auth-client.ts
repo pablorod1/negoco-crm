@@ -5,6 +5,6 @@ export const authClient = createAuthClient({
   baseURL:
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://negoco.vercel.app",
+      : "https://negococloud.es",
   plugins: [adminClient(), organizationClient()],
 });

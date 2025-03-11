@@ -58,6 +58,7 @@ export const getAuth = (req: NextRequest) => {
       "http://localhost:3000/api/auth",
       "http://localhost:3000",
       "http://beenergy.localhost:3000",
+      "https://negococloud.es/api/auth",
       "https://negococloud.es",
       "https://beenergy.negococloud.es",
     ],
