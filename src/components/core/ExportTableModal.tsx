@@ -92,15 +92,15 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Export Table Data</DialogTitle>
+          <DialogTitle>Exportar {name}</DialogTitle>
           <DialogDescription>
-            Select the columns you want to include in the export.
+            Selecciona las columnas que deseas exportar
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="text-sm text-muted-foreground">
-              {selectedCount} of {totalCount} columns selected
+              {selectedCount} de {totalCount} columnas seleccionadas
             </div>
             <div className="flex gap-2">
               <Button
@@ -109,7 +109,7 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
                 onClick={() => handleSelectAll(true)}
                 disabled={selectedCount === totalCount || totalCount === 0}
               >
-                Select All
+                Seleccionar Todo
               </Button>
               <Button
                 variant="outline"
@@ -117,7 +117,7 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
                 onClick={() => handleSelectAll(false)}
                 disabled={selectedCount === 0 || totalCount === 0}
               >
-                Deselect All
+                Limpiar Selección
               </Button>
             </div>
           </div>
@@ -147,13 +147,13 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
             </div>
           ) : (
             <div className="py-4 text-center text-muted-foreground">
-              No columns available for export
+              No hay columnas para exportar
             </div>
           )}
         </div>
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between sm:space-x-2">
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={handleExport}
@@ -161,7 +161,8 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
             className="mt-2 sm:mt-0"
           >
             <Download className="mr-2 h-4 w-4" />
-            Export {selectedCount} {selectedCount === 1 ? "column" : "columns"}
+            Exportar {selectedCount}{" "}
+            {selectedCount === 1 ? "columna" : "columnas"}
           </Button>
         </DialogFooter>
       </DialogContent>

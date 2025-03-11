@@ -6,6 +6,7 @@ interface ButtonGroupProps {
   onSubmit: () => void;
   onCancel?: () => void;
   lastStep?: boolean;
+  loading?: boolean;
 }
 
 export default function ButtonGroupComponent({
@@ -13,6 +14,7 @@ export default function ButtonGroupComponent({
   onSubmit,
   onCancel,
   lastStep,
+  loading,
 }: ButtonGroupProps) {
   return (
     <div className="flex justify-between items-center w-full mb-2">
@@ -24,7 +26,7 @@ export default function ButtonGroupComponent({
           </Button>
         )}
         <Button onPress={onSubmit} variant="ghost" color="primary" radius="sm">
-          {lastStep ? "Guardar" : "Siguiente"}
+          {lastStep ? "Guardar" : loading ? "Guardando..." : "Siguiente"}
         </Button>
       </div>
     </div>

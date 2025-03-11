@@ -42,7 +42,7 @@ export default function FourthStepForm({
   return (
     <FormWrapper>
       {loading && (
-        <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-15 ">
+        <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-90 ">
           <Spinner
             size="lg"
             label="Creando trámite..."
@@ -73,6 +73,8 @@ export default function FourthStepForm({
         onCancel={onCancel}
         onBack={onBack}
         onSubmit={handleAddTramite}
+        loading={loading}
+        lastStep
       />
     </FormWrapper>
   );

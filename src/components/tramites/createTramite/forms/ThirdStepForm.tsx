@@ -46,6 +46,7 @@ export default function ThirdStepForm({
         return {
           ...prevState,
           status: value as Status,
+          liquidez_status: value === "Activo" ? "Pendiente de Cobro" : null,
           activation_date:
             value === "Activo" ? ACTIVATION_DATE.toISOString() : "",
           renovation_date:
