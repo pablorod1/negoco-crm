@@ -78,7 +78,7 @@ export default {
         light: {
           colors: {
             primary: {
-              DEFAULT: "var(--primary-color-500)",
+              DEFAULT: "var(--primary)",
               foreground: "#000",
             },
             danger: {
@@ -87,7 +87,7 @@ export default {
             },
             default: {
               DEFAULT: "#ffffff",
-              foreground: "var(--primary-color-500)",
+              foreground: "var(--primary)",
             },
           },
         },
