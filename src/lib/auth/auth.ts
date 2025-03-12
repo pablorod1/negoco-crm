@@ -14,6 +14,7 @@ import {
 } from "../../../auth-schema";
 import { hashPassword, verifyPassword } from "./auth-utils";
 import { organization, admin } from "better-auth/plugins";
+import { sendPasswordResetEmail } from "../hooks/email";
 
 export const getAuth = (req: NextRequest) => {
   const tursoClient = getTursoClient(req); // Cliente Turso dinámico según subdominio
@@ -41,6 +42,13 @@ export const getAuth = (req: NextRequest) => {
         },
       },
       requireEmailVerification: false,
+      sendResetPassword: async ({ user, url, token }, req) => {
+        await sendPasswordResetEmail({
+          email: user.email,
+          resetLink: url,
+        });
+      },
+      resetPasswordTokenExpiresIn: 24 * 60 * 60,
     },
     user: {
       changeEmail: {

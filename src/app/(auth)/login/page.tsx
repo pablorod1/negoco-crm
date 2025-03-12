@@ -1,4 +1,4 @@
-import LoginWrapper from "@/components/login/LoginWrapper";
+import LoginWrapper from "@/components/auth/login/LoginWrapper";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {

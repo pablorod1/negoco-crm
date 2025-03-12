@@ -1,11 +1,14 @@
 "use client";
-import Image from "next/image";
-import AnimatedBackground from "./AnimatedBackground";
-import FeatureItem from "./FeatureItem";
-import LoginForm from "./LoginForm";
+import AnimatedBackground from "@/components/auth/login/AnimatedBackground";
+import FeatureItem from "@/components/auth/login/FeatureItem";
 import { Bell, PieChart, Zap } from "lucide-react";
+import Image from "next/image";
 
-export default function LoginWrapper() {
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen w-full flex items-stretch">
       {/* Sección de marca (lado izquierdo) */}
@@ -69,24 +72,7 @@ export default function LoginWrapper() {
           </div>
         </div>
       </div>
-
-      {/* Sección del formulario (lado derecho) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-gray-50">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8">
-            <Image
-              src="/logo.webp"
-              alt="Negoco CRM"
-              width={150}
-              height={50}
-              className="w-auto h-auto mx-auto"
-              priority
-            />
-          </div>
-
-          <LoginForm />
-        </div>
-      </div>
+      {children}
     </div>
   );
 }
