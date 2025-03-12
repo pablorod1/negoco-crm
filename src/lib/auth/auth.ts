@@ -42,7 +42,7 @@ export const getAuth = (req: NextRequest) => {
         },
       },
       requireEmailVerification: false,
-      sendResetPassword: async ({ user, url, token }, req) => {
+      sendResetPassword: async ({ user, url }) => {
         await sendPasswordResetEmail({
           email: user.email,
           resetLink: url,
