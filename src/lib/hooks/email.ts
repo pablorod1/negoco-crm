@@ -130,5 +130,3 @@ export async function sendPasswordResetEmail({
     throw error;
   }
 }
-
-module.exports = sendPasswordResetEmail;
