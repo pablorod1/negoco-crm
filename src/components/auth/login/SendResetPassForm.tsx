@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, ArrowRight, AlertCircle } from "lucide-react";
 import { authClient } from "@/lib/auth/auth-client";
-import { validateEmailField } from "@/lib/validation/create-tramite/field-validation";
 
 // Validación de formulario optimizada
 type FormErrors = {
@@ -31,7 +30,7 @@ export default function SendResetPassForm({ setForgotPass }: Props) {
 
     if (!formData.email) {
       newErrors.email = "El correo electrónico es obligatorio";
-    } else if (!validateEmailField(formData.email).succeeded) {
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Por favor, introduce un correo electrónico válido";
     }
 
@@ -66,10 +65,6 @@ export default function SendResetPassForm({ setForgotPass }: Props) {
       });
 
       if (response.error) {
-        console.error(
-          "Error al solicitar restablecimiento de contraseña:",
-          response.error.message
-        );
         setErrors({ general: response.error.message });
         return;
       }
