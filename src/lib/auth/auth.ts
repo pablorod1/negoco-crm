@@ -43,7 +43,10 @@ export const getAuth = (req: NextRequest) => {
       },
       requireEmailVerification: false,
       sendResetPassword: async ({ user, url }) => {
-        await sendPasswordResetEmail(user.email, url);
+        await sendPasswordResetEmail({
+          email: user.email,
+          resetLink: url,
+        });
       },
       resetPasswordTokenExpiresIn: 24 * 60 * 60,
     },

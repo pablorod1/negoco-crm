@@ -1,6 +1,12 @@
 import nodemailer from "nodemailer";
 
-export async function sendPasswordResetEmail(email: string, resetLink: string) {
+export async function sendPasswordResetEmail({
+  email,
+  resetLink,
+}: {
+  email: string;
+  resetLink: string;
+}) {
   // Configurar el transporter de nodemailer
   const transporter = nodemailer.createTransport({
     service: "gmail", // Puedes cambiarlo según el proveedor (Mailgun, SendGrid, etc.)
