@@ -1,15 +1,19 @@
 "use client";
-import EmptyToken from "@/components/auth/reset-pass/EmptyToken";
 import ResetPassWrapper from "@/components/auth/reset-pass/ResetPassWrapper";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function ResetPasswordPage() {
+function Reset() {
   const params = useSearchParams();
   const token = params.get("token");
 
-  if (!token) {
-    return <EmptyToken />;
-  }
+  return <ResetPassWrapper token={token as string} />;
+}
 
-  return <ResetPassWrapper token={token} />;
+export default function ResetPasswordPage() {
+  return (
+    <Suspense>
+      <Reset />
+    </Suspense>
+  );
 }

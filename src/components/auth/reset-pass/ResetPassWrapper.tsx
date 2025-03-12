@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import ResetPassForm from "./ResetPassForm";
+import EmptyToken from "./EmptyToken";
 
 export default function ResetPassWrapper({ token }: { token: string }) {
   return (
@@ -17,7 +18,7 @@ export default function ResetPassWrapper({ token }: { token: string }) {
           />
         </div>
 
-        <ResetPassForm token={token} />
+        {token ? <ResetPassForm token={token} /> : <EmptyToken />}
       </div>
     </div>
   );

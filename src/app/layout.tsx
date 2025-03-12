@@ -5,6 +5,16 @@ import { inter } from "@/fonts/fonts";
 export const metadata: Metadata = {
   title: "Negoco CRM",
   description: "Negoco CRM",
+  openGraph: {
+    images: "/opengraph-image.png",
+  },
+  metadataBase: new URL("https://negococloud.es"),
+  alternates: {
+    canonical: "/",
+    languages: {
+      "es-ES": "/es-ES",
+    },
+  },
 };
 
 export default async function RootLayout({
