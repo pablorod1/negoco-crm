@@ -5,6 +5,8 @@ import { useTramites } from "@/lib/contexts/TramitesContext";
 import FirstStepForm from "../createTramite/forms/FirstStepForm";
 import {
   ClientDB,
+  ComparativaFile,
+  ComparativaVM,
   ContractDB,
   createEmptyClientDB,
   createEmptySignerDB,
@@ -35,16 +37,28 @@ import { ButtonProps } from "@heroui/button";
 export default function AddTramiteDialog({
   shortcut,
   color,
+  comparativa,
+  plan,
+  onComparativaUpdated,
 }: {
   shortcut?: boolean;
   color?: ButtonProps["color"];
+  comparativa?: ComparativaVM;
+  plan?: string;
+  onComparativaUpdated?: () => void;
 }) {
   const { userData } = useUser();
   const [activeTab, setActiveTab] = useState(0);
   const [tramite, setTramite] = useState<TramiteDB>(
-    createEmptyTramiteDB(userData as User)
+    createEmptyTramiteDB(
+      userData as User,
+      plan ? (plan as "fijo" | "indexado") : undefined,
+      comparativa ? comparativa : undefined
+    )
   );
-  const [client, setClient] = useState<ClientDB>(createEmptyClientDB());
+  const [client, setClient] = useState<ClientDB>(
+    createEmptyClientDB(comparativa ? comparativa : undefined)
+  );
   const [signer, setSigner] = useState<SignerDB>(createEmptySignerDB());
   const [contracts, setContracts] = useState<ContractDB[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
@@ -52,11 +66,21 @@ export default function AddTramiteDialog({
   const { isOpen, onClose, onOpen } = useDisclosure();
   const { refreshTramites } = useTramites();
 
+  const comparativaFiles = comparativa
+    ? (comparativa.files as ComparativaFile[])
+    : undefined;
+
   const handleOpen = () => {
     onOpen();
     setActiveTab(0);
-    setTramite(createEmptyTramiteDB(userData as User));
-    setClient(createEmptyClientDB());
+    setTramite(
+      createEmptyTramiteDB(
+        userData as User,
+        plan as "fijo" | "indexado",
+        comparativa
+      )
+    );
+    setClient(createEmptyClientDB(comparativa));
     setSigner(createEmptySignerDB());
     setContracts([]);
     setDocuments([]);
@@ -135,6 +159,72 @@ export default function AddTramiteDialog({
         icon: CheckCircle,
       });
 
+      if (comparativa) {
+        const comparativaRes = await fetch("/api/comparativas/update/status", {
+          method: "PATCH",
+          body: JSON.stringify({
+            id: comparativa.id,
+            status: "processed",
+            tramite_id: tramite.id,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const { success: comparativaSuccess, error: comparativaError } =
+          await comparativaRes.json();
+
+        if (!comparativaSuccess) {
+          showCustomToast({
+            title: "Error al actualizar comparativa",
+            message: comparativaError || "Error desconocido",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
+        const moveFileRes = await fetch("/api/comparativas/move-files", {
+          method: "POST",
+          body: JSON.stringify({
+            organization_id: userData?.organization.id,
+            comparativa_id: comparativa.id,
+            tramite_id: tramite.id,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const { success: moveFilesSuccess, error: moveFileError } =
+          await moveFileRes.json();
+
+        if (!moveFilesSuccess) {
+          showCustomToast({
+            title: "Error al mover archivos",
+            message: moveFileError || "Error desconocido",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
+        showCustomToast({
+          title: "Comparativa actualizada",
+          message: "La comparativa ha sido actualizada correctamente",
+          iconColor: "var(--success-color)",
+          iconSize: 24,
+          icon: CheckCircle,
+        });
+
+        if (onComparativaUpdated) {
+          onComparativaUpdated();
+        }
+      }
+
       refreshTramites();
       onClose();
     } catch (error) {
@@ -156,9 +246,9 @@ export default function AddTramiteDialog({
       setClient={setClient}
       setTramite={setTramite}
       onSubmitSuccess={handleNext}
-      client={client}
       tramite={tramite}
       onCancel={onClose}
+      comparativa={comparativa}
     />,
     <SecondStepForm
       key={2}
@@ -168,6 +258,7 @@ export default function AddTramiteDialog({
       onSecondSubmitSuccess={handleNext}
       onBack={handleBack}
       onCancel={onClose}
+      comparativa={comparativa}
     />,
     <ThirdStepForm
       key={3}
@@ -190,6 +281,7 @@ export default function AddTramiteDialog({
       documents={documents}
       setDocuments={setDocuments}
       loading={loading}
+      comparativaFiles={comparativaFiles}
     />,
   ];
 
@@ -203,7 +295,7 @@ export default function AddTramiteDialog({
           className="shadow-md"
         >
           <Plus size={20} />
-          <span>Nuevo Trámite</span>
+          <span>Crear Trámite</span>
         </Button>
       ) : (
         <div onClick={handleOpen} className="flex flex-col items-center gap-2">

@@ -1,8 +1,8 @@
+import LoadingStateModal from "@/components/core/LoadingStateModal";
 import FormWrapper from "@/components/tramites/createTramite/FormWrapper";
 import NotesBoard from "@/components/tramites/editTramite/NotesBoard";
 import { ComparativaDB } from "@/lib/core/types";
 import { Button } from "@heroui/button";
-import { Spinner } from "@heroui/spinner";
 
 interface Props {
   comparativa: ComparativaDB;
@@ -29,17 +29,7 @@ export default function ThirdStepForm({
   };
   return (
     <FormWrapper>
-      {loading && (
-        <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-95 ">
-          <Spinner
-            size="lg"
-            variant="gradient"
-            label="Creando trámite..."
-            color="primary"
-            className="text-lg"
-          />
-        </div>
-      )}
+      {loading && <LoadingStateModal />}
       <div className="w-full h-auto">
         <NotesBoard notes={comparativa.notes} onCreateNote={handleAddNote} />
       </div>

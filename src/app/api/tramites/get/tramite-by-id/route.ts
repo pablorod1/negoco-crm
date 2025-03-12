@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       data: {
         tramite: {
           ...tramiteResult[0],
-          notes: JSON.parse(tramiteResult[0].notes as string),
+          notes: JSON.parse(tramiteResult[0].notes as string) as string[],
         },
         client: clientResult[0],
         contracts: contractsResult,

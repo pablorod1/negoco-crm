@@ -1,4 +1,4 @@
-import { DocumentType, User } from "../core/types";
+import { ComparativaVM, DocumentType, User } from "../core/types";
 
 export type FirstForm = {
   sales_name: string;
@@ -6,8 +6,11 @@ export type FirstForm = {
   user_id: string;
 };
 
-export const createEmptyFirstForm = (userData: User): FirstForm => ({
-  sales_name: userData.name,
+export const createEmptyFirstForm = (
+  userData: User,
+  comparativa?: ComparativaVM
+): FirstForm => ({
+  sales_name: comparativa ? (comparativa.user.name as string) : userData.name,
   client_type: "",
   user_id: userData.id,
 });
@@ -33,10 +36,12 @@ export interface SecondForm {
   address: string;
 }
 
-export const createEmptySecondForm = (): SecondForm => ({
+export const createEmptySecondForm = (
+  comparativa?: ComparativaVM
+): SecondForm => ({
   document_type: "",
   document_number: "",
-  name: "",
+  name: comparativa ? comparativa.client : "",
   last_name: "",
   email: "",
   phone: "",

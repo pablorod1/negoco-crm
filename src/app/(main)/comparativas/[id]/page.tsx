@@ -37,6 +37,8 @@ import { NotesSection } from "@/components/comparativas/editComparativa/NotesTab
 import { ServiceInfo } from "@/components/comparativas/editComparativa/ServiceInfo";
 import { FilesList } from "@/components/comparativas/editComparativa/FilesList";
 import { CommissionsTabContent } from "@/components/comparativas/editComparativa/ComissionsTabContent";
+import UpdateComparativaStatusModal from "@/components/comparativas/editComparativa/UpdateComparativaStatusModal";
+import ComparativaToTramite from "@/components/comparativas/editComparativa/ComparativaToTramite";
 
 const STATUS_BADGES = {
   pending: (
@@ -50,8 +52,17 @@ const STATUS_BADGES = {
     </Chip>
   ),
   processed: (
-    <Chip variant="flat" color="primary">
+    <Chip
+      variant="flat"
+      color="primary"
+      className="bg-[var(--primary-color-100)]"
+    >
       Comparativa Tramitada
+    </Chip>
+  ),
+  rejected: (
+    <Chip variant="flat" color="danger">
+      Rechazada
     </Chip>
   ),
   default: <Chip variant="flat">Desconocido</Chip>,
@@ -86,7 +97,7 @@ export default function EditComparativaPage() {
       if (!success) {
         throw new Error(error);
       }
-
+      console.log("data", data);
       setComparativa(data);
     } catch (error) {
       console.error(error);
@@ -210,7 +221,17 @@ export default function EditComparativaPage() {
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge(comparativa.status)}
-          {/* <Button variant="bordered">Editar</Button> */}
+          {comparativa.status !== "completed" ? (
+            <UpdateComparativaStatusModal
+              comparativa={comparativa}
+              onUpdate={fetchComparativa}
+            />
+          ) : (
+            <ComparativaToTramite
+              comparativa={comparativa}
+              onComparativaUpdated={fetchComparativa}
+            />
+          )}
         </div>
       </div>
 
@@ -348,7 +369,7 @@ export default function EditComparativaPage() {
         </CardHeader>
         <CardContent>
           <FilesList
-            files={comparativa.files as ComparativaFile[]}
+            files={(comparativa.files as ComparativaFile[]) || []}
             comparativaId={comparativa.id}
             organization_id={userData?.organization.id as string}
           />

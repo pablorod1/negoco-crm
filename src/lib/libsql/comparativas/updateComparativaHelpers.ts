@@ -3,20 +3,35 @@ import { Client } from "@libsql/client";
 export const updateComparativaStatus = async (
   tursoClient: Client,
   comparativa_id: string,
-  status: string
+  status: string,
+  tramite_id?: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    const query = `
+    // SQL dinámico según si se proporciona tramite_id
+    let query = `
       UPDATE comparativas
       SET status = ?
-      WHERE id = ?
     `;
+
+    // Array de argumentos para la consulta
+    const args: string[] = [status];
+
+    // Si tramite_id está presente, añadirlo a la actualización
+    if (tramite_id) {
+      query += `, tramite_id = ?`;
+      args.push(tramite_id);
+    }
+
+    // Completar la consulta con la condición WHERE
+    query += ` WHERE id = ?`;
+    args.push(comparativa_id);
+    console.log("query", query);
+    console.log("args", args);
 
     const response = await tursoClient.execute({
       sql: query,
-      args: [status, comparativa_id],
+      args: args,
     });
-
     if (response.rowsAffected === 0) {
       return {
         success: false,

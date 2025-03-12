@@ -21,12 +21,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Primero obtenemos la comparativa y el usuario
     const queryParams: (string | number)[] = [id];
-    let query = `
-      SELECT c.*, u.*, cf.*
+    let comparativaQuery = `
+      SELECT c.*, u.*
       FROM comparativas c
       INNER JOIN user u ON c.user_id = u.id
-      LEFT JOIN comparativa_files cf ON c.id = cf.comparativa_id
       WHERE c.id = ?
     `;
 
@@ -48,32 +48,50 @@ export async function POST(req: NextRequest) {
         idsToInclude.push(...subcomerciales.ids);
       }
 
-      query += ` AND u.id IN (${idsToInclude.map(() => "?").join(", ")})`;
+      comparativaQuery += ` AND u.id IN (${idsToInclude
+        .map(() => "?")
+        .join(", ")})`;
       queryParams.push(...idsToInclude);
     }
 
-    const response = await tursoClient.execute({
-      sql: query,
+    const comparativaResponse = await tursoClient.execute({
+      sql: comparativaQuery,
       args: queryParams,
     });
 
-    if (response.rows.length === 0) {
+    if (comparativaResponse.rows.length === 0) {
       return NextResponse.json(
         { success: false, error: "Comparativa not found" },
         { status: 404 }
       );
     }
 
-    const comparativa = response.rows[0];
-    const files = response.rows.map((row) => ({
-      id: String(row.id),
-      filename: String(row.filename),
-      size: Number(row.size),
-      extension: String(row.extension),
-      upload_date: row.upload_date as string,
-      download_url: String(row.download_url),
-      preview_url: row.preview_url ? String(row.preview_url) : null,
-    }));
+    const comparativa = comparativaResponse.rows[0];
+
+    // Ahora obtenemos los archivos por separado
+    const filesQuery = `
+      SELECT * FROM comparativa_files 
+      WHERE comparativa_id = ?
+    `;
+
+    const filesResponse = await tursoClient.execute({
+      sql: filesQuery,
+      args: [id],
+    });
+
+    // Solo procesamos los archivos si existen resultados
+    const files =
+      filesResponse.rows.length > 0
+        ? filesResponse.rows.map((row) => ({
+            id: String(row.id),
+            filename: String(row.filename),
+            size: Number(row.size),
+            extension: String(row.extension),
+            upload_date: row.upload_date as string,
+            download_url: String(row.download_url),
+            preview_url: row.preview_url ? String(row.preview_url) : null,
+          }))
+        : [];
 
     return NextResponse.json({
       success: true,
@@ -99,7 +117,7 @@ export async function POST(req: NextRequest) {
           image: comparativa.image ? String(comparativa.image) : null,
         },
         creation_date: comparativa.creation_date as string,
-        files: files,
+        files,
       },
     });
   } catch (error) {

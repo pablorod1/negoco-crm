@@ -77,6 +77,7 @@ export default function DeleteComparativaConfirmationModal({
     } finally {
       setLoading(false);
       refreshComparativas();
+      onClose();
     }
   };
   return (

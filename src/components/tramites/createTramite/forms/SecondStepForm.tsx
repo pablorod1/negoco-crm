@@ -16,7 +16,7 @@ import {
 
 import { Divider } from "@heroui/divider";
 import React, { useState } from "react";
-import { ClientDB, SignerDB } from "@/lib/core/types";
+import { ClientDB, ComparativaVM, SignerDB } from "@/lib/core/types";
 import FormWrapper from "../FormWrapper";
 import ButtonGroupComponent from "../ButtonGroupComponent";
 import { InputComponent, SelectComponent } from "../InputComponent";
@@ -28,6 +28,7 @@ interface Props {
   onSecondSubmitSuccess: () => void;
   onBack: () => void;
   onCancel: () => void;
+  comparativa?: ComparativaVM;
 }
 
 export default function SecondStepForm({
@@ -37,11 +38,14 @@ export default function SecondStepForm({
   onSecondSubmitSuccess,
   onBack,
   onCancel,
+  comparativa,
 }: Props) {
   const [errors, setErrors] = useState<SecondFormError>(
     createEmptySecondFormError
   );
-  const [formData, setFormData] = useState<SecondForm>(createEmptySecondForm);
+  const [formData, setFormData] = useState<SecondForm>(
+    createEmptySecondForm(comparativa)
+  );
   const [signerData, setSignerData] = useState<SignerForm>(
     createEmptySignerForm
   );
@@ -170,6 +174,7 @@ export default function SecondStepForm({
               onChange={handleFieldChange}
               type="text"
               errors={errors.name}
+              value={formData.name}
               isRequired
             />
 

@@ -15,8 +15,6 @@
   --primary-color-900: #1e478a;
   --primary-color-950: #172e54;
 
-  --primary-foreground: #fff;
-
   --secondary-color-50: #f7f7f7;
   --secondary-color-100: #ededed;
   --secondary-color-200: #dfdfdf;
@@ -93,7 +91,6 @@
     --primary-700: var(--primary-color-700);
     --primary-800: var(--primary-color-800);
     --primary-900: var(--primary-color-900);
-    --primary-foreground: var(--primary-foreground);
     --secondary: 270 66.67% 37.65%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;

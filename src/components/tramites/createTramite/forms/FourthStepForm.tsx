@@ -1,11 +1,12 @@
 import { Divider } from "@heroui/divider";
-import { TramiteDB } from "@/lib/core/types";
+import { ComparativaFile, TramiteDB } from "@/lib/core/types";
 
 import ButtonGroupComponent from "../ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import DocumentsForm from "./DocumentsForm";
 import NotesBoard from "../../editTramite/NotesBoard";
 import { Spinner } from "@heroui/spinner";
+import { FileIcon } from "lucide-react";
 
 interface Props {
   onBack: () => void;
@@ -16,6 +17,7 @@ interface Props {
   documents: File[];
   setDocuments: React.Dispatch<React.SetStateAction<File[]>>;
   loading: boolean;
+  comparativaFiles?: ComparativaFile[];
 }
 
 export default function FourthStepForm({
@@ -27,6 +29,7 @@ export default function FourthStepForm({
   documents,
   setDocuments,
   loading,
+  comparativaFiles,
 }: Props) {
   const handleNewNote = (note: string) => {
     setTramite((prev) => ({
@@ -60,6 +63,33 @@ export default function FourthStepForm({
             uploadedFiles={documents}
             setUploadedFiles={setDocuments}
           />
+          {comparativaFiles && comparativaFiles.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Archivos adjuntos a la comparativa
+              </h4>
+              <p className="text-sm text-gray-500 mb-2">
+                Estos archivos se adjuntarán ahora al trámite. Se eliminarán
+                automáticamente de la comparativa.
+              </p>
+              <ul className="space-y-2">
+                {comparativaFiles.map((file, index) => (
+                  <li
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <FileIcon width={16} height={16} />
+                      <span className="text-sm">{file.filename}</span>
+                      <span className="text-xs text-gray-500">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <Divider />
           <div className="w-full h-auto">
             <NotesBoard

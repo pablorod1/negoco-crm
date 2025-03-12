@@ -131,6 +131,8 @@ export const createSubcomercialComparativasColumns = (
               ? "success"
               : row.original.status === "processed"
               ? "primary"
+              : row.original.status === "rejected"
+              ? "danger"
               : "default"
           }
         >
@@ -140,6 +142,8 @@ export const createSubcomercialComparativasColumns = (
             ? "Estudio Realizado"
             : row.original.status === "processed"
             ? "Comparativa Tramitada"
+            : row.original.status === "rejected"
+            ? "Comparativa Rechazada"
             : row.original.status}
         </Chip>
       );
@@ -382,6 +386,8 @@ export const createComercialComparativasColumns = (
               ? "success"
               : row.original.status === "processed"
               ? "primary"
+              : row.original.status === "rejected"
+              ? "danger"
               : "default"
           }
         >
@@ -391,6 +397,8 @@ export const createComercialComparativasColumns = (
             ? "Estudio Realizado"
             : row.original.status === "processed"
             ? "Comparativa Tramitada"
+            : row.original.status === "rejected"
+            ? "Comparativa Rechazada"
             : row.original.status}
         </Chip>
       );
@@ -549,7 +557,6 @@ export const createComparativasColumns = (
     cell: ({ row }) => {
       return (
         <Chip
-          className="px-2"
           size="sm"
           variant="flat"
           color={
@@ -559,18 +566,20 @@ export const createComparativasColumns = (
               ? "success"
               : row.original.status === "processed"
               ? "primary"
+              : row.original.status === "rejected"
+              ? "danger"
               : "default"
           }
         >
-          <span className="font-semibold">
-            {row.original.status === "pending"
-              ? "Pendiente de Estudio"
-              : row.original.status === "completed"
-              ? "Estudio Realizado"
-              : row.original.status === "processed"
-              ? "Comparativa Tramitada"
-              : row.original.status}
-          </span>
+          {row.original.status === "pending"
+            ? "Pendiente de Estudio"
+            : row.original.status === "completed"
+            ? "Estudio Realizado"
+            : row.original.status === "processed"
+            ? "Comparativa Tramitada"
+            : row.original.status === "rejected"
+            ? "Comparativa Rechazada"
+            : row.original.status}
         </Chip>
       );
     },

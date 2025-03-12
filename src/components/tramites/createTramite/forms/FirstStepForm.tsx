@@ -1,6 +1,6 @@
 "use client";
 import { CLIENT_TYPES } from "@/lib/core/const";
-import { ClientDB, TramiteDB, User } from "@/lib/core/types";
+import { ClientDB, ComparativaVM, TramiteDB, User } from "@/lib/core/types";
 import { firstFormValidation } from "@/lib/validation/create-tramite/form-validation";
 import {
   createEmptyFirstForm,
@@ -19,9 +19,9 @@ interface Props {
   setClient: React.Dispatch<React.SetStateAction<ClientDB>>;
   setTramite: React.Dispatch<React.SetStateAction<TramiteDB>>;
   onSubmitSuccess: () => void;
-  client: ClientDB;
   tramite: TramiteDB;
   onCancel: () => void;
+  comparativa?: ComparativaVM;
 }
 
 export default function FirstStepForm({
@@ -30,13 +30,14 @@ export default function FirstStepForm({
   onSubmitSuccess,
   tramite,
   onCancel,
+  comparativa,
 }: Props) {
   const { userData } = useUser();
   const [errors, setErrors] = useState<FirstFormError>(
     createEmptyFirstFormError
   );
   const [formData, setFormData] = useState<FirstForm>(
-    createEmptyFirstForm(userData as User)
+    createEmptyFirstForm(userData as User, comparativa)
   );
   const [comerciales, setComerciales] = useState<User[]>([]);
 

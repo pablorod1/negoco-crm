@@ -14,20 +14,50 @@ export type TramiteDB = {
   user_id: string;
 };
 
-export const createEmptyTramiteDB = (userData: User): TramiteDB => ({
+const getComission = (
+  comparativa: ComparativaVM,
+  plan: "fijo" | "indexado"
+) => {
+  return plan === "fijo"
+    ? {
+        comision: comparativa.comision.fijo,
+        comision_sales_person: comparativa.comision_sales_person.fijo,
+      }
+    : {
+        comision: comparativa.comision.indexado,
+        comision_sales_person: comparativa.comision_sales_person.indexado,
+      };
+};
+
+export const createEmptyTramiteDB = (
+  userData: User,
+  plan?: "fijo" | "indexado",
+  comparativa?: ComparativaVM
+): TramiteDB => ({
   id: `BEE-${Math.floor(Math.random() * 10000)}`,
   creation_date: new Date().toISOString(),
   tramitation_date: "",
   renovation_date: "",
   activation_date: "",
-  sales_name: "",
-  comision_sales_person: 0,
-  comision: 0,
+  sales_name: comparativa
+    ? (comparativa.user.name as string)
+    : userData
+    ? userData.name
+    : "",
+  comision_sales_person:
+    comparativa && plan
+      ? getComission(comparativa, plan).comision_sales_person
+      : 0,
+  comision: comparativa && plan ? getComission(comparativa, plan).comision : 0,
   status: "Borrador",
   liquidez_status: null,
-  notes: [], // Ensure notes is initialized as an empty array
+  notes: comparativa ? comparativa.notes : "",
   client_id: "",
-  user_id: userData ? userData.id : "",
+  user_id: comparativa
+    ? (comparativa.user.id as string)
+    : userData
+    ? userData.id
+    : "",
 });
 
 export type ClientDB = {
@@ -43,10 +73,10 @@ export type ClientDB = {
   IBAN: string;
 };
 
-export const createEmptyClientDB = (): ClientDB => ({
+export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   id: `CLI-${Math.floor(Math.random() * 10000)}`,
-  name: "",
-  last_name: "",
+  name: comparativa ? comparativa.client : "",
+  last_name: comparativa ? comparativa.client.split(" ")[1] : "",
   type: "",
   email: "",
   phone: "",
@@ -331,7 +361,11 @@ export type LiquidezStatus =
   | "Pagado al Comercial"
   | null;
 
-export type ComparativaStatus = "pending" | "completed" | "processed";
+export type ComparativaStatus =
+  | "pending"
+  | "completed"
+  | "processed"
+  | "rejected";
 
 export type Cargo =
   | "Presidente de la Comunidad"

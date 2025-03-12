@@ -46,7 +46,7 @@ export default {
         },
         primary: {
           DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
+          foreground: "#fff",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -79,7 +79,7 @@ export default {
           colors: {
             primary: {
               DEFAULT: "var(--primary)",
-              foreground: "#000",
+              foreground: "#fff",
             },
             danger: {
               DEFAULT: "#dc3545",
