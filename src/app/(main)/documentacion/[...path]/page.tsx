@@ -92,7 +92,7 @@ export default function FolderPage() {
   return (
     <>
       {isLoading ? (
-        <LoadingComponent />
+        <LoadingComponent userData={userData as User} />
       ) : files.length > 0 || folders.length > 0 ? (
         <div className="flex flex-col gap-4">
           <FileGrid
