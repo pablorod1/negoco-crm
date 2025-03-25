@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
     const currentPeriod = `${currentMonth} ${currentYear}`;
 
     const response = await tursoClient.execute({
-      sql: `SELECT * FROM objectives WHERE user_id = ? AND period = ?`,
-      args: [id, currentPeriod],
+      sql: `SELECT * FROM objectives WHERE user_id = ?`,
+      args: [id],
     });
 
     if (response.rows.length === 0) {
@@ -97,10 +97,13 @@ export async function POST(req: NextRequest) {
       data: objectives,
     });
   } catch (error) {
-    console.error("Error al obtener objetivos:", error);
-    return NextResponse.json({
-      success: false,
-      error: "Internal Server Error",
-    });
+    console.error("Error fetching objectives:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Error fetching objectives",
+      },
+      { status: 500 }
+    );
   }
 }

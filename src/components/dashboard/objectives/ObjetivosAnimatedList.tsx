@@ -1,13 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/core/utils";
-import { AnimatedList } from "../magicui/animated-list";
+import { AnimatedList } from "../../magicui/animated-list";
 import { Calendar, Coins, Edit, Target } from "lucide-react";
-import { Button } from "../ui/button";
-import { Progress } from "../ui/progress";
-import { useEffect } from "react";
+import { Button } from "../../ui/button";
+import { Progress } from "../../ui/progress";
+import { useCallback, useEffect, useState } from "react";
 import { Objective } from "@/lib/core/types";
 import Image from "next/image";
+import { CelebrationAnimation } from "../../ui/celebration-animation";
 
 const getObjetivoIcon = (tipo: string) => {
   switch (tipo) {
@@ -66,7 +67,12 @@ const Objetivo = ({ objetivo, handleEditObjetivo }: ObjetivoProps) => {
     100
   );
   return (
-    <div key={objetivo.id} className="border rounded-lg p-4 relative">
+    <div
+      key={objetivo.id}
+      className={`border rounded-lg p-4 relative ${
+        objetivo.completed ? "bg-green-100 border-green-300" : ""
+      }`}
+    >
       <Button
         variant="ghost"
         size="icon"
@@ -93,7 +99,18 @@ const Objetivo = ({ objetivo, handleEditObjetivo }: ObjetivoProps) => {
         <div className="flex justify-between mb-1">
           <span className="text-sm font-medium">Progreso: {porcentaje}%</span>
           <span className="text-sm font-medium">
-            {objetivo.current} / {objetivo.peak}{" "}
+            {objetivo.current}{" "}
+            {objetivo.type === "comisiones"
+              ? "€"
+              : objetivo.type === "ratio"
+              ? "%"
+              : ""}{" "}
+            / {objetivo.peak}
+            {objetivo.type === "comisiones"
+              ? "€"
+              : objetivo.type === "ratio"
+              ? "%"
+              : ""}
           </span>
         </div>
         <Progress
@@ -115,6 +132,38 @@ export function ObjetivosAnimatedList({
   items: Objective[];
   handleEditObjetivo: (objetivo: Objective) => void;
 }) {
+  const [achievedObjective, setAchievedObjective] = useState<Objective | null>(
+    null
+  );
+
+  const checkForAchievedObjectives = useCallback(() => {
+    const newlyAchievedObjective = items.find(
+      (obj) => obj.current >= obj.peak && !obj.completed
+    );
+
+    const date = new Date();
+    const isLastDayOfMonth = new Date(
+      date.getFullYear(),
+      date.getMonth() + 1,
+      0
+    )
+      .getDate()
+      .toString();
+
+    if (
+      newlyAchievedObjective &&
+      isLastDayOfMonth === date.getDate().toString()
+    ) {
+      setAchievedObjective(newlyAchievedObjective);
+    }
+  }, [items]);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      checkForAchievedObjectives();
+    }
+  }, [items, checkForAchievedObjectives]);
+
   useEffect(() => {
     const container = document.getElementById("ObjetivosAnimatedList");
     if (!container) return;
@@ -136,26 +185,35 @@ export function ObjetivosAnimatedList({
     };
   }, []);
   return (
-    <div
-      id="ObjetivosAnimatedList"
-      className={cn(
-        "relative flex max-h-[340px] h-full w-full flex-col overflow-y-auto p-2",
-        className
-      )}
-    >
-      {items.length > 0 ? (
-        <AnimatedList>
-          {items.map((item, idx) => (
-            <Objetivo
-              handleEditObjetivo={handleEditObjetivo}
-              objetivo={item}
-              key={idx}
-            />
-          ))}
-        </AnimatedList>
-      ) : (
-        <Objetivo objetivo={items[0]} handleEditObjetivo={handleEditObjetivo} />
-      )}
-    </div>
+    <>
+      <div
+        id="ObjetivosAnimatedList"
+        className={cn(
+          "relative flex max-h-[340px] h-full w-full flex-col overflow-y-auto p-2",
+          className
+        )}
+      >
+        {items.length > 0 ? (
+          <AnimatedList>
+            {items.map((item, idx) => (
+              <Objetivo
+                handleEditObjetivo={handleEditObjetivo}
+                objetivo={item}
+                key={idx}
+              />
+            ))}
+          </AnimatedList>
+        ) : (
+          <Objetivo
+            objetivo={items[0]}
+            handleEditObjetivo={handleEditObjetivo}
+          />
+        )}
+      </div>
+      <CelebrationAnimation
+        objective={achievedObjective}
+        onClose={() => setAchievedObjective(null)}
+      />
+    </>
   );
 }

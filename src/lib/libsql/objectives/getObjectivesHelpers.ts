@@ -1,4 +1,5 @@
 import { Client } from "@libsql/client";
+import { getSubcomerciales } from "../users/getSubcomerciales";
 
 export const getObjectivesTramitesValues = async (
   tursoClient: Client,
@@ -29,18 +30,31 @@ export const getObjectivesTramitesValues = async (
     // Construir el prefijo de fecha para la consulta
     const datePrefixToSearch = `${year}-${monthMap[month]}`;
 
+    const params = [datePrefixToSearch];
+    let query = `SELECT COUNT(id) as active_count, 
+      ${
+        role === "2"
+          ? "SUM(comision_sales_person) as comision"
+          : "SUM(comision) as comision"
+      }
+    FROM tramites WHERE substr(activation_date, 1, 7) = ? AND status = 'Activo'`;
+
+    if (role === "2") {
+      const subcomerciales = await getSubcomerciales(tursoClient, id);
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` AND user_id = ? OR user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})`;
+        params.push(id, ...subcomerciales.ids);
+      } else {
+        query += ` AND user_id = ?`;
+        params.push(id);
+      }
+    }
+
     const res = await tursoClient.execute({
-      sql: `SELECT COUNT(id) as active_count,
-            ${
-              role !== "2"
-                ? "SUM(comision) as comision"
-                : "SUM(comision_sales_person) as comision"
-            }
-            FROM tramites 
-            WHERE user_id = ? 
-            AND substr(activation_date, 1, 7) = ? 
-            AND status = 'Activo'`,
-      args: [id, datePrefixToSearch],
+      sql: query,
+      args: params,
     });
 
     // Obtener el conteo de la primera fila
@@ -99,10 +113,6 @@ export const getComparativasRatio = async (
 
     const rows = res.rows[0];
     const { total, processed } = rows;
-
-    if (!total || !processed) {
-      return 0; // Para evitar división por cero
-    }
 
     const processedNum = Number(processed);
     const sum = Number(total) + processedNum;

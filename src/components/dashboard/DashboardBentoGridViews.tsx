@@ -6,7 +6,7 @@ import { PersonalTramitesChart } from "./charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
 import { useCallback, useEffect, useState } from "react";
 import { ComparativasResume } from "./ComparativasResume";
-import { ObjetivosCard } from "./ObjectivesSection";
+import { ObjetivosCard } from "./objectives/ObjectivesSection";
 
 interface Props {
   userData: User;
