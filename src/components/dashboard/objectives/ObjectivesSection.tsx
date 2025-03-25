@@ -93,7 +93,10 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
   }
 
   return (
-    <Card className="h-full w-full">
+    <Card className="flex flex-col justify-between relative h-full backdrop-blur-lg transition-colors duration-300 overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl -z-10"></div>
+      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl -z-10"></div>
       <CardHeader className="flex flex-row items-center justify-between text-xl font-medium text-[var(--primary-color-800)]">
         <div className="flex items-center gap-2">
           <Target className="h-6 w-6" />

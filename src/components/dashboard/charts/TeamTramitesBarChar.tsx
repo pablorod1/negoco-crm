@@ -107,7 +107,6 @@ export function TeamTramitesBarChart({
           }
         );
         const { data, success, error } = await res.json();
-        console.log(data);
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
         }
@@ -147,10 +146,13 @@ export function TeamTramitesBarChart({
     <Card
       className={`flex flex-col ${
         comerciales.length > 0 ? "justify-between" : ""
-      }  relative w-full h-full backdrop-blur-lg border-0 group transition-colors duration-300 ${
+      }  relative w-full h-full backdrop-blur-lg border-0 group transition-colors duration-300 overflow-hidden ${
         loading ? "bg-gray-200" : "bg-white"
       }`}
     >
+      {/* Decorative background elements */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl"></div>
+      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl"></div>
       <div
         className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300 ${
           loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"

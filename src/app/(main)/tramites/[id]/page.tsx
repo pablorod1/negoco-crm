@@ -51,7 +51,6 @@ export default function TramiteDetails() {
       });
 
       const { success, error, data } = await rs.json();
-      console.log(data);
       if (!success) {
         showCustomToast({
           title: "Error al obtener el trámite",

@@ -57,7 +57,7 @@ export default function AccountSettings() {
             variant="solid"
             color="danger"
           >
-            Log Out
+            Cerrar Sesión
           </Button>
         </div>
       </div>

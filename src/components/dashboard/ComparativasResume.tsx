@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import SpinnerComponent from "../core/SpinnerComponent";
+import Image from "next/image";
 
 interface Props {
   loading: boolean;
@@ -57,10 +58,14 @@ export function ComparativasResume({ loading, userData }: Props) {
 
   return (
     <Card
-      className={`relative w-full h-full backdrop-blur-lg  group transition-colors duration-300 ${
+      className={`flex flex-col justify-between relative h-full backdrop-blur-lg  transition-colors duration-300 overflow-hidden ${
         loading ? "bg-gray-200 " : "bg-white"
       }`}
     >
+      {/* Decorative background elements */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl"></div>
+      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl"></div>
+
       <div
         className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300 ${
           loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
@@ -92,10 +97,10 @@ export function ComparativasResume({ loading, userData }: Props) {
               <SelectValue placeholder="Pendiente de Estudio" />
             </SelectTrigger>
             <SelectContent className="rounded-md">
-              <SelectItem value="pending" className="rounded-md">
+              <SelectItem value="pending" className="rounded-md ">
                 Pendiente de Estudio
               </SelectItem>
-              <SelectItem value="completed" className="rounded-md">
+              <SelectItem value="completed" className="rounded-md ">
                 Estudio Realizado
               </SelectItem>
             </SelectContent>
@@ -114,10 +119,19 @@ export function ComparativasResume({ loading, userData }: Props) {
         ) : comparativas.length > 0 ? (
           <ComparativasAnimatedList items={comparativas || []} />
         ) : (
-          <div className="flex flex-col items-center justify-center text-center w-full h-64">
-            <p className="text-lg text-gray-500 font-medium">
+          <div className="flex flex-col items-center justify-center text-center w-full h-96 gap-6">
+            <Image
+              src="/icons/comparativas2.webp"
+              alt="No hay comparativas"
+              width={100}
+              height={100}
+              className="opacity-80 animate-fadeIn"
+            />
+            <p className="text-xl text-gray-600 font-semibold animate-fadeIn animation-delay-200">
               No hay comparativas{" "}
-              {status === "pending" ? "pendientes" : "con estudio realizado"}
+              <span className="text-gray-800 font-bold">
+                {status === "pending" ? "pendientes" : "con estudio realizado"}
+              </span>
             </p>
           </div>
         )}

@@ -1,11 +1,6 @@
 "use client";
 import { useUser } from "@/lib/contexts/UserContext";
-import {
-  ComparativaFile,
-  ComparativaStatus,
-  ComparativaVM,
-  User,
-} from "@/lib/core/types";
+import { ComparativaFile, ComparativaVM, User } from "@/lib/core/types";
 import {
   Calendar,
   CheckCircle,
@@ -28,7 +23,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AvatarComponent from "@/components/core/AvatarComponent";
 import { Divider } from "@heroui/divider";
 import { formatDateTime } from "@/lib/core/format";
-import { Chip } from "@heroui/chip";
 import { showCustomToast } from "@/components/core/CustomToast";
 import UploadComparativaFilesModal from "@/components/comparativas/editComparativa/UploadComparativaFilesModal";
 import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
@@ -42,34 +36,7 @@ import ComparativaToTramite from "@/components/comparativas/editComparativa/Comp
 import SpinnerComponent from "@/components/core/SpinnerComponent";
 import { Tooltip } from "@heroui/tooltip";
 import Link from "next/link";
-
-const STATUS_BADGES = {
-  pending: (
-    <Chip variant="flat" color="warning">
-      Pendiente de Estudio
-    </Chip>
-  ),
-  completed: (
-    <Chip variant="flat" color="success">
-      Estudio Realizado
-    </Chip>
-  ),
-  processed: (
-    <Chip
-      variant="flat"
-      color="primary"
-      className="bg-[var(--primary-color-100)]"
-    >
-      Comparativa Tramitada
-    </Chip>
-  ),
-  rejected: (
-    <Chip variant="flat" color="danger">
-      Rechazada
-    </Chip>
-  ),
-  default: <Chip variant="flat">Desconocido</Chip>,
-};
+import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();
@@ -201,10 +168,6 @@ export default function EditComparativaPage() {
       </div>
     );
   }
-
-  const getStatusBadge = (status: ComparativaStatus) => {
-    return STATUS_BADGES[status] || STATUS_BADGES.default;
-  };
 
   const isEditable =
     comparativa.status !== "processed" && comparativa.status !== "rejected";

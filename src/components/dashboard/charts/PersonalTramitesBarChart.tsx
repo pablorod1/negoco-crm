@@ -168,7 +168,6 @@ export function PersonalTramitesChart({
   }, [fetchData]);
 
   const getActiveTramitesPercentageChange = (data: ChartData[]) => {
-    console.log("data", data);
     const currentMonthIndex = new Date().getMonth(); // Índice del mes actual (0 = Enero, 11 = Diciembre)
     const previousMonthIndex =
       currentMonthIndex === 0 ? 11 : currentMonthIndex - 1; // Mes anterior (manejo de diciembre a enero)
@@ -251,7 +250,6 @@ export function PersonalTramitesChart({
     fetchData();
   };
 
-  console.log("chartData", chartData);
   const percentageChange = getActiveTramitesPercentageChange(chartData);
   const isPositiveChange = percentageChange >= 0;
 

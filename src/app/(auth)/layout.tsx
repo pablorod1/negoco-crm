@@ -1,7 +1,7 @@
 "use client";
 import AnimatedBackground from "@/components/auth/login/AnimatedBackground";
 import FeatureItem from "@/components/auth/login/FeatureItem";
-import { Bell, PieChart, Zap } from "lucide-react";
+import { BarChart, CheckCircle, ClipboardList } from "lucide-react";
 import Image from "next/image";
 
 export default function AuthLayout({
@@ -42,32 +42,32 @@ export default function AuthLayout({
 
             <div className="overflow-hidden">
               <p className="text-lg opacity-90 animate-fadeIn animation-delay-200">
-                Gestiona tus proyectos, clientes y análisis energéticos en una
-                única plataforma integrada.
+                Gestiona clientes, contratos y análisis energéticos desde una
+                única plataforma diseñada para optimizar tu negocio.
               </p>
             </div>
 
             <div className="pt-8">
               <FeatureItem
-                icon={Zap}
-                text="Análisis de consumo eficiente"
+                icon={BarChart}
+                text="Análisis detallado de rendimiento"
                 delay={0.3}
               />
               <FeatureItem
-                icon={PieChart}
-                text="Informes personalizados"
+                icon={ClipboardList}
+                text="Historial completo de gestiones"
                 delay={0.5}
               />
               <FeatureItem
-                icon={Bell}
-                text="Alertas de ahorro energético"
+                icon={CheckCircle}
+                text="Optimización de tiempos y recursos"
                 delay={0.7}
               />
             </div>
           </div>
 
           <div className="text-white/70 text-sm animate-fadeIn animation-delay-1000">
-            © {new Date().getFullYear()} Negoco CRM. Todos los derechos
+            © {new Date().getFullYear()} Negoco Cloud. Todos los derechos
             reservados.
           </div>
         </div>
