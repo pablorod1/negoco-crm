@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ComparativaVM, User } from "@/lib/core/types";
 import { Chip } from "@heroui/chip";
 import AvatarComponent from "../core/AvatarComponent";
+import { useEffect } from "react";
 
 const Notification = (comparativa: ComparativaVM) => {
   return (
@@ -89,8 +90,29 @@ export function ComparativasAnimatedList({
   className?: string;
   items: ComparativaVM[];
 }) {
+  useEffect(() => {
+    const container = document.getElementById("ComparativasAnimatedList");
+    if (!container) return;
+
+    const handleMouseEnter = () => {
+      document.body.style.overflow = "hidden";
+    };
+
+    const handleMouseLeave = () => {
+      document.body.style.overflow = "";
+    };
+
+    container.addEventListener("mouseenter", handleMouseEnter);
+    container.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      container.removeEventListener("mouseenter", handleMouseEnter);
+      container.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, []);
   return (
     <div
+      id="ComparativasAnimatedList"
       className={cn(
         "relative flex max-h-[340px] h-full w-full flex-col overflow-y-auto p-2",
         className

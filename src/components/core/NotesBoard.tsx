@@ -1,6 +1,6 @@
 import type React from "react";
-import { EditFormWrapper } from "./EditFormWrapper";
-import CreateNoteDialog from "./CreateNoteDialog";
+import { EditFormWrapper } from "../tramites/editTramite/EditFormWrapper";
+import CreateNoteDialog from "../tramites/editTramite/notes/CreateNoteDialog";
 
 interface NotesBoardProps {
   notes: string[];
@@ -40,18 +40,19 @@ const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onCreateNote }) => {
         {/* Post-its */}
         <div className="flex flex-wrap items-start gap-4 relative z-10">
           <CreateNoteDialog onCreateNote={onCreateNote} />
-          {notes.map((note, index) => (
-            <div
-              key={index}
-              className={`${
-                postItColors[index % postItColors.length]
-              } p-4 rounded-lg shadow-md transform w-fit max-w-80 rotate-${
-                Math.floor(Math.random() * 5) - 2
-              } hover:rotate-0 transition-transform duration-200 ease-in-out`}
-            >
-              <p className="text-gray-800 text-lg">{note}</p>
-            </div>
-          ))}
+          {notes &&
+            notes.map((note, index) => (
+              <div
+                key={index}
+                className={`${
+                  postItColors[index % postItColors.length]
+                } p-4 rounded-lg shadow-md transform w-fit max-w-80 rotate-${
+                  Math.floor(Math.random() * 5) - 2
+                } hover:rotate-0 transition-transform duration-200 ease-in-out`}
+              >
+                <p className="text-gray-800 text-lg">{note}</p>
+              </div>
+            ))}
         </div>
       </div>
     </EditFormWrapper>

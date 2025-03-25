@@ -60,7 +60,6 @@ export const moveFilesInFirebaseStorage = async (
       // Eliminar el archivo original
       await deleteObject(fileRef);
     }
-    console.log("downloadURLs", downloadURLs);
     return { success: true, downloadURLs };
   } catch (error) {
     console.error("Error moving files in Firebase Storage:", error);
@@ -113,7 +112,6 @@ export const moveFolderFromComparativasToTramites = async (
         error: `Error al mover archivos en Firebase Storage: ${error}`,
       };
     }
-    console.log("downloadURLs", downloadURLs);
     // 2. Insertar cada archivo en la tabla tramite_files
     for (const file of files) {
       await tursoClient.execute({

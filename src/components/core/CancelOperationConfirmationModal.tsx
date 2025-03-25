@@ -14,9 +14,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export default function CancelCreateTramiteConfirmationModal({
-  onCancel,
-}: Props) {
+export default function CancelOperationConfirmationModal({ onCancel }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
 
   const handleCancel = () => {
@@ -32,7 +30,7 @@ export default function CancelCreateTramiteConfirmationModal({
   };
   return (
     <>
-      <Button onPress={onOpen} variant="solid" color="danger" radius="sm">
+      <Button onPress={onOpen} variant="light" color="danger" radius="sm">
         Cancelar
       </Button>
 

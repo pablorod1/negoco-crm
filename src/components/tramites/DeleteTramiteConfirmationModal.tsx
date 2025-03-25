@@ -1,5 +1,5 @@
 "use client";
-import { TramiteVM, User } from "@/lib/core/types";
+import { TramiteRow, User } from "@/lib/core/types";
 import {
   Modal,
   ModalBody,
@@ -8,11 +8,15 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { AlertTriangle, CheckCircle, CircleX } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  CircleX,
+  ExternalLink,
+} from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
-import EditTramiteDialog from "./editTramite/EditTramiteDialog";
 import { useTramites } from "@/lib/contexts/TramitesContext";
-import { useState } from "react";
+import Link from "next/link";
 
 export default function DeleteTramiteConfirmationModal({
   tramite,
@@ -20,13 +24,12 @@ export default function DeleteTramiteConfirmationModal({
   isOpen,
   onClose,
 }: {
-  tramite: TramiteVM;
+  tramite: TramiteRow;
   userData: User;
   isOpen: boolean;
   onClose: () => void;
 }) {
   const { refreshTramites } = useTramites();
-  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleDelete = async () => {
     try {
@@ -94,9 +97,15 @@ export default function DeleteTramiteConfirmationModal({
               Comprueba el trámite antes de eliminarlo. Esta acción no se puede
               deshacer.
             </span>
-            <Button onPress={() => setIsEditOpen(true)} variant="light">
-              Visualizar trámite
-            </Button>
+            <Link
+              href={`/tramites/${tramite.id}`}
+              target="_blank"
+              passHref
+              className="flex items-center gap-2 text-primary-500 hover:underline hover:text-primary-700"
+            >
+              <span>Visualizar trámite</span>
+              <ExternalLink size={16} />
+            </Link>
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" color="default" onPress={onClose}>
@@ -108,12 +117,6 @@ export default function DeleteTramiteConfirmationModal({
           </ModalFooter>
         </ModalContent>
       </Modal>
-
-      <EditTramiteDialog
-        tramite_id={tramite.id}
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-      />
     </>
   );
 }

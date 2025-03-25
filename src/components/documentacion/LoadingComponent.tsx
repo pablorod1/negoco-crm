@@ -1,15 +1,10 @@
-import { Spinner } from "@heroui/spinner";
+import SpinnerComponent from "../core/SpinnerComponent";
+import { User } from "@/lib/core/types";
 
-export default function LoadingComponent() {
+export default function LoadingComponent({ userData }: { userData: User }) {
   return (
     <div className="flex items-center justify-center min-h-[400px] w-full">
-      <Spinner
-        size="lg"
-        color="primary"
-        label="Cargando..."
-        className="text-3xl"
-        variant="gradient"
-      />
+      <SpinnerComponent userData={userData} />
     </div>
   );
 }

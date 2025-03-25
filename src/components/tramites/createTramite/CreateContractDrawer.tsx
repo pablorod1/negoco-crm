@@ -15,11 +15,15 @@ import ContractForm from "./forms/ContractForm";
 interface Props {
   tramite_id: string;
   onCreateContract: (contract: ContractDB) => void;
+  isOpenProp?: boolean;
+  onCloseProp?: () => void;
 }
 
 export default function CreateContractDrawer({
   tramite_id,
   onCreateContract,
+  isOpenProp,
+  onCloseProp,
 }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
 
@@ -35,19 +39,25 @@ export default function CreateContractDrawer({
 
   return (
     <>
-      <button onClick={handleOpen}>
-        <div className="w-56 h-72 flex flex-col justify-center items-center border-2 border-dashed border-[var(--primary-color-300)] rounded-lg cursor-pointer hover:bg-[var(--primary-color-50)] transition-colors">
-          <PlusIcon width={32} height={32} stroke="var(--primary-color-300)" />
-          <span className="text-center font-semibold text-[var(--primary-color-300)]">
-            Añadir contrato
-          </span>
-        </div>
-      </button>
+      {!isOpenProp && !onCloseProp && (
+        <button onClick={handleOpen}>
+          <div className="w-56 h-72 flex flex-col justify-center items-center border-2 border-dashed border-[var(--primary-color-300)] rounded-lg cursor-pointer hover:bg-[var(--primary-color-50)] transition-colors">
+            <PlusIcon
+              width={32}
+              height={32}
+              stroke="var(--primary-color-300)"
+            />
+            <span className="text-center font-semibold text-[var(--primary-color-300)]">
+              Añadir contrato
+            </span>
+          </div>
+        </button>
+      )}
       <Drawer
         size="5xl"
         radius="sm"
         isDismissable={false}
-        isOpen={isOpen}
+        isOpen={isOpenProp ? isOpenProp : isOpen}
         onClose={onClose}
         placement="bottom"
         classNames={{
@@ -66,7 +76,7 @@ export default function CreateContractDrawer({
                 <ContractForm
                   onCreateContract={handleAddContract}
                   tramite_id={tramite_id}
-                  onCancel={onClose}
+                  onCancel={onCloseProp ? onCloseProp : onClose}
                 />
               </DrawerBody>
             </>

@@ -10,9 +10,9 @@ import {
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
-import { Spinner } from "@heroui/spinner";
 import { FileCard } from "./FileCard";
 import { useUser } from "@/lib/contexts/UserContext";
+import SpinnerComponent from "../core/SpinnerComponent";
 
 interface SearchBarProps {
   recentlyFiles?: DocumentacionFile[];
@@ -127,12 +127,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
           <ModalBody>
             {isLoading ? (
               <div className="flex justify-center py-4">
-                <Spinner
-                  size="lg"
-                  label="Cargando archivos..."
-                  color="primary"
-                  className="text-xl"
-                />
+                <SpinnerComponent userData={userData as User} />
               </div>
             ) : (
               <div className="space-y-4 py-4">

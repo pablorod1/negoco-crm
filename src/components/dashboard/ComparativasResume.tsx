@@ -2,10 +2,8 @@ import * as React from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { ClipboardList } from "lucide-react";
 import { ComparativaVM, User } from "@/lib/core/types";
 import { ComparativasAnimatedList } from "./ComparativasAnimatedList";
-import { Spinner } from "@heroui/spinner";
 import {
   Select,
   SelectContent,
@@ -13,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import SpinnerComponent from "../core/SpinnerComponent";
 
 interface Props {
   loading: boolean;
@@ -58,7 +57,7 @@ export function ComparativasResume({ loading, userData }: Props) {
 
   return (
     <Card
-      className={`relative w-full h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
+      className={`relative w-full h-full backdrop-blur-lg  group transition-colors duration-300 ${
         loading ? "bg-gray-200 " : "bg-white"
       }`}
     >
@@ -75,12 +74,9 @@ export function ComparativasResume({ loading, userData }: Props) {
         }`}
       >
         <div className="flex items-start gap-4">
-          <div className="p-2 rounded-lg backdrop-blur-md bg-white/90 shadow-md bg-opacity-10">
-            <ClipboardList className="text-[var(--primary-color-800)]" />
-          </div>
           <CardTitle>
             <h3 className="text-xl font-semibold text-[var(--primary-color-800)]">
-              Resumen de Comparativas
+              Comparativas
             </h3>
             <span className="text-sm text-gray-500 font-medium">
               Listado de comparativas
@@ -90,7 +86,7 @@ export function ComparativasResume({ loading, userData }: Props) {
         <div>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger
-              className="w-[260px] rounded-md"
+              className="w-[190px] rounded-md"
               aria-label="Selecciona una opción"
             >
               <SelectValue placeholder="Pendiente de Estudio" />
@@ -113,24 +109,15 @@ export function ComparativasResume({ loading, userData }: Props) {
       >
         {loadingData ? (
           <div className="flex items-center justify-center w-full h-64">
-            <Spinner
-              label="Cargando comparativas..."
-              variant="gradient"
-              color="primary"
-            />
+            <SpinnerComponent userData={userData} />
           </div>
         ) : comparativas.length > 0 ? (
           <ComparativasAnimatedList items={comparativas || []} />
         ) : (
-          <div className="flex flex-col items-center justify-center w-full h-64">
+          <div className="flex flex-col items-center justify-center text-center w-full h-64">
             <p className="text-lg text-gray-500 font-medium">
               No hay comparativas{" "}
               {status === "pending" ? "pendientes" : "con estudio realizado"}
-            </p>
-            <p className="text-sm text-gray-400 font-normal">
-              {status === "pending"
-                ? "No hay comparativas pendientes de estudio"
-                : "No hay comparativas con estudio realizado"}
             </p>
           </div>
         )}

@@ -21,6 +21,7 @@ interface DashboardData {
   activeTramites: DashboardCardValue;
   pendingTramites: DashboardCardValue;
   comisionesPendientes: number;
+  totalBalance: number;
 }
 
 const initialDashboardData: DashboardData = {
@@ -28,6 +29,7 @@ const initialDashboardData: DashboardData = {
   activeTramites: { value: 0, difference: 0 },
   pendingTramites: { value: 0, difference: 0 },
   comisionesPendientes: 0,
+  totalBalance: 0,
 };
 
 export default function DashboardBentoGrid() {
@@ -39,12 +41,9 @@ export default function DashboardBentoGrid() {
 
   const isBackOffice = userData?.role === "1";
   const isComercial = userData?.role === "2";
-
+  const isDireccion = userData?.role === "admin";
   const fetchData = React.useCallback(async () => {
-    if (!userData || loading) {
-      return;
-    }
-
+    if (!userData) return;
     try {
       const clientsRes = await fetch(`/api/tramites/get/clients-count`, {
         method: "POST",
@@ -80,18 +79,43 @@ export default function DashboardBentoGrid() {
           body: JSON.stringify({ id: userData.id, role: userData.role }),
         }
       );
-      const [{ data: clients }, { data }, { data: totalComisiones }] =
-        await Promise.all([
-          clientsRes.json(),
-          activePendingRes.json(),
-          comisionesRes.json(),
-        ]);
+
+      const balanceRes = await fetch(
+        `
+          /api/tramites/get/monthly-comisiones
+          `,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: userData.id, role: userData.role }),
+        }
+      );
+
+      const [
+        { data: clients },
+        { data },
+        { data: totalComisiones },
+        { data: balance },
+      ] = await Promise.all([
+        clientsRes.json(),
+        activePendingRes.json(),
+        comisionesRes.json(),
+        balanceRes.json(),
+      ]);
+
+      const totalBalance = balance.reduce(
+        (acc: number, { total }: { total: number }) => acc + total,
+        0
+      );
 
       setDashboardData({
         clients,
         activeTramites: data.active,
         pendingTramites: data.pending,
         comisionesPendientes: totalComisiones,
+        totalBalance,
       });
 
       if (
@@ -112,14 +136,10 @@ export default function DashboardBentoGrid() {
     } finally {
       setLoading(false);
     }
-  }, [loading, userData]);
+  }, [userData]);
 
   React.useEffect(() => {
-    if (userData) {
-      fetchData();
-      const timer = setTimeout(() => setLoading(false), 300);
-      return () => clearTimeout(timer);
-    }
+    fetchData();
   }, [fetchData, userData]);
 
   if (!userData) {
@@ -141,24 +161,32 @@ export default function DashboardBentoGrid() {
     clients: dashboardData.clients,
     activeTramites: dashboardData.activeTramites,
     pendingTramites: dashboardData.pendingTramites,
+    totalBalance: dashboardData.totalBalance,
   };
 
   return (
-    <section className="mx-4 md:mx-8 xl:mx-12 px-2 py-8">
-      <Hero loading={loading} userData={userData} />
-      {isComercial ? (
-        <ComercialView
-          {...commonProps}
-          comisionesPendientes={dashboardData.comisionesPendientes}
-        />
-      ) : isBackOffice ? (
-        <BackofficeView {...commonProps} />
+    <>
+      {!userData || loading ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <Spinner
+            label="Cargando..."
+            color="primary"
+            size="lg"
+            className="text-xl"
+          />
+        </div>
       ) : (
-        <DireccionView
-          {...commonProps}
-          comisionesPendientes={dashboardData.comisionesPendientes}
-        />
+        <section className="flex flex-col gap-4 mx-2 py-8">
+          <Hero {...commonProps} />
+          {isComercial ? (
+            <ComercialView {...commonProps} />
+          ) : isBackOffice ? (
+            <BackofficeView {...commonProps} />
+          ) : isDireccion ? (
+            <DireccionView {...commonProps} />
+          ) : null}
+        </section>
       )}
-    </section>
+    </>
   );
 }

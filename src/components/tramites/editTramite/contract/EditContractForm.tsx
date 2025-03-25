@@ -1,6 +1,11 @@
 "use client";
 import { Zap } from "lucide-react";
-import { COMPANIES, CONTRACT_TYPES, PLANS, POTS } from "@/lib/core/const";
+import {
+  PLAIN_COMPANIES,
+  PLAIN_CONTRACT_TYPES,
+  PLANS,
+  POTS,
+} from "@/lib/core/const";
 import { ContractDB } from "@/lib/core/types";
 import { validateField } from "@/lib/validation/create-contract/field-validation";
 import { validateContract } from "@/lib/validation/create-contract/form-validation";
@@ -10,8 +15,7 @@ import {
 } from "@/lib/validation/validation.types";
 import { Textarea } from "@heroui/input";
 import React from "react";
-import toast from "react-hot-toast";
-import ButtonGroupComponent from "../../createTramite/ButtonGroupComponent";
+import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../../createTramite/FormWrapper";
 import {
   InputComponent,
@@ -55,35 +59,21 @@ export default function EditContractForm({
   };
 
   const handleAddContract = () => {
-    toast.promise(
-      new Promise((resolve, reject) => {
-        const validation = validateContract({
-          type: formData.type,
-          postal_code: formData.postal_code,
-          province: formData.province,
-          city: formData.city,
-          address: formData.address,
-          CUPS: formData.CUPS,
-          plan: formData.plan,
-          company: formData.company,
-        });
-        if (validation.succeeded) {
-          resolve(validation);
-          onSavingContract(formData);
-        } else {
-          setErrors(validation.errors);
-          reject(validation.errors);
-        }
-      }),
-      {
-        loading: "Validando contrato...",
-        success:
-          contract === formData
-            ? "No se han realizado cambios"
-            : "Contrato actualizado",
-        error: "Error al modificar contrato",
-      }
-    );
+    const validation = validateContract({
+      type: formData.type,
+      postal_code: formData.postal_code,
+      province: formData.province,
+      city: formData.city,
+      address: formData.address,
+      CUPS: formData.CUPS,
+      plan: formData.plan,
+      company: formData.company,
+    });
+    if (validation.succeeded) {
+      onSavingContract(formData);
+    } else {
+      setErrors(validation.errors);
+    }
   };
 
   return (
@@ -94,7 +84,7 @@ export default function EditContractForm({
             <SelectComponent
               name="type"
               label="Tipo de contrato"
-              items={CONTRACT_TYPES}
+              items={PLAIN_CONTRACT_TYPES}
               onChange={handleFieldChange}
               errors={errors.type}
               isRequired
@@ -162,7 +152,7 @@ export default function EditContractForm({
             <SelectComponent
               name="company"
               label="Compañía"
-              items={COMPANIES}
+              items={PLAIN_COMPANIES}
               onChange={handleFieldChange}
               errors={errors.company}
               isRequired

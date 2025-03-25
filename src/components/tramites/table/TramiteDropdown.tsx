@@ -1,4 +1,4 @@
-import { TramiteVM, User } from "@/lib/core/types";
+import { TramiteRow, User } from "@/lib/core/types";
 import {
   Dropdown,
   DropdownTrigger,
@@ -8,12 +8,9 @@ import {
 } from "@heroui/dropdown";
 import { Button } from "@heroui/button";
 import { useDisclosure } from "@heroui/modal";
-import { MoreVertical, PencilLine, RefreshCcw } from "lucide-react";
+import { MoreVertical, PencilLine } from "lucide-react";
 import DeleteTramiteConfirmationModal from "../DeleteTramiteConfirmationModal";
-import { useState } from "react";
-import EditTramiteDialog from "../editTramite/EditTramiteDialog";
 import { useUser } from "@/lib/contexts/UserContext";
-import RenewTramiteConfirmationDialog from "../RenewTramiteConfirmationDialog";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -127,20 +124,8 @@ export const DeleteDocumentIcon = (props: IconProps) => {
   );
 };
 
-const getOneMonthBeforeRenovationDate = (renovation_date: string) => {
-  // check if today is one month before the renovation date
-  const today = new Date();
-  const renovationDate = new Date(renovation_date);
-  const oneMonthBefore = new Date(renovationDate);
-  oneMonthBefore.setMonth(renovationDate.getMonth() - 1);
-
-  return today.getTime() > oneMonthBefore.getTime();
-};
-
-export default function TramiteDropdown({ tramite }: { tramite: TramiteVM }) {
+export default function TramiteDropdown({ tramite }: { tramite: TramiteRow }) {
   const { isOpen, onClose, onOpen } = useDisclosure();
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isRenovationOpen, setIsRenovationOpen] = useState(false);
   const { userData } = useUser();
 
   const iconClasses =
@@ -159,27 +144,20 @@ export default function TramiteDropdown({ tramite }: { tramite: TramiteVM }) {
           variant="faded"
           color="primary"
         >
-          <DropdownSection showDivider>
+          <DropdownSection
+            showDivider={userData && userData.role === "admin" ? true : false}
+          >
             <DropdownItem
-              onPress={() => setIsEditOpen(true)}
+              href={`/tramites/${tramite.id}`}
               key="edit"
               description="Editar los datos trámite"
               startContent={<PencilLine className={iconClasses} />}
             >
               Editar Trámite
             </DropdownItem>
-            {getOneMonthBeforeRenovationDate(tramite.renovation_date) ? (
-              <DropdownItem
-                onPress={() => setIsRenovationOpen(true)}
-                key="renew"
-                description="Renovar el trámite"
-                startContent={<RefreshCcw className={iconClasses} />}
-              >
-                Renovar Trámite
-              </DropdownItem>
-            ) : null}
           </DropdownSection>
-          {userData && userData.role === "admin" ? (
+          {(userData && userData.role === "admin") ||
+          tramite.status === "Borrador" ? (
             <DropdownSection>
               <DropdownItem
                 key="delete"
@@ -203,18 +181,6 @@ export default function TramiteDropdown({ tramite }: { tramite: TramiteVM }) {
         onClose={onClose}
         tramite={tramite}
         userData={userData as User}
-      />
-
-      <EditTramiteDialog
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        tramite_id={tramite.id}
-      />
-
-      <RenewTramiteConfirmationDialog
-        tramite_id={tramite.id}
-        isOpen={isRenovationOpen}
-        onClose={() => setIsRenovationOpen(false)}
       />
     </>
   );

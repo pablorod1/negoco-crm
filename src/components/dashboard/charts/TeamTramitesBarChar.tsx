@@ -107,7 +107,7 @@ export function TeamTramitesBarChart({
           }
         );
         const { data, success, error } = await res.json();
-
+        console.log(data);
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
         }
@@ -147,7 +147,7 @@ export function TeamTramitesBarChart({
     <Card
       className={`flex flex-col ${
         comerciales.length > 0 ? "justify-between" : ""
-      }  relative w-full h-full  backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
+      }  relative w-full h-full backdrop-blur-lg border-0 group transition-colors duration-300 ${
         loading ? "bg-gray-200" : "bg-white"
       }`}
     >
@@ -169,11 +169,16 @@ export function TeamTramitesBarChart({
           </CardTitle>
           <CardDescription>{getDescription()}</CardDescription>
         </div>
-        <div className="flex flex-row-reverse items-center 2xl:flex-col 2xl:items-end justify-end gap-2">
+        <div className="flex flex-row-reverse items-center  justify-end gap-2">
           <Select
             value={timeRange}
             onValueChange={handleTimeRangeChange}
-            disabled={loading || !comerciales || comerciales.length === 0}
+            disabled={
+              loading ||
+              !comerciales ||
+              comerciales.length === 0 ||
+              selectedComercial === "all"
+            }
           >
             <SelectTrigger
               className="w-[160px] rounded-lg sm:ml-auto "
@@ -212,17 +217,12 @@ export function TeamTramitesBarChart({
             </SelectContent>
           </Select>
           <Select
-            disabled={
-              loading ||
-              !comerciales ||
-              comerciales.length === 0 ||
-              selectedComercial === "all"
-            }
+            disabled={loading || !comerciales || comerciales.length === 0}
             value={selectedComercial}
             onValueChange={setSelectedComercial}
           >
             <SelectTrigger
-              className="w-[260px] rounded-lg sm:ml-auto py-2"
+              className="w-[260px] rounded-lg "
               aria-label="Selecciona una opción"
             >
               <SelectValue placeholder="Vista General" />
@@ -239,7 +239,7 @@ export function TeamTramitesBarChart({
                   className="rounded-lg"
                 >
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8 rounded-lg">
+                    <Avatar className="h-7 w-7 rounded-full">
                       <AvatarImage
                         src={comercial.image as string}
                         alt={comercial.name}
@@ -276,7 +276,7 @@ export function TeamTramitesBarChart({
             >
               <CartesianGrid vertical={false} />
               <XAxis
-                dataKey="user.name"
+                dataKey={selectedComercial === "all" ? "user.name" : "field"}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}

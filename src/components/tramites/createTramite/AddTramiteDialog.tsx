@@ -28,7 +28,7 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import { CheckCircle, CircleX, FilePlus2, Plus } from "lucide-react";
+import { CheckCircle, CircleX, FilePlus2, PlusCircle } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { Button } from "@heroui/button";
 import { showCustomToast } from "../../core/CustomToast";
@@ -272,6 +272,7 @@ export default function AddTramiteDialog({
       userData={userData as User}
     />,
     <FourthStepForm
+      userData={userData as User}
       key={4}
       onBack={handleBack}
       onFinish={handleSubmit}
@@ -281,7 +282,7 @@ export default function AddTramiteDialog({
       documents={documents}
       setDocuments={setDocuments}
       loading={loading}
-      comparativaFiles={comparativaFiles}
+      comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
     />,
   ];
 
@@ -294,7 +295,7 @@ export default function AddTramiteDialog({
           radius="sm"
           className="shadow-md"
         >
-          <Plus size={20} />
+          <PlusCircle size={20} />
           <span>Crear Trámite</span>
         </Button>
       ) : (

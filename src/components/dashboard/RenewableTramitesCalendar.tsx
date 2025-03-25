@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { CalendarDays, RefreshCwOff } from "lucide-react";
+import { RefreshCwOff } from "lucide-react";
 import { User } from "@/lib/core/types";
 import { DatePickerDemo } from "./DatePicker";
 import { Button } from "@heroui/button";
@@ -111,7 +111,7 @@ export default function RenewableTramitesCalendar({
 
   return (
     <Card
-      className={`relative w-full h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] group transition-colors duration-300 ${
+      className={`relative w-full h-full backdrop-blur-lg group transition-colors duration-300 ${
         loading ? "bg-gray-200 " : "bg-white"
       }`}
     >
@@ -128,11 +128,8 @@ export default function RenewableTramitesCalendar({
         }`}
       >
         <div className="flex items-start gap-4">
-          <div className="p-2 rounded-lg backdrop-blur-md bg-white/90 shadow-md bg-opacity-10">
-            <CalendarDays className="text-[var(--primary-color-800)]" />
-          </div>
           <CardTitle>
-            <h3 className="text-xl font-semibold text-[var(--primary-color-800)]">
+            <h3 className="text-base 2xl:text-xl font-semibold text-[var(--primary-color-800)]">
               Trámites renovables
             </h3>
             {date && (

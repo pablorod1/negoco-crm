@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
@@ -17,7 +17,20 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import React from "react";
-import { Building, User } from "lucide-react";
+import {
+  Building,
+  Coins,
+  ReceiptEuro,
+  RefreshCw,
+  TrendingDown,
+  TrendingUp,
+  UserIcon,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { User } from "@/lib/core/types";
+import { formatComission } from "@/lib/core/format";
 
 const chartConfig: ChartConfig = {
   tramites: { label: "Trámites" },
@@ -33,6 +46,16 @@ const chartConfig: ChartConfig = {
   },
 };
 
+const comercialChartConfig: ChartConfig = {
+  tramites: { label: "Trámites" },
+  active: { label: "Activos", color: "var(--primary-color-700)" },
+  baja: { label: "Bajas", color: "var(--danger-color)" },
+  comision_sales_person: {
+    label: "Comisión",
+    color: "var(--primary-color-500)",
+  },
+};
+
 // Generar un array con los 12 meses en español, asegurando que siempre hay datos.
 const createEmptyData = () =>
   Array.from({ length: 12 }, (_, i) => ({
@@ -43,28 +66,62 @@ const createEmptyData = () =>
     comision_sales_person: 0,
   }));
 
-export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
+export function YearlyTramitesBarChart({
+  loading,
+  userData,
+}: {
+  loading: boolean;
+  userData: User;
+}) {
   const [chartData, setChartData] = React.useState(createEmptyData);
+  const [chartView, setChartView] = React.useState<"tramites" | "comision">(
+    "comision"
+  );
+  const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
+  const isComercial = userData && userData.role === "2";
 
   React.useEffect(() => {
-    const fetchTramites = async () => {
-      try {
-        const res = await fetch(`
-          /api/tramites/get/monthly-active-pending`);
-
-        const { data, success, error } = await res.json();
-
-        if (!success && error) {
-          console.error("Error al obtener trámites:", error);
-          return;
-        }
-        setChartData(data);
-      } catch (error) {
-        console.error("Error al obtener trámites:", error);
-      }
-    };
-    fetchTramites();
+    // Añadir la clase personalizada para la animación de resorte
+    document.documentElement.style.setProperty(
+      "--ease-spring",
+      "cubic-bezier(0.25, 0.1, 0.25, 1.5)"
+    );
   }, []);
+
+  const fetchTramites = React.useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(
+        `
+        /api/tramites/get/monthly-active-pending`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: userData.id, role: userData.role }),
+        }
+      );
+
+      const { data, success, error } = await res.json();
+
+      if (!success && error) {
+        console.error("Error al obtener trámites:", error);
+        return;
+      }
+      setChartData(data);
+    } catch (error) {
+      console.error("Error al obtener trámites:", error);
+    } finally {
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 300);
+    }
+  }, [userData]);
+
+  React.useEffect(() => {
+    fetchTramites();
+  }, [fetchTramites]);
 
   const getActiveTramitesPercentageChange = (
     data: { month: string; active: number }[]
@@ -132,12 +189,43 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
     }
   };
 
+  const totalTramites = chartData.reduce(
+    (acc, item) => acc + item.active + item.baja,
+    0
+  );
+
+  const totalComision = chartData.reduce(
+    (acc, item) => acc + item.comision - item.comision_sales_person,
+    0
+  );
+
+  const totalComisionSalesPerson = chartData.reduce(
+    (acc, item) => acc + item.comision_sales_person,
+    0
+  );
+
+  const refreshData = () => {
+    fetchTramites();
+  };
+
+  const percentageChange = getActiveTramitesPercentageChange(chartData);
+  const isPositiveChange = percentageChange >= 0;
+
   return (
     <Card
-      className={`flex flex-col justify-between relative h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-colors duration-300 ${
+      className={`flex flex-col justify-between relative h-full backdrop-blur-lg  transition-colors duration-300 overflow-hidden ${
         loading ? "bg-gray-200 " : "bg-white "
       }`}
     >
+      {/* Decorative background elements */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl"></div>
+      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl"></div>
+
+      {/* Decorative chart pattern */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-92 opacity-5 pointer-events-none">
+        <Image src="/logo.webp" alt="Negoco Cloud" width={256} height={256} />
+      </div>
+
       <div
         className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300 ${
           loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
@@ -147,113 +235,324 @@ export function YearlyTramitesBarChart({ loading }: { loading: boolean }) {
       </div>
 
       <CardHeader
-        className={`transition-opacity duration-300 ${
+        className={`flex justify-between flex-row transition-opacity duration-300 relative z-10 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <CardTitle className="text-xl text-[var(--primary-color-800)]">
-          Resumen de Ventas 2025
-        </CardTitle>
-        <CardDescription className="text-xs text-gray-400">
-          Tu resumen de ventas mensuales en 2025
-        </CardDescription>
+        <div className="flex flex-col">
+          <CardTitle className="text-xl text-[var(--primary-color-800)] flex items-center gap-2">
+            Resumen de Ventas 2025
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full"
+              onClick={refreshData}
+              disabled={loading || isRefreshing}
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 text-primary-600 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
+            </Button>
+          </CardTitle>
+          <CardDescription className="text-xs text-gray-400">
+            Resumen global de ventas en 2025
+          </CardDescription>
+        </div>
+        <div className="relative flex items-center p-1 bg-gray-100/50 backdrop-blur-md rounded-xl shadow-inner">
+          {/* Indicador deslizante */}
+          <div
+            className="absolute transition-all duration-300 ease-spring rounded-lg shadow-lg bg-gradient-to-br from-[var(--primary-color-600)] to-[var(--primary-color-800)] z-0"
+            style={{
+              left: chartView === "tramites" ? "4px" : "calc(50% + 2px)",
+              width: "calc(50% - 6px)",
+              height: "calc(100% - 8px)",
+            }}
+          />
+
+          {/* Botón de Trámites */}
+          <button
+            onClick={() => setChartView("tramites")}
+            className={`relative z-10 flex items-center justify-between w-1/2 px-6 py-3 rounded-lg transition-all duration-300 ${
+              chartView === "tramites"
+                ? "text-white"
+                : "text-gray-700 hover:text-gray-900"
+            }`}
+          >
+            <div className="flex flex-col items-start">
+              <div className="flex items-center gap-2 mb-1">
+                <ReceiptEuro
+                  size={16}
+                  className={
+                    chartView === "tramites" ? "text-white/80" : "text-gray-500"
+                  }
+                />
+                <span className="font-medium">Trámites</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-bold">{totalTramites}</span>
+                <span
+                  className={`text-xs ${
+                    chartView === "tramites" ? "text-white/70" : "text-gray-500"
+                  }`}
+                >
+                  Total
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {/* Botón de Comisión */}
+          <button
+            onClick={() => setChartView("comision")}
+            className={`relative z-10 flex items-center justify-between w-1/2 px-6 py-3 rounded-lg transition-all duration-300 ${
+              chartView === "comision"
+                ? "text-white"
+                : "text-gray-700 hover:text-gray-900"
+            }`}
+          >
+            <div className="flex flex-col items-start">
+              <div className="flex items-center gap-2 mb-1">
+                <Coins
+                  size={16}
+                  className={
+                    chartView === "comision" ? "text-white/80" : "text-gray-500"
+                  }
+                />
+                <span className="font-medium">Comisión</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-bold">
+                  {isComercial
+                    ? formatComission(totalComisionSalesPerson)
+                    : formatComission(totalComision)}
+                </span>
+              </div>
+            </div>
+          </button>
+        </div>
       </CardHeader>
 
       <CardContent
-        className={`transition-opacity duration-300  ${
+        className={`transition-opacity duration-300 relative z-10 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        {chartData.length > 0 ? (
-          <ChartContainer
-            className="max-h-[300px] h-full w-full"
-            config={chartConfig}
-          >
-            <BarChart data={chartData}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="month"
-                tickLine={true}
-                tickSize={5}
-                tickMargin={15}
-                axisLine={false}
-                tickFormatter={(value) => value.slice(0, 3)}
-                className="capitalize"
-              />
-              <ChartLegend
-                content={<ChartLegendContent className="text-sm mt-4" />}
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    className="w-52"
-                    indicator="line"
-                    formatter={(value, name, item, index) => (
-                      <>
-                        <div>
-                          {chartConfig[name as keyof typeof chartConfig]
-                            ?.label === "Comisión" ? (
-                            <Building size={14} />
-                          ) : (
-                            <User size={14} />
-                          )}
-                        </div>
-                        {chartConfig[name as keyof typeof chartConfig]?.label ||
-                          name}
-                        <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                          {value}
-                          <span className="font-normal text-muted-foreground">
-                            €
-                          </span>
-                        </div>
-                        {/* Add this after the last item */}
-                        {index === 1 && (
-                          <div className="mt-1.5 flex basis-full items-center border-t pt-1.5 text-xs font-medium text-foreground">
-                            Total
-                            <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                              {item.payload.comision -
-                                item.payload.comision_sales_person}
-                              <span className="font-normal text-muted-foreground">
-                                €
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
+        <AnimatePresence mode="wait">
+          {chartData.length > 0 ? (
+            <motion.div
+              key="chart-content"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <ChartContainer
+                className="max-h-[300px] h-full w-full"
+                config={isComercial ? comercialChartConfig : chartConfig}
+              >
+                <BarChart data={chartData}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={true}
+                    tickSize={5}
+                    tickMargin={15}
+                    axisLine={false}
+                    tickFormatter={(value) => value.slice(0, 3)}
+                    className="capitalize"
                   />
-                }
-              />
+                  <ChartLegend
+                    content={<ChartLegendContent className="text-sm mt-4" />}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        className="w-52"
+                        indicator="line"
+                        formatter={(value, name, item, index) => {
+                          if (isComercial) {
+                            return (
+                              <>
+                                <div>
+                                  {comercialChartConfig[
+                                    name as keyof typeof comercialChartConfig
+                                  ]?.label === "Comisión" ? (
+                                    <UserIcon size={14} />
+                                  ) : comercialChartConfig[
+                                      name as keyof typeof comercialChartConfig
+                                    ]?.label === "Activos" ? (
+                                    <TrendingUp
+                                      size={14}
+                                      className="text-success-400"
+                                    />
+                                  ) : comercialChartConfig[
+                                      name as keyof typeof comercialChartConfig
+                                    ]?.label === "Bajas" ? (
+                                    <TrendingDown
+                                      size={14}
+                                      className="text-danger-400"
+                                    />
+                                  ) : (
+                                    <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+                                  )}
+                                </div>
+                                {comercialChartConfig[
+                                  name as keyof typeof comercialChartConfig
+                                ]?.label || name}
+                                <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
+                                  {value}
+                                  <span className="font-normal text-muted-foreground">
+                                    {chartView === "tramites" ? "" : "€"}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              <div>
+                                {chartConfig[name as keyof typeof chartConfig]
+                                  ?.label === "Comisión" ? (
+                                  <Building size={14} />
+                                ) : chartConfig[
+                                    name as keyof typeof chartConfig
+                                  ]?.label === "Comisión Comercial" ? (
+                                  <UserIcon size={14} />
+                                ) : chartConfig[
+                                    name as keyof typeof chartConfig
+                                  ]?.label === "Activos" ? (
+                                  <TrendingUp
+                                    size={14}
+                                    className="text-success-400"
+                                  />
+                                ) : chartConfig[
+                                    name as keyof typeof chartConfig
+                                  ]?.label === "Bajas" ? (
+                                  <TrendingDown
+                                    size={14}
+                                    className="text-danger-400"
+                                  />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+                                )}
+                              </div>
+                              {chartConfig[name as keyof typeof chartConfig]
+                                ?.label || name}
+                              <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
+                                {value}
+                                <span className="font-normal text-muted-foreground">
+                                  {chartView === "tramites" ? "" : "€"}
+                                </span>
+                              </div>
+                              {/* Add this after the last item */}
+                              {chartView === "comision" && index === 1 && (
+                                <div className="mt-1.5 flex basis-full items-center border-t pt-1.5 text-xs font-medium text-foreground">
+                                  Total
+                                  <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
+                                    {item.payload.comision -
+                                      item.payload.comision_sales_person}
+                                    <span className="font-normal text-muted-foreground">
+                                      €
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        }}
+                      />
+                    }
+                  />
 
-              <Bar
-                dataKey="comision"
-                fill="var(--primary-color-800)"
-                radius={4}
-              />
-              <Bar
-                dataKey="comision_sales_person"
-                fill="var(--primary-color-500)"
-                radius={4}
-              />
-            </BarChart>
-          </ChartContainer>
-        ) : (
-          <div className="flex items-center justify-center w-full h-[200px] text-muted-foreground">
-            No hay datos para mostrar
-          </div>
-        )}
+                  {!isComercial ? (
+                    <Bar
+                      dataKey={chartView === "tramites" ? "active" : "comision"}
+                      fill="var(--primary-color-800)"
+                      radius={4}
+                    />
+                  ) : isComercial && chartView === "tramites" ? (
+                    <Bar
+                      dataKey="active"
+                      fill="var(--primary-color-800)"
+                      radius={4}
+                    />
+                  ) : null}
+
+                  <Bar
+                    dataKey={
+                      chartView === "tramites"
+                        ? "baja"
+                        : "comision_sales_person"
+                    }
+                    fill={
+                      chartView === "tramites"
+                        ? "var(--danger-color)"
+                        : "var(--primary-color-500)"
+                    }
+                    radius={4}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="no-data"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center justify-center w-full h-[200px] text-muted-foreground"
+            >
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center">
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z"
+                      fill="var(--primary-color-300)"
+                    />
+                  </svg>
+                </div>
+                <span className="font-medium text-primary-600 text-center">
+                  No hay datos para mostrar
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </CardContent>
 
       <CardFooter
-        className={`flex-col items-start gap-2 text-sm transition-opacity duration-300 ${
+        className={`flex-col items-start gap-2 text-sm transition-opacity duration-300 relative z-10 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <div className="flex items-center gap-2 font-medium leading-none">
-          <span className="text-sm text-gray-600">
-            {formatDifferenceText(getActiveTramitesPercentageChange(chartData))}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="flex items-center gap-3 font-medium leading-none p-3 rounded-xl bg-gray-50/80 backdrop-blur-sm w-full"
+        >
+          <div
+            className={`size-6 rounded-full flex items-center justify-center ${
+              isPositiveChange ? "bg-green-100" : "bg-red-100"
+            }`}
+          >
+            {isPositiveChange ? (
+              <TrendingUp className="size-4 text-green-600" />
+            ) : (
+              <TrendingDown className="size-4 text-red-600" />
+            )}
+          </div>
+          <span className="text-xs text-gray-600">
+            {formatDifferenceText(percentageChange)}
           </span>
-        </div>
+        </motion.div>
       </CardFooter>
     </Card>
   );

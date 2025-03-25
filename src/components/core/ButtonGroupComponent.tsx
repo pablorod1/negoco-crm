@@ -1,5 +1,5 @@
 import { Button } from "@heroui/button";
-import CancelCreateTramiteConfirmationModal from "./CancelCreateTramiteConfirmationModal";
+import CancelOperationConfirmationModal from "@/components/core/CancelOperationConfirmationModal";
 
 interface ButtonGroupProps {
   onBack?: () => void;
@@ -18,10 +18,10 @@ export default function ButtonGroupComponent({
 }: ButtonGroupProps) {
   return (
     <div className="flex justify-between items-center w-full mb-2">
-      {onCancel && <CancelCreateTramiteConfirmationModal onCancel={onCancel} />}
+      {onCancel && <CancelOperationConfirmationModal onCancel={onCancel} />}
       <div className="flex justify-end gap-4 w-full">
         {onBack && (
-          <Button onPress={onBack} variant="solid" color="danger" radius="sm">
+          <Button onPress={onBack} variant="light" color="danger" radius="sm">
             Atrás
           </Button>
         )}

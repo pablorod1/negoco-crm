@@ -22,7 +22,7 @@ export const getLinkContext = (context: string, link: string): string => {
     case "Comparativas":
       return `/comparativas/${link}`;
     case "Tramites":
-      return `/tramites?id=${link}`;
+      return `/tramites/${link}`;
     default:
       return "/";
   }

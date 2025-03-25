@@ -77,7 +77,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             alt="Logo"
             width={48}
             height={48}
-            className="absolute top-0 left-0 right-0 bottom-0 m-auto"
+            className="absolute -top-2 left-0 right-0 bottom-0 m-auto"
           />
         </Spinner>
         <div className="flex flex-col items-center text-center">

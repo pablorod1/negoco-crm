@@ -9,10 +9,45 @@ export type TramiteDB = {
   comision: number;
   status: Status;
   liquidez_status: LiquidezStatus;
-  notes: string | string[];
+  notes: string[];
   client_id: string;
   user_id: string;
 };
+
+export interface TramiteVM extends TramiteDB {
+  user: Partial<User>;
+  updated_by: Partial<User> | null;
+  updated_at: string | null;
+}
+
+export const createEmptyTramiteVM = (): TramiteVM => ({
+  id: "",
+  creation_date: "",
+  tramitation_date: "",
+  activation_date: "",
+  renovation_date: "",
+  sales_name: "",
+  comision_sales_person: 0,
+  comision: 0,
+  status: "Borrador",
+  liquidez_status: null,
+  notes: [],
+  client_id: "",
+  user_id: "",
+  user: {},
+  updated_by: null,
+  updated_at: null,
+});
+
+export interface TramiteWithUser extends TramiteDB {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    image: string | null;
+  };
+}
 
 const getComission = (
   comparativa: ComparativaVM,
@@ -51,7 +86,7 @@ export const createEmptyTramiteDB = (
   comision: comparativa && plan ? getComission(comparativa, plan).comision : 0,
   status: "Borrador",
   liquidez_status: null,
-  notes: comparativa ? comparativa.notes : "",
+  notes: comparativa ? comparativa.notes : [],
   client_id: "",
   user_id: comparativa
     ? (comparativa.user.id as string)
@@ -184,7 +219,7 @@ export type DocumentacionFile = {
   type: "file" | "folder";
 };
 
-export type TramiteVM = {
+export type TramiteRow = {
   id: string;
   creation_date: string;
   renovation_date: string;
@@ -204,17 +239,15 @@ export type TramiteVM = {
 };
 
 export type EditTramiteFormData = {
-  tramite: TramiteDB;
+  tramite: TramiteVM;
   client: ClientDB;
   contracts: ContractDB[];
   signer: SignerDB;
   files?: TramiteFile[];
 };
 
-export const createEmptyTramiteForm = (
-  userData: User
-): EditTramiteFormData => ({
-  tramite: createEmptyTramiteDB(userData),
+export const createEmptyTramiteForm = (): EditTramiteFormData => ({
+  tramite: createEmptyTramiteVM(),
   client: createEmptyClientDB(),
   contracts: [],
   signer: createEmptySignerDB(),
@@ -345,6 +378,30 @@ export type ComparativaFile = {
 };
 
 export type ComparativaPlan = "fijo" | "indexado";
+
+export interface Objective {
+  id: string;
+  type: ObjectiveType;
+  peak: number;
+  current: number;
+  period: string;
+  created_at: string;
+  completed: boolean;
+  user_id: string;
+}
+
+export const createEmptyObjective = (userData: User): Objective => ({
+  id: `OBJ-${Math.floor(Math.random() * 10000)}`,
+  type: "tramites",
+  peak: 0,
+  current: 0,
+  period: "",
+  created_at: new Date().toISOString(),
+  completed: false,
+  user_id: userData ? userData.id : "",
+});
+
+export type ObjectiveType = "comisiones" | "tramites" | "ratio";
 
 export type Status =
   | "Borrador"

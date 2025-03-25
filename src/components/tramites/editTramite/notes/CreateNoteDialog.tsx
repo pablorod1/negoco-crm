@@ -30,13 +30,7 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
   };
   return (
     <>
-      <Button
-        className="!bg-transparent"
-        color="primary"
-        variant="light"
-        radius="sm"
-        onPress={onOpen}
-      >
+      <Button color="primary" variant="bordered" radius="sm" onPress={onOpen}>
         <PenLine size={16} />
         Crear nota
       </Button>

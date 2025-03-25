@@ -4,12 +4,12 @@ import { formatDate } from "@/lib/core/format";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
 import { Chip } from "@heroui/chip";
-import { TramiteVM } from "@/lib/core/types";
+import { TramiteRow } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import LiquidezDropdown from "./LiquidezDropdown";
 import { Button } from "@heroui/button";
 
-export const LiquidezColumns: ColumnDef<TramiteVM>[] = [
+export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "id",
     accessorKey: "id",

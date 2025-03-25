@@ -1,4 +1,4 @@
-import { ACTIVATION_DATE, RENOVATION_DATE } from "@/lib/core/const";
+import { NOW_DATE, RENOVATION_DATE } from "@/lib/core/const";
 import { ClientDB, ContractDB, SignerDB, TramiteDB } from "@/lib/core/types";
 import { Client } from "@libsql/client";
 
@@ -30,7 +30,7 @@ export const updateTramite = async (
       }
 
       if (tramite.status === "Activo") {
-        tramite.activation_date = ACTIVATION_DATE.toISOString(); // Asigna la fecha actual
+        tramite.activation_date = NOW_DATE.toISOString(); // Asigna la fecha actual
         tramite.renovation_date = RENOVATION_DATE.toISOString();
         tramite.liquidez_status = "Pendiente de Cobro";
       }

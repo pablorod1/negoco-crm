@@ -1,33 +1,32 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import {
-  Filter,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-} from "lucide-react";
-import AddTramiteDialog from "../createTramite/AddTramiteDialog";
-import { Input } from "@heroui/input";
-import { Tooltip } from "@heroui/tooltip";
-import { Status, User } from "@/lib/core/types";
-import {
-  ColumnSelector,
-  CompanyDropdown,
-  ContractTypeDropdown,
-  FilterButton,
-  LiquidezStatusDropdown,
-  StatusDropdown,
-} from "./TableToolbar";
-import { redirect } from "next/navigation";
-import { Table } from "@tanstack/react-table";
-import ExportTableModal from "@/components/core/ExportTableModal";
 
-interface Tramite {
-  status: string;
-  total: number;
-}
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Filter, Search, Download, X } from "lucide-react";
+import { Input } from "@heroui/input";
+import { Button } from "@/components/ui/button";
+import { Tooltip } from "@heroui/tooltip";
+import { Badge } from "@/components/ui/badge";
+
+import { cn } from "@/lib/core/utils";
+import type { Table } from "@tanstack/react-table";
+import type { Status, User } from "@/lib/core/types";
+import { ColumnSelector } from "./TableToolbar";
+import AddTramiteDialog from "../createTramite/AddTramiteDialog";
+import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  COMPANIES,
+  CONTRACT_TYPES,
+  LIQUIDEZ_STATUS,
+  STATUS_TYPES,
+} from "@/lib/core/const";
+import ExportTableModal from "@/components/core/ExportTableModal";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -44,9 +43,10 @@ interface TableHeaderProps<TData> {
   resetFilters: () => void;
   userData: User;
   table: Table<TData>;
+  totalTramites: number;
 }
 
-const TramitesHeader = <TData,>({
+export default function TramitesHeader<TData>({
   filterValue,
   title,
   companyFilter,
@@ -56,314 +56,242 @@ const TramitesHeader = <TData,>({
   setFilterValue,
   setCompanyFilter,
   setStatusFilter,
-  setContractTypeFilter,
   setLiquidezStatusFilter,
+  setContractTypeFilter,
   resetFilters,
-  userData,
   table,
-}: TableHeaderProps<TData>) => {
+  totalTramites,
+  userData,
+}: TableHeaderProps<TData>) {
   const [scrolled, setScrolled] = useState(false);
-  const [tramites, setTramites] = useState<Tramite[]>([]);
-  const [totalTramites, setTotalTramites] = useState(0);
-  const [tramitesCountVisible, setTramitesCountVisible] = useState(false);
-  const [filtersVisible, setFiltersVisible] = useState(false);
-  const [searchVisible, setSearchVisible] = useState(true);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const checkFilters = () => {
-    return (
-      companyFilter.length > 0 &&
-      statusFilter.length > 0 &&
-      liquidezStatusFilter.length > 0 &&
-      contractTypeFilter.length > 0
-    );
-  };
+  const isComercial = userData?.role === "2";
 
-  const fetchTramites = useCallback(async () => {
-    const response = await fetch(`/api/tramites/get/tramites-count-by-status`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: userData.id,
-        role: userData.role,
-      }),
-    });
-    const { data, success, error } = await response.json();
-
-    if (!success) {
-      console.error("Error fetching tramites count:", error);
-      return;
-    }
-
-    setTramites(data as Tramite[]);
-    const totalTramites = data.reduce(
-      (acc: number, curr: Tramite) => acc + curr.total,
-      0
-    );
-    setTotalTramites(totalTramites);
-  }, [userData]);
-
+  // Update active filters
   useEffect(() => {
-    fetchTramites();
+    const filters = [];
+    if (companyFilter.length > 0) filters.push("Compañía");
+    if (statusFilter.length > 0) filters.push("Estado");
+    if (liquidezStatusFilter.length > 0) filters.push("Liquidez");
+    if (contractTypeFilter.length > 0) filters.push("Contrato");
+    setActiveFilters(filters);
+  }, [companyFilter, statusFilter, liquidezStatusFilter, contractTypeFilter]);
+
+  // Handle scroll and fetch data
+  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [fetchTramites, setFilterValue]);
+  }, []);
 
-  const getStatusText = (tramite: Tramite) => {
-    const texts: Record<string, [string, string]> = {
-      Tramitable: ["Tramitable", "Tramitables"],
-      Verificado: ["Verificado", "Verificados"],
-      "Pendiente de Firma": ["Pendiente", "Pendientes"],
-      Procesando: ["Procesando", "Procesando"],
-      Activo: ["Activo", "Activos"],
-      Borrador: ["Borrador", "Borradores"],
-      Baja: ["Baja", "Bajas"],
-    };
-
-    const [singular, plural] = texts[tramite.status] || ["", ""];
-    return tramite.total === 1 ? singular : plural;
-  };
-
-  const handleFiltersShow = () => {
-    setFiltersVisible(!filtersVisible);
-    setTramitesCountVisible(false);
-  };
-
-  const handleTramitesCountShow = () => {
-    setTramitesCountVisible(!tramitesCountVisible);
-    setFiltersVisible(false);
-    setSearchVisible(false);
-  };
-
-  const handleSearchShow = () => {
-    setSearchVisible(!searchVisible);
-    setTramitesCountVisible(false);
-  };
-
-  const handleClearFilter = () => {
+  // Clear search filter
+  const handleClearSearch = () => {
     setFilterValue("");
-    redirect("/tramites");
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -40 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="pt-6"
-    >
-      <div className="mx-12 relative">
-        <div
-          className={`
-            flex flex-col gap-4
-          bg-white backdrop-blur-lg rounded-md 
-          transition-all duration-300 shadow-md border border-gray-100
-          ${scrolled ? "py-3 px-6" : "py-6 px-8"}
-        `}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="relative"
-              >
-                <h1
-                  className={`
-                  font-bold transition-all duration-300
-                  ${scrolled ? "text-3xl" : "text-4xl"}
-                  bg-gradient-to-r from-[var(--primary-color-800)] to-[var(--primary-color-500)]
-                  text-transparent bg-clip-text
-                `}
-                >
-                  {title}
-                </h1>
-                <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full opacity-20" />
-              </motion.div>
-
-              {title === "Trámites" && (
-                <>
-                  {" "}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className={`flex items-center gap-6 overflow-x-hidden animate-size
-                ${tramitesCountVisible ? "w-auto" : "w-20"}
-                `}
-                  >
-                    <div className="flex items-center gap-2 text-gray-500 w-auto">
-                      <span className="text-xl font-semibold">
-                        {totalTramites}
-                      </span>
-                      <span className="text-sm">Total</span>
-                    </div>
-                    {tramites &&
-                      tramites.map((tramite, index) => (
-                        <div
-                          className="flex flex-nowrap items-center gap-6 w-full"
-                          key={index}
-                        >
-                          <div className="h-8 w-px bg-gray-200 " />
-
-                          <div
-                            className={`flex justify-center flex-nowrap items-center gap-2 text-gray-500 w-auto ${
-                              tramite.status === "Borrador" &&
-                              tramite.total > 20
-                                ? "text-red-500"
-                                : ""
-                            }`}
-                          >
-                            <span className="text-xl font-semibold">
-                              {tramite.total}
-                            </span>
-                            <Tooltip
-                              isDisabled={
-                                tramite.status !== "Borrador" ||
-                                tramite.total < 20
-                              }
-                              color="danger"
-                              showArrow
-                              content={
-                                <div className="px-1 py-2">
-                                  <div className="flex items-center gap-2">
-                                    <AlertCircle
-                                      size={18}
-                                      strokeWidth="3"
-                                      color="white"
-                                    />
-                                    <span className="text-sm font-bold">
-                                      Hay demasiados borradores
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-white">
-                                    Se recomienda eliminar los trámites
-                                    innecesarios
-                                  </div>
-                                </div>
-                              }
-                            >
-                              <span className="text-sm">
-                                {getStatusText(tramite)}
-                              </span>
-                            </Tooltip>
-                          </div>
-                        </div>
-                      ))}
-                  </motion.div>
-                  {tramites && (
-                    <motion.button
-                      onClick={handleTramitesCountShow}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="p-2 rounded-xl hover:bg-gray-100 text-gray-600"
-                    >
-                      {tramitesCountVisible ? (
-                        <ChevronLeft size={16} />
-                      ) : (
-                        <ChevronRight size={16} />
-                      )}
-                    </motion.button>
-                  )}
-                </>
+    <div className="w-full px-6 pt-6 pb-2">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={cn(
+          "bg-white rounded-xl border border-gray-100 shadow-sm transition-all duration-300",
+          scrolled ? "py-3 px-5" : "py-5 px-6"
+        )}
+      >
+        {/* Header Top Row */}
+        <div className="flex items-center justify-between gap-4  ">
+          <div className="flex items-center gap-3">
+            <h1
+              className={cn(
+                "font-bold text-3xl bg-gradient-to-r from-blue-700 to-blue-500 text-transparent bg-clip-text",
+                scrolled ? "text-2xl" : "text-3xl"
               )}
-            </div>
+            >
+              {title}
+            </h1>
 
-            <div className="flex justify-end items-center w-full gap-3">
-              <div
-                className={`flex items-center ${filtersVisible ? "gap-3" : ""}`}
-              >
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-100 text-gray-600"
-                  onClick={handleFiltersShow}
-                >
-                  {filtersVisible ? (
-                    <ChevronRight size={14} />
-                  ) : (
-                    <ChevronLeft size={14} />
-                  )}
-                  <Filter size={20} />
-                </motion.button>
-                <div
-                  className={`flex items-center gap-3 overflow-x-hidden animate-size
-                  ${filtersVisible ? "w-auto" : "w-0"}
-                  `}
-                >
-                  <CompanyDropdown
-                    selected={companyFilter}
-                    onSelectionChange={setCompanyFilter}
-                  />
-                  {title === "Trámites" ? (
-                    <StatusDropdown
-                      selected={statusFilter}
-                      onSelectionChange={(value) =>
-                        setStatusFilter(value as Status[])
-                      }
-                    />
-                  ) : (
-                    <LiquidezStatusDropdown
-                      selected={liquidezStatusFilter}
-                      onSelectionChange={setLiquidezStatusFilter}
-                    />
-                  )}
-                  {title === "Trámites" && (
-                    <ContractTypeDropdown
-                      selected={contractTypeFilter}
-                      onSelectionChange={setContractTypeFilter}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="relative flex items-center">
-                <div
-                  className={`flex items-center transition-all duration-500 overflow-hidden ease-in-out ${
-                    searchVisible ? "w-96" : "w-8 cursor-pointer"
-                  }`}
-                >
-                  <Input
-                    radius="sm"
-                    value={filterValue}
-                    onValueChange={setFilterValue}
-                    variant="bordered"
-                    isClearable={true}
-                    onClear={handleClearFilter}
-                    placeholder={
-                      searchVisible
-                        ? "Busca por CUPS, cliente, compañía..."
-                        : ""
-                    }
-                    className="ps-12"
-                  />
-                  <Search
-                    width={20}
-                    height={20}
-                    className={`cursor-pointer absolute text-gray-500 transition-all duration-500 ${
-                      searchVisible ? "left-4" : "left-1"
-                    }`}
-                    onClick={handleSearchShow}
-                  />
-                </div>
-              </div>
-
-              {title === "Trámites" && <AddTramiteDialog />}
-            </div>
+            <Badge
+              variant="outline"
+              className="bg-blue-50 text-blue-700 border-blue-200 px-2.5 py-0.5"
+            >
+              {totalTramites} Total
+            </Badge>
           </div>
-          <div className="flex justify-between items-center gap-2  w-full">
-            <ColumnSelector table={table} />
-            <div className="flex items-center gap-2">
-              <FilterButton disabled={!checkFilters()} onPress={resetFilters} />
-              <ExportTableModal name={title} table={table} />
+
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative w-80">
+              <Input
+                radius="sm"
+                variant="bordered"
+                value={filterValue}
+                onValueChange={setFilterValue}
+                placeholder="Buscar por CUPS, cliente, compañía..."
+                startContent={<Search className="h-4 w-4" />}
+                endContent={
+                  filterValue && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )
+                }
+              />
             </div>
+
+            {/* Filter Button */}
+
+            <Tooltip content="Filtros avanzados">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "h-10 w-10 bg-gray-50 border-gray-200",
+                  showFilters && "bg-blue-50 border-blue-200 text-blue-700"
+                )}
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+
+            {/* Column Selector */}
+
+            <ColumnSelector table={table} />
+
+            {/* Export Button */}
+
+            {!isComercial && (
+              <Popover>
+                <Tooltip content="Exportar datos">
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 bg-gray-50 border-gray-200"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                </Tooltip>
+                <PopoverContent className="p-0 w-fit">
+                  <ExportTableModal table={table} name={title} />
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {/* Create Button */}
+            {title === "Trámites" && <AddTramiteDialog />}
           </div>
         </div>
-      </div>
-    </motion.div>
-  );
-};
 
-export default TramitesHeader;
+        {/* Status Tabs */}
+        {title === "Trámites" && (
+          <div className="flex items-center justify-between">
+            {activeFilters.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">Filtros activos:</span>
+                <div className="flex gap-1.5">
+                  {activeFilters.map((filter, index) => (
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 gap-1.5"
+                    >
+                      {filter}
+                    </Badge>
+                  ))}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="h-7 px-2 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Limpiar
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="mt-4 pt-4 border-t border-gray-100"
+          >
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Estado</Label>
+
+                <MultiSelect
+                  options={STATUS_TYPES}
+                  onValueChange={(value) => setStatusFilter(value as Status[])}
+                  value={statusFilter}
+                  placeholder="Seleccionar estado"
+                  maxCount={2}
+                  variant="primary"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Estado de liquidez</Label>
+
+                <MultiSelect
+                  options={LIQUIDEZ_STATUS}
+                  onValueChange={setLiquidezStatusFilter}
+                  value={liquidezStatusFilter}
+                  placeholder="Seleccionar estado de liquidez"
+                  maxCount={1}
+                  variant="primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Contrato</Label>
+                <MultiSelect
+                  options={CONTRACT_TYPES}
+                  onValueChange={setContractTypeFilter}
+                  value={contractTypeFilter}
+                  placeholder="Seleccionar tipo de contrato"
+                  maxCount={1}
+                  variant="primary"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Compañía</Label>
+                <MultiSelect
+                  options={COMPANIES}
+                  onValueChange={setCompanyFilter}
+                  value={companyFilter}
+                  placeholder="Seleccionar tipo de contrato"
+                  maxCount={3}
+                />
+              </div>
+            </div>
+
+            {/* <div className="flex justify-end mt-4">
+              <FilterButton
+                onPress={resetFilters}
+                disabled={activeFilters.length === 0}
+              />
+            </div> */}
+          </motion.div>
+        )}
+      </motion.div>
+    </div>
+  );
+}

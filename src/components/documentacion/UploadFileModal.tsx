@@ -13,8 +13,9 @@ import { Folder, ChevronRight, UploadIcon, ChevronDown } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
-import { Spinner } from "@heroui/spinner";
 import { useUser } from "@/lib/contexts/UserContext";
+import SpinnerComponent from "../core/SpinnerComponent";
+import { User } from "@/lib/core/types";
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -273,12 +274,7 @@ export default function UploadFileModal() {
           <ModalBody>
             {isUploading && (
               <div className="h-full w-full absolute top-0 left-0 bg-white/60 flex justify-center items-center">
-                <Spinner
-                  label="Subiendo archivos..."
-                  color="primary"
-                  size="lg"
-                  className="text-xl"
-                />
+                <SpinnerComponent userData={userData as User} />
               </div>
             )}
             <div

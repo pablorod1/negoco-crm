@@ -13,6 +13,18 @@ export const DOCUMENT_TYPES = {
 };
 
 export const CONTRACT_TYPES = [
+  { label: "Cambio Compañía", value: "Cambio Compañía" },
+  {
+    label: "Cambio Compañía + Cambio Técnico",
+    value: "Cambio Compañía + Cambio Técnico",
+  },
+  {
+    label: "Cambio Compañía + Cambio Titular",
+    value: "Cambio Compañía + Cambio Titular",
+  },
+];
+
+export const PLAIN_CONTRACT_TYPES = [
   "Cambio Compañía",
   "Cambio Compañía + Cambio Técnico",
   "Cambio Compañía + Cambio Titular",
@@ -21,6 +33,16 @@ export const CONTRACT_TYPES = [
 export const CARGOS = ["Presidente de la Comunidad", "Administrador de Fincas"];
 
 export const STATUS_TYPES = [
+  { label: "Borrador", value: "Borrador" },
+  { label: "Tramitable", value: "Tramitable" },
+  { label: "Verificado", value: "Verificado" },
+  { label: "Pendiente de Firma", value: "Pendiente de Firma" },
+  { label: "Procesando", value: "Procesando" },
+  { label: "Activo", value: "Activo" },
+  { label: "Baja", value: "Baja" },
+];
+
+export const PLAIN_STATUS_TYPES = [
   "Borrador",
   "Tramitable",
   "Verificado",
@@ -31,9 +53,17 @@ export const STATUS_TYPES = [
 ];
 
 export const COMPARATIVA_STATUS_TYPES = [
-  { key: "pending", label: "Pendiente de Estudio" },
-  { key: "completed", label: "Estudio Realizado" },
-  { key: "processed", label: "Comparativa Tramitada" },
+  { value: "pending", label: "Pendiente de Estudio" },
+  { value: "completed", label: "Estudio Realizado" },
+  { value: "processed", label: "Comparativa Tramitada" },
+  { value: "rejected", label: "Comparativa Rechazada" },
+];
+
+export const PLAIN_COMPARATIVA_STATUS_TYPES = [
+  "pending",
+  "completed",
+  "processed",
+  "rejected",
 ];
 
 export const COMERCIAL_STATUS_TYPES = ["Borrador", "Tramitable"];
@@ -60,12 +90,33 @@ export const POTS = [
   "Pot. 5",
   "Pot. 6",
 ];
-export const ACTIVATION_DATE = new Date();
-export const RENOVATION_DATE = new Date(
-  ACTIVATION_DATE.getTime() + 31536000000
-);
+export const NOW_DATE = new Date();
+export const RENOVATION_DATE = new Date(NOW_DATE.getTime() + 31536000000);
 
 export const COMPANIES = [
+  { label: "Eleia", value: "Eleia" },
+  { label: "Acciona", value: "Acciona" },
+  { label: "Logos", value: "Logos" },
+  { label: "Endesa", value: "Endesa" },
+  { label: "Audax", value: "Audax" },
+  { label: "YaLuz", value: "YaLuz" },
+  {
+    label: "Gana Energía",
+    value: "Gana Energía",
+  },
+  { label: "Naturgy", value: "Naturgy" },
+  { label: "Iberdrola", value: "Iberdrola" },
+  {
+    label: "Totalenergies",
+    value: "Totalenergies",
+  },
+  { label: "Ignis", value: "Ignis" },
+  { label: "Repsol", value: "Repsol" },
+  { label: "UniElectrica", value: "UniElectrica" },
+  { label: "Zima Energia", value: "Zima Energia" },
+];
+
+export const PLAIN_COMPANIES = [
   "Eleia",
   "Acciona",
   "Logos",
@@ -83,9 +134,18 @@ export const COMPANIES = [
 ];
 
 export const LIQUIDEZ_STATUS = [
+  { label: "Pendiente de Cobro", value: "Pendiente de Cobro" },
+  {
+    label: "Cobrado por Comercializadora",
+    value: "Cobrado por Comercializadora",
+  },
+  { label: "Pagado al Comercial", value: "Pagado al Comercial" },
+];
+
+export const PLAIN_LIQUIDEZ_STATUS = [
   "Pendiente de Cobro",
   "Cobrado por Comercializadora",
-  "Pagado al comercial",
+  "Pagado al Comercial",
 ];
 
 export const ROLES = ["Dirección", "Backoffice", "Comercial"];

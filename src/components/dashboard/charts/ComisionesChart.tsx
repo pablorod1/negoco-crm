@@ -15,11 +15,14 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import React from "react";
-import { Euro } from "lucide-react";
+import { Euro, InfoIcon, TrendingDown, TrendingUp } from "lucide-react";
 import { User } from "@/lib/core/types";
 import { formatComission } from "@/lib/core/format";
 import { NumberTicker } from "@/components/ui/number-ticker";
-import { Spinner } from "@heroui/react";
+import { Chip } from "@heroui/chip";
+import { Spinner } from "@heroui/spinner";
+import { Tooltip } from "@heroui/tooltip";
+import SpinnerComponent from "@/components/core/SpinnerComponent";
 
 const chartConfig = {
   total: {
@@ -94,11 +97,11 @@ export function ComisionesChart({
   };
 
   const currentMonthComision = chartData[new Date().getMonth()].total;
-  const difference = calculateDifference();
+  const difference = calculateDifference() || 0;
 
   return (
     <Card
-      className={`relative flex flex-col justify-between h-full backdrop-blur-lg border-0 shadow-[0_2px_6px_rgba(0,0,0,0.12)] transition-colors duration-300 ${
+      className={`relative flex flex-col justify-between h-full backdrop-blur-lg border-0  transition-colors duration-300 ${
         loading ? "bg-gray-200 " : "bg-white"
       }`}
     >
@@ -116,34 +119,71 @@ export function ComisionesChart({
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <div className="space-y-1 mb-2">
-          <h2 className="text-sm font-medium text-[var(--primary-color-300)]">
-            Total Comisiones
-          </h2>
-
-          {!loadingData ? (
-            <>
-              <NumberTicker
-                endContent="€"
-                value={currentMonthComision}
-                decimalPlaces={2}
-                className="text-3xl font-bold text-[var(--primary-color-800)]"
-              >
-                {formatComission(currentMonthComision)}
-              </NumberTicker>
-
-              <p
-                className={`text-sm ${
-                  difference >= 0 ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {difference >= 0 ? "+" : ""}
-                {difference.toFixed(1)}% respecto al mes anterior
-              </p>
-            </>
-          ) : (
-            <div className="h-12 w-24 bg-gray-200 rounded-md animate-pulse"></div>
-          )}
+        <div className="flex items-start justify-between">
+          <div className="space-y-1 mb-2">
+            <h2 className="text-sm font-medium text-[var(--primary-color-300)]">
+              Total Comisiones
+            </h2>
+            {!loadingData ? (
+              <>
+                <NumberTicker
+                  endContent="€"
+                  value={currentMonthComision}
+                  decimalPlaces={2}
+                  className="text-3xl font-bold text-[var(--primary-color-800)]"
+                >
+                  {formatComission(currentMonthComision)}
+                </NumberTicker>
+              </>
+            ) : (
+              <div className="h-12 w-24 bg-gray-200 rounded-md animate-pulse"></div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Chip
+              className={`text-white `}
+              size="sm"
+              variant="shadow"
+              color={
+                loadingData ? "primary" : difference >= 0 ? "success" : "danger"
+              }
+              endContent={
+                loadingData ? null : difference >= 0 ? (
+                  <TrendingUp size={16} />
+                ) : (
+                  <TrendingDown size={16} />
+                )
+              }
+            >
+              {!loadingData ? (
+                <>
+                  {difference >= 0 ? "+" : ""}
+                  {difference.toFixed(1)}%
+                </>
+              ) : (
+                <Spinner size="sm" color="white" variant="dots" />
+              )}
+            </Chip>
+            <Tooltip
+              radius="sm"
+              content={
+                <div className="max-w-sm flex items-start gap-2">
+                  <InfoIcon className="size-5 text-primary-800" />
+                  <div className="flex flex-col ">
+                    <h3 className=" font-semibold text-primary-800">
+                      Variación Mensual
+                    </h3>
+                    <p className="text-primary-500">
+                      Porcentaje de variación en las comisiones respecto al mes
+                      anterior.
+                    </p>
+                  </div>
+                </div>
+              }
+            >
+              <InfoIcon className="size-3 text-gray-600" />
+            </Tooltip>
+          </div>
         </div>
       </CardHeader>
       <CardContent
@@ -181,12 +221,7 @@ export function ComisionesChart({
           </ChartContainer>
         ) : (
           <div className=" h-full w-full flex justify-center items-center">
-            <Spinner
-              size="lg"
-              color="primary"
-              variant="gradient"
-              label="Cargando..."
-            />
+            <SpinnerComponent userData={userData} />
           </div>
         )}
       </CardContent>

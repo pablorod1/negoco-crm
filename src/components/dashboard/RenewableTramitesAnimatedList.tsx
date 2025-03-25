@@ -5,6 +5,7 @@ import { AnimatedList } from "../magicui/animated-list";
 import { ExternalLink, RefreshCcw } from "lucide-react";
 import { formatDateTime } from "@/lib/core/format";
 import Link from "next/link";
+import { useEffect } from "react";
 
 interface RenewableTramite {
   id: string;
@@ -26,7 +27,7 @@ const Notification = ({ id, renovationDate, sales_name }: RenewableTramite) => {
       )}
     >
       <Link
-        href={`/tramites?id=${id}`}
+        href={`/tramites/${id}`}
         className="group flex flex-row items-center gap-3"
       >
         <div
@@ -64,8 +65,29 @@ export function RenewableTramitesAnimatedList({
   className?: string;
   items: RenewableTramite[];
 }) {
+  useEffect(() => {
+    const container = document.getElementById("AnimatedList");
+    if (!container) return;
+
+    const handleMouseEnter = () => {
+      document.body.style.overflow = "hidden";
+    };
+
+    const handleMouseLeave = () => {
+      document.body.style.overflow = "";
+    };
+
+    container.addEventListener("mouseenter", handleMouseEnter);
+    container.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      container.removeEventListener("mouseenter", handleMouseEnter);
+      container.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, []);
   return (
     <div
+      id="RenewableAnimatedList"
       className={cn(
         "relative flex max-h-[340px] h-full w-full flex-col overflow-y-auto p-2",
         className

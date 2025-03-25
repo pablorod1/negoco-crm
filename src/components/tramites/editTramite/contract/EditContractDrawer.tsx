@@ -10,16 +10,20 @@ import { Pencil } from "lucide-react";
 import { ContractDB } from "@/lib/core/types";
 import React from "react";
 
-import EditContractForm from "./forms/EditContractForm";
+import EditContractForm from "@/components/tramites/editTramite/contract/EditContractForm";
 
 interface Props {
   contract: ContractDB;
   onSavingContract: (contract: ContractDB) => void;
+  isOpenProp?: boolean;
+  onCloseProp?: () => void;
 }
 
 export default function EditContractDrawer({
   contract,
   onSavingContract,
+  isOpenProp,
+  onCloseProp,
 }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
 
@@ -35,17 +39,19 @@ export default function EditContractDrawer({
 
   return (
     <>
-      <button
-        onClick={handleOpen}
-        className="opacity-0 cursor-pointer absolute top-0 left-0 right-0 flex justify-center items-center gap-4 h-full bg-black/20 rounded-sm group-hover:opacity-100 transition-opacity duration-300"
-      >
-        <Pencil size={20} className="text-white" />
-        <p className="text-lg font-bold text-white">Editar Contrato</p>
-      </button>
+      {!isOpenProp && !onCloseProp && (
+        <button
+          onClick={handleOpen}
+          className="opacity-0 cursor-pointer absolute top-0 left-0 right-0 flex justify-center items-center gap-4 h-full bg-black/20 rounded-sm group-hover:opacity-100 transition-opacity duration-300"
+        >
+          <Pencil size={20} className="text-white" />
+          <p className="text-lg font-bold text-white">Editar Contrato</p>
+        </button>
+      )}
       <Drawer
         size="5xl"
         isDismissable={false}
-        isOpen={isOpen}
+        isOpen={isOpenProp ? isOpenProp : isOpen}
         onClose={onClose}
         radius="sm"
         placement="bottom"
@@ -65,7 +71,7 @@ export default function EditContractDrawer({
                 <EditContractForm
                   onSavingContract={handleUpdateContract}
                   contract={contract}
-                  onCancel={onClose}
+                  onCancel={onCloseProp ? onCloseProp : onClose}
                 />
               </DrawerBody>
             </>

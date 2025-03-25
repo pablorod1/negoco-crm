@@ -25,8 +25,6 @@ export const updateComparativaStatus = async (
     // Completar la consulta con la condición WHERE
     query += ` WHERE id = ?`;
     args.push(comparativa_id);
-    console.log("query", query);
-    console.log("args", args);
 
     const response = await tursoClient.execute({
       sql: query,

@@ -1,4 +1,4 @@
-import { TramiteVM } from "@/lib/core/types";
+import { TramiteRow } from "@/lib/core/types";
 import {
   Dropdown,
   DropdownTrigger,
@@ -8,8 +8,6 @@ import {
 } from "@heroui/dropdown";
 import { Button } from "@heroui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
-import EditTramiteDialog from "../editTramite/EditTramiteDialog";
-import { useState } from "react";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -123,9 +121,7 @@ export const DeleteDocumentIcon = (props: IconProps) => {
   );
 };
 
-export default function LiquidezDropdown({ tramite }: { tramite: TramiteVM }) {
-  const [isEditOpen, setIsEditOpen] = useState(false);
-
+export default function LiquidezDropdown({ tramite }: { tramite: TramiteRow }) {
   const iconClasses =
     "text-xl text-default-500 pointer-events-none flex-shrink-0";
 
@@ -144,7 +140,7 @@ export default function LiquidezDropdown({ tramite }: { tramite: TramiteVM }) {
         >
           <DropdownSection showDivider>
             <DropdownItem
-              onPress={() => setIsEditOpen(true)}
+              href={`/tramites/${tramite.id}`}
               key="edit"
               description="Editar los datos trámite"
               startContent={<PencilLine className={iconClasses} />}
@@ -154,12 +150,6 @@ export default function LiquidezDropdown({ tramite }: { tramite: TramiteVM }) {
           </DropdownSection>
         </DropdownMenu>
       </Dropdown>
-
-      <EditTramiteDialog
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        tramite_id={tramite.id}
-      />
     </>
   );
 }

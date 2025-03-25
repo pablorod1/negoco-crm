@@ -11,7 +11,7 @@ import {
   type SortingState,
   VisibilityState,
 } from "@tanstack/react-table";
-import { User, type TramiteVM } from "@/lib/core/types";
+import { User, type TramiteRow } from "@/lib/core/types";
 import { TableLayout } from "../../core/table/TableLayout";
 import { TableContent } from "../../core/table/TableContent";
 import { DataTablePagination } from "../../core/table/DataTablePagination";
@@ -35,8 +35,8 @@ export function DataTable<TData, TValue>({
   const id = params.get("id");
   const { userData } = useUser();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [tramites, setTramites] = useState<TramiteVM[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tramites, setTramites] = useState<TramiteRow[]>([]);
+  const [loading, setLoading] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   const {
@@ -58,6 +58,7 @@ export function DataTable<TData, TValue>({
   const { setRefreshTramites } = useTramites();
 
   const fetchTramites = useCallback(async () => {
+    setLoading(true);
     if (userData) {
       try {
         const res = await fetch(`/api/tramites/get/paginated-tramites`, {
@@ -103,27 +104,11 @@ export function DataTable<TData, TValue>({
     title,
   ]);
 
-  // Consolidated useEffect for data fetching and refresh
-  useEffect(() => {
-    const cleanup = setRefreshTramites(fetchTramites);
-    fetchTramites(); // Initial fetch
-    return () => cleanup();
-  }, [
-    fetchTramites,
-    setRefreshTramites,
-    pagination.pageIndex,
-    pagination.pageSize,
-    filterValue,
-    companyFilter,
-    statusFilter,
-    liquidezStatusFilter,
-    contractTypeFilter,
-  ]);
-
   // Fetch de datos
   useEffect(() => {
+    setRefreshTramites(fetchTramites);
     fetchTramites();
-  }, [fetchTramites]);
+  }, [fetchTramites, setRefreshTramites]);
 
   const tableConfig = useMemo(
     () => ({
@@ -147,16 +132,6 @@ export function DataTable<TData, TValue>({
 
   const table = useReactTable(tableConfig);
 
-  // console.log(
-  //   "CUPS",
-  //   table.getRowModel().rows.map((row) =>
-  //     row
-  //       .getAllCells()
-  //       .find((cell) => cell.column.id === "CUPS")
-  //       ?.getValue()
-  //   )
-  // );
-
   // Función personalizada para manejar el reseteo de filtros
   const handleResetFilters = useCallback(() => {
     resetFilters();
@@ -177,6 +152,7 @@ export function DataTable<TData, TValue>({
       setContractTypeFilter,
       resetFilters: handleResetFilters,
       userData: userData || ({} as User),
+      totalTramites: tramites.length,
     }),
     [
       filterValue,
@@ -192,6 +168,7 @@ export function DataTable<TData, TValue>({
       setContractTypeFilter,
       handleResetFilters,
       userData,
+      tramites,
     ]
   );
 

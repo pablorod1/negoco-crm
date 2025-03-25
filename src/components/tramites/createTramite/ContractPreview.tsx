@@ -1,5 +1,5 @@
 import { ContractDB, TramiteDB, User } from "@/lib/core/types";
-import EditContractDrawer from "../editTramite/EditContractDrawer";
+import EditContractDrawer from "@/components/tramites/editTramite/contract/EditContractDrawer";
 
 interface ContractPreviewProps {
   contract: ContractDB;

@@ -1,12 +1,13 @@
 import { Divider } from "@heroui/divider";
 import { ComparativaFile, TramiteDB } from "@/lib/core/types";
 
-import ButtonGroupComponent from "../ButtonGroupComponent";
+import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
-import DocumentsForm from "./DocumentsForm";
-import NotesBoard from "../../editTramite/NotesBoard";
-import { Spinner } from "@heroui/spinner";
+import DocumentsForm from "../../DocumentsForm";
+import NotesBoard from "@/components/core/NotesBoard";
 import { FileIcon } from "lucide-react";
+import SpinnerComponent from "@/components/core/SpinnerComponent";
+import { User } from "@/lib/core/types";
 
 interface Props {
   onBack: () => void;
@@ -18,6 +19,7 @@ interface Props {
   setDocuments: React.Dispatch<React.SetStateAction<File[]>>;
   loading: boolean;
   comparativaFiles?: ComparativaFile[];
+  userData: User;
 }
 
 export default function FourthStepForm({
@@ -30,6 +32,7 @@ export default function FourthStepForm({
   setDocuments,
   loading,
   comparativaFiles,
+  userData,
 }: Props) {
   const handleNewNote = (note: string) => {
     setTramite((prev) => ({
@@ -46,12 +49,7 @@ export default function FourthStepForm({
     <FormWrapper>
       {loading && (
         <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-90 ">
-          <Spinner
-            size="lg"
-            label="Creando trámite..."
-            color="primary"
-            className="text-lg"
-          />
+          <SpinnerComponent userData={userData as User} />
         </div>
       )}
       <form className="relative">

@@ -1,12 +1,5 @@
 "use client";
-import {
-  LayoutDashboard,
-  Users,
-  ReceiptText,
-  Folder,
-  Coins,
-  NotebookPen,
-} from "lucide-react";
+
 import {
   Sidebar,
   SidebarContent,
@@ -30,27 +23,27 @@ const items = [
   {
     title: "Dashboard",
     url: "/",
-    icon: LayoutDashboard,
+    icon: "/icons/dashboard.webp",
   },
   {
     title: "Comparativas",
     url: "/comparativas",
-    icon: NotebookPen,
+    icon: "/icons/comparativas2.webp",
   },
   {
     title: "Trámites",
     url: "/tramites",
-    icon: ReceiptText,
+    icon: "/icons/tramite.webp",
   },
   {
     title: "Documentación",
     url: "/documentacion",
-    icon: Folder,
+    icon: "/file-icons/folder.png",
   },
   {
     title: "Colaboradores",
     url: "/colaboradores",
-    icon: Users,
+    icon: "/icons/equipo.webp",
   },
 ];
 
@@ -58,32 +51,32 @@ const direccionItems = [
   {
     title: "Dashboard",
     url: "/",
-    icon: LayoutDashboard,
+    icon: "/icons/dashboard.webp",
   },
   {
     title: "Comparativas",
     url: "/comparativas",
-    icon: NotebookPen,
+    icon: "/icons/comparativas2.webp",
   },
   {
     title: "Trámites",
     url: "/tramites",
-    icon: ReceiptText,
+    icon: "/icons/tramite.webp",
   },
   {
     title: "Liquidez",
     url: "/liquidez",
-    icon: Coins,
+    icon: "/icons/liquidez.webp",
   },
   {
     title: "Documentación",
     url: "/documentacion",
-    icon: Folder,
+    icon: "/file-icons/folder.png",
   },
   {
     title: "Colaboradores",
     url: "/colaboradores",
-    icon: Users,
+    icon: "/icons/equipo.webp",
   },
 ];
 
@@ -109,7 +102,7 @@ export function SidebarComponent() {
   };
 
   return (
-    <Sidebar variant="inset" id="sidebar-menu" collapsible="icon">
+    <Sidebar variant="floating" id="sidebar-menu" collapsible="icon">
       <SidebarHeader className="py-4">
         <Link href="/">
           <div className="flex items-center w-auto gap-2">
@@ -150,7 +143,12 @@ export function SidebarComponent() {
                         href={item.url}
                         className="inline-flex items-center"
                       >
-                        <item.icon />
+                        <Image
+                          src={item.icon}
+                          alt={item.title}
+                          width={20}
+                          height={20}
+                        />
                         <span className="text-base">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>

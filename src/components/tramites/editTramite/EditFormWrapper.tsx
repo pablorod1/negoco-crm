@@ -6,7 +6,7 @@ export const EditFormWrapper = ({
   title: string;
 }) => {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <h2 className="text-xl text-[var(--primary-color-500)] font-semibold">
         {title}
       </h2>

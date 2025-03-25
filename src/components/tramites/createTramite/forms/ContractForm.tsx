@@ -1,6 +1,11 @@
 "use client";
 import { Zap } from "lucide-react";
-import { COMPANIES, CONTRACT_TYPES, PLANS, POTS } from "@/lib/core/const";
+import {
+  PLAIN_COMPANIES,
+  PLAIN_CONTRACT_TYPES,
+  PLANS,
+  POTS,
+} from "@/lib/core/const";
 import { ContractDB, createEmptyContractDB } from "@/lib/core/types";
 import { validateField } from "@/lib/validation/create-contract/field-validation";
 import { validateContract } from "@/lib/validation/create-contract/form-validation";
@@ -11,7 +16,7 @@ import {
 import { Textarea } from "@heroui/input";
 import React from "react";
 import toast from "react-hot-toast";
-import ButtonGroupComponent from "../ButtonGroupComponent";
+import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import { InputComponent, SelectComponent } from "../InputComponent";
 
@@ -93,7 +98,7 @@ export default function ContractForm({
             <SelectComponent
               name="type"
               label="Tipo de contrato"
-              items={CONTRACT_TYPES}
+              items={PLAIN_CONTRACT_TYPES}
               onChange={handleFieldChange}
               errors={errors.type}
               isRequired
@@ -156,7 +161,7 @@ export default function ContractForm({
             <SelectComponent
               name="company"
               label="Compañía"
-              items={COMPANIES}
+              items={PLAIN_COMPANIES}
               onChange={handleFieldChange}
               errors={errors.company}
               isRequired

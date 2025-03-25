@@ -1,13 +1,13 @@
 import {
-  ACTIVATION_DATE,
+  NOW_DATE,
   COMERCIAL_STATUS_TYPES,
   RENOVATION_DATE,
-  STATUS_TYPES,
+  PLAIN_STATUS_TYPES,
 } from "@/lib/core/const";
 import { Divider } from "@heroui/divider";
 import { ContractDB, Status, TramiteDB, User } from "@/lib/core/types";
 import { NumberInput } from "@heroui/number-input";
-import ButtonGroupComponent from "../ButtonGroupComponent";
+import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import ContractPreview from "../ContractPreview";
 import CreateContractDrawer from "../CreateContractDrawer";
@@ -47,8 +47,7 @@ export default function ThirdStepForm({
           ...prevState,
           status: value as Status,
           liquidez_status: value === "Activo" ? "Pendiente de Cobro" : null,
-          activation_date:
-            value === "Activo" ? ACTIVATION_DATE.toISOString() : "",
+          activation_date: value === "Activo" ? NOW_DATE.toISOString() : "",
           renovation_date:
             value === "Activo" ? RENOVATION_DATE.toISOString() : "",
           tramitation_date:
@@ -125,7 +124,9 @@ export default function ThirdStepForm({
                 name="status"
                 label="Estado"
                 items={
-                  userData.role === "2" ? COMERCIAL_STATUS_TYPES : STATUS_TYPES
+                  userData.role === "2"
+                    ? COMERCIAL_STATUS_TYPES
+                    : PLAIN_STATUS_TYPES
                 }
                 selectedKey={tramite.status}
                 isRequired

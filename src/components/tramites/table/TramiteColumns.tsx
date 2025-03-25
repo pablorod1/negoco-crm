@@ -2,15 +2,38 @@
 
 import { Button } from "@heroui/button";
 import { formatDate } from "@/lib/core/format";
-import { ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+  ArrowDown,
+  ArrowUpDown,
+  ArrowUpIcon,
+  Copy,
+  InfoIcon,
+} from "lucide-react";
 import { Tooltip } from "@heroui/tooltip";
 import { Chip } from "@heroui/chip";
-import { TramiteVM } from "@/lib/core/types";
+import type { TramiteRow } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import TramiteDropdown from "./TramiteDropdown";
 
-export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
+const isRenewable = (
+  renovation_date: string
+): {
+  renewable: boolean;
+  days?: number;
+  option?: "30" | "15" | "7";
+} => {
+  const date = new Date(renovation_date);
+  const now = new Date();
+  const diff = date.getTime() - now.getTime();
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  if (30 >= days && days > 15) return { renewable: true, option: "30", days };
+  if (15 >= days && days > 7) return { renewable: true, option: "15", days };
+  if (days <= 7) return { renewable: true, option: "7", days };
+  return { renewable: false };
+};
+
+export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "id",
     accessorFn: (row) => row,
@@ -78,12 +101,20 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
     },
     cell: ({ row }) => {
       if (!row.original.renovation_date) return "---";
+      const renewableStatus = isRenewable(row.original.renovation_date);
       return (
-        <span>
-          {row.original.renovation_date
-            ? formatDate(row.original.renovation_date)
-            : "---"}
-        </span>
+        <div
+          className={`flex items-center gap-2 p-2 rounded-md ${
+            renewableStatus.renewable ? "bg-amber-50 text-amber-700" : ""
+          }`}
+        >
+          <span>{formatDate(row.original.renovation_date)}</span>
+          {renewableStatus.renewable && (
+            <Tooltip content={`Renovación en menos de ${renewableStatus.days}`}>
+              <InfoIcon size={16} className="text-amber-500" />
+            </Tooltip>
+          )}
+        </div>
       );
     },
     sortingFn: (rowA, rowB) => {
@@ -247,7 +278,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteVM>[] = [
   },
 ];
 
-export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
+export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "id",
     accessorKey: "id",
@@ -314,12 +345,20 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
     },
     cell: ({ row }) => {
       if (!row.original.renovation_date) return "---";
+      const renewableStatus = isRenewable(row.original.renovation_date);
       return (
-        <span>
-          {row.original.renovation_date
-            ? formatDate(row.original.renovation_date)
-            : "---"}
-        </span>
+        <div
+          className={`flex items-center gap-2 p-2 rounded-md ${
+            renewableStatus.renewable ? "bg-amber-50 text-amber-700" : ""
+          }`}
+        >
+          <span>{formatDate(row.original.renovation_date)}</span>
+          {renewableStatus.renewable && (
+            <Tooltip content={`Renovación en menos de ${renewableStatus.days}`}>
+              <InfoIcon size={16} className="text-amber-500" />
+            </Tooltip>
+          )}
+        </div>
       );
     },
     sortingFn: (rowA, rowB) => {
@@ -523,7 +562,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteVM>[] = [
   },
 ];
 
-export const TramiteColumns: ColumnDef<TramiteVM>[] = [
+export const TramiteColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "id",
     accessorKey: "id",
@@ -590,12 +629,49 @@ export const TramiteColumns: ColumnDef<TramiteVM>[] = [
     },
     cell: ({ row }) => {
       if (!row.original.renovation_date) return "---";
+      const renewableStatus = isRenewable(row.original.renovation_date);
       return (
-        <span>
-          {row.original.renovation_date
-            ? formatDate(row.original.renovation_date)
-            : "---"}
-        </span>
+        <>
+          {renewableStatus.renewable ? (
+            <div
+              className={`flex items-center gap-2 justify-between w-full p-2 rounded-md ${
+                renewableStatus.option === "30"
+                  ? "bg-primary-50 text-primary-500"
+                  : renewableStatus.option === "15"
+                  ? "bg-warning-50 text-warning-500"
+                  : renewableStatus.option === "7"
+                  ? "bg-danger-50 text-danger-500"
+                  : ""
+              }`}
+            >
+              <span>{formatDate(row.original.renovation_date)}</span>
+              {renewableStatus.renewable && (
+                <Tooltip
+                  content={`Renovación en ${renewableStatus.days} ${
+                    renewableStatus.days === 1 ? "día" : "días"
+                  }`}
+                >
+                  <InfoIcon
+                    size={16}
+                    className={`
+                    ${
+                      renewableStatus.option === "30"
+                        ? "text-primary-500"
+                        : renewableStatus.option === "15"
+                        ? "text-warning-500"
+                        : renewableStatus.option === "7"
+                        ? "text-danger-500"
+                        : ""
+                    }
+                    `}
+                  />
+                </Tooltip>
+              )}
+            </div>
+          ) : (
+            <span>{formatDate(row.original.renovation_date)}</span>
+          )}
+        </>
       );
     },
     sortingFn: (rowA, rowB) => {

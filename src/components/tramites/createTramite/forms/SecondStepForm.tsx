@@ -18,7 +18,7 @@ import { Divider } from "@heroui/divider";
 import React, { useState } from "react";
 import { ClientDB, ComparativaVM, SignerDB } from "@/lib/core/types";
 import FormWrapper from "../FormWrapper";
-import ButtonGroupComponent from "../ButtonGroupComponent";
+import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import { InputComponent, SelectComponent } from "../InputComponent";
 
 interface Props {

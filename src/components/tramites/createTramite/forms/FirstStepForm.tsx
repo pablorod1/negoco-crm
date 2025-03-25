@@ -10,7 +10,7 @@ import {
 } from "@/lib/validation/validation.types";
 
 import { useEffect, useState } from "react";
-import ButtonGroupComponent from "../ButtonGroupComponent";
+import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import { SelectComponent } from "../InputComponent";
 import { useUser } from "@/lib/contexts/UserContext";
