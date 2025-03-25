@@ -1,12 +1,11 @@
-import { NOW_DATE, RENOVATION_DATE } from "@/lib/core/const";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { id } = await req.json();
+    const { note, id, notes } = await req.json();
 
-    if (!id) {
+    if (!id || !note || !notes) {
       return NextResponse.json(
         {
           success: false,
@@ -15,6 +14,9 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const updatedNotes = notes.filter((n: string) => n !== note);
+    const notesJSON = JSON.stringify(updatedNotes);
 
     const tursoClient = getTursoClient(req);
 
@@ -28,28 +30,36 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const query = `
+      UPDATE tramites
+      SET notes = ?
+      WHERE id = ?
+    `;
+
     const response = await tursoClient.execute({
-      sql: `UPDATE tramites SET activation_date = ?, renovation_date = ? WHERE id = ?`,
-      args: [NOW_DATE.toISOString(), RENOVATION_DATE.toISOString(), id],
+      sql: query,
+      args: [notesJSON, id],
     });
 
     if (response.rowsAffected === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "No existe el tramite",
+          error: "No rows affected",
         },
-        { status: 404 }
+        { status: 400 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Error al eliminar nota del trámite:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "Error updating tramite",
+        error: error instanceof Error ? error.message : "Error desconocido",
       },
       { status: 500 }
     );

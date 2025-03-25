@@ -8,11 +8,13 @@ export async function POST(req: NextRequest) {
     const {
       role,
       id,
+      isSubcomercial,
       time_range,
       date_range,
     }: {
       role: string;
       id: string;
+      isSubcomercial: boolean;
       time_range: TimeRange;
       date_range?: DateRange;
     } = await req.json();
@@ -41,9 +43,15 @@ export async function POST(req: NextRequest) {
 
     let query = `
   SELECT 
-    date(creation_date) as date,
+    date(activation_date) as date,
     COUNT(CASE WHEN status = 'Activo' THEN 1 ELSE NULL END) as active,
     COUNT(CASE WHEN status = 'Baja' THEN 1 ELSE NULL END) as baja
+    ${role !== "2" ? ",SUM(comision) as comision" : ""}
+    ${
+      !isSubcomercial
+        ? ",SUM(comision_sales_person) as comision_sales_person"
+        : ""
+    }
   FROM tramites
   WHERE `;
 
@@ -54,39 +62,39 @@ export async function POST(req: NextRequest) {
     if (time_range) {
       switch (time_range) {
         case "year":
-          conditions.push(`creation_date >= date('now', 'start of year')`);
-          groupBy = `strftime('%m', creation_date)`;
+          conditions.push(`activation_date >= date('now', 'start of year')`);
+          groupBy = `strftime('%m', activation_date)`;
           break;
         case "current_month":
           conditions.push(
-            `strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now')`
+            `strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now')`
           );
-          groupBy = `strftime('%d', creation_date)`;
+          groupBy = `strftime('%d', activation_date)`;
           break;
         case "current_week":
           conditions.push(
-            `strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now')`
+            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now')`
           );
-          groupBy = `strftime('%w', creation_date)`;
+          groupBy = `strftime('%w', activation_date)`;
           break;
         case "last_week":
           conditions.push(
-            `strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now', '-7 days')`
+            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now', '-7 days')`
           );
-          groupBy = `strftime('%w', creation_date)`;
+          groupBy = `strftime('%w', activation_date)`;
           break;
         case "90d":
-          conditions.push(`creation_date >= date('now', '-90 days')`);
-          groupBy = `date(creation_date)`;
+          conditions.push(`activation_date >= date('now', '-90 days')`);
+          groupBy = `date(activation_date)`;
 
           break;
       }
     }
 
     if (date_range && date_range.from && date_range.to) {
-      conditions.push(`date(creation_date) BETWEEN date(?) AND date(?)`);
+      conditions.push(`date(activation_date) BETWEEN date(?) AND date(?)`);
       params.push(date_range.from.toString(), date_range.to.toString());
-      groupBy = `date(creation_date)`;
+      groupBy = `date(activation_date)`;
     }
 
     if (conditions.length > 0) {
@@ -97,11 +105,19 @@ export async function POST(req: NextRequest) {
       query += ` GROUP BY ${groupBy}`;
     }
 
-    query += ` ORDER BY date(creation_date)`;
+    query += ` ORDER BY date(activation_date)`;
 
     const rs = await tursoClient.execute({ sql: query, args: params });
 
-    const results = new Map<string, { active: number; baja: number }>();
+    const results = new Map<
+      string,
+      {
+        active: number;
+        baja: number;
+        comision?: number;
+        comision_sales_person?: number;
+      }
+    >();
 
     // Procesar resultados según el time_range
     if (time_range === "current_week" || time_range === "last_week") {
@@ -115,7 +131,12 @@ export async function POST(req: NextRequest) {
         const day = new Date(weekStart);
         day.setDate(weekStart.getDate() + i);
         const dayStr = day.toLocaleDateString("es-ES", { weekday: "long" });
-        results.set(dayStr, { active: 0, baja: 0 });
+        results.set(dayStr, {
+          active: 0,
+          baja: 0,
+          comision: 0,
+          comision_sales_person: 0,
+        });
       }
 
       rs.rows.forEach((row) => {
@@ -124,6 +145,8 @@ export async function POST(req: NextRequest) {
         results.set(dayStr, {
           active: Number(row.active),
           baja: Number(row.baja),
+          comision: Number(row.comision) || 0,
+          comision_sales_person: Number(row.comision_sales_person) || 0,
         });
       });
     } else if (time_range === "current_month") {
@@ -135,7 +158,12 @@ export async function POST(req: NextRequest) {
 
       for (let i = 1; i <= daysInMonth; i++) {
         const dayStr = `${i}`;
-        results.set(dayStr, { active: 0, baja: 0 });
+        results.set(dayStr, {
+          active: 0,
+          baja: 0,
+          comision: 0,
+          comision_sales_person: 0,
+        });
       }
 
       rs.rows.forEach((row) => {
@@ -144,6 +172,8 @@ export async function POST(req: NextRequest) {
         results.set(dayStr, {
           active: Number(row.active || 0),
           baja: Number(row.baja || 0),
+          comision: Number(row.comision || 0),
+          comision_sales_person: Number(row.comision_sales_person || 0),
         });
       });
     } else if (time_range === "year") {
@@ -162,7 +192,14 @@ export async function POST(req: NextRequest) {
         "Diciembre",
       ];
 
-      months.forEach((month) => results.set(month, { active: 0, baja: 0 }));
+      months.forEach((month) =>
+        results.set(month, {
+          active: 0,
+          baja: 0,
+          comision: 0,
+          comision_sales_person: 0,
+        })
+      );
 
       rs.rows.forEach((row) => {
         const date = new Date(row.date as string);
@@ -170,6 +207,8 @@ export async function POST(req: NextRequest) {
         results.set(monthStr, {
           active: Number(row.active),
           baja: Number(row.baja),
+          comision: Number(row.comision) || 0,
+          comision_sales_person: Number(row.comision_sales_person) || 0,
         });
       });
     } else if (time_range === "90d") {
@@ -181,7 +220,12 @@ export async function POST(req: NextRequest) {
           weekday: "long",
           day: "numeric",
         });
-        results.set(dayStr, { active: 0, baja: 0 });
+        results.set(dayStr, {
+          active: 0,
+          baja: 0,
+          comision: 0,
+          comision_sales_person: 0,
+        });
       });
 
       rs.rows.forEach((row) => {
@@ -193,6 +237,8 @@ export async function POST(req: NextRequest) {
         results.set(dayStr, {
           active: Number(row.active),
           baja: Number(row.baja),
+          comision: Number(row.comision) || 0,
+          comision_sales_person: Number(row.comision_sales_person) || 0,
         });
       });
     } else if (date_range && date_range.from && date_range.to) {
@@ -208,8 +254,13 @@ export async function POST(req: NextRequest) {
         const dateStr = date.toLocaleDateString("es-ES", {
           weekday: "long",
           day: "numeric",
-        }); // Ejemplo: "martes 13"
-        results.set(dateStr, { active: 0, baja: 0 });
+        });
+        results.set(dateStr, {
+          active: 0,
+          baja: 0,
+          comision: 0,
+          comision_sales_person: 0,
+        });
       }
 
       // Poblar los valores obtenidos de la consulta
@@ -224,6 +275,8 @@ export async function POST(req: NextRequest) {
           results.set(dateStr, {
             active: Number(row.active),
             baja: Number(row.baja),
+            comision: Number(row.comision) || 0,
+            comision_sales_person: Number(row.comision_sales_person) || 0,
           });
         }
       });
@@ -235,6 +288,8 @@ export async function POST(req: NextRequest) {
         field,
         active: values.active,
         baja: values.baja,
+        comision: values.comision,
+        comision_sales_person: values.comision_sales_person,
       })),
     });
   } catch (error) {

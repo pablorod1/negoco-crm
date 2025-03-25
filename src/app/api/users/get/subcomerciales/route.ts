@@ -4,7 +4,6 @@ import { getTursoClient } from "@/lib/libsql/client";
 export async function POST(req: NextRequest) {
   try {
     const { id } = await req.json();
-
     if (!id) {
       return NextResponse.json(
         {
@@ -34,11 +33,11 @@ export async function POST(req: NextRequest) {
     if (response.rows.length === 0) {
       return NextResponse.json({
         success: false,
+        error: "No subcomerciales found",
       });
     }
 
     const ids = response.rows.map((row) => row.id as string);
-
     return NextResponse.json({
       success: true,
       ids,

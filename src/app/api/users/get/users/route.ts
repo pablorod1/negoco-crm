@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/lib/libsql/client";
+import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,25 +37,16 @@ export async function POST(req: NextRequest) {
     const params: (string | number)[] = [];
 
     if (role === "2") {
-      const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id }),
-        }
-      );
-      const subcomerciales = await subcomercialesRes.json();
-
-      const idsToInclude = [id];
+      const subcomerciales = await getSubcomerciales(tursoClient, id);
       if (subcomerciales.success && subcomerciales.ids) {
-        idsToInclude.push(...subcomerciales.ids);
+        query += ` WHERE u.id = ? OR u.id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})`;
+        params.push(id, ...subcomerciales.ids);
+      } else {
+        query += ` AND u.id = ?`;
+        params.push(id);
       }
-
-      query += ` WHERE u.id IN (${idsToInclude.map(() => "?").join(", ")})`;
-      params.push(...idsToInclude);
     }
 
     const response = await tursoClient.execute({ sql: query, args: params });

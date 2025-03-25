@@ -1,5 +1,6 @@
 import { ComparativaPlan } from "@/lib/core/types";
 import { getTursoClient } from "@/lib/libsql/client";
+import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
               c.comision_indexado AS comision_indexado,
               c.status AS status,
               c.service AS service,
+              c.tramite_id AS tramite_id,
               CASE 
                 WHEN c.plan LIKE '%,%' THEN json_array('fijo', 'indexado')
                 ELSE c.plan  -- Devolver el valor directamente, no como array
@@ -68,17 +70,7 @@ export async function POST(req: NextRequest) {
     const params: (string | number)[] = [];
 
     if (user_role === "2") {
-      const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: user_id }),
-        }
-      );
-      const subcomerciales = await subcomercialesRes.json();
+      const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
         filters.push(
           `( c.user_id = ? OR c.user_id IN (${subcomerciales.ids
@@ -147,6 +139,7 @@ export async function POST(req: NextRequest) {
           status: row.status as string,
           service: row.service as "Luz" | "Gas",
           plan: JSON.parse(row.plan as string) as ComparativaPlan[],
+          tramite_id: row.tramite_id as string,
           user: {
             name: row.user_name as string,
             surname: row.user_surname as string,

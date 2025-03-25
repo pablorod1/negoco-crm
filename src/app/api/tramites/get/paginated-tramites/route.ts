@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/lib/libsql/client";
+import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 
 export async function POST(req: NextRequest) {
   try {
@@ -78,17 +79,7 @@ export async function POST(req: NextRequest) {
     const params: (string | number)[] = [];
 
     if (user_role === "2") {
-      const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: user_id }),
-        }
-      );
-      const subcomerciales = await subcomercialesRes.json();
+      const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
         filters.push(
           `( t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids

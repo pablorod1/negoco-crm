@@ -1,5 +1,6 @@
 import { ComparativaPlan } from "@/lib/core/types";
 import { getTursoClient } from "@/lib/libsql/client";
+import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -31,17 +32,7 @@ export async function POST(req: NextRequest) {
     `;
 
     if (user_role === "2") {
-      const subcomercialesRes = await fetch(
-        `${req.nextUrl.origin}/api/users/get/subcomerciales`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: user_id }),
-        }
-      );
-      const subcomerciales = await subcomercialesRes.json();
+      const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       const idsToInclude = [user_id];
 
       if (subcomerciales.success && subcomerciales.ids) {
@@ -117,6 +108,9 @@ export async function POST(req: NextRequest) {
           image: comparativa.image ? String(comparativa.image) : null,
         },
         creation_date: comparativa.creation_date as string,
+        tramite_id: comparativa.tramite_id
+          ? String(comparativa.tramite_id)
+          : null,
         files,
       },
     });

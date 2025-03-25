@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       currentValue: number,
       previousValue: number
     ) => {
-      if (previousValue === 0) return currentValue > 0 ? 100 : 0;
+      if (previousValue === 0) return currentValue > 0 ? currentValue * 100 : 0;
       return ((currentValue - previousValue) / previousValue) * 100;
     };
 

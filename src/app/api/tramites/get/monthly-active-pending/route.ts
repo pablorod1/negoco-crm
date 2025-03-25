@@ -1,8 +1,21 @@
 import { getTursoClient } from "@/lib/libsql/client";
+import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
+    const { id, role } = await req.json();
+
+    if (!id || !role) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing parameters",
+        },
+        { status: 400 }
+      );
+    }
+
     const tursoClient = getTursoClient(req);
 
     if (!tursoClient) {
@@ -15,8 +28,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const rs = await tursoClient.execute(`
-      WITH months AS (
+    let query = `
+    WITH months AS (
         SELECT '01' AS month, 'Enero' AS month_name UNION ALL
         SELECT '02', 'Febrero' UNION ALL
         SELECT '03', 'Marzo' UNION ALL
@@ -34,14 +47,35 @@ export async function GET(req: NextRequest) {
         m.month_name AS month,
         COALESCE(SUM(CASE WHEN t.status = 'Activo' THEN 1 ELSE 0 END), 0) AS active,
         COALESCE(SUM(CASE WHEN t.status = 'Baja' THEN 1 ELSE 0 END), 0) AS baja,
-        SUM(comision) AS comision,
+        ${role !== "2" ? "SUM(comision) AS comision," : ""}
         SUM(comision_sales_person) AS comision_sales_person
       FROM months m
-      LEFT JOIN tramites t ON strftime('%m', t.creation_date) = m.month
-        AND strftime('%Y', t.creation_date) = strftime('%Y', 'now') -- Filtra solo el año actual
-      GROUP BY m.month, m.month_name
-      ORDER BY m.month;
-    `);
+      LEFT JOIN tramites t ON strftime('%m', t.activation_date) = m.month
+        AND strftime('%Y', t.activation_date) = strftime('%Y', 'now')`;
+
+    const queryParams: (string | number)[] = [];
+
+    if (role === "2") {
+      const subcomerciales = await getSubcomerciales(tursoClient, id);
+      query += ` AND`;
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` (user_id = ? OR user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")}))`;
+        queryParams.push(id, ...subcomerciales.ids);
+      } else {
+        query += ` user_id = ?`;
+        queryParams.push(id);
+      }
+    }
+
+    query += ` GROUP BY m.month, m.month_name
+      ORDER BY m.month;`;
+
+    const rs = await tursoClient.execute({
+      sql: query,
+      args: queryParams,
+    });
 
     return NextResponse.json({
       success: true,
@@ -49,7 +83,7 @@ export async function GET(req: NextRequest) {
         month: row.month as string,
         active: row.active as number,
         baja: -(row.baja as number),
-        comision: row.comision as number,
+        comision: role !== "2" ? (row.comision as number) : 0,
         comision_sales_person: row.comision_sales_person as number,
       })),
     });

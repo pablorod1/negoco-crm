@@ -12,9 +12,6 @@ export async function POST(req: NextRequest) {
       role: string;
       time_range: string;
     } = await req.json();
-    // const searchParams = req.nextUrl.searchParams;
-    // const userData = JSON.parse(searchParams.get("userData") || "{}");
-    // const time_range = searchParams.get("time_range") || "year";
 
     if (!id || !role) {
       return NextResponse.json(

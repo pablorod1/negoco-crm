@@ -4,13 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, role } = await req.json();
+    const { id, role, month } = await req.json();
 
-    if (!id || !role) {
+    if (!id || !role || !month) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing parameters",
+          error: "Missing parameters. El mes (month) es obligatorio.",
         },
         { status: 400 }
       );
@@ -28,45 +28,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let query = `
-      SELECT 
-          status,
-          COUNT(*) AS total
-      FROM tramites 
-    `;
-
     const params: (string | number)[] = [];
 
+    let query = `
+    SELECT 
+      COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS total,
+      COALESCE(SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END), 0) AS processed
+
+    FROM comparativas WHERE strftime('%m', creation_date) = strftime('%m', ?)
+      AND strftime('%Y', creation_date) = strftime('%Y', 'now') AND status IN ('completed', 'processed')
+    `;
+    params.push(month);
+
+    // Filtrar por rol si es necesario
     if (role === "2") {
+      // Obtener subcomerciales para el comercial
       const subcomerciales = await getSubcomerciales(tursoClient, id);
-      if (subcomerciales.success && subcomerciales.ids) {
-        query += ` WHERE (user_id = ? OR (status != 'Borrador' AND user_id IN (${subcomerciales.ids
+
+      if (
+        subcomerciales.success &&
+        subcomerciales.ids &&
+        subcomerciales.ids.length > 0
+      ) {
+        query += ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
           .map(() => "?")
-          .join(", ")})))`;
+          .join(", ")}))`;
         params.push(id, ...subcomerciales.ids);
       } else {
-        query += ` WHERE user_id = ?`;
+        query += ` AND user_id = ?`;
         params.push(id);
       }
     }
-
-    query += ` GROUP BY status;`;
-
     const rs = await tursoClient.execute({ sql: query, args: params });
 
     return NextResponse.json({
       success: true,
-      data: rs.rows.map((row) => ({
-        status: row.status as string,
-        total: row.total as number,
-      })),
+      data: rs.rows,
     });
   } catch (error) {
-    console.error("Error fetching tramites:", error);
+    console.error("Error fetching monthly comparativas data:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "Error fetching tramites",
+        error: "Error fetching monthly comparativas data",
       },
       { status: 500 }
     );

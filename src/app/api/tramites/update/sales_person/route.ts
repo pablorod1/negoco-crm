@@ -1,12 +1,11 @@
-import { NOW_DATE, RENOVATION_DATE } from "@/lib/core/const";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { id } = await req.json();
+    const { tramite_id, user_id, sales_name } = await req.json();
 
-    if (!id) {
+    if (!tramite_id || !user_id || !sales_name) {
       return NextResponse.json(
         {
           success: false,
@@ -28,28 +27,27 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const response = await tursoClient.execute({
-      sql: `UPDATE tramites SET activation_date = ?, renovation_date = ? WHERE id = ?`,
-      args: [NOW_DATE.toISOString(), RENOVATION_DATE.toISOString(), id],
+    const res = await tursoClient.execute({
+      sql: `UPDATE tramites SET user_id = ?, sales_name = ? WHERE id = ?`,
+      args: [user_id, sales_name, tramite_id],
     });
 
-    if (response.rowsAffected === 0) {
+    if (res.rowsAffected === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "No existe el tramite",
+          error: "No rows affected",
         },
-        { status: 404 }
+        { status: 500 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
     return NextResponse.json(
       {
         success: false,
-        error: "Error updating tramite",
+        error: error as string,
       },
       { status: 500 }
     );
