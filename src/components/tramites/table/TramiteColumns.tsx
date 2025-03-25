@@ -11,10 +11,10 @@ import {
   InfoIcon,
 } from "lucide-react";
 import { Tooltip } from "@heroui/tooltip";
-import { Chip } from "@heroui/chip";
-import type { TramiteRow } from "@/lib/core/types";
+import type { LiquidezStatus, Status, TramiteRow } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import TramiteDropdown from "./TramiteDropdown";
+import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 const isRenewable = (
   renovation_date: string
@@ -241,33 +241,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.status === "Borrador"
-              ? "danger"
-              : row.original.status === "Tramitable"
-              ? "default"
-              : row.original.status === "Verificado"
-              ? "secondary"
-              : row.original.status === "Pendiente de Firma"
-              ? "warning"
-              : row.original.status === "Procesando"
-              ? "primary"
-              : row.original.status === "Activo"
-              ? "success"
-              : row.original.status === "Baja"
-              ? "danger"
-              : "default"
-          }
-        >
-          {row.original.status === "Pendiente de Firma"
-            ? "Pendiente"
-            : row.original.status}
-        </Chip>
-      );
+      return getStatusBadge(row.original.status as Status);
     },
   },
   {
@@ -502,33 +476,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.status === "Borrador"
-              ? "danger"
-              : row.original.status === "Tramitable"
-              ? "default"
-              : row.original.status === "Verificado"
-              ? "secondary"
-              : row.original.status === "Pendiente de Firma"
-              ? "warning"
-              : row.original.status === "Procesando"
-              ? "primary"
-              : row.original.status === "Activo"
-              ? "success"
-              : row.original.status === "Baja"
-              ? "danger"
-              : "default"
-          }
-        >
-          {row.original.status === "Pendiente de Firma"
-            ? "Pendiente"
-            : row.original.status}
-        </Chip>
-      );
+      return getStatusBadge(row.original.status as Status);
     },
   },
   {
@@ -537,21 +485,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     header: "Liquidez",
     cell: ({ row }) => {
       if (!row.original.liquidez_status) return "---";
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.liquidez_status === "Pagado al Comercial"
-              ? "success"
-              : "default"
-          }
-        >
-          {row.original.liquidez_status === "Pagado al comercial"
-            ? "Pagado"
-            : "---"}
-        </Chip>
-      );
+      return getStatusBadge(row.original.liquidez_status as LiquidezStatus);
     },
   },
   {
@@ -829,33 +763,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.status === "Borrador"
-              ? "danger"
-              : row.original.status === "Tramitable"
-              ? "default"
-              : row.original.status === "Verificado"
-              ? "secondary"
-              : row.original.status === "Pendiente de Firma"
-              ? "warning"
-              : row.original.status === "Procesando"
-              ? "primary"
-              : row.original.status === "Activo"
-              ? "success"
-              : row.original.status === "Baja"
-              ? "danger"
-              : "default"
-          }
-        >
-          {row.original.status === "Pendiente de Firma"
-            ? "Pendiente"
-            : row.original.status}
-        </Chip>
-      );
+      return getStatusBadge(row.original.status as Status);
     },
   },
   {
@@ -864,29 +772,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     header: "Liquidez",
     cell: ({ row }) => {
       if (!row.original.liquidez_status) return "---";
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.liquidez_status === "Pendiente de Cobro"
-              ? "warning"
-              : row.original.liquidez_status === "Cobrado por Comercializadora"
-              ? "primary"
-              : row.original.liquidez_status === "Pagado al Comercial"
-              ? "success"
-              : "default"
-          }
-        >
-          {row.original.liquidez_status === "Pendiente de Cobro"
-            ? "Pendiente"
-            : row.original.liquidez_status === "Cobrado por Comercializadora"
-            ? "Cobrado"
-            : row.original.liquidez_status === "Pagado al comercial"
-            ? "Pagado"
-            : "default"}
-        </Chip>
-      );
+      return getStatusBadge(row.original.liquidez_status as LiquidezStatus);
     },
   },
   {

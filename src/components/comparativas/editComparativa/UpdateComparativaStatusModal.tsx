@@ -13,37 +13,9 @@ import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleCheck, CircleX } from "lucide-react";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
-import { Chip } from "@heroui/chip";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
 import { Divider } from "@heroui/react";
-
-const STATUS_BADGES = {
-  pending: (
-    <Chip variant="flat" color="warning">
-      Pendiente de Estudio
-    </Chip>
-  ),
-  completed: (
-    <Chip variant="flat" color="success">
-      Estudio Realizado
-    </Chip>
-  ),
-  processed: (
-    <Chip
-      variant="flat"
-      color="primary"
-      className="bg-[var(--primary-color-100)]"
-    >
-      Comparativa Tramitada
-    </Chip>
-  ),
-  rejected: (
-    <Chip variant="flat" color="danger">
-      Rechazada
-    </Chip>
-  ),
-  default: <Chip variant="flat">Desconocido</Chip>,
-};
+import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -190,10 +162,6 @@ export default function UpdateComparativaStatusModal({
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusBadge = (status: ComparativaStatus) => {
-    return STATUS_BADGES[status] || STATUS_BADGES.default;
   };
 
   return (
