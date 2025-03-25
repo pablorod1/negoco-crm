@@ -9,7 +9,7 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import { Divider } from "@heroui/divider";
-import DocumentsForm from "../../tramites/createTramite/forms/DocumentsForm";
+import DocumentsForm from "../../tramites/DocumentsForm";
 import { Checkbox } from "@heroui/checkbox";
 import React, { useState } from "react";
 import { showCustomToast } from "../../core/CustomToast";
@@ -17,7 +17,7 @@ import { CheckCircle, CircleX, FilePlus2 } from "lucide-react";
 import { ComparativaVM, Notification, User } from "@/lib/core/types";
 import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
-import { Spinner } from "@heroui/spinner";
+import LoadingStateModal from "@/components/core/LoadingStateModal";
 
 interface Props {
   onUpload: () => void;
@@ -219,17 +219,7 @@ export default function UploadComparativaFilesModal({
             </h2>
           </ModalHeader>
           <ModalBody>
-            {loading && (
-              <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-95 z-50">
-                <Spinner
-                  size="lg"
-                  variant="gradient"
-                  label="Subiendo archivos..."
-                  color="primary"
-                  className="text-lg"
-                />
-              </div>
-            )}
+            {loading && <LoadingStateModal userData={userData} />}
             <DocumentsForm
               uploadedFiles={uploadedFiles}
               setUploadedFiles={setUploadedFiles}
@@ -264,6 +254,10 @@ export default function UploadComparativaFilesModal({
                           Si deseas cambiar el estado de la comparativa a{" "}
                           <strong>Pendiente de Estudio</strong>, desmarca la
                           casilla.
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Si deseas mantener el estado de la comparativa como{" "}
+                          <strong>Estudio Realizado</strong>, déjala marcada.
                         </p>
                       </>
                     )}

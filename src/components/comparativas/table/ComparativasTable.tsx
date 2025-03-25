@@ -1,7 +1,7 @@
 "use client";
 import { DataTablePagination } from "@/components/core/table/DataTablePagination";
 import { TableLayout } from "@/components/core/table/TableLayout";
-import { ComparativaVM } from "@/lib/core/types";
+import { ComparativaVM, User } from "@/lib/core/types";
 import { useTablePagination } from "@/lib/hooks/use-table-pagination";
 import {
   ColumnDef,
@@ -153,6 +153,8 @@ export default function ComparativasTable<TData, TValue>({
       setFilterValue,
       setStatusFilter,
       resetFilters: handleResetFilters,
+      totalComparativas: comparativas.length,
+      userData: userData as User,
     }),
     [
       filterValue,
@@ -160,6 +162,8 @@ export default function ComparativasTable<TData, TValue>({
       setFilterValue,
       setStatusFilter,
       handleResetFilters,
+      comparativas,
+      userData,
     ]
   );
 

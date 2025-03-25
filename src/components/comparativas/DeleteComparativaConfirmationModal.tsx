@@ -12,8 +12,8 @@ import { AlertTriangle, CheckCircle, CircleX } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
 import { useComparativas } from "@/lib/contexts/ComparativasContext";
 import { formatDate } from "@/lib/core/format";
-import { Spinner } from "@heroui/spinner";
 import { useState } from "react";
+import LoadingStateModal from "../core/LoadingStateModal";
 
 export default function DeleteComparativaConfirmationModal({
   comparativa,
@@ -98,16 +98,7 @@ export default function DeleteComparativaConfirmationModal({
             </div>
           </ModalHeader>
           <ModalBody className="py-4">
-            {loading && (
-              <div className="absolute top-0 left-0 w-full h-full bg-white bg-opacity-90 flex items-center justify-center z-50">
-                <Spinner
-                  size="lg"
-                  color="primary"
-                  label="Eliminando comparativa..."
-                  className="text-lg"
-                />
-              </div>
-            )}
+            {loading && <LoadingStateModal userData={userData} />}
             <div className="border rounded-lg p-4 bg-gray-50">
               <h3 className="text-md font-medium mb-3">
                 Detalles de la comparativa:

@@ -7,7 +7,7 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { ComparativaStatus, ComparativaVM } from "@/lib/core/types";
+import { ComparativaStatus, ComparativaVM, User } from "@/lib/core/types";
 import { Select, SelectItem } from "@heroui/select";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
@@ -48,11 +48,13 @@ const STATUS_BADGES = {
 interface Props {
   comparativa: ComparativaVM;
   onUpdate: () => void;
+  userData: User;
 }
 
 export default function UpdateComparativaStatusModal({
   comparativa,
   onUpdate,
+  userData,
 }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
   const [newStatus, setNewStatus] = useState<ComparativaStatus>(
@@ -92,7 +94,10 @@ export default function UpdateComparativaStatusModal({
   };
 
   const checkEmptyComissions = () => {
-    return Object.values(formDataComissions).some((value) => !value);
+    return (
+      Object.values(formDataComissions).some((value) => !value) &&
+      newStatus === "completed"
+    );
   };
 
   const checkComissionsChanged = () => {
@@ -171,6 +176,8 @@ export default function UpdateComparativaStatusModal({
           iconSize: 24,
         });
       }
+      onUpdate();
+      onClose();
     } catch (error) {
       showCustomToast({
         title: "Error al actualizar estado",
@@ -182,8 +189,6 @@ export default function UpdateComparativaStatusModal({
       console.error("Error updating comparativa status:", error);
     } finally {
       setLoading(false);
-      onUpdate();
-      onClose();
     }
   };
 
@@ -193,7 +198,12 @@ export default function UpdateComparativaStatusModal({
 
   return (
     <>
-      <Button onPress={handleOpen} variant="bordered">
+      <Button
+        onPress={handleOpen}
+        variant="bordered"
+        color="primary"
+        radius="sm"
+      >
         Actualizar
       </Button>
       <Modal
@@ -216,7 +226,7 @@ export default function UpdateComparativaStatusModal({
             </div>
           </ModalHeader>
           <ModalBody>
-            {loading && <LoadingStateModal />}
+            {loading && <LoadingStateModal userData={userData as User} />}
             <div className="space-y-4">
               <div className="flex justify-center items-center max-w-sm mx-auto">
                 <Select
@@ -230,7 +240,6 @@ export default function UpdateComparativaStatusModal({
                 >
                   <SelectItem key="pending">Pendiente de Estudio</SelectItem>
                   <SelectItem key="completed">Estudio Realizado</SelectItem>
-                  <SelectItem key="processed">Comparativa Tramitada</SelectItem>
                   <SelectItem key="rejected">Comparativa Rechazada</SelectItem>
                 </Select>
               </div>

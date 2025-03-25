@@ -128,6 +128,7 @@ export default function AddComparativaDialog({
       onCancel={onClose}
       onSubmit={handleSubmit}
       loading={loading}
+      userData={userData as User}
     />,
   ];
 

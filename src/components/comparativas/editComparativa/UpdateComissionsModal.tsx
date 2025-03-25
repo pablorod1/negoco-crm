@@ -10,19 +10,21 @@ import {
 } from "@heroui/modal";
 import { CheckCircle, CircleX, Coins } from "lucide-react";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
-import { ComparativaVM } from "@/lib/core/types";
+import { ComparativaVM, User } from "@/lib/core/types";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
-import { Spinner } from "@heroui/spinner";
+import LoadingStateModal from "@/components/core/LoadingStateModal";
 
 interface Props {
   comparativa: ComparativaVM;
   onUpdate: () => void;
+  userData: User;
 }
 
 export default function UpdateComissionsModal({
   comparativa,
   onUpdate,
+  userData,
 }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
   const [loading, setLoading] = useState(false);
@@ -147,10 +149,9 @@ export default function UpdateComissionsModal({
   return (
     <>
       <Button
-        variant="light"
+        variant="bordered"
         color="primary"
         radius="sm"
-        className="!bg-transparent"
         onPress={onOpen}
         startContent={<Coins size={16} />}
       >
@@ -172,17 +173,7 @@ export default function UpdateComissionsModal({
             </h2>
           </ModalHeader>
           <ModalBody>
-            {loading && (
-              <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-15 ">
-                <Spinner
-                  size="lg"
-                  variant="gradient"
-                  label="Actualizando comisiones..."
-                  color="primary"
-                  className="text-lg"
-                />
-              </div>
-            )}
+            {loading && <LoadingStateModal userData={userData} />}
             <ComissionsForm
               comparativa={comparativa}
               setFormDataComissions={setFormDataComissions}

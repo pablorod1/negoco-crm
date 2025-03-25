@@ -1,5 +1,5 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import CreateNoteDialog from "@/components/tramites/editTramite/CreateNoteDialog";
+import CreateNoteDialog from "@/components/tramites/editTramite/notes/CreateNoteDialog";
 import DeleteNoteConfirmationModal from "@/components/comparativas/editComparativa/DeleteNoteConfirmationModal";
 import { useMemo } from "react";
 
@@ -18,7 +18,7 @@ interface NotesSectionProps {
   onAddNote: (note: string) => Promise<void>;
 }
 
-export const NotesSection = ({
+export const ComparativaNotesSection = ({
   notes,
   comparativaId,
   onDeletedNote,

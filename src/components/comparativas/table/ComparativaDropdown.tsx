@@ -6,7 +6,7 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Button } from "@heroui/button";
-import { MoreVertical, PencilLine } from "lucide-react";
+import { MoreVertical, PencilLine, ReceiptEuro } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useDisclosure } from "@heroui/react";
 import DeleteComparativaConfirmationModal from "../DeleteComparativaConfirmationModal";
@@ -131,7 +131,6 @@ export default function ComparativaDropdown({
 }) {
   const { userData } = useUser();
   const { isOpen, onClose, onOpen } = useDisclosure();
-
   const iconClasses =
     "text-xl text-default-500 pointer-events-none flex-shrink-0";
 
@@ -158,15 +157,17 @@ export default function ComparativaDropdown({
             >
               Visualizar Comparativa
             </DropdownItem>
-
-            {/* <DropdownItem
-              onPress={() => console.log("Tramitar comparativa")}
-              key="renew"
-              description="Convertir la comparativa en un trámite"
-              startContent={<RefreshCcw className={iconClasses} />}
-            >
-              Tramitar Comparativa
-            </DropdownItem> */}
+            {comparativa.status === "processed" && comparativa.tramite_id ? (
+              <DropdownItem
+                key="tramite"
+                description="Visualizar trámite asociado a la comparativa"
+                startContent={<ReceiptEuro className={iconClasses} />}
+                textValue="Visualizar Trámite"
+                href={`/tramites/${comparativa.tramite_id}`}
+              >
+                Visualizar Trámite
+              </DropdownItem>
+            ) : null}
           </DropdownSection>
           {userData && userData.role === "admin" ? (
             <DropdownSection>

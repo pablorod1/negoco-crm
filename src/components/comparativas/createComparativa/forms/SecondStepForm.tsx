@@ -1,5 +1,5 @@
 import { showCustomToast } from "@/components/core/CustomToast";
-import DocumentsForm from "@/components/tramites/createTramite/forms/DocumentsForm";
+import DocumentsForm from "@/components/tramites/DocumentsForm";
 import FormWrapper from "@/components/tramites/createTramite/FormWrapper";
 import { Button } from "@heroui/react";
 import { CircleX } from "lucide-react";

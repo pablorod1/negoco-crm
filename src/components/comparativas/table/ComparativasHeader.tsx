@@ -1,18 +1,26 @@
 "use client";
 
-import {
-  ColumnSelector,
-  ComparativaStatusDropdown,
-  FilterButton,
-} from "@/components/tramites/table/TableToolbar";
-import { ComparativaStatus } from "@/lib/core/types";
+import { ColumnSelector } from "@/components/tramites/table/TableToolbar";
+import { ComparativaStatus, User } from "@/lib/core/types";
 import { Input } from "@heroui/input";
 import { Table } from "@tanstack/react-table";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Filter, Search } from "lucide-react";
+import { Download, Filter, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import AddComparativaDialog from "../createComparativa/AddComparativaDialog";
 import ExportTableModal from "@/components/core/ExportTableModal";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { Label } from "@/components/ui/label";
+import { COMPARATIVA_STATUS_TYPES } from "@/lib/core/const";
+import { cn } from "@/lib/core/utils";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface Props<TData> {
   filterValue: string;
@@ -21,6 +29,8 @@ interface Props<TData> {
   setStatusFilter: (value: ComparativaStatus[]) => void;
   resetFilters: () => void;
   table: Table<TData>;
+  totalComparativas: number;
+  userData: User;
 }
 
 const ComparativasHeader = <TData,>({
@@ -30,14 +40,20 @@ const ComparativasHeader = <TData,>({
   setStatusFilter,
   resetFilters,
   table,
+  totalComparativas,
+  userData,
 }: Props<TData>) => {
   const [scrolled, setScrolled] = useState(false);
-  const [filtersVisible, setFiltersVisible] = useState(false);
-  const [searchVisible, setSearchVisible] = useState(true);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const checkFilters = () => {
-    return statusFilter.length > 0;
-  };
+  const isComercial = userData?.role === "2";
+
+  useEffect(() => {
+    const filters = [];
+    if (statusFilter.length > 0) filters.push("Estado");
+    setActiveFilters(filters);
+  }, [statusFilter]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,130 +63,167 @@ const ComparativasHeader = <TData,>({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleSearchShow = () => {
-    setSearchVisible(!searchVisible);
-  };
-
-  const handleClearFilter = () => {
+  const handleClearSearch = () => {
     setFilterValue("");
   };
 
-  const handleFiltersShow = () => {
-    setFiltersVisible(!filtersVisible);
-  };
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -40 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="pt-6"
-    >
-      <div className="mx-12 relative">
-        <div
-          className={`
-            flex flex-col gap-4
-          bg-white backdrop-blur-lg rounded-md 
-          transition-all duration-300 shadow-md border border-gray-100
-          ${scrolled ? "py-3 px-6" : "py-6 px-8"}
-        `}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="relative"
-              >
-                <h1
-                  className={`
-                  font-bold transition-all duration-300
-                  ${scrolled ? "text-3xl" : "text-4xl"}
-                  bg-gradient-to-r from-[var(--primary-color-800)] to-[var(--primary-color-500)]
-                  text-transparent bg-clip-text
-                `}
-                >
-                  Comparativas
-                </h1>
-                <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full opacity-20" />
-              </motion.div>
-            </div>
+    <div className="w-full px-6 pt-6 pb-2">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={cn(
+          "bg-white rounded-xl border border-gray-100 shadow-sm transition-all duration-300",
+          scrolled ? "py-3 px-5" : "py-5 px-6"
+        )}
+      >
+        {/* Header Top Row */}
+        <div className="flex items-center justify-between gap-4  ">
+          <div className="flex items-center gap-3">
+            <h1
+              className={cn(
+                "font-bold text-3xl bg-gradient-to-r from-blue-700 to-blue-500 text-transparent bg-clip-text",
+                scrolled ? "text-2xl" : "text-3xl"
+              )}
+            >
+              Comparativas
+            </h1>
 
-            <div className="flex justify-end items-center w-full gap-3">
-              <div
-                className={`flex items-center ${filtersVisible ? "gap-3" : ""}`}
-              >
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-100 text-gray-600"
-                  onClick={handleFiltersShow}
-                >
-                  {filtersVisible ? (
-                    <ChevronRight size={14} />
-                  ) : (
-                    <ChevronLeft size={14} />
-                  )}
-                  <Filter size={20} />
-                </motion.button>
-                <div
-                  className={`flex items-center gap-3 overflow-x-hidden animate-size
-                  ${filtersVisible ? "w-auto" : "w-0"}
-                  `}
-                >
-                  <ComparativaStatusDropdown
-                    selected={statusFilter}
-                    onSelectionChange={(value) =>
-                      setStatusFilter(value as ComparativaStatus[])
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="relative flex items-center">
-                <div
-                  className={`flex items-center transition-all duration-500 overflow-hidden ease-in-out ${
-                    searchVisible ? "w-96" : "w-8 cursor-pointer"
-                  }`}
-                >
-                  <Input
-                    radius="sm"
-                    value={filterValue}
-                    onValueChange={setFilterValue}
-                    variant="bordered"
-                    isClearable={true}
-                    onClear={handleClearFilter}
-                    placeholder={
-                      searchVisible
-                        ? "Busca por CUPS, cliente, compañía..."
-                        : ""
-                    }
-                    className="ps-12"
-                  />
-                  <Search
-                    width={20}
-                    height={20}
-                    className={`cursor-pointer absolute text-gray-500 transition-all duration-500 ${
-                      searchVisible ? "left-4" : "left-1"
-                    }`}
-                    onClick={handleSearchShow}
-                  />
-                </div>
-              </div>
-
-              {/* Add Comparativa Dialog */}
-              <AddComparativaDialog color="primary" />
-            </div>
+            <Badge
+              variant="outline"
+              className="bg-blue-50 text-blue-700 border-blue-200 px-2.5 py-0.5"
+            >
+              {totalComparativas} Total
+            </Badge>
           </div>
-          <div className="flex justify-between items-center gap-2  w-full">
-            <ColumnSelector table={table} />
-            <div className="flex items-center gap-2">
-              <FilterButton disabled={!checkFilters()} onPress={resetFilters} />
-              <ExportTableModal name="comparativas" table={table} />
+
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative w-80">
+              <Input
+                radius="sm"
+                variant="bordered"
+                value={filterValue}
+                onValueChange={setFilterValue}
+                placeholder="Buscar por CUPS, cliente, compañía..."
+                startContent={<Search className="h-4 w-4" />}
+                endContent={
+                  filterValue && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )
+                }
+              />
             </div>
+
+            {/* Filter Button */}
+
+            <Tooltip content="Filtros avanzados">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "h-10 w-10 bg-gray-50 border-gray-200",
+                  showFilters && "bg-blue-50 border-blue-200 text-blue-700"
+                )}
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+
+            {/* Column Selector */}
+
+            <ColumnSelector table={table} />
+
+            {/* Export Button */}
+
+            {!isComercial && (
+              <Popover>
+                <Tooltip content="Exportar datos">
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 bg-gray-50 border-gray-200"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                </Tooltip>
+                <PopoverContent className="p-0 w-fit">
+                  <ExportTableModal table={table} name={"Comparativas"} />
+                </PopoverContent>
+              </Popover>
+            )}
+
+            <AddComparativaDialog />
           </div>
         </div>
-      </div>
-    </motion.div>
+
+        {/* Status Tabs */}
+
+        <div className="flex items-center justify-between">
+          {activeFilters.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Filtros activos:</span>
+              <div className="flex gap-1.5">
+                {activeFilters.map((filter, index) => (
+                  <Badge
+                    key={index}
+                    variant="secondary"
+                    className="bg-gray-100 text-gray-700 gap-1.5"
+                  >
+                    {filter}
+                  </Badge>
+                ))}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="h-7 px-2 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Limpiar
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="mt-4 pt-4 border-t border-gray-100"
+          >
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Estado</Label>
+
+                <MultiSelect
+                  options={COMPARATIVA_STATUS_TYPES}
+                  onValueChange={(value) =>
+                    setStatusFilter(value as ComparativaStatus[])
+                  }
+                  value={statusFilter}
+                  placeholder="Seleccionar estado"
+                  maxCount={2}
+                  variant="primary"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
+    </div>
   );
 };
 
