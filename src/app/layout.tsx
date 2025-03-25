@@ -3,8 +3,8 @@ import "./globals.css";
 import { inter } from "@/fonts/fonts";
 
 export const metadata: Metadata = {
-  title: "Negoco CRM",
-  description: "Negoco CRM",
+  title: "Negoco Cloud",
+  description: "Negoco Cloud",
   openGraph: {
     images: "/opengraph-image.png",
   },

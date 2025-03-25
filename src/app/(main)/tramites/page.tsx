@@ -8,11 +8,11 @@ import { DataTable } from "@/components/tramites/table/Table";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { TramiteVM } from "@/lib/core/types";
+import { TramiteRow } from "@/lib/core/types";
 
 export default function TramitesPage() {
   const { userData } = useUser();
-  const [columns, setColumns] = useState<ColumnDef<TramiteVM>[]>([]);
+  const [columns, setColumns] = useState<ColumnDef<TramiteRow>[]>([]);
 
   useEffect(() => {
     if (userData) {

@@ -6,10 +6,10 @@ import {
   ComparativaVM,
   User,
 } from "@/lib/core/types";
-import { Spinner } from "@heroui/spinner";
 import {
   Calendar,
   CheckCircle,
+  ClipboardList,
   CloudAlert,
   LucideUser,
   Tag,
@@ -33,12 +33,15 @@ import { showCustomToast } from "@/components/core/CustomToast";
 import UploadComparativaFilesModal from "@/components/comparativas/editComparativa/UploadComparativaFilesModal";
 import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
 import UpdateComissionsModal from "@/components/comparativas/editComparativa/UpdateComissionsModal";
-import { NotesSection } from "@/components/comparativas/editComparativa/NotesTabContent";
+import { ComparativaNotesSection } from "@/components/comparativas/editComparativa/NotesTabContent";
 import { ServiceInfo } from "@/components/comparativas/editComparativa/ServiceInfo";
 import { FilesList } from "@/components/comparativas/editComparativa/FilesList";
 import { CommissionsTabContent } from "@/components/comparativas/editComparativa/ComissionsTabContent";
 import UpdateComparativaStatusModal from "@/components/comparativas/editComparativa/UpdateComparativaStatusModal";
 import ComparativaToTramite from "@/components/comparativas/editComparativa/ComparativaToTramite";
+import SpinnerComponent from "@/components/core/SpinnerComponent";
+import { Tooltip } from "@heroui/tooltip";
+import Link from "next/link";
 
 const STATUS_BADGES = {
   pending: (
@@ -97,7 +100,6 @@ export default function EditComparativaPage() {
       if (!success) {
         throw new Error(error);
       }
-      console.log("data", data);
       setComparativa(data);
     } catch (error) {
       console.error(error);
@@ -116,7 +118,7 @@ export default function EditComparativaPage() {
         body: JSON.stringify({
           notes: comparativa.notes,
           note,
-          id: id,
+          id,
         }),
       });
 
@@ -187,13 +189,7 @@ export default function EditComparativaPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Spinner
-          label="Cargando..."
-          color="primary"
-          size="lg"
-          className="text-xl"
-          variant="gradient"
-        />
+        <SpinnerComponent userData={userData as User} />
       </div>
     );
   }
@@ -201,7 +197,7 @@ export default function EditComparativaPage() {
   if (!comparativa) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Comparativa no encontrada.</p>
+        <p className="text-primary-400">Comparativa no encontrada.</p>
       </div>
     );
   }
@@ -210,27 +206,46 @@ export default function EditComparativaPage() {
     return STATUS_BADGES[status] || STATUS_BADGES.default;
   };
 
+  const isEditable =
+    comparativa.status !== "processed" && comparativa.status !== "rejected";
+
   return (
     <div className="mx-12 py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--primary-color-800)]">
+          <h1 className="text-3xl font-bold tracking-tight text-primary-800">
             Detalles de Comparativa
           </h1>
-          <p className="text-muted-foreground">ID: {comparativa.id}</p>
+          <p className="text-primary-400">ID: {comparativa.id}</p>
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge(comparativa.status)}
-          {comparativa.status !== "completed" ? (
-            <UpdateComparativaStatusModal
-              comparativa={comparativa}
-              onUpdate={fetchComparativa}
-            />
-          ) : (
-            <ComparativaToTramite
-              comparativa={comparativa}
-              onComparativaUpdated={fetchComparativa}
-            />
+          {comparativa.status === "processed" && comparativa.tramite_id && (
+            <Tooltip content="Ver trámite">
+              <Link
+                href={`/tramites/${comparativa.tramite_id}`}
+                className="flex items-center gap-1 ml-4 text-primary-400 hover:underline hover:text-primary-500"
+              >
+                <ClipboardList className="h-4 w-4" />
+                <span>Trámite: {comparativa.tramite_id}</span>
+              </Link>
+            </Tooltip>
+          )}
+          {isEditable && (
+            <>
+              {comparativa.status !== "completed" ? (
+                <UpdateComparativaStatusModal
+                  comparativa={comparativa}
+                  onUpdate={fetchComparativa}
+                  userData={userData as User}
+                />
+              ) : (
+                <ComparativaToTramite
+                  comparativa={comparativa}
+                  onComparativaUpdated={fetchComparativa}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -241,56 +256,41 @@ export default function EditComparativaPage() {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle className="text-2xl text-[var(--primary-color-800)]">
+                <CardTitle className="text-2xl text-primary-800">
                   {comparativa.client}
                 </CardTitle>
                 <CardDescription className="flex items-center gap-1 mt-1">
-                  <ServiceInfo
-                    service={comparativa.service}
-                    tramiteId={comparativa.tramite_id}
-                  />
+                  <ServiceInfo service={comparativa.service} />
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="notes">
-              <TabsList
-                className={`grid mb-4 ${
-                  isAdmin || isBackOffice ? "grid-cols-2" : "grid-cols-1"
-                }`}
-              >
-                <TabsTrigger
-                  value="notes"
-                  className="!text-[var(--primary-color-800)]"
-                >
+              <TabsList className="grid mb-4 grid-cols-2">
+                <TabsTrigger value="notes">
                   Notas - {comparativa.notes.length}
                 </TabsTrigger>
-                {(isAdmin || isBackOffice) && (
-                  <TabsTrigger
-                    value="commissions"
-                    className="!text-[var(--primary-color-800)]"
-                  >
-                    Comisiones
-                  </TabsTrigger>
-                )}
+
+                <TabsTrigger value="commissions">Comisiones</TabsTrigger>
               </TabsList>
 
-              {(isAdmin || isBackOffice) && (
-                <TabsContent value="commissions" className="space-y-4">
-                  <CommissionsTabContent
-                    comparativa={comparativa}
-                    userData={userData as User}
-                  />
+              <TabsContent value="commissions" className="space-y-4">
+                <CommissionsTabContent
+                  comparativa={comparativa}
+                  userData={userData as User}
+                />
+                {(isAdmin || isBackOffice) && isEditable && (
                   <UpdateComissionsModal
                     onUpdate={fetchComparativa}
                     comparativa={comparativa}
+                    userData={userData as User}
                   />
-                </TabsContent>
-              )}
+                )}
+              </TabsContent>
 
               <TabsContent value="notes">
-                <NotesSection
+                <ComparativaNotesSection
                   notes={comparativa.notes}
                   comparativaId={comparativa.id}
                   onDeletedNote={fetchComparativa}
@@ -304,14 +304,14 @@ export default function EditComparativaPage() {
         {/* User and Date Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-[var(--primary-color-800)]">
+            <CardTitle className="text-primary-800">
               Información Adicional
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* User Info */}
             <div className="space-y-3">
-              <h3 className="font-light flex items-center gap-2 text-[var(--primary-color-800)]">
+              <h3 className="font-light flex items-center gap-2 text-primary-800">
                 <LucideUser className="h-4 w-4" />
                 <span>Creado por</span>
               </h3>
@@ -322,8 +322,10 @@ export default function EditComparativaPage() {
                   className="!rounded-full"
                 />
                 <div>
-                  <p className="font-medium">{comparativa.user.name}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-medium text-primary-900">
+                    {comparativa.user.name}
+                  </p>
+                  <p className="text-sm text-primary-400">
                     {comparativa.user.email}
                   </p>
                 </div>
@@ -334,18 +336,20 @@ export default function EditComparativaPage() {
 
             {/* Date Info */}
             <div className="space-y-3">
-              <h3 className="font-light flex items-center gap-2 text-[var(--primary-color-800)]">
+              <h3 className="font-light flex items-center gap-2 text-primary-800">
                 <Calendar className="h-4 w-4" />
                 <span>Fecha de Creación</span>
               </h3>
-              <p>{formatDateTime(comparativa.creation_date)}</p>
+              <p className="text-primary-900">
+                {formatDateTime(comparativa.creation_date)}
+              </p>
             </div>
 
             <Divider />
 
             {/* Status Info */}
             <div className="space-y-3">
-              <h3 className="font-light flex items-center gap-2 text-[var(--primary-color-800)]">
+              <h3 className="font-light flex items-center gap-2 text-primary-800">
                 <Tag className="h-4 w-4" />
                 <span>Estado</span>
               </h3>
@@ -358,10 +362,8 @@ export default function EditComparativaPage() {
       {/* Files Section */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="text-[var(--primary-color-800)]">
-            Archivos Adjuntos
-          </CardTitle>
-          <CardDescription>
+          <CardTitle className="text-primary-800">Archivos Adjuntos</CardTitle>
+          <CardDescription className="text-primary-400">
             {comparativa.files.length} archivo
             {comparativa.files.length !== 1 ? "s" : ""} adjunto
             {comparativa.files.length !== 1 ? "s" : ""}
@@ -375,12 +377,14 @@ export default function EditComparativaPage() {
           />
         </CardContent>
         <CardFooter>
-          <UploadComparativaFilesModal
-            onUpload={fetchComparativa}
-            status={comparativa.status}
-            userData={userData as User}
-            comparativa={comparativa}
-          />
+          {isEditable && (
+            <UploadComparativaFilesModal
+              onUpload={fetchComparativa}
+              status={comparativa.status}
+              userData={userData as User}
+              comparativa={comparativa}
+            />
+          )}
         </CardFooter>
       </Card>
     </div>
