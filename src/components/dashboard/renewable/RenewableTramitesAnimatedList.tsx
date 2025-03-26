@@ -2,10 +2,11 @@
 
 import { cn } from "@/lib/core/utils";
 import { AnimatedList } from "@/components/magicui/animated-list";
-import { ExternalLink, RefreshCcw } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { formatDateTime } from "@/lib/core/format";
 import Link from "next/link";
 import { useEffect } from "react";
+import Image from "next/image";
 
 interface RenewableTramite {
   id: string;
@@ -30,15 +31,13 @@ const Notification = ({ id, renovationDate, sales_name }: RenewableTramite) => {
         href={`/tramites/${id}`}
         className="group flex flex-row items-center gap-3"
       >
-        <div
-          className="flex size-10 items-center justify-center rounded-2xl"
-          style={{
-            backgroundColor: "var(--primary-color-100)",
-          }}
-        >
-          <span className="text-lg">
-            <RefreshCcw className="text-[var(--primary-color-800)]" />
-          </span>
+        <div className="relative">
+          <Image
+            src="/icons/renovacion.webp"
+            alt="Renovación Icon"
+            width={40}
+            height={40}
+          />
         </div>
         <div className="flex flex-col overflow-hidden">
           <figcaption className="flex flex-row items-center whitespace-pre text-lg font-medium dark:text-white ">
