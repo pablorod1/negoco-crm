@@ -41,6 +41,18 @@ export default function ContractSection({
   const checkChanges = (contract: ContractDB) => {
     return JSON.stringify(contract) !== JSON.stringify(selectedContract);
   };
+  console.log("contracts", contracts);
+
+  const checkEmptyPots = (contract: ContractDB) => {
+    return (
+      contract.pot1 === 0 &&
+      contract.pot2 === 0 &&
+      contract.pot3 === 0 &&
+      contract.pot4 === 0 &&
+      contract.pot5 === 0 &&
+      contract.pot6 === 0
+    );
+  };
 
   const handleCreateContract = async (contract: ContractDB) => {
     try {
@@ -166,7 +178,7 @@ export default function ContractSection({
                     value={contract.id}
                     onClick={() => setSelectedContract(contract)}
                   >
-                    {contract.type} - {contract.company}
+                    {contract.type} - {contract.CUPS}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -185,20 +197,28 @@ export default function ContractSection({
                         </h3>
                         <Separator className="my-2 bg-primary-200" />
                       </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-primary-400">
+                          Tipo
+                        </p>
+                        <p className="font-medium ">{contract.type}</p>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-sm font-medium text-primary-400">
-                            Tipo
+                            Compañía Antigua
                           </p>
-                          <p className="font-medium ">{contract.type}</p>
+                          <p className="font-medium ">{contract.old_company}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-primary-400">
-                            Compañía
+                            Compañía Nueva
                           </p>
-                          <p className="font-medium ">{contract.company}</p>
+                          <p className="font-medium ">{contract.new_company}</p>
                         </div>
                       </div>
+
                       <div>
                         <p className="text-sm font-medium text-primary-400">
                           Plan Contratado
@@ -221,14 +241,16 @@ export default function ContractSection({
                             : "Sin Asignar"}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-primary-400">
-                          Descripción
-                        </p>
-                        <p className="text-muted-foreground">
-                          {contract.description}
-                        </p>
-                      </div>
+                      {contract.description && (
+                        <div>
+                          <p className="text-sm font-medium text-primary-400">
+                            Descripción
+                          </p>
+                          <p className="text-muted-foreground">
+                            {contract.description}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-4">
@@ -257,56 +279,62 @@ export default function ContractSection({
                         </h3>
                         <Separator className="my-2" />
                       </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        {contract.pot1 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium text-primary-400">
-                              Potencia P1
-                            </p>
-                            <p className="font-medium ">{contract.pot1} kW</p>
-                          </div>
-                        )}
-                        {contract.pot2 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium text-primary-400">
-                              Potencia P2
-                            </p>
-                            <p className="font-medium ">{contract.pot2} kW</p>
-                          </div>
-                        )}
-                        {contract.pot3 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium text-primary-400">
-                              Potencia P3
-                            </p>
-                            <p className="font-medium ">{contract.pot3} kW</p>
-                          </div>
-                        )}
-                        {contract.pot4 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium text-primary-400">
-                              Potencia P4
-                            </p>
-                            <p className="font-medium ">{contract.pot4} kW</p>
-                          </div>
-                        )}
-                        {contract.pot5 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium text-primary-400">
-                              Potencia P5
-                            </p>
-                            <p className="font-medium ">{contract.pot5} kW</p>
-                          </div>
-                        )}
-                        {contract.pot6 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium text-primary-400">
-                              Potencia P6
-                            </p>
-                            <p className="font-medium ">{contract.pot6} kW</p>
-                          </div>
-                        )}
-                      </div>
+                      {!checkEmptyPots(contract) ? (
+                        <div className="grid grid-cols-3 gap-4">
+                          {contract.pot1 > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-primary-400">
+                                Potencia P1
+                              </p>
+                              <p className="font-medium ">{contract.pot1} kW</p>
+                            </div>
+                          )}
+                          {contract.pot2 > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-primary-400">
+                                Potencia P2
+                              </p>
+                              <p className="font-medium ">{contract.pot2} kW</p>
+                            </div>
+                          )}
+                          {contract.pot3 > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-primary-400">
+                                Potencia P3
+                              </p>
+                              <p className="font-medium ">{contract.pot3} kW</p>
+                            </div>
+                          )}
+                          {contract.pot4 > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-primary-400">
+                                Potencia P4
+                              </p>
+                              <p className="font-medium ">{contract.pot4} kW</p>
+                            </div>
+                          )}
+                          {contract.pot5 > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-primary-400">
+                                Potencia P5
+                              </p>
+                              <p className="font-medium ">{contract.pot5} kW</p>
+                            </div>
+                          )}
+                          {contract.pot6 > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-primary-400">
+                                Potencia P6
+                              </p>
+                              <p className="font-medium ">{contract.pot6} kW</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-16 text-primary-400">
+                          No hay potencias asignadas
+                        </div>
+                      )}
                     </div>
                   </div>
                 </TabsContent>

@@ -15,10 +15,10 @@ import {
 } from "@/lib/validation/validation.types";
 import { Textarea } from "@heroui/input";
 import React from "react";
-import toast from "react-hot-toast";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import { InputComponent, SelectComponent } from "../InputComponent";
+import { showCustomToast } from "@/components/core/CustomToast";
 
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
@@ -59,35 +59,33 @@ export default function ContractForm({
   };
 
   const handleAddContract = () => {
-    toast.promise(
-      new Promise((resolve, reject) => {
-        const validation = validateContract({
-          type: formData.type,
-          postal_code: formData.postal_code,
-          province: formData.province,
-          city: formData.city,
-          address: formData.address,
-          CUPS: formData.CUPS,
-          plan: formData.plan,
-          company: formData.company,
-        });
-        if (validation.succeeded) {
-          resolve(validation);
-          onCreateContract({
-            ...formData,
-            tramite_id: tramite_id,
-          });
-        } else {
-          setErrors(validation.errors);
-          reject(validation.errors);
-        }
-      }),
-      {
-        loading: "Validando contrato...",
-        success: "Contrato añadido correctamente",
-        error: "Error al añadir contrato",
-      }
-    );
+    const validation = validateContract({
+      type: formData.type,
+      postal_code: formData.postal_code,
+      province: formData.province,
+      city: formData.city,
+      address: formData.address,
+      CUPS: formData.CUPS,
+      plan: formData.plan,
+      new_company: formData.new_company,
+    });
+
+    if (!validation.succeeded) {
+      showCustomToast({
+        title: "Error",
+        message: "Por favor, rellena todos los campos obligatorios",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: Zap,
+      });
+      setErrors(validation.errors);
+      return;
+    }
+
+    onCreateContract({
+      ...formData,
+      tramite_id: tramite_id,
+    });
   };
 
   return (
@@ -159,13 +157,20 @@ export default function ContractForm({
               isRequired
             />
             <SelectComponent
-              name="company"
-              label="Compañía"
+              name="old_company"
+              label="Compañía Antigua"
               items={PLAIN_COMPANIES}
               onChange={handleFieldChange}
-              errors={errors.company}
+              selectedKey={formData.old_company}
+            />
+            <SelectComponent
+              name="new_company"
+              label="Compañía Nueva"
+              items={PLAIN_COMPANIES}
+              onChange={handleFieldChange}
+              errors={errors.new_company}
               isRequired
-              selectedKey={formData.company}
+              selectedKey={formData.new_company}
             />
             <InputComponent
               name="consumption"

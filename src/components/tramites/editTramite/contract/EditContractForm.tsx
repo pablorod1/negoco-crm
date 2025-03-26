@@ -67,7 +67,7 @@ export default function EditContractForm({
       address: formData.address,
       CUPS: formData.CUPS,
       plan: formData.plan,
-      company: formData.company,
+      new_company: formData.new_company,
     });
     if (validation.succeeded) {
       onSavingContract(formData);
@@ -150,13 +150,21 @@ export default function EditContractForm({
               value={formData.CUPS}
             />
             <SelectComponent
-              name="company"
-              label="Compañía"
+              name="old_company"
+              label="Compañía Antigua"
               items={PLAIN_COMPANIES}
               onChange={handleFieldChange}
-              errors={errors.company}
               isRequired
-              selectedKey={formData.company}
+              selectedKey={formData.old_company}
+            />
+            <SelectComponent
+              name="company"
+              label="Compañía Nueva"
+              items={PLAIN_COMPANIES}
+              onChange={handleFieldChange}
+              errors={errors.new_company}
+              isRequired
+              selectedKey={formData.new_company}
             />
             <InputComponent
               name="consumption"

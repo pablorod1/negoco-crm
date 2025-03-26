@@ -81,7 +81,7 @@ export default function ContractPreview({
               fontSize="12"
               textAnchor="middle"
             >
-              {contract.company}
+              {contract.new_company}
             </text>
           </pattern>
         </defs>

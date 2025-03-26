@@ -156,7 +156,8 @@ export type ContractDB = {
   city: string;
   address: string;
   postal_code: string;
-  company: string;
+  old_company: string;
+  new_company: string;
   plan: string;
   consumption: number;
   CUPS: string;
@@ -177,7 +178,8 @@ export const createEmptyContractDB = (): ContractDB => ({
   city: "",
   address: "",
   postal_code: "",
-  company: "",
+  old_company: "",
+  new_company: "",
   plan: "",
   consumption: 0,
   CUPS: "",

@@ -117,7 +117,7 @@ export interface ContractForm {
   address: string;
   CUPS: string;
   plan: string;
-  company: string;
+  new_company: string;
 }
 
 export const createEmptyContract = (): ContractForm => ({
@@ -128,7 +128,7 @@ export const createEmptyContract = (): ContractForm => ({
   address: "",
   CUPS: "",
   plan: "",
-  company: "",
+  new_company: "",
 });
 
 export interface ContractError {
@@ -139,7 +139,7 @@ export interface ContractError {
   address: string;
   CUPS: string;
   plan: string;
-  company: string;
+  new_company: string;
 }
 
 export const createEmptyContractError = (): ContractError => ({
@@ -150,5 +150,5 @@ export const createEmptyContractError = (): ContractError => ({
   address: "",
   CUPS: "",
   plan: "",
-  company: "",
+  new_company: "",
 });

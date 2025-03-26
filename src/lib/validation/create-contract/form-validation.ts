@@ -16,7 +16,7 @@ export const validateContract = (
     validateField(contract.address),
     validateField(contract.CUPS),
     validateField(contract.plan),
-    validateField(contract.company),
+    validateField(contract.new_company),
   ];
 
   const formValidationResult: FormValidationResult<ContractError> = {
@@ -29,7 +29,7 @@ export const validateContract = (
       address: fieldValidationResults[4].errorMessage || "",
       CUPS: fieldValidationResults[5].errorMessage || "",
       plan: fieldValidationResults[6].errorMessage || "",
-      company: fieldValidationResults[7].errorMessage || "",
+      new_company: fieldValidationResults[7].errorMessage || "",
     },
   };
 

@@ -144,13 +144,13 @@ export const addContracts = async (
   try {
     // Construimos la consulta para inserción múltiple
     const placeholders = contracts
-      .map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .join(", ");
 
     const query = `
       INSERT INTO contracts (
         id, type, province, city, address, postal_code, 
-        company, plan, consumption, CUPS, 
+        old_company, new_company, plan, consumption, CUPS, 
         pot1, pot2, pot3, pot4, pot5, pot6, 
         description, tramite_id
       )
@@ -165,7 +165,8 @@ export const addContracts = async (
       contract.city,
       contract.address,
       contract.postal_code,
-      contract.company,
+      contract.old_company,
+      contract.new_company,
       contract.plan,
       contract.consumption,
       contract.CUPS,
@@ -208,7 +209,7 @@ export const addContract = async (
     const query = `
       INSERT INTO contracts (
         id, type, province, city, address, postal_code, 
-        company, plan, consumption, CUPS, 
+        old_company, new_company, plan, consumption, CUPS, 
         pot1, pot2, pot3, pot4, pot5, pot6, 
         description, tramite_id
       )
@@ -225,7 +226,8 @@ export const addContract = async (
         contract.city,
         contract.address,
         contract.postal_code,
-        contract.company,
+        contract.old_company,
+        contract.new_company,
         contract.plan,
         contract.consumption,
         contract.CUPS,
