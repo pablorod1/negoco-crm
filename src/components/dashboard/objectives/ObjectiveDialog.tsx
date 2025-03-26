@@ -183,10 +183,10 @@ export default function ObjectiveDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          size="sm"
+          size="icon"
           className="bg-[var(--primary-color-600)] hover:bg-[var(--primary-color-700)]"
         >
-          <Plus className="h-4 w-4 mr-1" /> Nuevo Objetivo
+          <Plus className="h-4 w-4 " />
         </Button>
       </DialogTrigger>
       <DialogContent>

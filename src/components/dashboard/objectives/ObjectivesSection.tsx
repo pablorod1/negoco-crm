@@ -1,16 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { Target, CircleX } from "lucide-react";
+import { CircleX, RefreshCw } from "lucide-react";
 import { createEmptyObjective, User } from "@/lib/core/types";
 import { Objective } from "../../../lib/core/types";
 import { showCustomToast } from "../../core/CustomToast";
 import ObjectiveDialog from "./ObjectiveDialog";
 import CurrentObjectivesTab from "./CurrentObjectivesTab";
 import ObjectivesHistoryTab from "./ObjectivesHistoryTab";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import LoadingStateCard from "../LoadingStateCard";
 
 type ObjetivosCardProps = {
   userData: User;
@@ -18,6 +27,8 @@ type ObjetivosCardProps = {
 };
 
 export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
+  const [loadingData, setLoadingData] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [objetivos, setObjetivos] = useState<Objective[]>([]);
   const currentMonth = new Date().toLocaleString("es-ES", {
     month: "long",
@@ -36,6 +47,7 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
   );
 
   const fetchObjetivos = useCallback(async () => {
+    setLoadingData(true);
     try {
       const res = await fetch(`/api/objectives/get/current`, {
         method: "POST",
@@ -68,6 +80,11 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
+    } finally {
+      setTimeout(() => {
+        setLoadingData(false);
+        setIsRefreshing(false);
+      }, 300);
     }
   }, [userData]);
 
@@ -75,10 +92,16 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
     fetchObjetivos();
   }, [fetchObjetivos]);
 
+  const refreshData = () => {
+    setIsRefreshing(true);
+    setObjetivos([]);
+    fetchObjetivos();
+  };
+
   if (loading) {
     return (
       <Card className="h-full w-full">
-        <CardHeader className="text-xl font-medium text-[var(--primary-color-800)]">
+        <CardHeader className="text-xl font-medium text-primary-800">
           Objetivos
         </CardHeader>
         <CardContent>
@@ -93,16 +116,44 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
   }
 
   return (
-    <Card className="flex flex-col justify-between relative h-full backdrop-blur-lg transition-colors duration-300 overflow-hidden">
+    <Card className=" relative h-full backdrop-blur-lg transition-colors duration-300 overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl -z-10"></div>
       <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl -z-10"></div>
-      <CardHeader className="flex flex-row items-center justify-between text-xl font-medium text-[var(--primary-color-800)]">
-        <div className="flex items-center gap-2">
-          <Target className="h-6 w-6" />
-          <span>
-            Objetivos de <strong className="capitalize">{currentMonth}</strong>
-          </span>
+      <CardHeader className="flex flex-row items-center justify-between text-xl font-medium text-primary-800">
+        <div className="flex items-start gap-4 w-full">
+          <Image
+            src="/icons/objetivo.webp"
+            alt="Objetivos"
+            width={32}
+            height={32}
+            className="w-auto h-auto object-contain"
+          />
+
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-xl text-primary-800">
+                Objetivos
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full"
+                onClick={refreshData}
+                disabled={loadingData || loading}
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 text-primary-600 ${
+                    isRefreshing ? "animate-spin" : ""
+                  }`}
+                />
+              </Button>
+            </div>
+            <CardDescription className="text-xs text-muted-foreground">
+              Mostrando objetivos de{" "}
+              <strong className="text-primary-800">{currentMonth}</strong>
+            </CardDescription>
+          </div>
         </div>
         <ObjectiveDialog
           open={open}
@@ -117,28 +168,32 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
         />
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="actuales" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="actuales">Actuales</TabsTrigger>
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
-          </TabsList>
-          <TabsContent value="actuales" className="space-y-4">
-            <CurrentObjectivesTab
-              objetivos={objetivos}
-              setEditingObjetivo={setEditingObjetivo}
-              setNewObjetivo={setNewObjetivo}
-              setOpen={setOpen}
-            />
-          </TabsContent>
-          <TabsContent value="historico">
-            <ObjectivesHistoryTab
-              setOpen={setOpen}
-              setEditingObjetivo={setEditingObjetivo}
-              setNewObjetivo={setNewObjetivo}
-              userData={userData}
-            />
-          </TabsContent>
-        </Tabs>
+        {!loading && !loadingData && !isRefreshing ? (
+          <Tabs defaultValue="actuales" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="actuales">Actuales</TabsTrigger>
+              <TabsTrigger value="historico">Histórico</TabsTrigger>
+            </TabsList>
+            <TabsContent value="actuales" className="space-y-4">
+              <CurrentObjectivesTab
+                objetivos={objetivos}
+                setEditingObjetivo={setEditingObjetivo}
+                setNewObjetivo={setNewObjetivo}
+                setOpen={setOpen}
+              />
+            </TabsContent>
+            <TabsContent value="historico">
+              <ObjectivesHistoryTab
+                setOpen={setOpen}
+                setEditingObjetivo={setEditingObjetivo}
+                setNewObjetivo={setNewObjetivo}
+                userData={userData}
+              />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <LoadingStateCard userData={userData} />
+        )}
       </CardContent>
     </Card>
   );
