@@ -247,6 +247,32 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
+      const emailRes = await fetch("/api/send-email/tramite-status-updated", {
+        method: "POST",
+        body: JSON.stringify({
+          user_to: { email: tramite.user.email, name: tramite.user.name },
+          tramite_id: tramite.id,
+          status: { old: tramite.status, new: formData.status },
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const { success: emailSuccess, error: emailError } =
+        await emailRes.json();
+
+      if (!emailSuccess) {
+        showCustomToast({
+          title: "Error al enviar notificación por email",
+          message: emailError as string,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+
       showCustomToast({
         title: "Cambios guardados",
         message: `Los cambios se han guardado correctamente. Se ha notitificado a ${tramite.user.name}.`,

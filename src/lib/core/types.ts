@@ -103,6 +103,9 @@ export type ClientDB = {
   type: string;
   phone: string;
   address: string;
+  postal_code: string;
+  province: string;
+  city: string;
   document_type: string;
   document_number: string;
   IBAN: string;
@@ -116,6 +119,9 @@ export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   email: "",
   phone: "",
   address: "",
+  postal_code: "",
+  province: "",
+  city: "",
   document_type: "",
   document_number: "",
   IBAN: "",

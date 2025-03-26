@@ -7,7 +7,7 @@ export const CLIENT_TYPES = [
 
 export const DOCUMENT_TYPES = {
   Particular: { documentTypes: ["DNI", "NIE", "Otro"] },
-  Autónomo: { documentTypes: ["DNI", "CIF"] },
+  Autónomo: { documentTypes: ["DNI", "CIF", "NIE"] },
   Empresa: { documentTypes: ["CIF"] },
   "Comunidad de Propietarios": { documentTypes: ["CIF"] },
 };

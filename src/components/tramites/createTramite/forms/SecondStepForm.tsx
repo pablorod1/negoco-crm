@@ -110,10 +110,12 @@ export default function SecondStepForm({
           phone: formData.phone,
           IBAN: formData.IBAN,
           address: formData.address,
+          postal_code: formData.postal_code || "",
+          province: formData.province || "",
+          city: formData.city || "",
           document_type: formData.document_type,
           document_number: formData.document_number,
         }));
-
         onSecondSubmitSuccess();
       }
     }
@@ -206,6 +208,14 @@ export default function SecondStepForm({
               errors={errors.phone}
               isRequired
             />
+            <InputComponent
+              name="IBAN"
+              label="Número de cuenta"
+              onChange={handleFieldChange}
+              type="text"
+              errors={errors.IBAN}
+              isRequired
+            />
           </div>
           <div className="flex items-stretch gap-4 w-full">
             <InputComponent
@@ -217,12 +227,22 @@ export default function SecondStepForm({
               isRequired
             />
             <InputComponent
-              name="IBAN"
-              label="Número de cuenta"
+              name="postal_code"
+              label="Código Postal"
               onChange={handleFieldChange}
               type="text"
-              errors={errors.IBAN}
-              isRequired
+            />
+            <InputComponent
+              name="province"
+              label="Provincia"
+              onChange={handleFieldChange}
+              type="text"
+            />
+            <InputComponent
+              name="city"
+              label="Ciudad"
+              onChange={handleFieldChange}
+              type="text"
             />
           </div>
         </div>

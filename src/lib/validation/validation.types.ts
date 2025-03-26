@@ -34,6 +34,9 @@ export interface SecondForm {
   phone: string;
   IBAN: string;
   address: string;
+  postal_code: string;
+  province: string;
+  city: string;
 }
 
 export const createEmptySecondForm = (
@@ -47,6 +50,9 @@ export const createEmptySecondForm = (
   phone: "",
   IBAN: "",
   address: "",
+  postal_code: "",
+  province: "",
+  city: "",
 });
 
 export interface SecondFormError {

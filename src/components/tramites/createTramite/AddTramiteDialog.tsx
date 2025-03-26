@@ -132,7 +132,7 @@ export default function AddTramiteDialog({
       if (contracts.length > 0) {
         formData.append("contracts", JSON.stringify(contracts));
       }
-
+      console.log("formData", formData);
       const res = await fetch("/api/tramites/add", {
         method: "POST",
         body: formData, // Directly use FormData

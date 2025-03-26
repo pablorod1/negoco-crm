@@ -14,8 +14,8 @@ export const addClient = async (
   try {
     // Preparamos la consulta SQL
     const query = `
-      INSERT INTO clients (id, name, last_name, email, phone, address, document_number, document_type, type, IBAN)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO clients (id, name, last_name, email, phone, address, document_number, document_type, type, IBAN, postal_code, province, city)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // Ejecutamos la consulta
@@ -32,6 +32,9 @@ export const addClient = async (
         client.document_type,
         client.type,
         client.IBAN,
+        client.postal_code,
+        client.province,
+        client.city,
       ],
     });
 
