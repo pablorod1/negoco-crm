@@ -405,8 +405,8 @@ export function PersonalTramitesChart({
           className="px-6 pb-2 border-b absolute top-0 left-0 w-full bg-white z-10"
         >
           <div className="flex flex-wrap justify-between items-start gap-3 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex flex-col">
                 <Label className="text-xs font-medium text-gray-500">
                   Periodo:
                 </Label>
@@ -416,7 +416,7 @@ export function PersonalTramitesChart({
                   onValueChange={handleTimeRangeChange}
                 >
                   <SelectTrigger
-                    className="w-[160px] h-9 text-sm rounded-lg"
+                    className="w-[160px] text-sm rounded-md min-h-10 h-auto shadow"
                     aria-label="Select a value"
                   >
                     <SelectValue placeholder="Este mes" />
@@ -440,7 +440,7 @@ export function PersonalTramitesChart({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col">
                 <Label className="text-xs font-medium text-gray-500">
                   Rango personalizado:
                 </Label>
@@ -458,7 +458,6 @@ export function PersonalTramitesChart({
                     </Button>
                   )}
                   <DateRangePicker
-                    className="h-9 text-sm rounded-lg"
                     date={dateRange}
                     setDateRange={handleDateRangeChange}
                   />
