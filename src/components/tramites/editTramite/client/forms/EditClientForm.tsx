@@ -119,7 +119,7 @@ export default function EditClientForm({
             <SelectComponent
               name="type"
               label="Tipo de cliente"
-              selectedKey={client.type}
+              selectedKey={formData.type}
               isRequired
               items={CLIENT_TYPES}
               onChange={handleFieldChange}
@@ -127,7 +127,7 @@ export default function EditClientForm({
             <SelectComponent
               name="document_type"
               label="Tipo de documento"
-              selectedKey={client.document_type}
+              selectedKey={formData.document_type}
               isRequired
               onChange={handleFieldChange}
               items={
@@ -140,7 +140,7 @@ export default function EditClientForm({
             <InputComponent
               name="document_number"
               label="Número de documento"
-              value={client.document_number}
+              value={formData.document_number}
               isRequired
               onChange={handleFieldChange}
               type="text"
@@ -150,7 +150,7 @@ export default function EditClientForm({
             <InputComponent
               name="phone"
               label="Teléfono"
-              value={client.phone}
+              value={formData.phone}
               isRequired
               onChange={handleFieldChange}
               type="text"
@@ -158,20 +158,43 @@ export default function EditClientForm({
             <InputComponent
               name="email"
               label="Email"
-              value={client.email}
+              value={formData.email}
               isRequired
               onChange={handleFieldChange}
               type="email"
             />
           </div>
-          <InputComponent
-            name="address"
-            label="Dirección"
-            value={client.address}
-            isRequired
-            onChange={handleFieldChange}
-            type="text"
-          />
+          <div className="flex items-stretch gap-4">
+            <InputComponent
+              name="address"
+              label="Dirección"
+              value={formData.address}
+              isRequired
+              onChange={handleFieldChange}
+              type="text"
+            />
+            <InputComponent
+              name="postal_code"
+              label="Código Postal"
+              value={formData.postal_code}
+              onChange={handleFieldChange}
+              type="text"
+            />
+            <InputComponent
+              name="province"
+              label="Provincia"
+              value={formData.province}
+              onChange={handleFieldChange}
+              type="text"
+            />
+            <InputComponent
+              name="city"
+              label="Ciudad"
+              value={formData.city}
+              onChange={handleFieldChange}
+              type="text"
+            />
+          </div>
         </div>
         <ButtonGroupComponent
           onSubmit={handleSubmit}

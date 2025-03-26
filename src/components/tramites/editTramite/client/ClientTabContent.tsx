@@ -38,7 +38,10 @@ export default function ClientTabContent({
             </div>
             <div className="flex items-center gap-2">
               <Home className="h-4 w-4 text-primary-400" />
-              <p className=" font-medium">{client.address}</p>
+              <p className=" font-medium">
+                {client.address}, {client.postal_code}, {client.province},{" "}
+                {client.city}
+              </p>
             </div>
           </div>
           <div className="space-y-4">
