@@ -1,11 +1,11 @@
 import { User } from "@/lib/core/types";
 import { ComparativasRatio } from "./charts/ComparativasRatio";
 import { YearlyTramitesBarChart } from "./charts/YearlyTramitesBarChart";
-import RenewableTramitesCalendar from "./RenewableTramitesCalendar";
+import RenewableTramitesCalendar from "./renewable/RenewableTramitesCalendar";
 import { PersonalTramitesChart } from "./charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
 import { useCallback, useEffect, useState } from "react";
-import { ComparativasResume } from "./ComparativasResume";
+import { ComparativasResume } from "./comparativas/ComparativasResume";
 import { ObjetivosCard } from "./objectives/ObjectivesSection";
 
 interface Props {

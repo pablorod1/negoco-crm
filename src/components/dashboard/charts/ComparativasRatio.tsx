@@ -74,8 +74,8 @@ export function ComparativasRatio({
   const [displayMonth, setDisplayMonth] = React.useState<string>("");
 
   const [loadingData, setLoadingData] = React.useState<boolean>(true);
-  const [monthOptions, setMonthOptions] = React.useState<MonthOption[]>([]);
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
+  const [monthOptions, setMonthOptions] = React.useState<MonthOption[]>([]);
 
   // Generar opciones de mes
   React.useEffect(() => {
@@ -234,9 +234,24 @@ export function ComparativasRatio({
       <CardHeader className="relative z-30">
         <div className="flex items-start justify-between w-full">
           <div className="flex flex-col">
-            <CardTitle className="text-xl text-[var(--primary-color-800)] flex items-center gap-2">
-              Conversión de comparativas
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-xl text-[var(--primary-color-800)] flex items-center gap-2">
+                Conversión de comparativas
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full"
+                onClick={refreshData}
+                disabled={loadingData || loading}
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 text-primary-600 ${
+                    isRefreshing ? "animate-spin" : ""
+                  }`}
+                />
+              </Button>
+            </div>
             <CardDescription className="text-xs text-gray-400 flex items-center gap-1">
               <span>Mostrando resultados de</span>
               <span className="!capitalize font-medium text-primary-700">
@@ -261,19 +276,6 @@ export function ComparativasRatio({
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-full"
-              onClick={refreshData}
-              disabled={loadingData || loading}
-            >
-              <RefreshCw
-                className={`h-3.5 w-3.5 text-primary-600 ${
-                  isRefreshing ? "animate-spin" : ""
-                }`}
-              />
-            </Button>
           </div>
         </div>
       </CardHeader>

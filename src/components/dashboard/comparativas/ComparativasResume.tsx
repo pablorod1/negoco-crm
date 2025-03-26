@@ -10,9 +10,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
-import SpinnerComponent from "../core/SpinnerComponent";
+} from "../../ui/select";
+import SpinnerComponent from "../../core/SpinnerComponent";
 import Image from "next/image";
+import AddComparativaDialog from "@/components/comparativas/createComparativa/AddComparativaDialog";
 
 interface Props {
   loading: boolean;
@@ -108,7 +109,7 @@ export function ComparativasResume({ loading, userData }: Props) {
         </div>
       </CardHeader>
       <CardContent
-        className={`flex flex-col lg:flex-row gap-8 justify-center transition-opacity duration-300 ${
+        className={`flex flex-col h-full lg:flex-row gap-8 justify-center transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
@@ -119,20 +120,32 @@ export function ComparativasResume({ loading, userData }: Props) {
         ) : comparativas.length > 0 ? (
           <ComparativasAnimatedList items={comparativas || []} />
         ) : (
-          <div className="flex flex-col items-center justify-center text-center w-full h-96 gap-6">
-            <Image
-              src="/icons/comparativas2.webp"
-              alt="No hay comparativas"
-              width={100}
-              height={100}
-              className="opacity-80 animate-fadeIn"
-            />
-            <p className="text-xl text-gray-600 font-semibold animate-fadeIn animation-delay-200">
-              No hay comparativas{" "}
-              <span className="text-gray-800 font-bold">
-                {status === "pending" ? "pendientes" : "con estudio realizado"}
-              </span>
-            </p>
+          <div className="flex flex-col items-center justify-center text-center w-full h-full bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-8 space-y-6 transition-all duration-300 hover:shadow-md">
+            <div className="relative">
+              <Image
+                src="/icons/comparativas2.webp"
+                alt="No hay comparativas"
+                width={80}
+                height={80}
+                className="opacity-70 animate-pulse transform transition-transform hover:scale-105"
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xl text-gray-700 font-semibold">
+                Sin Comparativas
+                <span className="text-gray-900 font-bold ml-2">
+                  {status === "pending" ? "Pendientes" : "Finalizadas"}
+                </span>
+              </p>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">
+                {status === "pending"
+                  ? "Aún no se han generado comparativas para este estudio."
+                  : "No se encontraron comparativas para este estudio específico."}
+              </p>
+            </div>
+            <div className="flex space-x-4 opacity-60 hover:opacity-100 transition-opacity">
+              <AddComparativaDialog />
+            </div>
           </div>
         )}
       </CardContent>

@@ -1,13 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/core/utils";
-import { AnimatedList } from "../magicui/animated-list";
+import { AnimatedList } from "@/components/magicui/animated-list";
 import { ExternalLink } from "lucide-react";
 import { formatDateTime } from "@/lib/core/format";
 import Link from "next/link";
 import { ComparativaVM, User } from "@/lib/core/types";
 import { Chip } from "@heroui/chip";
-import AvatarComponent from "../core/AvatarComponent";
+import AvatarComponent from "@/components/core/AvatarComponent";
 import { useEffect } from "react";
 
 const Notification = (comparativa: ComparativaVM) => {

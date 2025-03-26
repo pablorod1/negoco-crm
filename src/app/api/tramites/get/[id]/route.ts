@@ -83,10 +83,10 @@ export async function POST(req: NextRequest) {
         ub.image as updated_by_image,
         ub.email as updated_by_email,
         ub.role as updated_by_role
- FROM tramites t
- INNER JOIN user u ON t.user_id = u.id
- INNER JOIN user ub ON t.updated_by = ub.id
- WHERE t.id = ?`,
+FROM tramites t
+INNER JOIN user u ON t.user_id = u.id
+LEFT JOIN user ub ON t.updated_by = ub.id
+WHERE t.id = ?`,
         [id],
         tursoClient
       ),
@@ -151,13 +151,14 @@ export async function POST(req: NextRequest) {
           role: user_role,
           image: user_image,
         },
-        updated_by: {
-          id: tramiteData.updated_by,
-          name: updated_by_name,
-          email: updated_by_email,
-          role: updated_by_role,
-          image: updated_by_image,
-        },
+        updated_by: updated_by_name
+          ? {
+              name: updated_by_name,
+              email: updated_by_email,
+              role: updated_by_role,
+              image: updated_by_image,
+            }
+          : null,
         updated_at: tramiteData.updated_at,
       },
       client: clientResult[0],
