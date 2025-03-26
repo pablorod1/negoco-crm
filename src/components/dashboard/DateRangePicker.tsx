@@ -28,9 +28,8 @@ export function DateRangePicker({ className, date, setDateRange }: Props) {
         <PopoverTrigger asChild>
           <Button
             id="date"
-            variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
+              "text-black flex w-full py-1 ps-4 rounded-md border min-h-10 h-auto items-center justify-start bg-inherit hover:bg-inherit [&_svg]:pointer-events-auto",
               !date && "text-muted-foreground"
             )}
           >
@@ -49,9 +48,11 @@ export function DateRangePicker({ className, date, setDateRange }: Props) {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 " align="start">
+        <PopoverContent
+          className="w-auto flex justify-center items-center px-0"
+          align="start"
+        >
           <Calendar
-            initialFocus
             mode="range"
             defaultMonth={new Date()}
             selected={date}

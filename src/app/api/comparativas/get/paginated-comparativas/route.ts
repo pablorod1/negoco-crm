@@ -2,6 +2,7 @@ import { ComparativaPlan } from "@/lib/core/types";
 import { getTursoClient } from "@/lib/libsql/client";
 import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
+import { DateRange } from "react-day-picker";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +13,7 @@ export async function POST(req: NextRequest) {
       user_role,
       filterValue,
       statusFilter,
+      dateRange,
     }: {
       page: number;
       rowsPerPage: number;
@@ -19,6 +21,7 @@ export async function POST(req: NextRequest) {
       user_role: string;
       filterValue?: string;
       statusFilter?: string[];
+      dateRange: DateRange | undefined;
     } = await req.json();
 
     if (!page || !rowsPerPage || !user_id || !user_role) {
@@ -102,6 +105,21 @@ export async function POST(req: NextRequest) {
         params.push(...filterArray);
       }
     };
+
+    if (dateRange && dateRange.from && dateRange.to) {
+      const fromDate = new Date(dateRange.from);
+      const toDate = new Date(dateRange.to);
+
+      // Ajusta para obtener el día correcto
+      fromDate.setDate(fromDate.getDate() + 1);
+      toDate.setDate(toDate.getDate() + 1);
+
+      filters.push(`date(creation_date) BETWEEN date(?) AND date(?)`);
+      params.push(
+        fromDate.toISOString().split("T")[0],
+        toDate.toISOString().split("T")[0]
+      );
+    }
 
     addArrayFilter("c.status", statusFilter);
 

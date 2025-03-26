@@ -43,6 +43,8 @@ export default function ComparativasTable<TData, TValue>({
     setFilterValue,
     setStatusFilter,
     resetFilters,
+    dateRange,
+    setDateRange,
   } = useTableFilters(id || "");
 
   const { pagination, setPagination } = useTablePagination();
@@ -65,6 +67,7 @@ export default function ComparativasTable<TData, TValue>({
               user_role: userData.role,
               filterValue,
               statusFilter,
+              dateRange,
             }),
           }
         );
@@ -94,6 +97,7 @@ export default function ComparativasTable<TData, TValue>({
     filterValue,
     statusFilter,
     userData,
+    dateRange,
   ]);
 
   // Consolidated useEffect for data fetching and refresh
@@ -109,11 +113,6 @@ export default function ComparativasTable<TData, TValue>({
     filterValue,
     statusFilter,
   ]);
-
-  // Fetch de datos
-  useEffect(() => {
-    fetchComparativas();
-  }, [fetchComparativas]);
 
   const tableConfig = useMemo(
     () => ({
@@ -155,6 +154,8 @@ export default function ComparativasTable<TData, TValue>({
       resetFilters: handleResetFilters,
       totalComparativas: comparativas.length,
       userData: userData as User,
+      dateRange,
+      setDateRange,
     }),
     [
       filterValue,
@@ -164,6 +165,8 @@ export default function ComparativasTable<TData, TValue>({
       handleResetFilters,
       comparativas,
       userData,
+      dateRange,
+      setDateRange,
     ]
   );
 

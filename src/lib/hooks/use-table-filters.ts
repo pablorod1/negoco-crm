@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DateRange } from "react-day-picker";
 
 export function useTableFilters(id?: string) {
   const [filterValue, setFilterValue] = useState<string>(id ? id : "");
@@ -8,6 +9,7 @@ export function useTableFilters(id?: string) {
   const [liquidezStatusFilter, setLiquidezStatusFilter] = useState<string[]>(
     []
   );
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const resetFilters = () => {
     setCompanyFilter([]);
@@ -15,6 +17,7 @@ export function useTableFilters(id?: string) {
     setContractTypeFilter([]);
     setFilterValue("");
     setLiquidezStatusFilter([]);
+    setDateRange(undefined);
   };
 
   return {
@@ -29,5 +32,7 @@ export function useTableFilters(id?: string) {
     setContractTypeFilter,
     resetFilters,
     setLiquidezStatusFilter,
+    dateRange,
+    setDateRange,
   };
 }

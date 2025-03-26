@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/lib/libsql/client";
 import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
+import { DateRange } from "react-day-picker";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +15,7 @@ export async function POST(req: NextRequest) {
       statusFilter,
       liquidezStatusFilter,
       contractTypeFilter,
+      dateRange,
     }: {
       page: number;
       rowsPerPage: number;
@@ -24,6 +26,7 @@ export async function POST(req: NextRequest) {
       statusFilter?: string[];
       liquidezStatusFilter?: string[];
       contractTypeFilter?: string[];
+      dateRange?: DateRange | undefined;
     } = await req.json();
 
     if (!page || !rowsPerPage || !user_id || !user_role) {
@@ -129,6 +132,21 @@ export async function POST(req: NextRequest) {
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
+
+    if (dateRange && dateRange.from && dateRange.to) {
+      const fromDate = new Date(dateRange.from);
+      const toDate = new Date(dateRange.to);
+
+      // Ajusta para obtener el día correcto
+      fromDate.setDate(fromDate.getDate() + 1);
+      toDate.setDate(toDate.getDate() + 1);
+
+      filters.push(`date(creation_date) BETWEEN date(?) AND date(?)`);
+      params.push(
+        fromDate.toISOString().split("T")[0],
+        toDate.toISOString().split("T")[0]
+      );
+    }
 
     if (filters.length > 0) {
       query += ` WHERE ` + filters.join(" AND ");

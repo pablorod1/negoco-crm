@@ -51,6 +51,8 @@ export function DataTable<TData, TValue>({
     setContractTypeFilter,
     setLiquidezStatusFilter,
     resetFilters,
+    dateRange,
+    setDateRange,
   } = useTableFilters(id || "");
 
   const { pagination, setPagination } = useTablePagination();
@@ -153,6 +155,8 @@ export function DataTable<TData, TValue>({
       resetFilters: handleResetFilters,
       userData: userData || ({} as User),
       totalTramites: tramites.length,
+      dateRange,
+      setDateRange,
     }),
     [
       filterValue,
@@ -169,6 +173,8 @@ export function DataTable<TData, TValue>({
       handleResetFilters,
       userData,
       tramites,
+      dateRange,
+      setDateRange,
     ]
   );
 

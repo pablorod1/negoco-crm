@@ -27,6 +27,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -44,6 +46,8 @@ interface TableHeaderProps<TData> {
   userData: User;
   table: Table<TData>;
   totalTramites: number;
+  dateRange: DateRange | undefined;
+  setDateRange: (dateRange: DateRange | undefined) => void;
 }
 
 export default function TramitesHeader<TData>({
@@ -62,6 +66,8 @@ export default function TramitesHeader<TData>({
   table,
   totalTramites,
   userData,
+  dateRange,
+  setDateRange,
 }: TableHeaderProps<TData>) {
   const [scrolled, setScrolled] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -280,6 +286,11 @@ export default function TramitesHeader<TData>({
                   placeholder="Seleccionar tipo de contrato"
                   maxCount={3}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha de Creación</Label>
+
+                <DateRangePicker date={dateRange} setDateRange={setDateRange} />
               </div>
             </div>
 

@@ -31,7 +31,7 @@ export function DatePickerDemo({
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
-          className={`w-[160px] justify-start text-left font-normal"
+          className={`text-black flex w-[160px] py-1 ps-4 rounded-md border min-h-10 h-auto items-center justify-start bg-inherit hover:bg-inherit [&_svg]:pointer-events-auto"
             ${!date && "text-muted-foreground"}`}
         >
           <CalendarIcon />

@@ -21,6 +21,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { DateRange } from "react-day-picker";
 
 interface Props<TData> {
   filterValue: string;
@@ -31,6 +33,8 @@ interface Props<TData> {
   table: Table<TData>;
   totalComparativas: number;
   userData: User;
+  dateRange: DateRange | undefined;
+  setDateRange: (dateRange: DateRange | undefined) => void;
 }
 
 const ComparativasHeader = <TData,>({
@@ -42,6 +46,8 @@ const ComparativasHeader = <TData,>({
   table,
   totalComparativas,
   userData,
+  dateRange,
+  setDateRange,
 }: Props<TData>) => {
   const [scrolled, setScrolled] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -218,6 +224,11 @@ const ComparativasHeader = <TData,>({
                   maxCount={2}
                   variant="primary"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha de Creación</Label>
+
+                <DateRangePicker date={dateRange} setDateRange={setDateRange} />
               </div>
             </div>
           </motion.div>
