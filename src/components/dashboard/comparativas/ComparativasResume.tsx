@@ -92,7 +92,7 @@ export function ComparativasResume({ loading, userData }: Props) {
         <div>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger
-              className="w-[190px] rounded-md"
+              className="w-[190px] rounded-md shadow"
               aria-label="Selecciona una opción"
             >
               <SelectValue placeholder="Pendiente de Estudio" />
