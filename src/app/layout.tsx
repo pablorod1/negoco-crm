@@ -3,35 +3,28 @@ import "./globals.css";
 import { inter } from "@/fonts/fonts";
 import { headers } from "next/headers";
 
-export const metadata: Metadata = {
-  title: "Negoco Cloud",
-  description: "Negoco Cloud",
-  openGraph: {
-    images: "/opengraph-image.png",
-  },
-  metadataBase: new URL("https://negococloud.es"),
-  alternates: {
-    canonical: "/",
-    languages: {
-      "es-ES": "/es-ES",
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const subdomain = host.split(".")[0];
+
+  return {
+    title: subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud",
+    icons: {
+      icon: subdomain === "beenergy" ? "/beenergy/favicon.png" : "/favicon.png",
     },
-  },
-};
+  };
+}
 
 export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  const headersList = headers();
-  const host = (await headersList).get("host") || "";
-  const subdomain = host.split(".")[0]; // Extrae el subdominio
+}: Readonly<{ children: React.ReactNode }>) {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const subdomain = host.split(".")[0];
 
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" href="/beenergy.png" />
-      </head>
       <body
         data-client={subdomain}
         className={`${inter.className} antialiased ${subdomain}`}
