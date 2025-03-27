@@ -265,7 +265,14 @@ export default function UploadFileModal() {
       >
         <span className="text-base font-bold">Subir archivos</span>
       </Button>
-      <Modal isOpen={isOpen} onClose={handleClose} size="2xl">
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        size="2xl"
+        classNames={{
+          wrapper: "overflow-hidden",
+        }}
+      >
         <ModalContent>
           {" "}
           <ModalHeader className="flex flex-col gap-1">
@@ -301,33 +308,35 @@ export default function UploadFileModal() {
               )}
             </div>
 
-            {files.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {files.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm truncate max-w-[200px]">
-                        {file.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ({(file.size / 1024).toFixed(1)} KB)
-                      </span>
-                    </div>
-                    <Button
-                      size="sm"
-                      color="danger"
-                      variant="light"
-                      onPress={() => removeFile(index)}
+            <div className="flex flex-col max-h-[130px] overflow-y-auto mt-4">
+              {files.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {files.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded"
                     >
-                      Eliminar
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm truncate max-w-[200px]">
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="light"
+                        onPress={() => removeFile(index)}
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="flex flex-col gap-4 mt-4">
               <div className="space-y-2">
@@ -342,47 +351,48 @@ export default function UploadFileModal() {
                     <Folder size={16} />
                     <span>Inicio</span>
                   </button>
-                  {folderGroups.map(
-                    (group) =>
-                      group.path && (
-                        <div key={group.path} className="space-y-1 ps-6">
-                          <button
-                            onClick={() => setSelectedFolder(group.path)}
-                            className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-                              selectedFolder === group.path
-                                ? "bg-blue-50 text-blue-600"
-                                : ""
-                            }`}
-                          >
-                            <Folder size={16} />
-
-                            <span>{group.name}</span>
-                            <div
-                              onClick={(e) => toggleFolder(group.path, e)}
-                              className="hover:bg-gray-200 rounded p-0.5"
-                            >
-                              {group.subfolders.length > 0 &&
-                                (expandedFolders.has(group.path) ? (
-                                  <ChevronDown size={16} />
-                                ) : (
-                                  <ChevronRight size={16} />
-                                ))}
-                            </div>
-                          </button>
-                          {group.subfolders.length > 0 && (
-                            <div
-                              className={`overflow-hidden transition-all duration-200 ease-in-out ${
-                                expandedFolders.has(group.path)
-                                  ? "max-h-screen"
-                                  : "max-h-0"
+                  <div className="flex flex-col max-h-[220px] overflow-y-auto ">
+                    {folderGroups.map(
+                      (group) =>
+                        group.path && (
+                          <div key={group.path} className="space-y-1 ps-6">
+                            <button
+                              onClick={() => setSelectedFolder(group.path)}
+                              className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
+                                selectedFolder === group.path
+                                  ? "bg-blue-50 text-blue-600"
+                                  : ""
                               }`}
                             >
-                              {renderSubfolders(group.subfolders)}
-                            </div>
-                          )}
-                        </div>
-                      )
-                  )}
+                              <Folder size={16} />
+                              <span>{group.name}</span>
+                              <div
+                                onClick={(e) => toggleFolder(group.path, e)}
+                                className="hover:bg-gray-200 rounded p-0.5"
+                              >
+                                {group.subfolders.length > 0 &&
+                                  (expandedFolders.has(group.path) ? (
+                                    <ChevronDown size={16} />
+                                  ) : (
+                                    <ChevronRight size={16} />
+                                  ))}
+                              </div>
+                            </button>
+                            {group.subfolders.length > 0 && (
+                              <div
+                                className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                                  expandedFolders.has(group.path)
+                                    ? "max-h-screen"
+                                    : "max-h-0"
+                                }`}
+                              >
+                                {renderSubfolders(group.subfolders)}
+                              </div>
+                            )}
+                          </div>
+                        )
+                    )}
+                  </div>
                   <button
                     onClick={() => setCreateFolder(true)}
                     className="w-full px-3 py-2 text-left text-blue-600 hover:bg-gray-100 rounded"
@@ -404,10 +414,16 @@ export default function UploadFileModal() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={handleClose}>
+            <Button
+              color="danger"
+              variant="light"
+              onPress={handleClose}
+              radius="sm"
+            >
               Cancelar
             </Button>
             <Button
+              radius="sm"
               color="primary"
               onPress={handleUpload}
               isLoading={isUploading}

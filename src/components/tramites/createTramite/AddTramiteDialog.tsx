@@ -113,6 +113,7 @@ export default function AddTramiteDialog({
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      console.log("client", client);
       const formData = new FormData();
 
       // Append files first

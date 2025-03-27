@@ -87,13 +87,14 @@ export default function TramitesHeader<TData>({
 
   // Handle scroll and fetch data
   useEffect(() => {
+    console.log("filterValue", filterValue);
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [filterValue]);
 
   // Clear search filter
   const handleClearSearch = () => {

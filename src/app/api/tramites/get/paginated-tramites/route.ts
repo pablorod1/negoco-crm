@@ -29,12 +29,10 @@ export async function POST(req: NextRequest) {
       dateRange?: DateRange | undefined;
     } = await req.json();
 
+    // Validate required parameters
     if (!page || !rowsPerPage || !user_id || !user_role) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Missing parameters",
-        },
+        { success: false, error: "Missing parameters" },
         { status: 400 }
       );
     }
@@ -42,46 +40,16 @@ export async function POST(req: NextRequest) {
     const tursoClient = getTursoClient(req);
     if (!tursoClient) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Database client not initialized",
-        },
+        { success: false, error: "Database client not initialized" },
         { status: 500 }
       );
     }
 
     const offset = (page - 1) * rowsPerPage;
-    let query = `
-          SELECT 
-              t.id AS id,
-              t.creation_date AS creation_date,
-              t.renovation_date AS renovation_date,
-              t.sales_name AS sales_name,
-              t.comision_sales_person AS comision_sales_person,
-              t.comision AS comision,
-              t.status AS status,
-              t.liquidez_status AS liquidez_status,
-              c.name AS client_name,
-              c.last_name AS client_last_name,
-              c.email AS client_email,
-              c.id AS client_id,
-              COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
-              COALESCE(GROUP_CONCAT(DISTINCT con.new_company), '') AS new_companies,
-              COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
-              COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
-              COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
-              COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
-          FROM 
-              tramites t
-          LEFT JOIN 
-              clients c ON t.client_id = c.id
-          LEFT JOIN 
-              contracts con ON t.id = con.tramite_id
-        `;
-
     const filters: string[] = [];
     const params: (string | number)[] = [];
 
+    // User role-based filtering
     if (user_role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
@@ -97,7 +65,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Dynamic filter generation
+    // Dynamic text filter
     const addTextFilter = (fields: string[], value: string) => {
       const likeConditions = fields
         .map((field) => `${field} LIKE ?`)
@@ -109,19 +77,18 @@ export async function POST(req: NextRequest) {
     if (filterValue) {
       addTextFilter(
         [
+          "t.id",
+          "t.sales_name",
           "c.name",
           "c.last_name",
-          `c.name || ' ' || c.last_name`,
           "c.email",
-          "t.sales_name",
-          "t.id",
           "con.CUPS",
         ],
         filterValue
       );
     }
 
-    // Add array-based filters with null check
+    // Array-based filters
     const addArrayFilter = (column: string, filterArray?: string[]) => {
       if (filterArray && filterArray.length > 0) {
         filters.push(`${column} IN (${filterArray.map(() => "?").join(", ")})`);
@@ -134,11 +101,11 @@ export async function POST(req: NextRequest) {
     addArrayFilter("con.type", contractTypeFilter);
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
 
+    // Date range filter
     if (dateRange && dateRange.from && dateRange.to) {
       const fromDate = new Date(dateRange.from);
       const toDate = new Date(dateRange.to);
 
-      // Ajusta para obtener el día correcto
       fromDate.setDate(fromDate.getDate() + 1);
       toDate.setDate(toDate.getDate() + 1);
 
@@ -149,44 +116,78 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let countQuery = `
-    SELECT COUNT(*) AS total
-    FROM comparativas c
-    JOIN user u ON c.user_id = u.id
-  `;
+    // Construct base query
+    let baseQuery = `
+      FROM 
+          tramites t
+      LEFT JOIN 
+          clients c ON t.client_id = c.id
+      LEFT JOIN 
+          contracts con ON t.id = con.tramite_id
+    `;
 
+    // Add WHERE clause if filters exist
     if (filters.length > 0) {
-      query += ` WHERE ` + filters.join(" AND ");
-      countQuery += ` WHERE ` + filters.join(" AND ");
+      baseQuery += ` WHERE ` + filters.join(" AND ");
     }
 
+    // Total count query (simplified)
+    const countQuery = `
+      SELECT COUNT(DISTINCT t.id) AS total
+      ${baseQuery}
+    `;
+
+    // Main query with data retrieval
+    const dataQuery = `
+      SELECT 
+          t.id AS id,
+          t.creation_date AS creation_date,
+          t.renovation_date AS renovation_date,
+          t.sales_name AS sales_name,
+          t.comision_sales_person AS comision_sales_person,
+          t.comision AS comision,
+          t.status AS status,
+          t.liquidez_status AS liquidez_status,
+          c.name AS client_name,
+          c.last_name AS client_last_name,
+          c.email AS client_email,
+          c.id AS client_id,
+          COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
+          COALESCE(GROUP_CONCAT(DISTINCT con.new_company), '') AS new_companies,
+          COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
+          COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
+          COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
+          COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
+      ${baseQuery}
+      GROUP BY 
+          t.id, t.creation_date, t.renovation_date, t.sales_name, 
+          t.comision_sales_person, t.comision, t.status, t.liquidez_status,
+          c.name, c.last_name, c.email
+      ORDER BY t.creation_date DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    // Add pagination parameters
+    const countParams = [...params];
+    const dataParams = [...params, rowsPerPage, offset];
+
+    // Execute count query
     const countResult = await tursoClient.execute({
       sql: countQuery,
-      args: params,
+      args: countParams,
     });
     const total = countResult.rows[0]?.total || 0;
 
-    // Group by main tramite fields
-    query += ` GROUP BY 
-          t.id, t.creation_date, t.renovation_date, t.sales_name, 
-          t.comision_sales_person, t.comision, t.status, t.liquidez_status,
-          c.name, c.last_name, c.email`;
-
-    query += ` ORDER BY t.creation_date DESC`;
-
-    // Add pagination
-    query += ` LIMIT ? OFFSET ?;`;
-    params.push(rowsPerPage, offset);
-
+    // Execute data query
     const rs = await tursoClient.execute({
-      sql: query,
-      args: params,
+      sql: dataQuery,
+      args: dataParams,
     });
 
+    // Process and return results
     return NextResponse.json({
       success: true,
       data: rs.rows.map((row) => {
-        // Safe parsing with fallback to empty arrays
         const parseArray = (value: string | null) =>
           value ? value.split(",").filter(Boolean) : [];
 

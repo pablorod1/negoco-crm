@@ -69,7 +69,9 @@ export const createEmptyTramiteDB = (
   plan?: "fijo" | "indexado",
   comparativa?: ComparativaVM
 ): TramiteDB => ({
-  id: `BEE-${Math.floor(Math.random() * 10000)}`,
+  id: `${
+    userData ? userData.organization.name.slice(0, 3).toUpperCase() : "NEG"
+  }-${Math.floor(Math.random() * 10000)}`,
   creation_date: new Date().toISOString(),
   tramitation_date: "",
   renovation_date: "",
