@@ -17,7 +17,7 @@ import { organization, admin } from "better-auth/plugins";
 import { sendPasswordResetEmail } from "../hooks/reset-pass-email";
 
 export const getAuth = (req: NextRequest) => {
-  const tursoClient = getTursoClient(req); // Cliente Turso dinámico según subdominio
+  const tursoClient = getTursoClient(req);
   const db = drizzle(tursoClient);
 
   return betterAuth({
