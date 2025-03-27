@@ -39,9 +39,9 @@ export async function POST(req: NextRequest) {
       WITH current_data AS (
           SELECT 
               COUNT(*) AS total,
-              SUM(CASE WHEN status = 'Activo' THEN 1 ELSE 0 END) AS active,
-              SUM(CASE WHEN status = 'Pendiente de Firma' THEN 1 ELSE 0 END) AS pending
-          FROM tramites WHERE status NOT LIKE 'Borrador'
+              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) AS active,
+              SUM(CASE WHEN status = 'Pendiente de Firma' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) AS pending
+          FROM tramites WHERE status NOT LIKE 'Borrador' 
     `;
 
     const params: (string | number)[] = [];
@@ -68,10 +68,10 @@ export async function POST(req: NextRequest) {
       previous_data AS (
           SELECT 
               COUNT(*) AS total,
-              SUM(CASE WHEN status = 'Activo' THEN 1 ELSE 0 END) AS active,
-              SUM(CASE WHEN status = 'Pendiente de Firma' THEN 1 ELSE 0 END) AS pending
+              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now', '-1 month') THEN 1 ELSE 0 END) AS active,
+              SUM(CASE WHEN status = 'Pendiente de Firma' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now', '-1 month') THEN 1 ELSE 0 END) AS pending
           FROM tramites WHERE status NOT LIKE 'Borrador'
-          AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now', '-1 month')
+          
     `;
 
     if (role !== "admin" && role !== "1") {
@@ -104,7 +104,8 @@ export async function POST(req: NextRequest) {
       currentValue: number,
       previousValue: number
     ) => {
-      if (previousValue === 0) return currentValue > 0 ? currentValue * 100 : 0;
+      if (previousValue === 0)
+        return currentValue !== 0 ? currentValue * 100 : 0;
       return ((currentValue - previousValue) / previousValue) * 100;
     };
 
@@ -117,6 +118,8 @@ export async function POST(req: NextRequest) {
       Number(current.pending),
       Number(current.prev_pending)
     );
+    console.log("current", current);
+    console.log("activeDifference", activeDifference);
 
     return NextResponse.json({
       success: true,

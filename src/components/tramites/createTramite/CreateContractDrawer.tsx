@@ -41,13 +41,13 @@ export default function CreateContractDrawer({
     <>
       {!isOpenProp && !onCloseProp && (
         <button onClick={handleOpen}>
-          <div className="w-56 h-72 flex flex-col justify-center items-center border-2 border-dashed border-[var(--primary-color-300)] rounded-lg cursor-pointer hover:bg-[var(--primary-color-50)] transition-colors">
+          <div className="w-56 h-72 flex flex-col justify-center items-center border-2 border-dashed border-primary-300 rounded-lg cursor-pointer hover:bg-primary-50 transition-colors">
             <PlusIcon
               width={32}
               height={32}
               stroke="var(--primary-color-300)"
             />
-            <span className="text-center font-semibold text-[var(--primary-color-300)]">
+            <span className="text-center font-semibold text-primary-300">
               Añadir contrato
             </span>
           </div>
@@ -68,7 +68,7 @@ export default function CreateContractDrawer({
           {(onClose) => (
             <>
               <DrawerHeader>
-                <h2 className="text-xl font-semibold text-[var(--primary-color-800)]">
+                <h2 className="text-xl font-semibold text-primary-800">
                   Crear contrato
                 </h2>
               </DrawerHeader>

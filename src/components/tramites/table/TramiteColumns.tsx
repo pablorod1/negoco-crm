@@ -179,7 +179,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
                   <Copy className="mr-2" size={16} color="white" />
                 </div>
               }
-              className="bg-[var(--primary-color-500)] rounded-full text-white cursor-pointer"
+              className="bg-primary-500 rounded-full text-white cursor-pointer"
               radius="lg"
               onClick={() => copyLink(CUPS)}
             >
@@ -199,7 +199,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex flex-col">
-          {row.original.company.map((company, index) => (
+          {row.original.new_company.map((company, index) => (
             <span
               key={index}
               className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"
@@ -397,7 +397,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
                   <Copy className="mr-2" size={16} color="white" />
                 </div>
               }
-              className="bg-[var(--primary-color-500)] rounded-full text-white cursor-pointer"
+              className="bg-primary-500 rounded-full text-white cursor-pointer"
               radius="lg"
               onClick={() => copyLink(CUPS)}
             >
@@ -417,7 +417,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex flex-col">
-          {row.original.company.map((company, index) => (
+          {row.original.new_company.map((company, index) => (
             <span
               key={index}
               className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"
@@ -670,7 +670,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
                   <Copy className="mr-2" size={16} color="white" />
                 </div>
               }
-              className="bg-[var(--primary-color-500)] rounded-full text-white cursor-pointer"
+              className="bg-primary-500 rounded-full text-white cursor-pointer"
               radius="lg"
               onClick={() => copyLink(CUPS)}
             >
@@ -690,7 +690,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex flex-col">
-          {row.original.company.map((company, index) => (
+          {row.original.new_company.map((company, index) => (
             <span
               key={index}
               className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"

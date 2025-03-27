@@ -26,9 +26,7 @@ export default function AccountSettings() {
     <section className="mx-4 md:mx-8 xl:mx-12 px-2 py-8 h-auto">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h4 className="text-2xl font-bold text-[var(--primary-color-800)]">
-            Ajustes
-          </h4>
+          <h4 className="text-2xl font-bold text-primary-800">Ajustes</h4>
           <span className="text-sm text-gray-600">
             Modifica la información de tu cuenta.
           </span>

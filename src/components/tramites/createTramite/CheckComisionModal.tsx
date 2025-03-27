@@ -26,14 +26,9 @@ export default function CheckComisionModal({
     <Modal isOpen={isOpen} onClose={onClose} size="xl" radius="sm">
       <ModalContent>
         <ModalHeader className="flex items-start gap-4">
-          <AlertTriangle
-            size={36}
-            className="text-[var(--danger-color)] mt-1"
-          />
+          <AlertTriangle size={36} className="text-danger mt-1" />
           <div className="flex flex-col gap-1 h-full">
-            <span className="text-[var(--danger-color)] text-xl">
-              Comprobar comisiones
-            </span>
+            <span className="text-danger text-xl">Comprobar comisiones</span>
             <span className="flex text-gray-500 text-base flex-1">
               Se recomienda verificar las comisiones antes de continuar.
             </span>

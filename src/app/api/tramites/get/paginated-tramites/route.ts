@@ -66,7 +66,8 @@ export async function POST(req: NextRequest) {
               c.email AS client_email,
               c.id AS client_id,
               COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
-              COALESCE(GROUP_CONCAT(DISTINCT con.new_company), '') AS companies,
+              COALESCE(GROUP_CONCAT(DISTINCT con.new_company), '') AS new_companies,
+              COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
               COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
               COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
               COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
@@ -148,9 +149,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let countQuery = `
+    SELECT COUNT(*) AS total
+    FROM comparativas c
+    JOIN user u ON c.user_id = u.id
+  `;
+
     if (filters.length > 0) {
       query += ` WHERE ` + filters.join(" AND ");
+      countQuery += ` WHERE ` + filters.join(" AND ");
     }
+
+    const countResult = await tursoClient.execute({
+      sql: countQuery,
+      args: params,
+    });
+    const total = countResult.rows[0]?.total || 0;
 
     // Group by main tramite fields
     query += ` GROUP BY 
@@ -198,7 +212,8 @@ export async function POST(req: NextRequest) {
           client_email: row.client_email as string,
           client_id: row.client_id as string,
           CUPS: parseArray(row.CUPS as string),
-          new_company: parseArray(row.companies as string),
+          new_company: parseArray(row.new_companies as string),
+          old_company: parseArray(row.old_companies as string),
           plan: parseArray(row.plans as string),
           contract_type: parseArray(row.contract_types as string),
           consumption: parseNumericArray(row.consumptions as string),
@@ -208,6 +223,7 @@ export async function POST(req: NextRequest) {
           liquidez_status: row.liquidez_status as string,
         };
       }),
+      total,
     });
   } catch (error) {
     console.error("Error en el servidor obteniendo los trámites", error);

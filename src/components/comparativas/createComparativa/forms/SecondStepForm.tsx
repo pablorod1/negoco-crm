@@ -37,9 +37,7 @@ export default function SecondStepForm({
     <FormWrapper>
       <form onSubmit={handleSubmit} className="relative">
         <div className="flex flex-col gap-4 w-full">
-          <h2 className="text-xl text-[var(--primary-color-500)] font-semibold">
-            Documentos
-          </h2>
+          <h2 className="text-xl text-primary-500 font-semibold">Documentos</h2>
           <DocumentsForm
             uploadedFiles={documents}
             setUploadedFiles={setDocuments}

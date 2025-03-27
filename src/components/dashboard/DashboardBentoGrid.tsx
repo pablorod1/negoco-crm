@@ -104,6 +104,7 @@ export default function DashboardBentoGrid() {
         comisionesRes.json(),
         balanceRes.json(),
       ]);
+      console.log("data", data);
 
       const totalBalance = balance.reduce(
         (acc: number, { total }: { total: number }) => acc + total,

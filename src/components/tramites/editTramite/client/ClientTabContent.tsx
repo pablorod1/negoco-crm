@@ -28,16 +28,16 @@ export default function ClientTabContent({
                 {client.name} {client.last_name}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-primary-400" />
+            <div className="flex items-start gap-2">
+              <Mail className="h-4 w-4 text-primary-400 mt-1" />
               <p className=" font-medium">{client.email}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-primary-400" />
+            <div className="flex items-start gap-2">
+              <Phone className="h-4 w-4 text-primary-400 mt-1" />
               <p className=" font-medium">{client.phone}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Home className="h-4 w-4 text-primary-400" />
+            <div className="flex items-start gap-2">
+              <Home className="h-4 w-4 text-primary-400 mt-1" />
               <p className=" font-medium">
                 {client.address}, {client.postal_code}, {client.province},{" "}
                 {client.city}

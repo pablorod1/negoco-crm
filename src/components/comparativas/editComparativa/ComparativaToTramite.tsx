@@ -49,7 +49,7 @@ export default function ComparativaToTramite({
         <ModalContent>
           <ModalHeader>
             <div className="flex items-center justify-between w-full">
-              <h3 className="text-xl font-semibold text-[var(--primary-color-800)]">
+              <h3 className="text-xl font-semibold text-primary-800">
                 Comparativa {comparativa.id} · {comparativa.client}
               </h3>
             </div>

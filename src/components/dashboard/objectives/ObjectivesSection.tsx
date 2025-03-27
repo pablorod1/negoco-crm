@@ -101,7 +101,7 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
   if (loading) {
     return (
       <Card className="h-full w-full">
-        <CardHeader className="text-xl font-medium text-primary-800">
+        <CardHeader className="text-xl font-medium text-primary-700">
           Objetivos
         </CardHeader>
         <CardContent>

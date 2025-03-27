@@ -283,7 +283,7 @@ export function PersonalTramitesChart({
       >
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-xl text-[var(--primary-color-800)] flex items-center gap-2">
+            <CardTitle className="text-xl text-primary-800 flex items-center gap-2">
               Tu Resumen de Ventas
               <Button
                 variant="ghost"
@@ -321,7 +321,7 @@ export function PersonalTramitesChart({
         <div className="relative flex items-center p-1 bg-gray-100/50 backdrop-blur-md rounded-xl shadow-inner">
           {/* Indicador deslizante */}
           <div
-            className="absolute transition-all duration-300 ease-spring rounded-lg shadow-lg bg-gradient-to-br from-[var(--primary-color-600)] to-[var(--primary-color-800)] z-0"
+            className="absolute transition-all duration-300 ease-spring rounded-lg shadow-lg bg-gradient-to-br from-primary-600 to-primary-800 z-0"
             style={{
               left: chartView === "tramites" ? "4px" : "calc(50% + 2px)",
               width: userData.super_id ? "calc(100% - 8px)" : "calc(50% - 8px)",

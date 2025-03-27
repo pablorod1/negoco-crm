@@ -40,7 +40,7 @@ export default function DocumentsForm({
         className={`overflow-hidden relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-lg cursor-pointer transition-colors
           ${
             isDragActive
-              ? "border-[var(--primary-color)] bg-[var(--primary-50)]"
+              ? "border-primary bg-primary-50"
               : "border-gray-300 bg-gray-50 hover:bg-gray-100"
           }`}
       >

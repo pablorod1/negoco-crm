@@ -168,7 +168,7 @@ export default function UpdateComissionsModal({
       >
         <ModalContent>
           <ModalHeader>
-            <h2 className="text-2xl font-bold text-[var(--primary-color-800)]">
+            <h2 className="text-2xl font-bold text-primary-800">
               Actualizar comisiones
             </h2>
           </ModalHeader>

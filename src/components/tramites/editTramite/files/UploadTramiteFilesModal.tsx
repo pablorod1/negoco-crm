@@ -137,7 +137,7 @@ export default function UploadTramiteFilesModal({
       >
         <ModalContent>
           <ModalHeader>
-            <h2 className="text-2xl font-bold text-[var(--primary-color-800)]">
+            <h2 className="text-2xl font-bold text-primary-800">
               Subir Archivos
             </h2>
           </ModalHeader>

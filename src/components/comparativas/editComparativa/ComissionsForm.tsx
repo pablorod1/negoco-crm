@@ -35,7 +35,7 @@ const ComissionsForm = memo(
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h3 className="font-semibold text-[var(--primary-color-800)]">
+          <h3 className="font-semibold text-primary-800">
             Comisión {comparativa.user.organization?.name}
           </h3>
           <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ const ComissionsForm = memo(
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="font-semibold text-[var(--primary-color-800)]">
+          <h3 className="font-semibold text-primary-800">
             Comisión {comparativa.user.name}
           </h3>
           <div className="flex items-center gap-2">

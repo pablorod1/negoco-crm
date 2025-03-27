@@ -40,7 +40,7 @@ export default function EditClientDrawer({
         {(onClose) => (
           <>
             <DrawerHeader>
-              <h2 className="text-xl font-semibold text-[var(--primary-color-800)]">
+              <h2 className="text-xl font-semibold text-primary-800">
                 {client.id}
               </h2>
             </DrawerHeader>

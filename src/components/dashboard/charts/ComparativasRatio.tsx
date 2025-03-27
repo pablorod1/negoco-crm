@@ -235,7 +235,7 @@ export function ComparativasRatio({
         <div className="flex items-start justify-between w-full">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-xl text-[var(--primary-color-800)] flex items-center gap-2">
+              <CardTitle className="text-xl text-primary-800 flex items-center gap-2">
                 Conversión de comparativas
               </CardTitle>
               <Button

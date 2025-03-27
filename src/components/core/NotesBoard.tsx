@@ -22,18 +22,12 @@ const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onCreateNote }) => {
         {/* Líneas de la pizarra */}
         <div className="absolute inset-0 grid grid-cols-[repeat(10,1fr)] opacity-10">
           {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="border-l border-[var(--primary-color-800)]"
-            ></div>
+            <div key={i} className="border-l border-primary-800"></div>
           ))}
         </div>
         <div className="absolute inset-0 grid grid-rows-[repeat(10,1fr)] opacity-10">
           {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="border-t border-[var(--primary-color-800)]"
-            ></div>
+            <div key={i} className="border-t border-primary-800"></div>
           ))}
         </div>
 

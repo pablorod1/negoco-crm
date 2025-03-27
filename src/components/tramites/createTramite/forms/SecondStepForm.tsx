@@ -144,7 +144,7 @@ export default function SecondStepForm({
     <FormWrapper>
       <form className="w-full">
         <div className="flex flex-col gap-y-4 w-full">
-          <h2 className="text-xl font-semibold text-[var(--primary-color-500)]">
+          <h2 className="text-xl font-semibold text-primary-500">
             Datos {client.type === "Empresa" ? "de la empresa" : "del cliente"}
           </h2>
           <div className="flex items-stretch gap-4 w-full">
@@ -251,7 +251,7 @@ export default function SecondStepForm({
           <>
             <Divider className="my-4" />
             <div className="flex flex-col gap-y-4 w-full">
-              <h2 className="text-xl font-semibold text-[var(--primary-color-500)]">
+              <h2 className="text-xl font-semibold text-primary-500">
                 Datos de la persona firmante
               </h2>
               <div className="flex items-stretch gap-4 w-full">

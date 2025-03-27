@@ -36,7 +36,7 @@ export const createSubcomercialComparativasColumns = (
         <Button
           variant="faded"
           size="sm"
-          className="font-bold m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          className="font-bold m-0 border-0 bg-transparent text-primary-900"
           onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
@@ -271,7 +271,7 @@ export const createComercialComparativasColumns = (
         <Button
           variant="faded"
           size="sm"
-          className="font-bold m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          className="font-bold m-0 border-0 bg-transparent text-primary-900"
           onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
@@ -431,7 +431,7 @@ export const createComparativasColumns = (
         <Button
           variant="faded"
           size="sm"
-          className="font-bold m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          className="font-bold m-0 border-0 bg-transparent text-primary-900"
           onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación

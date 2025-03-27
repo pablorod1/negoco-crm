@@ -149,7 +149,7 @@ export default function BalanceChart({ loading, userData }: Props) {
                   endContent="€"
                   value={totalBalance}
                   decimalPlaces={2}
-                  className="text-3xl font-bold text-[var(--primary-color-800)]"
+                  className="text-3xl font-bold text-primary-800"
                 >
                   {formatComission(totalBalance)}
                 </NumberTicker>

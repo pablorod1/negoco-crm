@@ -133,7 +133,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
               <div className="space-y-4 py-4">
                 {files.length > 0 ? (
                   <>
-                    <h2 className="text-lg font-semibold text-[var(--primary-color-800)]">
+                    <h2 className="text-lg font-semibold text-primary-800">
                       {files.length}{" "}
                       {files.length === 1 ? "archivo " : "archivos "}
                       encontrados
@@ -151,7 +151,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
                   <p>No se encontraron resultados</p>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    <h2 className="text-xl font-semibold text-[var(--primary-color-800)]">
+                    <h2 className="text-xl font-semibold text-primary-800">
                       Archivos recientes
                     </h2>
                     {recentlyFiles?.map((file) => (

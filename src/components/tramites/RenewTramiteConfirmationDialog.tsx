@@ -126,23 +126,23 @@ export default function RenewTramiteConfirmationDialog({
         }}
       >
         <ModalContent className="py-4 w-full max-h-[90vh] overflow-auto">
-          <ModalHeader className="text-xl font-semibold text-[var(--primary-color-800)]">
+          <ModalHeader className="text-xl font-semibold text-primary-800">
             <div className="flex items-center gap-2">
-              <RefreshCcw className="text-[var(--primary-color)]" size={20} />
+              <RefreshCcw className="text-primary" size={20} />
               Renovar Trámite
             </div>
           </ModalHeader>
           <ModalBody className="flex flex-col gap-5">
             {/* Trámite information */}
-            <div className="bg-[var(--primary-color-50)] p-4 rounded-md">
+            <div className="bg-primary-50 p-4 rounded-md">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-medium text-[var(--primary-color-700)]">
+                <h3 className="font-medium text-primary-700">
                   Información del trámite
                 </h3>
                 <Link
                   href={`/tramites/${tramite.id}`}
                   target="_blank"
-                  className="text-[var(--primary-color)] hover:underline text-sm flex items-center gap-1"
+                  className="text-primary hover:underline text-sm flex items-center gap-1"
                 >
                   Ver detalles completos
                   <ExternalLink size={16} />
@@ -177,7 +177,7 @@ export default function RenewTramiteConfirmationDialog({
                         {formatDate(tramite.activation_date)}
                       </p>
                     </div>
-                    <div className="text-[var(--primary-color)]">→</div>
+                    <div className="text-primary">→</div>
                     <div className="flex-1">
                       <p className="text-xs text-gray-500">Nueva</p>
                       <p className="text-sm font-medium">
@@ -196,7 +196,7 @@ export default function RenewTramiteConfirmationDialog({
                         {formatDate(tramite.renovation_date)}
                       </p>
                     </div>
-                    <div className="text-[var(--primary-color)]">→</div>
+                    <div className="text-primary">→</div>
                     <div className="flex-1">
                       <p className="text-xs text-gray-500">Nueva</p>
                       <p className="text-sm font-medium">

@@ -161,7 +161,7 @@ export default function ThirdStepForm({
             </div>
           </div>
           <Divider className="my-4" />
-          <h3 className="text-xl font-semibold text-[var(--primary-color-500)] mb-4">
+          <h3 className="text-xl font-semibold text-primary-500 mb-4">
             Contratos
           </h3>
           <div className="flex items-start gap-4 w-full">

@@ -100,7 +100,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex flex-col">
-          {row.original.company.map((company, index) => (
+          {row.original.new_company.map((company, index) => (
             <span
               key={index}
               className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"

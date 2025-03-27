@@ -85,9 +85,9 @@ export default function DeleteComparativaConfirmationModal({
       <Modal size="2xl" isOpen={isOpen} onClose={onClose}>
         <ModalContent>
           <ModalHeader className="flex items-start gap-4">
-            <AlertTriangle className="size-12 text-[var(--danger-color)]" />
+            <AlertTriangle className="size-12 text-danger" />
             <div className="flex flex-col">
-              <h2 className="text-lg font-semibold text-[var(--danger-color)]">
+              <h2 className="text-lg font-semibold text-danger">
                 ¿Estás seguro de que deseas eliminar la comparativa{" "}
                 {comparativa.id}?
               </h2>

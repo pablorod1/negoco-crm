@@ -178,11 +178,11 @@ export const CelebrationAnimation = ({
                   ¡Objetivo alcanzado!
                 </h2>
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  <PartyPopper className="h-5 w-5 text-[var(--primary-color-600)]" />
-                  <p className="text-lg font-medium text-[var(--primary-color-800)]">
+                  <PartyPopper className="h-5 w-5 text-primary-600" />
+                  <p className="text-lg font-medium text-primary-800">
                     {getObjetivoLabel(objective.type)}
                   </p>
-                  <PartyPopper className="h-5 w-5 text-[var(--primary-color-600)]" />
+                  <PartyPopper className="h-5 w-5 text-primary-600" />
                 </div>
 
                 <p className="text-gray-600 mb-6">
@@ -199,7 +199,7 @@ export const CelebrationAnimation = ({
                 </p>
 
                 <Button
-                  className="bg-[var(--primary-color-600)] hover:bg-[var(--primary-color-700)]"
+                  className="bg-primary-600 hover:bg-primary-700"
                   onClick={markAsCompleted}
                 >
                   Marcar como completado

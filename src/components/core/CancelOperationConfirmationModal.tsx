@@ -45,12 +45,9 @@ export default function CancelOperationConfirmationModal({ onCancel }: Props) {
       >
         <ModalContent>
           <ModalHeader className="flex items-start gap-4">
-            <AlertTriangle
-              size={24}
-              className="text-[var(--danger-color)] mt-1"
-            />
+            <AlertTriangle size={24} className="text-danger mt-1" />
             <div className="flex flex-col gap-1 h-full">
-              <span className="text-[var(--danger-color)] text-xl">
+              <span className="text-danger text-xl">
                 Hay cambios sin guardar
               </span>
               <span className="flex text-gray-500 text-base flex-1">

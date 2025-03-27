@@ -103,7 +103,7 @@ export default function SendResetPassForm({ setForgotPass }: Props) {
                 type="button"
                 variant="link"
                 onClick={() => setForgotPass(false)}
-                className="text-xs font-medium text-[var(--primary-color-600)] hover:text-[var(--primary-color-500)]"
+                className="text-xs font-medium text-primary-600 hover:text-primary-500"
               >
                 Iniciar sesión
               </Button>
@@ -133,7 +133,7 @@ export default function SendResetPassForm({ setForgotPass }: Props) {
 
           <Button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-[var(--primary-color-600)] hover:bg-[var(--primary-color-700)]"
+            className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700"
             disabled={isLoading}
           >
             {isLoading ? "Enviando..." : "Enviar enlace"}

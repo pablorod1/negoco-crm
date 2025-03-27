@@ -54,9 +54,7 @@ export default function FourthStepForm({
       )}
       <form className="relative">
         <div className={`flex flex-col gap-4 w-full ${loading && "blur-sm"}`}>
-          <h2 className="text-xl text-[var(--primary-color-500)] font-semibold">
-            Documentos
-          </h2>
+          <h2 className="text-xl text-primary-500 font-semibold">Documentos</h2>
           <DocumentsForm
             uploadedFiles={documents}
             setUploadedFiles={setDocuments}

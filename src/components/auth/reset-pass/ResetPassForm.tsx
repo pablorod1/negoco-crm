@@ -121,7 +121,7 @@ export default function ResetPassForm({ token }: { token: string }) {
 
           <Button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-[var(--primary-color-600)] hover:bg-[var(--primary-color-700)]"
+            className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700"
             disabled={isLoading}
           >
             {isLoading ? "Reestableciendo..." : "Cambiar contraseña"}

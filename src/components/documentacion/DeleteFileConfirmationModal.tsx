@@ -83,9 +83,9 @@ export default function DeleteFileConfirmationModal({
     >
       <ModalContent>
         <ModalHeader className="flex items-start gap-4">
-          <AlertTriangle className="size-12 text-[var(--danger-color)]" />
+          <AlertTriangle className="size-12 text-danger" />
           <div className="flex flex-col">
-            <h2 className="text-lg font-semibold text-[var(--danger-color)]">
+            <h2 className="text-lg font-semibold text-danger">
               ¿Estás seguro de que deseas eliminar el archivo?
             </h2>
             <p className="text-gray-600 text-sm">

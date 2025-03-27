@@ -121,7 +121,7 @@ export function ComisionesChart({
       >
         <div className="flex items-start justify-between">
           <div className="space-y-1 mb-2">
-            <h2 className="text-sm font-medium text-[var(--primary-color-300)]">
+            <h2 className="text-sm font-medium text-primary-300">
               Total Comisiones
             </h2>
             {!loadingData ? (
@@ -130,7 +130,7 @@ export function ComisionesChart({
                   endContent="€"
                   value={currentMonthComision}
                   decimalPlaces={2}
-                  className="text-3xl font-bold text-[var(--primary-color-800)]"
+                  className="text-3xl font-bold text-primary-800"
                 >
                   {formatComission(currentMonthComision)}
                 </NumberTicker>

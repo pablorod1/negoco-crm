@@ -115,7 +115,7 @@ export function SidebarComponent() {
               className="w-full h-auto max-w-8"
             />
             <h2
-              className={`block overflow-hidden text-3xl font-bold uppercase text-[var(--primary-color-400)] animate-size ${
+              className={`block overflow-hidden text-3xl font-bold uppercase text-primary-400 animate-size ${
                 open ? "w-auto" : "w-0"
               }`}
             >
@@ -134,10 +134,8 @@ export function SidebarComponent() {
                     <SidebarMenuButton
                       asChild
                       className={`${
-                        pathname === item.url
-                          ? "bg-[var(--primary-color-500)] text-white"
-                          : ""
-                      }  gap-4 hover:bg-[var(--primary-color-400)] hover:text-white transition-colors duration-200 ease-in-out`}
+                        pathname === item.url ? "bg-primary-500 text-white" : ""
+                      }  gap-4 hover:bg-primary-400 hover:text-white transition-colors duration-200 ease-in-out`}
                     >
                       <Link
                         href={item.url}

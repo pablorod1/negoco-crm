@@ -73,7 +73,7 @@ const Notification = (comparativa: ComparativaVM) => {
               </span>
             </Chip>
           </div>
-          <p className="flex items-center gap-2 text-[var(--primary-color-500)] text-sm font-normal dark:text-white/60 group-hover:underline">
+          <p className="flex items-center gap-2 text-primary-500 text-sm font-normal dark:text-white/60 group-hover:underline">
             {comparativa.id}
             <ExternalLink className="size-4" />
           </p>

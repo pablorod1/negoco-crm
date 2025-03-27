@@ -236,7 +236,8 @@ export type TramiteRow = {
   client_email: string;
   client_id: string;
   CUPS: string[];
-  company: string[];
+  old_company: string[];
+  new_company: string[];
   plan: string[];
   contract_type: string[];
   consumption: number[];

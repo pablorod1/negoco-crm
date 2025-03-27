@@ -132,7 +132,7 @@ export default function RenewableTramitesCalendar({
       >
         <div className="flex items-start gap-4">
           <CardTitle>
-            <h3 className="text-base 2xl:text-xl font-semibold text-[var(--primary-color-800)]">
+            <h3 className="text-base 2xl:text-xl font-semibold text-primary-800">
               Trámites renovables
             </h3>
             {date && (

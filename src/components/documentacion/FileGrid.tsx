@@ -90,7 +90,7 @@ export function FileGrid({
       <div className="flex flex-col gap-12 w-full">
         {recentlyFiles && recentlyFiles.length > 0 && (
           <div className="flex flex-col gap-4 w-full">
-            <h2 className="text-xl font-semibold text-[var(--primary-color-800)]">
+            <h2 className="text-xl font-semibold text-primary-800">
               Archivos recientes
             </h2>
             <Divider />
@@ -114,9 +114,7 @@ export function FileGrid({
         )}
         {folders.length > 0 && (
           <div className="flex flex-col gap-4 w-full">
-            <h2 className="text-xl font-semibold text-[var(--primary-color-800)]">
-              Carpetas
-            </h2>
+            <h2 className="text-xl font-semibold text-primary-800">Carpetas</h2>
             <Divider />
             <div
               className={
@@ -138,9 +136,7 @@ export function FileGrid({
         )}
         {files && files.length > 0 && (
           <div className="flex flex-col gap-4 w-full">
-            <h2 className="text-xl font-semibold text-[var(--primary-color-800)]">
-              Archivos
-            </h2>
+            <h2 className="text-xl font-semibold text-primary-800">Archivos</h2>
             <Divider />
             <div
               className={

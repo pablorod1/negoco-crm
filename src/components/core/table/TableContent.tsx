@@ -18,12 +18,18 @@ import { cn } from "@/lib/core/utils";
 import Image from "next/image";
 import LoadingComponent from "@/components/documentacion/LoadingComponent";
 import { User } from "@/lib/core/types";
+import { DataTablePagination } from "./DataTablePagination";
 
 interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
   loading: boolean;
   columns: ColumnDef<TData, TValue>[];
   userData: User;
+  rowsPerPage: number;
+  pageIndex: number;
+  setPageIndex: (pageIndex: number) => void;
+  setPageSize: (pageSize: number) => void;
+  total: number;
 }
 
 export function TableContent<TData, TValue>({
@@ -31,6 +37,11 @@ export function TableContent<TData, TValue>({
   loading,
   columns,
   userData,
+  rowsPerPage,
+  pageIndex,
+  setPageIndex,
+  setPageSize,
+  total,
 }: TableContentProps<TData, TValue>) {
   const rows = table.getRowModel().rows;
   const hasRows = rows && rows.length > 0;
@@ -136,51 +147,15 @@ export function TableContent<TData, TValue>({
         </Table>
       </div>
 
-      {/* Table Footer with Pagination */}
-      {hasRows && (
-        <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-100">
-          <div className="text-sm text-gray-500">
-            Mostrando <span className="font-medium">{rows.length}</span> de{" "}
-            <span className="font-medium">
-              {table.getFilteredRowModel().rows.length}
-            </span>{" "}
-            resultados
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Anterior
-            </button>
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: table.getPageCount() }, (_, i) => (
-                <button
-                  key={i}
-                  className={cn(
-                    "w-8 h-8 text-sm font-medium rounded-md flex items-center justify-center",
-                    table.getState().pagination.pageIndex === i
-                      ? "bg-blue-600 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  )}
-                  onClick={() => table.setPageIndex(i)}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-            <button
-              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Siguiente
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="py-6">
+        <DataTablePagination
+          rowsPerPage={rowsPerPage}
+          total={total}
+          pageIndex={pageIndex}
+          setPageIndex={setPageIndex}
+          setPageSize={setPageSize}
+        />
+      </div>
     </CardContent>
   );
 }

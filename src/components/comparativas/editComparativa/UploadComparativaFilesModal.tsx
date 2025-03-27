@@ -214,7 +214,7 @@ export default function UploadComparativaFilesModal({
       >
         <ModalContent>
           <ModalHeader>
-            <h2 className="text-2xl font-bold text-[var(--primary-color-800)]">
+            <h2 className="text-2xl font-bold text-primary-800">
               Subir Archivos
             </h2>
           </ModalHeader>
@@ -231,7 +231,7 @@ export default function UploadComparativaFilesModal({
                   <div className="space-y-2">
                     {status === "pending" ? (
                       <>
-                        <h2 className="text-lg font-semibold text-[var(--primary-color-800)]">
+                        <h2 className="text-lg font-semibold text-primary-800">
                           ¿Has realizado el estudio de esta comparativa?
                         </h2>
                         <p className="text-sm text-gray-600">
@@ -247,7 +247,7 @@ export default function UploadComparativaFilesModal({
                       </>
                     ) : (
                       <>
-                        <h2 className="text-lg font-semibold text-[var(--primary-color-800)]">
+                        <h2 className="text-lg font-semibold text-primary-800">
                           El estudio de esta comparativa ya ha sido realizado.
                         </h2>
                         <p className="text-sm text-gray-600">

@@ -240,7 +240,7 @@ export function YearlyTramitesBarChart({
         }`}
       >
         <div className="flex flex-col">
-          <CardTitle className="text-xl text-[var(--primary-color-800)] flex items-center gap-2">
+          <CardTitle className="text-xl text-primary-800 flex items-center gap-2">
             Resumen de Ventas 2025
             <Button
               variant="ghost"
@@ -263,7 +263,7 @@ export function YearlyTramitesBarChart({
         <div className="relative flex items-center p-1 bg-gray-100/50 backdrop-blur-md rounded-xl shadow-inner">
           {/* Indicador deslizante */}
           <div
-            className="absolute transition-all duration-300 ease-spring rounded-lg shadow-lg bg-gradient-to-br from-[var(--primary-color-600)] to-[var(--primary-color-800)] z-0"
+            className="absolute transition-all duration-300 ease-spring rounded-lg shadow-lg bg-gradient-to-br from-primary-600 to-primary-800 z-0"
             style={{
               left: chartView === "tramites" ? "4px" : "calc(50% + 2px)",
               width: "calc(50% - 6px)",

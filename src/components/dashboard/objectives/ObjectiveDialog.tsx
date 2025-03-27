@@ -182,10 +182,7 @@ export default function ObjectiveDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          size="icon"
-          className="bg-[var(--primary-color-600)] hover:bg-[var(--primary-color-700)]"
-        >
+        <Button size="icon" className="bg-primary-600 hover:bg-primary-700">
           <Plus className="h-4 w-4 " />
         </Button>
       </DialogTrigger>
@@ -263,7 +260,7 @@ export default function ObjectiveDialog({
         <div className="flex justify-end">
           <Button
             onClick={handleSaveObjetivo}
-            className="bg-[var(--primary-color-600)] hover:bg-[var(--primary-color-700)]"
+            className="bg-primary-600 hover:bg-primary-700"
           >
             Guardar
           </Button>

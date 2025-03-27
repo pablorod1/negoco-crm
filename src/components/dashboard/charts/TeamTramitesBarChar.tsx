@@ -167,7 +167,7 @@ export function TeamTramitesBarChart({
         }`}
       >
         <div className="grid flex-1 gap-1 text-center sm:text-left">
-          <CardTitle className="text-xl text-[var(--primary-color-800)]">
+          <CardTitle className="text-xl text-primary-800">
             Resumen de ventas de tu equipo
           </CardTitle>
           <CardDescription>{getDescription()}</CardDescription>
@@ -252,7 +252,7 @@ export function TeamTramitesBarChart({
                           src={comercial.image as string}
                           alt={comercial.name}
                         />
-                        <AvatarFallback className="rounded-lg bg-[var(--primary-color-100)] text-[var(--primary-color-800)]">
+                        <AvatarFallback className="rounded-lg bg-primary-100 text-primary-800">
                           {comercial.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>

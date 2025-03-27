@@ -90,7 +90,7 @@ export default function ColaboradoresPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center gap-4 mb-8 w-full">
-        <h1 className="text-4xl font-bold text-[var(--primary-color-500)] drop-shadow-sm">
+        <h1 className="text-4xl font-bold text-primary-500 drop-shadow-sm">
           Gestión de Colaboradores
         </h1>
         {isAdmin && <CreateUserModal onUserCreated={handleUserCreated} />}

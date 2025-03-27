@@ -48,25 +48,25 @@ export async function POST(req: NextRequest) {
 
     const offset = (page - 1) * rowsPerPage;
     let query = `SELECT 
-              c.id AS id,
-              c.creation_date AS creation_date,
-              c.client AS client,
-              c.comision_sales_person_fijo AS comision_sales_person_fijo,
-              c.comision_sales_person_indexado AS comision_sales_person_indexado,
-              c.comision_fijo AS comision_fijo,
-              c.comision_indexado AS comision_indexado,
-              c.status AS status,
-              c.service AS service,
-              c.tramite_id AS tramite_id,
-              CASE 
-                WHEN c.plan LIKE '%,%' THEN json_array('fijo', 'indexado')
-                ELSE c.plan  -- Devolver el valor directamente, no como array
-              END AS plan,
-              u.name AS user_name,
-              u.email AS user_email,
-              u.image AS user_image
-          FROM comparativas c
-          JOIN user u ON c.user_id = u.id
+                  c.id AS id,
+                  c.creation_date AS creation_date,
+                  c.client AS client,
+                  c.comision_sales_person_fijo AS comision_sales_person_fijo,
+                  c.comision_sales_person_indexado AS comision_sales_person_indexado,
+                  c.comision_fijo AS comision_fijo,
+                  c.comision_indexado AS comision_indexado,
+                  c.status AS status,
+                  c.service AS service,
+                  c.tramite_id AS tramite_id,
+                  CASE 
+        WHEN JSON_VALID(c.plan) THEN c.plan  -- Si el valor ya es un JSON válido, lo usamos tal cual
+        ELSE JSON_ARRAY(c.plan)  -- Si no es un JSON válido, lo convertimos en un array con el valor
+    END AS plan,
+                  u.name AS user_name,
+                  u.email AS user_email,
+                  u.image AS user_image
+              FROM comparativas c
+              JOIN user u ON c.user_id = u.id
           `;
 
     const filters: string[] = [];
@@ -123,9 +123,22 @@ export async function POST(req: NextRequest) {
 
     addArrayFilter("c.status", statusFilter);
 
+    let countQuery = `
+      SELECT COUNT(*) AS total
+      FROM comparativas c
+      JOIN user u ON c.user_id = u.id
+    `;
+
     if (filters.length > 0) {
       query += ` WHERE ` + filters.join(" AND ");
+      countQuery += ` WHERE ` + filters.join(" AND ");
     }
+
+    const countResult = await tursoClient.execute({
+      sql: countQuery,
+      args: params,
+    });
+    const total = countResult.rows[0]?.total || 0;
 
     query += ` GROUP BY c.id, c.creation_date, c.client, c.comision_sales_person_fijo, c.comision_sales_person_indexado, c.comision_fijo, c.comision_indexado, c.status, c.service, c.plan, u.name, u.email, u.image`;
 
@@ -166,6 +179,7 @@ export async function POST(req: NextRequest) {
           },
         };
       }),
+      total,
     });
   } catch (error) {
     console.error("Error al obtener comparativas:", error);

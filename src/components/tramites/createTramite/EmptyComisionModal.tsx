@@ -24,14 +24,9 @@ export default function EmptyComisionModal({
     <Modal isOpen={isOpen} onClose={onClose} size="xl" radius="sm">
       <ModalContent>
         <ModalHeader className="flex items-start gap-4">
-          <AlertTriangle
-            size={36}
-            className="text-[var(--danger-color)] mt-1"
-          />
+          <AlertTriangle size={36} className="text-danger mt-1" />
           <div className="flex flex-col h-full">
-            <span className="text-[var(--danger-color)] text-xl">
-              Comisiones sin asignar
-            </span>
+            <span className="text-danger text-xl">Comisiones sin asignar</span>
             <span className="flex text-gray-500 text-sm flex-1">
               Es necesario asignar comisiones antes de continuar.
             </span>

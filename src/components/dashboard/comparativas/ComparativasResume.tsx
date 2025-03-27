@@ -81,7 +81,7 @@ export function ComparativasResume({ loading, userData }: Props) {
       >
         <div className="flex items-start gap-4">
           <CardTitle>
-            <h3 className="text-xl font-semibold text-[var(--primary-color-800)]">
+            <h3 className="text-xl font-semibold text-primary-800">
               Comparativas
             </h3>
             <span className="text-sm text-gray-500 font-medium">

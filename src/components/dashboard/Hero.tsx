@@ -1,6 +1,13 @@
 "use client";
 
-import { Bell, CheckCircle, BarChart3, InfoIcon } from "lucide-react";
+import {
+  Bell,
+  CheckCircle,
+  BarChart3,
+  InfoIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
@@ -11,6 +18,7 @@ import { formatComission } from "@/lib/core/format";
 import { Tooltip } from "@heroui/tooltip";
 import AddTramiteDialog from "../tramites/createTramite/AddTramiteDialog";
 import AddComparativaDialog from "../comparativas/createComparativa/AddComparativaDialog";
+import { Chip } from "@heroui/chip";
 
 interface HeroDashboardProps {
   userData: User;
@@ -109,7 +117,7 @@ export default function HeroDashboard({
             title="Clientes"
             value={clients.value}
             description="Total de clientes registrados"
-            trend="up"
+            trend={clients.difference > 0 ? "up" : "down"}
             trendValue={clients.difference}
             delay={0.8}
           />
@@ -117,13 +125,15 @@ export default function HeroDashboard({
             title="Trámites Activos"
             value={activeTramites.value}
             description="Total de trámites activos"
-            trend="up"
+            trend={activeTramites.difference > 0 ? "up" : "down"}
             trendValue={activeTramites.difference}
             delay={0.9}
           />
           <StatCard
             title="Trámites Pendientes"
             value={pendingTramites.value}
+            trend={pendingTramites.difference > 0 ? "up" : "down"}
+            trendValue={pendingTramites.difference}
             description="Total de trámites pendientes"
             delay={1.0}
           />
@@ -180,16 +190,27 @@ function StatCard({
         </div>
         {trend && (
           <motion.div
-            className={`text-xs font-semibold px-4 py-1 rounded-full ${
-              trend === "up"
-                ? "bg-green-500 text-white "
-                : "bg-red-500/20 text-red-100"
-            }`}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: delay + 0.3, type: "spring", stiffness: 200 }}
           >
-            {trendValue}%
+            <Chip
+              size="sm"
+              color={trend === "up" ? "success" : "danger"}
+              variant="shadow"
+            >
+              <div className="flex items-center gap-2 text-white">
+                {trend === "up" ? (
+                  <TrendingUpIcon className="h-4 w-4" />
+                ) : (
+                  <TrendingDownIcon className="h-4 w-4" />
+                )}
+
+                <div className="text-xs font-semibold text-white">
+                  {trendValue?.toFixed(2)}%
+                </div>
+              </div>
+            </Chip>
           </motion.div>
         )}
         {chart && (

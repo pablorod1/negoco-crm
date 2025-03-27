@@ -45,7 +45,7 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
         radius="sm"
       >
         <ModalContent>
-          <ModalHeader className="text-[var(--primary-color-800)] text-xl pb-0">
+          <ModalHeader className="text-primary-800 text-xl pb-0">
             Crear nueva nota
           </ModalHeader>
           <ModalBody className="px-0">
@@ -58,7 +58,7 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
                 spellCheck={false}
                 value={note}
                 onChange={handleNoteChange}
-                className="relative w-full focus:outline-none focus:ring-0 focus:border-0 resize-none bg-[var(--primary-color-50)] p-4"
+                className="relative w-full focus:outline-none focus:ring-0 focus:border-0 resize-none bg-primary-50 p-4"
               ></textarea>
               <Progress
                 aria-label="Contador de caracteres"

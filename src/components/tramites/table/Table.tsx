@@ -5,7 +5,6 @@ import {
   type ColumnDef,
   useReactTable,
   getCoreRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   getFilteredRowModel,
   type SortingState,
@@ -14,9 +13,7 @@ import {
 import { User, type TramiteRow } from "@/lib/core/types";
 import { TableLayout } from "../../core/table/TableLayout";
 import { TableContent } from "../../core/table/TableContent";
-import { DataTablePagination } from "../../core/table/DataTablePagination";
 import { useTableFilters } from "@/lib/hooks/use-table-filters";
-import { useTablePagination } from "@/lib/hooks/use-table-pagination";
 import { useTramites } from "@/lib/contexts/TramitesContext";
 import TramitesHeader from "./TableHeader";
 import { useUser } from "@/lib/contexts/UserContext";
@@ -38,6 +35,9 @@ export function DataTable<TData, TValue>({
   const [tramites, setTramites] = useState<TramiteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pageSize, setPageSize] = useState(15);
+  const [pageIndex, setPageIndex] = useState(1);
+  const [totalTramites, setTotalTramites] = useState(0);
 
   const {
     filterValue,
@@ -55,8 +55,6 @@ export function DataTable<TData, TValue>({
     setDateRange,
   } = useTableFilters(id || "");
 
-  const { pagination, setPagination } = useTablePagination();
-
   const { setRefreshTramites } = useTramites();
 
   const fetchTramites = useCallback(async () => {
@@ -68,8 +66,8 @@ export function DataTable<TData, TValue>({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            page: pagination.pageIndex || 1,
-            rowsPerPage: pagination.pageSize,
+            page: pageIndex,
+            rowsPerPage: pageSize,
             user_id: userData.id,
             user_role: userData.role,
             filterValue,
@@ -80,13 +78,14 @@ export function DataTable<TData, TValue>({
             contractTypeFilter,
           }),
         });
-        const { success, data, error } = await res.json();
+        const { success, data, error, total } = await res.json();
         if (!success && error) {
           console.error("Error al obtener trámites:", error);
           return;
         }
 
         setTramites(data || []);
+        setTotalTramites(total || 0);
       } catch (error) {
         console.error("Error al obtener trámites:", error);
       } finally {
@@ -94,8 +93,8 @@ export function DataTable<TData, TValue>({
       }
     }
   }, [
-    pagination.pageIndex,
-    pagination.pageSize,
+    pageIndex,
+    pageSize,
     filterValue,
     companyFilter,
     statusFilter,
@@ -116,19 +115,16 @@ export function DataTable<TData, TValue>({
       data: tramites as TData[],
       columns,
       getCoreRowModel: getCoreRowModel(),
-      getPaginationRowModel: getPaginationRowModel(),
       getSortedRowModel: getSortedRowModel(),
       getFilteredRowModel: getFilteredRowModel(),
       onSortingChange: setSorting,
-      onPaginationChange: setPagination,
       onColumnVisibilityChange: setColumnVisibility,
       state: {
         sorting,
-        pagination,
         columnVisibility,
       },
     }),
-    [tramites, columns, sorting, pagination, setPagination, columnVisibility]
+    [tramites, columns, sorting, columnVisibility]
   );
 
   const table = useReactTable(tableConfig);
@@ -153,7 +149,7 @@ export function DataTable<TData, TValue>({
       setContractTypeFilter,
       resetFilters: handleResetFilters,
       userData: userData || ({} as User),
-      totalTramites: tramites.length,
+      totalTramites,
       dateRange,
       setDateRange,
     }),
@@ -171,9 +167,9 @@ export function DataTable<TData, TValue>({
       setContractTypeFilter,
       handleResetFilters,
       userData,
-      tramites,
       dateRange,
       setDateRange,
+      totalTramites,
     ]
   );
 
@@ -182,14 +178,16 @@ export function DataTable<TData, TValue>({
       <TramitesHeader table={table} {...toolbarProps} />
       <TableLayout>
         <TableContent
+          setPageSize={setPageSize}
+          total={totalTramites}
+          rowsPerPage={pageSize}
+          setPageIndex={setPageIndex}
+          pageIndex={pageIndex}
           table={table}
           loading={loading}
           columns={columns}
           userData={userData as User}
         />
-        <div className="mt-6">
-          <DataTablePagination table={table} />
-        </div>
       </TableLayout>
     </div>
   );
