@@ -272,6 +272,7 @@ export interface User {
   banned: boolean;
   image: string | null;
   organization: Organization;
+  company: string | null;
   role: string;
   super_id: string | null;
   should_reset_password: boolean;

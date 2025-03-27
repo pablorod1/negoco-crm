@@ -94,7 +94,11 @@ function UsersGridTable({
               height={32}
               className="rounded-full"
             />
-            <span>{info.row.original.organization.name}</span>
+            <span>
+              {info.row.original.company
+                ? info.row.original.company
+                : info.row.original.organization.name}
+            </span>
           </div>
         ) : (
           <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
@@ -228,7 +232,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
           {/* Header con color de fondo según el rol */}
           <div
             className={`h-3 w-full ${
-              user.role === "admin" ? "bg-purple-500" : "bg-blue-500"
+              user.role === "admin" ? "bg-secondary-500" : "bg-primary-500"
             }`}
           ></div>
 
@@ -245,7 +249,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
 
             <div className="flex flex-col items-center text-center mb-4">
               {/* Avatar con borde */}
-              <div className="mb-4 p-1 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full">
+              <div className="mb-4 p-1 bg-gradient-to-r from-primary-100 to-primary-100 rounded-full">
                 <AvatarComponent
                   userData={user}
                   className="size-20 !rounded-full shadow-sm border-2 border-white"
@@ -302,7 +306,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-700">
-                  {user.organization.name}
+                  {user.company ? user.company : user.organization.name}
                 </p>
               </div>
             </div>

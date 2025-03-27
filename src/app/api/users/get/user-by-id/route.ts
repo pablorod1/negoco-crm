@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
         super_id: row.super_id ? String(row.super_id) : null,
         should_reset_password: Boolean(row.should_reset_password),
         notifications: row.notifications as number,
+        company: row.company ? String(row.company) : null,
         organization: {
           id: row.org_id ? String(row.org_id) : "",
           name: row.org_name ? String(row.org_name) : "",

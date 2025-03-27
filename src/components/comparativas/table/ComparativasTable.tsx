@@ -175,7 +175,12 @@ export default function ComparativasTable<TData, TValue>({
     <div className="flex flex-col gap-4 bg-gray-50 w-full h-full">
       <ComparativasHeader table={table} {...toolbarProps} />
       <TableLayout>
-        <TableContent table={table} loading={loading} columns={columns} />
+        <TableContent
+          table={table}
+          loading={loading}
+          columns={columns}
+          userData={userData as User}
+        />
         <div className="mt-6">
           <DataTablePagination table={table} />
         </div>

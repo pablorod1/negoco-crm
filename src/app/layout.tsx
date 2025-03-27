@@ -26,9 +26,12 @@ export default async function RootLayout({
   const headersList = headers();
   const host = (await headersList).get("host") || "";
   const subdomain = host.split(".")[0]; // Extrae el subdominio
-  console.log(subdomain);
+
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/beenergy.png" />
+      </head>
       <body
         data-client={subdomain}
         className={`${inter.className} antialiased ${subdomain}`}

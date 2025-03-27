@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import AnimatedBackground from "@/components/auth/login/AnimatedBackground";
 import FeatureItem from "@/components/auth/login/FeatureItem";
 import { BarChart, CheckCircle, ClipboardList } from "lucide-react";
@@ -9,6 +10,18 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [data, setData] = useState<{ host: string; image: string } | null>(
+    null
+  );
+
+  useEffect(() => {
+    const host = window.location.hostname;
+    const image = host.includes("beenergy") ? "/beenergy.png" : "/logo.webp";
+    setData({ host, image });
+  }, []);
+
+  if (!data) return null; // Evita renderizar hasta que el host esté definido
+
   return (
     <div className="min-h-screen w-full flex items-stretch">
       {/* Sección de marca (lado izquierdo) */}
@@ -16,13 +29,13 @@ export default function AuthLayout({
         {/* Animated background */}
         <AnimatedBackground />
 
-        {/* Content container with z-index to appear above the canvas */}
+        {/* Content container */}
         <div className="relative z-10 flex flex-col justify-between h-full">
-          {/* Logo with animation */}
+          {/* Logo con animación */}
           <div className="overflow-hidden">
             <div className="animate-slideInFromTop">
               <Image
-                src="/logo.webp"
+                src={data.image}
                 alt="Negoco CRM"
                 width={180}
                 height={60}
@@ -32,7 +45,7 @@ export default function AuthLayout({
             </div>
           </div>
 
-          {/* Main content with animations */}
+          {/* Contenido principal */}
           <div className="text-white space-y-6 max-w-lg">
             <div className="overflow-hidden">
               <h1 className="text-4xl font-bold animate-fadeIn">
@@ -72,6 +85,7 @@ export default function AuthLayout({
           </div>
         </div>
       </div>
+
       {children}
     </div>
   );
