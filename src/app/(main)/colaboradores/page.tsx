@@ -7,6 +7,7 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { useUsers } from "@/lib/contexts/UsersContext"; // Importar el nuevo contexto
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleX } from "lucide-react";
+import CreateOrganizationModal from "@/components/colaboradores/CreateOrganizationModal";
 
 export default function ColaboradoresPage() {
   const { userData } = useUser();
@@ -93,7 +94,12 @@ export default function ColaboradoresPage() {
         <h1 className="text-4xl font-bold text-[var(--primary-color-500)] drop-shadow-sm">
           Gestión de Colaboradores
         </h1>
-        {isAdmin && <CreateUserModal onUserCreated={handleUserCreated} />}
+        {isAdmin && (
+          <div className="flex items-center gap-4">
+            <CreateUserModal onUserCreated={handleUserCreated} />
+            <CreateOrganizationModal />
+          </div>
+        )}
       </div>
       <UsersGridTable users={state.users} loading={state.loading} />
     </div>
