@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
               c.email AS client_email,
               c.id AS client_id,
               COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
-              COALESCE(GROUP_CONCAT(DISTINCT con.company), '') AS companies,
+              COALESCE(GROUP_CONCAT(DISTINCT con.new_company), '') AS companies,
               COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
               COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
               COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    addArrayFilter("con.company", companyFilter);
+    addArrayFilter("con.new_company", companyFilter);
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
           client_email: row.client_email as string,
           client_id: row.client_id as string,
           CUPS: parseArray(row.CUPS as string),
-          company: parseArray(row.companies as string),
+          new_company: parseArray(row.companies as string),
           plan: parseArray(row.plans as string),
           contract_type: parseArray(row.contract_types as string),
           consumption: parseNumericArray(row.consumptions as string),

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { inter } from "@/fonts/fonts";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Negoco Cloud",
@@ -22,9 +23,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = headers();
+  const host = (await headersList).get("host") || "";
+  const subdomain = host.split(".")[0]; // Extrae el subdominio
+  console.log(subdomain);
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>{children}</body>
+      <body
+        data-client={subdomain}
+        className={`${inter.className} antialiased ${subdomain}`}
+      >
+        {children}
+      </body>
     </html>
   );
 }

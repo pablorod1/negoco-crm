@@ -59,7 +59,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     refreshUserData();
   }, [refreshUserData]);
 
-  if (loading || !userData) {
+  if (!userData) {
+    <div className="min-h-screen flex flex-col gap-4 items-center justify-center">
+      <Spinner
+        variant="gradient"
+        color="primary"
+        size="lg"
+        className="relative"
+      />
+      <div className="flex flex-col items-center text-center">
+        <span className="text-xl font-bold">Cargando...</span>
+        <span className="mt-2 text-gray-600 text-sm">
+          Espera mientras cargamos todos los datos
+        </span>
+      </div>
+    </div>;
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen flex flex-col gap-4 items-center justify-center">
         <Spinner
@@ -68,17 +85,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           size="lg"
           className="relative"
         >
-          <Image
-            src={
-              userData
-                ? (userData.organization.logo as string)
-                : "/logo_sin_letras.webp"
-            }
-            alt="Logo"
-            width={48}
-            height={48}
-            className="absolute -top-2 left-0 right-0 bottom-0 m-auto"
-          />
+          {userData && (
+            <Image
+              src={userData.organization.logo as string}
+              alt="Logo"
+              width={48}
+              height={48}
+              className="absolute -top-2 left-0 right-0 bottom-0 m-auto"
+            />
+          )}
         </Spinner>
         <div className="flex flex-col items-center text-center">
           <span className="text-xl font-bold">Cargando...</span>

@@ -15,18 +15,22 @@ import {
   type Table as TableType,
 } from "@tanstack/react-table";
 import { cn } from "@/lib/core/utils";
-import { FileX2, Loader2 } from "lucide-react";
+import Image from "next/image";
+import LoadingComponent from "@/components/documentacion/LoadingComponent";
+import { User } from "@/lib/core/types";
 
 interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
   loading: boolean;
   columns: ColumnDef<TData, TValue>[];
+  userData: User;
 }
 
 export function TableContent<TData, TValue>({
   table,
   loading,
   columns,
+  userData,
 }: TableContentProps<TData, TValue>) {
   const rows = table.getRowModel().rows;
   const hasRows = rows && rows.length > 0;
@@ -94,26 +98,9 @@ export function TableContent<TData, TValue>({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="h-[400px] text-center"
+                    className="h-[300px] text-center"
                   >
-                    <div className="flex flex-col items-center justify-center h-full space-y-4">
-                      <div className="relative w-16 h-16">
-                        <Loader2 className="w-16 h-16 text-blue-200 animate-spin" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                            <Loader2 className="w-6 h-6 text-white animate-spin" />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-center space-y-1">
-                        <h3 className="text-lg font-medium text-gray-900">
-                          Cargando datos
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          Estamos preparando la información para ti...
-                        </p>
-                      </div>
-                    </div>
+                    <LoadingComponent userData={userData} />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -124,7 +111,12 @@ export function TableContent<TData, TValue>({
                   >
                     <div className="flex flex-col items-center justify-center h-full space-y-4">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                        <FileX2 className="w-8 h-8 text-gray-400" />
+                        <Image
+                          src="/icons/tramite.webp"
+                          alt="Empty"
+                          width={64}
+                          height={64}
+                        />
                       </div>
                       <div className="text-center space-y-1">
                         <h3 className="text-lg font-medium text-gray-900">

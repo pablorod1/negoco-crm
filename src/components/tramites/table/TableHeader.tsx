@@ -116,7 +116,7 @@ export default function TramitesHeader<TData>({
           <div className="flex items-center gap-3">
             <h1
               className={cn(
-                "font-bold text-3xl bg-gradient-to-r from-blue-700 to-blue-500 text-transparent bg-clip-text",
+                "font-bold text-3xl bg-gradient-to-r from-primary-700 to-primary-500 text-transparent bg-clip-text",
                 scrolled ? "text-2xl" : "text-3xl"
               )}
             >
@@ -125,7 +125,7 @@ export default function TramitesHeader<TData>({
 
             <Badge
               variant="outline"
-              className="bg-blue-50 text-blue-700 border-blue-200 px-2.5 py-0.5"
+              className="bg-primary-50 text-primary-700 border-primary-200 px-2.5 py-0.5"
             >
               {totalTramites} Total
             </Badge>

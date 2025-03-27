@@ -36,7 +36,7 @@ export function DataTable<TData, TValue>({
   const { userData } = useUser();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [tramites, setTramites] = useState<TramiteRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   const {
@@ -60,7 +60,6 @@ export function DataTable<TData, TValue>({
   const { setRefreshTramites } = useTramites();
 
   const fetchTramites = useCallback(async () => {
-    setLoading(true);
     if (userData) {
       try {
         const res = await fetch(`/api/tramites/get/paginated-tramites`, {
@@ -182,7 +181,12 @@ export function DataTable<TData, TValue>({
     <div className="flex flex-col gap-4 bg-gray-50 w-full h-full">
       <TramitesHeader table={table} {...toolbarProps} />
       <TableLayout>
-        <TableContent table={table} loading={loading} columns={columns} />
+        <TableContent
+          table={table}
+          loading={loading}
+          columns={columns}
+          userData={userData as User}
+        />
         <div className="mt-6">
           <DataTablePagination table={table} />
         </div>

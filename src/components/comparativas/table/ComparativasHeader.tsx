@@ -89,7 +89,7 @@ const ComparativasHeader = <TData,>({
           <div className="flex items-center gap-3">
             <h1
               className={cn(
-                "font-bold text-3xl bg-gradient-to-r from-blue-700 to-blue-500 text-transparent bg-clip-text",
+                "font-bold text-3xl bg-gradient-to-r from-primary-700 to-primary-500 text-transparent bg-clip-text",
                 scrolled ? "text-2xl" : "text-3xl"
               )}
             >
@@ -98,7 +98,7 @@ const ComparativasHeader = <TData,>({
 
             <Badge
               variant="outline"
-              className="bg-blue-50 text-blue-700 border-blue-200 px-2.5 py-0.5"
+              className="bg-primary-50 text-primary-700 border-primary-200 px-2.5 py-0.5"
             >
               {totalComparativas} Total
             </Badge>
@@ -136,7 +136,8 @@ const ComparativasHeader = <TData,>({
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
                   "h-10 w-10 bg-gray-50 border-gray-200",
-                  showFilters && "bg-blue-50 border-blue-200 text-blue-700"
+                  showFilters &&
+                    "bg-primary-50 border-primary-200 text-primary-700"
                 )}
               >
                 <Filter className="h-4 w-4" />

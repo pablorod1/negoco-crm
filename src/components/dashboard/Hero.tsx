@@ -32,7 +32,7 @@ export default function HeroDashboard({
 }: HeroDashboardProps) {
   return (
     <MotionCard
-      className="border-none shadow-sm bg-gradient-to-r from-blue-500 to-blue-400 overflow-hidden"
+      className="border-none shadow-sm bg-gradient-to-r from-primary-500 to-primary-400 overflow-hidden"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}

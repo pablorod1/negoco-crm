@@ -21,7 +21,10 @@ export default function MainLayout({
   }, []);
 
   return (
-    <main data-client={activeOrganization} className="px-2">
+    <main
+      data-client={activeOrganization}
+      className={`${activeOrganization} px-2`}
+    >
       <Providers>
         <Toaster position="bottom-right" />
         <SidebarComponent />

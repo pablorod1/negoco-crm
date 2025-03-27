@@ -34,6 +34,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        primary: {
+          DEFAULT: "var(--primary-color-500)",
+          foreground: "#fff",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
 
@@ -52,6 +56,32 @@ export default {
   plugins: [
     heroui({
       themes: {
+        beenergy: {
+          colors: {
+            primary: {
+              50: "#fffdeb",
+              100: "#fdf7c8",
+              200: "#faee8d",
+              300: "#f8e151",
+              400: "#f7d43a",
+              500: "#f0b210",
+              600: "#d48a0b",
+              700: "#b0630d",
+              800: "#8f4d11",
+              900: "#763f11",
+              DEFAULT: "#f0b210",
+              foreground: "#fff",
+            },
+            danger: {
+              DEFAULT: "#dc3545",
+              foreground: "#fff",
+            },
+            default: {
+              DEFAULT: "#ffffff",
+              foreground: "#d48a0b",
+            },
+          },
+        },
         light: {
           colors: {
             primary: {
@@ -65,7 +95,7 @@ export default {
               700: "#1d64d8",
               800: "#1e55af",
               900: "#1e478a",
-              DEFAULT: "#3b82f6",
+              DEFAULT: "#f0b210",
               foreground: "#fff",
             },
             danger: {

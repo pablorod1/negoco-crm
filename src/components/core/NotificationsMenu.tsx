@@ -127,7 +127,7 @@ export default function NotificationsMenu() {
       <PopoverContent className="w-[500px] p-0">
         <Card className="border-0 shadow-none">
           <CardHeader className="border-b px-4 py-3">
-            <CardTitle className="flex items-center gap-2 text-xl font-medium text-[var(--primary-color-800)]">
+            <CardTitle className="flex items-center gap-2 text-xl font-medium text-primary-800">
               <Bell size={20} />
               Notificaciones
             </CardTitle>
