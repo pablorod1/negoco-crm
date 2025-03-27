@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth/auth-client";
 import { ROLES } from "@/lib/core/const";
 import { useUser } from "@/lib/contexts/UserContext";
 import { showCustomToast } from "../core/CustomToast";
-import { UserRoundCheck, UserRoundX } from "lucide-react";
+import { Info, UserRoundCheck, UserRoundX } from "lucide-react";
 
 interface FormData {
   email: string;
@@ -16,6 +16,7 @@ interface FormData {
   name: string;
   role: string;
   super_id: string;
+  company: string | null;
 }
 
 const initialFormState: FormData = {
@@ -24,6 +25,7 @@ const initialFormState: FormData = {
   name: "",
   role: "2",
   super_id: "",
+  company: null,
 };
 
 interface Comercial {
@@ -91,6 +93,51 @@ export default function CreateUserForm({
         role: formData.role,
       }),
     });
+  };
+
+  const addExternalCompany = async ({
+    id,
+    company,
+  }: {
+    id: string;
+    company: string;
+  }) => {
+    try {
+      const res = await fetch("/api/users/add/company", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id,
+          company,
+        }),
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
+        showCustomToast({
+          title: "Error al asignar empresa",
+          message: error,
+          icon: UserRoundX,
+          iconColor: "red",
+          iconSize: 24,
+          duration: 3000,
+        });
+        return;
+      }
+    } catch (error) {
+      console.error("Error adding company to user:", error);
+      showCustomToast({
+        title: "Error al asignar empresa",
+        message: "Inténtalo de nuevo más tarde",
+        icon: UserRoundX,
+        iconColor: "red",
+        iconSize: 24,
+        duration: 3000,
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -168,6 +215,13 @@ export default function CreateUserForm({
             return;
           }
         }
+
+        if (formData.company) {
+          await addExternalCompany({
+            id: data.user.id,
+            company: formData.company,
+          });
+        }
         showCustomToast({
           title: "Nuevo usuario creado",
           message: `El usuario ${
@@ -227,6 +281,27 @@ export default function CreateUserForm({
         variant="bordered"
         radius="sm"
       />
+
+      <div className="flex flex-col gap-2">
+        <Input
+          id="company"
+          label="Empresa"
+          name="company"
+          type="text"
+          value={formData.company || ""}
+          onChange={handleChange}
+          className="w-full"
+          color="primary"
+          variant="bordered"
+          radius="sm"
+        />
+        <div className="flex items-start gap-1 text-xs text-muted-foreground">
+          <Info size={12} className="mt-0.5" />
+          <p>
+            Dejar en blanco si el usuario no pertenece a ninguna empresa externa
+          </p>
+        </div>
+      </div>
 
       <Input
         id="password"
