@@ -33,7 +33,7 @@ export default function UploadComparativaFilesModal({
   comparativa,
 }: Props) {
   const { isOpen, onClose, onOpen } = useDisclosure();
-  const [estudioRealizado, setEstudioRealizado] = useState(true);
+  const [estudioRealizado, setEstudioRealizado] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [formDataComissions, setFormDataComissions] = useState<
@@ -264,13 +264,10 @@ export default function UploadComparativaFilesModal({
                   </div>
                   <Checkbox
                     color="primary"
-                    size="sm"
                     onValueChange={setEstudioRealizado}
                     isSelected={estudioRealizado}
                   >
-                    {estudioRealizado
-                      ? "Estudio Realizado"
-                      : "Pendiente de Estudio"}
+                    Estudio Realizado
                   </Checkbox>
                   {estudioRealizado && (
                     <>

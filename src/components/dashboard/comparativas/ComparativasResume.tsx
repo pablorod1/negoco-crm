@@ -84,7 +84,7 @@ export function ComparativasResume({ loading, userData }: Props) {
             <h3 className="text-xl font-semibold text-primary-800">
               Comparativas
             </h3>
-            <span className="text-sm text-gray-500 font-medium">
+            <span className="text-xs text-primary-400 font-medium">
               Listado de comparativas
             </span>
           </CardTitle>

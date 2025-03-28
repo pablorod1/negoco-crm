@@ -46,6 +46,7 @@ export default function EditComparativaPage() {
 
   const isAdmin = userData?.role === "admin";
   const isBackOffice = userData?.role === "1";
+  const isComercial = userData?.role === "2";
 
   const fetchComparativa = useCallback(async () => {
     if (!userData?.id || !userData?.role) return;
@@ -170,7 +171,9 @@ export default function EditComparativaPage() {
   }
 
   const isEditable =
-    comparativa.status !== "processed" && comparativa.status !== "rejected";
+    !isComercial &&
+    comparativa.status !== "processed" &&
+    comparativa.status !== "rejected";
 
   return (
     <div className="mx-12 py-6">
@@ -196,18 +199,18 @@ export default function EditComparativaPage() {
           )}
           {isEditable && (
             <>
-              {comparativa.status !== "completed" ? (
+              {comparativa.status !== "completed" && !isComercial ? (
                 <UpdateComparativaStatusModal
                   comparativa={comparativa}
                   onUpdate={fetchComparativa}
                   userData={userData as User}
                 />
-              ) : (
+              ) : comparativa.status === "completed" ? (
                 <ComparativaToTramite
                   comparativa={comparativa}
                   onComparativaUpdated={fetchComparativa}
                 />
-              )}
+              ) : null}
             </>
           )}
         </div>
@@ -340,7 +343,8 @@ export default function EditComparativaPage() {
           />
         </CardContent>
         <CardFooter>
-          {isEditable && (
+          {(isEditable ||
+            (isComercial && comparativa.status === "pending")) && (
             <UploadComparativaFilesModal
               onUpload={fetchComparativa}
               status={comparativa.status}

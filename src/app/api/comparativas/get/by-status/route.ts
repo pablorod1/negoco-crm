@@ -34,8 +34,15 @@ export async function POST(req: NextRequest) {
         u.image as user_image
       FROM comparativas c
       LEFT JOIN user u ON c.user_id = u.id
-      WHERE status = ?
+      
     `;
+
+    if (status === "completed") {
+      // Get Completed Comparativas from today
+      query += `WHERE c.status = ? AND stfrtime(c.creation_date) = stfrtime('now')`;
+    } else {
+      query += `WHERE c.status = ?`;
+    }
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
