@@ -88,7 +88,6 @@ export default function TramitesHeader<TData>({
 
   // Handle scroll and fetch data
   useEffect(() => {
-    console.log("filterValue", filterValue);
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };

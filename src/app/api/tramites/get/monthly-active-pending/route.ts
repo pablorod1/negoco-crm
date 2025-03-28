@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
     }
 
     query += ` ORDER BY date(activation_date)`;
-    console.log("Query:", query);
 
     const rs = await tursoClient.execute({ sql: query, args: params });
 

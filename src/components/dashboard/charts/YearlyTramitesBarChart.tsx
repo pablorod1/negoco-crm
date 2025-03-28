@@ -138,7 +138,6 @@ export function YearlyTramitesBarChart({
       );
 
       const { data, success, error } = await res.json();
-      console.log("Data:", data);
       if (!success && error) {
         console.error("Error al obtener trámites:", error);
         return;

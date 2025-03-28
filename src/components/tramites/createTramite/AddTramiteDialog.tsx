@@ -113,7 +113,6 @@ export default function AddTramiteDialog({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      console.log("client", client);
       const formData = new FormData();
 
       // Append files first
@@ -133,7 +132,6 @@ export default function AddTramiteDialog({
       if (contracts.length > 0) {
         formData.append("contracts", JSON.stringify(contracts));
       }
-      console.log("formData", formData);
       const res = await fetch("/api/tramites/add", {
         method: "POST",
         body: formData, // Directly use FormData

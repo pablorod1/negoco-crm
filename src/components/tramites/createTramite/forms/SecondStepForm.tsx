@@ -141,7 +141,6 @@ export default function SecondStepForm({
       }));
       onSecondSubmitSuccess();
     }
-    console.log("client after second submit", client);
   };
 
   return (

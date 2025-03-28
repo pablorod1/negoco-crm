@@ -96,7 +96,6 @@ export const addTramite = async (
   tramite: TramiteDB,
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string }> => {
-  console.log("tramite on addTramite()", tramite);
   try {
     // Preparamos la consulta SQL
     const query = `

@@ -41,7 +41,6 @@ export default function ContractSection({
   const checkChanges = (contract: ContractDB) => {
     return JSON.stringify(contract) !== JSON.stringify(selectedContract);
   };
-  console.log("contracts", contracts);
 
   const checkEmptyPots = (contract: ContractDB) => {
     return (

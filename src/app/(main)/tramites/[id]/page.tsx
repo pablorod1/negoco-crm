@@ -60,7 +60,6 @@ export default function TramiteDetails() {
         });
         return;
       }
-      console.log("data", data);
       if (data) {
         setFormData({
           ...data,

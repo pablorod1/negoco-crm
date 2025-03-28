@@ -62,10 +62,7 @@ export default function CreateBajaForm({
       formData.append("client", JSON.stringify(client));
       formData.append("contracts", JSON.stringify(contracts));
       formData.append("userData", JSON.stringify(userData));
-      console.log("tramite", tramite);
-      console.log("client", client);
-      console.log("contracts", contracts);
-      console.log("userData", userData);
+
       const result = await fetch(`/api/tramites/add`, {
         method: "POST",
         body: formData,

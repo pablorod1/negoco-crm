@@ -118,8 +118,6 @@ export async function POST(req: NextRequest) {
       Number(current.pending),
       Number(current.prev_pending)
     );
-    console.log("current", current);
-    console.log("activeDifference", activeDifference);
 
     return NextResponse.json({
       success: true,
