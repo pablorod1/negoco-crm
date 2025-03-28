@@ -252,7 +252,7 @@ export function ComparativasRatio({
                 />
               </Button>
             </div>
-            <CardDescription className="text-xs text-gray-400 flex items-center gap-1">
+            <CardDescription className="text-xs text-primary-400 flex items-center gap-1">
               <span>Mostrando resultados de</span>
               <span className="!capitalize font-medium text-primary-700">
                 {displayMonth}

@@ -149,9 +149,11 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
                 />
               </Button>
             </div>
-            <CardDescription className="text-xs text-muted-foreground">
+            <CardDescription className="text-xs text-primary-400">
               Mostrando objetivos de{" "}
-              <strong className="text-primary-800">{currentMonth}</strong>
+              <strong className="capitalize text-primary-800">
+                {currentMonth}
+              </strong>
             </CardDescription>
           </div>
         </div>

@@ -240,10 +240,17 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
             {/* Botón de eliminar, solo visible para administradores */}
             {isAdmin && (
               <div className="absolute top-0 right-1">
-                <DeleteUserConfirmationModal
-                  userName={user.name}
-                  user_id={user.id}
-                />
+                {user.banned ? (
+                  <UnbanUserConfirmationModal
+                    userName={user.name}
+                    user_id={user.id}
+                  />
+                ) : (
+                  <DeleteUserConfirmationModal
+                    userName={user.name}
+                    user_id={user.id}
+                  />
+                )}
               </div>
             )}
 
