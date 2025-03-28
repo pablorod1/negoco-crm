@@ -80,6 +80,7 @@ const direccionItems = [
   },
 ];
 
+const DEFAULT_LOGO_COLLAPSED = "/logo_sin_letras.webp";
 const DEFAULT_LOGO = "/logo.webp";
 
 export function SidebarComponent() {
@@ -87,7 +88,7 @@ export function SidebarComponent() {
   const { userData } = useUser();
   const { open } = useSidebar();
   // Obtener el logo de forma segura
-  const organizationLogo = userData?.organization?.logo || DEFAULT_LOGO;
+  const organizationLogo = userData?.organization?.logo;
 
   const getItemsByRole = () => {
     if (userData) {
@@ -105,23 +106,51 @@ export function SidebarComponent() {
     <Sidebar variant="floating" id="sidebar-menu" collapsible="icon">
       <SidebarHeader className="py-4">
         <Link href="/">
-          <div className="flex items-center w-auto gap-2">
-            <Image
-              src={organizationLogo}
-              alt="Logo"
-              width={60}
-              height={60}
-              priority
-              className="w-full h-auto max-w-8"
-            />
-            <h2
-              className={`block overflow-hidden text-3xl font-bold uppercase text-primary-400 animate-size ${
-                open ? "w-auto" : "w-0"
+          {organizationLogo ? (
+            <div className="flex items-center w-auto gap-2">
+              <Image
+                src={organizationLogo}
+                alt="Logo"
+                width={60}
+                height={60}
+                priority
+                className="w-full h-auto max-w-8"
+              />
+              <h2
+                className={`block overflow-hidden text-3xl font-bold uppercase text-primary-400 animate-size ${
+                  open ? "w-auto" : "w-0"
+                }`}
+              >
+                {userData?.organization?.name}
+              </h2>
+            </div>
+          ) : (
+            <div
+              className={`relative transition-all duration-200 ${
+                open ? "aspect-[633/200]" : "aspect-[512/488]"
               }`}
             >
-              {userData?.organization?.name}
-            </h2>
-          </div>
+              {!open ? (
+                <Image
+                  src={DEFAULT_LOGO_COLLAPSED}
+                  alt="Logo"
+                  width={60}
+                  height={60}
+                  priority
+                  className="w-auto h-auto"
+                />
+              ) : (
+                <Image
+                  src={DEFAULT_LOGO}
+                  alt="Logo"
+                  width={200}
+                  height={200}
+                  priority
+                  className="w-auto h-auto"
+                />
+              )}
+            </div>
+          )}
         </Link>
       </SidebarHeader>
       <SidebarContent>

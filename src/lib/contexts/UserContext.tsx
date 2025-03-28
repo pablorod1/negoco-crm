@@ -87,7 +87,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         >
           {userData && (
             <Image
-              src={userData.organization.logo as string}
+              src={
+                (userData.organization.logo as string) ||
+                "/logo_sin_letras.webp"
+              }
               alt="Logo"
               width={48}
               height={48}

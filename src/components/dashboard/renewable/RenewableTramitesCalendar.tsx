@@ -167,7 +167,7 @@ export default function RenewableTramitesCalendar({
               {filteredTramites.length > 0 ? (
                 <RenewableTramitesAnimatedList items={filteredTramites} />
               ) : (
-                <div className="w-full h-full flex justify-center items-center flex-col space-y-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition-all duration-300 hover:shadow-sm">
+                <div className="w-full h-full flex justify-center items-center flex-col space-y-4 p-6 text-center transition-all duration-300">
                   <div className="relative">
                     <Image
                       src="/icons/renovacion.webp"
@@ -178,13 +178,13 @@ export default function RenewableTramitesCalendar({
                     />
                   </div>
 
-                  <div className="space-y-3">
+                  <div className=" text-center">
                     {mostRecentRenewableDate ? (
-                      <p className="text-gray-600 text-base font-medium">
+                      <h2 className="text-base font-bold text-gray-600">
                         No hay trámites renovables para esta fecha
-                      </p>
+                      </h2>
                     ) : (
-                      <p className="text-gray-600 text-base font-medium">
+                      <p className="text-base font-bold text-gray-600">
                         No hay trámites renovables en este momento
                       </p>
                     )}
@@ -210,7 +210,7 @@ export default function RenewableTramitesCalendar({
               )}
             </div>
           ) : (
-            <p className="text-gray-500 italic">
+            <p className="text-gray-500 italic text-sm">
               Selecciona una fecha para ver los trámites
             </p>
           )}

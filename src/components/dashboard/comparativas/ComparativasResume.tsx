@@ -64,8 +64,8 @@ export function ComparativasResume({ loading, userData }: Props) {
       }`}
     >
       {/* Decorative background elements */}
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl"></div>
-      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl"></div>
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl -z-10"></div>
+      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl -z-10"></div>
 
       <div
         className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300 ${
@@ -120,10 +120,10 @@ export function ComparativasResume({ loading, userData }: Props) {
         ) : comparativas.length > 0 ? (
           <ComparativasAnimatedList items={comparativas || []} />
         ) : (
-          <div className="flex flex-col items-center justify-center text-center w-full h-full bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-8 space-y-6 transition-all duration-300 hover:shadow-md">
+          <div className="flex flex-col items-center justify-center text-center w-full h-full  rounded-xl p-4 space-y-6 transition-all duration-300 ">
             <div className="relative">
               <Image
-                src="/icons/comparativas2.webp"
+                src="/icons/comparativas3.webp"
                 alt="No hay comparativas"
                 width={80}
                 height={80}
@@ -131,21 +131,21 @@ export function ComparativasResume({ loading, userData }: Props) {
               />
             </div>
             <div className="space-y-2">
-              <p className="text-xl text-gray-700 font-semibold">
-                Sin Comparativas
-                <span className="text-gray-900 font-bold ml-2">
-                  {status === "pending" ? "Pendientes" : "Finalizadas"}
+              <div>
+                <p className="text-xl text-gray-700 font-bold">
+                  No hay comparativas
+                </p>
+                <span className="text-sm text-gray-500 font-medium italic">
+                  &quot;
+                  {status === "pending"
+                    ? "Pendientes de Estudio"
+                    : "Completadas"}
+                  &quot;
                 </span>
-              </p>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
-                {status === "pending"
-                  ? "Aún no se han generado comparativas para este estudio."
-                  : "No se encontraron comparativas para este estudio específico."}
-              </p>
+              </div>
             </div>
-            <div className="flex space-x-4 opacity-60 hover:opacity-100 transition-opacity">
-              <AddComparativaDialog />
-            </div>
+
+            <AddComparativaDialog />
           </div>
         )}
       </CardContent>

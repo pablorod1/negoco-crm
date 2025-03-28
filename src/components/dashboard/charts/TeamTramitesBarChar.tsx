@@ -86,7 +86,6 @@ export function TeamTramitesBarChart({
           }),
         });
         const { data, success, error } = await res.json();
-
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
         }
@@ -270,7 +269,7 @@ export function TeamTramitesBarChart({
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        {comerciales && comerciales.length > 0 ? (
+        {chartData.length > 0 && comerciales.length > 0 ? (
           <ChartContainer
             config={chartConfig}
             className="h-full max-h-[300px] w-full py-4"
@@ -309,6 +308,19 @@ export function TeamTramitesBarChart({
               <ChartLegend content={<ChartLegendContent />} />
             </BarChart>
           </ChartContainer>
+        ) : chartData.length === 0 && comerciales.length > 0 ? (
+          <div className="flex flex-col gap-2 items-center justify-center h-80 w-full">
+            <Users className="h-12 w-12 text-gray-500" />
+
+            <div className="flex flex-col items-center ">
+              <p className="text-lg text-gray-500">
+                Tu equipo todavía no tiene trámites activos
+              </p>
+              <p className="text-sm text-gray-400">
+                Aquí se mostrarán las ventas de tu equipo
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col gap-2 items-center justify-center h-80 w-full">
             <Users className="h-12 w-12 text-gray-500" />

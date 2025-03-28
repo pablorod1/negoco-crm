@@ -33,11 +33,11 @@ export const DireccionView = ({ userData, loading }: Props) => {
       <div className="row-start-9 row-span-2  lg:row-start-5 2xl:row-start-3 2xl:col-span-1 2xl:col-start-2">
         <ComparativasResume userData={userData} loading={loading} />
       </div>
-      <div className="row-start-11  row-span-2 lg:col-span-2 lg:row-start-7 2xl:row-start-5 2xl:col-span-4">
-        <TeamTramitesBarChart loading={loading} userData={userData} />
-      </div>
-      <div className="row-start-13  row-span-2 lg:col-span-2 lg:row-start-9 2xl:row-start-3  2xl:col-start-3">
+      <div className="row-start-11 row-span-2 lg:col-span-2 lg:row-start-7 2xl:row-start-3 2xl:col-start-3">
         <PersonalTramitesChart userData={userData} loading={loading} />
+      </div>
+      <div className="row-start-13  row-span-2 lg:col-span-2 lg:row-start-9 2xl:row-start-5 2xl:col-span-4">
+        <TeamTramitesBarChart loading={loading} userData={userData} />
       </div>
     </div>
   );

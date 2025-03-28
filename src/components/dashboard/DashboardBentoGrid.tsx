@@ -10,6 +10,9 @@ import {
 import { Spinner } from "@heroui/spinner";
 import toast from "react-hot-toast";
 import Hero from "./Hero";
+import Image from "next/image";
+import SpinnerComponent from "../core/SpinnerComponent";
+import { User } from "@/lib/core/types";
 
 export interface DashboardCardValue {
   value: number;
@@ -146,12 +149,28 @@ export default function DashboardBentoGrid() {
   if (!userData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Spinner
-          label="Cargando..."
-          color="primary"
-          size="lg"
-          className="text-xl"
-        />
+        <div className="min-h-screen flex flex-col gap-4 items-center justify-center">
+          <Spinner
+            variant="gradient"
+            color="primary"
+            size="lg"
+            className="relative"
+          >
+            <Image
+              src="/logo_sin_letras.webp"
+              alt="Logo"
+              width={48}
+              height={48}
+              className="absolute -top-2 left-0 right-0 bottom-0 m-auto"
+            />
+          </Spinner>
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl font-bold">Cargando...</span>
+            <span className="mt-2 text-gray-600 text-sm">
+              Espera mientras cargamos todos los datos
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -167,14 +186,9 @@ export default function DashboardBentoGrid() {
 
   return (
     <>
-      {!userData || loading ? (
+      {loading ? (
         <div className="min-h-screen flex items-center justify-center">
-          <Spinner
-            label="Cargando..."
-            color="primary"
-            size="lg"
-            className="text-xl"
-          />
+          <SpinnerComponent userData={userData as User} />
         </div>
       ) : (
         <section className="flex flex-col gap-4 mx-2 py-8">

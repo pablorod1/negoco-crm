@@ -7,7 +7,9 @@ export default function SpinnerComponent({ userData }: { userData: User }) {
     <Spinner variant="gradient" color="primary" size="lg" className="relative">
       {userData && (
         <Image
-          src={userData.organization.logo as string}
+          src={
+            (userData.organization.logo as string) || "/logo_sin_letras.webp"
+          }
           alt="Logo"
           width={32}
           height={32}
