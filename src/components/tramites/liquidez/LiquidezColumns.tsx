@@ -4,10 +4,11 @@ import { formatDate } from "@/lib/core/format";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
 import { Chip } from "@heroui/chip";
-import { TramiteRow } from "@/lib/core/types";
+import { Status, TramiteRow } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import LiquidezDropdown from "./LiquidezDropdown";
 import { Button } from "@heroui/button";
+import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
@@ -149,13 +150,22 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     },
   },
   {
+    id: "Estado",
+    accessorKey: "status",
+    header: "Estado",
+    cell: ({ row }) => {
+      return getStatusBadge(row.original.status as Status);
+    },
+  },
+  {
     id: "Liquidez",
     accessorKey: "liquidez_status",
     header: ({}) => {
-      return <span className="flex justify-end text-end">Liquidez</span>;
+      return <span className="flex justify-end text-end">Estado Liquidez</span>;
     },
     cell: ({ row }) => {
-      if (!row.original.liquidez_status) return "---";
+      if (!row.original.liquidez_status)
+        return <div className="flex justify-end">---</div>;
       return (
         <div className="flex justify-end">
           <Chip

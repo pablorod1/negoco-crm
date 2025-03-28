@@ -32,6 +32,7 @@ import { showCustomToast } from "@/components/core/CustomToast";
 import { Textarea } from "@heroui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateTramiteUpdatedNotification } from "@/lib/core/notifications.helpers";
+import LoadingStateModal from "@/components/core/LoadingStateModal";
 
 interface Props {
   tramite: TramiteVM;
@@ -73,13 +74,17 @@ export default function UpdateTramiteStatusModal({
   const isBorrador = formData.status === "Borrador";
   const isBaja = formData.status === "Baja";
   const isActivo = formData.status === "Activo";
+  const [loading, setLoading] = useState(false);
 
   // Estado para controlar si podemos actualizar
   const [canUpdate, setCanUpdate] = useState(isTramitable || isBorrador);
 
   // Verificar si necesitamos confirmación de comisiones
   const needsConfirmation =
-    formData.status !== "Tramitable" && formData.status !== "Borrador";
+    tramite.status === "Tramitable" &&
+    formData.status !== "Borrador" &&
+    formData.status !== "Tramitable" &&
+    formData.status !== "Baja";
 
   useEffect(() => {
     // Si es comercial o el estado es Tramitable o Borrador, siempre se puede actualizar
@@ -158,6 +163,7 @@ export default function UpdateTramiteStatusModal({
   };
 
   const handleSubmit = async () => {
+    setLoading(true);
     try {
       if (isActivo && checkEmptyComission()) {
         showCustomToast({
@@ -291,6 +297,8 @@ export default function UpdateTramiteStatusModal({
         iconSize: 24,
         icon: CircleX,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -319,6 +327,7 @@ export default function UpdateTramiteStatusModal({
 
         <ModalBody>
           {/* Información del trámite */}
+          {loading && <LoadingStateModal userData={userData as User} />}
           <div className="grid grid-cols-2 gap-4 bg-primary-50 p-3 rounded-md text-sm">
             <div className="flex items-center space-x-2">
               <CalendarIcon className="h-4 w-4 text-primary-500" />
@@ -341,6 +350,7 @@ export default function UpdateTramiteStatusModal({
                       : PLAIN_STATUS_TYPES
                   }
                   selectedKey={formData.status}
+                  disabled={tramite.status === "Activo"}
                   isRequired
                 />
                 {(isActivo || tramite.liquidez_status) && !isComercial && (

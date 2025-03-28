@@ -19,18 +19,33 @@ import {
 import React from "react";
 import {
   Building,
+  CalendarOff,
+  ChevronDown,
+  ChevronUp,
   Coins,
+  Filter,
   ReceiptEuro,
   RefreshCw,
   TrendingDown,
   TrendingUp,
   UserIcon,
+  XIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { User } from "@/lib/core/types";
+import { TimeRange, User } from "@/lib/core/types";
 import { formatComission } from "@/lib/core/format";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DateRangePicker } from "../DateRangePicker";
+import { DateRange } from "react-day-picker";
 
 const chartConfig: ChartConfig = {
   tramites: { label: "Trámites" },
@@ -56,10 +71,18 @@ const comercialChartConfig: ChartConfig = {
   },
 };
 
+interface ChartData {
+  field: string;
+  active: number;
+  baja: number;
+  comision: number;
+  comision_sales_person: number;
+}
+
 // Generar un array con los 12 meses en español, asegurando que siempre hay datos.
-const createEmptyData = () =>
+const createEmptyData = (): ChartData[] =>
   Array.from({ length: 12 }, (_, i) => ({
-    month: new Date(2025, i).toLocaleString("es-ES", { month: "long" }),
+    field: new Date(2025, i).toLocaleString("es-ES", { month: "long" }),
     active: 0,
     baja: 0,
     comision: 0,
@@ -73,12 +96,18 @@ export function YearlyTramitesBarChart({
   loading: boolean;
   userData: User;
 }) {
-  const [chartData, setChartData] = React.useState(createEmptyData);
+  const [chartData, setChartData] =
+    React.useState<ChartData[]>(createEmptyData);
+  const [timeRange, setTimeRange] = React.useState<TimeRange>("year");
+  const [dateRange, setDateRange] = React.useState<DateRange>();
   const [chartView, setChartView] = React.useState<"tramites" | "comision">(
     "comision"
   );
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
+  const [showFilters, setShowFilters] = React.useState(false);
+
   const isComercial = userData && userData.role === "2";
+  const isBeenergy = userData.organization.name === "Beenergy";
 
   React.useEffect(() => {
     // Añadir la clase personalizada para la animación de resorte
@@ -99,12 +128,17 @@ export function YearlyTramitesBarChart({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ id: userData.id, role: userData.role }),
+          body: JSON.stringify({
+            id: userData.id,
+            role: userData.role,
+            time_range: timeRange,
+            date_range: dateRange,
+          }),
         }
       );
 
       const { data, success, error } = await res.json();
-
+      console.log("Data:", data);
       if (!success && error) {
         console.error("Error al obtener trámites:", error);
         return;
@@ -117,21 +151,19 @@ export function YearlyTramitesBarChart({
         setIsRefreshing(false);
       }, 300);
     }
-  }, [userData]);
+  }, [userData, timeRange, dateRange]);
 
   React.useEffect(() => {
     fetchTramites();
   }, [fetchTramites]);
 
-  const getActiveTramitesPercentageChange = (
-    data: { month: string; active: number }[]
-  ) => {
+  const getActiveTramitesPercentageChange = (data: ChartData[]) => {
     const currentMonthIndex = new Date().getMonth(); // Índice del mes actual (0 = Enero, 11 = Diciembre)
     const previousMonthIndex =
       currentMonthIndex === 0 ? 11 : currentMonthIndex - 1; // Mes anterior (manejo de diciembre a enero)
 
     const currentMonthData = data.find((item) =>
-      item.month
+      item.field
         .toLowerCase()
         .startsWith(
           new Date(2025, currentMonthIndex)
@@ -141,7 +173,7 @@ export function YearlyTramitesBarChart({
     );
 
     const previousMonthData = data.find((item) =>
-      item.month
+      item.field
         .toLowerCase()
         .startsWith(
           new Date(2025, previousMonthIndex)
@@ -159,6 +191,23 @@ export function YearlyTramitesBarChart({
     return Math.round(
       ((currentActive - previousActive) / previousActive) * 100
     );
+  };
+
+  const handleTimeRangeChange = (value: string) => {
+    setDateRange(undefined);
+    setTimeRange(
+      value as "year" | "current_month" | "current_week" | "last_week" | "90d"
+    );
+  };
+
+  const handleDateRangeChange = (dateRange: DateRange | undefined) => {
+    setTimeRange(undefined);
+    setDateRange(dateRange);
+  };
+
+  const resetDateRange = () => {
+    setDateRange(undefined);
+    setTimeRange("year");
   };
 
   const formatDifferenceText = (percentageChange: number) => {
@@ -222,8 +271,13 @@ export function YearlyTramitesBarChart({
       <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl"></div>
 
       {/* Decorative chart pattern */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-92 opacity-5 pointer-events-none">
-        <Image src="/logo.webp" alt="Negoco Cloud" width={256} height={256} />
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-92 opacity-15 pointer-events-none">
+        <Image
+          src={isBeenergy ? "/beenergy.png" : "/logo.webp"}
+          alt="Negoco Cloud"
+          width={256}
+          height={256}
+        />
       </div>
 
       <div
@@ -240,24 +294,41 @@ export function YearlyTramitesBarChart({
         }`}
       >
         <div className="flex flex-col">
-          <CardTitle className="text-xl text-primary-800 flex items-center gap-2">
-            Resumen de Ventas 2025
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-xl text-primary-800 flex items-center gap-2">
+              Resumen Global de Ventas
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full"
+                onClick={refreshData}
+                disabled={loading || isRefreshing}
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 text-primary-600 ${
+                    isRefreshing ? "animate-spin" : ""
+                  }`}
+                />
+              </Button>
+            </CardTitle>
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-full"
-              onClick={refreshData}
-              disabled={loading || isRefreshing}
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 text-xs rounded-full bg-gray-50 border-gray-200"
+              onClick={() => setShowFilters(!showFilters)}
             >
-              <RefreshCw
-                className={`h-3.5 w-3.5 text-primary-600 ${
-                  isRefreshing ? "animate-spin" : ""
-                }`}
-              />
+              <Filter className="h-3 w-3" />
+              Filtros
+              {showFilters ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
             </Button>
-          </CardTitle>
-          <CardDescription className="text-xs text-gray-400">
-            Resumen global de ventas en 2025
+          </div>
+          <CardDescription className="text-xs text-primary-400">
+            Resumen de las ventas de{" "}
+            <strong>{userData.organization.name}</strong> en 2025
           </CardDescription>
         </div>
         <div className="relative flex items-center p-1 bg-gray-100/50 backdrop-blur-md rounded-xl shadow-inner">
@@ -333,6 +404,83 @@ export function YearlyTramitesBarChart({
           </button>
         </div>
       </CardHeader>
+      {showFilters && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -100 }}
+          className="px-6 pb-2 border-b absolute top-0 left-0 w-full bg-white z-10"
+        >
+          <div className="flex flex-wrap justify-between items-start gap-3 py-3">
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex flex-col">
+                <Label className="text-xs font-medium text-gray-500">
+                  Periodo:
+                </Label>
+                <Select
+                  disabled={dateRange !== undefined}
+                  value={timeRange}
+                  onValueChange={handleTimeRangeChange}
+                >
+                  <SelectTrigger
+                    className="w-[160px] text-sm rounded-md min-h-10 h-auto shadow"
+                    aria-label="Select a value"
+                  >
+                    <SelectValue placeholder="Este mes" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="year" className="rounded-lg">
+                      Este año
+                    </SelectItem>
+                    <SelectItem value="90d" className="rounded-lg">
+                      Últimos 90 días
+                    </SelectItem>
+                    <SelectItem value="current_month" className="rounded-lg">
+                      Este mes
+                    </SelectItem>
+                    <SelectItem value="current_week" className="rounded-lg">
+                      Esta semana
+                    </SelectItem>
+                    <SelectItem value="last_week" className="rounded-lg">
+                      La semana pasada
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col">
+                <Label className="text-xs font-medium text-gray-500">
+                  Rango personalizado:
+                </Label>
+                <div className="flex items-center gap-2">
+                  {dateRange && (
+                    <Button
+                      onClick={resetDateRange}
+                      className="bg-transparent h-7 w-7"
+                    >
+                      <CalendarOff
+                        width={16}
+                        height={16}
+                        stroke="var(--danger-color)"
+                      />
+                    </Button>
+                  )}
+                  <DateRangePicker
+                    date={dateRange}
+                    setDateRange={handleDateRangeChange}
+                  />
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowFilters(false)}
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       <CardContent
         className={`transition-opacity duration-300 relative z-10 ${
@@ -355,7 +503,7 @@ export function YearlyTramitesBarChart({
                 <BarChart data={chartData}>
                   <CartesianGrid vertical={false} />
                   <XAxis
-                    dataKey="month"
+                    dataKey="field"
                     tickLine={true}
                     tickSize={5}
                     tickMargin={15}

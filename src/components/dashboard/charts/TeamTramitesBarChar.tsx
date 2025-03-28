@@ -165,11 +165,13 @@ export function TeamTramitesBarChart({
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <div className="grid flex-1 gap-1 text-center sm:text-left">
+        <div className="gap-1">
           <CardTitle className="text-xl text-primary-800">
             Resumen de ventas de tu equipo
           </CardTitle>
-          <CardDescription>{getDescription()}</CardDescription>
+          <CardDescription className="text-xs text-primary-400">
+            {getDescription()}
+          </CardDescription>
         </div>
         <div className="flex flex-row-reverse items-center  justify-end gap-2">
           <div className="flex flex-col">

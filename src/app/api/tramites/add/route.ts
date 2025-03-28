@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("client on api", client);
     const tursoClient = getTursoClient(req);
 
     if (!tursoClient) {

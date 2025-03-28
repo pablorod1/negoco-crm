@@ -79,10 +79,10 @@ export default function RenewableTramitesCalendar({
   const isOneMonthBeforeRenovationDate = (date: Date) => {
     return renewableDates.some((tramite) => {
       const renovationDate = new Date(tramite.renovationDate);
-      const oneMonthBefore = new Date(renovationDate);
-      oneMonthBefore.setMonth(renovationDate.getMonth() - 1);
+      const twoMonthBefore = new Date(renovationDate);
+      twoMonthBefore.setMonth(renovationDate.getMonth() - 2);
 
-      return date >= oneMonthBefore && date <= renovationDate;
+      return date >= twoMonthBefore && date <= renovationDate;
     });
   };
 
@@ -98,10 +98,10 @@ export default function RenewableTramitesCalendar({
   const filteredTramites = date
     ? renewableDates.filter((tramite) => {
         const renovationDate = new Date(tramite.renovationDate);
-        const oneMonthBefore = new Date(renovationDate);
-        oneMonthBefore.setMonth(renovationDate.getMonth() - 1);
+        const twoMonthBefore = new Date(renovationDate);
+        twoMonthBefore.setMonth(renovationDate.getMonth() - 2);
 
-        return date >= oneMonthBefore && date <= renovationDate;
+        return date >= twoMonthBefore && date <= renovationDate;
       })
     : [];
 
@@ -131,19 +131,14 @@ export default function RenewableTramitesCalendar({
         }`}
       >
         <div className="flex items-start gap-4">
-          <CardTitle>
+          <CardTitle className="flex flex-col">
             <h3 className="text-base 2xl:text-xl font-semibold text-primary-800">
               Trámites renovables
             </h3>
-            {date && (
-              <span className="text-sm text-gray-500 font-medium">
-                {date.toLocaleDateString("es-ES", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </span>
-            )}
+
+            <span className="text-xs text-primary-400 font-medium">
+              Listado de trámites renovables
+            </span>
           </CardTitle>
         </div>
         <DatePickerDemo

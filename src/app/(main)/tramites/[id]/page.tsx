@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { InfoIcon, RefreshCcw, CircleX } from "lucide-react";
+import { CircleX } from "lucide-react";
 import {
   EditTramiteFormData,
   createEmptyTramiteForm,
@@ -13,8 +13,6 @@ import {
 } from "@/lib/core/types";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useParams } from "next/navigation";
-import { getStatusBadge } from "@/lib/hooks/use-status-badge";
-import { Tooltip } from "@heroui/tooltip";
 import { TramiteNotesSection } from "@/components/tramites/editTramite/notes/NotesTabContent";
 import ContractSection from "@/components/tramites/editTramite/contract/ContractSection";
 import { showCustomToast } from "@/components/core/CustomToast";
@@ -25,6 +23,7 @@ import TramiteComercialSection from "@/components/tramites/editTramite/comercial
 import TramiteComissionsSection from "@/components/tramites/editTramite/comissions/TramiteComissionsSection";
 import TramiteStatusSection from "@/components/tramites/editTramite/TramiteStatusSection";
 import SpinnerComponent from "@/components/core/SpinnerComponent";
+import LiquidezStatusSection from "@/components/tramites/editTramite/liquidez/LiquidezStatusSection";
 
 export default function TramiteDetails() {
   const { userData } = useUser();
@@ -85,8 +84,7 @@ export default function TramiteDetails() {
     userData &&
     (userData.role === "admin" ||
       userData.role === "1" ||
-      (userData.role === "2" &&
-        (tramite.status === "Borrador" || tramite.status === "Tramitable"))) &&
+      (userData.role === "2" && tramite.status === "Borrador")) &&
     tramite.status !== "Activo";
 
   const isRenewable =
@@ -159,40 +157,12 @@ export default function TramiteDetails() {
 
                     <Separator />
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-primary-400">
-                          Estado de Liquidez
-                        </p>
-                        <Tooltip
-                          radius="sm"
-                          content={
-                            <div className="max-w-sm flex items-start gap-2">
-                              <RefreshCcw className="size-6 text-primary-800" />
-                              <div className="flex flex-col gap-1">
-                                <h3 className=" font-semibold text-primary-800">
-                                  Actualización Automática
-                                </h3>
-                                <p className="text-primary-500">
-                                  El estado de liquidez cambiará automáticamente
-                                  a <strong>Pendiente de Cobro</strong> cuando
-                                  el estado del trámite cambie a{" "}
-                                  <strong>Activo</strong>.
-                                </p>
-                              </div>
-                            </div>
-                          }
-                        >
-                          <InfoIcon className="size-3 text-gray-600" />
-                        </Tooltip>
-                      </div>
-                      {!isComercial ||
-                      tramite.liquidez_status === "Pagado al Comercial" ? (
-                        <>{getStatusBadge(tramite.liquidez_status)}</>
-                      ) : (
-                        <span>---</span>
-                      )}
-                    </div>
+                    <LiquidezStatusSection
+                      tramite={tramite}
+                      isComercial={isComercial as boolean}
+                      userData={userData as User}
+                      onUpdate={fetchTramite}
+                    />
                   </>
                 )}
               </CardContent>

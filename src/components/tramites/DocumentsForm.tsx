@@ -1,3 +1,4 @@
+import { useUser } from "@/lib/contexts/UserContext";
 import { XIcon, UploadCloud, FileIcon } from "lucide-react";
 import Image from "next/image";
 import { useCallback } from "react";
@@ -12,12 +13,15 @@ export default function DocumentsForm({
   uploadedFiles,
   setUploadedFiles,
 }: DocumentsSectionProps) {
+  const { userData } = useUser();
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       setUploadedFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
     },
     [setUploadedFiles]
   );
+
+  const isBeenergy = userData && userData.organization.name === "Beenergy";
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -46,7 +50,7 @@ export default function DocumentsForm({
       >
         <input {...getInputProps()} />
         <Image
-          src={"/logo.webp"}
+          src={isBeenergy ? "/beenergy.png" : "/logo.webp"}
           width={500}
           height={500}
           alt="Beenergy Logo"

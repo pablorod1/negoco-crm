@@ -223,6 +223,7 @@ export default function AddTramiteDialog({
 
         if (onComparativaUpdated) {
           onComparativaUpdated();
+          onClose();
         }
       }
 
@@ -297,12 +298,12 @@ export default function AddTramiteDialog({
           className="shadow-md"
         >
           <PlusCircle size={20} />
-          <span>Crear Trámite</span>
+          <span>Nuevo Trámite</span>
         </Button>
       ) : (
         <div onClick={handleOpen} className="flex flex-col items-center gap-2">
           <FilePlus2 size={24} />
-          <span className="text-nowrap">Crear trámite</span>
+          <span className="text-nowrap">Nuevo trámite</span>
         </div>
       )}
 

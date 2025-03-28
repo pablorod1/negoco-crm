@@ -485,6 +485,8 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     header: "Liquidez",
     cell: ({ row }) => {
       if (!row.original.liquidez_status) return "---";
+      if (row.original.liquidez_status === "Cobrado por Comercializadora")
+        return getStatusBadge("Pendiente de Cobro");
       return getStatusBadge(row.original.liquidez_status as LiquidezStatus);
     },
   },

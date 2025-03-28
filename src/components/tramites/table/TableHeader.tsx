@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import CreateBajaModal from "../createBaja/CreateBajaModal";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -197,7 +198,12 @@ export default function TramitesHeader<TData>({
             )}
 
             {/* Create Button */}
-            {title === "Trámites" && <AddTramiteDialog />}
+            {title === "Trámites" && (
+              <div className="flex items-center gap-2">
+                <AddTramiteDialog />
+                <CreateBajaModal />
+              </div>
+            )}
           </div>
         </div>
 
@@ -245,7 +251,14 @@ export default function TramitesHeader<TData>({
                 <Label>Estado</Label>
 
                 <MultiSelect
-                  options={STATUS_TYPES}
+                  options={
+                    title === "Trámites"
+                      ? STATUS_TYPES
+                      : [
+                          { label: "Activo", value: "Activo" },
+                          { label: "Baja", value: "Baja" },
+                        ]
+                  }
                   onValueChange={(value) => setStatusFilter(value as Status[])}
                   value={statusFilter}
                   placeholder="Seleccionar estado"
@@ -266,17 +279,19 @@ export default function TramitesHeader<TData>({
                   variant="primary"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Contrato</Label>
-                <MultiSelect
-                  options={CONTRACT_TYPES}
-                  onValueChange={setContractTypeFilter}
-                  value={contractTypeFilter}
-                  placeholder="Seleccionar tipo de contrato"
-                  maxCount={1}
-                  variant="primary"
-                />
-              </div>
+              {title === "Trámites" && (
+                <div className="space-y-2">
+                  <Label>Contrato</Label>
+                  <MultiSelect
+                    options={CONTRACT_TYPES}
+                    onValueChange={setContractTypeFilter}
+                    value={contractTypeFilter}
+                    placeholder="Seleccionar tipo de contrato"
+                    maxCount={1}
+                    variant="primary"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Compañía</Label>
@@ -294,13 +309,6 @@ export default function TramitesHeader<TData>({
                 <DateRangePicker date={dateRange} setDateRange={setDateRange} />
               </div>
             </div>
-
-            {/* <div className="flex justify-end mt-4">
-              <FilterButton
-                onPress={resetFilters}
-                disabled={activeFilters.length === 0}
-              />
-            </div> */}
           </motion.div>
         )}
       </motion.div>
