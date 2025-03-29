@@ -1,149 +1,34 @@
 "use client";
-import { Chip } from "@heroui/chip";
+import { Badge } from "@/components/ui/badge";
 import { ComparativaStatus, LiquidezStatus, Status } from "../core/types";
 
 const COMPARATIVA_STATUS_BADGES = {
-  pending: (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="warning"
-      className="bg-warning-50"
-    >
-      Pendiente de Estudio
-    </Chip>
-  ),
-  completed: (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="success"
-      className="bg-success-50"
-    >
-      Estudio Realizado
-    </Chip>
-  ),
-  processed: (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="primary"
-      className="bg-primary-50"
-    >
-      Comparativa Tramitada
-    </Chip>
-  ),
-  rejected: (
-    <Chip variant="bordered" size="sm" color="danger" className="bg-danger-50">
-      Rechazada
-    </Chip>
-  ),
-  default: (
-    <Chip variant="bordered" size="sm">
-      Desconocido
-    </Chip>
-  ),
+  pending: <Badge variant="warning">Pendiente de Estudio</Badge>,
+  completed: <Badge variant="pending">Estudio Realizado</Badge>,
+  processed: <Badge variant="success">Completada</Badge>,
+  rejected: <Badge variant="danger">Rechazada</Badge>,
+  default: <Badge>Desconocido</Badge>,
 };
 
 const LIQUIDEZ_STATUS_BADGES = {
-  "Pendiente de Cobro": (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="warning"
-      className="bg-warning-50"
-    >
-      Pendiente de Cobro
-    </Chip>
-  ),
+  "Pendiente de Cobro": <Badge variant="warning">Pendiente de Cobro</Badge>,
   "Cobrado por Comercializadora": (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="success"
-      className="bg-success-50"
-    >
-      Cobrado por Comercializadora
-    </Chip>
+    <Badge variant="pending">Cobrado por Comercializadora</Badge>
   ),
-  "Pagado al Comercial": (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="primary"
-      className="bg-primary-50"
-    >
-      Pagado al Comercial
-    </Chip>
-  ),
-  default: (
-    <Chip variant="bordered" size="sm">
-      Sin Asignar
-    </Chip>
-  ),
+  "Pagado al Comercial": <Badge variant="success">Pagado al Comercial</Badge>,
+  default: <Badge>Sin Asignar</Badge>,
 };
 
 const STATUS_BADGES = {
-  Borrador: (
-    <Chip variant="bordered" size="sm" color="danger" className="bg-danger-50">
-      Borrador
-    </Chip>
-  ),
-  Tramitable: (
-    <Chip variant="bordered" size="sm" color="default">
-      Tramitable
-    </Chip>
-  ),
-  Verificado: (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="secondary"
-      className="bg-secondary-50"
-    >
-      Verificado
-    </Chip>
-  ),
-  "Pendiente de Firma": (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="warning"
-      className="bg-warning-50"
-    >
-      Pendiente de Firma
-    </Chip>
-  ),
-  Procesando: (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="primary"
-      className="bg-primary-50"
-    >
-      Procesando
-    </Chip>
-  ),
-  Activo: (
-    <Chip
-      variant="bordered"
-      size="sm"
-      color="success"
-      className="bg-success-50"
-    >
-      Activo
-    </Chip>
-  ),
-  Baja: (
-    <Chip variant="bordered" size="sm" color="danger" className="bg-danger-50">
-      Baja
-    </Chip>
-  ),
-  default: (
-    <Chip variant="bordered" size="sm">
-      Sin Asignar
-    </Chip>
-  ),
+  Borrador: <Badge variant="danger">Borrador</Badge>,
+  Tramitable: <Badge variant="warning">Tramitable</Badge>,
+  Verificado: <Badge variant="secondary">Verificado</Badge>,
+  "Pendiente de Firma": <Badge variant="info">Pendiente de Firma</Badge>,
+  Procesando: <Badge variant="pending">Procesando</Badge>,
+  Activo: <Badge variant="success">Activo</Badge>,
+  Baja: <Badge variant="danger">Baja</Badge>,
+  Scoring: <Badge variant="danger">Scoring</Badge>,
+  default: <Badge>Sin Asignar</Badge>,
 };
 
 export const getStatusBadge = (
