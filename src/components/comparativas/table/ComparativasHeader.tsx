@@ -146,7 +146,7 @@ const ComparativasHeader = <TData,>({
 
             {/* Column Selector */}
 
-            <ColumnSelector table={table} />
+            <ColumnSelector table={table} tableId="comparativas" />
 
             {/* Export Button */}
 

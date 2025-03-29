@@ -280,6 +280,7 @@ export interface User {
   super_id: string | null;
   should_reset_password: boolean;
   notifications?: number;
+  last_login?: string | null;
 }
 
 export interface Organization {

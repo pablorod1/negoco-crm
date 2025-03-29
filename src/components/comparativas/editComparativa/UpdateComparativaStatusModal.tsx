@@ -208,7 +208,7 @@ export default function UpdateComparativaStatusModal({
                 >
                   <SelectItem key="pending">Pendiente de Estudio</SelectItem>
                   <SelectItem key="completed">Estudio Realizado</SelectItem>
-                  <SelectItem key="rejected">Comparativa Rechazada</SelectItem>
+                  <SelectItem key="rejected">Rechazada</SelectItem>
                 </Select>
               </div>
               {newStatus === "completed" && (

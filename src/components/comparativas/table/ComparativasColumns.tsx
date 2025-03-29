@@ -1,6 +1,7 @@
 import {
   ComparativaPlan,
   ComparativaRow,
+  ComparativaStatus,
   ComparativaVM,
   User,
 } from "@/lib/core/types";
@@ -9,7 +10,6 @@ import { Button } from "@heroui/button";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon } from "lucide-react";
 import { formatDate } from "@/lib/core/format";
 import AvatarComponent from "@/components/core/AvatarComponent";
-import { Chip } from "@heroui/chip";
 import React from "react";
 import ComparativaDropdown from "./ComparativaDropdown";
 import {
@@ -18,6 +18,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 export const createSubcomercialComparativasColumns = (
   handlePlanChange: (rowId: string, plan: ComparativaPlan) => void,
@@ -120,33 +121,7 @@ export const createSubcomercialComparativasColumns = (
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.status === "pending"
-              ? "warning"
-              : row.original.status === "completed"
-              ? "success"
-              : row.original.status === "processed"
-              ? "primary"
-              : row.original.status === "rejected"
-              ? "danger"
-              : "default"
-          }
-        >
-          {row.original.status === "pending"
-            ? "Pendiente de Estudio"
-            : row.original.status === "completed"
-            ? "Estudio Realizado"
-            : row.original.status === "processed"
-            ? "Comparativa Tramitada"
-            : row.original.status === "rejected"
-            ? "Comparativa Rechazada"
-            : row.original.status}
-        </Chip>
-      );
+      return getStatusBadge(row.original.status as ComparativaStatus);
     },
   },
   {
@@ -375,33 +350,7 @@ export const createComercialComparativasColumns = (
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.status === "pending"
-              ? "warning"
-              : row.original.status === "completed"
-              ? "success"
-              : row.original.status === "processed"
-              ? "primary"
-              : row.original.status === "rejected"
-              ? "danger"
-              : "default"
-          }
-        >
-          {row.original.status === "pending"
-            ? "Pendiente de Estudio"
-            : row.original.status === "completed"
-            ? "Estudio Realizado"
-            : row.original.status === "processed"
-            ? "Comparativa Tramitada"
-            : row.original.status === "rejected"
-            ? "Comparativa Rechazada"
-            : row.original.status}
-        </Chip>
-      );
+      return getStatusBadge(row.original.status as ComparativaStatus);
     },
   },
   {
@@ -555,33 +504,7 @@ export const createComparativasColumns = (
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return (
-        <Chip
-          size="sm"
-          variant="flat"
-          color={
-            row.original.status === "pending"
-              ? "warning"
-              : row.original.status === "completed"
-              ? "success"
-              : row.original.status === "processed"
-              ? "primary"
-              : row.original.status === "rejected"
-              ? "danger"
-              : "default"
-          }
-        >
-          {row.original.status === "pending"
-            ? "Pendiente de Estudio"
-            : row.original.status === "completed"
-            ? "Estudio Realizado"
-            : row.original.status === "processed"
-            ? "Comparativa Tramitada"
-            : row.original.status === "rejected"
-            ? "Comparativa Rechazada"
-            : row.original.status}
-        </Chip>
-      );
+      return getStatusBadge(row.original.status as ComparativaStatus);
     },
   },
   {

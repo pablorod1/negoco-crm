@@ -116,7 +116,7 @@ export const generateComparativaNotificationMessage = (
           : status === "completed"
           ? "Estudio Realizado"
           : status === "processed"
-          ? "Comparativa Tramitada"
+          ? "Completada"
           : "Desconocido"
       }`
     );
