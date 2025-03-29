@@ -7,6 +7,7 @@ import {
   InfoIcon,
   TrendingUpIcon,
   TrendingDownIcon,
+  RefreshCcw,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import { Tooltip } from "@heroui/tooltip";
 import AddTramiteDialog from "../tramites/createTramite/AddTramiteDialog";
 import AddComparativaDialog from "../comparativas/createComparativa/AddComparativaDialog";
 import { Chip } from "@heroui/chip";
+import { Button } from "@heroui/button";
 
 interface HeroDashboardProps {
   userData: User;
@@ -26,6 +28,7 @@ interface HeroDashboardProps {
   activeTramites: DashboardCardValue;
   pendingTramites: DashboardCardValue;
   totalBalance: number;
+  refreshData: () => void;
 }
 
 const MotionCard = motion(Card);
@@ -37,6 +40,7 @@ export default function HeroDashboard({
   activeTramites,
   pendingTramites,
   totalBalance,
+  refreshData,
 }: HeroDashboardProps) {
   return (
     <MotionCard
@@ -106,6 +110,9 @@ export default function HeroDashboard({
           </div>
 
           <div className="flex items-center gap-3 mt-4 md:mt-0">
+            <Button isIconOnly onPress={refreshData} variant="light">
+              <RefreshCcw size={16} className="text-white" />
+            </Button>
             <AddTramiteDialog color="default" />
 
             <AddComparativaDialog color="default" />

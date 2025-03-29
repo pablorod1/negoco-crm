@@ -13,6 +13,8 @@ import Hero from "./Hero";
 import Image from "next/image";
 import SpinnerComponent from "../core/SpinnerComponent";
 import { User } from "@/lib/core/types";
+import { showCustomToast } from "../core/CustomToast";
+import { CheckCircle, CircleX } from "lucide-react";
 
 export interface DashboardCardValue {
   value: number;
@@ -145,6 +147,28 @@ export default function DashboardBentoGrid() {
     fetchData();
   }, [fetchData, userData]);
 
+  const refreshData = async () => {
+    try {
+      await fetchData();
+      showCustomToast({
+        title: "Datos actualizados",
+        message: "Los datos se han actualizado correctamente",
+        icon: CheckCircle,
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+      });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      showCustomToast({
+        title: "Error al actualizar los datos",
+        message: "No se pudieron actualizar los datos",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+    }
+  };
+
   if (!userData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -181,6 +205,7 @@ export default function DashboardBentoGrid() {
     activeTramites: dashboardData.activeTramites,
     pendingTramites: dashboardData.pendingTramites,
     totalBalance: dashboardData.totalBalance,
+    refreshData,
   };
 
   return (
