@@ -68,7 +68,7 @@ const Notification = (comparativa: ComparativaVM) => {
                   : comparativa.status === "completed"
                   ? "Estudio Realizado"
                   : comparativa.status === "processed"
-                  ? "Comparativa Tramitada"
+                  ? "Completada"
                   : "Desconocido"}
               </span>
             </Chip>
