@@ -173,7 +173,10 @@ export default function TramitesHeader<TData>({
 
             {/* Column Selector */}
 
-            <ColumnSelector table={table} />
+            <ColumnSelector
+              table={table}
+              tableId={title === "Trámites" ? "tramites" : "liquidez"}
+            />
 
             {/* Export Button */}
 

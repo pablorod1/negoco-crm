@@ -52,10 +52,11 @@ export default function LiquidezStatusSection({
             <Button onPress={onOpen}>Actualizar Estado de Liquidez</Button>
           )}
         </div>
-        {!isComercial || tramite.liquidez_status === "Pagado al Comercial" ? (
-          <>{getStatusBadge(tramite.liquidez_status)}</>
+        {isComercial &&
+        tramite.liquidez_status === "Cobrado por Comercializadora" ? (
+          <>{getStatusBadge("Pendiente de Cobro")}</>
         ) : (
-          <span>---</span>
+          <>{getStatusBadge(tramite.liquidez_status)}</>
         )}
       </div>
       <UpdateTramiteStatusModal
