@@ -28,10 +28,13 @@ export async function POST(req: NextRequest) {
     }
 
     let query = `
-      SELECT DISTINCT u.*, o.id as org_id, o.name as org_name, o.logo as org_logo
+      SELECT DISTINCT u.*, o.id as org_id, o.name as org_name, o.logo as org_logo, s.created_at as last_login
       FROM user u
       INNER JOIN member m ON u.id = m.user_id
       INNER JOIN organization o ON m.organization_id = o.id
+      LEFT JOIN session s ON u.id = s.user_id AND s.created_at = (
+        SELECT MAX(created_at) FROM session WHERE user_id = u.id
+      )
     `;
 
     const params: (string | number)[] = [];
@@ -66,6 +69,7 @@ export async function POST(req: NextRequest) {
       super_id: row.super_id ? String(row.super_id) : null,
       should_reset_password: Boolean(row.should_reset_password),
       company: row.company ? String(row.company) : null,
+      last_login: row.last_login as string | null,
       organization: {
         id: row.org_id ? String(row.org_id) : "",
         name: row.org_name ? String(row.org_name) : "",

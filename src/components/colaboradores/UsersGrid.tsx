@@ -75,9 +75,12 @@ function UsersGridTable({
           : ROLES[parseInt(info.getValue())],
       header: "Rol",
     }),
-    columnHelper.accessor("created_at", {
-      cell: (info) => formatTimestamp(info.getValue()),
-      header: "Fecha de Creación",
+    columnHelper.accessor("last_login", {
+      cell: (info) => {
+        if (!info.getValue()) return "---";
+        return formatTimestamp(info.getValue());
+      },
+      header: "Último acceso",
     }),
     columnHelper.accessor("banned", {
       cell: (info) => (info.getValue() ? "Inactivo" : "Activo"),
@@ -274,7 +277,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
               <div className="flex justify-center items-center gap-2 w-full">
                 <Chip
                   size="sm"
-                  variant="flat"
+                  variant="light"
                   color={
                     user.role === "admin" || user.role === "backoffice"
                       ? "secondary"
@@ -321,7 +324,10 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
             {/* Fechas */}
             <div className="mt-4 text-xs text-gray-500 flex justify-between">
               <div>
-                <p>Creado: {formatTimestamp(user.created_at)}</p>
+                <p>
+                  Último acceso:{" "}
+                  {user.last_login ? formatTimestamp(user.last_login) : "---"}
+                </p>
               </div>
             </div>
           </div>

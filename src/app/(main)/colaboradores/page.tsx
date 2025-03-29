@@ -35,6 +35,7 @@ export default function ColaboradoresPage() {
         body: JSON.stringify({ id: userData?.id, role: userData?.role }),
       });
       const { success, data } = await res.json();
+      console.log("Data de usuarios:", data);
       if (!success) {
         throw new Error("Error al obtener los usuarios");
       }
