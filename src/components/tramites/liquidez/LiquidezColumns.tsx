@@ -3,7 +3,6 @@
 import { formatDate } from "@/lib/core/format";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
-import { Chip } from "@heroui/chip";
 import { Status, TramiteRow } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import LiquidezDropdown from "./LiquidezDropdown";
@@ -168,34 +167,14 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
         return <div className="flex justify-end">---</div>;
       return (
         <div className="flex justify-end">
-          <Chip
-            size="sm"
-            variant="flat"
-            color={
-              row.original.liquidez_status === "Pendiente de Cobro"
-                ? "warning"
-                : row.original.liquidez_status ===
-                  "Cobrado por Comercializadora"
-                ? "primary"
-                : row.original.liquidez_status === "Pagado al Comercial"
-                ? "success"
-                : "default"
-            }
-          >
-            {row.original.liquidez_status === "Pendiente de Cobro"
-              ? "Pendiente"
-              : row.original.liquidez_status === "Cobrado por Comercializadora"
-              ? "Cobrado"
-              : row.original.liquidez_status === "Pagado al comercial"
-              ? "Pagado"
-              : "default"}
-          </Chip>
+          {getStatusBadge(row.original.liquidez_status as Status)}
         </div>
       );
     },
   },
   {
-    id: "actions",
+    accessorKey: "actions",
+    header: "",
     cell: ({ row }) => {
       return <LiquidezDropdown tramite={row.original} />;
     },
