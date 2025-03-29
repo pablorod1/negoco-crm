@@ -378,8 +378,10 @@ export function ComparativasRatio({
                     >
                       <NumberTicker
                         className="text-white text-2xl font-bold"
-                        value={comparativasData.total}
-                      />
+                        value={comparativasData.total || 0}
+                      >
+                        {comparativasData.total || 0}
+                      </NumberTicker>
                       <span className="text-xs text-white">Completadas</span>
                     </motion.div>
 
@@ -391,8 +393,10 @@ export function ComparativasRatio({
                     >
                       <NumberTicker
                         className="text-white text-2xl font-bold"
-                        value={comparativasData.processed}
-                      />
+                        value={comparativasData.processed || 0}
+                      >
+                        {comparativasData.processed || 0}
+                      </NumberTicker>
                       <span className="text-xs text-white">Tramitadas</span>
                     </motion.div>
                   </div>
