@@ -17,7 +17,6 @@ import { showCustomToast } from "../../core/CustomToast";
 import ObjectiveDialog from "./ObjectiveDialog";
 import CurrentObjectivesTab from "./CurrentObjectivesTab";
 import ObjectivesHistoryTab from "./ObjectivesHistoryTab";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import LoadingStateCard from "../LoadingStateCard";
 
@@ -121,41 +120,31 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl -z-10"></div>
       <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl -z-10"></div>
       <CardHeader className="flex flex-row items-center justify-between text-xl font-medium text-primary-800">
-        <div className="flex items-start gap-4 w-full">
-          <Image
-            src="/icons/objetivo.webp"
-            alt="Objetivos"
-            width={32}
-            height={32}
-            className="w-auto h-auto object-contain"
-          />
-
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-xl text-primary-800">
-                Objetivos
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 rounded-full"
-                onClick={refreshData}
-                disabled={loadingData || loading}
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 text-primary-600 ${
-                    isRefreshing ? "animate-spin" : ""
-                  }`}
-                />
-              </Button>
-            </div>
-            <CardDescription className="text-xs text-primary-400">
-              Mostrando objetivos de{" "}
-              <strong className="capitalize text-primary-800">
-                {currentMonth}
-              </strong>
-            </CardDescription>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-xl text-primary-800">
+              Objetivos
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full"
+              onClick={refreshData}
+              disabled={loadingData || loading}
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 text-primary-600 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
+            </Button>
           </div>
+          <CardDescription className="text-xs text-primary-400">
+            Mostrando objetivos de{" "}
+            <strong className="capitalize text-primary-800">
+              {currentMonth}
+            </strong>
+          </CardDescription>
         </div>
         <ObjectiveDialog
           open={open}
