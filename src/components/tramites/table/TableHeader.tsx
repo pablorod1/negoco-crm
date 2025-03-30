@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Filter, Search, Download, X } from "lucide-react";
+import { Filter, Search, Download, X, PlusCircle } from "lucide-react";
 import { Input } from "@heroui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@heroui/tooltip";
@@ -30,6 +30,7 @@ import {
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import CreateBajaModal from "../createBaja/CreateBajaModal";
+import { PopoverPortal } from "@radix-ui/react-popover";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -201,10 +202,28 @@ export default function TramitesHeader<TData>({
 
             {/* Create Button */}
             {title === "Trámites" && (
-              <div className="flex items-center gap-2">
-                <AddTramiteDialog />
-                <CreateBajaModal />
-              </div>
+              <Popover>
+                <Tooltip content="Crear nuevo trámite">
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 bg-gray-50 border-gray-200"
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                </Tooltip>
+                <PopoverPortal>
+                  <PopoverContent
+                    align="end"
+                    className="flex flex-col gap-4 p-2"
+                  >
+                    <AddTramiteDialog />
+                    <CreateBajaModal />
+                  </PopoverContent>
+                </PopoverPortal>
+              </Popover>
             )}
           </div>
         </div>
