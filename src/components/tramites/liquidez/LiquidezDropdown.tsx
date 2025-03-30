@@ -123,7 +123,7 @@ export const DeleteDocumentIcon = (props: IconProps) => {
 
 export default function LiquidezDropdown({ tramite }: { tramite: TramiteRow }) {
   const iconClasses =
-    "text-xl text-default-500 pointer-events-none flex-shrink-0";
+    "text-xl text-default-500 pointer-events-none flex-shrink-0 group-hover:text-white transition-colors duration-200 ease-in-out";
 
   return (
     <>
@@ -135,7 +135,7 @@ export default function LiquidezDropdown({ tramite }: { tramite: TramiteRow }) {
         </DropdownTrigger>
         <DropdownMenu
           aria-label="Dropdown menu with description"
-          variant="faded"
+          variant="shadow"
           color="primary"
         >
           <DropdownSection showDivider>

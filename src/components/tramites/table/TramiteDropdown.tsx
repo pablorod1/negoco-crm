@@ -129,7 +129,7 @@ export default function TramiteDropdown({ tramite }: { tramite: TramiteRow }) {
   const { userData } = useUser();
 
   const iconClasses =
-    "text-xl text-default-500 pointer-events-none flex-shrink-0";
+    "text-xl text-default-500 pointer-events-none flex-shrink-0 group-hover:text-white transition-colors duration-200 ease-in-out";
 
   return (
     <>
@@ -141,7 +141,7 @@ export default function TramiteDropdown({ tramite }: { tramite: TramiteRow }) {
         </DropdownTrigger>
         <DropdownMenu
           aria-label="Dropdown menu with description"
-          variant="faded"
+          variant="shadow"
           color="primary"
         >
           <DropdownSection

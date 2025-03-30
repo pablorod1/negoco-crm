@@ -132,7 +132,7 @@ export default function ComparativaDropdown({
   const { userData } = useUser();
   const { isOpen, onClose, onOpen } = useDisclosure();
   const iconClasses =
-    "text-xl text-default-500 pointer-events-none flex-shrink-0";
+    "text-xl text-default-500 pointer-events-none flex-shrink-0 group-hover:text-white transition-colors duration-200 ease-in-out";
 
   return (
     <>
@@ -144,16 +144,19 @@ export default function ComparativaDropdown({
         </DropdownTrigger>
         <DropdownMenu
           aria-label="Dropdown menu with description"
-          variant="faded"
+          variant="shadow"
           color="primary"
         >
-          <DropdownSection showDivider>
+          <DropdownSection
+            showDivider={userData && userData.role === "admin" ? true : false}
+          >
             <DropdownItem
               key="edit"
               description="Visualizar, actualizar y tramitar la comparativa"
               startContent={<PencilLine className={iconClasses} />}
               textValue="Visualizar Comparativa"
               href={`/comparativas/${comparativa.id}`}
+              className="group"
             >
               Visualizar Comparativa
             </DropdownItem>
