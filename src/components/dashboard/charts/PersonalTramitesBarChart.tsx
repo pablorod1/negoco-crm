@@ -271,6 +271,8 @@ export function PersonalTramitesChart({
           alt="Negoco Cloud"
           width={256}
           height={256}
+          priority
+          className="w-auto h-auto"
         />
       </div>
 
