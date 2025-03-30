@@ -24,17 +24,17 @@ export interface DashboardCardValue {
 interface DashboardData {
   clients: DashboardCardValue;
   activeTramites: DashboardCardValue;
-  pendingTramites: DashboardCardValue;
   comisionesPendientes: number;
   totalBalance: number;
+  comparativas: DashboardCardValue;
 }
 
 const initialDashboardData: DashboardData = {
   clients: { value: 0, difference: 0 },
   activeTramites: { value: 0, difference: 0 },
-  pendingTramites: { value: 0, difference: 0 },
   comisionesPendientes: 0,
   totalBalance: 0,
+  comparativas: { value: 0, difference: 0 },
 };
 
 export default function DashboardBentoGrid() {
@@ -98,16 +98,29 @@ export default function DashboardBentoGrid() {
         }
       );
 
+      const comparativasRes = await fetch(
+        `/api/comparativas/get/completed-count`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: userData.id, role: userData.role }),
+        }
+      );
+
       const [
         { data: clients },
         { data },
         { data: totalComisiones },
         { data: balance },
+        { data: comparativas },
       ] = await Promise.all([
         clientsRes.json(),
         activePendingRes.json(),
         comisionesRes.json(),
         balanceRes.json(),
+        comparativasRes.json(),
       ]);
 
       const totalBalance = balance.reduce(
@@ -118,9 +131,9 @@ export default function DashboardBentoGrid() {
       setDashboardData({
         clients,
         activeTramites: data.active,
-        pendingTramites: data.pending,
         comisionesPendientes: totalComisiones,
         totalBalance,
+        comparativas: comparativas.completed,
       });
 
       if (
@@ -203,8 +216,8 @@ export default function DashboardBentoGrid() {
     loading,
     clients: dashboardData.clients,
     activeTramites: dashboardData.activeTramites,
-    pendingTramites: dashboardData.pendingTramites,
     totalBalance: dashboardData.totalBalance,
+    comparativas: dashboardData.comparativas,
     refreshData,
   };
 

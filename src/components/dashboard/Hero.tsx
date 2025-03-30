@@ -27,8 +27,8 @@ interface HeroDashboardProps {
   userData: User;
   clients: DashboardCardValue;
   activeTramites: DashboardCardValue;
-  pendingTramites: DashboardCardValue;
   totalBalance: number;
+  comparativas: DashboardCardValue;
   refreshData: () => void;
 }
 
@@ -39,8 +39,8 @@ export default function HeroDashboard({
   userData,
   clients,
   activeTramites,
-  pendingTramites,
   totalBalance,
+  comparativas,
   refreshData,
 }: HeroDashboardProps) {
   return (
@@ -151,16 +151,16 @@ export default function HeroDashboard({
           />
           <StatCard
             title="Trámites Pendientes"
-            value={pendingTramites.value}
+            value={comparativas.value}
             trend={
-              pendingTramites.difference > 0
+              comparativas.difference > 0
                 ? "up"
-                : pendingTramites.difference === 0
+                : comparativas.difference === 0
                 ? "normal"
                 : "down"
             }
-            trendValue={pendingTramites.difference}
-            description="Total de trámites pendientes"
+            trendValue={comparativas.difference}
+            description="Total de comparativas completadas"
             delay={1.0}
           />
           <StatCard
