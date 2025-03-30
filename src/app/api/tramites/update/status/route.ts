@@ -12,6 +12,8 @@ export async function PATCH(req: NextRequest) {
       note,
       notes,
       liquidez_status,
+      collection_date,
+      payment_date,
       user_id,
     } = await req.json();
 
@@ -72,6 +74,16 @@ export async function PATCH(req: NextRequest) {
     if (status === "Verificado") {
       updateFields.push("tramitation_date = ?");
       queryArgs.push(NOW_DATE.toISOString());
+    }
+
+    if (liquidez_status === "Cobrado por Comercializadora" && collection_date) {
+      updateFields.push("collection_date = ?");
+      queryArgs.push(collection_date.toISOString());
+    }
+
+    if (liquidez_status === "Pagado al Comercial" && payment_date) {
+      updateFields.push("payment_date = ?");
+      queryArgs.push(payment_date.toISOString());
     }
 
     updateFields.push("updated_by = ?");
