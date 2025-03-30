@@ -13,6 +13,7 @@ import {
   SelectComponent,
 } from "../createTramite/InputComponent";
 import {
+  BAJA_LIQUIDEZ_STATUS,
   COMERCIAL_STATUS_TYPES,
   PLAIN_LIQUIDEZ_STATUS,
   PLAIN_STATUS_TYPES,
@@ -359,12 +360,14 @@ export default function UpdateTramiteStatusModal({
                   disabled={tramite.status === "Activo"}
                   isRequired
                 />
-                {(isActivo || tramite.liquidez_status) && !isComercial && (
+                {(isActivo || isBaja) && !isComercial && (
                   <SelectComponent
                     onChange={handleChange}
                     name="liquidez_status"
                     label="Estado de liquidez"
-                    items={PLAIN_LIQUIDEZ_STATUS}
+                    items={
+                      isBaja ? BAJA_LIQUIDEZ_STATUS : PLAIN_LIQUIDEZ_STATUS
+                    }
                     selectedKey={formData.liquidez_status || ""}
                   />
                 )}

@@ -9,10 +9,14 @@ import {
   User,
 } from "@/lib/core/types";
 import React from "react";
-import { InputComponent } from "../createTramite/InputComponent";
+import {
+  InputComponent,
+  SelectComponent,
+} from "../createTramite/InputComponent";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CheckCircle, CircleX } from "lucide-react";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
+import { BAJA_LIQUIDEZ_STATUS } from "@/lib/core/const";
 
 export default function CreateBajaForm({
   onFinish,
@@ -30,7 +34,11 @@ export default function CreateBajaForm({
     createEmptyContractDB(),
   ]);
 
-  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFieldChange = (
+    e:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.ChangeEvent<HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
 
     if (name === "name") {
@@ -51,6 +59,8 @@ export default function CreateBajaForm({
         tramitation_date: new Date().toISOString(),
         activation_date: new Date().toISOString(),
       });
+    } else {
+      setTramite({ ...tramite, [name]: value });
     }
   };
 
@@ -105,6 +115,14 @@ export default function CreateBajaForm({
     <div className="w-full p-2 space-y-6">
       <form>
         <div className="flex flex-col  gap-4 ">
+          <SelectComponent
+            isRequired
+            label="Estado de Liquidez"
+            name="liquidez_status"
+            onChange={handleFieldChange}
+            items={BAJA_LIQUIDEZ_STATUS}
+            selectedKey={tramite.liquidez_status as string}
+          />
           <div className="flex items-center gap-4">
             <InputComponent
               isRequired

@@ -84,7 +84,8 @@ export default function TramiteDetails() {
     (userData.role === "admin" ||
       userData.role === "1" ||
       (userData.role === "2" && tramite.status === "Borrador")) &&
-    tramite.status !== "Activo";
+    tramite.status !== "Activo" &&
+    tramite.status !== "Baja";
 
   const isRenewable =
     new Date(tramite.renovation_date) <=

@@ -429,6 +429,8 @@ export type LiquidezStatus =
   | "Pendiente de Cobro"
   | "Cobrado por Comercializadora"
   | "Pagado al Comercial"
+  | "Pendiente de Descontar"
+  | "Descontado"
   | null;
 
 export type ComparativaStatus =

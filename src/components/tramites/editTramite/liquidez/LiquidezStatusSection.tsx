@@ -48,9 +48,10 @@ export default function LiquidezStatusSection({
               <InfoIcon className="size-3 text-gray-600" />
             </Tooltip>
           </div>
-          {tramite.status === "Activo" && !isComercial && (
-            <Button onPress={onOpen}>Actualizar Estado de Liquidez</Button>
-          )}
+          {(tramite.status === "Activo" || tramite.status === "Baja") &&
+            !isComercial && (
+              <Button onPress={onOpen}>Actualizar Estado de Liquidez</Button>
+            )}
         </div>
         {isComercial &&
         tramite.liquidez_status === "Cobrado por Comercializadora" ? (

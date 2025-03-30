@@ -150,4 +150,6 @@ export const PLAIN_LIQUIDEZ_STATUS = [
   "Pagado al Comercial",
 ];
 
+export const BAJA_LIQUIDEZ_STATUS = ["Pendiente de Descontar", "Descontado"];
+
 export const ROLES = ["Dirección", "Backoffice", "Comercial"];
