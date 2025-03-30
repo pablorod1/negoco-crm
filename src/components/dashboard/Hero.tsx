@@ -8,6 +8,7 @@ import {
   TrendingUpIcon,
   TrendingDownIcon,
   RefreshCcw,
+  MoveRight,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -124,7 +125,13 @@ export default function HeroDashboard({
             title="Clientes"
             value={clients.value}
             description="Total de clientes registrados"
-            trend={clients.difference > 0 ? "up" : "down"}
+            trend={
+              clients.difference > 0
+                ? "up"
+                : clients.difference === 0
+                ? "normal"
+                : "down"
+            }
             trendValue={clients.difference}
             delay={0.8}
           />
@@ -132,14 +139,26 @@ export default function HeroDashboard({
             title="Trámites Activos"
             value={activeTramites.value}
             description="Total de trámites activos"
-            trend={activeTramites.difference > 0 ? "up" : "down"}
+            trend={
+              activeTramites.difference > 0
+                ? "up"
+                : activeTramites.difference === 0
+                ? "normal"
+                : "down"
+            }
             trendValue={activeTramites.difference}
             delay={0.9}
           />
           <StatCard
             title="Trámites Pendientes"
             value={pendingTramites.value}
-            trend={pendingTramites.difference > 0 ? "up" : "down"}
+            trend={
+              pendingTramites.difference > 0
+                ? "up"
+                : pendingTramites.difference === 0
+                ? "normal"
+                : "down"
+            }
             trendValue={pendingTramites.difference}
             description="Total de trámites pendientes"
             delay={1.0}
@@ -161,7 +180,7 @@ interface StatCardProps {
   title: string;
   value: number;
   description: string;
-  trend?: "up" | "down";
+  trend?: "up" | "down" | "normal";
   trendValue?: number;
   chart?: boolean;
   delay?: number;
@@ -203,19 +222,31 @@ function StatCard({
           >
             <Chip
               size="sm"
-              color={trend === "up" ? "success" : "danger"}
+              color={
+                trend === "up"
+                  ? "success"
+                  : trend === "normal"
+                  ? "default"
+                  : "danger"
+              }
               variant="shadow"
             >
-              <div className="flex items-center gap-2 text-white">
+              <div
+                className={`flex items-center gap-2 ${
+                  trend !== "normal" ? "text-white" : ""
+                } `}
+              >
                 {trend === "up" ? (
                   <TrendingUpIcon className="h-4 w-4" />
+                ) : trend === "normal" ? (
+                  <MoveRight className="h-4 w-4" />
                 ) : (
                   <TrendingDownIcon className="h-4 w-4" />
                 )}
 
-                <div className="text-xs font-semibold text-white">
+                <span className="text-xs font-semibold ">
                   {trendValue?.toFixed(2)}%
-                </div>
+                </span>
               </div>
             </Chip>
           </motion.div>
