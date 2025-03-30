@@ -66,6 +66,10 @@ export default function SendResetPassForm({ setForgotPass }: Props) {
 
       if (response.error) {
         setErrors({ general: response.error.message });
+        console.error(
+          "Error al solicitar restablecimiento de contraseña:",
+          response.error.message
+        );
         return;
       }
       setSuccess(true);

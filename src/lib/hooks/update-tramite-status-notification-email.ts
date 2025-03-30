@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import nodemailer from "nodemailer";
 
 export async function sendTramiteStatusUpdatedNotification({
@@ -5,18 +6,38 @@ export async function sendTramiteStatusUpdatedNotification({
   tramite_id,
   status,
   link,
+  req,
 }: {
   user_to: { name: string; email: string };
   tramite_id: string;
   status: { old: string; new: string };
   link: string;
+  req: NextRequest;
 }) {
   // Configurar el transporter de nodemailer
+  const host = req.headers.get("host");
+  if (!host) {
+    throw new Error("No host found in request headers");
+  }
+
+  // Extraer el subdominio (client1, client2, etc.)
+  const subdomain = host.split(".")[0];
+  const email =
+    subdomain === "localhost:3000" || "negococloud"
+      ? process.env.EMAIL
+      : process.env[`EMAIL_${subdomain.toUpperCase()}`];
+  const password =
+    subdomain === "localhost:3000" || "negococloud"
+      ? process.env.EMAIL_PASS
+      : process.env[`EMAIL_PASS_${subdomain.toUpperCase()}`];
+
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: process.env.SMTP_HOST, // Aquí va smtp.dondominio.com
+    port: Number(process.env.SMTP_PORT) || 587, // Puerto 587 para STARTTLS o 465 para SSL
+    secure: process.env.SMTP_SECURE === "false", // `true` para SSL en 465, `false` para STARTTLS en 587
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: email,
+      pass: password,
     },
   });
 
@@ -38,7 +59,7 @@ export async function sendTramiteStatusUpdatedNotification({
             <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); background-color: #ffffff;">
               <tr>
                 <td style="background-color: #f0f6ff; padding: 30px 0; text-align: center;">
-                  <img src="https://negococloud.es/favicon.png" alt="Negoco Cloud IT Logo" style="max-width: 220px; height: auto;">
+                  <img src="https://negococloud.es/favicon.png" alt="Negoco Cloud Logo" style="max-width: 220px; height: auto;">
                 </td>
               </tr>
               <tr>
@@ -59,14 +80,14 @@ export async function sendTramiteStatusUpdatedNotification({
                   </table>
                   <p style="margin: 0 0 15px; font-size: 16px; line-height: 1.6;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
                   <p style="margin: 10px 0 20px; padding: 12px 15px; background-color: #f5f7fa; border-radius: 6px; font-size: 14px; word-break: break-all; border-left: 4px solid #0066cc; color: #666;">${tramiteLink}</p>
-                  <p style="margin: 25px 0 10px; font-size: 16px; line-height: 1.6;">Saludos,<br>El equipo de Negoco Cloud IT</p>
+                  <p style="margin: 25px 0 10px; font-size: 16px; line-height: 1.6;">Saludos,<br>El equipo de ${subdomain.toUpperCase()}</p>
                 </td>
               </tr>
               <tr>
                 <td style="background-color: #f0f5fc; padding: 30px 50px; text-align: center; border-top: 1px solid #e5ebf5;">
                   <p style="margin: 0 0 15px; color: #758195; font-size: 14px;">Si tienes alguna duda, contáctanos en <a href="mailto:soporte@negococloud.es" style="color: #0066cc; text-decoration: none;">soporte@negococloud.es</a></p>
                   <p style="margin: 0; color: #758195; font-size: 13px;">Este es un correo electrónico automático, por favor no respondas a este mensaje.</p>
-                  <p style="margin: 15px 0 0; color: #758195; font-size: 13px;">&copy; ${new Date().getFullYear()} Negoco Cloud IT. Todos los derechos reservados.</p>
+                  <p style="margin: 15px 0 0; color: #758195; font-size: 13px;">&copy; ${new Date().getFullYear()} Negoco Cloud. Todos los derechos reservados.</p>
                 </td>
               </tr>
             </table>
@@ -78,12 +99,12 @@ export async function sendTramiteStatusUpdatedNotification({
   `;
 
   const mailOptions = {
-    from: `"Negoco Cloud IT" <noreply@negococloud.es>`,
+    from: `${subdomain.toUpperCase()} <${email}>`,
     to: user_to.email,
     subject: `Actualización de Trámite - ${status.new}`,
     html: htmlContent,
     text: `
-      ACTUALIZACIÓN DE TRÁMITE - NEGOCO CLOUD IT
+      ACTUALIZACIÓN DE TRÁMITE - ${subdomain.toUpperCase()}
       
       Hola ${user_to.name},
       
@@ -93,11 +114,11 @@ export async function sendTramiteStatusUpdatedNotification({
       ${tramiteLink}
       
       Saludos,
-      El equipo de Negoco Cloud IT
+      El equipo de ${subdomain.toUpperCase()}
       
       Si tienes alguna duda, contáctanos en soporte@negococloud.es
       
-      © ${new Date().getFullYear()} Negoco Cloud IT. Todos los derechos reservados.
+      © ${new Date().getFullYear()} Negoco Cloud. Todos los derechos reservados.
     `,
   };
 

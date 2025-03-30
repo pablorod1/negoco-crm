@@ -9,9 +9,11 @@ export async function sendPasswordResetEmail({
 }) {
   // Configurar el transporter de nodemailer
   const transporter = nodemailer.createTransport({
-    service: "gmail", // Puedes cambiarlo según el proveedor (Mailgun, SendGrid, etc.)
+    host: process.env.SMTP_HOST, // Aquí va smtp.dondominio.com
+    port: Number(process.env.SMTP_PORT) || 587, // Puerto 587 para STARTTLS o 465 para SSL
+    secure: process.env.SMTP_SECURE === "false", // `true` para SSL en 465, `false` para STARTTLS en 587
     auth: {
-      user: process.env.EMAIL_USER,
+      user: process.env.EMAIL,
       pass: process.env.EMAIL_PASS,
     },
   });
@@ -33,7 +35,7 @@ export async function sendPasswordResetEmail({
               <!-- Header con logo -->
               <tr>
                 <td style="background-color: #f0f6ff; padding: 30px 0; text-align: center;">
-                  <img src="https://negococloud.es/favicon.png" alt="Negoco Cloud IT Logo" style="max-width: 220px; height: auto;">
+                  <img src="https://negococloud.es/favicon.png" alt="Negoco Cloud Logo" style="max-width: 220px; height: auto;">
                 </td>
               </tr>
               
@@ -44,7 +46,7 @@ export async function sendPasswordResetEmail({
                   
                   <p style="margin: 0 0 15px; font-size: 16px; line-height: 1.6;">Hola,</p>
                   
-                  <p style="margin: 0 0 15px; font-size: 16px; line-height: 1.6;">Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>Negoco Cloud IT</strong>. Para continuar con este proceso y crear una nueva contraseña, haz clic en el botón de abajo:</p>
+                  <p style="margin: 0 0 15px; font-size: 16px; line-height: 1.6;">Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>Negoco Cloud</strong>. Para continuar con este proceso y crear una nueva contraseña, haz clic en el botón de abajo:</p>
                   
                   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                     <tr>
@@ -64,7 +66,7 @@ export async function sendPasswordResetEmail({
                   
                   <p style="margin: 0 0 15px; font-size: 16px; line-height: 1.6;">Si no has solicitado este cambio de contraseña, puedes ignorar este correo. Tu contraseña actual seguirá siendo válida.</p>
                   
-                  <p style="margin: 25px 0 10px; font-size: 16px; line-height: 1.6;">Saludos,<br>El equipo de Negoco Cloud IT</p>
+                  <p style="margin: 25px 0 10px; font-size: 16px; line-height: 1.6;">Saludos,<br>El equipo de Negoco Cloud</p>
                 </td>
               </tr>
               
@@ -80,7 +82,7 @@ export async function sendPasswordResetEmail({
                   </p>
                   
                   <p style="margin: 15px 0 0; color: #758195; font-size: 13px;">
-                    &copy; ${new Date().getFullYear()} Negoco Cloud IT. Todos los derechos reservados.
+                    &copy; ${new Date().getFullYear()} Negoco Cloud. Todos los derechos reservados.
                   </p>
                 </td>
               </tr>
@@ -94,16 +96,16 @@ export async function sendPasswordResetEmail({
 
   // Configurar el email
   const mailOptions = {
-    from: `"Negoco Cloud IT" <noreply@negococloud.es>`,
+    from: `"Negoco Cloud Soporte" <${process.env.EMAIL}>`,
     to: email,
-    subject: `Restablecimiento de contraseña - Negoco Cloud IT`,
+    subject: `Restablecimiento de contraseña - Negoco Cloud`,
     html: htmlContent,
     text: `
-      RESTABLECIMIENTO DE CONTRASEÑA - NEGOCO CLOUD IT
+      RESTABLECIMIENTO DE CONTRASEÑA - NEGOCO CLOUD
       
       Hola,
       
-      Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en Negoco Cloud IT.
+      Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en Negoco Cloud.
       
       Para crear una nueva contraseña, visita el siguiente enlace:
       ${resetLink}
@@ -113,11 +115,11 @@ export async function sendPasswordResetEmail({
       Si no has solicitado este cambio de contraseña, puedes ignorar este correo. Tu contraseña actual seguirá siendo válida.
       
       Saludos,
-      El equipo de Negoco Cloud IT
+      El equipo de Negoco Cloud
       
       Si tienes alguna duda, contáctanos en soporte@negococloud.es
       
-      © ${new Date().getFullYear()} Negoco Cloud IT. Todos los derechos reservados.
+      © ${new Date().getFullYear()} Negoco Cloud. Todos los derechos reservados.
     `,
   };
 

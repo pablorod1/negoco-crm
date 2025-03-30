@@ -1,7 +1,7 @@
 import { sendTramiteStatusUpdatedNotification } from "@/lib/hooks/update-tramite-status-notification-email";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const {
       user_to,
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
       tramite_id,
       status,
       link: origin as string,
+      req: req as NextRequest,
     });
     return NextResponse.json({ success: true });
   } catch (error) {
