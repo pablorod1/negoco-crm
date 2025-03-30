@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     if (status === "completed") {
       // Get Completed Comparativas from today
-      query += `WHERE c.status = ? AND stfrtime(c.creation_date) = stfrtime('now')`;
+      query += `WHERE c.status = ? AND strftime(c.creation_date) = strftime('now')`;
     } else {
       query += `WHERE c.status = ?`;
     }
