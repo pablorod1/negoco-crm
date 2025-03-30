@@ -16,8 +16,8 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     header: "ID",
   },
   {
-    id: "Fecha de Creación",
-    accessorKey: "creation_date",
+    id: "Fecha de Activación",
+    accessorKey: "activation_date",
     header: ({ column }) => {
       return (
         <Button
@@ -26,7 +26,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
           onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Creación
+          Activación
           {column.getIsSorted() === "asc" ? (
             <ArrowUpIcon className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === "desc" ? (
@@ -38,12 +38,12 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
       );
     },
     cell: ({ row }) => {
-      if (!row.original.creation_date) return "---";
-      return <span>{formatDate(row.original.creation_date)}</span>;
+      if (!row.original.activation_date) return "---";
+      return <span>{formatDate(row.original.activation_date)}</span>;
     },
     sortingFn: (rowA, rowB) => {
-      const a = rowA.original.creation_date;
-      const b = rowB.original.creation_date;
+      const a = rowA.original.activation_date;
+      const b = rowB.original.activation_date;
 
       if (!a && !b) return 0;
       if (!a) return 1;

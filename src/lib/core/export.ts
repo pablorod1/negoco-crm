@@ -31,6 +31,8 @@ export async function exportToExcel<TData>({
             ? columnId
             : (column?.columnDef.header as string) || columnId;
         rowData[headerName] =
+          cell?.column.id === "Fecha de Activación" ||
+          cell?.column.id === "Fecha de Renovación" ||
           cell?.column.id === "Fecha de Creación"
             ? formatDate(cell?.getValue() as string)
             : Array.isArray(cell?.getValue())

@@ -232,6 +232,7 @@ export type DocumentacionFile = {
 export type TramiteRow = {
   id: string;
   creation_date: string;
+  activation_date: string;
   renovation_date: string;
   sales_name: string;
   client_name: string;
