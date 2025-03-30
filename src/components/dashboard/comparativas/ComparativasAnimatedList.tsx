@@ -6,7 +6,6 @@ import { ExternalLink } from "lucide-react";
 import { formatDateTime } from "@/lib/core/format";
 import Link from "next/link";
 import { ComparativaVM, User } from "@/lib/core/types";
-import { Chip } from "@heroui/chip";
 import AvatarComponent from "@/components/core/AvatarComponent";
 import { useEffect } from "react";
 
@@ -49,29 +48,6 @@ const Notification = (comparativa: ComparativaVM) => {
                 {formatDateTime(comparativa.creation_date)}
               </span>
             </figcaption>
-            <Chip
-              variant="flat"
-              size="sm"
-              color={
-                comparativa.status === "pending"
-                  ? "warning"
-                  : comparativa.status === "completed"
-                  ? "success"
-                  : comparativa.status === "processed"
-                  ? "primary"
-                  : "default"
-              }
-            >
-              <span className="font-semibold">
-                {comparativa.status === "pending"
-                  ? "Pendiente de Estudio"
-                  : comparativa.status === "completed"
-                  ? "Estudio Realizado"
-                  : comparativa.status === "processed"
-                  ? "Completada"
-                  : "Desconocido"}
-              </span>
-            </Chip>
           </div>
           <p className="flex items-center gap-2 text-primary-500 text-sm font-normal dark:text-white/60 group-hover:underline">
             {comparativa.id}
