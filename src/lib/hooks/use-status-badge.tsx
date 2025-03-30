@@ -23,6 +23,17 @@ const LIQUIDEZ_STATUS_BADGES = {
   default: <Badge>Sin Asignar</Badge>,
 };
 
+const TABLE_LIQUIDEZ_STATUS_BADGES = {
+  "Pendiente de Cobro": <Badge variant="warning">Pendiente de Cobro</Badge>,
+  "Cobrado por Comercializadora": <Badge variant="pending">Cobrado</Badge>,
+  "Pagado al Comercial": <Badge variant="success">Pagado</Badge>,
+  "Pendiente de Descontar": (
+    <Badge variant="warning">Pendiente de Descontar</Badge>
+  ),
+  Descontado: <Badge variant="success">Descontado</Badge>,
+  default: <Badge>Sin Asignar</Badge>,
+};
+
 const STATUS_BADGES = {
   Borrador: <Badge variant="danger">Borrador</Badge>,
   Tramitable: <Badge variant="warning">Tramitable</Badge>,
@@ -36,7 +47,8 @@ const STATUS_BADGES = {
 };
 
 export const getStatusBadge = (
-  status: ComparativaStatus | LiquidezStatus | Status
+  status: ComparativaStatus | LiquidezStatus | Status,
+  isTable: boolean = false
 ) => {
   // Verificar si el status pertenece a ComparativaStatus
   if (
@@ -60,10 +72,18 @@ export const getStatusBadge = (
       "Descontado",
     ].includes(status as string)
   ) {
-    return (
-      LIQUIDEZ_STATUS_BADGES[status as keyof typeof LIQUIDEZ_STATUS_BADGES] ||
-      LIQUIDEZ_STATUS_BADGES.default
-    );
+    if (isTable) {
+      return (
+        TABLE_LIQUIDEZ_STATUS_BADGES[
+          status as keyof typeof TABLE_LIQUIDEZ_STATUS_BADGES
+        ] || TABLE_LIQUIDEZ_STATUS_BADGES.default
+      );
+    } else {
+      return (
+        LIQUIDEZ_STATUS_BADGES[status as keyof typeof LIQUIDEZ_STATUS_BADGES] ||
+        LIQUIDEZ_STATUS_BADGES.default
+      );
+    }
   }
 
   // Por defecto, asumir que es un Status general

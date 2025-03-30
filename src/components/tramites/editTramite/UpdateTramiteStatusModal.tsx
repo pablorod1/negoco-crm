@@ -51,6 +51,8 @@ interface FormData {
   note?: string;
   comisionConfirmed: boolean;
   comisionSalesPersonConfirmed: boolean;
+  collection_date: string | null;
+  payment_date: string | null;
 }
 
 export default function UpdateTramiteStatusModal({
@@ -68,6 +70,8 @@ export default function UpdateTramiteStatusModal({
     note: "",
     comisionConfirmed: false,
     comisionSalesPersonConfirmed: false,
+    collection_date: null,
+    payment_date: null,
   });
 
   const isComercial = userData && userData.role === "2";
@@ -129,6 +133,27 @@ export default function UpdateTramiteStatusModal({
         comision: -prev.comision,
         comision_sales_person: -prev.comision_sales_person,
       }));
+    }
+
+    if (name === "liquidez_status") {
+      if (value === "Cobrado por Comercializadora") {
+        setFormData((prev) => ({
+          ...prev,
+          liquidez_status: value,
+          collection_date: new Date().toISOString(),
+        }));
+      } else if (value === "Pagado al Comercial") {
+        setFormData((prev) => ({
+          ...prev,
+          liquidez_status: value,
+          payment_date: new Date().toISOString(),
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          liquidez_status: value as LiquidezStatus,
+        }));
+      }
     }
 
     setFormData((prev) => ({

@@ -53,6 +53,80 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     },
   },
   {
+    id: "Fecha de Cobro",
+    accessorKey: "collection_date",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="faded"
+          size="sm"
+          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Cobrado
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpIcon className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      if (!row.original.collection_date) return "---";
+      return <span>{formatDate(row.original.collection_date)}</span>;
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = rowA.original.collection_date;
+      const b = rowB.original.collection_date;
+
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+
+      return new Date(a).getTime() - new Date(b).getTime();
+    },
+  },
+  {
+    id: "Fecha de Pago",
+    accessorKey: "payment_date",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="faded"
+          size="sm"
+          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Pago
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpIcon className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      if (!row.original.payment_date) return "---";
+      return <span>{formatDate(row.original.payment_date)}</span>;
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = rowA.original.payment_date;
+      const b = rowB.original.payment_date;
+
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+
+      return new Date(a).getTime() - new Date(b).getTime();
+    },
+  },
+  {
     id: "Comercial",
     accessorKey: "sales_name",
     header: "Comercial",

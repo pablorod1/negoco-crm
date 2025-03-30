@@ -40,6 +40,44 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     header: "ID",
   },
   {
+    id: "Fecha de Creación",
+    accessorKey: "creation_date",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="faded"
+          size="sm"
+          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Creación
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpIcon className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      );
+    },
+
+    cell: ({ row }) => {
+      if (!row.original.creation_date) return "---";
+      return <span>{formatDate(row.original.creation_date)}</span>;
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = rowA.original.creation_date;
+      const b = rowB.original.creation_date;
+
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+
+      return new Date(a).getTime() - new Date(b).getTime();
+    },
+  },
+  {
     id: "Fecha de Activación",
     accessorKey: "activation_date",
     header: ({ column }) => {
@@ -205,6 +243,44 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+  },
+  {
+    id: "Fecha de Creación",
+    accessorKey: "creation_date",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="faded"
+          size="sm"
+          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Creación
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpIcon className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      );
+    },
+
+    cell: ({ row }) => {
+      if (!row.original.creation_date) return "---";
+      return <span>{formatDate(row.original.creation_date)}</span>;
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = rowA.original.creation_date;
+      const b = rowB.original.creation_date;
+
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+
+      return new Date(a).getTime() - new Date(b).getTime();
+    },
   },
   {
     id: "Fecha de Activación",
@@ -384,7 +460,10 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
       if (!row.original.liquidez_status) return "---";
       if (row.original.liquidez_status === "Cobrado por Comercializadora")
         return getStatusBadge("Pendiente de Cobro");
-      return getStatusBadge(row.original.liquidez_status as LiquidezStatus);
+      return getStatusBadge(
+        row.original.liquidez_status as LiquidezStatus,
+        true
+      );
     },
   },
   {
@@ -400,6 +479,44 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+  },
+  {
+    id: "Fecha de Creación",
+    accessorKey: "creation_date",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="faded"
+          size="sm"
+          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Creación
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpIcon className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      );
+    },
+
+    cell: ({ row }) => {
+      if (!row.original.creation_date) return "---";
+      return <span>{formatDate(row.original.creation_date)}</span>;
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = rowA.original.creation_date;
+      const b = rowB.original.creation_date;
+
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+
+      return new Date(a).getTime() - new Date(b).getTime();
+    },
   },
   {
     id: "Fecha de Activación",
@@ -423,6 +540,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
         </Button>
       );
     },
+
     cell: ({ row }) => {
       if (!row.original.activation_date) return "---";
       return <span>{formatDate(row.original.activation_date)}</span>;
@@ -671,7 +789,10 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     header: "Liquidez",
     cell: ({ row }) => {
       if (!row.original.liquidez_status) return "---";
-      return getStatusBadge(row.original.liquidez_status as LiquidezStatus);
+      return getStatusBadge(
+        row.original.liquidez_status as LiquidezStatus,
+        true
+      );
     },
   },
   {

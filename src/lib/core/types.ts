@@ -4,6 +4,8 @@ export type TramiteDB = {
   tramitation_date: string;
   activation_date: string;
   renovation_date: string;
+  collection_date: string | null;
+  payment_date: string | null;
   sales_name: string;
   comision_sales_person: number;
   comision: number;
@@ -26,6 +28,8 @@ export const createEmptyTramiteVM = (): TramiteVM => ({
   tramitation_date: "",
   activation_date: "",
   renovation_date: "",
+  collection_date: null,
+  payment_date: null,
   sales_name: "",
   comision_sales_person: 0,
   comision: 0,
@@ -76,6 +80,8 @@ export const createEmptyTramiteDB = (
   tramitation_date: "",
   renovation_date: "",
   activation_date: "",
+  payment_date: null,
+  collection_date: null,
   sales_name: comparativa
     ? (comparativa.user.name as string)
     : userData
@@ -234,6 +240,8 @@ export type TramiteRow = {
   creation_date: string;
   activation_date: string;
   renovation_date: string;
+  collection_date: string | null;
+  payment_date: string | null;
   sales_name: string;
   client_name: string;
   client_email: string;
