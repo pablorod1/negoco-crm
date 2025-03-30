@@ -78,12 +78,12 @@ export async function PATCH(req: NextRequest) {
 
     if (liquidez_status === "Cobrado por Comercializadora" && collection_date) {
       updateFields.push("collection_date = ?");
-      queryArgs.push(collection_date.toISOString());
+      queryArgs.push(collection_date);
     }
 
     if (liquidez_status === "Pagado al Comercial" && payment_date) {
       updateFields.push("payment_date = ?");
-      queryArgs.push(payment_date.toISOString());
+      queryArgs.push(payment_date);
     }
 
     updateFields.push("updated_by = ?");

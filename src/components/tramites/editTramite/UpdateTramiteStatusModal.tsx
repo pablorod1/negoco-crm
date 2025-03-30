@@ -238,6 +238,12 @@ export default function UpdateTramiteStatusModal({
             ? formData.liquidez_status
             : undefined,
           user_id: userData.id,
+          collection_date: formData.collection_date
+            ? formData.collection_date
+            : undefined,
+          payment_date: formData.payment_date
+            ? formData.payment_date
+            : undefined,
         }),
       });
 
