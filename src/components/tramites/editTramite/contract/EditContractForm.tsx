@@ -152,7 +152,7 @@ export default function EditContractForm({
             <SelectComponent
               name="old_company"
               label="Compañía Antigua"
-              items={PLAIN_COMPANIES}
+              items={[...PLAIN_COMPANIES, "Otra"]}
               onChange={handleFieldChange}
               isRequired
               selectedKey={formData.old_company}
