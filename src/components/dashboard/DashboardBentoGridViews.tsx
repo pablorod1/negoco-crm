@@ -70,22 +70,16 @@ export const ComercialView = ({ userData, loading }: Props) => {
       <div className="row-span-2 lg:col-span-2">
         <PersonalTramitesChart userData={userData} loading={loading} />
       </div>
-      <div className="row-span-2 lg:row-start-3 2xl:row-start-1 2xl:col-start-3">
-        <ComparativasRatio userData={userData} loading={loading} />
-      </div>
-      <div className="row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-1 2xl:col-start-4">
-        <ObjetivosCard loading={loading} userData={userData} />
-      </div>
 
       {hasSubComerciales ? (
         <>
-          <div className="row-span-2 lg:row-start-5 2xl:row-start-3">
-            <RenewableTramitesCalendar
-              loading={loading}
-              userData={userData as User}
-            />
+          <div className="row-span-2 lg:row-start-3 2xl:row-start-1 2xl:col-start-3 2xl:col-span-1">
+            <ComparativasRatio userData={userData} loading={loading} />
           </div>
-          <div className="row-span-2 lg:row-start-5 lg:col-start-2 2xl:row-start-3 2xl:col-span-1 2xl:col-start-2">
+          <div className="row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-1 2xl:col-start-4">
+            <ObjetivosCard loading={loading} userData={userData} />
+          </div>
+          <div className="row-span-2 lg:row-start-5 2xl:row-start-3 lg:col-span-2">
             <ComparativasResume userData={userData} loading={loading} />
           </div>
           <div className="lg:col-span-2  2xl:row-start-3 row-span-2">
@@ -94,13 +88,13 @@ export const ComercialView = ({ userData, loading }: Props) => {
         </>
       ) : (
         <>
-          <div className="row-span-2 lg:row-start-5 2xl:row-start-3 2xl:col-span-2">
-            <RenewableTramitesCalendar
-              loading={loading}
-              userData={userData as User}
-            />
+          <div className="row-span-2 lg:row-start-3 2xl:row-start-1 2xl:col-start-3 2xl:col-span-2">
+            <ComparativasRatio userData={userData} loading={loading} />
           </div>
-          <div className="row-span-2 lg:row-start-5 2xl:col-span-2 2xl:row-start-3 2xl:col-start-3">
+          <div className="row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-3 2xl:col-start-1 2xl:col-span-2">
+            <ObjetivosCard loading={loading} userData={userData} />
+          </div>
+          <div className="row-span-2 lg:row-start-5 lg:col-span-2 2xl:row-start-3 2xl:col-start-3">
             <ComparativasResume userData={userData} loading={loading} />
           </div>
         </>
