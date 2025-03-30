@@ -6,9 +6,13 @@ import { Clock, InfoIcon, RefreshCcw } from "lucide-react";
 
 interface Props {
   tramite: TramiteDB;
+  isComercial: boolean;
 }
 
-export default function TramiteTimeLineSection({ tramite }: Props) {
+export default function TramiteTimeLineSection({
+  tramite,
+  isComercial,
+}: Props) {
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -87,37 +91,39 @@ export default function TramiteTimeLineSection({ tramite }: Props) {
                 : "---"}
             </p>
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-primary-400">
-                Fecha de Renovación
-              </p>
-              <Tooltip
-                radius="sm"
-                content={
-                  <div className="max-w-sm flex items-start gap-2">
-                    <RefreshCcw className="size-5 text-primary-800" />
-                    <div className="flex flex-col gap-1">
-                      <h3 className=" font-semibold text-primary-800">
-                        Actualización Automática
-                      </h3>
-                      <p className="text-primary-500">
-                        La fecha de renovación se asignará cuando el estado del
-                        trámite cambie a <strong>Activo</strong>.
-                      </p>
+          {!isComercial && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-primary-400">
+                  Fecha de Renovación
+                </p>
+                <Tooltip
+                  radius="sm"
+                  content={
+                    <div className="max-w-sm flex items-start gap-2">
+                      <RefreshCcw className="size-5 text-primary-800" />
+                      <div className="flex flex-col gap-1">
+                        <h3 className=" font-semibold text-primary-800">
+                          Actualización Automática
+                        </h3>
+                        <p className="text-primary-500">
+                          La fecha de renovación se asignará cuando el estado
+                          del trámite cambie a <strong>Activo</strong>.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                }
-              >
-                <InfoIcon className="size-3 text-gray-600" />
-              </Tooltip>
+                  }
+                >
+                  <InfoIcon className="size-3 text-gray-600" />
+                </Tooltip>
+              </div>
+              <p className="font-medium ">
+                {tramite.renovation_date
+                  ? formatDate(tramite.renovation_date)
+                  : "---"}
+              </p>
             </div>
-            <p className="font-medium ">
-              {tramite.renovation_date
-                ? formatDate(tramite.renovation_date)
-                : "---"}
-            </p>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>

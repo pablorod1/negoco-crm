@@ -116,7 +116,10 @@ export default function TramiteDetails() {
           </div>
 
           {/* Timeline Card */}
-          <TramiteTimeLineSection tramite={tramite} />
+          <TramiteTimeLineSection
+            tramite={tramite}
+            isComercial={isComercial as boolean}
+          />
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
             {/* Client Info Card */}
