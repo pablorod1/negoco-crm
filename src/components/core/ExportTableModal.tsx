@@ -74,7 +74,7 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
       .map((column) => column.id);
 
     // Ejecuta la función de exportación personalizada si se proporciona
-    const { success, error, data } = await exportToExcel({
+    const { success, error } = await exportToExcel({
       table,
       selectedColumnIds,
       name,
@@ -97,7 +97,6 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
       iconSize: 24,
       icon: FileX,
     });
-    console.log("Exported data:", data);
 
     setOpen(false);
   };

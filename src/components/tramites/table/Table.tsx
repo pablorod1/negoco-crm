@@ -79,7 +79,6 @@ export function DataTable<TData, TValue>({
           }),
         });
         const { success, data, error, total } = await res.json();
-        console.log("Tramites:", data);
         if (!success && error) {
           console.error("Error al obtener trámites:", error);
           return;

@@ -16,7 +16,6 @@ export async function exportToExcel<TData>({
   try {
     // Obtener las filas
     const rows = table.getRowModel().rows;
-    console.log("rows", rows);
     // Crear un array de objetos para el workbook
     const workbookData = rows.map((row) => {
       const rowData: Record<string, unknown> = {};
