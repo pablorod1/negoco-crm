@@ -32,8 +32,8 @@ interface HeroDashboardProps {
   refreshData: () => void;
 }
 
-const MotionCard = motion(Card);
-const MotionAvatar = motion(Avatar);
+const MotionCard = motion.create(Card);
+const MotionAvatar = motion.create(Avatar);
 
 export default function HeroDashboard({
   userData,
