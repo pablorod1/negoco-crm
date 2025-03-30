@@ -220,7 +220,7 @@ export default function TramitesHeader<TData>({
                     className="flex flex-col gap-4 p-2"
                   >
                     <AddTramiteDialog />
-                    <CreateBajaModal />
+                    {!isComercial && <CreateBajaModal />}
                   </PopoverContent>
                 </PopoverPortal>
               </Popover>

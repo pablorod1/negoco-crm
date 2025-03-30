@@ -76,57 +76,6 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
       return new Date(a).getTime() - new Date(b).getTime();
     },
   },
-  // {
-  //   id: "Fecha de Renovación",
-  //   accessorKey: "renovation_date",
-  //   header: ({ column }) => {
-  //     return (
-  //       <Button
-  //         variant="faded"
-  //         size="sm"
-  //         className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-  //         onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
-  //       >
-  //         Renovación
-  //         {column.getIsSorted() === "asc" ? (
-  //           <ArrowUpIcon className="ml-2 h-4 w-4" />
-  //         ) : column.getIsSorted() === "desc" ? (
-  //           <ArrowDown className="ml-2 h-4 w-4" />
-  //         ) : (
-  //           <ArrowUpDown className="ml-2 h-4 w-4" />
-  //         )}
-  //       </Button>
-  //     );
-  //   },
-  //   cell: ({ row }) => {
-  //     if (!row.original.renovation_date) return "---";
-  //     const renewableStatus = isRenewable(row.original.renovation_date);
-  //     return (
-  //       <div
-  //         className={`flex items-center gap-2 p-2 rounded-md ${
-  //           renewableStatus.renewable ? "bg-amber-50 text-amber-700" : ""
-  //         }`}
-  //       >
-  //         <span>{formatDate(row.original.renovation_date)}</span>
-  //         {renewableStatus.renewable && (
-  //           <Tooltip content={`Renovación en menos de ${renewableStatus.days}`}>
-  //             <InfoIcon size={16} className="text-amber-500" />
-  //           </Tooltip>
-  //         )}
-  //       </div>
-  //     );
-  //   },
-  //   sortingFn: (rowA, rowB) => {
-  //     const a = rowA.original.renovation_date;
-  //     const b = rowB.original.renovation_date;
-
-  //     if (!a && !b) return 0;
-  //     if (!a) return 1;
-  //     if (!b) return -1;
-
-  //     return new Date(a).getTime() - new Date(b).getTime();
-  //   },
-  // },
   {
     id: "Comercial",
     accessorKey: "sales_name",
@@ -193,7 +142,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
   },
   {
     id: "Compañía",
-    accessorKey: "company",
+    accessorKey: "new_company",
     header: "Compañía",
     cell: ({ row }) => {
       return (
@@ -294,57 +243,6 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
       return new Date(a).getTime() - new Date(b).getTime();
     },
   },
-  // {
-  //   id: "Fecha de Renovación",
-  //   accessorKey: "renovation_date",
-  //   header: ({ column }) => {
-  //     return (
-  //       <Button
-  //         variant="faded"
-  //         size="sm"
-  //         className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-  //         onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
-  //       >
-  //         Renovación
-  //         {column.getIsSorted() === "asc" ? (
-  //           <ArrowUpIcon className="ml-2 h-4 w-4" />
-  //         ) : column.getIsSorted() === "desc" ? (
-  //           <ArrowDown className="ml-2 h-4 w-4" />
-  //         ) : (
-  //           <ArrowUpDown className="ml-2 h-4 w-4" />
-  //         )}
-  //       </Button>
-  //     );
-  //   },
-  //   cell: ({ row }) => {
-  //     if (!row.original.renovation_date) return "---";
-  //     const renewableStatus = isRenewable(row.original.renovation_date);
-  //     return (
-  //       <div
-  //         className={`flex items-center gap-2 p-2 rounded-md ${
-  //           renewableStatus.renewable ? "bg-amber-50 text-amber-700" : ""
-  //         }`}
-  //       >
-  //         <span>{formatDate(row.original.renovation_date)}</span>
-  //         {renewableStatus.renewable && (
-  //           <Tooltip content={`Renovación en menos de ${renewableStatus.days}`}>
-  //             <InfoIcon size={16} className="text-amber-500" />
-  //           </Tooltip>
-  //         )}
-  //       </div>
-  //     );
-  //   },
-  //   sortingFn: (rowA, rowB) => {
-  //     const a = rowA.original.renovation_date;
-  //     const b = rowB.original.renovation_date;
-
-  //     if (!a && !b) return 0;
-  //     if (!a) return 1;
-  //     if (!b) return -1;
-
-  //     return new Date(a).getTime() - new Date(b).getTime();
-  //   },
-  // },
   {
     id: "Comercial",
     accessorKey: "sales_name",
@@ -411,7 +309,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
   },
   {
     id: "Compañía",
-    accessorKey: "company",
+    accessorKey: "new_company",
     header: "Compañía",
     cell: ({ row }) => {
       return (
@@ -686,7 +584,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
   },
   {
     id: "Compañía",
-    accessorKey: "company",
+    accessorKey: "new_company",
     header: "Compañía",
     cell: ({ row }) => {
       return (

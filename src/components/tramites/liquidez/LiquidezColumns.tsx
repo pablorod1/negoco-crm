@@ -95,7 +95,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   },
   {
     id: "Compañía",
-    accessorKey: "company",
+    accessorKey: "new_company",
     header: "Compañía",
     cell: ({ row }) => {
       return (

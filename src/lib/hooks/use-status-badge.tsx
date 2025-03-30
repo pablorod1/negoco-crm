@@ -16,6 +16,10 @@ const LIQUIDEZ_STATUS_BADGES = {
     <Badge variant="pending">Cobrado por Comercializadora</Badge>
   ),
   "Pagado al Comercial": <Badge variant="success">Pagado al Comercial</Badge>,
+  "Pendiente de Descontar": (
+    <Badge variant="warning">Pendiente de Descontar</Badge>
+  ),
+  Descontado: <Badge variant="success">Descontado</Badge>,
   default: <Badge>Sin Asignar</Badge>,
 };
 
@@ -52,6 +56,8 @@ export const getStatusBadge = (
       "Pendiente de Cobro",
       "Cobrado por Comercializadora",
       "Pagado al Comercial",
+      "Pendiente de Descontar",
+      "Descontado",
     ].includes(status as string)
   ) {
     return (

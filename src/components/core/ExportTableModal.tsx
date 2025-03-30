@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Download, FileX } from "lucide-react";
 import { Table } from "@tanstack/react-table";
 import { exportToExcel } from "@/lib/core/export";
+import { showCustomToast } from "./CustomToast";
 
 interface ColumnOption {
   id: string;
@@ -73,7 +74,30 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
       .map((column) => column.id);
 
     // Ejecuta la función de exportación personalizada si se proporciona
-    await exportToExcel({ table, selectedColumnIds, name });
+    const { success, error, data } = await exportToExcel({
+      table,
+      selectedColumnIds,
+      name,
+    });
+
+    if (!success) {
+      showCustomToast({
+        title: "Error",
+        message: error,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: FileX,
+      });
+    }
+
+    showCustomToast({
+      title: "Éxito",
+      message: `Se han exportado ${selectedCount} columnas a Excel`,
+      iconColor: "var(--success-color)",
+      iconSize: 24,
+      icon: FileX,
+    });
+    console.log("Exported data:", data);
 
     setOpen(false);
   };
