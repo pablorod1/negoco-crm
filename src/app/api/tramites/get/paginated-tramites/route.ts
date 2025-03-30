@@ -144,6 +144,8 @@ export async function POST(req: NextRequest) {
           t.creation_date AS creation_date,
           t.activation_date AS activation_date,
           t.renovation_date AS renovation_date,
+          t.collection_date AS collection_date,
+          t.payment_date AS payment_date,
           t.sales_name AS sales_name,
           t.comision_sales_person AS comision_sales_person,
           t.comision AS comision,
@@ -208,6 +210,8 @@ export async function POST(req: NextRequest) {
           creation_date: row.creation_date as string,
           activation_date: row.activation_date as string,
           renovation_date: row.renovation_date as string,
+          collection_date: row.collection_date,
+          payment_date: row.payment_date,
           sales_name: row.sales_name as string,
           client_name: `${row.client_name || ""} ${
             row.client_last_name || ""
