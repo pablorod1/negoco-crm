@@ -1,9 +1,8 @@
 "use client";
 import { CLIENT_TYPES } from "@/lib/core/const";
-import { ClientDB, ComparativaVM, TramiteDB, User } from "@/lib/core/types";
+import { ClientDB, TramiteDB, User } from "@/lib/core/types";
 import { firstFormValidation } from "@/lib/validation/create-tramite/form-validation";
 import {
-  createEmptyFirstForm,
   createEmptyFirstFormError,
   FirstForm,
   FirstFormError,
@@ -21,7 +20,7 @@ interface Props {
   onSubmitSuccess: () => void;
   tramite: TramiteDB;
   onCancel: () => void;
-  comparativa?: ComparativaVM;
+  client: ClientDB;
 }
 
 export default function FirstStepForm({
@@ -30,15 +29,17 @@ export default function FirstStepForm({
   onSubmitSuccess,
   tramite,
   onCancel,
-  comparativa,
+  client,
 }: Props) {
   const { userData } = useUser();
   const [errors, setErrors] = useState<FirstFormError>(
     createEmptyFirstFormError
   );
-  const [formData, setFormData] = useState<FirstForm>(
-    createEmptyFirstForm(userData as User, comparativa)
-  );
+  const [formData, setFormData] = useState<FirstForm>({
+    sales_name: tramite.sales_name,
+    client_type: client.type,
+    user_id: tramite.user_id,
+  });
   const [comerciales, setComerciales] = useState<User[]>([]);
 
   useEffect(() => {

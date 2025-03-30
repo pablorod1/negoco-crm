@@ -248,7 +248,7 @@ export default function AddTramiteDialog({
       onSubmitSuccess={handleNext}
       tramite={tramite}
       onCancel={onClose}
-      comparativa={comparativa}
+      client={client}
     />,
     <SecondStepForm
       key={2}
@@ -258,7 +258,7 @@ export default function AddTramiteDialog({
       onSecondSubmitSuccess={handleNext}
       onBack={handleBack}
       onCancel={onClose}
-      comparativa={comparativa}
+      signer={signer}
     />,
     <ThirdStepForm
       key={3}

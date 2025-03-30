@@ -1,8 +1,6 @@
 import { CARGOS, DOCUMENT_TYPES } from "@/lib/core/const";
 import {
-  createEmptySecondForm,
   createEmptySecondFormError,
-  createEmptySignerForm,
   SecondForm,
   SecondFormError,
   SignerForm,
@@ -16,7 +14,7 @@ import {
 
 import { Divider } from "@heroui/divider";
 import React, { useState } from "react";
-import { ClientDB, ComparativaVM, SignerDB } from "@/lib/core/types";
+import { ClientDB, SignerDB } from "@/lib/core/types";
 import FormWrapper from "../FormWrapper";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import { InputComponent, SelectComponent } from "../InputComponent";
@@ -28,7 +26,7 @@ interface Props {
   onSecondSubmitSuccess: () => void;
   onBack: () => void;
   onCancel: () => void;
-  comparativa?: ComparativaVM;
+  signer?: SignerDB;
 }
 
 export default function SecondStepForm({
@@ -38,16 +36,14 @@ export default function SecondStepForm({
   onSecondSubmitSuccess,
   onBack,
   onCancel,
-  comparativa,
+  signer,
 }: Props) {
   const [errors, setErrors] = useState<SecondFormError>(
     createEmptySecondFormError
   );
-  const [formData, setFormData] = useState<SecondForm>(
-    createEmptySecondForm(comparativa)
-  );
+  const [formData, setFormData] = useState<SecondForm>(client as SecondForm);
   const [signerData, setSignerData] = useState<SignerForm>(
-    createEmptySignerForm
+    signer as SignerForm
   );
   const [signerErrors, setSignerErrors] = useState<SignerFormError>(
     createEmptySignerFormError

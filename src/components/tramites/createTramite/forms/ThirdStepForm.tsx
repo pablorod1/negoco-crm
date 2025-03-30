@@ -39,6 +39,7 @@ export default function ThirdStepForm({
 }: Props) {
   const [openComisionModal, setOpenComisionModal] = useState(false);
   const [openEmptyComisionModal, setOpenEmptyComisionModal] = useState(false);
+
   const handleFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     setTramite((prevState) => {
