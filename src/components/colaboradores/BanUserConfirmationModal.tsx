@@ -67,18 +67,18 @@ export default function BanUserConfirmationModal({ user_id, userName }: Props) {
 
   return (
     <>
-      <Button
-        variant="light"
-        isIconOnly
-        color="danger"
-        size="sm"
-        onPress={onOpen}
-        className="opacity-70 hover:opacity-100 hover:bg-red-50 transition-all"
-      >
-        <Tooltip color="danger" content="Deshabilitar usuario" radius="full">
+      <Tooltip color="danger" content="Deshabilitar usuario" radius="full">
+        <Button
+          variant="light"
+          isIconOnly
+          color="danger"
+          size="sm"
+          onPress={onOpen}
+          className="opacity-70 hover:opacity-100 hover:bg-red-50 transition-all"
+        >
           <Ban size={16} />
-        </Tooltip>
-      </Button>
+        </Button>
+      </Tooltip>
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">

@@ -83,13 +83,21 @@ function UsersGridTable({
       header: "Último acceso",
     }),
     columnHelper.accessor("banned", {
-      cell: (info) => (info.getValue() ? "Inactivo" : "Activo"),
+      cell: (info) => (
+        <Chip
+          variant="dot"
+          color={info.getValue() ? "danger" : "success"}
+          className="font-bold"
+        >
+          {info.getValue() ? "Inactivo" : "Activo"}
+        </Chip>
+      ),
       header: "Estado",
     }),
     columnHelper.accessor("organization", {
       cell: (info) =>
         info.getValue() ? (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <Image
               src={(info.getValue().logo as string) || "/logo_sin_letras.webp"}
               alt={`Avatar for ${info.row.original.name}`}
@@ -97,7 +105,7 @@ function UsersGridTable({
               height={32}
               className="rounded-full"
             />
-            <span>
+            <span className="text-sm font-medium text-primary-700">
               {info.row.original.company
                 ? info.row.original.company
                 : info.row.original.organization.name}
@@ -304,7 +312,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
             <div className="border-t border-gray-100 my-3"></div>
 
             {/* Información de la organización */}
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex items-center gap-2 mt-3">
               <div className="bg-gray-50 p-1 rounded-full">
                 <Image
                   src={user.organization.logo || "/logo_sin_letras.webp"}
@@ -315,7 +323,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
                 />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium text-primary-700">
                   {user.company ? user.company : user.organization.name}
                 </p>
               </div>

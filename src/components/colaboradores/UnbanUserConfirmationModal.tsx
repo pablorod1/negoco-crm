@@ -70,18 +70,18 @@ export default function UnbanUserConfirmationModal({
 
   return (
     <>
-      <Button
-        variant="light"
-        isIconOnly
-        color="primary"
-        size="sm"
-        onPress={onOpen}
-        className="opacity-70 hover:opacity-100 hover:bg-red-50 transition-all"
-      >
-        <Tooltip color="primary" content="Habilitar usuario" radius="full">
+      <Tooltip color="primary" content="Habilitar usuario" radius="full">
+        <Button
+          variant="light"
+          isIconOnly
+          color="primary"
+          size="sm"
+          onPress={onOpen}
+          className="opacity-70 transition-all hover:opacity-100 hover:bg-primary-50"
+        >
           <Unlock size={16} />
-        </Tooltip>
-      </Button>
+        </Button>
+      </Tooltip>
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
