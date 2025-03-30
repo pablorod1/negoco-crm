@@ -68,8 +68,8 @@ export async function POST(req: NextRequest) {
       previous_data AS (
           SELECT 
               COUNT(*) AS total,
-              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now', '-1 month') THEN 1 ELSE 0 END) AS active,
-              SUM(CASE WHEN status = 'Pendiente de Firma' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now', '-1 month') THEN 1 ELSE 0 END) AS pending
+              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', '-1 month') THEN 1 ELSE 0 END) AS active,
+              SUM(CASE WHEN status = 'Pendiente de Firma' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', '-1 month') THEN 1 ELSE 0 END) AS pending
           FROM tramites WHERE status NOT LIKE 'Borrador'
           
     `;

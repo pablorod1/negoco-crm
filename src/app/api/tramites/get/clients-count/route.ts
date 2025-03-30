@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         SELECT COUNT(DISTINCT t.client_id) AS total
         FROM tramites t
         WHERE t.status != 'Borrador'
-        AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', 'now', '-1 month')
+        AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', '-1 month')
         ${role === "2" ? "AND t.user_id = ?" : ""}
       ),
       all_time AS (
@@ -68,7 +68,6 @@ export async function POST(req: NextRequest) {
     const rs = await tursoClient.execute({ sql: query, args: params });
 
     const current = rs.rows[0] || { total: 0, current_total: 0, prev_total: 0 };
-
     const calculatePercentage = (
       currentValue: number,
       previousValue: number
