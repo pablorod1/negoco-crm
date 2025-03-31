@@ -296,7 +296,7 @@ export default function UpdateTramiteStatusModal({
             user_to: {
               email: tramite.user.email,
               name: tramite.user.name,
-              org_logo: tramite.user.organization?.logo,
+              org_logo: userData.organization.logo,
             },
             tramite_id: tramite.id,
             status: { old: tramite.status, new: formData.status },

@@ -65,6 +65,7 @@ export async function sendTramiteStatusUpdatedNotification({
       tramiteLink={tramiteLink}
       status={status}
       org_logo={user_to.org_logo}
+      subdomain={subdomain}
     />
   );
 
@@ -74,7 +75,7 @@ export async function sendTramiteStatusUpdatedNotification({
       name: subdomain.toUpperCase(),
     },
     to: user_to.email,
-    subject: `Actualización de Trámite - ${status.new}`,
+    subject: `Actualización de Trámite - ${tramite_id}`,
     html: emailHtml,
   };
 
@@ -92,11 +93,13 @@ const TramiteStatusUpdateEmail = ({
   tramiteLink,
   status,
   org_logo,
+  subdomain,
 }: {
   name: string;
   tramiteLink: string;
   status: { old: string; new: string };
   org_logo: string | undefined;
+  subdomain: string;
 }) => {
   return (
     <Html lang="es">
@@ -119,7 +122,9 @@ const TramiteStatusUpdateEmail = ({
             </Section>
 
             <Section className="px-[50px] py-[40px] text-center">
-              <Heading className="text-[#0066cc] text-[24px] font-semibold m-0 mb-[20px]">
+              <Heading
+                className={`${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"} text-[24px] font-semibold m-0 mb-[20px]`}
+              >
                 Actualización de Trámite
               </Heading>
 
@@ -135,7 +140,7 @@ const TramiteStatusUpdateEmail = ({
               <Section className="my-[30px]">
                 <Button
                   href={tramiteLink}
-                  className="bg-[#0066cc] text-white py-[14px] px-[26px] rounded-[6px] font-semibold text-[16px] no-underline inline-block shadow-md box-border"
+                  className={`${subdomain === "beenergy" ? "bg-[#f7d43a]" : "bg-[#3b82f6]"} text-white py-[14px] px-[26px] rounded-[6px] font-semibold text-[16px] no-underline inline-block shadow-md box-border`}
                 >
                   Ver Trámite
                 </Button>
@@ -146,7 +151,9 @@ const TramiteStatusUpdateEmail = ({
                 navegador:
               </Text>
 
-              <Text className="my-[10px] mb-[20px] py-[12px] px-[15px] bg-[#f5f7fa] rounded-[6px] text-[14px] border-l-4 border-[#0066cc] text-[#666666] text-left">
+              <Text
+                className={`my-[10px] mb-[20px] py-[12px] px-[15px] ${subdomain === "beenergy" ? "bg-[#fffdeb] border-[#f7d43a]" : "bg-[#f5f7fa] border-[#0066cc]"} rounded-[6px] text-[14px] border-l-4  text-[#666666] text-left`}
+              >
                 {tramiteLink}
               </Text>
 
@@ -157,12 +164,14 @@ const TramiteStatusUpdateEmail = ({
               </Text>
             </Section>
 
-            <Section className="bg-[#f0f5fc] px-[50px] py-[30px] text-center border-t border-[#e5ebf5]">
+            <Section
+              className={`${subdomain === "beenergy" ? "bg-[#fffdeb] border-[#fffdeb]" : "bg-[#f0f5fc] border-[#e5ebf5]"} px-[50px] py-[30px] text-center border-t `}
+            >
               <Text className="text-[#758195] text-[14px] m-0 mb-[15px]">
                 Si tienes alguna duda, contáctanos en{" "}
                 <Link
                   href="mailto:soporte@negococloud.es"
-                  className="text-[#0066cc] no-underline"
+                  className={`${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"} no-underline`}
                 >
                   soporte@negococloud.es
                 </Link>
