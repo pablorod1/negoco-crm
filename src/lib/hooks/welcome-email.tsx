@@ -22,11 +22,13 @@ export async function sendWelcomeEmail({
   name,
   req,
   link,
+  org_logo,
 }: {
   email_to: string;
   name: string;
   req: NextRequest;
   link: string;
+  org_logo: string | undefined;
 }) {
   const host = req.headers.get("host");
   if (!host) {
@@ -55,11 +57,21 @@ export async function sendWelcomeEmail({
   });
 
   // Configurar el email
-  const emailHtml = await render(<WelcomeEmail name={name} link={link} />);
+  const emailHtml = await render(
+    <WelcomeEmail
+      name={name}
+      link={link}
+      org_logo={org_logo}
+      subdomain={subdomain}
+    />
+  );
   const mailOptions = {
-    from: `Negoco Cloud <${email}>`,
+    from: {
+      name: subdomain.toUpperCase(),
+      address: email as string,
+    },
     to: email_to,
-    subject: `Bienvenido a Negoco Cloud - ${subdomain.toUpperCase()}`,
+    subject: `Bienvenido a ${subdomain.toUpperCase()} - Negoco Cloud`,
     html: emailHtml,
   };
 
@@ -72,15 +84,25 @@ export async function sendWelcomeEmail({
   }
 }
 
-const WelcomeEmail = ({ name, link }: { name: string; link: string }) => {
+const WelcomeEmail = ({
+  name,
+  link,
+  org_logo,
+  subdomain,
+}: {
+  name: string;
+  link: string;
+  org_logo: string | undefined;
+  subdomain: string;
+}) => {
   const currentYear = new Date().getFullYear();
 
   return (
     <Html>
       <Head />
       <Preview>
-        Bienvenido a Negoco Cloud - Su nueva plataforma CRM para consultoría
-        energética
+        Bienvenido a {subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud"} -
+        Su nueva plataforma CRM para consultoría energética
       </Preview>
       <Tailwind>
         <Body className="bg-[#f6f9fc] font-sans py-[40px]">
@@ -91,10 +113,13 @@ const WelcomeEmail = ({ name, link }: { name: string; link: string }) => {
                 alt="Negoco Cloud Logo"
                 className="mx-auto mb-6"
                 height={50}
-                src="https://negococloud.es/favicon.png"
+                src={org_logo ? org_logo : "https://negococloud.es/favicon.png"}
               />
-              <Heading className="text-[24px] font-bold text-center text-[#3b82f6] m-0">
-                Bienvenido a Negoco Cloud
+              <Heading
+                className={`text-[24px] font-bold text-center  m-0 ${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"}`}
+              >
+                Bienvenido a{" "}
+                {subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud"}
               </Heading>
               <Text className="text-[16px] text-center text-gray-600">
                 La plataforma CRM líder en consultoría energética en España
@@ -144,7 +169,7 @@ const WelcomeEmail = ({ name, link }: { name: string; link: string }) => {
 
               <Section className="text-center mb-[32px]">
                 <Button
-                  className="bg-[#3b82f6] text-white font-bold py-[12px] px-[24px] rounded-[4px] no-underline text-center box-border"
+                  className={`${subdomain === "beenergy" ? "bg-[#f7d43a]" : "bg-[#3b82f6]"} text-white font-bold py-[12px] px-[24px] rounded-[4px] no-underline text-center box-border`}
                   href={`${link}/login`}
                 >
                   Acceder a mi cuenta
@@ -161,7 +186,11 @@ const WelcomeEmail = ({ name, link }: { name: string; link: string }) => {
                 equipo de soporte en{" "}
                 <a
                   href="mailto:soporte@negococloud.es"
-                  className="text-[#3b82f6]"
+                  className={
+                    subdomain === "beenergy"
+                      ? "text-[#f7d43a]"
+                      : "text-[#3b82f6]"
+                  }
                 >
                   soporte@negococloud.es
                 </a>

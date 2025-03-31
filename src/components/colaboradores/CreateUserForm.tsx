@@ -232,6 +232,7 @@ export default function CreateUserForm({
             user_to: {
               email: formData.email,
               name: formData.name,
+              org_logo: userData.organization.logo,
             },
           }),
         });

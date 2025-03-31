@@ -56,7 +56,7 @@ export default function UpdateUser({ userData, refreshUserData }: Props) {
 
           showCustomToast({
             title: "Correo electrónico cambiado",
-            message: "Se ha enviado un correo de verificación",
+            message: "El correo electrónico ha sido cambiado correctamente",
             iconColor: "var(--success-color)",
             iconSize: 24,
             icon: CheckCircle,

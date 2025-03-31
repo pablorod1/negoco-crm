@@ -293,7 +293,11 @@ export default function UpdateTramiteStatusModal({
         const emailRes = await fetch("/api/send-email/tramite-status-updated", {
           method: "POST",
           body: JSON.stringify({
-            user_to: { email: tramite.user.email, name: tramite.user.name },
+            user_to: {
+              email: tramite.user.email,
+              name: tramite.user.name,
+              org_logo: tramite.user.organization?.logo,
+            },
             tramite_id: tramite.id,
             status: { old: tramite.status, new: formData.status },
           }),

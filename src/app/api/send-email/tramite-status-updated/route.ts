@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
       tramite_id,
       status,
     }: {
-      user_to: { email: string; name: string };
+      user_to: { email: string; name: string; org_logo: string | undefined };
       tramite_id: string;
       status: { old: string; new: string };
     } = await req.json();

@@ -33,6 +33,41 @@ export default function TramiteTimeLineSection({
               </p>
             </div>
 
+            {!isComercial && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-primary-400">
+                    Fecha de Tramitación
+                  </p>
+                  <Tooltip
+                    radius="sm"
+                    content={
+                      <div className="max-w-sm flex items-start gap-2">
+                        <RefreshCcw className="size-5 text-primary-800" />
+                        <div className="flex flex-col gap-1">
+                          <h3 className=" font-semibold text-primary-800">
+                            Actualización Automática
+                          </h3>
+                          <p className="text-primary-500">
+                            La fecha de tramitación se asignará cuando el estado
+                            del trámite cambie a <strong>Verificado</strong>.
+                          </p>
+                        </div>
+                      </div>
+                    }
+                  >
+                    <InfoIcon className="size-3 text-gray-600" />
+                  </Tooltip>
+                </div>
+                <p className="font-medium ">
+                  {tramite.tramitation_date
+                    ? formatDate(tramite.tramitation_date)
+                    : "---"}
+                </p>
+              </div>
+            )}
+          </div>
+          {isComercial && (
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-primary-400">
@@ -64,7 +99,7 @@ export default function TramiteTimeLineSection({
                   : "---"}
               </p>
             </div>
-          </div>
+          )}
           <div className="flex flex-col gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">

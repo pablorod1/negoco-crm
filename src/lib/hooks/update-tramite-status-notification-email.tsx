@@ -24,7 +24,7 @@ export async function sendTramiteStatusUpdatedNotification({
   link,
   req,
 }: {
-  user_to: { name: string; email: string };
+  user_to: { name: string; email: string; org_logo: string | undefined };
   tramite_id: string;
   status: { old: string; new: string };
   link: string;
@@ -64,11 +64,15 @@ export async function sendTramiteStatusUpdatedNotification({
       name={user_to.name}
       tramiteLink={tramiteLink}
       status={status}
+      org_logo={user_to.org_logo}
     />
   );
 
   const mailOptions = {
-    from: `Negoco Cloud <${email}>`,
+    from: {
+      address: email as string,
+      name: subdomain.toUpperCase(),
+    },
     to: user_to.email,
     subject: `Actualización de Trámite - ${status.new}`,
     html: emailHtml,
@@ -87,10 +91,12 @@ const TramiteStatusUpdateEmail = ({
   name,
   tramiteLink,
   status,
+  org_logo,
 }: {
   name: string;
   tramiteLink: string;
   status: { old: string; new: string };
+  org_logo: string | undefined;
 }) => {
   return (
     <Html lang="es">
@@ -105,10 +111,10 @@ const TramiteStatusUpdateEmail = ({
           <Container className="mx-auto bg-white rounded-[10px] shadow-lg overflow-hidden max-w-[600px]">
             <Section className="bg-[#f0f6ff] py-[30px] text-center">
               <Img
-                alt="Negoco Cloud Logo"
+                alt="Logo"
                 className="mx-auto"
                 height={50}
-                src="https://negococloud.es/favicon.png"
+                src={org_logo ? org_logo : "https://negococloud.es/favicon.png"}
               />
             </Section>
 

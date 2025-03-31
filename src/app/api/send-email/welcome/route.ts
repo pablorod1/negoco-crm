@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const {
       user_to,
     }: {
-      user_to: { email: string; name: string };
+      user_to: { email: string; name: string; org_logo: string | undefined };
       tramite_id: string;
       status: { old: string; new: string };
     } = await req.json();
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
       name: user_to.name,
       link: origin as string,
       req: req as NextRequest,
+      org_logo: user_to.org_logo,
     });
 
     if (!success) {
