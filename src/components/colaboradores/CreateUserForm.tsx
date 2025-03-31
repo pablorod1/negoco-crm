@@ -222,6 +222,35 @@ export default function CreateUserForm({
             company: formData.company,
           });
         }
+
+        const emailRes = await fetch("/api/send-email/welcome", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_to: {
+              email: formData.email,
+              name: formData.name,
+            },
+          }),
+        });
+
+        const { success, error } = await emailRes.json();
+
+        if (!success && error) {
+          showCustomToast({
+            title: "Error al enviar el email",
+            message: error,
+            icon: UserRoundX,
+            iconColor: "red",
+            iconSize: 24,
+            duration: 3000,
+          });
+          setIsLoading(false);
+          return;
+        }
+
         showCustomToast({
           title: "Nuevo usuario creado",
           message: `El usuario ${
