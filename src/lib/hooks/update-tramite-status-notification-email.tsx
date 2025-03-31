@@ -110,9 +110,13 @@ const TramiteStatusUpdateEmail = ({
         El estado de tu trámite ha cambiado de {status.old} a {status.new}
       </Preview>
       <Tailwind>
-        <Body className="bg-[#f7f9fc] py-[40px] font-sans text-[#333333]">
+        <Body
+          className={`${subdomain === "beenergy" ? "bg-[#fffdeb]" : "bg-[#f7f9fc]"} py-[40px] font-sans text-[#333333]`}
+        >
           <Container className="mx-auto bg-white rounded-[10px] shadow-lg overflow-hidden max-w-[600px]">
-            <Section className="bg-[#f0f6ff] py-[30px] text-center">
+            <Section
+              className={`${subdomain === "beenergy" ? "bg-[#f7d43a]" : "bg-[#f0f6ff]"} py-[30px] text-center`}
+            >
               <Img
                 alt="Logo"
                 className="mx-auto"
@@ -152,7 +156,7 @@ const TramiteStatusUpdateEmail = ({
               </Text>
 
               <Text
-                className={`my-[10px] mb-[20px] py-[12px] px-[15px] ${subdomain === "beenergy" ? "bg-[#fffdeb] border-[#f7d43a]" : "bg-[#f5f7fa] border-[#0066cc]"} rounded-[6px] text-[14px] border-l-4  text-[#666666] text-left`}
+                className={`my-[10px] mb-[20px] py-[12px] px-[15px] ${subdomain === "beenergy" ? "bg-[#fdf7c8] border-[#f7d43a]" : "bg-[#f5f7fa] border-[#0066cc]"} rounded-[6px] text-[14px] border-l-4  text-[#666666] text-left`}
               >
                 {tramiteLink}
               </Text>
@@ -165,7 +169,7 @@ const TramiteStatusUpdateEmail = ({
             </Section>
 
             <Section
-              className={`${subdomain === "beenergy" ? "bg-[#fffdeb] border-[#fffdeb]" : "bg-[#f0f5fc] border-[#e5ebf5]"} px-[50px] py-[30px] text-center border-t `}
+              className={`${subdomain === "beenergy" ? "bg-[#fdf7c8] border-[#fdf7c8]" : "bg-[#f0f5fc] border-[#e5ebf5]"} px-[50px] py-[30px] text-center border-t `}
             >
               <Text className="text-[#758195] text-[14px] m-0 mb-[15px]">
                 Si tienes alguna duda, contáctanos en{" "}
