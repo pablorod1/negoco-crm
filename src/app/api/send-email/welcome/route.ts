@@ -12,13 +12,18 @@ export async function POST(req: NextRequest) {
     } = await req.json();
 
     const origin = req.headers.get("origin");
-    await sendWelcomeEmail({
+    const { success, error, info } = await sendWelcomeEmail({
       email_to: user_to.email,
       name: user_to.name,
       link: origin as string,
       req: req as NextRequest,
     });
-    return NextResponse.json({ success: true });
+
+    if (!success) {
+      return NextResponse.json({ success: false, error }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, info }, { status: 200 });
   } catch (error) {
     console.error("Error enviando el email:", error);
     return NextResponse.json(

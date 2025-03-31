@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Img,
   Body,
   Button,
   Container,
@@ -8,6 +9,7 @@ import {
   Hr,
   Html,
   Preview,
+  render,
   Section,
   Tailwind,
   Text,
@@ -34,18 +36,18 @@ export async function sendWelcomeEmail({
   // Extraer el subdominio (client1, client2, etc.)
   const subdomain = host.split(".")[0];
   const email =
-    subdomain === "localhost:3000" || "negococloud"
+    subdomain === "localhost:3000" || subdomain === "negococloud"
       ? process.env.EMAIL
       : process.env[`EMAIL_${subdomain.toUpperCase()}`];
   const password =
-    subdomain === "localhost:3000" || "negococloud"
+    subdomain === "localhost:3000" || subdomain === "negococloud"
       ? process.env.EMAIL_PASS
       : process.env[`EMAIL_PASS_${subdomain.toUpperCase()}`];
 
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST, // Aquí va smtp.dondominio.com
-    port: Number(process.env.SMTP_PORT), // Puerto 587 para STARTTLS o 465 para SSL
-    secure: false, // `true` para SSL en 465, `false` para STARTTLS en 587
+    host: process.env.SMTP_HOST,
+    port: 465,
+    secure: true,
     auth: {
       user: email,
       pass: password,
@@ -53,23 +55,24 @@ export async function sendWelcomeEmail({
   });
 
   // Configurar el email
+  const emailHtml = await render(<WelcomeEmail name={name} link={link} />);
   const mailOptions = {
-    from: `${subdomain.toUpperCase()} <${email}>`,
+    from: `Negoco Cloud <${email}>`,
     to: email_to,
     subject: `Bienvenido a Negoco Cloud - ${subdomain.toUpperCase()}`,
-    html: WelcomeEmail(name, link).toString(),
+    html: emailHtml,
   };
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    return info;
+    return { success: true, info };
   } catch (error) {
     console.error("Error al enviar el email:", error);
-    throw new Error("Error al enviar el email");
+    return { success: false, error: "Error sending email" };
   }
 }
 
-const WelcomeEmail = (name: string, link: string) => {
+const WelcomeEmail = ({ name, link }: { name: string; link: string }) => {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -84,7 +87,13 @@ const WelcomeEmail = (name: string, link: string) => {
           <Container className="bg-white rounded-[8px] mx-auto p-[20px] max-w-[600px]">
             {/* Header */}
             <Section className="mt-[32px]">
-              <Heading className="text-[24px] font-bold text-center text-[#1a3e6f] m-0">
+              <Img
+                alt="Negoco Cloud Logo"
+                className="mx-auto mb-6"
+                height={50}
+                src="https://negococloud.es/favicon.png"
+              />
+              <Heading className="text-[24px] font-bold text-center text-[#3b82f6] m-0">
                 Bienvenido a Negoco Cloud
               </Heading>
               <Text className="text-[16px] text-center text-gray-600">
@@ -135,7 +144,7 @@ const WelcomeEmail = (name: string, link: string) => {
 
               <Section className="text-center mb-[32px]">
                 <Button
-                  className="bg-[#1a3e6f] text-white font-bold py-[12px] px-[24px] rounded-[4px] no-underline text-center box-border"
+                  className="bg-[#3b82f6] text-white font-bold py-[12px] px-[24px] rounded-[4px] no-underline text-center box-border"
                   href={`${link}/login`}
                 >
                   Acceder a mi cuenta
@@ -152,7 +161,7 @@ const WelcomeEmail = (name: string, link: string) => {
                 equipo de soporte en{" "}
                 <a
                   href="mailto:soporte@negococloud.es"
-                  className="text-[#1a3e6f]"
+                  className="text-[#3b82f6]"
                 >
                   soporte@negococloud.es
                 </a>
