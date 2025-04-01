@@ -231,7 +231,7 @@ export default function AddTramiteDialog({
       console.error("Submission error:", error);
       showCustomToast({
         title: "Error de Conexión",
-        message: "No se pudo completar la solicitud",
+        message: error as string,
         iconColor: "var(--danger-color)",
         iconSize: 24,
         icon: CircleX,
@@ -318,8 +318,8 @@ export default function AddTramiteDialog({
             activeTab === 1 || activeTab === 3
               ? "max-w-[1400px]"
               : activeTab === 2
-              ? "max-w-[1200px]"
-              : "max-w-[800px]"
+                ? "max-w-[1200px]"
+                : "max-w-[800px]"
           }`}
         >
           <ModalHeader>
