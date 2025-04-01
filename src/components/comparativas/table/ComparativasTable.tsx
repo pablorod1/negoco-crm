@@ -43,8 +43,8 @@ export default function ComparativasTable<TData, TValue>({
     setFilterValue,
     setStatusFilter,
     resetFilters,
-    dateRange,
-    setDateRange,
+    creationDateRange,
+    setCreationDateRange,
   } = useTableFilters(id || "");
 
   const fetchComparativas = useCallback(async () => {
@@ -65,7 +65,7 @@ export default function ComparativasTable<TData, TValue>({
               user_role: userData.role,
               filterValue,
               statusFilter,
-              dateRange,
+              dateRange: creationDateRange,
             }),
           }
         );
@@ -90,7 +90,14 @@ export default function ComparativasTable<TData, TValue>({
         console.error("Error al obtener comparativas:", error);
       }
     }
-  }, [pageIndex, pageSize, filterValue, statusFilter, userData, dateRange]);
+  }, [
+    pageIndex,
+    pageSize,
+    filterValue,
+    statusFilter,
+    userData,
+    creationDateRange,
+  ]);
 
   // Consolidated useEffect for data fetching and refresh
   useEffect(() => {
@@ -136,8 +143,8 @@ export default function ComparativasTable<TData, TValue>({
       resetFilters: handleResetFilters,
       totalComparativas,
       userData: userData as User,
-      dateRange,
-      setDateRange,
+      dateRange: creationDateRange,
+      setDateRange: setCreationDateRange,
     }),
     [
       filterValue,
@@ -146,8 +153,8 @@ export default function ComparativasTable<TData, TValue>({
       setStatusFilter,
       handleResetFilters,
       userData,
-      dateRange,
-      setDateRange,
+      creationDateRange,
+      setCreationDateRange,
       totalComparativas,
     ]
   );
