@@ -1,6 +1,6 @@
 import { Table } from "@tanstack/react-table";
 import * as XLSX from "xlsx";
-import { formatDate } from "./format";
+import { formatComission, formatDate } from "./format";
 import { ComparativaStatus } from "./types";
 
 interface Props<TData> {
@@ -105,36 +105,38 @@ export async function exportToExcel<TData>({
                 plan.includes("indexado")
               ) {
                 rowData[headerName] =
-                  `Fijo: ${comisionObj.fijo || 0}, Indexado: ${comisionObj.indexado || 0}`;
+                  `Fijo: ${formatComission(comisionObj.fijo) || 0}, Indexado: ${formatComission(comisionObj.indexado) || 0}`;
               }
               // If plan is "fijo" or includes "fijo" but not "indexado", only show fijo
               else if (
                 plan === "fijo" ||
                 (Array.isArray(plan) && plan.includes("fijo"))
               ) {
-                rowData[headerName] = `Fijo: ${comisionObj.fijo || 0}`;
+                rowData[headerName] =
+                  `Fijo: ${formatComission(comisionObj.fijo) || 0}`;
               }
               // If plan is "indexado" or includes "indexado" but not "fijo", only show indexado
               else if (
                 plan === "indexado" ||
                 (Array.isArray(plan) && plan.includes("indexado"))
               ) {
-                rowData[headerName] = `Indexado: ${comisionObj.indexado || 0}`;
+                rowData[headerName] =
+                  `Indexado: ${formatComission(comisionObj.indexado) || 0}`;
               }
               // Fallback if plan doesn't match expected values
               else {
                 rowData[headerName] =
-                  `Fijo: ${comisionObj.fijo || 0}, Indexado: ${comisionObj.indexado || 0}`;
+                  `Fijo: ${formatComission(comisionObj.fijo) || 0}, Indexado: ${formatComission(comisionObj.indexado) || 0}`;
               }
             } else {
               // If there's no plan information, show both values
               rowData[headerName] =
-                `Fijo: ${comisionObj.fijo || 0}, Indexado: ${comisionObj.indexado || 0}`;
+                `Fijo: ${formatComission(comisionObj.fijo) || 0}, Indexado: ${formatComission(comisionObj.indexado) || 0}`;
             }
           } else if (Array.isArray(value)) {
             rowData[headerName] = value.join(", ");
           } else {
-            rowData[headerName] = value;
+            rowData[headerName] = formatComission(Number(value));
           }
         } else if (Array.isArray(cell?.getValue())) {
           rowData[headerName] = (cell?.getValue() as string[]).join(", ");
