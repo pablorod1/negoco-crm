@@ -146,10 +146,10 @@ export default function DeleteFileConfirmationModal({
           )}
         </ModalBody>
         <ModalFooter>
-          <Button variant="light" color="primary" onPress={onClose}>
+          <Button variant="light" color="primary" onPress={onClose} radius="sm">
             Cancelar
           </Button>
-          <Button color="danger" onPress={handleDelete}>
+          <Button color="danger" onPress={handleDelete} radius="sm">
             {files.length > 1 ? "Eliminar Archivos" : "Eliminar Archivo"}
           </Button>
         </ModalFooter>
