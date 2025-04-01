@@ -11,6 +11,29 @@ import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
+    id: "select",
+    header: ({ table }) => (
+      <div className="flex items-center justify-center">
+        <input
+          type="checkbox"
+          className="w-4 h-4"
+          onChange={table.getToggleAllRowsSelectedHandler()}
+          checked={table.getIsAllRowsSelected()}
+        />
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="flex items-center justify-center">
+        <input
+          type="checkbox"
+          className="w-4 h-4"
+          onChange={row.getToggleSelectedHandler()}
+          checked={row.getIsSelected()}
+        />
+      </div>
+    ),
+  },
+  {
     id: "id",
     accessorKey: "id",
     header: "ID",

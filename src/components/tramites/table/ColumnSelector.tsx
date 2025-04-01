@@ -1,5 +1,5 @@
 "use client";
-import { FilterX, Columns } from "lucide-react";
+import { Columns } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -121,25 +121,5 @@ export function ColumnSelector<TData>({
           ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-export function FilterButton({
-  onPress,
-  disabled,
-}: {
-  onPress: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <Button
-      onClick={onPress}
-      disabled={disabled}
-      variant="destructive"
-      className="max-w-44 w-full justify-between border border-danger text-danger-500"
-    >
-      <span>Eliminar Filtros</span>
-      <FilterX className="h-4 w-4" />
-    </Button>
   );
 }

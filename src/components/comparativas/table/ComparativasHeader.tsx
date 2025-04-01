@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnSelector } from "@/components/tramites/table/TableToolbar";
+import { ColumnSelector } from "@/components/tramites/table/ColumnSelector";
 import { ComparativaStatus, User } from "@/lib/core/types";
 import { Input } from "@heroui/input";
 import { Table } from "@tanstack/react-table";

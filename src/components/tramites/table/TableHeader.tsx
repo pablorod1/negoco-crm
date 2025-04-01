@@ -2,14 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  Filter,
-  Search,
-  Download,
-  X,
-  PlusCircle,
-  RefreshCcw,
-} from "lucide-react";
+import { Filter, Search, Download, X, PlusCircle } from "lucide-react";
 import { Input } from "@heroui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@heroui/tooltip";
@@ -18,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/core/utils";
 import type { Table } from "@tanstack/react-table";
 import type { Status, User } from "@/lib/core/types";
-import { ColumnSelector } from "./TableToolbar";
+import { ColumnSelector } from "./ColumnSelector";
 import AddTramiteDialog from "../createTramite/AddTramiteDialog";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -38,6 +31,7 @@ import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import CreateBajaModal from "../createBaja/CreateBajaModal";
 import { PopoverPortal } from "@radix-ui/react-popover";
+import { UpdateMultipleTramitesModal } from "../liquidez/UpdateMultipleTramitesModal";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -260,15 +254,10 @@ export default function TramitesHeader<TData>({
             )}
 
             {isLiquidezTable && (
-              <Tooltip content="Actualizar múltiples trámites">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 bg-gray-50 border-gray-200"
-                >
-                  <RefreshCcw className="h-4 w-4" />
-                </Button>
-              </Tooltip>
+              <UpdateMultipleTramitesModal
+                table={table}
+                userData={userData as User}
+              />
             )}
 
             {/* Create Button */}
