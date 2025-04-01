@@ -100,8 +100,6 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>Rename</DropdownMenuItem>
-              <DropdownMenuItem>Move</DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer text-danger"
                 onClick={handleDelete}

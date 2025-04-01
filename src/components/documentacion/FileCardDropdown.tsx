@@ -197,7 +197,6 @@ export default function FileCardDropdown({
             <DropdownItem
               key="download"
               description="Descargar archivo"
-              shortcut="⌘N"
               startContent={<DownloadCloud className={iconClasses} />}
             >
               Descargar
@@ -209,8 +208,7 @@ export default function FileCardDropdown({
               onPress={onOpen}
               className="text-danger"
               color="danger"
-              description="Permanently delete the file"
-              shortcut="⌘⇧D"
+              description="Eliminar archivo permanentemente"
               startContent={
                 <DeleteDocumentIcon className="text-xl pointer-events-none flex-shrink-0 text-danger" />
               }
@@ -222,7 +220,7 @@ export default function FileCardDropdown({
       </Dropdown>
 
       <DeleteFileConfirmationModal
-        file={file}
+        files={[file]}
         userData={userData}
         isOpen={isOpen}
         onClose={onClose}

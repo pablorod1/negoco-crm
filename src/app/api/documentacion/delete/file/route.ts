@@ -4,21 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const {
-      folder_path,
-      file_name,
-      file_id,
-      organization_id,
-    }: {
-      folder_path: string;
-      file_name: string;
-      file_id: string;
-      organization_id: string;
-    } = await req.json();
+    const { files } = await req.json();
 
-    if (!folder_path || !file_name || !file_id || !organization_id) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Missing parameters" },
+        { success: false, error: "No files specified for deletion" },
         { status: 400 }
       );
     }
@@ -32,33 +22,69 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { success: firebaseSuccess, errors: firebaseErrors } =
-      await deleteFileFromStorage(
-        "documentacion",
-        folder_path,
-        file_name,
-        organization_id
-      );
+    const results = [];
+    const errors = [];
 
-    const query = `DELETE FROM documentacion_files WHERE id = ?`;
-    // 2. Delete folder from database
-    await tursoClient.execute({
-      sql: query,
-      args: [file_id],
-    });
+    // Process each file
+    for (const file of files) {
+      const { folder_path, file_name, file_id, organization_id } = file;
 
-    if (!firebaseSuccess) {
+      if (!folder_path || !file_name || !file_id || !organization_id) {
+        errors.push(`Missing parameters for file: ${file_name || "unknown"}`);
+        continue;
+      }
+
+      try {
+        // Delete from Firebase storage
+        const { success: firebaseSuccess, error: firebaseError } =
+          await deleteFileFromStorage(
+            "documentacion",
+            folder_path,
+            file_name,
+            organization_id
+          );
+
+        if (!firebaseSuccess) {
+          errors.push(
+            `Firebase deletion failed for ${file_name}: ${firebaseError}`
+          );
+          continue;
+        }
+
+        // Delete from database
+        const query = `DELETE FROM documentacion_files WHERE id = ?`;
+        await tursoClient.execute({
+          sql: query,
+          args: [file_id],
+        });
+
+        results.push({ file_id, success: true });
+      } catch (error) {
+        console.error(`Error processing file ${file_name}:`, error);
+        errors.push(`Failed to delete ${file_name}`);
+      }
+    }
+
+    if (errors.length > 0) {
       return NextResponse.json(
-        { success: false, error: firebaseErrors },
-        { status: 500 }
+        {
+          success: false,
+          error: "Some files failed to delete",
+          details: errors,
+          results,
+        },
+        { status: 207 } // Partial success
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: `Successfully deleted ${results.length} file(s)`,
+    });
   } catch (error) {
-    console.error("Error eliminando archivo en el servidor", error);
+    console.error("Error eliminando archivos en el servidor", error);
     return NextResponse.json(
-      { success: false, error: "Error eliminando archivo en el servidor" },
+      { success: false, error: "Error eliminando archivos en el servidor" },
       { status: 500 }
     );
   }

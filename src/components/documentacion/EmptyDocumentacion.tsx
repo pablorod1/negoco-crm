@@ -4,7 +4,7 @@ import UploadFileModal from "./UploadFileModal";
 import { FolderOpen } from "lucide-react";
 
 export default function EmptyDocumentacion({ userData }: { userData: User }) {
-  const isAdmin = userData.role === "admin";
+  const isAdmin = userData && userData.role === "admin";
 
   return (
     <div className="flex items-center justify-center min-h-[400px] w-full">
