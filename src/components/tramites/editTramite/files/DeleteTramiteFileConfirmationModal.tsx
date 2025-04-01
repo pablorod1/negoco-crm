@@ -10,7 +10,6 @@ import { Button } from "@heroui/button";
 import { AlertTriangle, CheckCircle, CloudAlert, Trash } from "lucide-react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { memo } from "react";
-import { deleteFileFromStorage } from "@/lib/firebase/data/deleteFile";
 
 interface DeleteFileConfirmationModalProps {
   tramite_id: string;
@@ -30,12 +29,17 @@ const DeleteTramiteFileConfirmationModal = memo(
 
     const handleDeleteFile = async () => {
       try {
-        const { success, error } = await deleteFileFromStorage(
-          `tramites`,
-          tramite_id,
-          filename,
-          organization_id
-        );
+        const res = await fetch("/api/tramites/delete/file", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            file_name: filename,
+            tramite_id,
+            organization_id,
+          }),
+        });
+
+        const { success, error } = await res.json();
 
         if (!success) {
           console.error(error);
