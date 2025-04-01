@@ -39,6 +39,9 @@ export function DataTable<TData, TValue>({
   const [pageIndex, setPageIndex] = useState(1);
   const [totalTramites, setTotalTramites] = useState(0);
 
+  const isTramitesTable = title === "Trámites";
+  const isLiquidezTable = title === "Liquidez";
+
   const {
     filterValue,
     companyFilter,
@@ -72,8 +75,11 @@ export function DataTable<TData, TValue>({
             user_role: userData.role,
             filterValue,
             companyFilter,
-            statusFilter:
-              title === "Trámites" ? statusFilter : ["Activo", "Baja"],
+            statusFilter: isTramitesTable
+              ? statusFilter
+              : isLiquidezTable && statusFilter.length > 0
+                ? statusFilter
+                : ["Activo", "Baja"],
             liquidezStatusFilter,
             contractTypeFilter,
           }),
@@ -101,7 +107,8 @@ export function DataTable<TData, TValue>({
     liquidezStatusFilter,
     contractTypeFilter,
     userData,
-    title,
+    isTramitesTable,
+    isLiquidezTable,
   ]);
 
   // Fetch de datos
