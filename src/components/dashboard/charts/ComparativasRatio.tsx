@@ -357,7 +357,7 @@ export function ComparativasRatio({
                                         y={(viewBox.cy || 0) + 24}
                                         className="fill-primary-300"
                                       >
-                                        Tramitadas
+                                        Completadas
                                       </tspan>
                                     </text>
                                   </motion.g>
@@ -382,7 +382,7 @@ export function ComparativasRatio({
                       >
                         {comparativasData.total || 0}
                       </NumberTicker>
-                      <span className="text-xs text-white">Completadas</span>
+                      <span className="text-xs text-white">Realizadas</span>
                     </motion.div>
 
                     <motion.div
@@ -397,7 +397,7 @@ export function ComparativasRatio({
                       >
                         {comparativasData.processed || 0}
                       </NumberTicker>
-                      <span className="text-xs text-white">Tramitadas</span>
+                      <span className="text-xs text-white">Completadas</span>
                     </motion.div>
                   </div>
                 </motion.div>
@@ -461,7 +461,7 @@ export function ComparativasRatio({
             <div className="flex justify-between items-center gap-2 me-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-                <span className="text-sm text-gray-600">Tramitadas</span>
+                <span className="text-sm text-gray-600">Completadas</span>
               </div>
               <span className="font-medium">{comparativasData.processed}</span>
             </div>

@@ -392,7 +392,7 @@ export function YearlyTramitesBarChart({
                     chartView === "comision" ? "text-white/80" : "text-gray-500"
                   }
                 />
-                <span className="font-medium">Comisión</span>
+                <span className="font-medium">Margen</span>
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-lg font-bold">

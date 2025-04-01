@@ -391,7 +391,7 @@ export function PersonalTramitesChart({
                         : "text-gray-500"
                     }
                   />
-                  <span className="font-medium">Comisión</span>
+                  <span className="font-medium">Comisiones</span>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg font-bold">
