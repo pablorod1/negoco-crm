@@ -129,8 +129,6 @@ export default function DashboardBentoGrid() {
         0
       );
 
-      console.log("clients", clients);
-      console.log("active", active);
 
       setDashboardData({
         clients,
