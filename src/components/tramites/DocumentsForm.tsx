@@ -74,7 +74,7 @@ export default function DocumentsForm({
           <h4 className="text-sm font-medium text-gray-700 mb-2">
             Archivos subidos
           </h4>
-          <ul className="space-y-2">
+          <ul className="space-y-2 max-h-60 overflow-y-auto">
             {uploadedFiles.map((file, index) => (
               <li
                 key={index}

@@ -21,15 +21,15 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
                 i < currentStep
                   ? "bg-primary border-primary text-primary-foreground"
                   : i === currentStep
-                  ? "border-primary text-primary bg-white"
-                  : "border-gray-300 text-gray-300 bg-white"
+                    ? "border-primary text-primary bg-white"
+                    : "border-gray-300 text-gray-300 bg-white"
               }`}
             >
               {i < currentStep ? (
                 <svg
                   className="w-5 h-5"
                   fill="none"
-                  stroke="var(--primary-color-600)"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                   xmlns="http://www.w3.org/2000/svg"
                 >

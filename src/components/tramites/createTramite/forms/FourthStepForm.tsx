@@ -6,8 +6,8 @@ import FormWrapper from "../FormWrapper";
 import DocumentsForm from "../../DocumentsForm";
 import NotesBoard from "@/components/core/NotesBoard";
 import { FileIcon } from "lucide-react";
-import SpinnerComponent from "@/components/core/SpinnerComponent";
 import { User } from "@/lib/core/types";
+import LoadingStateModal from "@/components/core/LoadingStateModal";
 
 interface Props {
   onBack: () => void;
@@ -47,11 +47,7 @@ export default function FourthStepForm({
 
   return (
     <FormWrapper>
-      {loading && (
-        <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-90 ">
-          <SpinnerComponent userData={userData as User} />
-        </div>
-      )}
+      {loading && <LoadingStateModal userData={userData} />}
       <form className="relative">
         <div className={`flex flex-col gap-4 w-full ${loading && "blur-sm"}`}>
           <h2 className="text-xl text-primary-500 font-semibold">Documentos</h2>

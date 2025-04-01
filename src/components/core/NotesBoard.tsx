@@ -40,7 +40,7 @@ const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onCreateNote }) => {
                 key={index}
                 className={`${
                   postItColors[index % postItColors.length]
-                } p-4 rounded-lg shadow-md transform w-fit max-w-80 rotate-${
+                } p-4 rounded-lg shadow-md transform w-full rotate-${
                   Math.floor(Math.random() * 5) - 2
                 } hover:rotate-0 transition-transform duration-200 ease-in-out`}
               >

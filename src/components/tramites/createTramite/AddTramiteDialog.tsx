@@ -312,6 +312,10 @@ export default function AddTramiteDialog({
         inert={!isOpen}
         isOpen={isOpen}
         onClose={onClose}
+        classNames={{
+          wrapper: "overflow-hidden",
+          base: "max-h-[90vh] overflow-y-auto",
+        }}
       >
         <ModalContent
           className={`transition-all duration-700 ease-in-out w-full h-auto ${
@@ -322,7 +326,7 @@ export default function AddTramiteDialog({
                 : "max-w-[800px]"
           }`}
         >
-          <ModalHeader>
+          <ModalHeader className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between p-4">
             <CreateTramiteStepper steps={4} currentStep={activeTab} />
           </ModalHeader>
           <ModalBody>{formElements[activeTab]}</ModalBody>
