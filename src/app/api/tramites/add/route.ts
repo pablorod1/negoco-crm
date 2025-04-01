@@ -64,20 +64,17 @@ export async function POST(req: NextRequest) {
 
     // 1. Primero subimos todos los archivos
     // Si hay algún error durante la subida, no se realizará ningún cambio en la base de datos
-    const tramiteFiles: TramiteFile[] = [];
-
-    for (const file of documents) {
-      try {
+    const tramiteFiles: TramiteFile[] = await Promise.all(
+      documents.map(async (file) => {
         const { downloadURL, previewURL, file_path } = await uploadFile(
           file,
           `${userData.organization.id}/tramites`,
           tramite.id
         );
 
-        // Guardar la ruta del archivo para posible eliminación en caso de error
         uploadedFilePaths.push(file_path as string);
 
-        tramiteFiles.push({
+        return {
           id: crypto.randomUUID(),
           tramite_id: tramite.id,
           filename: file.name,
@@ -86,23 +83,9 @@ export async function POST(req: NextRequest) {
           upload_date: new Date().toISOString(),
           download_url: downloadURL,
           preview_url: previewURL || null,
-        });
-      } catch (error) {
-        // Si falla la subida de cualquier archivo, eliminamos todos los que ya se subieron
-        if (uploadedFilePaths.length > 0) {
-          await deleteFiles(uploadedFilePaths);
-        }
-
-        console.error(`Error uploading file ${file.name}:`, error);
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Error al subir archivo ${file.name}`,
-          },
-          { status: 500 }
-        );
-      }
-    }
+        };
+      })
+    );
 
     // 2. Iniciamos la transacción una vez que todos los archivos están subidos
     const tx = await tursoClient.transaction();
