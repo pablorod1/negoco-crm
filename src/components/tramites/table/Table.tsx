@@ -48,14 +48,22 @@ export function DataTable<TData, TValue>({
     statusFilter,
     liquidezStatusFilter,
     contractTypeFilter,
+    activationDateRange,
+    creationDateRange,
+    renovationDateRange,
+    collectionDateRange,
+    paymentDateRange,
     setFilterValue,
     setCompanyFilter,
     setStatusFilter,
     setContractTypeFilter,
     setLiquidezStatusFilter,
     resetFilters,
-    dateRange,
-    setDateRange,
+    setActivationDateRange,
+    setCreationDateRange,
+    setRenovationDateRange,
+    setCollectionDateRange,
+    setPaymentDateRange,
   } = useTableFilters(id || "");
 
   const { setRefreshTramites } = useTramites();
@@ -82,6 +90,11 @@ export function DataTable<TData, TValue>({
                 : ["Activo", "Baja"],
             liquidezStatusFilter,
             contractTypeFilter,
+            activationDateRange,
+            creationDateRange,
+            renovationDateRange,
+            collectionDateRange,
+            paymentDateRange,
           }),
         });
         const { success, data, error, total } = await res.json();
@@ -109,6 +122,11 @@ export function DataTable<TData, TValue>({
     userData,
     isTramitesTable,
     isLiquidezTable,
+    activationDateRange,
+    creationDateRange,
+    renovationDateRange,
+    collectionDateRange,
+    paymentDateRange,
   ]);
 
   // Fetch de datos
@@ -157,8 +175,16 @@ export function DataTable<TData, TValue>({
       resetFilters: handleResetFilters,
       userData: userData || ({} as User),
       totalTramites,
-      dateRange,
-      setDateRange,
+      setActivationDateRange,
+      setCreationDateRange,
+      setRenovationDateRange,
+      activationDateRange,
+      creationDateRange,
+      renovationDateRange,
+      collectionDateRange,
+      paymentDateRange,
+      setCollectionDateRange,
+      setPaymentDateRange,
     }),
     [
       filterValue,
@@ -174,9 +200,17 @@ export function DataTable<TData, TValue>({
       setContractTypeFilter,
       handleResetFilters,
       userData,
-      dateRange,
-      setDateRange,
+      activationDateRange,
+      creationDateRange,
+      renovationDateRange,
       totalTramites,
+      setActivationDateRange,
+      setCreationDateRange,
+      setRenovationDateRange,
+      collectionDateRange,
+      paymentDateRange,
+      setCollectionDateRange,
+      setPaymentDateRange,
     ]
   );
 

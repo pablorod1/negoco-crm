@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Filter, Search, Download, X, PlusCircle } from "lucide-react";
+import {
+  Filter,
+  Search,
+  Download,
+  X,
+  PlusCircle,
+  RefreshCcw,
+} from "lucide-react";
 import { Input } from "@heroui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@heroui/tooltip";
@@ -48,8 +55,16 @@ interface TableHeaderProps<TData> {
   userData: User;
   table: Table<TData>;
   totalTramites: number;
-  dateRange: DateRange | undefined;
-  setDateRange: (dateRange: DateRange | undefined) => void;
+  activationDateRange: DateRange | undefined;
+  creationDateRange: DateRange | undefined;
+  renovationDateRange: DateRange | undefined;
+  setActivationDateRange: (value: DateRange | undefined) => void;
+  setCreationDateRange: (value: DateRange | undefined) => void;
+  setRenovationDateRange: (value: DateRange | undefined) => void;
+  collectionDateRange: DateRange | undefined;
+  paymentDateRange: DateRange | undefined;
+  setCollectionDateRange: (value: DateRange | undefined) => void;
+  setPaymentDateRange: (value: DateRange | undefined) => void;
 }
 
 export default function TramitesHeader<TData>({
@@ -68,14 +83,25 @@ export default function TramitesHeader<TData>({
   table,
   totalTramites,
   userData,
-  dateRange,
-  setDateRange,
+  activationDateRange,
+  creationDateRange,
+  renovationDateRange,
+  setActivationDateRange,
+  setCreationDateRange,
+  setRenovationDateRange,
+  collectionDateRange,
+  paymentDateRange,
+  setCollectionDateRange,
+  setPaymentDateRange,
 }: TableHeaderProps<TData>) {
   const [scrolled, setScrolled] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   const isComercial = userData?.role === "2";
+
+  const isTramitesTable = title === "Trámites";
+  const isLiquidezTable = title === "Liquidez";
 
   // Update active filters
   useEffect(() => {
@@ -84,8 +110,39 @@ export default function TramitesHeader<TData>({
     if (statusFilter.length > 0) filters.push("Estado");
     if (liquidezStatusFilter.length > 0) filters.push("Liquidez");
     if (contractTypeFilter.length > 0) filters.push("Contrato");
+    if (
+      activationDateRange &&
+      (activationDateRange.from || activationDateRange.to)
+    )
+      filters.push("Fecha de Activación");
+    if (creationDateRange && (creationDateRange.from || creationDateRange.to))
+      filters.push("Fecha de Creación");
+    if (
+      renovationDateRange &&
+      (renovationDateRange.from || renovationDateRange.to)
+    )
+      filters.push("Fecha de Renovación");
+
+    if (
+      collectionDateRange &&
+      (collectionDateRange.from || collectionDateRange.to)
+    )
+      filters.push("Fecha de Cobro");
+    if (paymentDateRange && (paymentDateRange.from || paymentDateRange.to))
+      filters.push("Fecha de Pago");
+
     setActiveFilters(filters);
-  }, [companyFilter, statusFilter, liquidezStatusFilter, contractTypeFilter]);
+  }, [
+    companyFilter,
+    statusFilter,
+    liquidezStatusFilter,
+    contractTypeFilter,
+    activationDateRange,
+    creationDateRange,
+    renovationDateRange,
+    collectionDateRange,
+    paymentDateRange,
+  ]);
 
   // Handle scroll and fetch data
   useEffect(() => {
@@ -176,7 +233,9 @@ export default function TramitesHeader<TData>({
 
             <ColumnSelector
               table={table}
-              tableId={title === "Trámites" ? "tramites" : "liquidez"}
+              tableId={
+                isTramitesTable ? "tramites" : isLiquidezTable ? "liquidez" : ""
+              }
             />
 
             {/* Export Button */}
@@ -200,8 +259,20 @@ export default function TramitesHeader<TData>({
               </Popover>
             )}
 
+            {isLiquidezTable && (
+              <Tooltip content="Actualizar múltiples trámites">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 bg-gray-50 border-gray-200"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            )}
+
             {/* Create Button */}
-            {title === "Trámites" && (
+            {isTramitesTable && (
               <Popover>
                 <Tooltip content="Crear nuevo trámite">
                   <PopoverTrigger asChild>
@@ -229,34 +300,33 @@ export default function TramitesHeader<TData>({
         </div>
 
         {/* Status Tabs */}
-        {title === "Trámites" && (
-          <div className="flex items-center justify-between">
-            {activeFilters.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Filtros activos:</span>
-                <div className="flex gap-1.5">
-                  {activeFilters.map((filter, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="bg-gray-100 text-gray-700 gap-1.5"
-                    >
-                      {filter}
-                    </Badge>
-                  ))}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetFilters}
-                  className="h-7 px-2 text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Limpiar
-                </Button>
+
+        <div className="flex items-center justify-between">
+          {activeFilters.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Filtros activos:</span>
+              <div className="flex gap-1.5">
+                {activeFilters.map((filter, index) => (
+                  <Badge
+                    key={index}
+                    variant="secondary"
+                    className="bg-gray-100 text-gray-700 gap-1.5"
+                  >
+                    {filter}
+                  </Badge>
+                ))}
               </div>
-            )}
-          </div>
-        )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="h-7 px-2 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Limpiar
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Filter Panel */}
         {showFilters && (
@@ -267,18 +337,22 @@ export default function TramitesHeader<TData>({
             transition={{ duration: 0.2 }}
             className="mt-4 pt-4 border-t border-gray-100"
           >
-            <div className="grid grid-cols-4 gap-4">
+            <div
+              className={`grid ${isTramitesTable ? "grid-cols-4" : isLiquidezTable ? "grid-cols-3" : ""} gap-4`}
+            >
               <div className="space-y-2">
                 <Label>Estado</Label>
 
                 <MultiSelect
                   options={
-                    title === "Trámites"
+                    isTramitesTable
                       ? STATUS_TYPES
-                      : [
-                          { label: "Activo", value: "Activo" },
-                          { label: "Baja", value: "Baja" },
-                        ]
+                      : isLiquidezTable
+                        ? [
+                            { label: "Activo", value: "Activo" },
+                            { label: "Baja", value: "Baja" },
+                          ]
+                        : []
                   }
                   onValueChange={(value) => setStatusFilter(value as Status[])}
                   value={statusFilter}
@@ -300,7 +374,7 @@ export default function TramitesHeader<TData>({
                   variant="primary"
                 />
               </div>
-              {title === "Trámites" && (
+              {isTramitesTable && (
                 <div className="space-y-2">
                   <Label>Contrato</Label>
                   <MultiSelect
@@ -324,11 +398,54 @@ export default function TramitesHeader<TData>({
                   maxCount={3}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Fecha de Creación</Label>
+              {isTramitesTable && (
+                <div className="space-y-2">
+                  <Label>Fecha de Creación</Label>
 
-                <DateRangePicker date={dateRange} setDateRange={setDateRange} />
+                  <DateRangePicker
+                    date={creationDateRange}
+                    setDateRange={setCreationDateRange}
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Fecha de Activación</Label>
+
+                <DateRangePicker
+                  date={activationDateRange}
+                  setDateRange={setActivationDateRange}
+                />
               </div>
+              {isLiquidezTable && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Fecha de Cobro</Label>
+
+                    <DateRangePicker
+                      date={collectionDateRange}
+                      setDateRange={setCollectionDateRange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fecha de Pago</Label>
+
+                    <DateRangePicker
+                      date={paymentDateRange}
+                      setDateRange={setPaymentDateRange}
+                    />
+                  </div>
+                </>
+              )}
+              {isTramitesTable && (
+                <div className="space-y-2">
+                  <Label>Fecha de Renovación</Label>
+
+                  <DateRangePicker
+                    date={renovationDateRange}
+                    setDateRange={setRenovationDateRange}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         )}

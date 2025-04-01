@@ -15,7 +15,11 @@ export async function POST(req: NextRequest) {
       statusFilter,
       liquidezStatusFilter,
       contractTypeFilter,
-      dateRange,
+      activationDateRange,
+      creationDateRange,
+      renovationDateRange,
+      collectionDateRange,
+      paymentDateRange,
     }: {
       page: number;
       rowsPerPage: number;
@@ -26,7 +30,11 @@ export async function POST(req: NextRequest) {
       statusFilter?: string[];
       liquidezStatusFilter?: string[];
       contractTypeFilter?: string[];
-      dateRange?: DateRange | undefined;
+      activationDateRange?: DateRange | undefined;
+      creationDateRange?: DateRange | undefined;
+      renovationDateRange?: DateRange | undefined;
+      collectionDateRange?: DateRange | undefined;
+      paymentDateRange?: DateRange | undefined;
     } = await req.json();
 
     // Validate required parameters
@@ -102,14 +110,82 @@ export async function POST(req: NextRequest) {
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
 
     // Date range filter
-    if (dateRange && dateRange.from && dateRange.to) {
-      const fromDate = new Date(dateRange.from);
-      const toDate = new Date(dateRange.to);
+    if (
+      activationDateRange &&
+      activationDateRange.from &&
+      activationDateRange.to
+    ) {
+      const fromDate = new Date(activationDateRange.from);
+      const toDate = new Date(activationDateRange.to);
+
+      fromDate.setDate(fromDate.getDate() + 1);
+      toDate.setDate(toDate.getDate() + 1);
+
+      filters.push(`date(activation_date) BETWEEN date(?) AND date(?)`);
+      params.push(
+        fromDate.toISOString().split("T")[0],
+        toDate.toISOString().split("T")[0]
+      );
+    }
+
+    if (creationDateRange && creationDateRange.from && creationDateRange.to) {
+      const fromDate = new Date(creationDateRange.from);
+      const toDate = new Date(creationDateRange.to);
 
       fromDate.setDate(fromDate.getDate() + 1);
       toDate.setDate(toDate.getDate() + 1);
 
       filters.push(`date(creation_date) BETWEEN date(?) AND date(?)`);
+      params.push(
+        fromDate.toISOString().split("T")[0],
+        toDate.toISOString().split("T")[0]
+      );
+    }
+
+    if (
+      renovationDateRange &&
+      renovationDateRange.from &&
+      renovationDateRange.to
+    ) {
+      const fromDate = new Date(renovationDateRange.from);
+      const toDate = new Date(renovationDateRange.to);
+
+      fromDate.setDate(fromDate.getDate() + 1);
+      toDate.setDate(toDate.getDate() + 1);
+
+      filters.push(`date(renovation_date) BETWEEN date(?) AND date(?)`);
+      params.push(
+        fromDate.toISOString().split("T")[0],
+        toDate.toISOString().split("T")[0]
+      );
+    }
+
+    if (
+      collectionDateRange &&
+      collectionDateRange.from &&
+      collectionDateRange.to
+    ) {
+      const fromDate = new Date(collectionDateRange.from);
+      const toDate = new Date(collectionDateRange.to);
+
+      fromDate.setDate(fromDate.getDate() + 1);
+      toDate.setDate(toDate.getDate() + 1);
+
+      filters.push(`date(collection_date) BETWEEN date(?) AND date(?)`);
+      params.push(
+        fromDate.toISOString().split("T")[0],
+        toDate.toISOString().split("T")[0]
+      );
+    }
+
+    if (paymentDateRange && paymentDateRange.from && paymentDateRange.to) {
+      const fromDate = new Date(paymentDateRange.from);
+      const toDate = new Date(paymentDateRange.to);
+
+      fromDate.setDate(fromDate.getDate() + 1);
+      toDate.setDate(toDate.getDate() + 1);
+
+      filters.push(`date(payment_date) BETWEEN date(?) AND date(?)`);
       params.push(
         fromDate.toISOString().split("T")[0],
         toDate.toISOString().split("T")[0]

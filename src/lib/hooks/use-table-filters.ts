@@ -9,7 +9,21 @@ export function useTableFilters(id?: string) {
   const [liquidezStatusFilter, setLiquidezStatusFilter] = useState<string[]>(
     []
   );
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [activationDateRange, setActivationDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
+  const [creationDateRange, setCreationDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
+  const [renovationDateRange, setRenovationDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
+  const [collectionDateRange, setCollectionDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
+  const [paymentDateRange, setPaymentDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
 
   const resetFilters = () => {
     setCompanyFilter([]);
@@ -17,7 +31,11 @@ export function useTableFilters(id?: string) {
     setContractTypeFilter([]);
     setFilterValue("");
     setLiquidezStatusFilter([]);
-    setDateRange(undefined);
+    setActivationDateRange(undefined);
+    setCreationDateRange(undefined);
+    setRenovationDateRange(undefined);
+    setCollectionDateRange(undefined);
+    setPaymentDateRange(undefined);
   };
 
   return {
@@ -26,13 +44,21 @@ export function useTableFilters(id?: string) {
     statusFilter,
     contractTypeFilter,
     liquidezStatusFilter,
+    activationDateRange,
+    creationDateRange,
+    renovationDateRange,
+    collectionDateRange,
+    paymentDateRange,
     setFilterValue,
     setCompanyFilter,
     setStatusFilter,
     setContractTypeFilter,
     resetFilters,
     setLiquidezStatusFilter,
-    dateRange,
-    setDateRange,
+    setActivationDateRange,
+    setCreationDateRange,
+    setRenovationDateRange,
+    setCollectionDateRange,
+    setPaymentDateRange,
   };
 }
