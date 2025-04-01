@@ -17,7 +17,9 @@ import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle, CircleX } from "lucide-react";
 
 export interface DashboardCardValue {
+  total: number;
   value: number;
+  prev_value: number;
   difference: number;
 }
 
@@ -30,11 +32,11 @@ interface DashboardData {
 }
 
 const initialDashboardData: DashboardData = {
-  clients: { value: 0, difference: 0 },
-  activeTramites: { value: 0, difference: 0 },
+  clients: { total: 0, value: 0, prev_value: 0, difference: 0 },
+  activeTramites: { total: 0, value: 0, prev_value: 0, difference: 0 },
   comisionesPendientes: 0,
   totalBalance: 0,
-  comparativas: { value: 0, difference: 0 },
+  comparativas: { total: 0, value: 0, prev_value: 0, difference: 0 },
 };
 
 export default function DashboardBentoGrid() {
@@ -66,7 +68,6 @@ export default function DashboardBentoGrid() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            current_week: false,
             role: userData.role,
             id: userData.id,
           }),
@@ -111,7 +112,7 @@ export default function DashboardBentoGrid() {
 
       const [
         { data: clients },
-        { data },
+        { data: active },
         { data: totalComisiones },
         { data: balance },
         { data: comparativas },
@@ -128,12 +129,15 @@ export default function DashboardBentoGrid() {
         0
       );
 
+      console.log("clients", clients);
+      console.log("active", active);
+
       setDashboardData({
         clients,
-        activeTramites: data.active,
+        activeTramites: active,
         comisionesPendientes: totalComisiones,
         totalBalance,
-        comparativas: comparativas.completed,
+        comparativas: comparativas,
       });
 
       if (

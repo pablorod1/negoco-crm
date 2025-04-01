@@ -88,7 +88,6 @@ export default function TramitesHeader<TData>({
   setCollectionDateRange,
   setPaymentDateRange,
 }: TableHeaderProps<TData>) {
-  const [scrolled, setScrolled] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -138,16 +137,6 @@ export default function TramitesHeader<TData>({
     paymentDateRange,
   ]);
 
-  // Handle scroll and fetch data
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [filterValue]);
-
   // Clear search filter
   const handleClearSearch = () => {
     setFilterValue("");
@@ -160,8 +149,7 @@ export default function TramitesHeader<TData>({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className={cn(
-          "bg-white rounded-xl border border-gray-100 shadow-sm transition-all duration-300",
-          scrolled ? "py-3 px-5" : "py-5 px-6"
+          "bg-white rounded-xl border border-gray-100 shadow-sm transition-all duration-300 py-5 px-6"
         )}
       >
         {/* Header Top Row */}
@@ -169,8 +157,7 @@ export default function TramitesHeader<TData>({
           <div className="flex items-center gap-3">
             <h1
               className={cn(
-                "font-bold text-3xl bg-gradient-to-r from-primary-700 to-primary-500 text-transparent bg-clip-text",
-                scrolled ? "text-2xl" : "text-3xl"
+                "font-bold text-3xl bg-gradient-to-r from-primary-700 to-primary-500 text-transparent bg-clip-text"
               )}
             >
               {title}

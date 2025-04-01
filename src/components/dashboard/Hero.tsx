@@ -124,47 +124,54 @@ export default function HeroDashboard({
           <StatCard
             title="Clientes"
             value={clients.value}
+            total={clients.total}
+            prev_value={clients.prev_value}
             description="Total de clientes registrados"
             trend={
               clients.difference > 0
                 ? "up"
                 : clients.difference === 0
-                ? "normal"
-                : "down"
+                  ? "normal"
+                  : "down"
             }
             trendValue={clients.difference}
             delay={0.8}
           />
           <StatCard
             title="Trámites Activos"
+            total={activeTramites.total}
             value={activeTramites.value}
+            prev_value={activeTramites.prev_value}
             description="Total de trámites activos"
             trend={
               activeTramites.difference > 0
                 ? "up"
                 : activeTramites.difference === 0
-                ? "normal"
-                : "down"
+                  ? "normal"
+                  : "down"
             }
             trendValue={activeTramites.difference}
             delay={0.9}
           />
           <StatCard
-            title="Trámites Pendientes"
+            title="Comparativas Completadas"
+            total={comparativas.total}
             value={comparativas.value}
+            prev_value={comparativas.prev_value}
             trend={
               comparativas.difference > 0
                 ? "up"
                 : comparativas.difference === 0
-                ? "normal"
-                : "down"
+                  ? "normal"
+                  : "down"
             }
             trendValue={comparativas.difference}
-            description="Total de comparativas completadas"
+            description="Total de comparativas completadas 2025"
             delay={1.0}
           />
           <StatCard
             title="Balance Total"
+            total={totalBalance}
             value={totalBalance}
             description="Balance total de tus comisiones 2025"
             chart
@@ -178,7 +185,9 @@ export default function HeroDashboard({
 
 interface StatCardProps {
   title: string;
+  total: number;
   value: number;
+  prev_value?: number;
   description: string;
   trend?: "up" | "down" | "normal";
   trendValue?: number;
@@ -188,7 +197,9 @@ interface StatCardProps {
 
 function StatCard({
   title,
+  total,
   value,
+  prev_value = 0,
   description,
   trend,
   trendValue,
@@ -204,14 +215,14 @@ function StatCard({
     >
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="text-sm font-medium text-white/80">{title}</h3>
+          <h3 className="text-sm font-medium text-white/90">{title}</h3>
           <motion.p
             className="text-2xl font-bold text-white mt-1"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: delay + 0.2, duration: 0.5 }}
           >
-            {chart ? formatComission(value) : value}
+            {chart ? formatComission(total) : total}
           </motion.p>
         </div>
         {trend && (
@@ -226,8 +237,8 @@ function StatCard({
                 trend === "up"
                   ? "success"
                   : trend === "normal"
-                  ? "default"
-                  : "danger"
+                    ? "default"
+                    : "danger"
               }
               variant="shadow"
             >
@@ -265,8 +276,47 @@ function StatCard({
       <div className="flex justify-between items-center z-30">
         <p className="text-xs text-white/90 mt-2">{description}</p>
         {trendValue !== undefined && (
-          <Tooltip content="Variación respecto al mes anterior">
-            <InfoIcon size={14} className="text-white" strokeWidth={3} />
+          <Tooltip
+            content={
+              <div className="p-3 max-w-xs">
+                <h2 className="font-semibold text-base mb-2 border-b pb-1">
+                  Variación respecto al mes anterior
+                </h2>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Este mes:</span>
+                    <span className="font-medium">{value}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Mes anterior:</span>
+                    <span className="font-medium">{prev_value}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2 pt-1 border-t">
+                    <span className="text-sm text-gray-600">Variación:</span>
+                    <span
+                      className={`font-medium ${
+                        trendValue > 0
+                          ? "text-green-500"
+                          : trendValue < 0
+                            ? "text-red-500"
+                            : "text-gray-600"
+                      }`}
+                    >
+                      {trendValue > 0 ? "+" : ""}
+                      {trendValue.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            }
+          >
+            <div className="flex items-center cursor-help">
+              <InfoIcon
+                size={14}
+                className="text-gray-50 hover:text-gray-100"
+                strokeWidth={3}
+              />
+            </div>
           </Tooltip>
         )}
       </div>

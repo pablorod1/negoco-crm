@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const {
-      current_week,
       role,
       id,
     }: {
@@ -38,17 +37,12 @@ export async function POST(req: NextRequest) {
     let query = `
       WITH current_data AS (
           SELECT 
-              COUNT(*) AS total,
-              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) AS active,
-              SUM(CASE WHEN status = 'Pendiente de Firma' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) AS pending
-          FROM tramites WHERE status NOT LIKE 'Borrador' 
+              SUM(CASE WHEN status = 'Activo' THEN 1 ELSE 0 END) AS total,
+              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', datetime('now')) THEN 1 ELSE 0 END) AS active
+          FROM tramites 
     `;
 
     const params: (string | number)[] = [];
-
-    if (current_week) {
-      query += ` AND strftime('%Y-%W', creation_date) = strftime('%Y-%W', 'now')`;
-    }
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
@@ -67,10 +61,8 @@ export async function POST(req: NextRequest) {
     query += `),
       previous_data AS (
           SELECT 
-              COUNT(*) AS total,
-              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', '-1 month') THEN 1 ELSE 0 END) AS active,
-              SUM(CASE WHEN status = 'Pendiente de Firma' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', '-1 month') THEN 1 ELSE 0 END) AS pending
-          FROM tramites WHERE status NOT LIKE 'Borrador'
+              SUM(CASE WHEN status = 'Activo' AND strftime('%Y-%m', activation_date) = strftime('%Y-%m', datetime('now', '-1 month')) THEN 1 ELSE 0 END) AS active
+          FROM tramites
           
     `;
 
@@ -83,9 +75,7 @@ export async function POST(req: NextRequest) {
       SELECT 
           cd.total AS total,
           cd.active AS active, 
-          cd.pending AS pending,
-          COALESCE(pd.active, 0) AS prev_active,
-          COALESCE(pd.pending, 0) AS prev_pending
+          COALESCE(pd.active, 0) AS prev_active
       FROM current_data cd
       LEFT JOIN previous_data pd ON 1=1;
     `;
@@ -95,9 +85,7 @@ export async function POST(req: NextRequest) {
     const current = rs.rows[0] || {
       total: 0,
       active: 0,
-      pending: 0,
       prev_active: 0,
-      prev_pending: 0,
     };
 
     const calculatePercentage = (
@@ -114,23 +102,13 @@ export async function POST(req: NextRequest) {
       Number(current.prev_active)
     );
 
-    const pendingDifference = calculatePercentage(
-      Number(current.pending),
-      Number(current.prev_pending)
-    );
-
     return NextResponse.json({
       success: true,
       data: {
-        total: current.total as number,
-        active: {
-          value: current.active as number,
-          difference: activeDifference,
-        },
-        pending: {
-          value: current.pending as number,
-          difference: pendingDifference,
-        },
+        total: Number(current.total || 0),
+        value: Number(current.active || 0),
+        prev_value: Number(current.prev_active || 0),
+        difference: activeDifference,
       },
     });
   } catch (error) {

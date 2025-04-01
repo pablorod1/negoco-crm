@@ -60,9 +60,10 @@ export async function POST(req: NextRequest) {
 
     // Consulta optimizada que evita subconsultas repetitivas
     const query = `
-      SELECT 
-        SUM(CASE WHEN status = 'processed' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) AS completed,
-        SUM(CASE WHEN status = 'processed' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', 'now', '-1 month') THEN 1 ELSE 0 END) AS prev_completed
+      SELECT
+        SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) AS total, 
+        SUM(CASE WHEN status = 'processed' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', datetime('now')) THEN 1 ELSE 0 END) AS completed,
+        SUM(CASE WHEN status = 'processed' AND strftime('%Y-%m', creation_date) = strftime('%Y-%m', datetime('now', '-1 month')) THEN 1 ELSE 0 END) AS prev_completed
       FROM comparativas
       WHERE 1=1 ${userFilter}
     `;
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
     const rs = await tursoClient.execute({ sql: query, args: params });
 
     const data = rs.rows[0] || {
+      total: 0,
       completed: 0,
       prev_completed: 0,
     };
@@ -92,10 +94,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        completed: {
-          value: Number(data.completed || 0),
-          difference: completedDifference,
-        },
+        total: Number(data.total || 0),
+        value: Number(data.completed || 0),
+        prev_value: Number(data.prev_completed || 0),
+        difference: completedDifference,
       },
     });
   } catch (error) {
