@@ -1,5 +1,5 @@
 "use client";
-import { ComparativaVM, User } from "@/lib/core/types";
+import { ComparativaStatus, ComparativaVM, User } from "@/lib/core/types";
 import {
   Modal,
   ModalBody,
@@ -14,6 +14,7 @@ import { useComparativas } from "@/lib/contexts/ComparativasContext";
 import { formatDate } from "@/lib/core/format";
 import { useState } from "react";
 import LoadingStateModal from "../core/LoadingStateModal";
+import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 export default function DeleteComparativaConfirmationModal({
   comparativa,
@@ -120,7 +121,9 @@ export default function DeleteComparativaConfirmationModal({
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Estado</p>
-                  <p className="font-medium">{comparativa.status}</p>
+                  <p className="font-medium">
+                    {getStatusBadge(comparativa.status as ComparativaStatus)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Creado por</p>
