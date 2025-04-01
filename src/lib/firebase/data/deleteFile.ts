@@ -36,3 +36,16 @@ export const deleteFileFromStorage = async (
     };
   }
 };
+
+export const deleteFiles = async (paths: string[]): Promise<void[]> => {
+  try {
+    const deletePromises = paths.map((path) => {
+      const fileRef = ref(storage, path);
+      return deleteObject(fileRef);
+    });
+    return Promise.all(deletePromises);
+  } catch (error) {
+    console.error("Error deleting files:", error);
+    throw error;
+  }
+};

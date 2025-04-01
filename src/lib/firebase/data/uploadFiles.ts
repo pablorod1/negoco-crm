@@ -12,7 +12,7 @@ export async function uploadFile(
   file: File,
   parent_folder_name: string,
   folder_name?: string
-): Promise<{ downloadURL: string; previewURL?: string }> {
+): Promise<{ downloadURL: string; previewURL?: string; file_path?: string }> {
   try {
     // Subir el archivo original
     const storageRef = ref(
@@ -30,7 +30,9 @@ export async function uploadFile(
       previewURL = downloadURL;
     }
 
-    return { downloadURL, previewURL };
+    const file_path = `${parent_folder_name}/${folder_name}/${file.name}`;
+
+    return { downloadURL, previewURL, file_path };
   } catch (error) {
     console.error("Error subiendo archivo:", error);
     throw error;
