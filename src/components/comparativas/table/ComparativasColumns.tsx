@@ -460,12 +460,12 @@ export const createComparativasColumns = (
     },
   },
   {
-    id: "Comisión Comercial",
-    accessorKey: "comision_sales_person",
+    id: "Comisión",
+    accessorKey: "comision",
     header: "Comisión",
     cell: ({ row }) => {
       const rowId = row.original.id;
-      const comisiones = row.original.comision_sales_person;
+      const comisiones = row.original.comision;
       const plans = row.original.plan;
       const selectedPlan = getSelectedPlan(rowId);
 
@@ -480,12 +480,12 @@ export const createComparativasColumns = (
     },
   },
   {
-    id: "Comisión",
-    accessorKey: "comision",
-    header: "Comisión",
+    id: "Comisión Comercial",
+    accessorKey: "comision_sales_person",
+    header: "Comisión Comercial",
     cell: ({ row }) => {
       const rowId = row.original.id;
-      const comisiones = row.original.comision;
+      const comisiones = row.original.comision_sales_person;
       const plans = row.original.plan;
       const selectedPlan = getSelectedPlan(rowId);
 

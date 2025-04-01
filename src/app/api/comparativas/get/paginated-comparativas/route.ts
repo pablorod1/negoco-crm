@@ -173,7 +173,6 @@ export async function POST(req: NextRequest) {
           tramite_id: row.tramite_id as string,
           user: {
             name: row.user_name as string,
-            surname: row.user_surname as string,
             email: row.user_email as string,
             image: row.user_image as string,
           },
