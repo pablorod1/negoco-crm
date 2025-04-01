@@ -8,23 +8,31 @@ export const deleteFileFromStorage = async (
   organization_id: string
 ): Promise<{
   success: boolean;
-  errors?: string;
+  error?: string;
 }> => {
-  const fileRef = ref(
-    storage,
-    `${organization_id}/${parent_folder}/${folderPath}/${fileName}`
-  );
+  try {
+    const fileRef = ref(
+      storage,
+      `${organization_id}/${parent_folder}/${folderPath}/${fileName}`
+    );
 
-  if (!fileRef) {
+    if (!fileRef) {
+      return {
+        success: false,
+        error: "File not found",
+      };
+    }
+
+    await deleteObject(fileRef);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error deleting file:", error);
     return {
       success: false,
-      errors: "File not found",
+      error: "Error deleting file",
     };
   }
-
-  await deleteObject(fileRef);
-
-  return {
-    success: true,
-  };
 };

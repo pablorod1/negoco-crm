@@ -107,7 +107,7 @@ export default function DeleteFileConfirmationModal({
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" color="default" onPress={onClose}>
+          <Button variant="light" color="primary" onPress={onClose}>
             Cancelar
           </Button>
           <Button color="danger" onPress={handleDelete}>

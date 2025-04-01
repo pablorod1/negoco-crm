@@ -4,46 +4,47 @@ import { formatDate, formatFileSize } from "@/lib/core/format";
 import { TramiteFile } from "@/lib/core/types";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
 import { CloudAlert, Download, FileIcon } from "lucide-react";
-import { useCallback } from "react";
 import Image from "next/image";
+import DeleteTramiteFileConfirmationModal from "./DeleteTramiteFileConfirmationModal";
 
 interface Props {
   files: TramiteFile[];
   tramite_id: string;
   organization_id: string;
+  onDeleted: () => void;
+  isTramiableBorrador: boolean;
 }
 
 export default function TramiteFilesList({
   files,
   tramite_id,
   organization_id,
+  onDeleted,
+  isTramiableBorrador,
 }: Props) {
-  const handleDownloadFile = useCallback(
-    async (filename: string) => {
-      try {
-        const { success, errors } = await downloadFile(
-          `tramites/${tramite_id}`,
-          filename,
-          organization_id
-        );
+  const handleDownloadFile = async (filename: string) => {
+    try {
+      const { success, errors } = await downloadFile(
+        `tramites/${tramite_id}`,
+        filename,
+        organization_id
+      );
 
-        if (!success) {
-          console.error(errors);
-          showCustomToast({
-            title: "Error al descargar el archivo",
-            message: errors,
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CloudAlert,
-          });
-          return;
-        }
-      } catch (error) {
-        console.error(error);
+      if (!success) {
+        console.error(errors);
+        showCustomToast({
+          title: "Error al descargar el archivo",
+          message: errors,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CloudAlert,
+        });
+        return;
       }
-    },
-    [tramite_id, organization_id]
-  );
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -76,7 +77,7 @@ export default function TramiteFilesList({
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             {file.download_url && (
               <Button
                 variant="bordered"
@@ -85,6 +86,14 @@ export default function TramiteFilesList({
               >
                 <Download size={20} />
               </Button>
+            )}
+            {isTramiableBorrador && (
+              <DeleteTramiteFileConfirmationModal
+                tramite_id={tramite_id}
+                filename={file.filename}
+                organization_id={organization_id}
+                onDeleted={onDeleted}
+              />
             )}
           </div>
         </div>

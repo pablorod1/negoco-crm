@@ -86,6 +86,8 @@ export default function TramiteDetails() {
       (userData.role === "2" && tramite.status === "Borrador")) &&
     tramite.status !== "Activo" &&
     tramite.status !== "Baja";
+  const isTramitableBorrador =
+    tramite.status === "Tramitable" || tramite.status === "Borrador";
 
   const isRenewable =
     new Date(tramite.renovation_date) <=
@@ -199,6 +201,7 @@ export default function TramiteDetails() {
             tramite={tramite}
             onUpload={fetchTramite}
             isEditable={isEditable}
+            isTramitableBorrador={isTramitableBorrador}
           />
         </div>
       )}

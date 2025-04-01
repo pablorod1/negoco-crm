@@ -1,4 +1,4 @@
-import TramiteFilesList from "@/components/comparativas/editComparativa/TramiteFilesList";
+import TramiteFilesList from "@/components/tramites/editTramite/files/TramiteFilesList";
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ interface Props {
   tramite: TramiteDB;
   onUpload: () => void;
   isEditable: boolean | null;
+  isTramitableBorrador: boolean;
 }
 
 export default function TramiteFilesSection({
@@ -25,6 +26,7 @@ export default function TramiteFilesSection({
   tramite,
   onUpload,
   isEditable,
+  isTramitableBorrador,
 }: Props) {
   return (
     <Card>
@@ -46,6 +48,8 @@ export default function TramiteFilesSection({
             files={files}
             tramite_id={tramite.id}
             organization_id={userData?.organization.id as string}
+            onDeleted={onUpload}
+            isTramiableBorrador={isTramitableBorrador}
           />
         ) : (
           <p className="text-muted-foreground">No hay archivos adjuntos.</p>
