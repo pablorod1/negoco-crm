@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
-      query += ` AND`;
+      query += ` WHERE`;
       if (subcomerciales.success && subcomerciales.ids) {
         query += ` (user_id = ? OR user_id IN (${subcomerciales.ids
           .map(() => "?")
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     `;
 
     if (role !== "admin" && role !== "1") {
-      query += ` AND user_id = ?`;
+      query += ` WHERE user_id = ?`;
       params.push(id);
     }
 
