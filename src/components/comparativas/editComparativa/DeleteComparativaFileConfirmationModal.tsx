@@ -78,7 +78,7 @@ const DeleteComparativaFileConfirmationModal = memo(
           isIconOnly
           onPress={onOpen}
         >
-          <Trash size={20} />
+          <Trash size={16} />
         </Button>
         <Modal size="2xl" isOpen={isOpen} onClose={onClose}>
           <ModalContent>

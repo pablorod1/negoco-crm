@@ -83,7 +83,7 @@ export const FilesList = ({
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {file.download_url && (
             <Button
               variant="bordered"
