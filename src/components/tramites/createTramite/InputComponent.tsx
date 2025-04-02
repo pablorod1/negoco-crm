@@ -45,7 +45,12 @@ export const SelectComponent: React.FC<SelectProps> = ({
         {items.map((item) => {
           const isClient =
             typeof item !== "string" && "document_number" in item;
-          const key = typeof item === "string" ? item : item.id;
+          const key =
+            typeof item === "string"
+              ? item
+              : isClient
+                ? item.document_number
+                : item.id;
           const value = typeof item === "string" ? item : item.name;
 
           const avatar = typeof item !== "string";

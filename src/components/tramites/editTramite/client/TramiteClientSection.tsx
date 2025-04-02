@@ -8,14 +8,12 @@ import { ClientDB, SignerDB } from "@/lib/core/types";
 interface Props {
   client: ClientDB;
   signer: SignerDB;
-  isEditable: boolean | null;
   onUpdated: () => void;
 }
 
 export default function TramiteClientSection({
   client,
   signer,
-  isEditable,
   onUpdated,
 }: Props) {
   return (
@@ -47,7 +45,7 @@ export default function TramiteClientSection({
             <ClientTabContent
               client={client}
               onClientUpdated={onUpdated}
-              isEditable={isEditable}
+              isEditable={false}
             />
           </TabsContent>
           {(client.type === "Empresa" ||
@@ -56,7 +54,7 @@ export default function TramiteClientSection({
               <SignerTabContent
                 signer={signer}
                 onSignerUpdated={onUpdated}
-                isEditable={isEditable}
+                isEditable={false}
               />
             </TabsContent>
           )}

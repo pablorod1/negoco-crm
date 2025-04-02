@@ -171,7 +171,6 @@ export default function TramiteDetails() {
         <TramiteClientSection
           client={client}
           signer={signer}
-          isEditable={isEditable}
           onUpdated={fetchTramite}
         />
 

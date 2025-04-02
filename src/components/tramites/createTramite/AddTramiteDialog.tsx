@@ -33,15 +33,6 @@ import { Button } from "@heroui/button";
 import { showCustomToast } from "../../core/CustomToast";
 import { ButtonProps } from "@heroui/button";
 
-export type UploadStatus = {
-  progress: number;
-  currentStep: string;
-  filesTotal: number;
-  filesUploaded: number;
-  status: "idle" | "uploading" | "processing" | "success" | "error";
-  error?: string;
-};
-
 export default function AddTramiteDialog({
   shortcut,
   color,
@@ -71,14 +62,6 @@ export default function AddTramiteDialog({
   const [contracts, setContracts] = useState<ContractDB[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
-    progress: 0,
-    currentStep: "Preparando subida",
-    filesTotal: 0,
-    filesUploaded: 0,
-    status: "idle",
-  });
-
   const { isOpen, onClose, onOpen } = useDisclosure();
   const { refreshTramites } = useTramites();
 
@@ -100,13 +83,6 @@ export default function AddTramiteDialog({
     setSigner(null);
     setContracts([]);
     setDocuments([]);
-    setUploadStatus({
-      progress: 0,
-      currentStep: "Preparando subida",
-      filesTotal: 0,
-      filesUploaded: 0,
-      status: "idle",
-    });
   };
 
   const handleBack = () => {
@@ -133,210 +109,8 @@ export default function AddTramiteDialog({
 
   const handleSubmit = async () => {
     setLoading(true);
-
-    // Inicializar estado de carga
-    setUploadStatus({
-      progress: 0,
-      currentStep: "Preparando archivos",
-      filesTotal: documents.length + (comparativaFiles?.length || 0),
-      filesUploaded: 0,
-      status: "uploading",
-    });
-
     try {
       const formData = new FormData();
-
-      // Configurar el objeto XMLHttpRequest para seguir el progreso
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round(
-            (event.loaded / event.total) * 100
-          );
-          setUploadStatus((prev) => ({
-            ...prev,
-            progress: percentComplete,
-            currentStep: `Subiendo archivos (${percentComplete}%)`,
-            status: "uploading",
-          }));
-        }
-      };
-
-      xhr.onload = async () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const { success, error } = JSON.parse(xhr.responseText);
-
-            if (!success) {
-              setUploadStatus((prev) => ({
-                ...prev,
-                status: "error",
-                error: error || "Error desconocido",
-              }));
-              showCustomToast({
-                title: "Error al añadir trámite",
-                message: error || "Error desconocido",
-                iconColor: "var(--danger-color)",
-                iconSize: 24,
-                icon: CircleX,
-              });
-              setLoading(false);
-              return;
-            }
-
-            setUploadStatus((prev) => ({
-              ...prev,
-              progress: 70,
-              currentStep: "Trámite registrado, finalizando proceso",
-              status: "processing",
-            }));
-
-            showCustomToast({
-              title: "Trámite añadido",
-              message: "El trámite ha sido añadido correctamente",
-              iconColor: "var(--success-color)",
-              iconSize: 24,
-              icon: CheckCircle,
-            });
-
-            // Procesar comparativa si existe
-            if (comparativa) {
-              setUploadStatus((prev) => ({
-                ...prev,
-                progress: 80,
-                currentStep: "Actualizando comparativa",
-                status: "processing",
-              }));
-
-              const comparativaRes = await fetch(
-                "/api/comparativas/update/status",
-                {
-                  method: "PATCH",
-                  body: JSON.stringify({
-                    id: comparativa.id,
-                    status: "processed",
-                    tramite_id: tramite.id,
-                  }),
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                }
-              );
-
-              const { success: comparativaSuccess, error: comparativaError } =
-                await comparativaRes.json();
-
-              if (!comparativaSuccess) {
-                setUploadStatus((prev) => ({
-                  ...prev,
-                  status: "error",
-                  error: comparativaError || "Error al actualizar comparativa",
-                }));
-                showCustomToast({
-                  title: "Error al actualizar comparativa",
-                  message: comparativaError || "Error desconocido",
-                  iconColor: "var(--danger-color)",
-                  iconSize: 24,
-                  icon: CircleX,
-                });
-                setLoading(false);
-                return;
-              }
-
-              setUploadStatus((prev) => ({
-                ...prev,
-                progress: 90,
-                currentStep: "Moviendo archivos de la comparativa",
-                status: "processing",
-              }));
-
-              const moveFileRes = await fetch("/api/comparativas/move-files", {
-                method: "POST",
-                body: JSON.stringify({
-                  organization_id: userData?.organization.id,
-                  comparativa_id: comparativa.id,
-                  tramite_id: tramite.id,
-                }),
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              });
-
-              const { success: moveFilesSuccess, error: moveFileError } =
-                await moveFileRes.json();
-
-              if (!moveFilesSuccess) {
-                setUploadStatus((prev) => ({
-                  ...prev,
-                  status: "error",
-                  error: moveFileError || "Error al mover archivos",
-                }));
-                showCustomToast({
-                  title: "Error al mover archivos",
-                  message: moveFileError || "Error desconocido",
-                  iconColor: "var(--danger-color)",
-                  iconSize: 24,
-                  icon: CircleX,
-                });
-                setLoading(false);
-                return;
-              }
-
-              showCustomToast({
-                title: "Comparativa actualizada",
-                message: "La comparativa ha sido actualizada correctamente",
-                iconColor: "var(--success-color)",
-                iconSize: 24,
-                icon: CheckCircle,
-              });
-
-              if (onComparativaUpdated) {
-                onComparativaUpdated();
-              }
-            }
-
-            // Todo correcto - finalizar
-            setUploadStatus((prev) => ({
-              ...prev,
-              progress: 100,
-              currentStep: "¡Trámite creado con éxito!",
-              status: "success",
-            }));
-
-            // Delay para mostrar el mensaje de éxito antes de cerrar
-            setTimeout(() => {
-              refreshTramites();
-              onClose();
-              setLoading(false);
-            }, 1000);
-          } catch (parseError) {
-            setUploadStatus((prev) => ({
-              ...prev,
-              status: "error",
-              error: "Error al procesar la respuesta del servidor",
-            }));
-            console.error("Error parsing response:", parseError);
-            setLoading(false);
-          }
-        } else {
-          setUploadStatus((prev) => ({
-            ...prev,
-            status: "error",
-            error: `Error del servidor: ${xhr.status}`,
-          }));
-          setLoading(false);
-        }
-      };
-
-      xhr.onerror = () => {
-        setUploadStatus((prev) => ({
-          ...prev,
-          status: "error",
-          error: "Error de conexión",
-        }));
-        setLoading(false);
-      };
 
       // Append files first
       documents.forEach((doc) => {
@@ -356,27 +130,116 @@ export default function AddTramiteDialog({
         formData.append("contracts", JSON.stringify(contracts));
       }
 
-      // Iniciar la petición
-      xhr.open("POST", "/api/tramites/add");
-      xhr.send(formData);
+      console.log("client", client);
+      console.log("signer", signer);
+      const res = await fetch("/api/tramites/add", {
+        method: "POST",
+        body: formData, // Directly use FormData
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
+        showCustomToast({
+          title: "Error al añadir trámite",
+          message: error || "Error desconocido",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+
+      showCustomToast({
+        title: "Trámite añadido",
+        message: "El trámite ha sido añadido correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CheckCircle,
+      });
+
+      if (comparativa) {
+        const comparativaRes = await fetch("/api/comparativas/update/status", {
+          method: "PATCH",
+          body: JSON.stringify({
+            id: comparativa.id,
+            status: "processed",
+            tramite_id: tramite.id,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const { success: comparativaSuccess, error: comparativaError } =
+          await comparativaRes.json();
+
+        if (!comparativaSuccess) {
+          showCustomToast({
+            title: "Error al actualizar comparativa",
+            message: comparativaError || "Error desconocido",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
+        const moveFileRes = await fetch("/api/comparativas/move-files", {
+          method: "POST",
+          body: JSON.stringify({
+            organization_id: userData?.organization.id,
+            comparativa_id: comparativa.id,
+            tramite_id: tramite.id,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const { success: moveFilesSuccess, error: moveFileError } =
+          await moveFileRes.json();
+
+        if (!moveFilesSuccess) {
+          showCustomToast({
+            title: "Error al mover archivos",
+            message: moveFileError || "Error desconocido",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
+        showCustomToast({
+          title: "Comparativa actualizada",
+          message: "La comparativa ha sido actualizada correctamente",
+          iconColor: "var(--success-color)",
+          iconSize: 24,
+          icon: CheckCircle,
+        });
+
+        if (onComparativaUpdated) {
+          onComparativaUpdated();
+          onClose();
+        }
+      }
+
+      refreshTramites();
+      onClose();
     } catch (error) {
       console.error("Submission error:", error);
-      setUploadStatus((prev) => ({
-        ...prev,
-        status: "error",
-        error: error instanceof Error ? error.message : "Error desconocido",
-      }));
       showCustomToast({
         title: "Error de Conexión",
-        message: error instanceof Error ? error.message : "Error desconocido",
+        message: error as string,
         iconColor: "var(--danger-color)",
         iconSize: 24,
         icon: CircleX,
       });
+    } finally {
       setLoading(false);
     }
   };
-
   const formElements = [
     <FirstStepForm
       key={1}
@@ -392,11 +255,11 @@ export default function AddTramiteDialog({
       key={2}
       client={client}
       setClient={setClient}
-      setSigner={setSigner}
       onSecondSubmitSuccess={handleNext}
       onBack={handleBack}
       onCancel={onClose}
-      signer={signer}
+      setSigner={setSigner}
+      signer={signer as SignerDB}
     />,
     <ThirdStepForm
       key={3}
@@ -410,6 +273,7 @@ export default function AddTramiteDialog({
       userData={userData as User}
     />,
     <FourthStepForm
+      userData={userData as User}
       key={4}
       onBack={handleBack}
       onFinish={handleSubmit}
@@ -419,7 +283,6 @@ export default function AddTramiteDialog({
       documents={documents}
       setDocuments={setDocuments}
       loading={loading}
-      uploadStatus={uploadStatus}
       comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
     />,
   ];

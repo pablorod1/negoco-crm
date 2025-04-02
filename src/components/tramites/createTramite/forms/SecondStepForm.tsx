@@ -1,9 +1,9 @@
-"use client";
 import { CARGOS, DOCUMENT_TYPES } from "@/lib/core/const";
 import {
   createEmptySecondFormError,
   SecondForm,
   SecondFormError,
+  SignerForm,
   createEmptySignerFormError,
   SignerFormError,
 } from "@/lib/validation/validation.types";
@@ -26,7 +26,7 @@ interface Props {
   onSecondSubmitSuccess: () => void;
   onBack: () => void;
   onCancel: () => void;
-  signer: SignerDB | null;
+  signer: SignerDB;
 }
 
 export default function SecondStepForm({
@@ -41,9 +41,10 @@ export default function SecondStepForm({
   const [errors, setErrors] = useState<SecondFormError>(
     createEmptySecondFormError
   );
-
   const [formData, setFormData] = useState<SecondForm>(client as SecondForm);
-
+  const [signerData, setSignerData] = useState<SignerForm | null>(
+    signer ? (signer as SignerForm) : null
+  );
   const [signerErrors, setSignerErrors] = useState<SignerFormError>(
     createEmptySignerFormError
   );
@@ -52,9 +53,11 @@ export default function SecondStepForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    if (name.includes("signer") && signer) {
-      setSigner((prevState) => {
-        if (!prevState) return prevState;
+    if (name.includes("signer")) {
+      setSignerData((prevState) => {
+        if (!prevState) {
+          return null;
+        }
         return {
           ...prevState,
           [name.split(".")[1]]: value,
@@ -77,15 +80,8 @@ export default function SecondStepForm({
   };
 
   const handleSecondSubmit = () => {
-    if (signer) {
-      const signerFormValidationResult = signerFormValidation({
-        document_number: signer.document_number,
-        name: signer.name,
-        last_name: signer.last_name,
-        email: signer.email,
-        phone: signer.phone,
-        cargo: signer.cargo || "",
-      });
+    if (signerData) {
+      const signerFormValidationResult = signerFormValidation(signerData);
       const formValidationResult = secondFormValidation(formData);
       setErrors(formValidationResult.errors);
       // Update signer errors while preserving the rest of the state
@@ -94,6 +90,20 @@ export default function SecondStepForm({
         signerFormValidationResult.succeeded &&
         formValidationResult.succeeded
       ) {
+        setSigner((prevState) => {
+          if (!prevState) return null;
+          return {
+            ...prevState,
+            name: signerData.name,
+            last_name: signerData.last_name,
+            email: signerData.email,
+            phone: signerData.phone,
+            document_number: signerData.document_number,
+            cargo: signerData.cargo || null,
+            client_id: client.id,
+          };
+        });
+
         setClient((prevState) => ({
           ...prevState,
           name: formData.name,
@@ -250,63 +260,61 @@ export default function SecondStepForm({
             />
           </div>
         </div>
-        {signer && (
+        {signerData && (
           <>
             <Divider className="my-4" />
             <div className="flex flex-col gap-y-4 w-full">
               <h2 className="text-xl font-semibold text-primary-500">
                 Datos de la persona firmante
               </h2>
-
               <div className="flex items-stretch gap-4 w-full">
                 <InputComponent
                   name="signer.document_number"
                   label="Número de documento"
+                  value={signerData.document_number}
                   onChange={handleFieldChange}
                   type="text"
                   errors={signerErrors.document_number}
                   isRequired
-                  value={signer.document_number as string}
                 />
-
                 <InputComponent
                   name="signer.name"
                   label="Nombre"
+                  value={signerData.name}
                   onChange={handleFieldChange}
                   type="text"
                   errors={signerErrors.name}
                   isRequired
-                  value={signer.name as string}
                 />
 
                 <InputComponent
                   name="signer.last_name"
                   label="Apellidos"
+                  value={signerData.last_name}
                   onChange={handleFieldChange}
                   type="text"
                   errors={signerErrors.last_name}
                   isRequired
-                  value={signer.last_name}
                 />
               </div>
               <div className="flex items-stretch gap-4 w-full">
                 <InputComponent
                   name="signer.email"
                   label="Correo Electrónico"
+                  value={signerData.email}
                   onChange={handleFieldChange}
                   type="email"
                   errors={signerErrors.email}
                   isRequired
-                  value={signer.email}
                 />
                 <InputComponent
                   name="signer.phone"
                   label="Teléfono"
+                  value={signerData.phone}
                   onChange={handleFieldChange}
                   type="number"
                   errors={signerErrors.phone}
                   isRequired
-                  value={signer.phone}
                 />
 
                 {client.type === "Comunidad de Propietarios" && (
@@ -315,7 +323,7 @@ export default function SecondStepForm({
                     items={CARGOS}
                     onChange={handleFieldChange}
                     label="Cargo"
-                    selectedKey={signer.cargo || ""}
+                    selectedKey={signerData.cargo || ""}
                   />
                 )}
               </div>

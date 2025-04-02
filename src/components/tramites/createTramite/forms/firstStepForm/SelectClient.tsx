@@ -33,8 +33,7 @@ export default function SelectClient({
   setSigner,
 }: Props) {
   const [clients, setClients] = useState<ClientDB[]>([]);
-  const [newClient, setNewClient] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [newClient, setNewClient] = useState<boolean>(true);
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -89,26 +88,12 @@ export default function SelectClient({
   const handleSelectClient = async (
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
-    const selectedClient = clients.find((c) => c.id === e.target.value);
-
+    const selectedClient = clients.find(
+      (c) => c.document_number === e.target.value
+    );
     if (!selectedClient) return;
 
-    setClient((prev) => ({
-      ...prev,
-      id: `CLI-${Math.floor(Math.random() * 10000)}`,
-      name: selectedClient.name,
-      last_name: selectedClient.last_name,
-      email: selectedClient.email,
-      phone: selectedClient.phone,
-      address: selectedClient.address,
-      postal_code: selectedClient.postal_code,
-      province: selectedClient.province,
-      city: selectedClient.city,
-      document_type: selectedClient.document_type,
-      document_number: selectedClient.document_number,
-      IBAN: selectedClient.IBAN,
-      type: selectedClient.type,
-    }));
+    setClient(selectedClient as ClientDB);
     setFormData((prevState) => ({
       ...prevState,
       client_type: selectedClient.type,
@@ -120,17 +105,7 @@ export default function SelectClient({
 
     if (needsSigner) {
       const signer = await fetchSigner(selectedClient.id);
-      setSigner((prev) => ({
-        ...prev,
-        id: `SGN-${Math.floor(Math.random() * 10000)}`,
-        client_id: selectedClient.id,
-        name: signer?.name || "",
-        last_name: signer?.last_name || "",
-        email: signer?.email || "",
-        phone: signer?.phone || "",
-        document_number: signer?.document_number || "",
-        cargo: signer?.cargo || null,
-      }));
+      setSigner(signer);
     } else {
       setSigner(null);
     }
@@ -164,8 +139,6 @@ export default function SelectClient({
       if (data) {
         setClients(data as ClientDB[]);
       }
-
-      setLoading(false);
     };
     fetchComerciales();
   }, [userData]);
@@ -185,11 +158,11 @@ export default function SelectClient({
     <div className="flex flex-col items-end gap-2 w-full">
       {clients.length > 0 && !newClient ? (
         <SelectComponent
-          items={!loading ? clients : []}
+          items={clients}
           name="id"
           label="Cliente"
           onChange={handleSelectClient}
-          selectedKey={client.id}
+          selectedKey={client.document_number}
           isRequired
         />
       ) : (
@@ -208,6 +181,7 @@ export default function SelectClient({
         variant="light"
         color="primary"
         size="sm"
+        isDisabled={clients.length === 0}
       >
         {newClient ? "Seleccionar Cliente" : "Nuevo Cliente"}
       </Button>
