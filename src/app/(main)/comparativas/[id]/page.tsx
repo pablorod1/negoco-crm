@@ -64,7 +64,6 @@ export default function EditComparativaPage() {
       });
 
       const { success, error, data } = await rs.json();
-
       if (!success) {
         throw new Error(error);
       }

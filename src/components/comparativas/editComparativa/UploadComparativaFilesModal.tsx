@@ -48,15 +48,15 @@ export default function UploadComparativaFilesModal({
             comparativa.comision_sales_person.indexado,
         }
       : comparativa.plan.includes("fijo")
-      ? {
-          comision_fijo: comparativa.comision.fijo,
-          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-        }
-      : {
-          comision_indexado: comparativa.comision.indexado,
-          comision_sales_person_indexado:
-            comparativa.comision_sales_person.indexado,
-        }
+        ? {
+            comision_fijo: comparativa.comision.fijo,
+            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          }
+        : {
+            comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_indexado:
+              comparativa.comision_sales_person.indexado,
+          }
   );
   const isAdmin = userData && userData.role === "admin";
   const isBackoffice = userData && userData.role === "1";
@@ -69,6 +69,31 @@ export default function UploadComparativaFilesModal({
 
   const checkComissionsNotEmpty = () => {
     return Object.values(formDataComissions).some((value) => !value);
+  };
+
+  const checkStatusChanged = () => {
+    if (comparativa.status === "pending" && estudioRealizado) {
+      return true;
+    }
+    if (comparativa.status === "completed" && !estudioRealizado) {
+      return true;
+    }
+    return false;
+  };
+
+  const formatStatus = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Pendiente de Estudio";
+      case "completed":
+        return "Estudio Realizado";
+      case "processed":
+        return "Completada";
+      case "rejected":
+        return "Rechazada";
+      default:
+        return status;
+    }
   };
 
   const handleSubmit = async () => {
@@ -164,6 +189,46 @@ export default function UploadComparativaFilesModal({
           icon: CircleX,
         });
         return;
+      }
+
+      if (checkStatusChanged()) {
+        const emailRes = await fetch(
+          "/api/send-email/comparativa-status-updated",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              user_to: {
+                email: comparativa.user.email,
+                name: comparativa.user.name,
+                org_logo: userData.organization.logo,
+              },
+              comparativa_id: comparativa.id,
+              status: {
+                old: formatStatus(comparativa.status),
+                new: estudioRealizado
+                  ? "Estudio Realizado"
+                  : "Pendiente de Estudio",
+              },
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const { success: emailSuccess, error: emailError } =
+          await emailRes.json();
+
+        if (!emailSuccess) {
+          showCustomToast({
+            title: "Error al enviar notificación por email",
+            message: emailError as string,
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
       }
 
       showCustomToast({

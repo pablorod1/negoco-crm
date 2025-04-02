@@ -44,15 +44,15 @@ export default function UpdateComparativaStatusModal({
             comparativa.comision_sales_person.indexado,
         }
       : comparativa.plan.includes("fijo")
-      ? {
-          comision_fijo: comparativa.comision.fijo,
-          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-        }
-      : {
-          comision_indexado: comparativa.comision.indexado,
-          comision_sales_person_indexado:
-            comparativa.comision_sales_person.indexado,
-        }
+        ? {
+            comision_fijo: comparativa.comision.fijo,
+            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          }
+        : {
+            comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_indexado:
+              comparativa.comision_sales_person.indexado,
+          }
   );
   const [loading, setLoading] = useState(false);
 
@@ -70,6 +70,10 @@ export default function UpdateComparativaStatusModal({
       Object.values(formDataComissions).some((value) => !value) &&
       newStatus === "completed"
     );
+  };
+
+  const checkStatusChanged = () => {
+    return newStatus !== comparativa.status;
   };
 
   const checkComissionsChanged = () => {
@@ -137,6 +141,41 @@ export default function UpdateComparativaStatusModal({
             iconSize: 24,
           });
           return;
+        }
+
+        if (checkStatusChanged()) {
+          const emailRes = await fetch(
+            "/api/send-email/comparativa-status-updated",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                user_to: {
+                  email: comparativa.user.email,
+                  name: comparativa.user.name,
+                  org_logo: userData.organization.logo,
+                },
+                comparativa_id: comparativa.id,
+                status: { old: comparativa.status, new: newStatus },
+              }),
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const { success: emailSuccess, error: emailError } =
+            await emailRes.json();
+
+          if (!emailSuccess) {
+            showCustomToast({
+              title: "Error al enviar notificación por email",
+              message: emailError as string,
+              iconColor: "var(--danger-color)",
+              iconSize: 24,
+              icon: CircleX,
+            });
+            return;
+          }
         }
 
         showCustomToast({

@@ -94,10 +94,6 @@ export default function AddTramiteDialog({
       addIds();
     }
 
-    if (activeTab === 0) {
-      console.log("Signer", signer);
-    }
-
     setActiveTab(() => activeTab + 1);
   };
 
@@ -130,8 +126,6 @@ export default function AddTramiteDialog({
         formData.append("contracts", JSON.stringify(contracts));
       }
 
-      console.log("client", client);
-      console.log("signer", signer);
       const res = await fetch("/api/tramites/add", {
         method: "POST",
         body: formData, // Directly use FormData
