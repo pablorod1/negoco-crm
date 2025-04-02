@@ -392,7 +392,7 @@ export default function TramitesHeader<TData>({
                   setDateRange={setActivationDateRange}
                 />
               </div>
-              {isLiquidezTable && (
+              {isLiquidezTable && !isComercial && (
                 <>
                   <div className="space-y-2">
                     <Label>Fecha de Cobro</Label>
@@ -412,7 +412,7 @@ export default function TramitesHeader<TData>({
                   </div>
                 </>
               )}
-              {isTramitesTable && (
+              {isTramitesTable && !isComercial && (
                 <div className="space-y-2">
                   <Label>Fecha de Renovación</Label>
 
