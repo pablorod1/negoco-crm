@@ -125,6 +125,7 @@ export default function SelectClient({
         }),
       });
       const { success, data, error } = await res.json();
+      console.log("data", data);
       if (!success) {
         showCustomToast({
           title: "Error",

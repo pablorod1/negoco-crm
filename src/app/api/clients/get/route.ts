@@ -22,16 +22,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let query = `SELECT * FROM clients`;
+    let query = `SELECT DISTINCT clients.* FROM clients`;
     const params: string[] = [];
 
     if (role === "2") {
       const subcomercialesRes = await getSubcomerciales(tursoClient, id);
       if (subcomercialesRes.success && subcomercialesRes.ids) {
-        query += ` LEFT JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map((id) => `'${id}'`).join(",")})`;
+        query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map((id) => `'${id}'`).join(",")})`;
         params.push(id, ...subcomercialesRes.ids);
       } else {
-        query += ` LEFT JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ?`;
+        query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ?`;
         params.push(id);
       }
     }
