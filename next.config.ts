@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
     bodyParser: {
       sizeLimit: "30mb",
     },
+    responseLimit: false,
   },
 };
 
