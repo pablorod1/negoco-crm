@@ -49,7 +49,7 @@ export default function TramiteFilesSection({
             tramite_id={tramite.id}
             organization_id={userData?.organization.id as string}
             onDeleted={onUpload}
-            isTramiableBorrador={isTramitableBorrador}
+            isTramitableBorrador={isTramitableBorrador}
           />
         ) : (
           <p className="text-muted-foreground">No hay archivos adjuntos.</p>

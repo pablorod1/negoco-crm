@@ -12,7 +12,7 @@ interface Props {
   tramite_id: string;
   organization_id: string;
   onDeleted: () => void;
-  isTramiableBorrador: boolean;
+  isTramitableBorrador: boolean;
 }
 
 export default function TramiteFilesList({
@@ -20,7 +20,7 @@ export default function TramiteFilesList({
   tramite_id,
   organization_id,
   onDeleted,
-  isTramiableBorrador,
+  isTramitableBorrador,
 }: Props) {
   const handleDownloadFile = async (filename: string) => {
     try {
@@ -87,7 +87,7 @@ export default function TramiteFilesList({
                 <Download size={20} />
               </Button>
             )}
-            {isTramiableBorrador && (
+            {isTramitableBorrador && (
               <DeleteTramiteFileConfirmationModal
                 tramite_id={tramite_id}
                 filename={file.filename}
