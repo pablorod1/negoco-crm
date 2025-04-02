@@ -24,7 +24,7 @@ interface FolderCardProps {
 
 export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
   const { refreshDocumentacion } = useDocumentacion();
-
+  const isComercial = userData && userData.role === "2";
   const handleDelete = async () => {
     try {
       const res = await fetch("/api/documentacion/delete/folder", {
@@ -93,21 +93,23 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
               </h3>
             </div>
           </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="cursor-pointer text-danger"
-                onClick={handleDelete}
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!isComercial && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="cursor-pointer text-danger"
+                  onClick={handleDelete}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardContent>
     </Card>

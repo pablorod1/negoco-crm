@@ -138,6 +138,7 @@ export default function FileCardDropdown({
   file: DocumentacionFile;
 }) {
   const { isOpen, onClose, onOpen } = useDisclosure();
+  const isComercial = userData && userData.role === "2";
   const handleDownload = async () => {
     try {
       const { success, errors } = await downloadFile(
@@ -202,20 +203,22 @@ export default function FileCardDropdown({
               Descargar
             </DropdownItem>
           </DropdownSection>
-          <DropdownSection>
-            <DropdownItem
-              key="delete"
-              onPress={onOpen}
-              className="text-danger"
-              color="danger"
-              description="Eliminar archivo permanentemente"
-              startContent={
-                <DeleteDocumentIcon className="text-xl pointer-events-none flex-shrink-0 text-danger" />
-              }
-            >
-              Eliminar archivo
-            </DropdownItem>
-          </DropdownSection>
+          {!isComercial ? (
+            <DropdownSection>
+              <DropdownItem
+                key="delete"
+                onPress={onOpen}
+                className="text-danger"
+                color="danger"
+                description="Eliminar archivo permanentemente"
+                startContent={
+                  <DeleteDocumentIcon className="text-xl pointer-events-none flex-shrink-0 text-danger" />
+                }
+              >
+                Eliminar archivo
+              </DropdownItem>
+            </DropdownSection>
+          ) : null}
         </DropdownMenu>
       </Dropdown>
 

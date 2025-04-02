@@ -66,7 +66,6 @@ export function FileCard({
         return "/file-icons/file.png";
     }
   };
-
   const isSelected =
     selectedFiles && selectedFiles.some((f) => f.id === file.id);
 
