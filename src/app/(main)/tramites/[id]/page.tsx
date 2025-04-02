@@ -12,7 +12,7 @@ import {
   User,
 } from "@/lib/core/types";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { TramiteNotesSection } from "@/components/tramites/editTramite/notes/NotesTabContent";
 import ContractSection from "@/components/tramites/editTramite/contract/ContractSection";
 import { showCustomToast } from "@/components/core/CustomToast";
@@ -28,12 +28,14 @@ import LiquidezStatusSection from "@/components/tramites/editTramite/liquidez/Li
 export default function TramiteDetails() {
   const { userData } = useUser();
   const { id } = useParams();
+  const router = useRouter();
   const [formData, setFormData] = useState<EditTramiteFormData>(
     createEmptyTramiteForm()
   );
   const isSubcomercial = userData && userData.role === "2" && userData.super_id;
   const isComercial = userData && userData.role === "2";
   const [loading, setLoading] = useState(true);
+  const [loadedData, setLoadedData] = useState(false);
 
   const fetchTramite = useCallback(async () => {
     if (!userData?.id || !userData?.role) return;
@@ -45,33 +47,71 @@ export default function TramiteDetails() {
         body: JSON.stringify({
           id,
           user_id: userData.id,
-          user_role: userData.role,
+          role: userData.role,
         }),
       });
 
-      const { success, error, data } = await rs.json();
-      if (!success) {
+      // Comprobar primero el estado HTTP de la respuesta
+      if (rs.status === 403) {
         showCustomToast({
-          title: "Error al obtener el trámite",
-          message: error,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
+          title: "Acceso denegado",
+          message: "No tienes permiso para acceder a este trámite",
           icon: CircleX,
+          iconSize: 24,
+          iconColor: "var(--danger-color)",
         });
+        router.push("/tramites");
         return;
       }
-      if (data) {
+
+      if (!rs.ok) {
+        const errorData = await rs.json();
+        showCustomToast({
+          title: "Error",
+          message: errorData.error || "Error al cargar el trámite",
+          icon: CircleX,
+          iconSize: 24,
+          iconColor: "var(--danger-color)",
+        });
+        router.push("/tramites");
+        return;
+      }
+
+      const { success, data } = await rs.json();
+
+      if (success && data) {
         setFormData({
           ...data,
           signer: data.signer || ({} as SignerDB),
         });
+        setLoadedData(true);
+      } else {
+        // Si no hay datos pero la respuesta fue exitosa (caso extraño), redirigir de todas formas
+        showCustomToast({
+          title: "Error",
+          message: "No se encontraron datos del trámite",
+          icon: CircleX,
+          iconSize: 24,
+          iconColor: "var(--danger-color)",
+        });
+        router.push("/tramites");
+        return;
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error en la solicitud:", error);
+      showCustomToast({
+        title: "Error",
+        message: "Error de conexión",
+        icon: CircleX,
+        iconSize: 24,
+        iconColor: "var(--danger-color)",
+      });
+      router.push("/tramites");
+      return;
     } finally {
       setLoading(false);
     }
-  }, [id, userData?.id, userData?.role]);
+  }, [id, userData?.id, userData?.role, router]);
 
   useEffect(() => {
     fetchTramite();
@@ -93,118 +133,118 @@ export default function TramiteDetails() {
     new Date(tramite.renovation_date) <=
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+  if (loading || !loadedData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <SpinnerComponent userData={userData as User} />
+      </div>
+    );
+  }
+
   return (
-    <>
-      {loading ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <SpinnerComponent userData={userData as User} />
+    <div className=" mx-12 py-6 ">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-primary-800">
+            Detalles del Trámite
+          </h1>
+          <p className="text-primary-400">ID: {tramite.id}</p>
         </div>
-      ) : (
-        <div className=" mx-12 py-6 ">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-primary-800">
-                Detalles del Trámite
-              </h1>
-              <p className="text-primary-400">ID: {tramite.id}</p>
-            </div>
-            <TramiteStatusSection
-              tramite={tramite}
+        <TramiteStatusSection
+          tramite={tramite}
+          userData={userData as User}
+          onUpdate={fetchTramite}
+          isEditable={isEditable}
+          isRenewable={isRenewable}
+          onRenew={fetchTramite}
+        />
+      </div>
+
+      {/* Timeline Card */}
+      <TramiteTimeLineSection
+        tramite={tramite}
+        isComercial={isComercial as boolean}
+      />
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        {/* Client Info Card */}
+        <TramiteClientSection
+          client={client}
+          signer={signer}
+          isEditable={isEditable}
+          onUpdated={fetchTramite}
+        />
+
+        {/* Commission Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-primary-800">
+              Información Adicional
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <TramiteComercialSection
+              user={tramite.user as User}
+              isEditable={isEditable}
               userData={userData as User}
+              tramite_id={tramite.id}
               onUpdate={fetchTramite}
-              isEditable={isEditable}
-              isRenewable={isRenewable}
-              onRenew={fetchTramite}
-            />
-          </div>
-
-          {/* Timeline Card */}
-          <TramiteTimeLineSection
-            tramite={tramite}
-            isComercial={isComercial as boolean}
-          />
-
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-            {/* Client Info Card */}
-            <TramiteClientSection
-              client={client}
-              signer={signer}
-              isEditable={isEditable}
-              onUpdated={fetchTramite}
             />
 
-            {/* Commission Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-primary-800">
-                  Información Adicional
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <TramiteComercialSection
-                  user={tramite.user as User}
-                  isEditable={isEditable}
+            {!isSubcomercial && (
+              <>
+                <Separator />
+
+                <TramiteComissionsSection
+                  tramite={tramite}
                   userData={userData as User}
-                  tramite_id={tramite.id}
                   onUpdate={fetchTramite}
+                  isEditable={isEditable}
                 />
 
-                {!isSubcomercial && (
-                  <>
-                    <Separator />
+                <Separator />
 
-                    <TramiteComissionsSection
-                      tramite={tramite}
-                      userData={userData as User}
-                      onUpdate={fetchTramite}
-                      isEditable={isEditable}
-                    />
+                <LiquidezStatusSection
+                  tramite={tramite}
+                  isComercial={isComercial as boolean}
+                  userData={userData as User}
+                  onUpdate={fetchTramite}
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-                    <Separator />
+      {/* Contracts Section */}
+      <ContractSection
+        contracts={contracts}
+        tramite_id={tramite.id}
+        onContractAdded={fetchTramite}
+        onContractUpdated={fetchTramite}
+        isEditable={isEditable}
+      />
 
-                    <LiquidezStatusSection
-                      tramite={tramite}
-                      isComercial={isComercial as boolean}
-                      userData={userData as User}
-                      onUpdate={fetchTramite}
-                    />
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+      {/* Notes Section */}
 
-          {/* Contracts Section */}
-          <ContractSection
-            contracts={contracts}
-            tramite_id={tramite.id}
-            onContractAdded={fetchTramite}
-            onContractUpdated={fetchTramite}
-            isEditable={isEditable}
-          />
+      <TramiteNotesSection
+        notes={tramite.notes}
+        onDeletedNote={fetchTramite}
+        onAddNote={fetchTramite}
+        tramite_id={tramite.id}
+        user_id={userData?.id as string}
+        user_name={userData?.name as string}
+      />
 
-          {/* Notes Section */}
-
-          <TramiteNotesSection
-            notes={tramite.notes}
-            onDeletedNote={fetchTramite}
-            onAddNote={fetchTramite}
-            tramite_id={tramite.id}
-            user_id={userData?.id as string}
-            user_name={userData?.name as string}
-          />
-
-          {/* Files Section */}
-          <TramiteFilesSection
-            files={files as TramiteFile[]}
-            userData={userData as User}
-            tramite={tramite}
-            onUpload={fetchTramite}
-            isEditable={isEditable}
-            isTramitableBorrador={isTramitableBorrador}
-          />
-        </div>
-      )}
-    </>
+      {/* Files Section */}
+      <TramiteFilesSection
+        files={files as TramiteFile[]}
+        userData={userData as User}
+        tramite={tramite}
+        onUpload={fetchTramite}
+        isEditable={isEditable}
+        isTramitableBorrador={isTramitableBorrador}
+      />
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   TramiteFile,
 } from "@/lib/core/types";
 import { getTursoClient } from "@/lib/libsql/client";
+import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 import { Client } from "@libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -40,7 +41,7 @@ async function executeQuery<T>(
 
 export async function POST(req: NextRequest) {
   try {
-    const { id } = await req.json();
+    const { id, role, user_id } = await req.json();
 
     if (!id) {
       return NextResponse.json(
@@ -64,6 +65,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Construir la consulta base
+    let tramiteQuery = `
+      SELECT t.*, 
+      u.id as user_id, 
+      u.name as user_name, 
+      u.email as user_email, 
+      u.role as user_role, 
+      u.image as user_image,
+      ub.name as updated_by_name,
+      ub.image as updated_by_image,
+      ub.email as updated_by_email,
+      ub.role as updated_by_role
+      FROM tramites t
+      INNER JOIN user u ON t.user_id = u.id
+      LEFT JOIN user ub ON t.updated_by = ub.id
+      WHERE t.id = ?`;
+
+    let queryParams = [id];
+
+    // Aplicar restricciones de acceso según el rol
+    if (role === "2") {
+      // Obtener subcomerciales si existen
+      const subcomercialesRes = await getSubcomerciales(tursoClient, user_id);
+      const subcomercialesIds =
+        subcomercialesRes.success && subcomercialesRes.ids
+          ? subcomercialesRes.ids
+          : [];
+
+      // Modificar la consulta según los permisos
+      if (subcomercialesIds.length > 0) {
+        // Puede acceder a sus trámites y a los de sus subcomerciales
+        const placeholders = subcomercialesIds.map(() => "?").join(",");
+        tramiteQuery += ` AND (t.user_id = ? OR t.user_id IN (${placeholders}))`;
+        queryParams = [...queryParams, user_id, ...subcomercialesIds];
+      } else {
+        // Solo puede acceder a sus propios trámites
+        tramiteQuery += ` AND t.user_id = ?`;
+        queryParams = [...queryParams, user_id];
+      }
+    }
+
     // Ejecutar todas las consultas en paralelo
     const [
       tramiteResult,
@@ -72,24 +114,7 @@ export async function POST(req: NextRequest) {
       signerResult,
       filesResult,
     ] = await Promise.all([
-      executeQuery<TramiteQueryResult>(
-        `SELECT t.*, 
-        u.id as user_id, 
-        u.name as user_name, 
-        u.email as user_email, 
-        u.role as user_role, 
-        u.image as user_image,
-        ub.name as updated_by_name,
-        ub.image as updated_by_image,
-        ub.email as updated_by_email,
-        ub.role as updated_by_role
-FROM tramites t
-INNER JOIN user u ON t.user_id = u.id
-LEFT JOIN user ub ON t.updated_by = ub.id
-WHERE t.id = ?`,
-        [id],
-        tursoClient
-      ),
+      executeQuery<TramiteQueryResult>(tramiteQuery, queryParams, tursoClient),
       executeQuery<ClientDB>(
         `SELECT * FROM clients WHERE id = (SELECT client_id FROM tramites WHERE id = ?)`,
         [id],
@@ -114,13 +139,15 @@ WHERE t.id = ?`,
       ),
     ]);
 
+    // Si no se encuentra el trámite o no tiene permiso, devolver un status 403
+    // que será manejado por el cliente como una redirección
     if (tramiteResult.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "Tramite not found",
+          error: "No tienes permiso para acceder a este trámite",
         },
-        { status: 404 }
+        { status: 403 }
       );
     }
 
