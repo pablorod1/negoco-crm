@@ -25,7 +25,6 @@ export default function ColaboradoresPage() {
 
   const fetchData = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }));
-    console.log("role", userData?.role);
     try {
       const res = await fetch(`/api/users/get/users`, {
         method: "POST",
