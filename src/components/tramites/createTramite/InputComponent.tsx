@@ -1,13 +1,13 @@
 "use client";
 import AvatarComponent from "@/components/core/AvatarComponent";
-import { ComparativaPlan, User } from "@/lib/core/types";
+import { ClientDB, ComparativaPlan, User } from "@/lib/core/types";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 
 interface SelectProps {
   name: string;
   label: string;
-  items: (string | User | ComparativaPlan)[];
+  items: (string | User | ComparativaPlan | ClientDB)[];
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   errors?: string;
   selectedKey: string;
@@ -43,22 +43,36 @@ export const SelectComponent: React.FC<SelectProps> = ({
         color={errors ? "danger" : "primary"}
       >
         {items.map((item) => {
+          const isClient =
+            typeof item !== "string" && "document_number" in item;
           const key = typeof item === "string" ? item : item.id;
           const value = typeof item === "string" ? item : item.name;
+
           const avatar = typeof item !== "string";
           return (
             <SelectItem
               color="primary"
               variant="flat"
               startContent={
-                avatar ? (
+                avatar && !isClient ? (
                   <AvatarComponent userData={item as User} className="size-8" />
                 ) : null
               }
               key={key}
-              textValue={value}
+              textValue={isClient ? `${item.name} ${item.last_name}` : value}
             >
-              {value}
+              {isClient ? (
+                <div>
+                  <p className="text-sm font-semibold">
+                    {item.name} {item.last_name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {item.document_number}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm font-semibold">{value}</p>
+              )}
             </SelectItem>
           );
         })}

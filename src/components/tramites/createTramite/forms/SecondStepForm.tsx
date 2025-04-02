@@ -1,9 +1,9 @@
+"use client";
 import { CARGOS, DOCUMENT_TYPES } from "@/lib/core/const";
 import {
   createEmptySecondFormError,
   SecondForm,
   SecondFormError,
-  SignerForm,
   createEmptySignerFormError,
   SignerFormError,
 } from "@/lib/validation/validation.types";
@@ -22,11 +22,11 @@ import { InputComponent, SelectComponent } from "../InputComponent";
 interface Props {
   client: ClientDB;
   setClient: React.Dispatch<React.SetStateAction<ClientDB>>;
-  setSigner: React.Dispatch<React.SetStateAction<SignerDB>>;
+  setSigner: React.Dispatch<React.SetStateAction<SignerDB | null>>;
   onSecondSubmitSuccess: () => void;
   onBack: () => void;
   onCancel: () => void;
-  signer?: SignerDB;
+  signer: SignerDB | null;
 }
 
 export default function SecondStepForm({
@@ -41,10 +41,9 @@ export default function SecondStepForm({
   const [errors, setErrors] = useState<SecondFormError>(
     createEmptySecondFormError
   );
+
   const [formData, setFormData] = useState<SecondForm>(client as SecondForm);
-  const [signerData, setSignerData] = useState<SignerForm>(
-    signer as SignerForm
-  );
+
   const [signerErrors, setSignerErrors] = useState<SignerFormError>(
     createEmptySignerFormError
   );
@@ -53,11 +52,14 @@ export default function SecondStepForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    if (name.includes("signer")) {
-      setSignerData((prevState) => ({
-        ...prevState,
-        [name.split(".")[1]]: value,
-      }));
+    if (name.includes("signer") && signer) {
+      setSigner((prevState) => {
+        if (!prevState) return prevState;
+        return {
+          ...prevState,
+          [name.split(".")[1]]: value,
+        };
+      });
       setSignerErrors((prevState) => ({
         ...prevState,
         [name.split(".")[1]]: "",
@@ -75,11 +77,15 @@ export default function SecondStepForm({
   };
 
   const handleSecondSubmit = () => {
-    if (
-      client.type === "Empresa" ||
-      client.type === "Comunidad de Propietarios"
-    ) {
-      const signerFormValidationResult = signerFormValidation(signerData);
+    if (signer) {
+      const signerFormValidationResult = signerFormValidation({
+        document_number: signer.document_number,
+        name: signer.name,
+        last_name: signer.last_name,
+        email: signer.email,
+        phone: signer.phone,
+        cargo: signer.cargo || "",
+      });
       const formValidationResult = secondFormValidation(formData);
       setErrors(formValidationResult.errors);
       // Update signer errors while preserving the rest of the state
@@ -88,16 +94,6 @@ export default function SecondStepForm({
         signerFormValidationResult.succeeded &&
         formValidationResult.succeeded
       ) {
-        setSigner((prevState) => ({
-          ...prevState,
-          name: signerData.name,
-          last_name: signerData.last_name,
-          email: signerData.email,
-          phone: signerData.phone,
-          document_number: signerData.document_number,
-          cargo: signerData.cargo || null,
-        }));
-
         setClient((prevState) => ({
           ...prevState,
           name: formData.name,
@@ -254,14 +250,14 @@ export default function SecondStepForm({
             />
           </div>
         </div>
-        {(client.type === "Empresa" ||
-          client.type === "Comunidad de Propietarios") && (
+        {signer && (
           <>
             <Divider className="my-4" />
             <div className="flex flex-col gap-y-4 w-full">
               <h2 className="text-xl font-semibold text-primary-500">
                 Datos de la persona firmante
               </h2>
+
               <div className="flex items-stretch gap-4 w-full">
                 <InputComponent
                   name="signer.document_number"
@@ -270,7 +266,9 @@ export default function SecondStepForm({
                   type="text"
                   errors={signerErrors.document_number}
                   isRequired
+                  value={signer.document_number as string}
                 />
+
                 <InputComponent
                   name="signer.name"
                   label="Nombre"
@@ -278,6 +276,7 @@ export default function SecondStepForm({
                   type="text"
                   errors={signerErrors.name}
                   isRequired
+                  value={signer.name as string}
                 />
 
                 <InputComponent
@@ -287,6 +286,7 @@ export default function SecondStepForm({
                   type="text"
                   errors={signerErrors.last_name}
                   isRequired
+                  value={signer.last_name}
                 />
               </div>
               <div className="flex items-stretch gap-4 w-full">
@@ -297,6 +297,7 @@ export default function SecondStepForm({
                   type="email"
                   errors={signerErrors.email}
                   isRequired
+                  value={signer.email}
                 />
                 <InputComponent
                   name="signer.phone"
@@ -305,6 +306,7 @@ export default function SecondStepForm({
                   type="number"
                   errors={signerErrors.phone}
                   isRequired
+                  value={signer.phone}
                 />
 
                 {client.type === "Comunidad de Propietarios" && (
@@ -313,7 +315,7 @@ export default function SecondStepForm({
                     items={CARGOS}
                     onChange={handleFieldChange}
                     label="Cargo"
-                    selectedKey={signerData.cargo}
+                    selectedKey={signer.cargo || ""}
                   />
                 )}
               </div>
