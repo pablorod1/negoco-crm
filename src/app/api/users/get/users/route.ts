@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     let query = `
       SELECT DISTINCT u.*, o.id as org_id, o.name as org_name, o.logo as org_logo, s.created_at as last_login
-      FROM user u
+      FROM user u 
       INNER JOIN member m ON u.id = m.user_id
       INNER JOIN organization o ON m.organization_id = o.id
       LEFT JOIN session s ON u.id = s.user_id AND s.created_at = (
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
           .join(", ")})`;
         params.push(id, ...subcomerciales.ids);
       } else {
-        query += ` AND u.id = ?`;
+        query += ` WHERE u.id = ?`;
         params.push(id);
       }
     }
