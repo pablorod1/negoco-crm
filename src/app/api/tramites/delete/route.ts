@@ -79,21 +79,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const clientResponse = await tursoClient.execute({
-      sql: `DELETE FROM clients WHERE id = ?`,
-      args: [client_id],
-    });
-
-    if (clientResponse.rowsAffected === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No se encontró el cliente",
-        },
-        { status: 404 }
-      );
-    }
-
     return NextResponse.json({
       success: true,
     });

@@ -93,7 +93,22 @@ export default function SelectClient({
 
     if (!selectedClient) return;
 
-    setClient(selectedClient);
+    setClient((prev) => ({
+      ...prev,
+      id: `CLI-${Math.floor(Math.random() * 10000)}`,
+      name: selectedClient.name,
+      last_name: selectedClient.last_name,
+      email: selectedClient.email,
+      phone: selectedClient.phone,
+      address: selectedClient.address,
+      postal_code: selectedClient.postal_code,
+      province: selectedClient.province,
+      city: selectedClient.city,
+      document_type: selectedClient.document_type,
+      document_number: selectedClient.document_number,
+      IBAN: selectedClient.IBAN,
+      type: selectedClient.type,
+    }));
     setFormData((prevState) => ({
       ...prevState,
       client_type: selectedClient.type,
@@ -105,7 +120,17 @@ export default function SelectClient({
 
     if (needsSigner) {
       const signer = await fetchSigner(selectedClient.id);
-      setSigner(signer);
+      setSigner((prev) => ({
+        ...prev,
+        id: `SGN-${Math.floor(Math.random() * 10000)}`,
+        client_id: selectedClient.id,
+        name: signer?.name || "",
+        last_name: signer?.last_name || "",
+        email: signer?.email || "",
+        phone: signer?.phone || "",
+        document_number: signer?.document_number || "",
+        cargo: signer?.cargo || null,
+      }));
     } else {
       setSigner(null);
     }
