@@ -6,8 +6,8 @@ import FormWrapper from "../FormWrapper";
 import DocumentsForm from "../../DocumentsForm";
 import NotesBoard from "@/components/core/NotesBoard";
 import { FileIcon } from "lucide-react";
-import { User } from "@/lib/core/types";
-import LoadingStateModal from "@/components/core/LoadingStateModal";
+import UploadProgressBar from "@/components/tramites/createTramite/UploadProgressBar";
+import { UploadStatus } from "@/components/tramites/createTramite/AddTramiteDialog";
 
 interface Props {
   onBack: () => void;
@@ -18,8 +18,8 @@ interface Props {
   documents: File[];
   setDocuments: React.Dispatch<React.SetStateAction<File[]>>;
   loading: boolean;
+  uploadStatus: UploadStatus;
   comparativaFiles?: ComparativaFile[];
-  userData: User;
 }
 
 export default function FourthStepForm({
@@ -31,8 +31,8 @@ export default function FourthStepForm({
   documents,
   setDocuments,
   loading,
+  uploadStatus,
   comparativaFiles,
-  userData,
 }: Props) {
   const handleNewNote = (note: string) => {
     setTramite((prev) => ({
@@ -47,7 +47,16 @@ export default function FourthStepForm({
 
   return (
     <FormWrapper>
-      {loading && <LoadingStateModal userData={userData} />}
+      {loading && (
+        <UploadProgressBar
+          progress={uploadStatus.progress}
+          currentStep={uploadStatus.currentStep}
+          filesTotal={uploadStatus.filesTotal}
+          filesUploaded={uploadStatus.filesUploaded}
+          status={uploadStatus.status}
+          error={uploadStatus.error}
+        />
+      )}
       <form className="relative">
         <div className={`flex flex-col gap-4 w-full ${loading && "blur-sm"}`}>
           <h2 className="text-xl text-primary-500 font-semibold">Documentos</h2>

@@ -31,142 +31,138 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Array para almacenar las rutas de archivos subidos (para eliminarlos en caso de error)
+  // Array for storing uploaded file paths (to delete them in case of error)
   const uploadedFilePaths: string[] = [];
 
   try {
     const formData = await req.formData();
 
-    const tramiteString = formData.get("tramite") as string;
-    const clientString = formData.get("client") as string;
-    const contractsString = formData.get("contracts") as string;
+    // Retrieve and parse form data
+    const parseFormField = <T>(fieldName: string): T | null => {
+      const data = formData.get(fieldName);
+      return data ? JSON.parse(data as string) : null;
+    };
+
+    const tramite: TramiteDB = parseFormField("tramite") as TramiteDB;
+    const client: ClientDB = parseFormField("client") as ClientDB;
+    const contracts: ContractDB[] = parseFormField("contracts") || [];
+    const signer: SignerDB | null = parseFormField("signer");
+    const userData: User = parseFormField("userData") as User;
     const documents = formData.getAll("files") as File[];
-    const signerString = formData.get("signer") as string;
-    const userDataString = formData.get("userData") as string;
 
-    const tramite: TramiteDB = JSON.parse(tramiteString);
-    const client: ClientDB = JSON.parse(clientString);
-    const contracts: ContractDB[] = JSON.parse(contractsString);
-    const signer: SignerDB | null = signerString
-      ? JSON.parse(signerString)
-      : null;
-    const userData: User = JSON.parse(userDataString);
-
-    if (!tramite || !client) {
+    // Validate required fields
+    if (!tramite || !client || !userData) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing parameters",
+          error: "Missing required parameters",
         },
         { status: 400 }
       );
     }
 
-    // 1. Primero subimos todos los archivos
-    // Si hay algún error durante la subida, no se realizará ningún cambio en la base de datos
+    // Upload files in parallel
     const tramiteFiles: TramiteFile[] = await Promise.all(
       documents.map(async (file) => {
-        const { downloadURL, previewURL, file_path } = await uploadFile(
-          file,
-          `${userData.organization.id}/tramites`,
-          tramite.id
-        );
+        try {
+          const { downloadURL, previewURL, file_path } = await uploadFile(
+            file,
+            `${userData.organization.id}/tramites`,
+            tramite.id
+          );
 
-        uploadedFilePaths.push(file_path as string);
+          if (file_path) uploadedFilePaths.push(file_path);
 
-        return {
-          id: crypto.randomUUID(),
-          tramite_id: tramite.id,
-          filename: file.name,
-          size: file.size,
-          extension: file.name.split(".").pop() || "",
-          upload_date: new Date().toISOString(),
-          download_url: downloadURL,
-          preview_url: previewURL || null,
-        };
+          return {
+            id: crypto.randomUUID(),
+            tramite_id: tramite.id,
+            filename: file.name,
+            size: file.size,
+            extension: file.name.split(".").pop() || "",
+            upload_date: new Date().toISOString(),
+            download_url: downloadURL,
+            preview_url: previewURL || null,
+          };
+        } catch (error) {
+          console.error(`Error uploading file ${file.name}:`, error);
+          throw new Error(`Failed to upload file ${file.name}`);
+        }
       })
     );
 
-    // 2. Iniciamos la transacción una vez que todos los archivos están subidos
+    // Start database transaction
     const tx = await tursoClient.transaction();
 
     try {
-      // Añadir cliente
-      const clientResult = await addClient(client, tursoClient);
-      if (!clientResult.success) {
-        throw new Error(clientResult.error);
-      }
+      // Execute database operations
+      const operations = [];
 
-      // Añadir firmante si es aplicable
+      // Add client
+      operations.push(addClient(client, tursoClient));
+
+      // Add signer if applicable
       if (
         (client.type === "Empresa" ||
           client.type === "Comunidad de Propietarios") &&
         signer
       ) {
-        const signerResult = await addSigner(signer, tursoClient);
-        if (!signerResult.success) {
-          throw new Error(signerResult.error);
-        }
+        operations.push(addSigner(signer, tursoClient));
       }
 
-      // Añadir trámite
-      const tramiteResult = await addTramite(tramite, tursoClient);
-      if (!tramiteResult.success) {
-        throw new Error(tramiteResult.error);
+      // Add tramite
+      operations.push(addTramite(tramite, tursoClient));
+
+      // Add contracts if any
+      if (contracts.length > 0) {
+        operations.push(addContracts(contracts, tursoClient));
       }
 
-      // Añadir contratos
-      if (contracts && contracts.length > 0) {
-        const contractsResult = await addContracts(contracts, tursoClient);
-        if (!contractsResult.success) {
-          throw new Error(contractsResult.error);
-        }
-      }
-
-      // Añadir metadatos de archivos
+      // Add file metadata if any
       if (tramiteFiles.length > 0) {
-        const insertResult = await addTramiteFiles(tramiteFiles, tursoClient);
-        if (!insertResult.success) {
-          throw new Error(insertResult.error);
-        }
+        operations.push(addTramiteFiles(tramiteFiles, tursoClient));
       }
 
-      // Confirmar la transacción
+      // Execute all database operations in parallel
+      const results = await Promise.all(operations);
+
+      // Check for any failures
+      const failedOperation = results.find((result) => !result.success);
+      if (failedOperation) {
+        throw new Error(failedOperation.error);
+      }
+
+      // Commit the transaction
       await tx.commit();
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+        tramiteId: tramite.id,
+        filesCount: tramiteFiles.length,
+      });
     } catch (error) {
-      // Si hay un error en la base de datos, revertimos la transacción
-      // y eliminamos los archivos subidos
+      // Rollback transaction on database error
       await tx.rollback();
-
-      if (uploadedFilePaths.length > 0) {
-        await deleteFiles(uploadedFilePaths);
-      }
-
-      console.error("Error en la transacción:", error);
-
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            error instanceof Error ? error.message : "Error al agregar trámite",
-        },
-        { status: 500 }
-      );
+      throw error; // Re-throw to be caught by the outer catch block
     }
   } catch (error) {
-    // Si hay un error general, aseguramos que se eliminen los archivos subidos
+    // Clean up uploaded files on any error
     if (uploadedFilePaths.length > 0) {
-      await deleteFiles(uploadedFilePaths);
+      try {
+        await deleteFiles(uploadedFilePaths);
+      } catch (deleteError) {
+        console.error(
+          "Error deleting files during error cleanup:",
+          deleteError
+        );
+      }
     }
 
-    console.error("Error general:", error);
+    console.error("Error processing request:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Error inesperado",
+        error: error instanceof Error ? error.message : "Unexpected error",
       },
       { status: 500 }
     );

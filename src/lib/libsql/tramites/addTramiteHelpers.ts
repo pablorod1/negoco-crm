@@ -12,7 +12,18 @@ export const addClient = async (
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    // Preparamos la consulta SQL
+    const clientExists = await checkClientExists(
+      client.id,
+      client.document_number,
+      tursoClient
+    );
+
+    if (clientExists) {
+      return {
+        success: true,
+      };
+    }
+
     const query = `
       INSERT INTO clients (id, name, last_name, email, phone, address, document_number, document_type, type, IBAN, postal_code, province, city)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -52,12 +63,37 @@ export const addClient = async (
   }
 };
 
+const checkClientExists = async (
+  id: string,
+  DNI: string,
+  tursoClient: Client
+) => {
+  try {
+    const res = await tursoClient.execute({
+      sql: `SELECT * FROM clients WHERE id = ? AND document_number = ?`,
+      args: [id, DNI],
+    });
+
+    return res.rows.length > 0;
+  } catch (error) {
+    console.error("Error al verificar si el cliente existe:", error);
+    return false;
+  }
+};
+
 export const addSigner = async (
   signer: SignerDB,
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    // Preparamos la consulta SQL
+    const signerExists = await checkSignerExists(signer.id, tursoClient);
+
+    if (signerExists) {
+      return {
+        success: true,
+      };
+    }
+
     const query = `
       INSERT INTO signers (id, name, last_name, email, phone, document_number, cargo, client_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -89,6 +125,20 @@ export const addSigner = async (
       success: false,
       error: error instanceof Error ? error.message : "Error desconocido",
     };
+  }
+};
+
+const checkSignerExists = async (id: string, tursoClient: Client) => {
+  try {
+    const res = await tursoClient.execute({
+      sql: `SELECT * FROM signers WHERE id = ?`,
+      args: [id],
+    });
+
+    return res.rows.length > 0;
+  } catch (error) {
+    console.error("Error al verificar si el firmante existe:", error);
+    return false;
   }
 };
 
