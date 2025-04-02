@@ -73,21 +73,10 @@ export async function POST(req: NextRequest) {
         });
       } catch (error) {
         console.error("Error uploading file:", error);
-
-        // Verifica si Firebase devolvió una respuesta en texto plano o HTML
-        if (typeof error === "string") {
-          console.error("Respuesta inesperada de Firebase:", error);
-        } else if (error instanceof SyntaxError) {
-          console.error(
-            "Error de formato JSON. Firebase pudo haber devuelto un HTML."
-          );
-        }
-
         return NextResponse.json(
           {
             success: false,
             error: "Error uploading file",
-            details: error,
           },
           { status: 500 }
         );
