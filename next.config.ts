@@ -18,11 +18,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  api: {
-    bodyParser: {
-      sizeLimit: "30mb",
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "30mb",
     },
-    responseLimit: false,
   },
 };
 
