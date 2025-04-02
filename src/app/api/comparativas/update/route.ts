@@ -57,20 +57,31 @@ export async function POST(req: NextRequest) {
 
           comparativaFiles.push({
             id: crypto.randomUUID(),
-            comparativa_id,
+            comparativa_id: comparativa_id,
             filename: file.name,
             size: file.size,
-            extension: file.name.split(".").pop() as string,
+            extension: file.name.split(".").pop() || "",
             upload_date: new Date().toISOString(),
             download_url: downloadURL,
             preview_url: previewURL || null,
           });
         } catch (error) {
           console.error("Error uploading file:", error);
+
+          // Verifica si Firebase devolvió una respuesta en texto plano o HTML
+          if (typeof error === "string") {
+            console.error("Respuesta inesperada de Firebase:", error);
+          } else if (error instanceof SyntaxError) {
+            console.error(
+              "Error de formato JSON. Firebase pudo haber devuelto un HTML."
+            );
+          }
+
           return NextResponse.json(
             {
               success: false,
               error: "Error uploading file",
+              details: error,
             },
             { status: 500 }
           );
