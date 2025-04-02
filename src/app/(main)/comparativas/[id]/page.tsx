@@ -338,8 +338,10 @@ export default function EditComparativaPage() {
         <CardContent>
           <FilesList
             files={(comparativa.files as ComparativaFile[]) || []}
-            comparativaId={comparativa.id}
+            comparativa_id={comparativa.id}
             organization_id={userData?.organization.id as string}
+            onDeleted={fetchComparativa}
+            isComercial={isComercial as boolean}
           />
         </CardContent>
         <CardFooter>

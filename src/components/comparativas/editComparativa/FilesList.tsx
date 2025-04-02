@@ -6,23 +6,28 @@ import { Button } from "@heroui/button";
 import { CloudAlert, Download, FileIcon } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useMemo } from "react";
+import DeleteComparativaFileConfirmationModal from "./DeleteComparativaFileConfirmationModal";
 
 interface FilesListProps {
   files: ComparativaFile[];
-  comparativaId: string;
+  comparativa_id: string;
   organization_id: string;
+  isComercial: boolean;
+  onDeleted: () => void;
 }
 
 export const FilesList = ({
   files,
-  comparativaId,
+  comparativa_id,
   organization_id,
+  isComercial,
+  onDeleted,
 }: FilesListProps) => {
   const handleDownloadFile = useCallback(
     async (filename: string) => {
       try {
         const { success, errors } = await downloadFile(
-          `comparativas/${comparativaId}`,
+          `comparativas/${comparativa_id}`,
           filename,
           organization_id
         );
@@ -42,7 +47,7 @@ export const FilesList = ({
         console.error(error);
       }
     },
-    [comparativaId, organization_id]
+    [comparativa_id, organization_id]
   );
 
   // Memoize the file list to prevent unnecessary re-renders
@@ -88,10 +93,25 @@ export const FilesList = ({
               <Download className="h-4 w-4" />
             </Button>
           )}
+          {!isComercial && (
+            <DeleteComparativaFileConfirmationModal
+              comparativa_id={comparativa_id}
+              filename={file.filename}
+              organization_id={organization_id}
+              onDeleted={onDeleted}
+            />
+          )}
         </div>
       </div>
     ));
-  }, [files, handleDownloadFile]);
+  }, [
+    files,
+    handleDownloadFile,
+    comparativa_id,
+    organization_id,
+    isComercial,
+    onDeleted,
+  ]);
 
   if (files.length === 0) {
     return <p className="text-muted-foreground">No hay archivos adjuntos.</p>;
