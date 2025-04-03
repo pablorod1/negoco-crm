@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DateRange } from "react-day-picker";
 
 export function useTableFilters(id?: string) {
-  const [filterValue, setFilterValue] = useState<string>(id ? id : "");
-  const [companyFilter, setCompanyFilter] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [contractTypeFilter, setContractTypeFilter] = useState<string[]>([]);
-  const [liquidezStatusFilter, setLiquidezStatusFilter] = useState<string[]>(
-    []
+  const storageKey = `table-filters-${id || "default"}`;
+  const [filterValue, setFilterValue] = useState<string>("");
+  const initialLoadComplete = useRef(false);
+
+  // State for all filters
+  const [companyFilter, setCompanyFilter] = useState<string[] | undefined>(
+    undefined
   );
+  const [statusFilter, setStatusFilter] = useState<string[] | undefined>(
+    undefined
+  );
+  const [contractTypeFilter, setContractTypeFilter] = useState<
+    string[] | undefined
+  >(undefined);
+  const [liquidezStatusFilter, setLiquidezStatusFilter] = useState<
+    string[] | undefined
+  >(undefined);
   const [activationDateRange, setActivationDateRange] = useState<
     DateRange | undefined
   >(undefined);
@@ -25,18 +35,99 @@ export function useTableFilters(id?: string) {
     DateRange | undefined
   >(undefined);
 
-  const resetFilters = () => {
-    setCompanyFilter([]);
-    setStatusFilter([]);
-    setContractTypeFilter([]);
+  // Try to load filters from localStorage on initial load
+  const loadFiltersFromStorage = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const savedFilters = localStorage.getItem(storageKey);
+      if (savedFilters) {
+        const parsedFilters = JSON.parse(savedFilters);
+
+        // Only set states if values exist in storage and are different from current state
+        if (parsedFilters.companyFilter)
+          setCompanyFilter(parsedFilters.companyFilter);
+        if (parsedFilters.statusFilter)
+          setStatusFilter(parsedFilters.statusFilter);
+        if (parsedFilters.contractTypeFilter)
+          setContractTypeFilter(parsedFilters.contractTypeFilter);
+        if (parsedFilters.liquidezStatusFilter)
+          setLiquidezStatusFilter(parsedFilters.liquidezStatusFilter);
+        if (parsedFilters.activationDateRange)
+          setActivationDateRange(parsedFilters.activationDateRange);
+        if (parsedFilters.creationDateRange)
+          setCreationDateRange(parsedFilters.creationDateRange);
+        if (parsedFilters.renovationDateRange)
+          setRenovationDateRange(parsedFilters.renovationDateRange);
+        if (parsedFilters.collectionDateRange)
+          setCollectionDateRange(parsedFilters.collectionDateRange);
+        if (parsedFilters.paymentDateRange)
+          setPaymentDateRange(parsedFilters.paymentDateRange);
+      }
+    } catch (error) {
+      console.error("Error loading filters from localStorage:", error);
+    }
+  }, [storageKey]);
+
+  // Load filters from localStorage on initial render only
+  useEffect(() => {
+    if (!initialLoadComplete.current) {
+      loadFiltersFromStorage();
+      initialLoadComplete.current = true;
+    }
+  }, [loadFiltersFromStorage]);
+
+  // Save filters to localStorage
+  const saveFiltersToStorage = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const filtersToSave = {
+        companyFilter,
+        statusFilter,
+        contractTypeFilter,
+        liquidezStatusFilter,
+        activationDateRange,
+        creationDateRange,
+        renovationDateRange,
+        collectionDateRange,
+        paymentDateRange,
+      };
+      localStorage.setItem(storageKey, JSON.stringify(filtersToSave));
+    } catch (error) {
+      console.error("Error saving filters to localStorage:", error);
+    }
+  }, [
+    storageKey,
+    companyFilter,
+    statusFilter,
+    contractTypeFilter,
+    liquidezStatusFilter,
+    activationDateRange,
+    creationDateRange,
+    renovationDateRange,
+    collectionDateRange,
+    paymentDateRange,
+  ]);
+
+  // Only reset the filters in state and clear localStorage
+  const resetFilters = useCallback(() => {
+    setCompanyFilter(undefined);
+    setStatusFilter(undefined);
+    setContractTypeFilter(undefined);
     setFilterValue("");
-    setLiquidezStatusFilter([]);
+    setLiquidezStatusFilter(undefined);
     setActivationDateRange(undefined);
     setCreationDateRange(undefined);
     setRenovationDateRange(undefined);
     setCollectionDateRange(undefined);
     setPaymentDateRange(undefined);
-  };
+
+    // Clear localStorage when filters are reset
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(storageKey);
+    }
+  }, [storageKey]);
 
   return {
     filterValue,
@@ -60,5 +151,7 @@ export function useTableFilters(id?: string) {
     setRenovationDateRange,
     setCollectionDateRange,
     setPaymentDateRange,
+    saveFiltersToStorage,
+    loadFiltersFromStorage,
   };
 }

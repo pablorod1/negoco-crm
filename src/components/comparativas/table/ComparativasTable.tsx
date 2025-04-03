@@ -13,7 +13,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ComparativasHeader from "./ComparativasHeader";
 import { useTableFilters } from "@/lib/hooks/use-table-filters";
-import { useSearchParams } from "next/navigation";
 import { TableContent } from "@/components/core/table/TableContent";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useComparativas } from "@/lib/contexts/ComparativasContext";
@@ -27,8 +26,6 @@ export default function ComparativasTable<TData, TValue>({
 }: Props<TData, TValue>) {
   const { userData } = useUser();
   const { setRefreshComparativas } = useComparativas();
-  const params = useSearchParams();
-  const id = params.get("id");
   const [comparativas, setComparativas] = useState<ComparativaVM[]>([]);
   const [totalComparativas, setTotalComparativas] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -45,7 +42,8 @@ export default function ComparativasTable<TData, TValue>({
     resetFilters,
     creationDateRange,
     setCreationDateRange,
-  } = useTableFilters(id || "");
+    saveFiltersToStorage, // Extract this from the hook
+  } = useTableFilters("comparativas");
 
   const fetchComparativas = useCallback(async () => {
     setLoading(true);
@@ -141,6 +139,7 @@ export default function ComparativasTable<TData, TValue>({
       setFilterValue,
       setStatusFilter,
       resetFilters: handleResetFilters,
+      saveFiltersToStorage, // Pass this to the header component
       totalComparativas,
       userData: userData as User,
       dateRange: creationDateRange,
@@ -152,6 +151,7 @@ export default function ComparativasTable<TData, TValue>({
       setFilterValue,
       setStatusFilter,
       handleResetFilters,
+      saveFiltersToStorage, // Add this to dependencies
       userData,
       creationDateRange,
       setCreationDateRange,

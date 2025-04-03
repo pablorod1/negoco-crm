@@ -26,10 +26,11 @@ import { DateRange } from "react-day-picker";
 
 interface Props<TData> {
   filterValue: string;
-  statusFilter: string[];
+  statusFilter: string[] | undefined;
   setFilterValue: (value: string) => void;
   setStatusFilter: (value: ComparativaStatus[]) => void;
   resetFilters: () => void;
+  saveFiltersToStorage: () => void; // Add this optional prop
   table: Table<TData>;
   totalComparativas: number;
   userData: User;
@@ -43,6 +44,7 @@ const ComparativasHeader = <TData,>({
   setFilterValue,
   setStatusFilter,
   resetFilters,
+  saveFiltersToStorage, // Add this prop
   table,
   totalComparativas,
   userData,
@@ -57,7 +59,7 @@ const ComparativasHeader = <TData,>({
 
   useEffect(() => {
     const filters = [];
-    if (statusFilter.length > 0) filters.push("Estado");
+    if (statusFilter) filters.push("Estado");
     setActiveFilters(filters);
   }, [statusFilter]);
 
@@ -68,6 +70,11 @@ const ComparativasHeader = <TData,>({
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    if (activeFilters.length > 0) saveFiltersToStorage();
+  }, [statusFilter, dateRange, saveFiltersToStorage, activeFilters]);
 
   const handleClearSearch = () => {
     setFilterValue("");

@@ -36,10 +36,10 @@ import { UpdateMultipleTramitesModal } from "../liquidez/UpdateMultipleTramitesM
 interface TableHeaderProps<TData> {
   filterValue: string;
   title: string;
-  companyFilter: string[];
-  statusFilter: string[];
-  liquidezStatusFilter: string[];
-  contractTypeFilter: string[];
+  companyFilter: string[] | undefined;
+  statusFilter: string[] | undefined;
+  liquidezStatusFilter: string[] | undefined;
+  contractTypeFilter: string[] | undefined;
   setFilterValue: (value: string) => void;
   setCompanyFilter: (value: string[]) => void;
   setStatusFilter: (value: Status[]) => void;
@@ -59,6 +59,7 @@ interface TableHeaderProps<TData> {
   paymentDateRange: DateRange | undefined;
   setCollectionDateRange: (value: DateRange | undefined) => void;
   setPaymentDateRange: (value: DateRange | undefined) => void;
+  saveFiltersToStorage: () => void;
 }
 
 export default function TramitesHeader<TData>({
@@ -87,6 +88,7 @@ export default function TramitesHeader<TData>({
   paymentDateRange,
   setCollectionDateRange,
   setPaymentDateRange,
+  saveFiltersToStorage,
 }: TableHeaderProps<TData>) {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -99,10 +101,10 @@ export default function TramitesHeader<TData>({
   // Update active filters
   useEffect(() => {
     const filters = [];
-    if (companyFilter.length > 0) filters.push("Compañía");
-    if (statusFilter.length > 0) filters.push("Estado");
-    if (liquidezStatusFilter.length > 0) filters.push("Liquidez");
-    if (contractTypeFilter.length > 0) filters.push("Contrato");
+    if (companyFilter) filters.push("Compañía");
+    if (statusFilter) filters.push("Estado");
+    if (liquidezStatusFilter) filters.push("Liquidez");
+    if (contractTypeFilter) filters.push("Contrato");
     if (
       activationDateRange &&
       (activationDateRange.from || activationDateRange.to)
@@ -135,6 +137,23 @@ export default function TramitesHeader<TData>({
     renovationDateRange,
     collectionDateRange,
     paymentDateRange,
+  ]);
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    if (activeFilters.length > 0) saveFiltersToStorage();
+  }, [
+    statusFilter,
+    liquidezStatusFilter,
+    contractTypeFilter,
+    activationDateRange,
+    creationDateRange,
+    renovationDateRange,
+    collectionDateRange,
+    paymentDateRange,
+    companyFilter,
+    saveFiltersToStorage,
+    activeFilters.length,
   ]);
 
   // Clear search filter

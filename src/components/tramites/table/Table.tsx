@@ -17,7 +17,6 @@ import { useTableFilters } from "@/lib/hooks/use-table-filters";
 import { useTramites } from "@/lib/contexts/TramitesContext";
 import TramitesHeader from "./TableHeader";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useSearchParams } from "next/navigation";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -28,8 +27,6 @@ export function DataTable<TData, TValue>({
   columns,
   title,
 }: DataTableProps<TData, TValue>) {
-  const params = useSearchParams();
-  const id = params.get("id");
   const { userData } = useUser();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [tramites, setTramites] = useState<TramiteRow[]>([]);
@@ -64,7 +61,8 @@ export function DataTable<TData, TValue>({
     setRenovationDateRange,
     setCollectionDateRange,
     setPaymentDateRange,
-  } = useTableFilters(id || "");
+    saveFiltersToStorage,
+  } = useTableFilters(isLiquidezTable ? "liquidez" : "tramites");
 
   const { setRefreshTramites } = useTramites();
 
@@ -85,7 +83,7 @@ export function DataTable<TData, TValue>({
             companyFilter,
             statusFilter: isTramitesTable
               ? statusFilter
-              : isLiquidezTable && statusFilter.length > 0
+              : isLiquidezTable && statusFilter
                 ? statusFilter
                 : ["Activo", "Baja"],
             liquidezStatusFilter,
@@ -93,8 +91,10 @@ export function DataTable<TData, TValue>({
             activationDateRange,
             creationDateRange,
             renovationDateRange,
-            collectionDateRange,
-            paymentDateRange,
+            collectionDateRange: isLiquidezTable
+              ? collectionDateRange
+              : undefined,
+            paymentDateRange: isLiquidezTable ? paymentDateRange : undefined,
           }),
         });
         const { success, data, error, total } = await res.json();
@@ -185,6 +185,7 @@ export function DataTable<TData, TValue>({
       paymentDateRange,
       setCollectionDateRange,
       setPaymentDateRange,
+      saveFiltersToStorage,
     }),
     [
       filterValue,
@@ -211,6 +212,7 @@ export function DataTable<TData, TValue>({
       paymentDateRange,
       setCollectionDateRange,
       setPaymentDateRange,
+      saveFiltersToStorage,
     ]
   );
 
