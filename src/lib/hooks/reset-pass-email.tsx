@@ -22,8 +22,8 @@ export async function sendPasswordResetEmail({
   email: string;
   resetLink: string;
 }) {
-  const emailFrom = process.env.EMAIL;
-  const password = process.env.EMAIL_PASS;
+  const emailFrom = process.env.EMAIL || "";
+  const password = process.env.EMAIL_PASS || "";
   // Configurar el transporter de nodemailer
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -39,7 +39,7 @@ export async function sendPasswordResetEmail({
   // Configurar el email
   const mailOptions = {
     from: {
-      address: email as string,
+      address: emailFrom,
       name: "Negoco Cloud Soporte",
     },
     to: email,
