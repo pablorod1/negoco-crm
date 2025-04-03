@@ -28,7 +28,7 @@ export async function sendPasswordResetEmail({
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: 465,
-    secure: false,
+    secure: true,
     auth: {
       user: emailFrom,
       pass: password,
@@ -39,7 +39,7 @@ export async function sendPasswordResetEmail({
   // Configurar el email
   const mailOptions = {
     from: {
-      address: emailFrom as string,
+      address: email as string,
       name: "Negoco Cloud Soporte",
     },
     to: email,
