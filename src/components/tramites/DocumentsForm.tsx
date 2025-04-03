@@ -63,9 +63,7 @@ export default function DocumentsForm({
               ? "Suelta los archivos aquí..."
               : "Arrastra y suelta archivos o haz clic para seleccionar"}
           </p>
-          <p className="text-xs text-gray-500">
-            PDF, DOC, DOCX, PNG, JPG, JPEG
-          </p>
+          <p className="text-xs text-gray-500">(MÁX. 10MB)</p>
         </div>
       </div>
 
