@@ -38,7 +38,10 @@ export async function sendPasswordResetEmail({
   const emailHtml = await render(<PasswordResetEmail resetLink={resetLink} />);
   // Configurar el email
   const mailOptions = {
-    from: `"Negoco Cloud Soporte" <${emailFrom}>`,
+    from: {
+      address: emailFrom as string,
+      name: "Negoco Cloud Soporte",
+    },
     to: email,
     subject: `Restablecimiento de contraseña - Negoco Cloud`,
     html: emailHtml,
