@@ -40,20 +40,16 @@ export default function UpdateComissionsModal({
             comparativa.comision_sales_person.indexado,
         }
       : comparativa.plan.includes("fijo")
-      ? {
-          comision_fijo: comparativa.comision.fijo,
-          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-        }
-      : {
-          comision_indexado: comparativa.comision.indexado,
-          comision_sales_person_indexado:
-            comparativa.comision_sales_person.indexado,
-        }
+        ? {
+            comision_fijo: comparativa.comision.fijo,
+            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          }
+        : {
+            comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_indexado:
+              comparativa.comision_sales_person.indexado,
+          }
   );
-
-  const checkEmptyComissions = () => {
-    return Object.values(formDataComissions).some((value) => !value);
-  };
 
   const checkComissionsChanged = () => {
     const changes = {
@@ -82,63 +78,77 @@ export default function UpdateComissionsModal({
       : null;
   };
 
+  const checkEmptyComissions = () => {
+    const requiredFields = [
+      "comision_fijo",
+      "comision_indexado",
+      "comision_sales_person_fijo",
+      "comision_sales_person_indexado",
+    ];
+    return requiredFields.some(
+      (field) =>
+        formDataComissions[field as keyof ComissionFormValues] === undefined ||
+        formDataComissions[field as keyof ComissionFormValues] === null
+    );
+  };
+
   const handleSubmit = async () => {
+    if (checkEmptyComissions()) {
+      showCustomToast({
+        title: "Campos vacíos",
+        message:
+          "Por favor, complete todos los campos de comisiones antes de actualizar.",
+        iconColor: "var(--warning-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
     setLoading(true);
     try {
-      if (checkEmptyComissions()) {
-        showCustomToast({
-          title: "Error al actualizar las comisiones",
-          message: "Por favor, rellena todos los campos",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
+      const changes = checkComissionsChanged();
+      if (changes) {
+        const response = await fetch(`/api/comparativas/update/comissions`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: comparativa.id,
+            comissions: changes,
+          }),
         });
-        return;
-      } else {
-        const changes = checkComissionsChanged();
-        if (changes) {
-          const response = await fetch(`/api/comparativas/update/comissions`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              id: comparativa.id,
-              comissions: changes,
-            }),
-          });
 
-          const { success, error } = await response.json();
+        const { success, error } = await response.json();
 
-          if (!success) {
-            showCustomToast({
-              title: "Error al actualizar comisiones",
-              message: error,
-              iconColor: "var(--danger-color)",
-              iconSize: 24,
-              icon: CircleX,
-            });
-            return;
-          }
-
+        if (!success) {
           showCustomToast({
-            title: "Comisiones actualizadas",
-            message: "Las comisiones se han actualizado correctamente",
-            iconColor: "var(--success-color)",
+            title: "Error al actualizar comisiones",
+            message: error,
+            iconColor: "var(--danger-color)",
             iconSize: 24,
-            icon: CheckCircle,
+            icon: CircleX,
           });
-          onClose();
-          onUpdate();
-        } else {
-          showCustomToast({
-            title: "No hay cambios",
-            message: "No se han realizado cambios en las comisiones",
-            iconColor: "var(--warning-color)",
-            iconSize: 24,
-          });
-          onClose();
+          return;
         }
+
+        showCustomToast({
+          title: "Comisiones actualizadas",
+          message: "Las comisiones se han actualizado correctamente",
+          iconColor: "var(--success-color)",
+          iconSize: 24,
+          icon: CheckCircle,
+        });
+        onClose();
+        onUpdate();
+      } else {
+        showCustomToast({
+          title: "No hay cambios",
+          message: "No se han realizado cambios en las comisiones",
+          iconColor: "var(--warning-color)",
+          iconSize: 24,
+        });
+        onClose();
       }
     } catch (error) {
       console.error(error);

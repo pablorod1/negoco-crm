@@ -174,6 +174,9 @@ export default function EditComparativaPage() {
     comparativa.status !== "processed" &&
     comparativa.status !== "rejected";
 
+  const isStudied = comparativa.status === "completed";
+  const isProcessed = comparativa.status === "processed";
+
   return (
     <div className="mx-12 py-6">
       <div className="flex justify-between items-center mb-6">
@@ -232,12 +235,16 @@ export default function EditComparativaPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="notes">
-              <TabsList className="grid mb-4 grid-cols-2">
+              <TabsList
+                className={`grid mb-4 ${isStudied || isProcessed ? "grid-cols-2" : "grid-cols-1"}`}
+              >
                 <TabsTrigger value="notes">
                   Notas - {comparativa.notes.length}
                 </TabsTrigger>
 
-                <TabsTrigger value="commissions">Comisiones</TabsTrigger>
+                {(isStudied || isProcessed) && (
+                  <TabsTrigger value="commissions">Comisiones</TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="commissions" className="space-y-4">
@@ -341,6 +348,7 @@ export default function EditComparativaPage() {
             organization_id={userData?.organization.id as string}
             onDeleted={fetchComparativa}
             isComercial={isComercial as boolean}
+            isProcessed={isProcessed as boolean}
           />
         </CardContent>
         <CardFooter>

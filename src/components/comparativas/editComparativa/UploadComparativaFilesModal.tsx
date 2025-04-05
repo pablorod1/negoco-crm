@@ -67,10 +67,6 @@ export default function UploadComparativaFilesModal({
     onClose();
   };
 
-  const checkComissionsNotEmpty = () => {
-    return Object.values(formDataComissions).some((value) => !value);
-  };
-
   const checkStatusChanged = () => {
     if (comparativa.status === "pending" && estudioRealizado) {
       return true;
@@ -102,44 +98,37 @@ export default function UploadComparativaFilesModal({
     }
     setLoading(true);
     try {
-      if (estudioRealizado && checkComissionsNotEmpty()) {
-        showCustomToast({
-          title: "Error al actualizar la comparativa",
-          message:
-            "Para completar el estudio debes asignar todas las comisiones",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
-      }
       const formData = new FormData();
       formData.append("comparativa_id", comparativa.id);
       formData.append("organization_id", organization_id);
-      formData.append(
-        "comissions",
-        JSON.stringify({
-          comision_fijo:
-            formDataComissions.comision_fijo !== comparativa.comision.fijo
-              ? formDataComissions.comision_fijo
-              : undefined,
-          comision_indexado:
-            formDataComissions.comision_indexado !==
-            comparativa.comision.indexado
-              ? formDataComissions.comision_indexado
-              : undefined,
-          comision_sales_person_fijo:
-            formDataComissions.comision_sales_person_fijo !==
-            comparativa.comision_sales_person.fijo
-              ? formDataComissions.comision_sales_person_fijo
-              : undefined,
-          comision_sales_person_indexado:
-            formDataComissions.comision_sales_person_indexado !==
-            comparativa.comision_sales_person.indexado
-              ? formDataComissions.comision_sales_person_indexado
-              : undefined,
-        })
+      const comissionsData = {
+        comision_fijo:
+          formDataComissions.comision_fijo !== comparativa.comision.fijo
+            ? formDataComissions.comision_fijo
+            : undefined,
+        comision_indexado:
+          formDataComissions.comision_indexado !== comparativa.comision.indexado
+            ? formDataComissions.comision_indexado
+            : undefined,
+        comision_sales_person_fijo:
+          formDataComissions.comision_sales_person_fijo !==
+          comparativa.comision_sales_person.fijo
+            ? formDataComissions.comision_sales_person_fijo
+            : undefined,
+        comision_sales_person_indexado:
+          formDataComissions.comision_sales_person_indexado !==
+          comparativa.comision_sales_person.indexado
+            ? formDataComissions.comision_sales_person_indexado
+            : undefined,
+      };
+
+      const isComissionsNotEmpty = Object.values(comissionsData).some(
+        (value) => value !== undefined
       );
+
+      if (isComissionsNotEmpty) {
+        formData.append("comissions", JSON.stringify(comissionsData));
+      }
       uploadedFiles.forEach((doc) => {
         formData.append("files", doc);
       });

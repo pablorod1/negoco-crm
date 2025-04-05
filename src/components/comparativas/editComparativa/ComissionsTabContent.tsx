@@ -12,6 +12,11 @@ export const CommissionsTabContent = ({
   userData,
 }: CommissionsTabContentProps) => {
   const isComercial = userData.role === "2";
+
+  const getComissionText = (comission: number) => {
+    if (comission === 0) return "No hay ahorro";
+    return formatComission(comission);
+  };
   return (
     <div
       className={`grid ${
@@ -31,7 +36,7 @@ export const CommissionsTabContent = ({
                 <div className="flex justify-between">
                   <span className="text-primary-800">Precio Fijo:</span>
                   <span className="font-semibold text-primary-900">
-                    {formatComission(comparativa.comision.fijo)}
+                    {getComissionText(comparativa.comision.fijo)}
                   </span>
                 </div>
               )}
@@ -39,7 +44,7 @@ export const CommissionsTabContent = ({
                 <div className="flex justify-between">
                   <span className="text-primary-800">Precio Indexado:</span>
                   <span className="font-semibold text-primary-900">
-                    {formatComission(comparativa.comision.indexado)}
+                    {getComissionText(comparativa.comision.indexado)}
                   </span>
                 </div>
               )}
@@ -60,7 +65,7 @@ export const CommissionsTabContent = ({
               <div className="flex justify-between">
                 <span className="text-primary-800">Precio Fijo:</span>
                 <span className="font-semibold text-primary-900">
-                  {formatComission(comparativa.comision_sales_person.fijo)}
+                  {getComissionText(comparativa.comision_sales_person.fijo)}
                 </span>
               </div>
             )}
@@ -68,7 +73,7 @@ export const CommissionsTabContent = ({
               <div className="flex justify-between">
                 <span className="text-primary-800">Precio Indexado:</span>
                 <span className="font-semibold text-primary-900">
-                  {formatComission(comparativa.comision_sales_person.indexado)}
+                  {getComissionText(comparativa.comision_sales_person.indexado)}
                 </span>
               </div>
             )}

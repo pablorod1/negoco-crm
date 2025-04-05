@@ -32,6 +32,29 @@ export default function ComparativaToTramite({
     onComparativaUpdated();
     onClose();
   };
+
+  const checkFijoEmpty = () => {
+    return (
+      comparativa.comision.fijo === 0 &&
+      comparativa.comision_sales_person.fijo === 0
+    );
+  };
+
+  const checkIndexadoEmpty = () => {
+    return (
+      comparativa.comision.indexado === 0 &&
+      comparativa.comision_sales_person.indexado === 0
+    );
+  };
+
+  const getSelectedPlan = () => {
+    return checkFijoEmpty()
+      ? ["indexado"]
+      : checkIndexadoEmpty()
+        ? ["fijo"]
+        : [plan];
+  };
+
   return (
     <>
       <Button onPress={onOpen} variant="bordered">
@@ -64,11 +87,23 @@ export default function ComparativaToTramite({
                   radius="sm"
                   color="primary"
                   variant="bordered"
-                  selectedKeys={[plan]}
+                  // Auto-select the plan based on commission values:
+                  // If "fijo" commission is empty, default to "indexado".
+                  // If "indexado" commission is empty, default to "fijo".
+                  // Otherwise, use the currently selected plan.
+                  selectedKeys={getSelectedPlan()}
                   onChange={handleChange}
                 >
-                  <SelectItem key="fijo">Fijo</SelectItem>
-                  <SelectItem key="completed">Indexado</SelectItem>
+                  {checkFijoEmpty() ? (
+                    <SelectItem key="indexado">Indexado</SelectItem>
+                  ) : checkIndexadoEmpty() ? (
+                    <SelectItem key="fijo">Fijo</SelectItem>
+                  ) : (
+                    <>
+                      <SelectItem key="fijo">Fijo</SelectItem>
+                      <SelectItem key="indexado">Indexado</SelectItem>
+                    </>
+                  )}
                 </Select>
               </div>
             </div>

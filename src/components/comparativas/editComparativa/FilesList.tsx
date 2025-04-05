@@ -3,7 +3,7 @@ import { formatDateTime, formatFileSize } from "@/lib/core/format";
 import { ComparativaFile } from "@/lib/core/types";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
 import { Button } from "@heroui/button";
-import { CloudAlert, Download, FileIcon } from "lucide-react";
+import { CloudAlert, Download, FileIcon, FileX } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useMemo } from "react";
 import DeleteComparativaFileConfirmationModal from "./DeleteComparativaFileConfirmationModal";
@@ -14,6 +14,7 @@ interface FilesListProps {
   organization_id: string;
   isComercial: boolean;
   onDeleted: () => void;
+  isProcessed: boolean;
 }
 
 export const FilesList = ({
@@ -22,6 +23,7 @@ export const FilesList = ({
   organization_id,
   isComercial,
   onDeleted,
+  isProcessed,
 }: FilesListProps) => {
   const handleDownloadFile = useCallback(
     async (filename: string) => {
@@ -114,7 +116,22 @@ export const FilesList = ({
   ]);
 
   if (files.length === 0) {
-    return <p className="text-muted-foreground">No hay archivos adjuntos.</p>;
+    return isProcessed ? (
+      <div className="flex flex-col items-center justify-center gap-4 p-4 border rounded-lg h-full">
+        <FileX className="size-10 text-muted-foreground" />
+        <p className="text-muted-foreground flex items-center gap-2">
+          No hay archivos adjuntos.{" "}
+        </p>
+        <span className="text-sm text-muted-foreground">
+          Los archivos de esta comparativa se han movido al trámite asignado.
+          Por favor, revisa el trámite para ver los archivos.
+        </span>
+      </div>
+    ) : (
+      <p className="text-muted-foreground flex items-center gap-2">
+        No hay archivos adjuntos.{" "}
+      </p>
+    );
   }
 
   return (
