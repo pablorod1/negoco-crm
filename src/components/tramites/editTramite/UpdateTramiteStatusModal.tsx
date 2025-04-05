@@ -34,6 +34,8 @@ import { Textarea } from "@heroui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateTramiteUpdatedNotification } from "@/lib/core/notifications.helpers";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
+import { DatePicker, DateValue } from "@heroui/react";
+import { getLocalTimeZone, today } from "@internationalized/date";
 
 interface Props {
   tramite: TramiteVM;
@@ -53,6 +55,9 @@ interface FormData {
   comisionSalesPersonConfirmed: boolean;
   collection_date: string | null;
   payment_date: string | null;
+  activation_date: DateValue | null;
+  renovation_date: DateValue | null;
+  tramitation_date: DateValue | null;
 }
 
 export default function UpdateTramiteStatusModal({
@@ -72,6 +77,9 @@ export default function UpdateTramiteStatusModal({
     comisionSalesPersonConfirmed: false,
     collection_date: null,
     payment_date: null,
+    activation_date: null,
+    renovation_date: null,
+    tramitation_date: null,
   });
 
   const isComercial = userData && userData.role === "2";
@@ -79,6 +87,7 @@ export default function UpdateTramiteStatusModal({
   const isBorrador = formData.status === "Borrador";
   const isBaja = formData.status === "Baja";
   const isActivo = formData.status === "Activo";
+  const isVerificado = formData.status === "Verificado";
   const [loading, setLoading] = useState(false);
 
   // Estado para controlar si podemos actualizar
@@ -111,6 +120,24 @@ export default function UpdateTramiteStatusModal({
     isComercial,
   ]);
 
+  const handleDateChange = (date: DateValue, name: string) => {
+    if (date) {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: date,
+        ...(name === "activation_date" && {
+          renovation_date: date.add({ years: 1 }),
+        }),
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: null,
+        ...(name === "activation_date" && { renovation_date: null }),
+      }));
+    }
+  };
+
   const handleChange = (
     e:
       | React.ChangeEvent<HTMLSelectElement>
@@ -124,6 +151,14 @@ export default function UpdateTramiteStatusModal({
         liquidez_status: "Pendiente de Cobro",
         comision: Math.abs(prev.comision),
         comision_sales_person: Math.abs(prev.comision_sales_person),
+      }));
+      handleDateChange(today(getLocalTimeZone()), "activation_date");
+    }
+
+    if (name === "status" && value === "Verificado") {
+      setFormData((prev) => ({
+        ...prev,
+        tramitation_date: today(getLocalTimeZone()),
       }));
     }
 
@@ -244,6 +279,33 @@ export default function UpdateTramiteStatusModal({
           payment_date: formData.payment_date
             ? formData.payment_date
             : undefined,
+          activation_date: formData.activation_date
+            ? new Date(
+                Date.UTC(
+                  formData.activation_date.year,
+                  formData.activation_date.month - 1, // JavaScript usa base 0 para meses
+                  formData.activation_date.day
+                )
+              )
+            : undefined,
+          tramitation_date: formData.tramitation_date
+            ? new Date(
+                Date.UTC(
+                  formData.tramitation_date.year,
+                  formData.tramitation_date.month - 1,
+                  formData.tramitation_date.day
+                )
+              )
+            : undefined,
+          renovation_date: formData.activation_date
+            ? new Date(
+                Date.UTC(
+                  formData.activation_date.year + 1,
+                  formData.activation_date.month - 1,
+                  formData.activation_date.day
+                )
+              )
+            : undefined,
         }),
       });
 
@@ -345,205 +407,269 @@ export default function UpdateTramiteStatusModal({
   };
 
   return (
-    <Modal
-      isDismissable={false}
-      hideCloseButton
-      size="2xl"
-      isOpen={isOpen}
-      onClose={onClose}
-    >
-      <ModalContent>
-        <ModalHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-semibold text-primary">
-              Actualizar Estado
-            </h2>
-            <Tooltip content="ID del trámite">
-              <span className="text-xs text-primary-400">#{tramite.id}</span>
-            </Tooltip>
-          </div>
-          <div className="flex-shrink-0">{getStatusBadge(tramite.status)}</div>
-        </ModalHeader>
-
-        <Divider className="my-1" />
-
-        <ModalBody>
-          {/* Información del trámite */}
-          {loading && <LoadingStateModal userData={userData as User} />}
-          <div className="grid grid-cols-2 gap-4 bg-primary-50 p-3 rounded-md text-sm">
+    <>
+      <Modal
+        isDismissable={false}
+        hideCloseButton
+        size="2xl"
+        isOpen={isOpen}
+        onClose={onClose}
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="flex items-center space-x-2">
-              <CalendarIcon className="h-4 w-4 text-primary-500" />
-              <span className="font-medium">Creado:</span>
-              <span>{formatDate(tramite.creation_date || "")}</span>
+              <h2 className="text-xl font-semibold text-primary">
+                Actualizar Estado
+              </h2>
+              <Tooltip content="ID del trámite">
+                <span className="text-xs text-primary-400">#{tramite.id}</span>
+              </Tooltip>
             </div>
-          </div>
+            <div className="flex-shrink-0">
+              {getStatusBadge(tramite.status)}
+            </div>
+          </ModalHeader>
 
-          <div className="grid gap-6 py-4">
-            {/* Estado */}
-            <div className="mx-auto w-full">
-              <div className="flex items-center gap-4">
-                <SelectComponent
-                  onChange={handleChange}
-                  name="status"
-                  label="Estado"
-                  items={
-                    userData.role === "2"
-                      ? COMERCIAL_STATUS_TYPES
-                      : PLAIN_STATUS_TYPES
-                  }
-                  selectedKey={formData.status}
-                  disabled={tramite.status === "Activo"}
-                  isRequired
-                />
-                {(isActivo || isBaja) && !isComercial && (
+          <Divider className="my-1" />
+
+          <ModalBody>
+            {/* Información del trámite */}
+            {loading && <LoadingStateModal userData={userData as User} />}
+            <div className="grid grid-cols-2 gap-4 bg-primary-50 p-3 rounded-md text-sm">
+              <div className="flex items-center space-x-2">
+                <CalendarIcon className="h-4 w-4 text-primary-500" />
+                <span className="font-medium">Creado:</span>
+                <span>{formatDate(tramite.creation_date || "")}</span>
+              </div>
+              {tramite.status !== "Tramitable" &&
+                tramite.status !== "Borrador" && (
+                  <div className="flex items-center space-x-2">
+                    <CalendarIcon className="h-4 w-4 text-primary-500" />
+                    <span className="font-medium">Tramitado:</span>
+                    <span>{formatDate(tramite.tramitation_date || "")}</span>
+                  </div>
+                )}
+              {tramite.status === "Activo" && (
+                <div className="flex items-center space-x-2">
+                  <CalendarIcon className="h-4 w-4 text-primary-500" />
+                  <span className="font-medium">Activado:</span>
+                  <span>{formatDate(tramite.activation_date || "")}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-6 py-4">
+              {/* Estado */}
+              <div className="mx-auto w-full space-y-4">
+                <div className="flex items-center gap-4">
                   <SelectComponent
                     onChange={handleChange}
-                    name="liquidez_status"
-                    label="Estado de liquidez"
+                    name="status"
+                    label="Estado"
                     items={
-                      isBaja ? BAJA_LIQUIDEZ_STATUS : PLAIN_LIQUIDEZ_STATUS
+                      userData.role === "2"
+                        ? COMERCIAL_STATUS_TYPES
+                        : PLAIN_STATUS_TYPES
                     }
-                    selectedKey={formData.liquidez_status || ""}
+                    selectedKey={formData.status}
+                    disabled={tramite.status === "Activo"}
+                    isRequired
+                  />
+                  {(isActivo || isBaja) && !isComercial && (
+                    <SelectComponent
+                      onChange={handleChange}
+                      name="liquidez_status"
+                      label="Estado de liquidez"
+                      items={
+                        isBaja ? BAJA_LIQUIDEZ_STATUS : PLAIN_LIQUIDEZ_STATUS
+                      }
+                      selectedKey={formData.liquidez_status || ""}
+                    />
+                  )}
+                </div>
+
+                {isActivo && tramite.status !== "Activo" && (
+                  <div className="flex items-center gap-4">
+                    <DatePicker
+                      radius="sm"
+                      variant="bordered"
+                      color="primary"
+                      name="activation_date"
+                      label="Fecha de activación"
+                      value={formData.activation_date}
+                      onChange={(value) =>
+                        handleDateChange(value as DateValue, "activation_date")
+                      }
+                      hideTimeZone
+                    />
+                    <DatePicker
+                      radius="sm"
+                      variant="bordered"
+                      color="primary"
+                      name="renovation_date"
+                      label="Fecha de renovación"
+                      value={formData.renovation_date}
+                      onChange={(value) =>
+                        handleDateChange(value as DateValue, "renovation_date")
+                      }
+                      hideTimeZone
+                    />
+                  </div>
+                )}
+                {isVerificado && tramite.status === "Tramitable" && (
+                  <DatePicker
+                    radius="sm"
+                    variant="bordered"
+                    color="primary"
+                    name="tramitation_date"
+                    label="Fecha de tramitación"
+                    value={formData.tramitation_date}
+                    onChange={(value) =>
+                      handleDateChange(value as DateValue, "tramitation_date")
+                    }
+                    hideTimeZone
                   />
                 )}
+
+                {/* Notas */}
+                <div className="mt-4">
+                  <Textarea
+                    name="note"
+                    label="Notas sobre el cambio de estado"
+                    value={formData.note || ""}
+                    onChange={handleChange}
+                    placeholder="Añade información relevante sobre este cambio de estado..."
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
               </div>
 
-              {/* Notas */}
-              <div className="mt-4">
-                <Textarea
-                  name="note"
-                  label="Notas sobre el cambio de estado"
-                  value={formData.note || ""}
-                  onChange={handleChange}
-                  placeholder="Añade información relevante sobre este cambio de estado..."
-                  rows={3}
-                  className="resize-none"
-                />
-              </div>
-            </div>
+              {/* Comisiones (solo para no comerciales) */}
+              {!isComercial && (
+                <>
+                  <Divider className="my-2" />
 
-            {/* Comisiones (solo para no comerciales) */}
-            {!isComercial && (
-              <>
-                <Divider className="my-2" />
-
-                <div className="space-y-4">
-                  <div className="flex flex-col">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-primary">Comisiones</h3>
-                      <Coins className="h-4 w-4 text-primary-500" />
+                  <div className="space-y-4">
+                    <div className="flex flex-col">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-semibold text-primary">
+                          Comisiones
+                        </h3>
+                        <Coins className="h-4 w-4 text-primary-500" />
+                      </div>
+                      <p className="text-sm text-primary-400">
+                        Asegurate de que las comisiones sean correctas antes de
+                        actualizar el estado.
+                      </p>
                     </div>
-                    <p className="text-sm text-primary-400">
-                      Asegurate de que las comisiones sean correctas antes de
-                      actualizar el estado.
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <InputComponent
+                          type="number"
+                          name="comision"
+                          value={formData.comision.toString()}
+                          label="Comisión"
+                          onChange={handleChange}
+                        />
+                        {needsConfirmation && (
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Checkbox
+                              id="comision-checkbox"
+                              name="comisionConfirmed"
+                              checked={formData.comisionConfirmed}
+                              onCheckedChange={() =>
+                                handleCheckboxChange(
+                                  !formData.comisionConfirmed,
+                                  "comisionConfirmed"
+                                )
+                              }
+                            />
+                            <label
+                              htmlFor="comision-checkbox"
+                              className="text-xs text-primary-600 cursor-pointer"
+                            >
+                              Confirmar
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <InputComponent
+                          type="number"
+                          name="comision_sales_person"
+                          value={formData.comision_sales_person.toString()}
+                          label="Comisión Comercial"
+                          onChange={handleChange}
+                        />
+                        {needsConfirmation && (
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Checkbox
+                              id="comision-sales-checkbox"
+                              name="comisionSalesPersonConfirmed"
+                              checked={formData.comisionSalesPersonConfirmed}
+                              onCheckedChange={() =>
+                                handleCheckboxChange(
+                                  !formData.comisionSalesPersonConfirmed,
+                                  "comisionSalesPersonConfirmed"
+                                )
+                              }
+                            />
+                            <label
+                              htmlFor="comision-sales-checkbox"
+                              className="text-xs text-primary-600 cursor-pointer"
+                            >
+                              Confirmar
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Alertas o notificaciones */}
+              {needsConfirmation && !isComercial && (
+                <div className="flex items-start space-x-2 bg-yellow-50 p-3 rounded-md mt-2">
+                  <AlertCircleIcon className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">
+                      Confirmación requerida
+                    </p>
+                    <p className="text-xs text-yellow-600">
+                      Para actualizar a un estado distinto de Tramitable o
+                      Borrador, debes confirmar ambas comisiones marcando las
+                      casillas de verificación.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <InputComponent
-                        type="number"
-                        name="comision"
-                        value={formData.comision.toString()}
-                        label="Comisión"
-                        onChange={handleChange}
-                      />
-                      {needsConfirmation && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Checkbox
-                            id="comision-checkbox"
-                            name="comisionConfirmed"
-                            checked={formData.comisionConfirmed}
-                            onCheckedChange={() =>
-                              handleCheckboxChange(
-                                !formData.comisionConfirmed,
-                                "comisionConfirmed"
-                              )
-                            }
-                          />
-                          <label
-                            htmlFor="comision-checkbox"
-                            className="text-xs text-primary-600 cursor-pointer"
-                          >
-                            Confirmar
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <InputComponent
-                        type="number"
-                        name="comision_sales_person"
-                        value={formData.comision_sales_person.toString()}
-                        label="Comisión Comercial"
-                        onChange={handleChange}
-                      />
-                      {needsConfirmation && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Checkbox
-                            id="comision-sales-checkbox"
-                            name="comisionSalesPersonConfirmed"
-                            checked={formData.comisionSalesPersonConfirmed}
-                            onCheckedChange={() =>
-                              handleCheckboxChange(
-                                !formData.comisionSalesPersonConfirmed,
-                                "comisionSalesPersonConfirmed"
-                              )
-                            }
-                          />
-                          <label
-                            htmlFor="comision-sales-checkbox"
-                            className="text-xs text-primary-600 cursor-pointer"
-                          >
-                            Confirmar
-                          </label>
-                        </div>
-                      )}
-                    </div>
+                </div>
+              )}
+
+              {isBaja && (
+                <div className="flex items-start space-x-2 bg-red-50 p-3 rounded-md mt-2">
+                  <AlertCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Atención</p>
+                    <p className="text-xs text-red-600">
+                      Al cancelar este trámite, todas las comisiones asociadas
+                      pasarán a ser negativas y el trámite no podrá ser
+                      reactivado.
+                    </p>
                   </div>
                 </div>
-              </>
-            )}
-
-            {/* Alertas o notificaciones */}
-            {needsConfirmation && !isComercial && (
-              <div className="flex items-start space-x-2 bg-yellow-50 p-3 rounded-md mt-2">
-                <AlertCircleIcon className="h-5 w-5 text-yellow-500 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-yellow-800">
-                    Confirmación requerida
-                  </p>
-                  <p className="text-xs text-yellow-600">
-                    Para actualizar a un estado distinto de Tramitable o
-                    Borrador, debes confirmar ambas comisiones marcando las
-                    casillas de verificación.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {isBaja && (
-              <div className="flex items-start space-x-2 bg-red-50 p-3 rounded-md mt-2">
-                <AlertCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-red-800">Atención</p>
-                  <p className="text-xs text-red-600">
-                    Al cancelar este trámite, todas las comisiones asociadas
-                    pasarán a ser negativas y el trámite no podrá ser
-                    reactivado.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <ButtonGroupComponent
-            onCancel={onClose}
-            onSubmit={handleSubmit}
-            lastStep
-          />
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <ButtonGroupComponent
+              onCancel={onClose}
+              onSubmit={handleSubmit}
+              lastStep
+            />
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 }

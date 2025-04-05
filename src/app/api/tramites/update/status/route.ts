@@ -1,4 +1,4 @@
-import { NOW_DATE, RENOVATION_DATE } from "@/lib/core/const";
+import { NOW_DATE } from "@/lib/core/const";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,8 +14,13 @@ export async function PATCH(req: NextRequest) {
       liquidez_status,
       collection_date,
       payment_date,
+      activation_date,
+      tramitation_date,
+      renovation_date,
       user_id,
     } = await req.json();
+
+    console.log("activation_date", activation_date);
 
     if (!tramite_id || !status || !user_id) {
       return NextResponse.json(
@@ -64,16 +69,16 @@ export async function PATCH(req: NextRequest) {
       queryArgs.push(liquidez_status);
     }
 
-    if (status === "Activo") {
+    if (status === "Activo" && activation_date && renovation_date) {
       updateFields.push("activation_date = ?");
-      queryArgs.push(NOW_DATE.toISOString());
+      queryArgs.push(activation_date);
       updateFields.push("renovation_date = ?");
-      queryArgs.push(RENOVATION_DATE.toISOString());
+      queryArgs.push(renovation_date);
     }
 
-    if (status === "Verificado") {
+    if (status === "Verificado" && tramitation_date) {
       updateFields.push("tramitation_date = ?");
-      queryArgs.push(NOW_DATE.toISOString());
+      queryArgs.push(tramitation_date);
     }
 
     if (liquidez_status === "Cobrado por Comercializadora" && collection_date) {
