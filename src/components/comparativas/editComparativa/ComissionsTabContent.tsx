@@ -14,7 +14,8 @@ export const CommissionsTabContent = ({
   const isComercial = userData.role === "2";
 
   const getComissionText = (comission: number) => {
-    if (comission === 0) return "No hay ahorro";
+    if (comission === 0 && comparativa.status !== "pending")
+      return "No hay ahorro";
     return formatComission(comission);
   };
   return (

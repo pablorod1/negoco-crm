@@ -191,23 +191,11 @@ const ComisionCell = ({
   // Si solo hay un plan, mostrar solo ese valor
   if (plans.length === 1) {
     const planType = plans[0];
-    return (
-      <span>
-        {comisiones[planType] === 0
-          ? "No hay ahorro"
-          : `${comisiones[planType]} €`}
-      </span>
-    );
+    return <span>{comisiones[planType]}</span>;
   }
 
   // Si hay múltiples planes, mostrar el valor correspondiente al seleccionado
-  return (
-    <span>
-      {comisiones[activePlan] === 0
-        ? "No hay ahorro"
-        : `${comisiones[activePlan]} €`}
-    </span>
-  );
+  return <span>{comisiones[activePlan]}</span>;
 };
 
 // Creamos un hook personalizado para gestionar el estado de los planes seleccionados
