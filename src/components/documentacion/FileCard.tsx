@@ -36,6 +36,7 @@ export function FileCard({
   selectedFiles?: DocumentacionFile[];
   handleSelectFile?: (file: DocumentacionFile) => void;
 }) {
+  const isComercial = userData && userData.role === "2";
   const getFileIcon = (file: DocumentacionFile) => {
     switch (file.extension) {
       case "pdf":
@@ -69,7 +70,7 @@ export function FileCard({
   const isSelected =
     selectedFiles && selectedFiles.some((f) => f.id === file.id);
 
-  if (selectedFiles && handleSelectFile) {
+  if (selectedFiles && handleSelectFile && !isComercial) {
     return (
       <Checkbox
         aria-label={file.id}
