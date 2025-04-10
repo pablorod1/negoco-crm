@@ -199,22 +199,19 @@ export default function EditComparativaPage() {
               </Link>
             </Tooltip>
           )}
-          {isEditable && (
-            <>
-              {comparativa.status !== "completed" && !isComercial ? (
-                <UpdateComparativaStatusModal
-                  comparativa={comparativa}
-                  onUpdate={fetchComparativa}
-                  userData={userData as User}
-                />
-              ) : comparativa.status === "completed" ? (
-                <ComparativaToTramite
-                  comparativa={comparativa}
-                  onComparativaUpdated={fetchComparativa}
-                />
-              ) : null}
-            </>
-          )}
+
+          {comparativa.status !== "completed" && !isComercial ? (
+            <UpdateComparativaStatusModal
+              comparativa={comparativa}
+              onUpdate={fetchComparativa}
+              userData={userData as User}
+            />
+          ) : comparativa.status === "completed" ? (
+            <ComparativaToTramite
+              comparativa={comparativa}
+              onComparativaUpdated={fetchComparativa}
+            />
+          ) : null}
         </div>
       </div>
 
