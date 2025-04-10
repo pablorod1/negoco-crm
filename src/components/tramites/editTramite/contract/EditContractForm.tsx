@@ -158,7 +158,7 @@ export default function EditContractForm({
               selectedKey={formData.old_company}
             />
             <SelectComponent
-              name="company"
+              name="new_company"
               label="Compañía Nueva"
               items={PLAIN_COMPANIES}
               onChange={handleFieldChange}

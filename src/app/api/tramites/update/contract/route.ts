@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 export async function PATCH(req: NextRequest) {
   try {
     const { contract } = await req.json();
-
     if (!contract) {
       return NextResponse.json(
         {
@@ -15,6 +14,8 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log("contract", contract);
 
     const tursoClient = getTursoClient(req);
 
