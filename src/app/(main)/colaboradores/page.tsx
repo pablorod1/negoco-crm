@@ -38,8 +38,11 @@ export default function ColaboradoresPage() {
         throw new Error("Error al obtener los usuarios");
       }
 
+      const sortUsers = data.sort((a: User, b: User) =>
+        a.name.localeCompare(b.name)
+      );
       setState({
-        users: data,
+        users: sortUsers,
         loading: false,
         initialized: true,
       });

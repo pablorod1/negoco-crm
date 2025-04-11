@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -17,12 +17,15 @@ import { User } from "@/lib/core/types";
 import { formatTimestamp } from "@/lib/core/format";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
-import { ROLES } from "@/lib/core/const";
+import { ROLES, SELECT_ROLES } from "@/lib/core/const";
 import AvatarComponent from "../core/AvatarComponent";
 import DeleteUserConfirmationModal from "./BanUserConfirmationModal";
 import { useUser } from "@/lib/contexts/UserContext";
 import UnbanUserConfirmationModal from "./UnbanUserConfirmationModal";
 import SpinnerComponent from "../core/SpinnerComponent";
+import { MultiSelect } from "../ui/multi-select";
+import { InputComponent } from "../tramites/createTramite/InputComponent";
+import { Input } from "../ui/input";
 
 const columnHelper = createColumnHelper<User>();
 
@@ -36,6 +39,13 @@ function UsersGridTable({
   const { userData } = useUser();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [isGridView, setIsGridView] = useState(false);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    if (users.length > 0) {
+      setFilteredUsers(users);
+    }
+  }, [users]);
 
   // Variable para verificar si el usuario actual es administrador
   const isAdmin = userData?.role === "admin";
@@ -150,7 +160,7 @@ function UsersGridTable({
     : baseColumns;
 
   const table = useReactTable({
-    data: users,
+    data: filteredUsers,
     columns,
     state: {
       sorting,
@@ -160,6 +170,33 @@ function UsersGridTable({
     getSortedRowModel: getSortedRowModel(),
   });
 
+  const handleRoleFilterChange = (selectedRoles: string[]) => {
+    if (selectedRoles.length === 0) {
+      setFilteredUsers(users);
+      return;
+    }
+    const filtered = users.filter((user) => selectedRoles.includes(user.role));
+    setFilteredUsers(filtered.length > 0 ? filtered : []);
+  };
+
+  const handleNameFilterChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = event.target.value.toLowerCase();
+
+    const filtered = users.filter(
+      (user) =>
+        user.name
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .includes(value) ||
+        user.email.toLowerCase().includes(value) ||
+        user.company?.toLowerCase().includes(value)
+    );
+    setFilteredUsers(filtered.length > 0 ? filtered : []);
+  };
+
   return (
     <section className="relative">
       {loading ? (
@@ -168,7 +205,22 @@ function UsersGridTable({
         </div>
       ) : (
         <>
-          <div className="flex justify-end mb-4">
+          <div className="flex items-end gap-4 justify-between mb-4 w-full">
+            <div className="flex items-center gap-4 w-full">
+              <Input
+                type="text"
+                name="name"
+                onChange={handleNameFilterChange}
+                placeholder="Buscar por nombre, email o empresa"
+                className="w-full max-w-xs min-h-10 shadow"
+              />
+              <MultiSelect
+                options={SELECT_ROLES}
+                onValueChange={handleRoleFilterChange}
+                className="max-w-xs"
+                placeholder="Filtrar por rol"
+              />
+            </div>
             <Button
               onPress={() => setIsGridView(!isGridView)}
               isIconOnly
@@ -178,52 +230,64 @@ function UsersGridTable({
               {isGridView ? <List size={18} /> : <LayoutGrid size={18} />}
             </Button>
           </div>
-          {isGridView ? (
-            <GridView users={users} isAdmin={isAdmin} />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-300">
-                <thead>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id} className="bg-gray-100">
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="py-2 px-4 text-left text-sm font-semibold text-gray-600 cursor-pointer"
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {{
-                            asc: " 🔼",
-                            desc: " 🔽",
-                          }[header.column.getIsSorted() as string] ?? null}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {table.getRowModel().rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-t border-gray-200 hover:bg-gray-50"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="p-4 text-sm text-gray-800">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {filteredUsers.length === 0 ? (
+            <div className="text-center text-gray-500">
+              No se encontraron usuarios que coincidan con los filtros
+              aplicados.
             </div>
+          ) : (
+            <>
+              {isGridView ? (
+                <GridView users={filteredUsers} isAdmin={isAdmin} />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-300">
+                    <thead>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <tr key={headerGroup.id} className="bg-gray-100">
+                          {headerGroup.headers.map((header) => (
+                            <th
+                              key={header.id}
+                              className="py-2 px-4 text-left text-sm font-semibold text-gray-600 cursor-pointer"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                              {{
+                                asc: " 🔼",
+                                desc: " 🔽",
+                              }[header.column.getIsSorted() as string] ?? null}
+                            </th>
+                          ))}
+                        </tr>
+                      ))}
+                    </thead>
+                    <tbody>
+                      {table.getRowModel().rows.map((row) => (
+                        <tr
+                          key={row.id}
+                          className="border-t border-gray-200 hover:bg-gray-50"
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <td
+                              key={cell.id}
+                              className="p-4 text-sm text-gray-800"
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

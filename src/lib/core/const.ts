@@ -153,3 +153,9 @@ export const PLAIN_LIQUIDEZ_STATUS = [
 export const BAJA_LIQUIDEZ_STATUS = ["Pendiente de Descontar", "Descontado"];
 
 export const ROLES = ["Dirección", "Backoffice", "Comercial"];
+
+export const SELECT_ROLES = [
+  { label: "Dirección", value: "admin" },
+  { label: "Backoffice", value: "1" },
+  { label: "Comercial", value: "2" },
+];
