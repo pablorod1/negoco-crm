@@ -45,63 +45,80 @@ export default function ComparativasTable<TData, TValue>({
     saveFiltersToStorage, // Extract this from the hook
   } = useTableFilters("comparativas");
 
-  const fetchComparativas = useCallback(async () => {
-    setLoading(true);
-    if (userData) {
-      try {
-        const res = await fetch(
-          `/api/comparativas/get/paginated-comparativas`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              page: pageIndex,
-              rowsPerPage: pageSize,
-              user_id: userData.id,
-              user_role: userData.role,
-              filterValue,
-              statusFilter,
-              dateRange: creationDateRange,
-            }),
+  const fetchComparativas = useCallback(
+    async (isMounted = true) => {
+      setLoading(true);
+      if (userData) {
+        try {
+          const res = await fetch(
+            `/api/comparativas/get/paginated-comparativas`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                page: pageIndex,
+                rowsPerPage: pageSize,
+                user_id: userData.id,
+                user_role: userData.role,
+                filterValue,
+                statusFilter,
+                dateRange: creationDateRange,
+              }),
+            }
+          );
+
+          const { success, data, error, total } = await res.json();
+          if (!success) {
+            if (isMounted) {
+              setComparativas([]);
+              setLoading(false);
+            }
+            console.error("Error al obtener comparativas:", error);
+            return;
           }
-        );
 
-        const { success, data, error, total } = await res.json();
-        if (!success) {
+          if (isMounted) {
+            setComparativas([]);
+            setLoading(false);
+            return;
+          }
+          setComparativas(data);
+          setTotalComparativas(total);
+          setLoading(false);
+        } catch (error) {
+          if (isMounted) {
+            setLoading(false);
+          }
           console.error("Error al obtener comparativas:", error);
-          setComparativas([]);
-          setLoading(false);
-          return;
         }
-
-        if (data.length === 0) {
-          setComparativas([]);
-          setLoading(false);
-          return;
-        }
-        setComparativas(data);
-        setTotalComparativas(total);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error al obtener comparativas:", error);
       }
-    }
-  }, [
-    pageIndex,
-    pageSize,
-    filterValue,
-    statusFilter,
-    userData,
-    creationDateRange,
-  ]);
+    },
+    [
+      pageIndex,
+      pageSize,
+      filterValue,
+      statusFilter,
+      userData,
+      creationDateRange,
+    ]
+  );
 
   // Consolidated useEffect for data fetching and refresh
   useEffect(() => {
-    const cleanup = setRefreshComparativas(fetchComparativas);
-    fetchComparativas(); // Initial fetch
-    return () => cleanup();
+    let isMounted = true;
+
+    const safeFetch = async () => {
+      await fetchComparativas(isMounted);
+    };
+
+    setRefreshComparativas(() => () => fetchComparativas(isMounted));
+    safeFetch();
+
+    return () => {
+      isMounted = false;
+    };
   }, [
     fetchComparativas,
     setRefreshComparativas,

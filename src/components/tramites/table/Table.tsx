@@ -66,73 +66,87 @@ export function DataTable<TData, TValue>({
 
   const { setRefreshTramites } = useTramites();
 
-  const fetchTramites = useCallback(async () => {
-    if (userData) {
-      try {
-        const res = await fetch(`/api/tramites/get/paginated-tramites`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            page: pageIndex,
-            rowsPerPage: pageSize,
-            user_id: userData.id,
-            user_role: userData.role,
-            filterValue,
-            companyFilter,
-            statusFilter: isTramitesTable
-              ? statusFilter
-              : isLiquidezTable && statusFilter
+  const fetchTramites = useCallback(
+    async (isMounted = true) => {
+      if (userData) {
+        try {
+          const res = await fetch(`/api/tramites/get/paginated-tramites`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              page: pageIndex,
+              rowsPerPage: pageSize,
+              user_id: userData.id,
+              user_role: userData.role,
+              filterValue,
+              companyFilter,
+              statusFilter: isTramitesTable
                 ? statusFilter
-                : ["Activo", "Baja"],
-            liquidezStatusFilter,
-            contractTypeFilter,
-            activationDateRange,
-            creationDateRange,
-            renovationDateRange,
-            collectionDateRange: isLiquidezTable
-              ? collectionDateRange
-              : undefined,
-            paymentDateRange: isLiquidezTable ? paymentDateRange : undefined,
-          }),
-        });
-        const { success, data, error, total } = await res.json();
-        if (!success && error) {
+                : isLiquidezTable && statusFilter
+                  ? statusFilter
+                  : ["Activo", "Baja"],
+              liquidezStatusFilter,
+              contractTypeFilter,
+              activationDateRange,
+              creationDateRange,
+              renovationDateRange,
+              collectionDateRange: isLiquidezTable
+                ? collectionDateRange
+                : undefined,
+              paymentDateRange: isLiquidezTable ? paymentDateRange : undefined,
+            }),
+          });
+          const { success, data, error, total } = await res.json();
+          if (!success && error) {
+            console.error("Error al obtener trámites:", error);
+            return;
+          }
+
+          if (isMounted) {
+            setTramites(data || []);
+            setTotalTramites(total || 0);
+          }
+        } catch (error) {
           console.error("Error al obtener trámites:", error);
-          return;
+        } finally {
+          if (isMounted) setLoading(false);
         }
-
-        setTramites(data || []);
-        setTotalTramites(total || 0);
-      } catch (error) {
-        console.error("Error al obtener trámites:", error);
-      } finally {
-        setLoading(false);
       }
-    }
-  }, [
-    pageIndex,
-    pageSize,
-    filterValue,
-    companyFilter,
-    statusFilter,
-    liquidezStatusFilter,
-    contractTypeFilter,
-    userData,
-    isTramitesTable,
-    isLiquidezTable,
-    activationDateRange,
-    creationDateRange,
-    renovationDateRange,
-    collectionDateRange,
-    paymentDateRange,
-  ]);
+    },
+    [
+      pageIndex,
+      pageSize,
+      filterValue,
+      companyFilter,
+      statusFilter,
+      liquidezStatusFilter,
+      contractTypeFilter,
+      userData,
+      isTramitesTable,
+      isLiquidezTable,
+      activationDateRange,
+      creationDateRange,
+      renovationDateRange,
+      collectionDateRange,
+      paymentDateRange,
+    ]
+  );
 
-  // Fetch de datos
   useEffect(() => {
-    setRefreshTramites(fetchTramites);
-    fetchTramites();
+    let isMounted = true;
+
+    const fetchAndSet = async () => {
+      await fetchTramites(isMounted);
+    };
+
+    setRefreshTramites(() => () => fetchTramites(isMounted));
+    fetchAndSet();
+
+    return () => {
+      isMounted = false;
+    };
   }, [fetchTramites, setRefreshTramites]);
 
   const tableConfig = useMemo(
