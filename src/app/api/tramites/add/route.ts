@@ -6,8 +6,6 @@ import {
   TramiteFile,
   User,
 } from "@/lib/core/types";
-import { deleteFiles } from "@/lib/firebase/data/deleteFile";
-import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 import { getTursoClient } from "@/lib/libsql/client";
 import {
   addClient,
@@ -31,16 +29,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Array para almacenar las rutas de archivos subidos (para eliminarlos en caso de error)
-  const uploadedFilePaths: string[] = [];
-
   try {
     const formData = await req.formData();
 
     const tramiteString = formData.get("tramite") as string;
     const clientString = formData.get("client") as string;
     const contractsString = formData.get("contracts") as string;
-    const documents = formData.getAll("files") as File[];
+    const documents = formData.get("files") as string;
     const signerString = formData.get("signer") as string;
     const userDataString = formData.get("userData") as string;
 
@@ -50,9 +45,10 @@ export async function POST(req: NextRequest) {
     const signer: SignerDB | null = signerString
       ? JSON.parse(signerString)
       : null;
+    const tramiteFiles: TramiteFile[] = JSON.parse(documents);
     const userData: User = JSON.parse(userDataString);
 
-    if (!tramite || !client) {
+    if (!tramite || !client || !userData) {
       return NextResponse.json(
         {
           success: false,
@@ -61,31 +57,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // 1. Primero subimos todos los archivos
-    // Si hay algún error durante la subida, no se realizará ningún cambio en la base de datos
-    const tramiteFiles: TramiteFile[] = await Promise.all(
-      documents.map(async (file) => {
-        const { downloadURL, previewURL, file_path } = await uploadFile(
-          file,
-          `${userData.organization.id}/tramites`,
-          tramite.id
-        );
-
-        uploadedFilePaths.push(file_path as string);
-
-        return {
-          id: crypto.randomUUID(),
-          tramite_id: tramite.id,
-          filename: file.name,
-          size: file.size,
-          extension: file.name.split(".").pop() || "",
-          upload_date: new Date().toISOString(),
-          download_url: downloadURL,
-          preview_url: previewURL || null,
-        };
-      })
-    );
 
     // 2. Iniciamos la transacción una vez que todos los archivos están subidos
     const tx = await tursoClient.transaction();
@@ -140,10 +111,6 @@ export async function POST(req: NextRequest) {
       // y eliminamos los archivos subidos
       await tx.rollback();
 
-      if (uploadedFilePaths.length > 0) {
-        await deleteFiles(uploadedFilePaths);
-      }
-
       console.error("Error en la transacción:", error);
 
       return NextResponse.json(
@@ -156,11 +123,6 @@ export async function POST(req: NextRequest) {
       );
     }
   } catch (error) {
-    // Si hay un error general, aseguramos que se eliminen los archivos subidos
-    if (uploadedFilePaths.length > 0) {
-      await deleteFiles(uploadedFilePaths);
-    }
-
     console.error("Error general:", error);
 
     return NextResponse.json(

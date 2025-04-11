@@ -12,6 +12,7 @@ import {
   createEmptyTramiteDB,
   SignerDB,
   TramiteDB,
+  TramiteFile,
   User,
 } from "@/lib/core/types";
 
@@ -32,6 +33,8 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { Button } from "@heroui/button";
 import { showCustomToast } from "../../core/CustomToast";
 import { ButtonProps } from "@heroui/button";
+import { uploadFile } from "@/lib/firebase/data/uploadFiles";
+import { deleteFiles } from "@/lib/firebase/data/deleteFile";
 
 export default function AddTramiteDialog({
   shortcut,
@@ -106,13 +109,34 @@ export default function AddTramiteDialog({
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const uploadedFilePaths: string[] = [];
+      const tramiteFiles: TramiteFile[] = await Promise.all(
+        documents.map(async (file) => {
+          const { downloadURL, previewURL, file_path } = await uploadFile(
+            file,
+            `${userData?.organization.id}/tramites`,
+            tramite.id
+          );
+
+          uploadedFilePaths.push(file_path as string);
+
+          return {
+            id: crypto.randomUUID(),
+            tramite_id: tramite.id,
+            filename: file.name,
+            size: file.size,
+            extension: file.name.split(".").pop() || "",
+            upload_date: new Date().toISOString(),
+            download_url: downloadURL,
+            preview_url: previewURL || null,
+          };
+        })
+      );
+
       const formData = new FormData();
 
       // Append files first
-      documents.forEach((doc) => {
-        formData.append("files", doc);
-      });
-
+      formData.append("files", JSON.stringify(tramiteFiles));
       // Append JSONs
       formData.append("userData", JSON.stringify(userData));
       formData.append("client", JSON.stringify(client));
@@ -141,6 +165,7 @@ export default function AddTramiteDialog({
           iconSize: 24,
           icon: CircleX,
         });
+        await deleteFiles(uploadedFilePaths);
         return;
       }
 
