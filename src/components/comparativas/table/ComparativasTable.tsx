@@ -80,13 +80,10 @@ export default function ComparativasTable<TData, TValue>({
           }
 
           if (isMounted) {
-            setComparativas([]);
+            setComparativas(data || []);
+            setTotalComparativas(total || 0);
             setLoading(false);
-            return;
           }
-          setComparativas(data);
-          setTotalComparativas(total);
-          setLoading(false);
         } catch (error) {
           if (isMounted) {
             setLoading(false);
