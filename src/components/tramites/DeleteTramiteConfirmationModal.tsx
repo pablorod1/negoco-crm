@@ -40,7 +40,6 @@ export default function DeleteTramiteConfirmationModal({
         },
         body: JSON.stringify({
           tramite_id: tramite.id,
-          client_id: tramite.client_id,
           organization_id: userData.organization.id,
         }),
       });

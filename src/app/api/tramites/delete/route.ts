@@ -7,7 +7,6 @@ export async function POST(req: NextRequest) {
   try {
     const {
       tramite_id,
-      client_id,
       organization_id,
     }: {
       tramite_id: string;
@@ -15,7 +14,7 @@ export async function POST(req: NextRequest) {
       organization_id: string;
     } = await req.json();
 
-    if (!tramite_id || !client_id || !organization_id) {
+    if (!tramite_id || !organization_id) {
       return NextResponse.json(
         {
           success: false,
