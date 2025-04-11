@@ -20,6 +20,15 @@ export const getAuth = (req: NextRequest) => {
   const tursoClient = getTursoClient(req);
   const db = drizzle(tursoClient);
 
+  const host = req.headers.get("host");
+
+  if (!host) {
+    throw new Error("No host found in request headers");
+  }
+  const resetLink = host.includes("localhost")
+    ? `http://${host}/reset-pass`
+    : `https://${host}/reset-pass`;
+
   return betterAuth({
     database: drizzleAdapter(db, {
       provider: "sqlite",
@@ -42,10 +51,10 @@ export const getAuth = (req: NextRequest) => {
         },
       },
       requireEmailVerification: false,
-      sendResetPassword: async ({ user, url }) => {
+      sendResetPassword: async ({ user, token }) => {
         await sendPasswordResetEmail({
           email: user.email,
-          resetLink: url,
+          resetLink: `${resetLink}?token=${token}`,
         });
       },
       resetPasswordTokenExpiresIn: 24 * 60 * 60,
@@ -66,6 +75,7 @@ export const getAuth = (req: NextRequest) => {
       "http://localhost:3000/api/auth",
       "http://localhost:3000",
       "http://beenergy.localhost:3000",
+      "http://beenergy.localhost:3000/api/auth",
       "https://negococloud.es/api/auth",
       "https://negococloud.es",
       "https://beenergy.negococloud.es/api/auth",

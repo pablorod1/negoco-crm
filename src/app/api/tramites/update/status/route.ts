@@ -20,8 +20,6 @@ export async function PATCH(req: NextRequest) {
       user_id,
     } = await req.json();
 
-    console.log("activation_date", activation_date);
-
     if (!tramite_id || !status || !user_id) {
       return NextResponse.json(
         {

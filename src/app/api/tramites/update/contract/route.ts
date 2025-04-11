@@ -15,8 +15,6 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    console.log("contract", contract);
-
     const tursoClient = getTursoClient(req);
 
     if (!tursoClient) {
