@@ -24,7 +24,6 @@ import { useUser } from "@/lib/contexts/UserContext";
 import UnbanUserConfirmationModal from "./UnbanUserConfirmationModal";
 import SpinnerComponent from "../core/SpinnerComponent";
 import { MultiSelect } from "../ui/multi-select";
-import { InputComponent } from "../tramites/createTramite/InputComponent";
 import { Input } from "../ui/input";
 
 const columnHelper = createColumnHelper<User>();
