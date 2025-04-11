@@ -88,9 +88,7 @@ export default function SelectClient({
   const handleSelectClient = async (
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
-    const selectedClient = clients.find(
-      (c) => c.document_number === e.target.value
-    );
+    const selectedClient = clients.find((c) => c.id === e.target.value);
     if (!selectedClient) return;
 
     setClient(selectedClient as ClientDB);
@@ -137,7 +135,10 @@ export default function SelectClient({
       }
 
       if (data) {
-        setClients(data as ClientDB[]);
+        const sortClients = (data as ClientDB[]).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+        setClients(sortClients);
       }
     };
     fetchComerciales();
@@ -162,7 +163,7 @@ export default function SelectClient({
           name="id"
           label="Cliente"
           onChange={handleSelectClient}
-          selectedKey={client.document_number}
+          selectedKey={client.id}
           isRequired
         />
       ) : (

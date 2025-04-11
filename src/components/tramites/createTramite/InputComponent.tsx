@@ -14,6 +14,7 @@ interface SelectProps {
   isRequired?: boolean;
   disabled?: boolean;
   multiple?: boolean;
+  defaultSelectedKey?: string;
 }
 export const SelectComponent: React.FC<SelectProps> = ({
   name,
@@ -25,6 +26,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
   isRequired,
   disabled,
   multiple,
+  defaultSelectedKey,
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -39,18 +41,14 @@ export const SelectComponent: React.FC<SelectProps> = ({
         label={label}
         onChange={onChange}
         isDisabled={disabled}
-        selectedKeys={[selectedKey]}
+        defaultSelectedKeys={defaultSelectedKey ? [defaultSelectedKey] : []}
+        selectedKeys={selectedKey ? [selectedKey] : []}
         color={errors ? "danger" : "primary"}
       >
         {items.map((item) => {
           const isClient =
             typeof item !== "string" && "document_number" in item;
-          const key =
-            typeof item === "string"
-              ? item
-              : isClient
-                ? item.document_number
-                : item.id;
+          const key = typeof item === "string" ? item : item.id;
           const value = typeof item === "string" ? item : item.name;
 
           const avatar = typeof item !== "string";

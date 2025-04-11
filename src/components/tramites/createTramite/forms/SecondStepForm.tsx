@@ -14,7 +14,12 @@ import {
 
 import { Divider } from "@heroui/divider";
 import React, { useState } from "react";
-import { ClientDB, SignerDB } from "@/lib/core/types";
+import {
+  ClientDB,
+  createEmptyClientDB,
+  createEmptySignerDB,
+  SignerDB,
+} from "@/lib/core/types";
 import FormWrapper from "../FormWrapper";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import { InputComponent, SelectComponent } from "../InputComponent";
@@ -143,6 +148,12 @@ export default function SecondStepForm({
       }));
       onSecondSubmitSuccess();
     }
+  };
+
+  const handleBack = () => {
+    setClient(createEmptyClientDB());
+    setSigner(signer ? createEmptySignerDB() : null);
+    onBack();
   };
 
   return (
@@ -333,7 +344,7 @@ export default function SecondStepForm({
       </form>
       <ButtonGroupComponent
         onCancel={onCancel}
-        onBack={onBack}
+        onBack={handleBack}
         onSubmit={handleSecondSubmit}
       />
     </FormWrapper>
