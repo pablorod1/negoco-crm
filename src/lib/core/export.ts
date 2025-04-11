@@ -136,7 +136,7 @@ export async function exportToExcel<TData>({
           } else if (Array.isArray(value)) {
             rowData[headerName] = value.join(", ");
           } else {
-            rowData[headerName] = formatComission(Number(value));
+            rowData[headerName] = Number(value);
           }
         } else if (Array.isArray(cell?.getValue())) {
           rowData[headerName] = (cell?.getValue() as string[]).join(", ");
