@@ -14,6 +14,7 @@ import { ButtonProps } from "@heroui/button";
 import { CreateComparativaStepper } from "./CreateComparativaStepper";
 import {
   ComparativaDB,
+  ComparativaFile,
   createEmptyComparativaDB,
   User,
 } from "@/lib/core/types";
@@ -22,6 +23,7 @@ import SecondStepForm from "./forms/SecondStepForm";
 import ThirdStepForm from "./forms/ThirdStepForm";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { useComparativas } from "@/lib/contexts/ComparativasContext";
+import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 
 export default function AddComparativaDialog({
   color,
@@ -56,12 +58,41 @@ export default function AddComparativaDialog({
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const comparativaFiles: ComparativaFile[] = [];
+
+      for (const file of documents) {
+        try {
+          const { downloadURL, previewURL } = await uploadFile(
+            file,
+            `${userData?.organization.id}/comparativas`,
+            comparativa.id
+          );
+
+          comparativaFiles.push({
+            id: crypto.randomUUID(),
+            comparativa_id: comparativa.id,
+            filename: file.name,
+            size: file.size,
+            extension: file.name.split(".").pop() || "",
+            upload_date: new Date().toISOString(),
+            download_url: downloadURL,
+            preview_url: previewURL || null,
+          });
+        } catch (error) {
+          showCustomToast({
+            title: "Error al subir el archivo",
+            message: "Inténtalo de nuevo más tarde",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          console.error("Error uploading file:", error);
+          return;
+        }
+      }
       const formData = new FormData();
       formData.append("comparativa", JSON.stringify(comparativa));
-      documents.forEach((doc) => {
-        formData.append("files", doc);
-      });
-      formData.append("organization_id", userData?.organization.id as string);
+      formData.append("files", JSON.stringify(comparativaFiles));
       const response = await fetch(`/api/comparativas/add`, {
         method: "POST",
         body: formData,

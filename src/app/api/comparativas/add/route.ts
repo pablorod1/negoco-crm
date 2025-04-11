@@ -1,5 +1,4 @@
 import { ComparativaDB, ComparativaFile } from "@/lib/core/types";
-import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 import { getTursoClient } from "@/lib/libsql/client";
 import {
   addComparativa,
@@ -11,13 +10,13 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
 
-    const organization_id = formData.get("organization_id") as string;
     const comparativaString = formData.get("comparativa") as string;
-    const documents = formData.getAll("files") as File[];
+    const documents = formData.get("files") as string;
 
     const comparativa: ComparativaDB = JSON.parse(comparativaString);
+    const comparativaFiles: ComparativaFile[] = JSON.parse(documents);
 
-    if (!comparativa || !documents || !organization_id) {
+    if (!comparativa || !documents) {
       return NextResponse.json(
         {
           success: false,
@@ -49,38 +48,6 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
-    }
-
-    const comparativaFiles: ComparativaFile[] = [];
-
-    for (const file of documents) {
-      try {
-        const { downloadURL, previewURL } = await uploadFile(
-          file,
-          `${organization_id}/comparativas`,
-          comparativa.id
-        );
-
-        comparativaFiles.push({
-          id: crypto.randomUUID(),
-          comparativa_id: comparativa.id,
-          filename: file.name,
-          size: file.size,
-          extension: file.name.split(".").pop() || "",
-          upload_date: new Date().toISOString(),
-          download_url: downloadURL,
-          preview_url: previewURL || null,
-        });
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Error uploading file",
-          },
-          { status: 500 }
-        );
-      }
     }
 
     if (comparativaFiles.length > 0) {
