@@ -121,9 +121,8 @@ export default function DeleteComparativaConfirmationModal({
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Estado</p>
-                  <p className="font-medium">
-                    {getStatusBadge(comparativa.status as ComparativaStatus)}
-                  </p>
+
+                  {getStatusBadge(comparativa.status as ComparativaStatus)}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Creado por</p>
