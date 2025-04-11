@@ -1,5 +1,4 @@
 import { ComparativaFile } from "@/lib/core/types";
-import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 import { getTursoClient } from "@/lib/libsql/client";
 import { addComparativaFiles } from "@/lib/libsql/comparativas/addComparativaHelpers";
 import {
@@ -14,9 +13,11 @@ export async function POST(req: NextRequest) {
 
     const organization_id = formData.get("organization_id") as string;
     const comparativa_id = formData.get("comparativa_id") as string;
-    const documents = formData.getAll("files") as File[];
+    const documents = formData.get("files") as string;
     const estudio_realizado = formData.get("estudio_realizado") as string;
     const comissionsString = formData.get("comissions") as string;
+
+    const comparativaFiles: ComparativaFile[] = JSON.parse(documents);
     let comissions;
     if (comissionsString) {
       comissions = JSON.parse(comissionsString);
@@ -42,40 +43,6 @@ export async function POST(req: NextRequest) {
         },
         { status: 500 }
       );
-    }
-
-    const comparativaFiles: ComparativaFile[] = [];
-
-    if (documents.length > 0) {
-      for (const file of documents) {
-        try {
-          const { downloadURL, previewURL } = await uploadFile(
-            file,
-            `${organization_id}/comparativas`,
-            comparativa_id
-          );
-
-          comparativaFiles.push({
-            id: crypto.randomUUID(),
-            comparativa_id,
-            filename: file.name,
-            size: file.size,
-            extension: file.name.split(".").pop() as string,
-            upload_date: new Date().toISOString(),
-            download_url: downloadURL,
-            preview_url: previewURL || null,
-          });
-        } catch (error) {
-          console.error("Error uploading file:", error);
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Error uploading file",
-            },
-            { status: 500 }
-          );
-        }
-      }
     }
 
     if (comparativaFiles.length > 0) {

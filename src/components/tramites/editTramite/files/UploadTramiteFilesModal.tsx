@@ -11,11 +11,12 @@ import {
 import DocumentsForm from "@/components/tramites/DocumentsForm";
 import React, { useState } from "react";
 
-import { Bell, CircleX, FilePlus2 } from "lucide-react";
+import { CheckCircle, CircleX, FilePlus2 } from "lucide-react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import { generateTramiteUpdatedNotification } from "@/lib/core/notifications.helpers";
-import { User } from "@/lib/core/types";
+import { TramiteFile, User } from "@/lib/core/types";
+import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 
 interface Props {
   onUpload: () => void;
@@ -39,12 +40,43 @@ export default function UploadTramiteFilesModal({
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const tramiteFiles: TramiteFile[] = [];
+
+      if (uploadedFiles.length > 0) {
+        for (const file of uploadedFiles) {
+          try {
+            const { downloadURL, previewURL } = await uploadFile(
+              file,
+              `${organization_id}/tramites`,
+              tramite_id
+            );
+
+            tramiteFiles.push({
+              id: crypto.randomUUID(),
+              tramite_id,
+              filename: file.name,
+              size: file.size,
+              extension: file.name.split(".").pop() as string,
+              upload_date: new Date().toISOString(),
+              download_url: downloadURL,
+              preview_url: previewURL || null,
+            });
+          } catch (error) {
+            console.error("Error al subir archivo:", error);
+            showCustomToast({
+              title: "Error subiendo archivo",
+              message: "No se pudo subir el archivo",
+              icon: CircleX,
+              iconColor: "var(--danger-color)",
+              iconSize: 24,
+            });
+            return;
+          }
+        }
+      }
       const formData = new FormData();
-      uploadedFiles.forEach((file) => {
-        formData.append("files", file);
-      });
-      formData.append("id", tramite_id);
-      formData.append("organization_id", organization_id);
+      formData.append("files", JSON.stringify(tramiteFiles));
+      formData.append("userData", JSON.stringify(userData));
       const res = await fetch("/api/tramites/add/files", {
         method: "POST",
         body: formData,
@@ -95,7 +127,7 @@ export default function UploadTramiteFilesModal({
       showCustomToast({
         title: "Archivos subidos",
         message: `Los archivos se han subido correctamente. Se ha notificado de los cambios en el trámite`,
-        icon: Bell,
+        icon: CheckCircle,
         iconColor: "var(--success-color)",
         iconSize: 24,
       });

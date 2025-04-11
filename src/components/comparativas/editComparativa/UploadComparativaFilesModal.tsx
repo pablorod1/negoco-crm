@@ -14,10 +14,16 @@ import { Checkbox } from "@heroui/checkbox";
 import React, { useState } from "react";
 import { showCustomToast } from "../../core/CustomToast";
 import { CheckCircle, CircleX, FilePlus2 } from "lucide-react";
-import { ComparativaVM, Notification, User } from "@/lib/core/types";
+import {
+  ComparativaFile,
+  ComparativaVM,
+  Notification,
+  User,
+} from "@/lib/core/types";
 import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
+import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 
 interface Props {
   onUpload: () => void;
@@ -98,6 +104,41 @@ export default function UploadComparativaFilesModal({
     }
     setLoading(true);
     try {
+      const comparativaFiles: ComparativaFile[] = [];
+
+      if (uploadedFiles.length > 0) {
+        for (const file of uploadedFiles) {
+          try {
+            const { downloadURL, previewURL } = await uploadFile(
+              file,
+              `${organization_id}/comparativas`,
+              comparativa.id
+            );
+
+            comparativaFiles.push({
+              id: crypto.randomUUID(),
+              comparativa_id: comparativa.id,
+              filename: file.name,
+              size: file.size,
+              extension: file.name.split(".").pop() as string,
+              upload_date: new Date().toISOString(),
+              download_url: downloadURL,
+              preview_url: previewURL || null,
+            });
+          } catch (error) {
+            console.error("Error uploading file:", error);
+            showCustomToast({
+              title: "Error al subir archivos",
+              message: "Inténtalo de nuevo más tarde",
+              iconColor: "var(--danger-color)",
+              iconSize: 24,
+              icon: CircleX,
+            });
+            return;
+          }
+        }
+      }
+
       const formData = new FormData();
       formData.append("comparativa_id", comparativa.id);
       formData.append("organization_id", organization_id);
@@ -129,9 +170,8 @@ export default function UploadComparativaFilesModal({
       if (isComissionsNotEmpty) {
         formData.append("comissions", JSON.stringify(comissionsData));
       }
-      uploadedFiles.forEach((doc) => {
-        formData.append("files", doc);
-      });
+
+      formData.append("files", JSON.stringify(comparativaFiles));
       formData.append("estudio_realizado", estudioRealizado.toString());
       const response = await fetch("/api/comparativas/update", {
         method: "POST",
