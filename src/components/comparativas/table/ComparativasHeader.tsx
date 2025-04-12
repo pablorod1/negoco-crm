@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnSelector } from "@/components/tramites/table/ColumnSelector";
-import { ComparativaStatus, User } from "@/lib/core/types";
+import { User } from "@/lib/core/types";
 import { Input } from "@heroui/input";
 import { Table } from "@tanstack/react-table";
 import { motion } from "framer-motion";
@@ -29,7 +29,7 @@ interface Props<TData> {
   filterValue: string;
   statusFilter: string[] | undefined;
   setFilterValue: (value: string) => void;
-  setStatusFilter: (value: ComparativaStatus[]) => void;
+  setStatusFilter: (value: string[]) => void;
   resetFilters: () => void;
   saveFiltersToStorage: () => void; // Add this optional prop
   table: Table<TData>;
@@ -157,10 +157,16 @@ const ComparativasHeader = <TData,>({
                 className={cn(
                   "h-10 w-10 bg-gray-50 border-gray-200",
                   showFilters &&
-                    "bg-primary-50 border-primary-200 text-primary-700"
+                    "bg-primary-50 border-primary-200 text-primary-700",
+                  activeFilters.length > 0 && "bg-primary-50 border-primary-200"
                 )}
               >
-                <Filter className="h-4 w-4" />
+                <div className="relative">
+                  <Filter className="h-4 w-4" />
+                  {activeFilters.length > 0 && (
+                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
               </Button>
             </Tooltip>
 
@@ -237,10 +243,9 @@ const ComparativasHeader = <TData,>({
 
                 <MultiSelect
                   options={COMPARATIVA_STATUS_TYPES}
-                  onValueChange={(value) =>
-                    setStatusFilter(value as ComparativaStatus[])
-                  }
+                  onValueChange={setStatusFilter}
                   value={statusFilter}
+                  defaultValue={statusFilter}
                   placeholder="Seleccionar estado"
                   maxCount={2}
                   variant="primary"

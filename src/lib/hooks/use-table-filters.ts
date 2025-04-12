@@ -6,36 +6,54 @@ export function useTableFilters(id?: string) {
   const [filterValue, setFilterValue] = useState<string>("");
   const initialLoadComplete = useRef(false);
 
+  const getInitialValues = () => {
+    if (typeof window === "undefined") return {};
+
+    try {
+      const savedFilters = localStorage.getItem(storageKey);
+      if (savedFilters) {
+        return JSON.parse(savedFilters);
+      }
+    } catch (error) {
+      console.error("Error loading filters from localStorage:", error);
+    }
+    return {};
+  };
+
+  const initialValues = getInitialValues();
+
   // State for all filters
   const [companyFilter, setCompanyFilter] = useState<string[] | undefined>(
-    undefined
+    initialValues.companyFilter
   );
   const [statusFilter, setStatusFilter] = useState<string[] | undefined>(
-    undefined
+    initialValues.statusFilter
   );
   const [contractTypeFilter, setContractTypeFilter] = useState<
     string[] | undefined
-  >(undefined);
+  >(initialValues.contractTypeFilter);
   const [liquidezStatusFilter, setLiquidezStatusFilter] = useState<
     string[] | undefined
-  >(undefined);
+  >(initialValues.liquidezStatusFilter);
   const [activationDateRange, setActivationDateRange] = useState<
     DateRange | undefined
-  >(undefined);
+  >(initialValues.activationDateRange);
   const [creationDateRange, setCreationDateRange] = useState<
     DateRange | undefined
-  >(undefined);
+  >(initialValues.creationDateRange);
   const [renovationDateRange, setRenovationDateRange] = useState<
     DateRange | undefined
-  >(undefined);
+  >(initialValues.renovationDateRange);
   const [collectionDateRange, setCollectionDateRange] = useState<
     DateRange | undefined
-  >(undefined);
+  >(initialValues.collectionDateRange);
   const [paymentDateRange, setPaymentDateRange] = useState<
     DateRange | undefined
-  >(undefined);
+  >(initialValues.paymentDateRange);
 
-  const [userFilter, setUserFilter] = useState<string[] | undefined>(undefined);
+  const [userFilter, setUserFilter] = useState<string[] | undefined>(
+    initialValues.userFilter
+  );
 
   // Try to load filters from localStorage on initial load
   const loadFiltersFromStorage = useCallback(() => {

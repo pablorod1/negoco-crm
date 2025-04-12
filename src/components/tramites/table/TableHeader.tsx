@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { cn } from "@/lib/core/utils";
 import type { Table } from "@tanstack/react-table";
-import type { Status, User } from "@/lib/core/types";
+import type { User } from "@/lib/core/types";
 import { ColumnSelector } from "./ColumnSelector";
 import AddTramiteDialog from "../createTramite/AddTramiteDialog";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ import CreateBajaModal from "../createBaja/CreateBajaModal";
 import { PopoverPortal } from "@radix-ui/react-popover";
 import { UpdateMultipleTramitesModal } from "../liquidez/UpdateMultipleTramitesModal";
 import UserFilter from "@/components/core/table/UserFilter";
+import { format } from "date-fns";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -43,7 +44,7 @@ interface TableHeaderProps<TData> {
   contractTypeFilter: string[] | undefined;
   setFilterValue: (value: string) => void;
   setCompanyFilter: (value: string[]) => void;
-  setStatusFilter: (value: Status[]) => void;
+  setStatusFilter: (value: string[]) => void;
   setLiquidezStatusFilter: (value: string[]) => void;
   setContractTypeFilter: (value: string[]) => void;
   resetFilters: () => void;
@@ -106,10 +107,12 @@ export default function TramitesHeader<TData>({
   // Update active filters
   useEffect(() => {
     const filters = [];
-    if (companyFilter) filters.push("Compañía");
-    if (statusFilter) filters.push("Estado");
-    if (liquidezStatusFilter) filters.push("Liquidez");
-    if (contractTypeFilter) filters.push("Contrato");
+    if (companyFilter && companyFilter.length > 0) filters.push("Compañía");
+    if (statusFilter && statusFilter.length > 0) filters.push("Estado");
+    if (liquidezStatusFilter && liquidezStatusFilter.length > 0)
+      filters.push("Liquidez");
+    if (contractTypeFilter && contractTypeFilter.length > 0)
+      filters.push("Contrato");
     if (
       activationDateRange &&
       (activationDateRange.from || activationDateRange.to)
@@ -131,7 +134,8 @@ export default function TramitesHeader<TData>({
     if (paymentDateRange && (paymentDateRange.from || paymentDateRange.to))
       filters.push("Fecha de Pago");
 
-    if (userFilter && !isComercial) filters.push("Comercial");
+    if (userFilter && userFilter.length > 0 && !isComercial)
+      filters.push("Comercial");
 
     setActiveFilters(filters);
   }, [
@@ -169,6 +173,31 @@ export default function TramitesHeader<TData>({
   // Clear search filter
   const handleClearSearch = () => {
     setFilterValue("");
+  };
+
+  const getFilterLabel = (
+    filterType: string,
+    values: string[] | DateRange,
+    options?: { label: string; value: string; icon?: string }[]
+  ) => {
+    if (!values) return null;
+
+    switch (filterType) {
+      case "date":
+        const dateRange = values as DateRange;
+        if (!dateRange.from && !dateRange.to) return null;
+        return `${dateRange.from ? format(dateRange.from, "dd/MM/yyyy") : ""} - ${dateRange.to ? format(dateRange.to, "dd/MM/yyyy") : ""}`;
+
+      case "select":
+        if (!Array.isArray(values) || values.length === 0) return null;
+        return options
+          ?.filter((opt) => values.includes(opt.value))
+          .map((opt) => opt.label)
+          .join(", ");
+
+      default:
+        return null;
+    }
   };
 
   return (
@@ -232,10 +261,16 @@ export default function TramitesHeader<TData>({
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
                   "h-10 w-10 bg-gray-50 border-gray-200",
-                  showFilters && "bg-blue-50 border-blue-200 text-blue-700"
+                  showFilters && "bg-blue-50 border-blue-200 text-blue-700",
+                  activeFilters.length > 0 && "bg-blue-50 border-blue-200"
                 )}
               >
-                <Filter className="h-4 w-4" />
+                <div className="relative">
+                  <Filter className="h-4 w-4" />
+                  {activeFilters.length > 0 && (
+                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
               </Button>
             </Tooltip>
 
@@ -308,18 +343,114 @@ export default function TramitesHeader<TData>({
 
         <div className="flex items-center justify-between">
           {activeFilters.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm text-gray-500">Filtros activos:</span>
-              <div className="flex gap-1.5">
-                {activeFilters.map((filter, index) => (
+              <div className="flex gap-1.5 flex-wrap">
+                {statusFilter && statusFilter.length > 0 && (
                   <Badge
-                    key={index}
                     variant="secondary"
-                    className="bg-gray-100 text-gray-700 gap-1.5"
+                    className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
                   >
-                    {filter}
+                    Estado:{" "}
+                    {getFilterLabel("select", statusFilter, STATUS_TYPES)}
                   </Badge>
-                ))}
+                )}
+
+                {liquidezStatusFilter && liquidezStatusFilter.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                  >
+                    Liquidez:{" "}
+                    {getFilterLabel(
+                      "select",
+                      liquidezStatusFilter,
+                      LIQUIDEZ_STATUS
+                    )}
+                  </Badge>
+                )}
+
+                {contractTypeFilter && contractTypeFilter.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                  >
+                    Contrato:{" "}
+                    {getFilterLabel(
+                      "select",
+                      contractTypeFilter,
+                      CONTRACT_TYPES
+                    )}
+                  </Badge>
+                )}
+
+                {companyFilter && companyFilter.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                  >
+                    Compañía:{" "}
+                    {getFilterLabel("select", companyFilter, COMPANIES)}
+                  </Badge>
+                )}
+
+                {creationDateRange &&
+                  (creationDateRange.from || creationDateRange.to) && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                    >
+                      Creación: {getFilterLabel("date", creationDateRange)}
+                    </Badge>
+                  )}
+
+                {activationDateRange &&
+                  (activationDateRange.from || activationDateRange.to) && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                    >
+                      Activación: {getFilterLabel("date", activationDateRange)}
+                    </Badge>
+                  )}
+
+                {renovationDateRange &&
+                  (renovationDateRange.from || renovationDateRange.to) && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                    >
+                      Renovación: {getFilterLabel("date", renovationDateRange)}
+                    </Badge>
+                  )}
+
+                {collectionDateRange &&
+                  (collectionDateRange.from || collectionDateRange.to) && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                    >
+                      Cobro: {getFilterLabel("date", collectionDateRange)}
+                    </Badge>
+                  )}
+
+                {paymentDateRange &&
+                  (paymentDateRange.from || paymentDateRange.to) && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                    >
+                      Pago: {getFilterLabel("date", paymentDateRange)}
+                    </Badge>
+                  )}
+                {userFilter && userFilter.length > 0 && !isComercial && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                  >
+                    Comerciales: {userFilter.length} seleccionado(s)
+                  </Badge>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -334,7 +465,7 @@ export default function TramitesHeader<TData>({
         </div>
 
         {/* Filter Panel */}
-        {showFilters && (
+        {activeFilters && showFilters && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -359,8 +490,9 @@ export default function TramitesHeader<TData>({
                           ]
                         : []
                   }
-                  onValueChange={(value) => setStatusFilter(value as Status[])}
-                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                  value={statusFilter || []}
+                  defaultValue={statusFilter || []}
                   placeholder="Seleccionar estado"
                   maxCount={2}
                   variant="primary"
@@ -374,6 +506,7 @@ export default function TramitesHeader<TData>({
                   options={LIQUIDEZ_STATUS}
                   onValueChange={setLiquidezStatusFilter}
                   value={liquidezStatusFilter}
+                  defaultValue={liquidezStatusFilter}
                   placeholder="Seleccionar estado de liquidez"
                   maxCount={1}
                   variant="primary"
@@ -386,6 +519,7 @@ export default function TramitesHeader<TData>({
                     options={CONTRACT_TYPES}
                     onValueChange={setContractTypeFilter}
                     value={contractTypeFilter}
+                    defaultValue={contractTypeFilter}
                     placeholder="Seleccionar tipo de contrato"
                     maxCount={1}
                     variant="primary"
@@ -399,6 +533,7 @@ export default function TramitesHeader<TData>({
                   options={COMPANIES}
                   onValueChange={setCompanyFilter}
                   value={companyFilter}
+                  defaultValue={companyFilter}
                   placeholder="Seleccionar tipo de contrato"
                   maxCount={3}
                 />

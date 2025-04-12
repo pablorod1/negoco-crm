@@ -83,11 +83,12 @@ export default function UserFilter({
 
       <MultiSelect
         options={comerciales}
-        onValueChange={(value) => setUserFilter(value)}
-        placeholder="Seleccionar estado"
+        onValueChange={setUserFilter}
+        placeholder="Seleccionar comercial"
         value={userFilter}
         maxCount={2}
         variant="primary"
+        defaultValue={userFilter}
       />
     </div>
   );
