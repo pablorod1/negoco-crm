@@ -2,12 +2,12 @@
 import { createContext, useContext, useCallback, useRef } from "react";
 
 interface ComparativasContextType {
-  refreshComparativas: () => void;
-  setRefreshComparativas: (callback: () => void) => () => void;
+  refreshComparativas: () => Promise<void>;
+  setRefreshComparativas: (callback: () => Promise<void>) => () => void;
 }
 
 const ComparativasContext = createContext<ComparativasContextType>({
-  refreshComparativas: () => {},
+  refreshComparativas: async () => {},
   setRefreshComparativas: () => () => {},
 });
 
@@ -18,15 +18,16 @@ export function ComparativasProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const refreshCallbacks = useRef<Set<() => void>>(new Set());
+  const refreshCallbacks = useRef<Set<() => Promise<void>>>(new Set());
 
-  const refresh = useCallback(() => {
-    refreshCallbacks.current.forEach((callback) => {
-      callback();
-    });
+  const refresh = useCallback(async () => {
+    const promises = Array.from(refreshCallbacks.current).map((callback) =>
+      callback()
+    );
+    await Promise.all(promises);
   }, []);
 
-  const setRefresh = useCallback((callback: () => void) => {
+  const setRefresh = useCallback((callback: () => Promise<void>) => {
     refreshCallbacks.current.add(callback);
 
     // Return cleanup function to remove the callback

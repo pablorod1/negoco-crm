@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       renovationDateRange,
       collectionDateRange,
       paymentDateRange,
+      userFilter,
     }: {
       page: number;
       rowsPerPage: number;
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
       renovationDateRange?: DateRange | undefined;
       collectionDateRange?: DateRange | undefined;
       paymentDateRange?: DateRange | undefined;
+      userFilter?: string[];
     } = await req.json();
 
     // Validate required parameters
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
         filters.push(
-          `( t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
+          `(t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
             .map(() => "?")
             .join(", ")})))`
         );
@@ -70,6 +72,20 @@ export async function POST(req: NextRequest) {
       } else {
         filters.push(`t.user_id = ?`);
         params.push(user_id);
+      }
+    } else {
+      // For other roles: apply userFilter if provided, otherwise show all non-draft tramites
+      if (userFilter && userFilter.length > 0) {
+        filters.push(
+          `(t.user_id IN (${userFilter.map(() => "?").join(", ")}) AND 
+           (t.user_id = ? OR t.status != 'Borrador'))`
+        );
+        params.push(...userFilter, user_id);
+      } else {
+        filters.push(
+          `(t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`
+        );
+        params.push(user_id, user_id);
       }
     }
 

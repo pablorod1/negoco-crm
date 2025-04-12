@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
       filterValue,
       statusFilter,
       dateRange,
+      userFilter,
     }: {
       page: number;
       rowsPerPage: number;
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
       filterValue?: string;
       statusFilter?: string[];
       dateRange: DateRange | undefined;
+      userFilter?: string[];
     } = await req.json();
 
     if (!page || !rowsPerPage || !user_id || !user_role) {
@@ -122,6 +124,7 @@ export async function POST(req: NextRequest) {
     }
 
     addArrayFilter("c.status", statusFilter);
+    addArrayFilter("c.user_id", userFilter);
 
     let countQuery = `
       SELECT COUNT(*) AS total

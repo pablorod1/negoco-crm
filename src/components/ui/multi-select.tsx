@@ -340,8 +340,8 @@ export const MultiSelect = React.forwardRef<
                         <Image
                           src={option.icon}
                           alt={option.label}
-                          width={56}
-                          height={56}
+                          width={24}
+                          height={24}
                         />
                       )}
                       <span className="text-sm">{option.label}</span>

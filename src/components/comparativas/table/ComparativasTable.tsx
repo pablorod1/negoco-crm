@@ -43,6 +43,8 @@ export default function ComparativasTable<TData, TValue>({
     creationDateRange,
     setCreationDateRange,
     saveFiltersToStorage, // Extract this from the hook
+    userFilter,
+    setUserFilter,
   } = useTableFilters("comparativas");
 
   const fetchComparativas = useCallback(
@@ -65,6 +67,7 @@ export default function ComparativasTable<TData, TValue>({
                 filterValue,
                 statusFilter,
                 dateRange: creationDateRange,
+                userFilter,
               }),
             }
           );
@@ -99,6 +102,7 @@ export default function ComparativasTable<TData, TValue>({
       statusFilter,
       userData,
       creationDateRange,
+      userFilter,
     ]
   );
 
@@ -106,24 +110,20 @@ export default function ComparativasTable<TData, TValue>({
   useEffect(() => {
     let isMounted = true;
 
-    const safeFetch = async () => {
-      await fetchComparativas(isMounted);
+    const refresh = async () => {
+      if (!isMounted) return;
+      await fetchComparativas(true);
     };
 
-    setRefreshComparativas(() => () => fetchComparativas(isMounted));
-    safeFetch();
+    setRefreshComparativas(refresh);
+
+    // Initial fetch
+    fetchComparativas(isMounted);
 
     return () => {
       isMounted = false;
     };
-  }, [
-    fetchComparativas,
-    setRefreshComparativas,
-    pageIndex,
-    pageSize,
-    filterValue,
-    statusFilter,
-  ]);
+  }, [fetchComparativas, setRefreshComparativas]);
 
   const tableConfig = useMemo(
     () => ({
@@ -158,6 +158,8 @@ export default function ComparativasTable<TData, TValue>({
       userData: userData as User,
       dateRange: creationDateRange,
       setDateRange: setCreationDateRange,
+      userFilter,
+      setUserFilter,
     }),
     [
       filterValue,
@@ -170,6 +172,8 @@ export default function ComparativasTable<TData, TValue>({
       creationDateRange,
       setCreationDateRange,
       totalComparativas,
+      userFilter,
+      setUserFilter,
     ]
   );
 

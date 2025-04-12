@@ -62,8 +62,20 @@ export default function DeleteTramiteConfirmationModal({
         iconSize: 24,
         iconColor: "var(--success-color)",
       });
-      refreshTramites();
-      onClose();
+      try {
+        refreshTramites();
+        onClose();
+      } catch (error) {
+        console.error("Error al refrescar los trámites:", error);
+        showCustomToast({
+          title: "Error",
+          message: "Inténtalo de nuevo más tarde",
+          icon: CircleX,
+          iconSize: 24,
+          iconColor: "var(--danger-color)",
+        });
+        onClose();
+      }
     } catch (error) {
       showCustomToast({
         title: "Error",

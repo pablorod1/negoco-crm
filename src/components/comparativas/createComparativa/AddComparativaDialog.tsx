@@ -118,6 +118,20 @@ export default function AddComparativaDialog({
         iconSize: 24,
         icon: CheckCircle,
       });
+      try {
+        await refreshComparativas();
+        onClose();
+      } catch (error) {
+        console.error("Error al refrescar las comparativas:", error);
+        showCustomToast({
+          title: "Error al refrescar las comparativas",
+          message: "Inténtalo de nuevo más tarde",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        onClose();
+      }
     } catch (error) {
       showCustomToast({
         title: "Error al crear la comparativa",
@@ -129,8 +143,6 @@ export default function AddComparativaDialog({
       console.error("Error al crear la comparativa:", error);
     } finally {
       setLoading(false);
-      refreshComparativas();
-      onClose();
     }
   };
 

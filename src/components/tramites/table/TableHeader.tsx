@@ -32,6 +32,7 @@ import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import CreateBajaModal from "../createBaja/CreateBajaModal";
 import { PopoverPortal } from "@radix-ui/react-popover";
 import { UpdateMultipleTramitesModal } from "../liquidez/UpdateMultipleTramitesModal";
+import UserFilter from "@/components/core/table/UserFilter";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -60,6 +61,8 @@ interface TableHeaderProps<TData> {
   setCollectionDateRange: (value: DateRange | undefined) => void;
   setPaymentDateRange: (value: DateRange | undefined) => void;
   saveFiltersToStorage: () => void;
+  userFilter: string[] | undefined;
+  setUserFilter: (value: string[] | undefined) => void;
 }
 
 export default function TramitesHeader<TData>({
@@ -89,6 +92,8 @@ export default function TramitesHeader<TData>({
   setCollectionDateRange,
   setPaymentDateRange,
   saveFiltersToStorage,
+  userFilter,
+  setUserFilter,
 }: TableHeaderProps<TData>) {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -126,6 +131,8 @@ export default function TramitesHeader<TData>({
     if (paymentDateRange && (paymentDateRange.from || paymentDateRange.to))
       filters.push("Fecha de Pago");
 
+    if (userFilter && !isComercial) filters.push("Comercial");
+
     setActiveFilters(filters);
   }, [
     companyFilter,
@@ -137,6 +144,8 @@ export default function TramitesHeader<TData>({
     renovationDateRange,
     collectionDateRange,
     paymentDateRange,
+    userFilter,
+    isComercial,
   ]);
 
   // Save filters to localStorage when they change
@@ -154,6 +163,7 @@ export default function TramitesHeader<TData>({
     companyFilter,
     saveFiltersToStorage,
     activeFilters.length,
+    userFilter,
   ]);
 
   // Clear search filter
@@ -432,14 +442,22 @@ export default function TramitesHeader<TData>({
                 </>
               )}
               {isTramitesTable && !isComercial && (
-                <div className="space-y-2">
-                  <Label>Fecha de Renovación</Label>
+                <>
+                  <div className="space-y-2">
+                    <Label>Fecha de Renovación</Label>
 
-                  <DateRangePicker
-                    date={renovationDateRange}
-                    setDateRange={setRenovationDateRange}
+                    <DateRangePicker
+                      date={renovationDateRange}
+                      setDateRange={setRenovationDateRange}
+                    />
+                  </div>
+                  <UserFilter
+                    isComercial={isComercial}
+                    userData={userData}
+                    userFilter={userFilter}
+                    setUserFilter={setUserFilter}
                   />
-                </div>
+                </>
               )}
             </div>
           </motion.div>

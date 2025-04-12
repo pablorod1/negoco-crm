@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/popover";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { DateRange } from "react-day-picker";
+import UserFilter from "@/components/core/table/UserFilter";
 
 interface Props<TData> {
   filterValue: string;
@@ -36,6 +37,8 @@ interface Props<TData> {
   userData: User;
   dateRange: DateRange | undefined;
   setDateRange: (dateRange: DateRange | undefined) => void;
+  userFilter: string[] | undefined;
+  setUserFilter: (value: string[] | undefined) => void;
 }
 
 const ComparativasHeader = <TData,>({
@@ -50,6 +53,8 @@ const ComparativasHeader = <TData,>({
   userData,
   dateRange,
   setDateRange,
+  userFilter,
+  setUserFilter,
 }: Props<TData>) => {
   const [scrolled, setScrolled] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -60,8 +65,10 @@ const ComparativasHeader = <TData,>({
   useEffect(() => {
     const filters = [];
     if (statusFilter) filters.push("Estado");
+    if (dateRange) filters.push("Fecha de Creación");
+    if (userFilter && !isComercial) filters.push("Comercial");
     setActiveFilters(filters);
-  }, [statusFilter]);
+  }, [statusFilter, dateRange, userFilter, isComercial]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -74,7 +81,13 @@ const ComparativasHeader = <TData,>({
   // Save filters to localStorage when they change
   useEffect(() => {
     if (activeFilters.length > 0) saveFiltersToStorage();
-  }, [statusFilter, dateRange, saveFiltersToStorage, activeFilters]);
+  }, [
+    statusFilter,
+    dateRange,
+    saveFiltersToStorage,
+    activeFilters,
+    userFilter,
+  ]);
 
   const handleClearSearch = () => {
     setFilterValue("");
@@ -238,6 +251,14 @@ const ComparativasHeader = <TData,>({
 
                 <DateRangePicker date={dateRange} setDateRange={setDateRange} />
               </div>
+              {!isComercial && (
+                <UserFilter
+                  isComercial={isComercial}
+                  userData={userData}
+                  userFilter={userFilter}
+                  setUserFilter={setUserFilter}
+                />
+              )}
             </div>
           </motion.div>
         )}

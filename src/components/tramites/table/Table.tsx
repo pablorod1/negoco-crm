@@ -62,57 +62,64 @@ export function DataTable<TData, TValue>({
     setCollectionDateRange,
     setPaymentDateRange,
     saveFiltersToStorage,
+    userFilter,
+    setUserFilter,
   } = useTableFilters(isLiquidezTable ? "liquidez" : "tramites");
 
   const { setRefreshTramites } = useTramites();
 
   const fetchTramites = useCallback(
     async (isMounted = true) => {
-      if (userData) {
-        try {
-          const res = await fetch(`/api/tramites/get/paginated-tramites`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              page: pageIndex,
-              rowsPerPage: pageSize,
-              user_id: userData.id,
-              user_role: userData.role,
-              filterValue,
-              companyFilter,
-              statusFilter: isTramitesTable
+      if (!userData) return;
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/tramites/get/paginated-tramites`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            page: pageIndex,
+            rowsPerPage: pageSize,
+            user_id: userData.id,
+            user_role: userData.role,
+            filterValue,
+            companyFilter,
+            statusFilter: isTramitesTable
+              ? statusFilter
+              : isLiquidezTable && statusFilter
                 ? statusFilter
-                : isLiquidezTable && statusFilter
-                  ? statusFilter
-                  : ["Activo", "Baja"],
-              liquidezStatusFilter,
-              contractTypeFilter,
-              activationDateRange,
-              creationDateRange,
-              renovationDateRange,
-              collectionDateRange: isLiquidezTable
-                ? collectionDateRange
-                : undefined,
-              paymentDateRange: isLiquidezTable ? paymentDateRange : undefined,
-            }),
-          });
-          const { success, data, error, total } = await res.json();
-          if (!success && error) {
-            console.error("Error al obtener trámites:", error);
-            return;
-          }
-
-          if (isMounted) {
-            setTramites(data || []);
-            setTotalTramites(total || 0);
-          }
-        } catch (error) {
+                : ["Activo", "Baja"],
+            liquidezStatusFilter,
+            contractTypeFilter,
+            activationDateRange,
+            creationDateRange,
+            renovationDateRange,
+            collectionDateRange: isLiquidezTable
+              ? collectionDateRange
+              : undefined,
+            paymentDateRange: isLiquidezTable ? paymentDateRange : undefined,
+            userFilter,
+          }),
+        });
+        const { success, data, error, total } = await res.json();
+        if (!success && error) {
           console.error("Error al obtener trámites:", error);
-        } finally {
-          if (isMounted) setLoading(false);
+          if (isMounted) {
+            setTramites([]);
+            setTotalTramites(0);
+          }
+          return;
         }
+
+        if (isMounted) {
+          setTramites(data || []);
+          setTotalTramites(total || 0);
+        }
+      } catch (error) {
+        console.error("Error al obtener trámites:", error);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     },
     [
@@ -131,18 +138,24 @@ export function DataTable<TData, TValue>({
       renovationDateRange,
       collectionDateRange,
       paymentDateRange,
+      userFilter,
     ]
   );
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchAndSet = async () => {
-      await fetchTramites(isMounted);
+    // Define a refresh function that will be exposed through context
+    const refresh = async () => {
+      if (!isMounted) return;
+      await fetchTramites(true);
     };
 
-    setRefreshTramites(() => () => fetchTramites(isMounted));
-    fetchAndSet();
+    // Set the refresh function in context
+    setRefreshTramites(refresh);
+
+    // Initial fetch
+    fetchTramites(isMounted);
 
     return () => {
       isMounted = false;
@@ -200,6 +213,8 @@ export function DataTable<TData, TValue>({
       setCollectionDateRange,
       setPaymentDateRange,
       saveFiltersToStorage,
+      userFilter,
+      setUserFilter,
     }),
     [
       filterValue,
@@ -227,6 +242,8 @@ export function DataTable<TData, TValue>({
       setCollectionDateRange,
       setPaymentDateRange,
       saveFiltersToStorage,
+      userFilter,
+      setUserFilter,
     ]
   );
 

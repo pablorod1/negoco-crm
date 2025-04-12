@@ -125,8 +125,21 @@ export function UpdateMultipleTramitesModal<TData>({
       table.resetRowSelection();
       setSelectedTramites([]);
       setStatus(null);
-      refreshTramites();
-      onClose();
+
+      try {
+        await refreshTramites();
+        onClose();
+      } catch (error) {
+        console.error("Error al refrescar los trámites:", error);
+        showCustomToast({
+          title: "Error",
+          message: "Inténtalo de nuevo más tarde",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        onClose();
+      }
     } catch (error) {
       console.error("Error al actualizar trámites:", error);
       showCustomToast({

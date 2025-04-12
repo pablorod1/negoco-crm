@@ -8,17 +8,30 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { PlusCircle } from "lucide-react";
+import { CircleX, PlusCircle } from "lucide-react";
 import CreateBajaForm from "./CreateBajaForm";
 import { useTramites } from "@/lib/contexts/TramitesContext";
+import { showCustomToast } from "@/components/core/CustomToast";
 
 export default function CreateBajaModal() {
   const { isOpen, onClose, onOpen } = useDisclosure();
   const { refreshTramites } = useTramites();
 
   const handleFinish = async () => {
-    refreshTramites();
-    onClose();
+    try {
+      await refreshTramites();
+      onClose();
+    } catch (error) {
+      console.error("Error refreshing tramites:", error);
+      showCustomToast({
+        title: "Error",
+        message: "No se pudo refrescar la lista de tramites.",
+        icon: CircleX,
+        iconSize: 24,
+        iconColor: "var(--danger-color)",
+      });
+      onClose();
+    }
   };
 
   return (

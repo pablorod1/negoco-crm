@@ -66,6 +66,21 @@ export default function DeleteComparativaConfirmationModal({
         iconSize: 24,
         icon: CheckCircle,
       });
+
+      try {
+        await refreshComparativas();
+        onClose();
+      } catch (error) {
+        console.error("Error al refrescar las comparativas:", error);
+        showCustomToast({
+          title: "Error al refrescar las comparativas",
+          message: "Inténtalo de nuevo más tarde",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        onClose();
+      }
     } catch (error) {
       console.error(error);
       showCustomToast({
@@ -77,8 +92,6 @@ export default function DeleteComparativaConfirmationModal({
       });
     } finally {
       setLoading(false);
-      refreshComparativas();
-      onClose();
     }
   };
   return (
