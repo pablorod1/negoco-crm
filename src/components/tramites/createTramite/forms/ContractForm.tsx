@@ -187,7 +187,7 @@ export default function ContractForm({
                 name={`pot${index + 1}`}
                 label={pot}
                 type="number"
-                startContent={<Zap width={20} height={20} stroke="#333" />}
+                startContent={<Zap size={16} stroke="#333" />}
               />
             ))}
           </div>

@@ -185,7 +185,7 @@ export default function EditContractForm({
                 value={formData[
                   `pot${index + 1}` as keyof ContractDB
                 ]?.toString()}
-                startContent={<Zap width={20} height={20} stroke="#333" />}
+                startContent={<Zap size={16} stroke="#333" />}
               />
             ))}
           </div>

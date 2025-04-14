@@ -21,8 +21,8 @@ export const CreateComparativaStepper: React.FC<StepperProps> = ({
                 i < currentStep
                   ? "bg-primary border-primary text-primary-foreground"
                   : i === currentStep
-                  ? "border-primary text-primary bg-white"
-                  : "border-gray-300 text-gray-300 bg-white"
+                    ? "border-primary text-primary bg-white"
+                    : "border-gray-300 text-gray-300 bg-white"
               }`}
             >
               {i < currentStep ? (

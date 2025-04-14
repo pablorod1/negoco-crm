@@ -8,14 +8,6 @@ import {
 import { InputComponent, SelectComponent } from "../../InputComponent";
 import { CARGOS, CLIENT_TYPES, DOCUMENT_TYPES } from "@/lib/core/const";
 import { Divider } from "@heroui/divider";
-import {
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-  SelectItem,
-} from "@/components/ui/select";
-import {} from "@radix-ui/react-select";
 
 interface Props {
   formData: SecondForm;
@@ -49,10 +41,43 @@ export default function NewClientForm({
       setSignerData(null);
     }
   };
-  const handleFieldChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (name.includes("signer")) {
+      setSignerData((prevState) => {
+        if (!prevState) {
+          return null;
+        }
+        return {
+          ...prevState,
+          [name.split(".")[1]]: value,
+        };
+      });
+      setSignerErrors((prevState) => ({
+        ...prevState,
+        [name.split(".")[1]]: "",
+      }));
+    } else {
+      if (
+        name === "type" &&
+        (value === "Empresa" || value === "Comunidad de Propietarios")
+      ) {
+        setSignerData(createEmptySignerForm);
+      } else {
+        setSignerData(null);
+      }
+      setFormData((prevState) => ({
+        ...prevState,
+        [name]: value,
+      }));
+      setErrors((prevState) => ({
+        ...prevState,
+        [name]: "",
+      }));
+    }
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
     if (name.includes("signer")) {
       setSignerData((prevState) => {
         if (!prevState) {
@@ -80,35 +105,29 @@ export default function NewClientForm({
   };
   return (
     <form className="w-full pt-6">
-      <div className="flex flex-col gap-y-4 w-full">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-8 w-full">
+        <div className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-primary-500 text-nowrap">
             Datos{" "}
             {formData.type === "Empresa" ? "de la empresa" : "del cliente"}
           </h2>
-          <Select value={formData.type} onValueChange={handleClientTypeChange}>
-            <SelectTrigger className="w-full max-w-64">
-              <SelectValue placeholder="Selecciona una opción">
-                {formData.type}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {CLIENT_TYPES.map((type) => (
-                <SelectItem key={type} value={type as string}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SelectComponent
+            name="type"
+            items={CLIENT_TYPES}
+            onChange={handleClientTypeChange}
+            label="Tipo de cliente"
+            selectedKey={formData.type}
+            isRequired
+          />
         </div>
-        <div className="flex items-stretch gap-4 w-full">
+        <div className="flex items-stretch gap-8 w-full">
           <SelectComponent
             name="document_type"
             items={
               DOCUMENT_TYPES[formData.type as keyof typeof DOCUMENT_TYPES]
                 .documentTypes
             }
-            onChange={handleFieldChange}
+            onChange={(value) => handleSelectChange("document_type", value)}
             errors={errors.document_type}
             label="Tipo de documento"
             isRequired
@@ -146,7 +165,7 @@ export default function NewClientForm({
               />
             )}
         </div>
-        <div className="flex items-stretch gap-4 w-full">
+        <div className="flex items-stretch gap-8 w-full">
           <InputComponent
             name="email"
             label="Correo Electrónico"
@@ -176,7 +195,7 @@ export default function NewClientForm({
             value={formData.IBAN}
           />
         </div>
-        <div className="flex items-stretch gap-4 w-full">
+        <div className="flex items-stretch gap-8 w-full">
           <InputComponent
             name="address"
             label="Dirección Fiscal"
@@ -218,7 +237,7 @@ export default function NewClientForm({
               <h2 className="text-xl font-semibold text-primary-500">
                 Datos de la persona firmante
               </h2>
-              <div className="flex items-stretch gap-4 w-full">
+              <div className="flex items-stretch gap-8 w-full">
                 <InputComponent
                   name="signer.document_number"
                   label="Número de documento"
@@ -248,7 +267,7 @@ export default function NewClientForm({
                   isRequired
                 />
               </div>
-              <div className="flex items-stretch gap-4 w-full">
+              <div className="flex items-stretch gap-8 w-full">
                 <InputComponent
                   name="signer.email"
                   label="Correo Electrónico"
@@ -272,7 +291,9 @@ export default function NewClientForm({
                   <SelectComponent
                     name="signer.cargo"
                     items={CARGOS}
-                    onChange={handleFieldChange}
+                    onChange={(value) =>
+                      handleSelectChange("signer.cargo", value)
+                    }
                     label="Cargo"
                     selectedKey={signerData.cargo || ""}
                   />

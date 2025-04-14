@@ -1,20 +1,27 @@
 "use client";
 import AvatarComponent from "@/components/core/AvatarComponent";
 import { ClientDB, ComparativaPlan, User } from "@/lib/core/types";
-import { Input } from "@heroui/input";
-import { Select, SelectItem } from "@heroui/select";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { SelectValue } from "@radix-ui/react-select";
 
 interface SelectProps {
   name: string;
   label: string;
   items: (string | User | ComparativaPlan | ClientDB)[];
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
   errors?: string;
   selectedKey: string;
   isRequired?: boolean;
   disabled?: boolean;
-  multiple?: boolean;
   defaultSelectedKey?: string;
+  textValue?: string;
 }
 export const SelectComponent: React.FC<SelectProps> = ({
   name,
@@ -25,60 +32,63 @@ export const SelectComponent: React.FC<SelectProps> = ({
   label,
   isRequired,
   disabled,
-  multiple,
-  defaultSelectedKey,
+  textValue,
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
+      <Label>
+        {label} {isRequired && <span className="text-red-500">*</span>}
+      </Label>
       <Select
         name={name}
-        size="lg"
-        variant="bordered"
-        isRequired={isRequired}
-        errorMessage=""
-        radius="sm"
-        selectionMode={multiple ? "multiple" : "single"}
-        label={label}
-        onChange={onChange}
-        isDisabled={disabled}
-        defaultSelectedKeys={defaultSelectedKey ? [defaultSelectedKey] : []}
-        selectedKeys={selectedKey ? [selectedKey] : []}
-        color={errors ? "danger" : "primary"}
+        required={isRequired}
+        onValueChange={onChange}
+        disabled={disabled}
+        value={selectedKey}
       >
-        {items.map((item) => {
-          const isClient =
-            typeof item !== "string" && "document_number" in item;
-          const key = typeof item === "string" ? item : item.id;
-          const value = typeof item === "string" ? item : item.name;
-
-          const avatar = typeof item !== "string";
-          return (
-            <SelectItem
-              color="primary"
-              variant="flat"
-              startContent={
-                avatar && !isClient ? (
-                  <AvatarComponent userData={item as User} className="size-8" />
-                ) : null
-              }
-              key={key}
-              textValue={isClient ? `${item.name} ${item.last_name}` : value}
-            >
-              {isClient ? (
-                <div>
-                  <p className="text-sm font-semibold">
-                    {item.name} {item.last_name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {item.document_number}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm font-semibold">{value}</p>
-              )}
-            </SelectItem>
-          );
-        })}
+        <SelectTrigger>
+          <SelectValue placeholder="Seleccione una opción">
+            {textValue || selectedKey}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => {
+            const isClient =
+              typeof item !== "string" && "document_number" in item;
+            const key = typeof item === "string" ? item : item.id;
+            const value = typeof item === "string" ? item : item.name;
+            const avatar = typeof item !== "string";
+            return (
+              <SelectItem
+                value={key}
+                key={key}
+                textValue={isClient ? `${item.name} ${item.last_name}` : value}
+                className="rounded-md group"
+              >
+                {isClient ? (
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {item.name} {item.last_name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {item.document_number}
+                    </p>
+                  </div>
+                ) : avatar && !isClient ? (
+                  <div className="flex items-center gap-2">
+                    <AvatarComponent
+                      userData={item as User}
+                      className="size-8 group-hover:text-black"
+                    />
+                    <p className="text-sm font-semibold">{value}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold">{value}</p>
+                )}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
       </Select>
       {errors && <p className="text-red-600 text-sm ms-1">{errors}</p>}
     </div>
@@ -112,22 +122,32 @@ export const InputComponent: React.FC<InputProps> = ({
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
-      <Input
-        onChange={onChange}
-        name={name}
-        label={label}
-        type={type}
-        value={value}
-        size="lg"
-        radius="sm"
-        variant="bordered"
-        isRequired={isRequired}
-        errorMessage=""
-        startContent={startContent}
-        endContent={endContent}
-        isDisabled={disabled}
-        color={errors ? "danger" : "primary"}
-      />
+      <Label>
+        {label} {isRequired && <span className="text-red-500">*</span>}
+      </Label>
+
+      <div className="relative">
+        {startContent && (
+          <div className="absolute left-2.5 top-2.5 text-muted-foreground">
+            {startContent}
+          </div>
+        )}
+        <Input
+          onChange={onChange}
+          name={name}
+          type={type}
+          value={value}
+          disabled={disabled}
+          color={errors ? "danger" : "primary"}
+          className={`${startContent ? "pl-8" : ""} ${endContent ? "pr-8" : ""}`}
+        />
+        {endContent && (
+          <div className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground">
+            {endContent}
+          </div>
+        )}
+      </div>
+
       {errors && <p className="text-red-600 text-sm ms-1">{errors}</p>}
     </div>
   );

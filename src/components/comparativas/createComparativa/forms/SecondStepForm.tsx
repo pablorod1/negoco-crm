@@ -1,7 +1,7 @@
 import { showCustomToast } from "@/components/core/CustomToast";
 import DocumentsForm from "@/components/tramites/DocumentsForm";
 import FormWrapper from "@/components/tramites/createTramite/FormWrapper";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import { CircleX } from "lucide-react";
 
 interface Props {
@@ -44,21 +44,14 @@ export default function SecondStepForm({
           />
         </div>
         <div className="w-full justify-between flex items-center mt-4">
-          <Button variant="light" color="danger" onPress={onCancel} radius="sm">
+          <Button variant="destructive" onClick={onCancel}>
             Cancelar
           </Button>
           <div className="flex items-center gap-4">
-            <Button
-              variant="light"
-              color="default"
-              onPress={onBack}
-              radius="sm"
-            >
+            <Button variant={"destructive"} onClick={onBack}>
               Atrás
             </Button>
-            <Button radius="sm" color="primary" variant="solid" type="submit">
-              Siguiente
-            </Button>
+            <Button type="submit">Siguiente</Button>
           </div>
         </div>
       </form>

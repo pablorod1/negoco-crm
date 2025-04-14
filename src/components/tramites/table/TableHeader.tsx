@@ -238,7 +238,7 @@ export default function TramitesHeader<TData>({
                 value={filterValue}
                 onValueChange={setFilterValue}
                 placeholder="Buscar por CUPS, cliente, compañía..."
-                startContent={<Search className="h-4 w-4" />}
+                startContent={<Search size={16} />}
                 endContent={
                   filterValue && (
                     <button
