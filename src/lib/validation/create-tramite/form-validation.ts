@@ -23,14 +23,14 @@ export const firstFormValidation = (
 ): FormValidationResult<FirstFormError> => {
   const fieldValidationResults: FieldValidationResult[] = [
     validateField(tramite.sales_name),
-    validateField(tramite.client_type),
+    validateField(tramite.user_id),
   ];
 
   const formValidationResult: FormValidationResult<FirstFormError> = {
     succeeded: fieldValidationResults.every((f) => f.succeeded),
     errors: {
       sales_name: fieldValidationResults[0].errorMessage || "",
-      client_type: fieldValidationResults[1].errorMessage || "",
+      user_id: fieldValidationResults[1].errorMessage || "",
     },
   };
 

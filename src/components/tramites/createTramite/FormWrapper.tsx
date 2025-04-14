@@ -3,5 +3,5 @@ export default function FormWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="flex flex-col gap-8 relative">{children}</div>;
+  return <div className="flex flex-col gap-4 relative">{children}</div>;
 }

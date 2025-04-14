@@ -2,7 +2,6 @@ import { ComparativaVM, DocumentType, User } from "../core/types";
 
 export type FirstForm = {
   sales_name: string;
-  client_type: string;
   user_id: string;
 };
 
@@ -11,21 +10,21 @@ export const createEmptyFirstForm = (
   comparativa?: ComparativaVM
 ): FirstForm => ({
   sales_name: comparativa ? (comparativa.user.name as string) : userData.name,
-  client_type: "",
   user_id: userData.id,
 });
 
 export type FirstFormError = {
   sales_name: string;
-  client_type: string;
+  user_id: string;
 };
 
 export const createEmptyFirstFormError = (): FirstFormError => ({
   sales_name: "",
-  client_type: "",
+  user_id: "",
 });
 
 export interface SecondForm {
+  type: string;
   document_type: DocumentType;
   document_number: string;
   name: string;
@@ -42,6 +41,7 @@ export interface SecondForm {
 export const createEmptySecondForm = (
   comparativa?: ComparativaVM
 ): SecondForm => ({
+  type: "Particular",
   document_type: "",
   document_number: "",
   name: comparativa ? comparativa.client : "",

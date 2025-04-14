@@ -16,7 +16,7 @@ import {
   User,
 } from "@/lib/core/types";
 
-import SecondStepForm from "../createTramite/forms/SecondStepForm";
+import SecondStepForm from "./forms/secondStepForm/SecondStepForm";
 import ThirdStepForm from "../createTramite/forms/ThirdStepForm";
 import { CreateTramiteStepper } from "../CreateTramiteStepper";
 import FourthStepForm from "../createTramite/forms/FourthStepForm";
@@ -78,8 +78,8 @@ export default function AddTramiteDialog({
     setTramite(
       createEmptyTramiteDB(
         userData as User,
-        plan as "fijo" | "indexado",
-        comparativa
+        plan ? (plan as "fijo" | "indexado") : undefined,
+        comparativa ? comparativa : undefined
       )
     );
     setClient(createEmptyClientDB(comparativa ? comparativa : undefined));
@@ -93,17 +93,8 @@ export default function AddTramiteDialog({
   };
 
   const handleNext = () => {
-    if (activeTab === 3) {
-      addIds();
-    }
-
-    setActiveTab(() => activeTab + 1);
-  };
-
-  const addIds = () => {
-    contracts.forEach((contract) => {
-      contract.tramite_id = tramite.id;
-    });
+    console.log("tramite", tramite);
+    setActiveTab((prev) => prev + 1);
   };
 
   const handleSubmit = async () => {
@@ -274,13 +265,10 @@ export default function AddTramiteDialog({
   const formElements = [
     <FirstStepForm
       key={1}
-      setClient={setClient}
       setTramite={setTramite}
       onSubmitSuccess={handleNext}
       tramite={tramite}
       onCancel={onClose}
-      client={client}
-      setSigner={setSigner}
     />,
     <SecondStepForm
       key={2}
@@ -291,6 +279,8 @@ export default function AddTramiteDialog({
       onCancel={onClose}
       setSigner={setSigner}
       signer={signer as SignerDB}
+      userData={userData as User}
+      setTramite={setTramite}
     />,
     <ThirdStepForm
       key={3}
@@ -351,11 +341,13 @@ export default function AddTramiteDialog({
       >
         <ModalContent
           className={`transition-all duration-700 ease-in-out w-full h-auto ${
-            activeTab === 1 || activeTab === 3
-              ? "max-w-[1400px]"
-              : activeTab === 2
-                ? "max-w-[1200px]"
-                : "max-w-[800px]"
+            activeTab === 0
+              ? "max-w-[1200px]"
+              : activeTab === 1
+                ? "max-w-[1400px]"
+                : activeTab === 2
+                  ? "max-w-[1300px]"
+                  : "max-w-[1400px]"
           }`}
         >
           <ModalHeader className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between p-4">

@@ -85,8 +85,8 @@ export const createEmptyTramiteDB = (
   sales_name: comparativa
     ? (comparativa.user.name as string)
     : userData
-    ? userData.name
-    : "",
+      ? userData.name
+      : "",
   comision_sales_person:
     comparativa && plan
       ? getComission(comparativa, plan).comision_sales_person
@@ -99,8 +99,8 @@ export const createEmptyTramiteDB = (
   user_id: comparativa
     ? (comparativa.user.id as string)
     : userData
-    ? userData.id
-    : "",
+      ? userData.id
+      : "",
 });
 
 export type ClientDB = {
@@ -123,7 +123,7 @@ export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   id: `CLI-${Math.floor(Math.random() * 10000)}`,
   name: comparativa ? comparativa.client : "",
   last_name: comparativa ? comparativa.client.split(" ")[1] : "",
-  type: "",
+  type: "Particular",
   email: "",
   phone: "",
   address: "",
