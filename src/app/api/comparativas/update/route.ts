@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     let comissions;
     if (comissionsString) {
       comissions = JSON.parse(comissionsString);
+      console.log("Commissions:", comissions);
     }
 
     if (!comparativa_id || !organization_id) {
@@ -79,10 +80,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (
-      comissions.comision_fijo ||
-      comissions.comision_indexado ||
-      comissions.comision_sales_person_fijo ||
-      comissions.comision_sales_person_indexado
+      comissions &&
+      (comissions.comision_fijo ||
+        comissions.comision_indexado ||
+        comissions.comision_sales_person_fijo ||
+        comissions.comision_sales_person_indexado)
     ) {
       const {
         comision_fijo,
