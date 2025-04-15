@@ -1,5 +1,11 @@
-import { ClientDB, SignerDB, TramiteDB, User } from "@/lib/core/types";
-import { useEffect, useState } from "react";
+import {
+  ClientDB,
+  createEmptyClientDB,
+  SignerDB,
+  TramiteDB,
+  User,
+} from "@/lib/core/types";
+import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,20 +18,29 @@ interface Props {
   userData: User;
   setClient: React.Dispatch<React.SetStateAction<ClientDB>>;
   setSigner: React.Dispatch<React.SetStateAction<SignerDB | null>>;
-  setNewClient: React.Dispatch<React.SetStateAction<boolean>>;
+  setNewClientState: React.Dispatch<React.SetStateAction<boolean>>;
   setTramite: React.Dispatch<React.SetStateAction<TramiteDB>>;
+  clients: ClientDB[];
+  loading: boolean;
+  newClient: ClientDB | null;
+  newSigner: SignerDB | null;
+  selectedClient: string | null;
+  setSelectedClient: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export default function SelectClient({
   userData,
   setClient,
   setSigner,
-  setNewClient,
+  setNewClientState,
   setTramite,
+  clients,
+  loading,
+  newClient,
+  newSigner,
+  selectedClient,
+  setSelectedClient,
 }: Props) {
-  const [clients, setClients] = useState<ClientDB[]>([]);
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
   const [filterValue, setFilterValue] = useState<string>("");
 
   const fetchSigner = async (clientId: string): Promise<SignerDB | null> => {
@@ -90,53 +105,18 @@ export default function SelectClient({
     }
   };
 
-  useEffect(() => {
-    if (!userData) return;
-    const fetchClients = async () => {
-      try {
-        const res = await fetch(`/api/clients/get`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: userData.id,
-            role: userData.role,
-          }),
-        });
-        const { success, data, error } = await res.json();
-        if (!success) {
-          showCustomToast({
-            title: "Error",
-            message: error,
-            icon: CircleX,
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-          });
-          return;
-        }
-
-        if (data) {
-          const sortClients = (data as ClientDB[]).sort((a, b) =>
-            a.name.localeCompare(b.name)
-          );
-          setClients(sortClients);
-        }
-      } catch (error) {
-        showCustomToast({
-          title: "Error",
-          message: (error as string) || "Error desconocido",
-          icon: CircleX,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-        });
-        console.error("Error fetching clients:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchClients();
-  }, [userData]);
+  const handleSelectNewClient = () => {
+    if (newClient) {
+      setClient(newClient);
+      setSigner(newSigner);
+      setTramite((prevState) => ({
+        ...prevState,
+        client_id: newClient.id,
+      }));
+      setSelectedClient(newClient.id);
+      setNewClientState(true);
+    }
+  };
 
   const filteredClients = clients.filter((client) => {
     const { name, last_name, email } = client;
@@ -168,6 +148,12 @@ export default function SelectClient({
     );
   });
 
+  const handleNewClient = () => {
+    setNewClientState(true);
+    setClient(createEmptyClientDB());
+    setSigner(null);
+  };
+
   return (
     <>
       <div className="flex justify-between items-center w-full gap-4">
@@ -196,7 +182,7 @@ export default function SelectClient({
             <Button
               size={"card"}
               variant={"outline"}
-              onClick={() => setNewClient(true)}
+              onClick={handleNewClient}
               className="w-full justify-start gap-2 border border-gray-100 shadow-sm"
             >
               <div className="flex flex-col items-start">
@@ -206,6 +192,26 @@ export default function SelectClient({
                 </span>
               </div>
             </Button>
+            {newClient && (
+              <Button
+                size={"card"}
+                variant={"outline"}
+                onClick={handleSelectNewClient}
+                className="w-full justify-start gap-2 border-dashed border-gray-100 shadow-sm"
+              >
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-semibold">
+                    Último cliente creado
+                  </span>
+                  <span className="text-xs text-gray-500 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
+                    {newClient.name} {newClient.last_name}
+                  </span>
+                  <span className="text-xs text-gray-500 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
+                    {newClient.document_type} - {newClient.document_number}
+                  </span>
+                </div>
+              </Button>
+            )}
             {filteredClients.map((client) => (
               <Button
                 size={"card"}

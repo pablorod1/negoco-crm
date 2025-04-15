@@ -36,7 +36,7 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
 }) => {
   return (
     <div className="w-full relative">
-      <div className="flex items-center  justify-between mb-2 ">
+      <div className="flex items-center justify-between mb-2 ">
         {Array.from({ length: steps }, (_, i) => (
           <div key={i} className="flex flex-col items-center z-50">
             <div
@@ -104,7 +104,9 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
           </div>
         ))}
       </div>
-      <div className="w-[98%] ms-1 bg-gray-200 rounded-full h-2.5 absolute top-6 left-0 z-0">
+      <div
+        className={`w-full ms-1 bg-gray-200 rounded-full h-2.5 absolute left-0 z-0 ${currentStep > 0 ? "top-6" : "top-3"}`}
+      >
         <div
           className="bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"
           style={{ width: `${(currentStep / (steps - 1)) * 100}%` }}

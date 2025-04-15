@@ -1,3 +1,4 @@
+"use client";
 import {
   NOW_DATE,
   COMERCIAL_STATUS_TYPES,
@@ -13,7 +14,7 @@ import { InputComponent, SelectComponent } from "../InputComponent";
 import { useState } from "react";
 import CheckComisionModal from "../CheckComisionModal";
 import EmptyComisionModal from "../EmptyComisionModal";
-import { Euro, Pencil } from "lucide-react";
+import { Euro, FileX2, Pencil } from "lucide-react";
 import ContractForm from "./ContractForm";
 import { Button } from "@/components/ui/button";
 
@@ -38,8 +39,6 @@ export default function ThirdStepForm({
   setContracts,
   userData,
 }: Props) {
-  const [openComisionModal, setOpenComisionModal] = useState(false);
-  const [openEmptyComisionModal, setOpenEmptyComisionModal] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
   const [isEditingContract, setIsEditingContract] = useState(false);
   const [selectedContract, setSelectedContract] = useState<ContractDB | null>(
@@ -81,14 +80,6 @@ export default function ThirdStepForm({
     setShowContractForm(false);
     setIsEditingContract(false);
     setSelectedContract(null);
-  };
-
-  const openCheckComisionModal = () => {
-    setOpenComisionModal(true);
-  };
-
-  const handleEmptyComisionModal = () => {
-    setOpenEmptyComisionModal(true);
   };
 
   const handleCreateContract = () => {
@@ -211,51 +202,57 @@ export default function ThirdStepForm({
             </Button>
           </div>
 
-          <div className="flex items-start gap-4 w-full">
-            {contracts.map((contract, index) => (
-              <div key={index} className="flex items-center flex-col gap-2 ">
-                <ContractPreview contract={contract} />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full"
-                  onClick={() => handleEditContract(contract)}
-                >
-                  <Pencil size={16} />
-                </Button>
-              </div>
-            ))}
-          </div>
+          {contracts.length > 0 ? (
+            <div className="flex items-start gap-4 w-full">
+              {contracts.map((contract, index) => (
+                <div key={index} className="flex items-center flex-col gap-2 ">
+                  <ContractPreview contract={contract} />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => handleEditContract(contract)}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center max-w-xl mx-auto text-center w-full h-32 border border-dashed rounded-lg shadow">
+              <FileX2 size={32} className="text-gray-400 mb-2" />
+              <p className="text-sm text-gray-500 text-balance">
+                Puedes añadir un contrato haciendo click en el botón{" "}
+                <strong>Añadir Contrato</strong> y lo podrás editar después
+                haciendo click en el icono de editar.
+              </p>
+            </div>
+          )}
         </form>
-        <ButtonGroupComponent
-          onCancel={onCancel}
-          onBack={onBack}
-          onSubmit={
-            tramite.status !== "Tramitable" &&
-            tramite.status !== "Borrador" &&
-            tramite.status !== "Activo"
-              ? openCheckComisionModal
-              : tramite.status === "Activo" &&
-                  (tramite.comision === 0 ||
-                    tramite.comision_sales_person === 0)
-                ? handleEmptyComisionModal
-                : onSubmit
-          }
-        />
+        {tramite.status !== "Tramitable" &&
+        tramite.status !== "Borrador" &&
+        tramite.status !== "Activo" ? (
+          <CheckComisionModal
+            tramite={tramite}
+            onSubmit={onSubmit}
+            onBack={onBack}
+            onCancel={onCancel}
+          />
+        ) : tramite.status === "Activo" &&
+          (tramite.comision === 0 || tramite.comision_sales_person === 0) ? (
+          <EmptyComisionModal
+            tramite={tramite}
+            onBack={onBack}
+            onCancel={onCancel}
+          />
+        ) : (
+          <ButtonGroupComponent
+            onCancel={onCancel}
+            onBack={onBack}
+            onSubmit={onSubmit}
+          />
+        )}
       </FormWrapper>
-
-      <CheckComisionModal
-        tramite={tramite}
-        isOpen={openComisionModal}
-        onClose={() => setOpenComisionModal(false)}
-        onSubmit={onSubmit}
-      />
-
-      <EmptyComisionModal
-        tramite={tramite}
-        isOpen={openEmptyComisionModal}
-        onClose={() => setOpenEmptyComisionModal(false)}
-      />
     </>
   );
 }

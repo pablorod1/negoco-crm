@@ -8,6 +8,7 @@ import {
 import { InputComponent, SelectComponent } from "../../InputComponent";
 import { CARGOS, CLIENT_TYPES, DOCUMENT_TYPES } from "@/lib/core/const";
 import { Divider } from "@heroui/divider";
+import { ClientDB, DocumentType } from "@/lib/core/types";
 
 interface Props {
   formData: SecondForm;
@@ -18,6 +19,7 @@ interface Props {
   setSignerData: React.Dispatch<React.SetStateAction<SignerForm | null>>;
   setSignerErrors: React.Dispatch<React.SetStateAction<SignerFormError>>;
   signerErrors: SignerFormError;
+  setClients: React.Dispatch<React.SetStateAction<ClientDB[]>>;
 }
 
 export default function NewClientForm({
@@ -42,6 +44,7 @@ export default function NewClientForm({
     }
   };
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
     const { name, value } = e.target;
     if (name.includes("signer")) {
       setSignerData((prevState) => {
@@ -58,13 +61,12 @@ export default function NewClientForm({
         [name.split(".")[1]]: "",
       }));
     } else {
-      if (
-        name === "type" &&
-        (value === "Empresa" || value === "Comunidad de Propietarios")
-      ) {
-        setSignerData(createEmptySignerForm);
-      } else {
-        setSignerData(null);
+      if (name === "type") {
+        if (value === "Empresa" || value === "Comunidad de Propietarios") {
+          setSignerData(createEmptySignerForm);
+        } else {
+          setSignerData(null);
+        }
       }
       setFormData((prevState) => ({
         ...prevState,
@@ -131,7 +133,7 @@ export default function NewClientForm({
             errors={errors.document_type}
             label="Tipo de documento"
             isRequired
-            selectedKey={formData.document_type}
+            selectedKey={formData.document_type as DocumentType}
           />
 
           <InputComponent

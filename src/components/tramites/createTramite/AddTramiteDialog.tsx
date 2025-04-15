@@ -239,6 +239,9 @@ export default function AddTramiteDialog({
         }
       }
 
+      localStorage.removeItem("signer");
+      localStorage.removeItem("client");
+
       try {
         await refreshTramites();
         handleClose();
