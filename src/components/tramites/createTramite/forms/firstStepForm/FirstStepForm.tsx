@@ -18,6 +18,7 @@ interface Props {
   onSubmitSuccess: () => void;
   tramite: TramiteDB;
   onCancel: () => void;
+  onBack?: () => void;
 }
 
 export default function FirstStepForm({
@@ -25,6 +26,7 @@ export default function FirstStepForm({
   onSubmitSuccess,
   tramite,
   onCancel,
+  onBack,
 }: Props) {
   const { userData } = useUser();
   const [errors, setErrors] = useState<FirstFormError>(
@@ -59,7 +61,11 @@ export default function FirstStepForm({
           errors={errors}
         />
       </form>
-      <ButtonGroupComponent onCancel={onCancel} onSubmit={handleSubmit} />
+      <ButtonGroupComponent
+        onBack={onBack}
+        onCancel={onCancel}
+        onSubmit={handleSubmit}
+      />
     </FormWrapper>
   );
 }

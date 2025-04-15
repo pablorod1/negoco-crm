@@ -32,11 +32,11 @@ import { ServiceInfo } from "@/components/comparativas/editComparativa/ServiceIn
 import { FilesList } from "@/components/comparativas/editComparativa/FilesList";
 import { CommissionsTabContent } from "@/components/comparativas/editComparativa/ComissionsTabContent";
 import UpdateComparativaStatusModal from "@/components/comparativas/editComparativa/UpdateComparativaStatusModal";
-import ComparativaToTramite from "@/components/comparativas/editComparativa/ComparativaToTramite";
 import SpinnerComponent from "@/components/core/SpinnerComponent";
 import Link from "next/link";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 import TooltipComponent from "@/components/core/TooltipComponent";
+import AddTramiteDialog from "@/components/tramites/createTramite/AddTramiteDialog";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();
@@ -210,7 +210,8 @@ export default function EditComparativaPage() {
               userData={userData as User}
             />
           ) : comparativa.status === "completed" ? (
-            <ComparativaToTramite
+            <AddTramiteDialog
+              variant="outline"
               comparativa={comparativa}
               onComparativaUpdated={fetchComparativa}
             />

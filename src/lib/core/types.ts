@@ -122,7 +122,7 @@ export type ClientDB = {
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   id: `CLI-${Math.floor(Math.random() * 10000)}`,
   name: comparativa ? comparativa.client : "",
-  last_name: comparativa ? comparativa.client.split(" ")[1] : "",
+  last_name: comparativa ? comparativa.client.split(" ")[1] || "" : "",
   type: "Particular",
   email: "",
   phone: "",

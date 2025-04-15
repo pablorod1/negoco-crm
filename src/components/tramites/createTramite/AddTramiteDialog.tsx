@@ -38,20 +38,22 @@ import { DialogTrigger } from "@radix-ui/react-dialog";
 import { VariantProps } from "class-variance-authority";
 import { buttonVariants } from "@/components/ui/button";
 import ReviewStep from "./forms/ReviewStep";
+import ComparativaToTramiteStep from "./forms/ComparativaToTramiteStep";
 
 export default function AddTramiteDialog({
   variant,
   comparativa,
-  plan,
   onComparativaUpdated,
 }: {
   variant?: string;
   comparativa?: ComparativaVM;
-  plan?: string;
   onComparativaUpdated?: () => void;
 }) {
+  const [plan, setPlan] = useState<"fijo" | "indexado" | undefined>(
+    comparativa ? comparativa.plan[0] : undefined
+  );
   const { userData } = useUser();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(comparativa ? 0 : 1);
   const [tramite, setTramite] = useState<TramiteDB>(
     createEmptyTramiteDB(
       userData as User,
@@ -73,7 +75,9 @@ export default function AddTramiteDialog({
     ? (comparativa.files as ComparativaFile[])
     : undefined;
 
-  const handleOpen = () => {
+  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsOpen(true);
     setActiveTab(0);
     setTramite(
@@ -94,7 +98,7 @@ export default function AddTramiteDialog({
   };
 
   const handleBack = () => {
-    setActiveTab(() => activeTab - 1);
+    setActiveTab((prev) => prev - 1);
   };
 
   const handleNext = () => {
@@ -269,6 +273,75 @@ export default function AddTramiteDialog({
       setLoading(false);
     }
   };
+  const comparativaFormElements = [
+    <ComparativaToTramiteStep
+      key={0}
+      comparativa={comparativa as ComparativaVM}
+      onSubmit={handleNext}
+      onCancel={handleClose}
+      setPlan={setPlan}
+      plan={plan}
+      userData={userData as User}
+    />,
+    <FirstStepForm
+      key={1}
+      setTramite={setTramite}
+      onSubmitSuccess={handleNext}
+      tramite={tramite}
+      onCancel={handleClose}
+      onBack={handleBack}
+    />,
+    <SecondStepForm
+      key={2}
+      client={client}
+      setClient={setClient}
+      onSecondSubmitSuccess={handleNext}
+      onBack={handleBack}
+      onCancel={handleClose}
+      setSigner={setSigner}
+      signer={signer as SignerDB}
+      userData={userData as User}
+      setTramite={setTramite}
+      comparativa={comparativa as ComparativaVM}
+    />,
+    <ThirdStepForm
+      key={3}
+      onBack={handleBack}
+      onSubmit={handleNext}
+      tramite={tramite}
+      setTramite={setTramite}
+      onCancel={handleClose}
+      contracts={contracts}
+      setContracts={setContracts}
+      userData={userData as User}
+    />,
+    <FourthStepForm
+      userData={userData as User}
+      key={4}
+      onBack={handleBack}
+      onFinish={handleNext}
+      tramite={tramite}
+      setTramite={setTramite}
+      onCancel={handleClose}
+      documents={documents}
+      setDocuments={setDocuments}
+      loading={loading}
+      comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
+    />,
+    <ReviewStep
+      key={5}
+      tramite={tramite}
+      client={client}
+      signer={signer}
+      contracts={contracts}
+      documents={documents}
+      onBack={handleBack}
+      onSubmit={handleSubmit}
+      onCancel={handleClose}
+      loading={loading}
+      userData={userData as User}
+    />,
+  ];
   const formElements = [
     <FirstStepForm
       key={1}
@@ -339,8 +412,14 @@ export default function AddTramiteDialog({
               : "default"
           }
         >
-          <PlusCircle size={20} />
-          <span>Nuevo Trámite</span>
+          {comparativa ? (
+            <span>Completar Comparativa</span>
+          ) : (
+            <>
+              <PlusCircle size={20} />
+              <span>Nuevo Trámite</span>
+            </>
+          )}
         </Button>
       </DialogTrigger>
 
@@ -368,7 +447,7 @@ export default function AddTramiteDialog({
             </DialogDescription>
           </div>
           <CreateTramiteStepper
-            steps={5}
+            steps={comparativa ? 6 : 5}
             currentStep={activeTab}
             selectedComercial={
               {
@@ -385,9 +464,12 @@ export default function AddTramiteDialog({
               document_number: client.document_number,
             }}
             setActiveStep={setActiveTab}
+            comparativa={comparativa ? true : false}
           />
         </DialogHeader>
-        {formElements[activeTab]}
+        {comparativa
+          ? comparativaFormElements[activeTab]
+          : formElements[activeTab]}
       </DialogContent>
     </Dialog>
   );

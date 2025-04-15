@@ -13,8 +13,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
-import { formatComission } from "@/lib/core/format";
+import { formatComission, formatFileSize } from "@/lib/core/format";
 import { IdCardIcon, Mail, Phone } from "lucide-react";
+import LoadingStateModal from "@/components/core/LoadingStateModal";
 
 interface Props {
   tramite: TramiteDB;
@@ -54,7 +55,8 @@ export default function ReviewStep({
   };
   return (
     <>
-      <ScrollArea className="h-full w-full  max-h-[calc(100vh-300px)]">
+      {loading && <LoadingStateModal userData={userData} />}
+      <ScrollArea className="h-full w-full  max-h-[calc(100vh-400px)]">
         <div className="space-y-6 pb-6 px-4">
           {/* Tramite Info */}
           <Card>
@@ -326,7 +328,7 @@ export default function ReviewStep({
                   >
                     <span className="text-sm">{doc.name}</span>
                     <span className="text-sm text-muted-foreground">
-                      {(doc.size / 1024 / 1024).toFixed(2)} MB
+                      {formatFileSize(Number(doc.size))}
                     </span>
                   </div>
                 ))}

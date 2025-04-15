@@ -15,6 +15,7 @@ import {
 import React, { useEffect, useState, useMemo } from "react";
 import {
   ClientDB,
+  ComparativaVM,
   createEmptyClientDB,
   createEmptySignerDB,
   SignerDB,
@@ -38,6 +39,7 @@ interface Props {
   signer: SignerDB;
   userData: User;
   setTramite: React.Dispatch<React.SetStateAction<TramiteDB>>;
+  comparativa?: ComparativaVM;
 }
 
 export default function SecondStepForm({
@@ -50,6 +52,7 @@ export default function SecondStepForm({
   signer,
   userData,
   setTramite,
+  comparativa,
 }: Props) {
   const [clients, setClients] = useState<ClientDB[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -58,7 +61,9 @@ export default function SecondStepForm({
   const [errors, setErrors] = useState<SecondFormError>(
     createEmptySecondFormError
   );
-  const [formData, setFormData] = useState<SecondForm>(createEmptySecondForm);
+  const [formData, setFormData] = useState<SecondForm>(
+    createEmptySecondForm(comparativa ? comparativa : undefined)
+  );
   const [signerData, setSignerData] = useState<SignerForm | null>(null);
   const [signerErrors, setSignerErrors] = useState<SignerFormError>(
     createEmptySignerFormError
@@ -74,6 +79,8 @@ export default function SecondStepForm({
     const stored = localStorage.getItem("signer");
     return stored ? JSON.parse(stored) : null;
   }, []);
+
+  console.log("formData", formData);
 
   useEffect(() => {
     if (newClientState && newClient) {
@@ -107,11 +114,13 @@ export default function SecondStepForm({
     return () => {
       // Cleanup function
       if (!newClientState) {
-        setFormData(createEmptySecondForm());
+        setFormData(
+          createEmptySecondForm(comparativa ? comparativa : undefined)
+        );
         setSignerData(null);
       }
     };
-  }, [newClientState, newClient, newSigner]); // Only depend on newClientState
+  }, [newClientState, newClient, newSigner, comparativa]); // Only depend on newClientState
 
   const handleSecondSubmit = () => {
     if (signerData) {
@@ -307,6 +316,7 @@ export default function SecondStepForm({
           newSigner={newSigner}
           setSelectedClient={setSelectedClient}
           selectedClient={selectedClient}
+          comparativa={comparativa}
         />
       )}
       <ButtonGroupComponent

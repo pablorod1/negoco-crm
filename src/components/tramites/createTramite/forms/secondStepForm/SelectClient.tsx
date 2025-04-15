@@ -1,5 +1,6 @@
 import {
   ClientDB,
+  ComparativaVM,
   createEmptyClientDB,
   SignerDB,
   TramiteDB,
@@ -26,6 +27,7 @@ interface Props {
   newSigner: SignerDB | null;
   selectedClient: string | null;
   setSelectedClient: React.Dispatch<React.SetStateAction<string | null>>;
+  comparativa?: ComparativaVM;
 }
 
 export default function SelectClient({
@@ -40,6 +42,7 @@ export default function SelectClient({
   newSigner,
   selectedClient,
   setSelectedClient,
+  comparativa,
 }: Props) {
   const [filterValue, setFilterValue] = useState<string>("");
 
@@ -150,7 +153,7 @@ export default function SelectClient({
 
   const handleNewClient = () => {
     setNewClientState(true);
-    setClient(createEmptyClientDB());
+    setClient(createEmptyClientDB(comparativa ? comparativa : undefined));
     setSigner(null);
   };
 

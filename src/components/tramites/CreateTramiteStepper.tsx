@@ -17,8 +17,17 @@ interface StepperProps {
     document_number: string;
   };
   setActiveStep: React.Dispatch<React.SetStateAction<number>>;
+  comparativa?: boolean;
 }
 
+const comparativaStepsTexts = [
+  "Comparativa",
+  "Comercial",
+  "Cliente",
+  "Contratos",
+  "Documentos",
+  "Resumen",
+];
 const stepsTexts = [
   "Comercial",
   "Cliente",
@@ -33,6 +42,7 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
   selectedComercial,
   selectedClient,
   setActiveStep,
+  comparativa,
 }) => {
   return (
     <div className="w-full relative">
@@ -50,7 +60,7 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
             >
               {i < currentStep ? (
                 <>
-                  {i === 0 ? (
+                  {i === 0 && !comparativa ? (
                     <div
                       className="cursor-pointer flex items-center justify-center w-full h-full gap-4 flex-nowrap overflow-hidden"
                       onClick={() => setActiveStep(0)}
@@ -64,7 +74,7 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
                         {selectedComercial.name}
                       </span>
                     </div>
-                  ) : i === 1 ? (
+                  ) : i === 1 && !comparativa ? (
                     <div
                       className="cursor-pointer flex flex-col items-start w-full flex-nowrap overflow-hidden"
                       onClick={() => setActiveStep(1)}
@@ -100,12 +110,14 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
                 i + 1
               )}
             </div>
-            <div className="text-sm font-medium mt-2">{stepsTexts[i]}</div>
+            <div className="text-sm font-medium mt-2">
+              {comparativa ? comparativaStepsTexts[i] : stepsTexts[i]}
+            </div>
           </div>
         ))}
       </div>
       <div
-        className={`w-full ms-1 bg-gray-200 rounded-full h-2.5 absolute left-0 z-0 ${currentStep > 0 ? "top-6" : "top-3"}`}
+        className={`w-full ms-1 bg-gray-200 rounded-full h-2.5 absolute left-0 z-0 ${currentStep > 0 && !comparativa ? "top-6" : currentStep > 0 && comparativa ? "top-4" : "top-3"}`}
       >
         <div
           className="bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"

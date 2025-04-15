@@ -15,8 +15,7 @@ import {
 import { LayoutGrid, List } from "lucide-react";
 import { User } from "@/lib/core/types";
 import { formatTimestamp } from "@/lib/core/format";
-import { Button } from "@heroui/button";
-import { Chip } from "@heroui/chip";
+import { Button } from "@/components/ui/button";
 import { ROLES, SELECT_ROLES } from "@/lib/core/const";
 import AvatarComponent from "../core/AvatarComponent";
 import DeleteUserConfirmationModal from "./BanUserConfirmationModal";
@@ -25,6 +24,7 @@ import UnbanUserConfirmationModal from "./UnbanUserConfirmationModal";
 import SpinnerComponent from "../core/SpinnerComponent";
 import { MultiSelect } from "../ui/multi-select";
 import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
 
 const columnHelper = createColumnHelper<User>();
 
@@ -93,13 +93,12 @@ function UsersGridTable({
     }),
     columnHelper.accessor("banned", {
       cell: (info) => (
-        <Chip
-          variant="dot"
-          color={info.getValue() ? "danger" : "success"}
+        <Badge
+          variant={info.getValue() ? "danger" : "success"}
           className="font-bold"
         >
           {info.getValue() ? "Inactivo" : "Activo"}
-        </Chip>
+        </Badge>
       ),
       header: "Estado",
     }),
@@ -204,27 +203,28 @@ function UsersGridTable({
         </div>
       ) : (
         <>
-          <div className="flex items-end gap-4 justify-between mb-4 w-full">
-            <div className="flex items-center gap-4 w-full">
-              <Input
-                type="text"
-                name="name"
-                onChange={handleNameFilterChange}
-                placeholder="Buscar por nombre, email o empresa"
-                className="w-full max-w-xs min-h-10 shadow"
-              />
-              <MultiSelect
-                options={SELECT_ROLES}
-                onValueChange={handleRoleFilterChange}
-                className="max-w-xs"
-                placeholder="Filtrar por rol"
-              />
-            </div>
+          <div className="flex items-end gap-4 justify-between mb-8 w-full">
+            {isAdmin && (
+              <div className="flex items-center gap-4 w-full">
+                <Input
+                  type="text"
+                  name="name"
+                  onChange={handleNameFilterChange}
+                  placeholder="Buscar por nombre, email o empresa"
+                  className="w-full max-w-xs min-h-10 shadow"
+                />
+                <MultiSelect
+                  options={SELECT_ROLES}
+                  onValueChange={handleRoleFilterChange}
+                  className="max-w-xs"
+                  placeholder="Filtrar por rol"
+                />
+              </div>
+            )}
             <Button
-              onPress={() => setIsGridView(!isGridView)}
-              isIconOnly
-              variant="ghost"
-              color="primary"
+              onClick={() => setIsGridView(!isGridView)}
+              size="icon"
+              variant="outline"
             >
               {isGridView ? <List size={18} /> : <LayoutGrid size={18} />}
             </Button>
@@ -346,28 +346,20 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
 
               {/* Badge del rol */}
               <div className="flex justify-center items-center gap-2 w-full">
-                <Chip
-                  size="sm"
-                  variant="light"
-                  color={
-                    user.role === "admin" || user.role === "backoffice"
-                      ? "secondary"
-                      : "primary"
-                  }
+                <Badge
+                  variant={user.role === "admin" ? "secondary" : "default"}
                   className="font-bold"
                 >
                   {user.role === "admin"
                     ? "Dirección"
                     : ROLES[parseInt(user.role)]}
-                </Chip>
-                <Chip
-                  size="sm"
-                  variant="dot"
-                  color={user.banned ? "danger" : "success"}
+                </Badge>
+                <Badge
+                  variant={user.banned ? "danger" : "success"}
                   className="font-bold"
                 >
                   {user.banned ? "Inactivo" : "Activo"}
-                </Chip>
+                </Badge>
               </div>
             </div>
 

@@ -1,17 +1,19 @@
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
-import { Tooltip } from "@heroui/tooltip";
-import { Button } from "@heroui/button";
+"use client";
+import { Button } from "@/components/ui/button";
 import { showCustomToast } from "../core/CustomToast";
 import { authClient } from "@/lib/auth/auth-client";
 import { AlertTriangle, Ban, Unlock, UserRoundX } from "lucide-react";
 import { useUsers } from "@/lib/contexts/UsersContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { useState } from "react";
+import TooltipComponent from "../core/TooltipComponent";
 
 interface Props {
   user_id: string;
@@ -23,8 +25,10 @@ export default function UnbanUserConfirmationModal({
   userName,
 }: Props) {
   const { refreshUsers } = useUsers();
-  const { onOpen, onClose, isOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
 
+  const onOpen = () => setIsOpen(true);
+  const onClose = () => setIsOpen(false);
   const handleBan = async () => {
     try {
       const response = await authClient.admin.unbanUser({
@@ -70,53 +74,45 @@ export default function UnbanUserConfirmationModal({
 
   return (
     <>
-      <Tooltip color="primary" content="Habilitar usuario" radius="full">
-        <Button
-          variant="light"
-          isIconOnly
-          color="primary"
-          size="sm"
-          onPress={onOpen}
-          className="opacity-70 transition-all hover:opacity-100 hover:bg-primary-50"
-        >
-          <Unlock size={16} />
-        </Button>
-      </Tooltip>
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <TooltipComponent content="Habilitar usuario">
+            <Button size="icon" onClick={onOpen}>
+              <Unlock size={16} />
+            </Button>
+          </TooltipComponent>
+        </DialogTrigger>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-2 text-primary">
               <AlertTriangle className="text-primary" size={30} />
-              <h2 className="text-xl">Confirmar activación</h2>
+              <DialogTitle className="text-xl">
+                Confirmar activación
+              </DialogTitle>
             </div>
-          </ModalHeader>
+          </DialogHeader>
 
-          <ModalBody>
-            <div className="flex flex-col">
-              <p className="text-gray-700">
-                ¿Estás seguro que deseas volver a habilitar
-                {userName ? ` a ${userName}` : " este usuario"}?
-              </p>
-              <p className="text-gray-700">
-                Este usuario podrá iniciar sesión nuevamente.
-              </p>
-            </div>
-          </ModalBody>
+          <div className="flex flex-col gap-2">
+            <p className="text-gray-700">
+              ¿Estás seguro que deseas volver a habilitar a{" "}
+              <strong>{userName}</strong>?
+            </p>
+            <p className="text-gray-500 text-sm">
+              Este usuario podrá iniciar sesión nuevamente.
+            </p>
+          </div>
 
-          <ModalFooter>
-            <Button variant="light" onPress={onClose} className="mr-2">
+          <DialogFooter>
+            <Button variant="destructive" onClick={onClose}>
               Cancelar
             </Button>
-            <Button
-              color="primary"
-              onPress={handleBan}
-              startContent={<Unlock size={16} />}
-            >
+            <Button onClick={handleBan}>
+              <Unlock size={16} />
               Habilitar
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

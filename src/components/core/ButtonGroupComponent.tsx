@@ -18,7 +18,7 @@ export default function ButtonGroupComponent({
   loading,
 }: ButtonGroupProps) {
   return (
-    <div className="flex justify-between items-center w-full mt-4">
+    <div className="flex justify-between items-center w-full mt-4 z-10">
       {onCancel && <CancelOperationConfirmationModal onCancel={onCancel} />}
       <div className="flex justify-end gap-4 w-full">
         {onBack && (

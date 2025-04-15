@@ -1,6 +1,6 @@
 "use client";
+import { InputComponent } from "@/components/tramites/createTramite/InputComponent";
 import { ComparativaVM } from "@/lib/core/types";
-import { NumberInput } from "@heroui/number-input";
 import { memo } from "react";
 
 export interface ComissionFormValues {
@@ -25,7 +25,8 @@ const ComissionsForm = memo(
     setFormDataComissions,
     formDataComissions,
   }: ComissionsFormProps) => {
-    const handleFieldChange = (value: number, name: string) => {
+    const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target;
       setFormDataComissions((prev) => ({
         ...prev,
         [name]: value,
@@ -40,31 +41,23 @@ const ComissionsForm = memo(
           </h3>
           <div className="flex items-center gap-2">
             {comparativa.plan.includes("fijo") && (
-              <NumberInput
-                radius="sm"
-                color="primary"
-                variant="bordered"
+              <InputComponent
+                type="number"
                 name="comision_fijo"
                 label="Precio Fijo"
-                value={formDataComissions.comision_fijo}
+                value={formDataComissions.comision_fijo || ""}
                 isRequired
-                onValueChange={(value) =>
-                  handleFieldChange(value, "comision_fijo")
-                }
+                onChange={handleFieldChange}
               />
             )}
             {comparativa.plan.includes("indexado") && (
-              <NumberInput
-                radius="sm"
-                color="primary"
-                variant="bordered"
+              <InputComponent
+                type="number"
                 name="comision_indexado"
                 label="Precio Indexado"
-                value={formDataComissions.comision_indexado}
+                value={formDataComissions.comision_indexado || ""}
                 isRequired
-                onValueChange={(value) =>
-                  handleFieldChange(value, "comision_indexado")
-                }
+                onChange={handleFieldChange}
               />
             )}
           </div>
@@ -75,31 +68,23 @@ const ComissionsForm = memo(
           </h3>
           <div className="flex items-center gap-2">
             {comparativa.plan.includes("fijo") && (
-              <NumberInput
+              <InputComponent
+                type="number"
                 name="comision_sales_person_fijo"
                 label="Precio Fijo"
-                variant="bordered"
-                radius="sm"
-                color="primary"
-                value={formDataComissions.comision_sales_person_fijo}
+                value={formDataComissions.comision_sales_person_fijo || ""}
                 isRequired
-                onValueChange={(value) =>
-                  handleFieldChange(value, "comision_sales_person_fijo")
-                }
+                onChange={handleFieldChange}
               />
             )}
             {comparativa.plan.includes("indexado") && (
-              <NumberInput
-                variant="bordered"
-                radius="sm"
-                color="primary"
+              <InputComponent
+                type="number"
                 name="comision_sales_person_indexado"
                 label="Precio Indexado"
-                value={formDataComissions.comision_sales_person_indexado}
+                value={formDataComissions.comision_sales_person_indexado || ""}
                 isRequired
-                onValueChange={(value) =>
-                  handleFieldChange(value, "comision_sales_person_indexado")
-                }
+                onChange={handleFieldChange}
               />
             )}
           </div>

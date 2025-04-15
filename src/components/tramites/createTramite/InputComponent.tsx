@@ -48,7 +48,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
         disabled={disabled}
         value={selectedKey}
       >
-        <SelectTrigger>
+        <SelectTrigger className="capitalize">
           <SelectValue placeholder="Seleccione una opción">
             {textValue || selectedKey}
           </SelectValue>
@@ -65,7 +65,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
                 value={key}
                 key={key}
                 textValue={isClient ? `${item.name} ${item.last_name}` : value}
-                className="rounded-md group"
+                className="rounded-md group capitalize"
               >
                 {isClient ? (
                   <div>

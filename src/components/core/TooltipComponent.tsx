@@ -18,7 +18,7 @@ export default function TooltipComponent({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent>{content}</TooltipContent>
+        <TooltipContent className="bg-danger">{content}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
