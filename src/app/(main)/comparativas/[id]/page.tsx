@@ -47,6 +47,7 @@ export default function EditComparativaPage() {
   const isAdmin = userData?.role === "admin";
   const isBackOffice = userData?.role === "1";
   const isComercial = userData?.role === "2";
+  const isSubcomercial = userData?.role === "2" && userData?.super_id;
 
   const fetchComparativa = useCallback(async () => {
     if (!userData?.id || !userData?.role) return;
@@ -233,22 +234,24 @@ export default function EditComparativaPage() {
           <CardContent>
             <Tabs defaultValue="notes">
               <TabsList
-                className={`grid mb-4 ${isStudied || isProcessed ? "grid-cols-2" : "grid-cols-1"}`}
+                className={`grid mb-4 ${(isStudied || isProcessed) && !isSubcomercial ? "grid-cols-2" : "grid-cols-1"}`}
               >
                 <TabsTrigger value="notes">
                   Notas - {comparativa.notes.length}
                 </TabsTrigger>
 
-                {(isStudied || isProcessed) && (
+                {(isStudied || isProcessed) && !isSubcomercial && (
                   <TabsTrigger value="commissions">Comisiones</TabsTrigger>
                 )}
               </TabsList>
 
               <TabsContent value="commissions" className="space-y-4">
-                <CommissionsTabContent
-                  comparativa={comparativa}
-                  userData={userData as User}
-                />
+                {!isSubcomercial && (
+                  <CommissionsTabContent
+                    comparativa={comparativa}
+                    userData={userData as User}
+                  />
+                )}
                 {(isAdmin || isBackOffice) && isEditable && (
                   <UpdateComissionsModal
                     onUpdate={fetchComparativa}
