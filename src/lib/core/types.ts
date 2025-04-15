@@ -333,7 +333,7 @@ export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
   id: `CMP-${Math.floor(Math.random() * 10000)}`,
   client: "",
   service: "Luz",
-  plan: [],
+  plan: ["fijo"],
   comision: {
     fijo: 0,
     indexado: 0,
