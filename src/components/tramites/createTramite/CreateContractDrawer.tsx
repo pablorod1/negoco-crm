@@ -1,16 +1,18 @@
 "use client";
-import {
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerHeader,
-} from "@heroui/drawer";
-import { useDisclosure } from "@heroui/modal";
+
 import { PlusIcon } from "lucide-react";
 import { ContractDB } from "@/lib/core/types";
 import React from "react";
 
 import ContractForm from "./forms/ContractForm";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   tramite_id: string;
@@ -25,11 +27,11 @@ export default function CreateContractDrawer({
   isOpenProp,
   onCloseProp,
 }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = React.useState(false);
 
   const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    onOpen();
+    setIsOpen(true);
   };
 
   const handleAddContract = (contract: ContractDB) => {
@@ -37,50 +39,50 @@ export default function CreateContractDrawer({
     onClose();
   };
 
+  const onClose = () => {
+    if (onCloseProp) {
+      onCloseProp();
+    } else {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <>
-      {!isOpenProp && !onCloseProp && (
-        <button onClick={handleOpen}>
-          <div className="w-56 h-72 flex flex-col justify-center items-center border-2 border-dashed border-primary-300 rounded-lg cursor-pointer hover:bg-primary-50 transition-colors">
-            <PlusIcon
-              width={32}
-              height={32}
-              stroke="var(--primary-color-300)"
-            />
-            <span className="text-center font-semibold text-primary-300">
-              Añadir contrato
-            </span>
-          </div>
-        </button>
-      )}
       <Drawer
-        size="5xl"
-        radius="sm"
-        isDismissable={false}
-        isOpen={isOpenProp ? isOpenProp : isOpen}
-        onClose={onClose}
-        placement="bottom"
-        classNames={{
-          base: "max-w-[1200px] w-full !mx-auto",
-        }}
+        open={isOpenProp ? isOpenProp : isOpen}
+        dismissible={false}
+        onOpenChange={onClose}
+        shouldScaleBackground={false}
+        z-index={1000}
       >
-        <DrawerContent>
-          {(onClose) => (
-            <>
-              <DrawerHeader>
-                <h2 className="text-xl font-semibold text-primary-800">
-                  Crear contrato
-                </h2>
-              </DrawerHeader>
-              <DrawerBody>
-                <ContractForm
-                  onCreateContract={handleAddContract}
-                  tramite_id={tramite_id}
-                  onCancel={onCloseProp ? onCloseProp : onClose}
-                />
-              </DrawerBody>
-            </>
+        <DrawerTrigger asChild>
+          {!isOpenProp && !onCloseProp && (
+            <Button variant="outline" onClick={handleOpen}>
+              <PlusIcon
+                width={32}
+                height={32}
+                stroke="var(--primary-color-300)"
+              />
+              <span className="text-center font-semibold text-primary-300">
+                Añadir contrato
+              </span>
+            </Button>
           )}
+        </DrawerTrigger>
+        <DrawerContent inert={!isOpen} aria-describedby={undefined}>
+          <div className="mx-auto w-full max-w-[1200px]">
+            <DrawerHeader className="px-0">
+              <DrawerTitle className="text-xl font-semibold text-primary-800">
+                Crear contrato
+              </DrawerTitle>
+            </DrawerHeader>
+            <ContractForm
+              onCreateContract={handleAddContract}
+              tramite_id={tramite_id}
+              onCancel={onClose}
+            />
+          </div>
         </DrawerContent>
       </Drawer>
     </>

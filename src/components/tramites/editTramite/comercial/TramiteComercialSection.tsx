@@ -58,10 +58,10 @@ export default function TramiteComercialSection({
     }
   }, [isEditMode, userData]);
 
-  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleChange = async (value: string) => {
     try {
       const selectedComercial = comerciales.find(
-        (comercial) => comercial.id === e.target.value
+        (comercial) => comercial.id === value
       );
 
       if (!selectedComercial) {

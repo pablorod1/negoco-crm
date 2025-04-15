@@ -64,6 +64,13 @@ export default function CreateBajaForm({
     }
   };
 
+  const handleSelectChange = (value: string, name: string) => {
+    setTramite((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleSubmit = async () => {
     try {
       const formData = new FormData();
@@ -119,9 +126,9 @@ export default function CreateBajaForm({
             isRequired
             label="Estado de Liquidez"
             name="liquidez_status"
-            onChange={handleFieldChange}
+            onChange={(value) => handleSelectChange(value, "liquidez_status")}
             items={BAJA_LIQUIDEZ_STATUS}
-            selectedKey={tramite.liquidez_status as string}
+            selectedKey={tramite.liquidez_status || ""}
           />
           <div className="flex items-center gap-4">
             <InputComponent

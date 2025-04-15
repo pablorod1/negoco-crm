@@ -1,5 +1,5 @@
 "use client";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -47,7 +47,7 @@ export default function EmptyToken() {
           </div>
 
           <div className="mt-6 flex flex-col space-y-3">
-            <Button variant="solid" color="primary" size="lg" radius="sm">
+            <Button>
               <Link href="/login">Volver al inicio de sesión</Link>
             </Button>
           </div>

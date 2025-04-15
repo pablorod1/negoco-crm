@@ -95,8 +95,6 @@ export default function FourthStepForm({
         onCancel={onCancel}
         onBack={onBack}
         onSubmit={handleAddTramite}
-        loading={loading}
-        lastStep
       />
     </FormWrapper>
   );

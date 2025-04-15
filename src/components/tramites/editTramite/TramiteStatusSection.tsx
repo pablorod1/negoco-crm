@@ -2,7 +2,6 @@ import { TramiteVM, User } from "@/lib/core/types";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 import UpdateTramiteStatusModal from "./UpdateTramiteStatusModal";
 import { Button } from "@heroui/button";
-import { useDisclosure } from "@heroui/modal";
 import RenewTramiteConfirmationDialog from "../RenewTramiteConfirmationDialog";
 import { useState } from "react";
 import AvatarComponent from "@/components/core/AvatarComponent";
@@ -31,7 +30,6 @@ export default function TramiteStatusSection({
   isRenewable,
   onRenew,
 }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
   const [isRenewOpen, setIsRenewOpen] = useState(false);
   const isAdmin = userData.role === "admin";
   const isBackoffice = userData.role === "1";
@@ -40,7 +38,13 @@ export default function TramiteStatusSection({
       <div className="flex flex-col items-end">
         <div className="flex items-center gap-2">
           {getStatusBadge(tramite.status)}
-          {isEditable && <Button onPress={onOpen}>Actualizar Estado</Button>}
+          {isEditable && (
+            <UpdateTramiteStatusModal
+              tramite={tramite}
+              userData={userData}
+              onUpdate={onUpdate}
+            />
+          )}
           {isRenewable && (isAdmin || isBackoffice) && (
             <Button onPress={() => setIsRenewOpen(true)}>
               Renovar Trámite
@@ -90,13 +94,6 @@ export default function TramiteStatusSection({
         isOpen={isRenewOpen}
         onClose={() => setIsRenewOpen(false)}
         onRenew={onRenew}
-      />
-      <UpdateTramiteStatusModal
-        tramite={tramite}
-        isOpen={isOpen}
-        onClose={onClose}
-        userData={userData}
-        onUpdate={onUpdate}
       />
     </>
   );

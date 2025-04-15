@@ -24,12 +24,15 @@ export default function EditSignerForm({
 }: Props) {
   const [formData, setFormData] = useState<SignerDB>(signer);
 
-  const handleFieldChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -146,7 +149,7 @@ export default function EditSignerForm({
               name="cargo"
               label="Cargo"
               selectedKey={formData.cargo || ""}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "cargo")}
               items={CARGOS}
             />
           )}

@@ -1,17 +1,19 @@
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
-import { Tooltip } from "@heroui/tooltip";
-import { Button } from "@heroui/button";
+"use client";
+import { Button } from "@/components/ui/button";
 import { showCustomToast } from "../core/CustomToast";
 import { authClient } from "@/lib/auth/auth-client";
 import { AlertTriangle, Ban, UserRoundX } from "lucide-react";
 import { useUsers } from "@/lib/contexts/UsersContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { useState } from "react";
+import TooltipComponent from "../core/TooltipComponent";
 
 interface Props {
   user_id: string;
@@ -20,7 +22,11 @@ interface Props {
 
 export default function BanUserConfirmationModal({ user_id, userName }: Props) {
   const { refreshUsers } = useUsers();
-  const { onOpen, onClose, isOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const onClose = () => {
+    setIsOpen(false);
+  };
 
   const handleBan = async () => {
     try {
@@ -67,54 +73,51 @@ export default function BanUserConfirmationModal({ user_id, userName }: Props) {
 
   return (
     <>
-      <Tooltip color="danger" content="Deshabilitar usuario" radius="full">
-        <Button
-          variant="light"
-          isIconOnly
-          color="danger"
-          size="sm"
-          onPress={onOpen}
-          className="opacity-70 hover:opacity-100 hover:bg-red-50 transition-all"
-        >
-          <Ban size={16} />
-        </Button>
-      </Tooltip>
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <TooltipComponent content="Deshabilitar usuario">
+            <Button
+              variant="destructive"
+              color="danger"
+              size="icon"
+              onClick={() => setIsOpen(true)}
+              className="opacity-70 hover:opacity-100 hover:bg-red-50 transition-all"
+            >
+              <Ban size={16} />
+            </Button>
+          </TooltipComponent>
+        </DialogTrigger>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-2 text-danger">
               <AlertTriangle className="text-danger" size={30} />
-              <h2 className="text-xl">Confirmar desactivación</h2>
+              <DialogTitle className="text-xl">
+                Confirmar desactivación
+              </DialogTitle>
             </div>
-          </ModalHeader>
+          </DialogHeader>
 
-          <ModalBody>
-            <div className="flex flex-col">
-              <p className="text-gray-700">
-                ¿Estás seguro que deseas deshabilitar
-                {userName ? ` a ${userName}` : " este usuario"}?
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Para deshacer esta acción, deberás contactar al equipo de
-                soporte.
-              </p>
-            </div>
-          </ModalBody>
+          <div className="flex flex-col">
+            <p className="text-gray-700">
+              ¿Estás seguro que deseas deshabilitar
+              {userName ? ` a ${userName}` : " este usuario"}?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Para deshacer esta acción, deberás contactar al equipo de soporte.
+            </p>
+          </div>
 
-          <ModalFooter>
-            <Button variant="light" onPress={onClose} className="mr-2">
+          <DialogFooter>
+            <Button variant="destructive" onClick={onClose} className="mr-2">
               Cancelar
             </Button>
-            <Button
-              color="danger"
-              onPress={handleBan}
-              startContent={<Ban size={16} />}
-            >
+            <Button color="danger" onClick={handleBan}>
+              <Ban size={16} />
               Deshabilitar
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

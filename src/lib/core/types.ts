@@ -432,7 +432,8 @@ export type Status =
   | "Pendiente de Firma"
   | "Procesando"
   | "Activo"
-  | "Baja";
+  | "Baja"
+  | "Scoring";
 
 export type LiquidezStatus =
   | "Pendiente de Cobro"

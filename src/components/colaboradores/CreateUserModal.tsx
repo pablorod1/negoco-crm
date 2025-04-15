@@ -1,22 +1,27 @@
 "use client";
 
 import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import CreateUserForm from "./CreateUserForm";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 export default function CreateUserModal({
   onUserCreated,
 }: {
   onUserCreated: () => void;
 }) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const onClose = () => {
+    setIsOpen(false);
+  };
 
   const handleUserCreated = () => {
     onUserCreated();
@@ -24,20 +29,19 @@ export default function CreateUserModal({
   };
 
   return (
-    <>
-      <Button color="primary" onPress={onOpen}>
-        <Plus size={20} />
-        <span>Crear usuario</span>
-      </Button>
-
-      <Modal inert={!isOpen} isOpen={isOpen} onClose={onClose}>
-        <ModalContent>
-          <ModalHeader>Crear usuario</ModalHeader>
-          <ModalBody>
-            <CreateUserForm onUserCreated={handleUserCreated} />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </>
+    <Dialog open={isOpen}>
+      <DialogTrigger asChild>
+        <Button onClick={() => setIsOpen(true)}>
+          <Plus size={20} />
+          <span>Crear usuario</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>Crear usuario</DialogTitle>
+        </DialogHeader>
+        <CreateUserForm onUserCreated={handleUserCreated} onClose={onClose} />
+      </DialogContent>
+    </Dialog>
   );
 }

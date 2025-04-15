@@ -21,30 +21,31 @@ import ThirdStepForm from "../createTramite/forms/ThirdStepForm";
 import { CreateTramiteStepper } from "../CreateTramiteStepper";
 import FourthStepForm from "../createTramite/forms/FourthStepForm";
 
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
-import { CheckCircle, CircleX, FilePlus2, PlusCircle } from "lucide-react";
+import { CheckCircle, CircleX, PlusCircle } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { showCustomToast } from "../../core/CustomToast";
-import { ButtonProps } from "@heroui/button";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 import { deleteFiles } from "@/lib/firebase/data/deleteFile";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { DialogTrigger } from "@radix-ui/react-dialog";
+import { VariantProps } from "class-variance-authority";
+import { buttonVariants } from "@/components/ui/button";
+import ReviewStep from "./forms/ReviewStep";
 
 export default function AddTramiteDialog({
-  shortcut,
-  color,
+  variant,
   comparativa,
   plan,
   onComparativaUpdated,
 }: {
-  shortcut?: boolean;
-  color?: ButtonProps["color"];
+  variant?: string;
   comparativa?: ComparativaVM;
   plan?: string;
   onComparativaUpdated?: () => void;
@@ -65,7 +66,7 @@ export default function AddTramiteDialog({
   const [contracts, setContracts] = useState<ContractDB[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const { refreshTramites } = useTramites();
 
   const comparativaFiles = comparativa
@@ -73,7 +74,7 @@ export default function AddTramiteDialog({
     : undefined;
 
   const handleOpen = () => {
-    onOpen();
+    setIsOpen(true);
     setActiveTab(0);
     setTramite(
       createEmptyTramiteDB(
@@ -88,12 +89,15 @@ export default function AddTramiteDialog({
     setDocuments([]);
   };
 
+  const handleClose = () => {
+    setIsOpen(false);
+  };
+
   const handleBack = () => {
     setActiveTab(() => activeTab - 1);
   };
 
   const handleNext = () => {
-    console.log("tramite", tramite);
     setActiveTab((prev) => prev + 1);
   };
 
@@ -231,13 +235,13 @@ export default function AddTramiteDialog({
 
         if (onComparativaUpdated) {
           onComparativaUpdated();
-          onClose();
+          handleClose();
         }
       }
 
       try {
         await refreshTramites();
-        onClose();
+        handleClose();
       } catch (error) {
         console.error("Error al refrescar los trámites:", error);
         showCustomToast({
@@ -247,7 +251,7 @@ export default function AddTramiteDialog({
           iconSize: 24,
           icon: CircleX,
         });
-        onClose();
+        handleClose();
       }
     } catch (error) {
       console.error("Submission error:", error);
@@ -268,7 +272,7 @@ export default function AddTramiteDialog({
       setTramite={setTramite}
       onSubmitSuccess={handleNext}
       tramite={tramite}
-      onCancel={onClose}
+      onCancel={handleClose}
     />,
     <SecondStepForm
       key={2}
@@ -276,7 +280,7 @@ export default function AddTramiteDialog({
       setClient={setClient}
       onSecondSubmitSuccess={handleNext}
       onBack={handleBack}
-      onCancel={onClose}
+      onCancel={handleClose}
       setSigner={setSigner}
       signer={signer as SignerDB}
       userData={userData as User}
@@ -288,7 +292,7 @@ export default function AddTramiteDialog({
       onSubmit={handleNext}
       tramite={tramite}
       setTramite={setTramite}
-      onCancel={onClose}
+      onCancel={handleClose}
       contracts={contracts}
       setContracts={setContracts}
       userData={userData as User}
@@ -297,65 +301,91 @@ export default function AddTramiteDialog({
       userData={userData as User}
       key={4}
       onBack={handleBack}
-      onFinish={handleSubmit}
+      onFinish={handleNext}
       tramite={tramite}
       setTramite={setTramite}
-      onCancel={onClose}
+      onCancel={handleClose}
       documents={documents}
       setDocuments={setDocuments}
       loading={loading}
       comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
     />,
+    <ReviewStep
+      key={5}
+      tramite={tramite}
+      client={client}
+      signer={signer}
+      contracts={contracts}
+      documents={documents}
+      onBack={handleBack}
+      onSubmit={handleSubmit}
+      onCancel={handleClose}
+      loading={loading}
+      userData={userData as User}
+    />,
   ];
 
   return (
-    <>
-      {!shortcut ? (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
         <Button
-          onPress={handleOpen}
-          color={color ? color : "primary"}
-          radius="sm"
-          className="shadow-md"
+          onClick={handleOpen}
+          variant={
+            variant
+              ? (variant as VariantProps<typeof buttonVariants>["variant"])
+              : "default"
+          }
         >
           <PlusCircle size={20} />
           <span>Nuevo Trámite</span>
         </Button>
-      ) : (
-        <div onClick={handleOpen} className="flex flex-col items-center gap-2">
-          <FilePlus2 size={24} />
-          <span className="text-nowrap">Nuevo trámite</span>
-        </div>
-      )}
+      </DialogTrigger>
 
-      <Modal
-        isDismissable={false}
-        radius="sm"
-        hideCloseButton
-        inert={!isOpen}
-        isOpen={isOpen}
-        onClose={onClose}
-        classNames={{
-          wrapper: "overflow-hidden",
-          base: "max-h-[90vh] overflow-y-auto",
+      <DialogContent
+        onInteractOutside={(e) => {
+          e.preventDefault();
         }}
+        className={`transition-all duration-700 ease-in-out w-full h-auto ${
+          activeTab === 0
+            ? "max-w-[1200px]"
+            : activeTab === 1
+              ? "max-w-[1400px]"
+              : activeTab === 2
+                ? "max-w-[1300px]"
+                : "max-w-[1400px]"
+        }`}
       >
-        <ModalContent
-          className={`transition-all duration-700 ease-in-out w-full h-auto ${
-            activeTab === 0
-              ? "max-w-[1200px]"
-              : activeTab === 1
-                ? "max-w-[1400px]"
-                : activeTab === 2
-                  ? "max-w-[1300px]"
-                  : "max-w-[1400px]"
-          }`}
-        >
-          <ModalHeader className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between p-4">
-            <CreateTramiteStepper steps={4} currentStep={activeTab} />
-          </ModalHeader>
-          <ModalBody>{formElements[activeTab]}</ModalBody>
-        </ModalContent>
-      </Modal>
-    </>
+        <DialogHeader>
+          <div className="hidden">
+            <DialogTitle className="text-lg text-primary-800 font-semibold">
+              Creando una nueva comparativa
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 mb-4">
+              Completa los pasos para crear una nueva comparativa
+            </DialogDescription>
+          </div>
+          <CreateTramiteStepper
+            steps={5}
+            currentStep={activeTab}
+            selectedComercial={
+              {
+                id: tramite.user_id,
+                name: tramite.sales_name,
+              } as User
+            }
+            selectedClient={{
+              id: client.id,
+              name: client.name,
+              last_name: client.last_name,
+              type: client.type,
+              document_type: client.document_type,
+              document_number: client.document_number,
+            }}
+            setActiveStep={setActiveTab}
+          />
+        </DialogHeader>
+        {formElements[activeTab]}
+      </DialogContent>
+    </Dialog>
   );
 }

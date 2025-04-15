@@ -42,11 +42,22 @@ export default function EditContractForm({
     e:
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLTextAreaElement>
-      | React.ChangeEvent<HTMLSelectElement>
   ) => {
     const value = e.target.value;
     const name = e.target.name;
 
+    setErrors((prev) => ({
+      ...prev,
+      [name]: validateField(value).errorMessage || "",
+    }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
     setErrors((prev) => ({
       ...prev,
       [name]: validateField(value).errorMessage || "",
@@ -85,7 +96,7 @@ export default function EditContractForm({
               name="type"
               label="Tipo de contrato"
               items={PLAIN_CONTRACT_TYPES}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "type")}
               errors={errors.type}
               isRequired
               selectedKey={formData.type}
@@ -94,7 +105,7 @@ export default function EditContractForm({
               name="plan"
               label="Tipo de tarifa"
               items={PLANS}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "plan")}
               errors={errors.plan}
               isRequired
               selectedKey={formData.plan}
@@ -153,7 +164,7 @@ export default function EditContractForm({
               name="old_company"
               label="Compañía Antigua"
               items={[...PLAIN_COMPANIES, "Otra"]}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "old_company")}
               isRequired
               selectedKey={formData.old_company}
             />
@@ -161,7 +172,7 @@ export default function EditContractForm({
               name="new_company"
               label="Compañía Nueva"
               items={PLAIN_COMPANIES}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "new_company")}
               errors={errors.new_company}
               isRequired
               selectedKey={formData.new_company}

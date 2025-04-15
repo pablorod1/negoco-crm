@@ -186,8 +186,7 @@ export function UpdateMultipleTramitesModal<TData>({
     [selectedTramites.length]
   );
 
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
+  const handleStatusChange = (value: string) => {
     setStatus(value as LiquidezStatus);
   };
 

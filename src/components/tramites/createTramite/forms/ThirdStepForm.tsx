@@ -6,15 +6,16 @@ import {
 } from "@/lib/core/const";
 import { Divider } from "@heroui/divider";
 import { ContractDB, Status, TramiteDB, User } from "@/lib/core/types";
-import { NumberInput } from "@heroui/number-input";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import ContractPreview from "../ContractPreview";
-import CreateContractDrawer from "../CreateContractDrawer";
-import { SelectComponent } from "../InputComponent";
+import { InputComponent, SelectComponent } from "../InputComponent";
 import { useState } from "react";
 import CheckComisionModal from "../CheckComisionModal";
 import EmptyComisionModal from "../EmptyComisionModal";
+import { Euro, Pencil } from "lucide-react";
+import ContractForm from "./ContractForm";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   onBack: () => void;
@@ -39,9 +40,68 @@ export default function ThirdStepForm({
 }: Props) {
   const [openComisionModal, setOpenComisionModal] = useState(false);
   const [openEmptyComisionModal, setOpenEmptyComisionModal] = useState(false);
+  const [showContractForm, setShowContractForm] = useState(false);
+  const [isEditingContract, setIsEditingContract] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<ContractDB | null>(
+    null
+  );
 
-  const handleFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
+  const handleComisionChange = (
+    value: number | React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const numValue =
+      typeof value === "number" ? value : Number(value.target.value);
+    setTramite((prevState) => ({
+      ...prevState,
+      comision: numValue,
+    }));
+  };
+
+  const handleComisionSalesChange = (
+    value: number | React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const numValue =
+      typeof value === "number" ? value : Number(value.target.value);
+    setTramite((prevState) => ({
+      ...prevState,
+      comision_sales_person: numValue,
+    }));
+  };
+
+  const handleAddContract = (newContract: ContractDB) => {
+    setContracts([...contracts, newContract]);
+    setShowContractForm(false);
+  };
+
+  const handleUpdateContract = (updatedContract: ContractDB) => {
+    const updatedContracts = contracts.map((contract) =>
+      contract.id === updatedContract.id ? updatedContract : contract
+    );
+    setContracts(updatedContracts);
+    setShowContractForm(false);
+    setIsEditingContract(false);
+    setSelectedContract(null);
+  };
+
+  const openCheckComisionModal = () => {
+    setOpenComisionModal(true);
+  };
+
+  const handleEmptyComisionModal = () => {
+    setOpenEmptyComisionModal(true);
+  };
+
+  const handleCreateContract = () => {
+    setShowContractForm(true);
+  };
+
+  const handleEditContract = (contract: ContractDB) => {
+    setIsEditingContract(true);
+    setShowContractForm(true);
+    setSelectedContract(contract);
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
     setTramite((prevState) => {
       if (name === "status") {
         return {
@@ -73,46 +133,30 @@ export default function ThirdStepForm({
     });
   };
 
-  const handleComisionChange = (
-    value: number | React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const numValue =
-      typeof value === "number" ? value : Number(value.target.value);
-    setTramite((prevState) => ({
-      ...prevState,
-      comision: numValue,
-    }));
-  };
-
-  const handleComisionSalesChange = (
-    value: number | React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const numValue =
-      typeof value === "number" ? value : Number(value.target.value);
-    setTramite((prevState) => ({
-      ...prevState,
-      comision_sales_person: numValue,
-    }));
-  };
-
-  const handleAddContract = (newContract: ContractDB) => {
-    setContracts([...contracts, newContract]);
-  };
-
-  const handleUpdateContract = (updatedContract: ContractDB) => {
-    const updatedContracts = contracts.map((contract) =>
-      contract.id === updatedContract.id ? updatedContract : contract
+  if (showContractForm && !isEditingContract) {
+    return (
+      <FormWrapper>
+        <ContractForm
+          onCreateContract={handleAddContract}
+          tramite_id={tramite.id}
+          onCancel={() => setShowContractForm(false)}
+        />
+      </FormWrapper>
     );
-    setContracts(updatedContracts);
-  };
+  }
 
-  const openCheckComisionModal = () => {
-    setOpenComisionModal(true);
-  };
-
-  const handleEmptyComisionModal = () => {
-    setOpenEmptyComisionModal(true);
-  };
+  if (showContractForm && isEditingContract) {
+    return (
+      <FormWrapper>
+        <ContractForm
+          onCreateContract={handleUpdateContract}
+          tramite_id={tramite.id}
+          onCancel={() => setShowContractForm(false)}
+          contract={selectedContract}
+        />
+      </FormWrapper>
+    );
+  }
 
   return (
     <>
@@ -121,7 +165,7 @@ export default function ThirdStepForm({
           <div className="flex flex-col gap-y-4 w-full">
             <div className="flex items-stretch gap-4 w-full">
               <SelectComponent
-                onChange={handleFieldChange}
+                onChange={(value) => handleSelectChange(value, "status")}
                 name="status"
                 label="Estado"
                 items={
@@ -129,55 +173,57 @@ export default function ThirdStepForm({
                     ? COMERCIAL_STATUS_TYPES
                     : PLAIN_STATUS_TYPES
                 }
-                selectedKey={tramite.status}
+                selectedKey={tramite.status || ""}
                 isRequired
               />
               {userData &&
                 (userData.role === "admin" || userData.role === "1") && (
                   <>
-                    <NumberInput
+                    <InputComponent
+                      type="number"
                       label="Comisión"
                       name="comision"
-                      value={tramite.comision}
-                      onChange={(value) => handleComisionChange(value)}
+                      value={tramite.comision || ""}
+                      onChange={handleComisionChange}
                       isRequired={tramite.status === "Activo"}
-                      size="lg"
-                      radius="sm"
-                      variant="bordered"
-                      color="primary"
+                      endContent={<Euro size={16} />}
                     />
-                    <NumberInput
+                    <InputComponent
+                      type="number"
                       label="Comisión Comercial"
                       name="comision_sales_person"
-                      value={tramite.comision_sales_person}
-                      onChange={(value) => handleComisionSalesChange(value)}
+                      value={tramite.comision_sales_person || ""}
+                      onChange={handleComisionSalesChange}
                       isRequired={tramite.status === "Activo"}
-                      size="lg"
-                      radius="sm"
-                      variant="bordered"
-                      color="primary"
+                      endContent={<Euro size={16} />}
                     />
                   </>
                 )}
             </div>
           </div>
-          <Divider className="my-4" />
-          <h3 className="text-xl font-semibold text-primary-500 mb-4">
-            Contratos
-          </h3>
+          <Divider className="my-8" />
+          <div className="flex items-center gap-4 mb-4">
+            <h3 className="text-xl font-semibold text-primary-500 ">
+              Contratos
+            </h3>
+            <Button variant="outline" onClick={handleCreateContract}>
+              Añadir Contrato
+            </Button>
+          </div>
+
           <div className="flex items-start gap-4 w-full">
-            <CreateContractDrawer
-              tramite_id={tramite.id}
-              onCreateContract={handleAddContract}
-            />
             {contracts.map((contract, index) => (
-              <ContractPreview
-                key={index}
-                contract={contract}
-                onSavingContract={handleUpdateContract}
-                userData={userData}
-                tramite={tramite}
-              />
+              <div key={index} className="flex items-center flex-col gap-2 ">
+                <ContractPreview contract={contract} />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full"
+                  onClick={() => handleEditContract(contract)}
+                >
+                  <Pencil size={16} />
+                </Button>
+              </div>
             ))}
           </div>
         </form>
@@ -190,9 +236,10 @@ export default function ThirdStepForm({
             tramite.status !== "Activo"
               ? openCheckComisionModal
               : tramite.status === "Activo" &&
-                (tramite.comision === 0 || tramite.comision_sales_person === 0)
-              ? handleEmptyComisionModal
-              : onSubmit
+                  (tramite.comision === 0 ||
+                    tramite.comision_sales_person === 0)
+                ? handleEmptyComisionModal
+                : onSubmit
           }
         />
       </FormWrapper>

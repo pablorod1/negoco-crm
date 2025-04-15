@@ -24,8 +24,14 @@ import { showCustomToast } from "@/components/core/CustomToast";
 import { useComparativas } from "@/lib/contexts/ComparativasContext";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
+import { type VariantProps } from "class-variance-authority";
+import { buttonVariants } from "@/components/ui/button";
 
-export default function AddComparativaDialog() {
+export default function AddComparativaDialog({
+  variant,
+}: {
+  variant?: string;
+}) {
   const { userData } = useUser();
   const { refreshComparativas } = useComparativas();
   const [activeTab, setActiveTab] = useState(0);
@@ -175,7 +181,14 @@ export default function AddComparativaDialog() {
     <>
       <Dialog open={isOpen}>
         <DialogTrigger asChild>
-          <Button className="shadow-md" onClick={() => setIsOpen(true)}>
+          <Button
+            variant={
+              variant
+                ? (variant as VariantProps<typeof buttonVariants>["variant"])
+                : "default"
+            }
+            onClick={() => setIsOpen(true)}
+          >
             <Plus size={20} />
             <span>Nueva Comparativa</span>
           </Button>

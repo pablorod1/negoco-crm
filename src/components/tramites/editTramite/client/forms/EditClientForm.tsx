@@ -24,12 +24,15 @@ export default function EditClientForm({
 }: Props) {
   const [formData, setFormData] = useState<ClientDB>(client);
 
-  const handleFieldChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -122,14 +125,14 @@ export default function EditClientForm({
               selectedKey={formData.type}
               isRequired
               items={CLIENT_TYPES}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "type")}
             />
             <SelectComponent
               name="document_type"
               label="Tipo de documento"
               selectedKey={formData.document_type}
               isRequired
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "document_type")}
               items={
                 client.type
                   ? DOCUMENT_TYPES[client.type as keyof typeof DOCUMENT_TYPES]
@@ -202,68 +205,6 @@ export default function EditClientForm({
           lastStep
         />
       </EditFormWrapper>
-      {/* {(client.type === "Empresa" ||
-        client.type === "Comunidad de Propietarios") && (
-        <EditFormWrapper title="Datos del firmante">
-          <div className="flex flex-col gap-4">
-            <InputComponent
-              name="signer.name"
-              label="Nombre"
-              value={signer.name}
-              isRequired
-              onChange={handleFieldChange}
-              editable={userData.role !== "2"}
-              type="text"
-            />
-            <InputComponent
-              name="signer.last_name"
-              label="Apellidos"
-              value={signer.last_name}
-              isRequired
-              onChange={handleFieldChange}
-              editable={userData.role !== "2"}
-              type="text"
-            />
-            <InputComponent
-              name="signer.phone"
-              label="Teléfono"
-              value={signer.phone}
-              isRequired
-              onChange={handleFieldChange}
-              editable={userData.role !== "2"}
-              type="text"
-            />
-            <InputComponent
-              name="signer.email"
-              label="Email"
-              value={signer.email}
-              isRequired
-              onChange={handleFieldChange}
-              editable={userData.role !== "2"}
-              type="email"
-            />
-            <InputComponent
-              name="signer.document_number"
-              label="Número de documento"
-              value={signer.document_number}
-              editable={userData.role !== "2"}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-            {client.type === "Comunidad de Propietarios" && (
-              <SelectComponent
-                name="signer.cargo"
-                label="Cargo"
-                selectedKey={signer.cargo || ""}
-                onChange={handleFieldChange}
-                editable={userData.role !== "2"}
-                items={CARGOS}
-              />
-            )}
-          </div>
-        </EditFormWrapper>
-      )} */}
     </>
   );
 }

@@ -3,8 +3,6 @@ import { Tooltip } from "@heroui/tooltip";
 import { InfoIcon, RefreshCcw } from "lucide-react";
 import UpdateTramiteStatusModal from "../UpdateTramiteStatusModal";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
-import { Button } from "@heroui/button";
-import { useDisclosure } from "@heroui/modal";
 
 interface Props {
   tramite: TramiteVM;
@@ -18,7 +16,6 @@ export default function LiquidezStatusSection({
   userData,
   onUpdate,
 }: Props) {
-  const { isOpen, onOpen, onClose } = useDisclosure();
   return (
     <>
       <div className="space-y-2">
@@ -50,7 +47,11 @@ export default function LiquidezStatusSection({
           </div>
           {(tramite.status === "Activo" || tramite.status === "Baja") &&
             !isComercial && (
-              <Button onPress={onOpen}>Actualizar Estado de Liquidez</Button>
+              <UpdateTramiteStatusModal
+                tramite={tramite}
+                userData={userData as User}
+                onUpdate={onUpdate}
+              />
             )}
         </div>
         {isComercial &&
@@ -60,13 +61,6 @@ export default function LiquidezStatusSection({
           <>{getStatusBadge(tramite.liquidez_status)}</>
         )}
       </div>
-      <UpdateTramiteStatusModal
-        tramite={tramite}
-        isOpen={isOpen}
-        onClose={onClose}
-        userData={userData as User}
-        onUpdate={onUpdate}
-      />
     </>
   );
 }

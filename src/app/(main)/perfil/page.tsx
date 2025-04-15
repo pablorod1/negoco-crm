@@ -2,12 +2,12 @@
 import UpdatePassword from "@/components/profile/UpdatePassword";
 import UpdateUser from "@/components/profile/UpdateUser";
 import UploadAvatar from "@/components/profile/UploadAvatar";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/contexts/UserContext";
 import { User } from "@/lib/core/types";
-import { Divider } from "@heroui/divider";
 import { authClient } from "@/lib/auth/auth-client";
 import { redirect } from "next/navigation";
+import { Separator } from "@/components/ui/separator";
 
 export default function AccountSettings() {
   const { userData, refreshUserData } = useUser();
@@ -31,7 +31,7 @@ export default function AccountSettings() {
             Modifica la información de tu cuenta.
           </span>
         </div>
-        <Divider />
+        <Separator />
         <UploadAvatar
           userData={userData as User}
           refreshUserData={refreshUserData}
@@ -40,21 +40,15 @@ export default function AccountSettings() {
           userData={userData as User}
           refreshUserData={refreshUserData}
         />
-        <Divider />
+        <Separator />
         <UpdatePassword
           userData={userData as User}
           refreshUserData={refreshUserData}
         />
-        <Divider />
+        <Separator />
 
         <div className="py-5">
-          <Button
-            radius="sm"
-            className="shadow-md"
-            onPress={handleSignOut}
-            variant="solid"
-            color="danger"
-          >
+          <Button onClick={handleSignOut} variant="destructive">
             Cerrar Sesión
           </Button>
         </div>

@@ -7,15 +7,17 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { SelectValue } from "@radix-ui/react-select";
+import { Comercial } from "@/components/colaboradores/CreateUserForm";
 
 interface SelectProps {
   name: string;
   label: string;
-  items: (string | User | ComparativaPlan | ClientDB)[];
-  onChange: (value: string) => void;
+  items: (string | User | ComparativaPlan | ClientDB | Comercial)[];
+  onChange: (value: string, e?: React.ChangeEvent<HTMLSelectElement>) => void;
+
   errors?: string;
   selectedKey: string;
   isRequired?: boolean;
@@ -36,7 +38,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
-      <Label>
+      <Label htmlFor={name}>
         {label} {isRequired && <span className="text-red-500">*</span>}
       </Label>
       <Select
@@ -104,7 +106,7 @@ interface InputProps {
   isRequired?: boolean;
   startContent?: React.ReactNode;
   endContent?: React.ReactNode;
-  value?: string;
+  value: string | number;
   disabled?: boolean;
 }
 
@@ -122,7 +124,7 @@ export const InputComponent: React.FC<InputProps> = ({
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
-      <Label>
+      <Label htmlFor={name}>
         {label} {isRequired && <span className="text-red-500">*</span>}
       </Label>
 
@@ -134,12 +136,13 @@ export const InputComponent: React.FC<InputProps> = ({
         )}
         <Input
           onChange={onChange}
+          id={name}
           name={name}
           type={type}
-          value={value}
-          disabled={disabled}
+          value={value || ""}
+          disabled={disabled ? true : false}
           color={errors ? "danger" : "primary"}
-          className={`${startContent ? "pl-8" : ""} ${endContent ? "pr-8" : ""}`}
+          className={`z-10 ${startContent ? "pl-8" : ""} ${endContent ? "pr-8" : ""}`}
         />
         {endContent && (
           <div className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground">

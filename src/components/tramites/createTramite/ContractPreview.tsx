@@ -1,42 +1,12 @@
-import { ContractDB, TramiteDB, User } from "@/lib/core/types";
-import EditContractDrawer from "@/components/tramites/editTramite/contract/EditContractDrawer";
+import { ContractDB } from "@/lib/core/types";
 
 interface ContractPreviewProps {
   contract: ContractDB;
-  onSavingContract: (contract: ContractDB) => void;
-  userData: User;
-  tramite: TramiteDB;
 }
 
-export default function ContractPreview({
-  contract,
-  onSavingContract,
-  userData,
-  tramite,
-}: ContractPreviewProps) {
-  const checkRole = () => {
-    if (userData) {
-      if (
-        userData.role === "2" &&
-        (tramite.status === "Tramitable" || tramite.status === "Borrador")
-      ) {
-        return true;
-      } else if (userData.role !== "2") {
-        return true;
-      }
-
-      return false;
-    }
-  };
-
+export default function ContractPreview({ contract }: ContractPreviewProps) {
   return (
     <div className="relative w-fit h-auto group">
-      {checkRole() && (
-        <EditContractDrawer
-          contract={contract}
-          onSavingContract={onSavingContract}
-        />
-      )}
       <svg
         xmlns="http://www.w3.org/2000/svg"
         xmlnsXlink="http://www.w3.org/1999/xlink"

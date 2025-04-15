@@ -114,9 +114,9 @@ export default function HeroDashboard({
             <Button isIconOnly onPress={refreshData} variant="light">
               <RefreshCcw size={16} className="text-white" />
             </Button>
-            <AddTramiteDialog color="default" />
+            <AddTramiteDialog variant="primaryOutline" />
 
-            <AddComparativaDialog color="default" />
+            <AddComparativaDialog variant="primaryOutline" />
           </div>
         </div>
 
