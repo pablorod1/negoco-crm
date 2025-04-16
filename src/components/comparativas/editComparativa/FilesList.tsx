@@ -2,7 +2,7 @@ import { showCustomToast } from "@/components/core/CustomToast";
 import { formatDateTime, formatFileSize } from "@/lib/core/format";
 import { ComparativaFile } from "@/lib/core/types";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { CloudAlert, Download, FileIcon, FileX } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useMemo } from "react";
@@ -88,9 +88,9 @@ export const FilesList = ({
         <div className="flex items-center gap-2">
           {file.download_url && (
             <Button
-              variant="bordered"
-              isIconOnly
-              onPress={() => handleDownloadFile(file.filename as string)}
+              variant="outline"
+              size="icon"
+              onClick={() => handleDownloadFile(file.filename as string)}
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -98,7 +98,7 @@ export const FilesList = ({
           {!isComercial && (
             <DeleteComparativaFileConfirmationModal
               comparativa_id={comparativa_id}
-              filename={file.filename}
+              file={file}
               organization_id={organization_id}
               onDeleted={onDeleted}
             />

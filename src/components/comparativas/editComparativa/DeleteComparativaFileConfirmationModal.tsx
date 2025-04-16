@@ -1,27 +1,37 @@
 import {
-  Modal,
-  ModalHeader,
-  ModalContent,
-  ModalFooter,
-  ModalBody,
-  useDisclosure,
-} from "@heroui/modal";
-import { Button } from "@heroui/button";
+  Dialog,
+  DialogHeader,
+  DialogContent,
+  DialogFooter,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle, CloudAlert, Trash } from "lucide-react";
 import { showCustomToast } from "@/components/core/CustomToast";
-import { memo } from "react";
+import { memo, useState } from "react";
+import { DialogTitle } from "@radix-ui/react-dialog";
+import { ComparativaFile } from "@/lib/core/types";
+import { formatFileSize } from "@/lib/core/format";
 
 interface Props {
   comparativa_id: string;
   organization_id: string;
-  filename: string;
+  file: ComparativaFile;
   onDeleted: () => void;
 }
 
 const DeleteComparativaFileConfirmationModal = memo(
-  ({ comparativa_id, organization_id, filename, onDeleted }: Props) => {
-    const { isOpen, onOpen, onClose } = useDisclosure();
+  ({ comparativa_id, organization_id, file, onDeleted }: Props) => {
+    const [isOpen, setIsOpen] = useState(false);
 
+    const onOpen = () => {
+      setIsOpen(true);
+    };
+
+    const onClose = () => {
+      setIsOpen(false);
+    };
     const handleDeleteFile = async () => {
       try {
         const res = await fetch("/api/comparativas/delete/file", {
@@ -30,7 +40,7 @@ const DeleteComparativaFileConfirmationModal = memo(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            file_name: filename,
+            file_name: file.filename,
             comparativa_id,
             organization_id,
           }),
@@ -71,46 +81,39 @@ const DeleteComparativaFileConfirmationModal = memo(
 
     return (
       <>
-        <Button
-          size="sm"
-          variant="light"
-          color="danger"
-          isIconOnly
-          onPress={onOpen}
-        >
-          <Trash size={16} />
-        </Button>
-        <Modal size="2xl" isOpen={isOpen} onClose={onClose}>
-          <ModalContent>
-            <ModalHeader className="flex items-start gap-4">
-              <AlertTriangle className="size-12 text-danger" />
-              <div className="flex flex-col">
-                <h2 className="text-lg font-semibold text-danger">
-                  ¿Estás seguro de que deseas eliminar el archivo?
-                </h2>
-                <p className="text-gray-600 text-sm">
-                  Se eliminará de forma permanente.
-                </p>
+        <Dialog open={isOpen}>
+          <DialogTrigger asChild>
+            <Button size="icon" variant="destructive" onClick={onOpen}>
+              <Trash size={16} />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <div className="flex items-start gap-4">
+                <AlertTriangle size={32} className="text-danger" />
+                <div className="flex flex-col">
+                  <DialogTitle className="font-semibold text-danger">
+                    ¿Estás seguro de que deseas eliminar el archivo?
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 text-sm">
+                    Se eliminará de forma permanente.
+                  </DialogDescription>
+                </div>
               </div>
-            </ModalHeader>
-            <ModalBody className="flex justify-end gap-4 mt-4">
-              <span>{filename}</span>
-            </ModalBody>
-            <ModalFooter>
-              <Button color="default" onPress={onClose}>
-                Cancelar
-              </Button>
-              <Button
-                variant="solid"
-                radius="sm"
-                color="danger"
-                onPress={handleDeleteFile}
-              >
+            </DialogHeader>
+            <div className="px-4 py-2 rounded-md border border-gray flex justify-between">
+              <span>{file.filename}</span>
+
+              <span>{formatFileSize(file.size)}</span>
+            </div>
+            <DialogFooter>
+              <Button onClick={onClose}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleDeleteFile}>
                 Eliminar Archivo
               </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }

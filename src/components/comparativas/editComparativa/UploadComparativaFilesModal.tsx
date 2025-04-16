@@ -1,16 +1,14 @@
 "use client";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import {
-  useDisclosure,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@heroui/modal";
-import { Divider } from "@heroui/divider";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTrigger,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import DocumentsForm from "../../tramites/DocumentsForm";
-import { Checkbox } from "@heroui/checkbox";
 import React, { useState } from "react";
 import { showCustomToast } from "../../core/CustomToast";
 import { CheckCircle, CircleX, FilePlus2 } from "lucide-react";
@@ -24,6 +22,10 @@ import { generateComparativaUpdatedNotification } from "@/lib/core/notifications
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { Label } from "@/components/ui/label";
 
 interface Props {
   onUpload: () => void;
@@ -38,7 +40,7 @@ export default function UploadComparativaFilesModal({
   userData,
   comparativa,
 }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [estudioRealizado, setEstudioRealizado] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,9 +70,16 @@ export default function UploadComparativaFilesModal({
   const isBackoffice = userData && userData.role === "1";
   const organization_id = userData.organization.id;
 
-  const handleCancel = () => {
+  const onClose = () => {
+    setIsOpen(false);
     setUploadedFiles([]);
-    onClose();
+    setEstudioRealizado(false);
+  };
+
+  const onOpen = () => {
+    setIsOpen(true);
+    setEstudioRealizado(comparativa.status === "completed" ? true : false);
+    setUploadedFiles([]);
   };
 
   const checkStatusChanged = () => {
@@ -81,6 +90,10 @@ export default function UploadComparativaFilesModal({
       return true;
     }
     return false;
+  };
+
+  const handleCheck = (check: CheckedState) => {
+    setEstudioRealizado(check as boolean);
   };
 
   const formatStatus = (status: string) => {
@@ -285,118 +298,113 @@ export default function UploadComparativaFilesModal({
     }
   };
 
+  const getCheckboxLabelText = () => {
+    if (comparativa.status === "pending" && estudioRealizado) {
+      return "El estado de la comparativa cambiará a 'Estudio Realizado' una vez que subas los archivos.";
+    } else if (comparativa.status === "completed" && !estudioRealizado) {
+      return "El estado de la comparativa cambiará a 'Pendiente de Estudio' una vez que subas los archivos.";
+    } else if (comparativa.status === "completed" && estudioRealizado) {
+      return "El estado de la comparativa se mantendrá como 'Estudio Realizado'.";
+    }
+    return "El estado de la comparativa se mantendrá como 'Pendiente de Estudio'.";
+  };
+
   return (
     <>
-      <Button
-        startContent={<FilePlus2 size={16} />}
-        onPress={onOpen}
-        variant="light"
-        color="primary"
-        radius="sm"
-        className="!bg-transparent"
-      >
-        Añadir Archivo
-      </Button>
-      <Modal
-        isDismissable={false}
-        hideCloseButton
-        inert={!isOpen}
-        size="3xl"
-        isOpen={isOpen}
-        onClose={onClose}
-        radius="sm"
-      >
-        <ModalContent>
-          <ModalHeader>
-            <h2 className="text-2xl font-bold text-primary-800">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button onClick={onOpen} variant="outline">
+            <FilePlus2 size={16} />
+            Añadir Archivo
+          </Button>
+        </DialogTrigger>
+        <DialogContent
+          aria-describedby={undefined}
+          className="w-full max-w-3xl"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-primary-800">
               Subir Archivos
-            </h2>
-          </ModalHeader>
-          <ModalBody>
-            {loading && <LoadingStateModal userData={userData} />}
-            <DocumentsForm
-              uploadedFiles={uploadedFiles}
-              setUploadedFiles={setUploadedFiles}
-            />
-            {(isAdmin || isBackoffice) && (
-              <>
-                <Divider />
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    {status === "pending" ? (
-                      <>
-                        <h2 className="text-lg font-semibold text-primary-800">
-                          ¿Has realizado el estudio de esta comparativa?
-                        </h2>
-                        <p className="text-sm text-gray-600">
-                          El estado de la comparativa cambiará a{" "}
-                          <strong>Estudio Realizado</strong> una vez que subas
-                          los archivos.
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Para mantener el estado en{" "}
-                          <strong>Pendiente de Estudio</strong>, desmarca la
-                          casilla.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <h2 className="text-lg font-semibold text-primary-800">
-                          El estudio de esta comparativa ya ha sido realizado.
-                        </h2>
-                        <p className="text-sm text-gray-600">
-                          Si deseas cambiar el estado de la comparativa a{" "}
-                          <strong>Pendiente de Estudio</strong>, desmarca la
-                          casilla.
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Si deseas mantener el estado de la comparativa como{" "}
-                          <strong>Estudio Realizado</strong>, déjala marcada.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                  <Checkbox
-                    color="primary"
-                    onValueChange={setEstudioRealizado}
-                    isSelected={estudioRealizado}
-                  >
-                    Estudio Realizado
-                  </Checkbox>
-                  {estudioRealizado && (
+            </DialogTitle>
+          </DialogHeader>
+          {loading && <LoadingStateModal userData={userData} />}
+          <DocumentsForm
+            uploadedFiles={uploadedFiles}
+            setUploadedFiles={setUploadedFiles}
+          />
+          {(isAdmin || isBackoffice) && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  {status === "pending" ? (
                     <>
-                      <Divider />
-                      <ComissionsForm
-                        comparativa={comparativa}
-                        formDataComissions={formDataComissions}
-                        setFormDataComissions={setFormDataComissions}
-                      />
+                      <h2 className="text-lg font-semibold text-primary-800">
+                        ¿Has realizado el estudio de esta comparativa?
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        El estado de la comparativa cambiará a{" "}
+                        <strong>Estudio Realizado</strong> una vez que subas los
+                        archivos.
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Para mantener el estado en{" "}
+                        <strong>Pendiente de Estudio</strong>, desmarca la
+                        casilla.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-lg font-semibold text-primary-800">
+                        El estudio de esta comparativa ya ha sido realizado.
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Si deseas cambiar el estado de la comparativa a{" "}
+                        <strong>Pendiente de Estudio</strong>, desmarca la
+                        casilla.
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Si deseas mantener el estado de la comparativa como{" "}
+                        <strong>Estudio Realizado</strong>, déjala marcada.
+                      </p>
                     </>
                   )}
                 </div>
-              </>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              radius="sm"
-              color="danger"
-              onPress={handleCancel}
-              variant="light"
-            >
+                <div className="inline-flex gap-2">
+                  <Checkbox
+                    className="rounded-md"
+                    color="primary"
+                    onCheckedChange={handleCheck}
+                    checked={estudioRealizado}
+                    id="estudioRealizado"
+                    name="estudioRealizado"
+                  />
+                  <Label htmlFor="estudioRealizado">
+                    {getCheckboxLabelText()}
+                  </Label>
+                </div>
+
+                {estudioRealizado && (
+                  <>
+                    <Separator />
+                    <ComissionsForm
+                      comparativa={comparativa}
+                      formDataComissions={formDataComissions}
+                      setFormDataComissions={setFormDataComissions}
+                    />
+                  </>
+                )}
+              </div>
+            </>
+          )}
+          <DialogFooter>
+            <Button onClick={onClose} variant="destructive">
               Cancelar
             </Button>
-            <Button
-              variant="solid"
-              color="primary"
-              radius="sm"
-              onPress={handleSubmit}
-            >
-              Subir Archivos
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <Button onClick={handleSubmit}>Subir Archivos</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

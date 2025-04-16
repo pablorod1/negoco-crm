@@ -1,13 +1,13 @@
 "use client";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { CheckCircle, CircleX, Coins } from "lucide-react";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
 import { ComparativaVM, User } from "@/lib/core/types";
@@ -26,7 +26,7 @@ export default function UpdateComissionsModal({
   onUpdate,
   userData,
 }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formDataComissions, setFormDataComissions] = useState<
     Partial<ComissionFormValues>
@@ -50,6 +50,14 @@ export default function UpdateComissionsModal({
               comparativa.comision_sales_person.indexado,
           }
   );
+
+  const onOpen = () => {
+    setIsOpen(true);
+  };
+
+  const onClose = () => {
+    setIsOpen(false);
+  };
 
   const checkComissionsChanged = () => {
     const changes = {
@@ -158,58 +166,33 @@ export default function UpdateComissionsModal({
   };
   return (
     <>
-      <Button
-        variant="bordered"
-        color="primary"
-        radius="sm"
-        onPress={onOpen}
-        startContent={<Coins size={16} />}
-      >
-        Actualizar comisiones
-      </Button>
-      <Modal
-        isDismissable={false}
-        hideCloseButton
-        inert={!isOpen}
-        isOpen={isOpen}
-        onClose={onClose}
-        size="xl"
-        radius="sm"
-      >
-        <ModalContent>
-          <ModalHeader>
-            <h2 className="text-2xl font-bold text-primary-800">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" onClick={onOpen}>
+            <Coins size={16} />
+            Actualizar comisiones
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader aria-describedby={undefined}>
+            <DialogTitle className="text-2xl font-bold text-primary-800">
               Actualizar comisiones
-            </h2>
-          </ModalHeader>
-          <ModalBody>
-            {loading && <LoadingStateModal userData={userData} />}
-            <ComissionsForm
-              comparativa={comparativa}
-              setFormDataComissions={setFormDataComissions}
-              formDataComissions={formDataComissions}
-            />
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              radius="sm"
-              color="danger"
-              onPress={onClose}
-              variant="light"
-            >
+            </DialogTitle>
+          </DialogHeader>
+          {loading && <LoadingStateModal userData={userData} />}
+          <ComissionsForm
+            comparativa={comparativa}
+            setFormDataComissions={setFormDataComissions}
+            formDataComissions={formDataComissions}
+          />
+          <DialogFooter className="mt-4">
+            <Button onClick={onClose} variant="destructive">
               Cancelar
             </Button>
-            <Button
-              variant="solid"
-              color="primary"
-              radius="sm"
-              onPress={handleSubmit}
-            >
-              Actualizar
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <Button onClick={handleSubmit}>Actualizar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

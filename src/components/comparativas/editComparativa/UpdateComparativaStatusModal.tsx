@@ -1,21 +1,22 @@
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
-} from "@heroui/modal";
-import { Button } from "@heroui/button";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTrigger,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { ComparativaStatus, ComparativaVM, User } from "@/lib/core/types";
-import { Select, SelectItem } from "@heroui/select";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleCheck, CircleX } from "lucide-react";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
-import { Divider } from "@heroui/react";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
+import { SelectComponent } from "@/components/tramites/createTramite/InputComponent";
+import { COMPARATIVA_STATUS_TYPES } from "@/lib/core/const";
+import { Separator } from "@/components/ui/separator";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -28,7 +29,7 @@ export default function UpdateComparativaStatusModal({
   onUpdate,
   userData,
 }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<ComparativaStatus>(
     comparativa.status
   );
@@ -56,13 +57,17 @@ export default function UpdateComparativaStatusModal({
   );
   const [loading, setLoading] = useState(false);
 
+  const onClose = () => {
+    setIsOpen(false);
+  };
+
   const handleOpen = () => {
-    onOpen();
+    setIsOpen(true);
     setNewStatus(comparativa.status);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setNewStatus(e.target.value as ComparativaStatus);
+  const handleChange = (value: string) => {
+    setNewStatus(value as ComparativaStatus);
   };
 
   const checkEmptyComissions = () => {
@@ -203,100 +208,88 @@ export default function UpdateComparativaStatusModal({
     }
   };
 
+  const formatStatus = (status: ComparativaStatus) => {
+    switch (status) {
+      case "pending":
+        return "Pendiente de Estudio";
+      case "completed":
+        return "Estudio Realizado";
+      case "processed":
+        return "Completada";
+      case "rejected":
+        return "Rechazada";
+      default:
+        return status;
+    }
+  };
+
   return (
     <>
-      <Button
-        onPress={handleOpen}
-        variant="bordered"
-        color="primary"
-        radius="sm"
-      >
-        Actualizar
-      </Button>
-      <Modal
-        isDismissable={false}
-        hideCloseButton
-        inert={!isOpen}
-        size="3xl"
-        isOpen={isOpen}
-        onClose={onClose}
-        radius="sm"
-      >
-        <ModalContent>
-          <ModalHeader>
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button onClick={handleOpen} variant="outline">
+            Actualizar
+          </Button>
+        </DialogTrigger>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
             <div className="flex items-center justify-between w-full">
-              <h3 className="text-xl font-semibold text-primary-800">
+              <DialogTitle className="text-xl font-semibold text-primary-800">
                 Comparativa {comparativa.id} · {comparativa.client}
-              </h3>
+              </DialogTitle>
 
               {getStatusBadge(comparativa.status)}
             </div>
-          </ModalHeader>
-          <ModalBody>
-            {loading && <LoadingStateModal userData={userData as User} />}
-            <div className="space-y-4">
-              <div className="flex justify-center items-center max-w-sm mx-auto">
-                <Select
-                  label="Estado de la Comparativa"
-                  size="lg"
-                  radius="sm"
-                  color="primary"
-                  variant="bordered"
-                  selectedKeys={[newStatus]}
-                  onChange={handleChange}
-                >
-                  <SelectItem key="pending">Pendiente de Estudio</SelectItem>
-                  <SelectItem key="completed">Estudio Realizado</SelectItem>
-                  <SelectItem key="rejected">Rechazada</SelectItem>
-                </Select>
-              </div>
-              {newStatus === "completed" && (
-                <>
-                  <Divider />
-                  <div className="flex flex-col gap-2">
-                    <ComissionsForm
-                      comparativa={comparativa}
-                      formDataComissions={formDataComissions}
-                      setFormDataComissions={setFormDataComissions}
-                    />
-                    <div className="flex items-start gap-1">
-                      <small className="text-gray-500">*</small>
-                      <div className=" flex flex-col gap-1">
-                        <p className="text-sm text-gray-500">
-                          Comprueba las comisiones de la comparativa antes de
-                          actualizar el estado.
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Para completar el estudio de la comparativa, es
-                          necesario que las comisiones estén asignadas.
-                        </p>
-                      </div>
+          </DialogHeader>
+          {loading && <LoadingStateModal userData={userData as User} />}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <SelectComponent
+                name="status"
+                isRequired
+                label="Estado"
+                selectedKey={newStatus}
+                textValue={formatStatus(newStatus)}
+                onChange={handleChange}
+                items={COMPARATIVA_STATUS_TYPES}
+              />
+            </div>
+            {newStatus === "completed" && (
+              <>
+                <Separator />
+                <div className="flex flex-col gap-2">
+                  <ComissionsForm
+                    comparativa={comparativa}
+                    formDataComissions={formDataComissions}
+                    setFormDataComissions={setFormDataComissions}
+                  />
+                  <div className="flex items-start gap-1">
+                    <small className="text-gray-500">*</small>
+                    <div className=" flex flex-col gap-1">
+                      <p className="text-sm text-gray-500">
+                        Comprueba las comisiones de la comparativa antes de
+                        actualizar el estado.
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Para completar el estudio de la comparativa, es
+                        necesario que las comisiones estén asignadas.
+                      </p>
                     </div>
                   </div>
-                </>
-              )}
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              radius="sm"
-              color="danger"
-              onPress={onClose}
-              variant="light"
-            >
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={onClose} variant="destructive">
               Cancelar
             </Button>
-            <Button
-              variant="solid"
-              color="primary"
-              radius="sm"
-              onPress={handleSubmit}
-            >
+            <Button onClick={handleSubmit}>
               {loading ? "Actualizando..." : "Actualizar"}
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

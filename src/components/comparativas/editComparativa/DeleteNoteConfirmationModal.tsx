@@ -1,15 +1,15 @@
+"use client";
 import {
-  Modal,
-  ModalHeader,
-  ModalContent,
-  ModalFooter,
-  ModalBody,
-  useDisclosure,
-} from "@heroui/modal";
-import { Button } from "@heroui/button";
+  Dialog,
+  DialogHeader,
+  DialogContent,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, CircleX, Trash } from "lucide-react";
 import { showCustomToast } from "@/components/core/CustomToast";
-import { memo } from "react";
+import { memo, useState } from "react";
 
 interface DeleteNoteConfirmationModalProps {
   note: string;
@@ -25,8 +25,15 @@ const DeleteNoteConfirmationModal = memo(
     comparativa_id,
     onDeleted,
   }: DeleteNoteConfirmationModalProps) => {
-    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [isOpen, setIsOpen] = useState(false);
 
+    const onOpen = () => {
+      setIsOpen(true);
+    };
+
+    const onClose = () => {
+      setIsOpen(false);
+    };
     const handleDelete = async () => {
       try {
         const rs = await fetch(`/api/comparativas/delete/note`, {
@@ -74,46 +81,37 @@ const DeleteNoteConfirmationModal = memo(
 
     return (
       <>
-        <Button
-          size="sm"
-          variant="light"
-          color="danger"
-          isIconOnly
-          onPress={onOpen}
-        >
-          <Trash size={16} />
-        </Button>
-        <Modal size="2xl" isOpen={isOpen} onClose={onClose}>
-          <ModalContent>
-            <ModalHeader className="flex items-start gap-4">
-              <AlertTriangle className="size-12 text-danger" />
-              <div className="flex flex-col">
-                <h2 className="text-lg font-semibold text-danger">
-                  ¿Estás seguro de que deseas eliminar la nota?
-                </h2>
-                <p className="text-gray-600 text-sm">
-                  Se eliminará de forma permanente.
-                </p>
+        <Dialog open={isOpen}>
+          <DialogTrigger asChild>
+            <Button variant="destructive" size="icon" onClick={onOpen}>
+              <Trash size={16} />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <div className="flex items-start gap-4">
+                <AlertTriangle size={32} className="text-danger" />
+                <div className="flex flex-col">
+                  <h2 className="text-lg font-semibold text-danger">
+                    ¿Estás seguro de que deseas eliminar la nota?
+                  </h2>
+                  <p className="text-gray-600 text-sm">
+                    Se eliminará de forma permanente.
+                  </p>
+                </div>
               </div>
-            </ModalHeader>
-            <ModalBody className="flex justify-end gap-4 mt-4">
+            </DialogHeader>
+            <div className="px-4 py-2 border border-gray-300 rounded-md">
               <span>{note}</span>
-            </ModalBody>
-            <ModalFooter>
-              <Button color="default" onPress={onClose}>
-                Cancelar
-              </Button>
-              <Button
-                variant="solid"
-                radius="sm"
-                color="danger"
-                onPress={handleDelete}
-              >
+            </div>
+            <DialogFooter>
+              <Button onClick={onClose}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleDelete}>
                 Eliminar nota
               </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }

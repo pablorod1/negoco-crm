@@ -10,15 +10,17 @@ import {
 export default function TooltipComponent({
   content,
   children,
+  color,
 }: {
   content: string;
   children: React.ReactNode;
+  color?: string;
 }) {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent className="bg-danger">{content}</TooltipContent>
+        <TooltipContent className={color}>{content}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

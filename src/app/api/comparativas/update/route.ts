@@ -79,10 +79,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (
-      comissions.comision_fijo ||
-      comissions.comision_indexado ||
-      comissions.comision_sales_person_fijo ||
-      comissions.comision_sales_person_indexado
+      comissions &&
+      (comissions.comision_fijo ||
+        comissions.comision_indexado ||
+        comissions.comision_sales_person_fijo ||
+        comissions.comision_sales_person_indexado)
     ) {
       const {
         comision_fijo,

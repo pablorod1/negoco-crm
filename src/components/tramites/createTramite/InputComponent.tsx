@@ -12,10 +12,15 @@ import {
 import { Label } from "@/components/ui/label";
 import { Comercial } from "@/components/colaboradores/CreateUserForm";
 
+interface Option {
+  value: string;
+  label: string;
+}
+
 interface SelectProps {
   name: string;
   label: string;
-  items: (string | User | ComparativaPlan | ClientDB | Comercial)[];
+  items: (string | User | ComparativaPlan | ClientDB | Comercial | Option)[];
   onChange: (value: string, e?: React.ChangeEvent<HTMLSelectElement>) => void;
 
   errors?: string;
@@ -57,9 +62,16 @@ export const SelectComponent: React.FC<SelectProps> = ({
           {items.map((item) => {
             const isClient =
               typeof item !== "string" && "document_number" in item;
-            const key = typeof item === "string" ? item : item.id;
-            const value = typeof item === "string" ? item : item.name;
-            const avatar = typeof item !== "string";
+            const isOption = typeof item === "object" && "label" in item;
+            const key =
+              typeof item === "string" ? item : isOption ? item.value : item.id;
+            const value =
+              typeof item === "string"
+                ? item
+                : isOption
+                  ? item.label
+                  : item.name;
+            const avatar = typeof item !== "string" && !isOption && !isClient;
             return (
               <SelectItem
                 value={key}
@@ -76,7 +88,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
                       {item.document_number}
                     </p>
                   </div>
-                ) : avatar && !isClient ? (
+                ) : avatar ? (
                   <div className="flex items-center gap-2">
                     <AvatarComponent
                       userData={item as User}
@@ -99,7 +111,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
 
 interface InputProps {
   name: string;
-  label: string;
+  label?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   errors?: string;
   type: string;
@@ -108,6 +120,7 @@ interface InputProps {
   endContent?: React.ReactNode;
   value: string | number;
   disabled?: boolean;
+  placeholder?: string;
 }
 
 export const InputComponent: React.FC<InputProps> = ({
@@ -121,12 +134,15 @@ export const InputComponent: React.FC<InputProps> = ({
   endContent,
   value,
   disabled,
+  placeholder,
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
-      <Label htmlFor={name}>
-        {label} {isRequired && <span className="text-red-500">*</span>}
-      </Label>
+      {label && (
+        <Label htmlFor={name}>
+          {label} {isRequired && <span className="text-red-500">*</span>}
+        </Label>
+      )}
 
       <div className="relative">
         {startContent && (
@@ -143,6 +159,7 @@ export const InputComponent: React.FC<InputProps> = ({
           disabled={disabled ? true : false}
           color={errors ? "danger" : "primary"}
           className={`z-10 ${startContent ? "pl-8" : ""} ${endContent ? "pr-8" : ""}`}
+          placeholder={placeholder}
         />
         {endContent && (
           <div className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground">
