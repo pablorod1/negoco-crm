@@ -17,7 +17,7 @@ import Link from "next/link";
 import { NavUser } from "./NavUser";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/lib/contexts/UserContext";
-import { Tooltip } from "@heroui/tooltip";
+import TooltipComponent from "../TooltipComponent";
 
 const items = [
   {
@@ -159,7 +159,7 @@ export function SidebarComponent() {
             <SidebarMenu className="gap-8">
               {getItemsByRole().map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <Tooltip radius="full" color="primary" content={item.title}>
+                  <TooltipComponent placement="right" content={item.title}>
                     <SidebarMenuButton
                       asChild
                       className={`${
@@ -179,7 +179,7 @@ export function SidebarComponent() {
                         <span className="text-base">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
-                  </Tooltip>
+                  </TooltipComponent>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

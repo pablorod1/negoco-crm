@@ -1,4 +1,4 @@
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Select,
@@ -93,9 +93,7 @@ export function DataTablePagination({
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="sm"
-            isIconOnly
-            onPress={() => setPageIndex(pageIndex - 1)}
+            onClick={() => setPageIndex(pageIndex - 1)}
             disabled={pageIndex === 1}
             className="text-gray-600 hover:bg-gray-100"
           >
@@ -106,16 +104,14 @@ export function DataTablePagination({
             visiblePages.map((page) => (
               <Button
                 key={page}
-                size="sm"
-                isIconOnly
-                variant={pageIndex === page ? "solid" : "light"}
+                variant={pageIndex === page ? "default" : "outline"}
                 color="primary"
                 className={`rounded-lg w-9 h-9 ${
                   pageIndex === page
                     ? "bg-primary-500 text-white shadow-md"
                     : "text-gray-500 hover:bg-gray-100"
                 }`}
-                onPress={() => setPageIndex(page)}
+                onClick={() => setPageIndex(page)}
                 disabled={pageIndex === page}
               >
                 {page}
@@ -124,9 +120,7 @@ export function DataTablePagination({
 
           <Button
             variant="ghost"
-            isIconOnly
-            size="sm"
-            onPress={() => setPageIndex(pageIndex + 1)}
+            onClick={() => setPageIndex(pageIndex + 1)}
             disabled={pageIndex >= totalPages}
             className="text-gray-600 hover:bg-gray-100"
           >

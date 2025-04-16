@@ -13,7 +13,7 @@ import {
   ContractError,
   createEmptyContractError,
 } from "@/lib/validation/validation.types";
-import { Textarea } from "@heroui/input";
+import { Textarea } from "@/components/ui/textarea";
 import React from "react";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../../createTramite/FormWrapper";
@@ -21,17 +21,22 @@ import {
   InputComponent,
   SelectComponent,
 } from "../../createTramite/InputComponent";
+import { Label } from "@/components/ui/label";
 
 interface Props {
   onSavingContract: (contract: ContractDB) => void;
   contract: ContractDB;
   onCancel: () => void;
+  loading?: boolean;
+  lastStep?: boolean;
 }
 
 export default function EditContractForm({
   onSavingContract,
   contract,
   onCancel,
+  loading,
+  lastStep,
 }: Props) {
   const [errors, setErrors] = React.useState<ContractError>(
     createEmptyContractError
@@ -200,16 +205,22 @@ export default function EditContractForm({
               />
             ))}
           </div>
-          <Textarea
-            size="lg"
-            name="description"
-            onChange={handleFieldChange}
-            label="Descripción"
-            radius="sm"
-          />
+          <div className="space-y-2 w-full">
+            <Label>Descripción</Label>
+            <Textarea
+              name="description"
+              onChange={handleFieldChange}
+              value={formData.description}
+            />
+          </div>
         </div>
       </form>
-      <ButtonGroupComponent onSubmit={handleAddContract} onCancel={onCancel} />
+      <ButtonGroupComponent
+        loading={loading}
+        lastStep={lastStep}
+        onSubmit={handleAddContract}
+        onCancel={onCancel}
+      />
     </FormWrapper>
   );
 }

@@ -75,7 +75,7 @@ export default function BanUserConfirmationModal({ user_id, userName }: Props) {
     <>
       <Dialog open={isOpen}>
         <DialogTrigger asChild>
-          <TooltipComponent content="Deshabilitar usuario">
+          <TooltipComponent color="bg-danger" content="Deshabilitar usuario">
             <Button
               variant="destructive"
               color="danger"

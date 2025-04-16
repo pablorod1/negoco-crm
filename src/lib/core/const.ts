@@ -40,6 +40,8 @@ export const STATUS_TYPES = [
   { label: "Procesando", value: "Procesando" },
   { label: "Activo", value: "Activo" },
   { label: "Baja", value: "Baja" },
+  { label: "Scoring", value: "Scoring" },
+  { label: "Incidencia", value: "Incidencia" },
 ];
 
 export const PLAIN_STATUS_TYPES = [

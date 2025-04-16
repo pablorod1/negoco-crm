@@ -14,7 +14,7 @@ const buttonVariants = cva(
         destructive:
           "bg-transparent text-danger shadow shadow-danger/20 hover:bg-destructive/90",
         destructiveOutline:
-          "border border-danger bg-background text-danger shadow-sm hover:bg-danger/10 ",
+          "border border-danger bg-background text-danger shadow-sm hover:bg-danger hover:text-white ",
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
         secondary:
@@ -23,6 +23,11 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         primaryOutline:
           "text-primary-500 border border-input bg-background shadow-sm hover:bg-accent",
+        destructiveDropdown:
+          "bg-transparent text-danger hover:bg-danger/90 hover:text-white",
+        success: "bg-success text-white shadow hover:bg-success/90",
+        successGhost: "bg-transparent text-success",
+        primaryGhost: "bg-transparent text-primary-500",
       },
       size: {
         default: "h-9 px-4 py-2",

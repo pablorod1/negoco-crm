@@ -8,8 +8,8 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { InfoIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
-import { Chip } from "@heroui/chip";
-import { Tooltip } from "@heroui/react";
+import { Badge } from "../ui/badge";
+import TooltipComponent from "../core/TooltipComponent";
 
 interface Props {
   title: string;
@@ -43,16 +43,15 @@ const DashboardCard = ({
           <CardHeader className="pb-0 justify-between flex-row items-start">
             <CardDescription>{title}</CardDescription>
             {difference !== undefined && (
-              <Chip
-                variant="shadow"
-                className="rounded-lg text-xs text-white"
-                color={
+              <Badge
+                variant={
                   difference > 0
                     ? "success"
                     : difference < 0
-                    ? "danger"
-                    : "primary"
+                      ? "danger"
+                      : "default"
                 }
+                className="rounded-lg text-xs text-white"
               >
                 <div className="flex items-center gap-2">
                   <span>
@@ -66,7 +65,7 @@ const DashboardCard = ({
                   </span>
                   {difference !== 0 && <span>{difference}%</span>}
                 </div>
-              </Chip>
+              </Badge>
             )}
           </CardHeader>
           <CardContent>
@@ -80,9 +79,9 @@ const DashboardCard = ({
           <CardFooter className="justify-between items-center gap-1 mt-auto">
             <span className="text-muted-foreground text-xs">{description}</span>
             {difference !== undefined && (
-              <Tooltip content="Variación respecto al mes anterior">
+              <TooltipComponent content="Variación respecto al mes anterior">
                 <InfoIcon size={12} className="text-gray-600" />
-              </Tooltip>
+              </TooltipComponent>
             )}
           </CardFooter>
         </Card>

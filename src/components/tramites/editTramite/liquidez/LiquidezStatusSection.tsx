@@ -1,8 +1,8 @@
 import { TramiteVM, User } from "@/lib/core/types";
-import { Tooltip } from "@heroui/tooltip";
 import { InfoIcon, RefreshCcw } from "lucide-react";
 import UpdateTramiteStatusModal from "../UpdateTramiteStatusModal";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface Props {
   tramite: TramiteVM;
@@ -24,8 +24,7 @@ export default function LiquidezStatusSection({
             <p className="text-sm font-medium text-primary-400">
               Estado de Liquidez
             </p>
-            <Tooltip
-              radius="sm"
+            <TooltipComponent
               content={
                 <div className="max-w-sm flex items-start gap-2">
                   <RefreshCcw className="size-6 text-primary-800" />
@@ -41,9 +40,10 @@ export default function LiquidezStatusSection({
                   </div>
                 </div>
               }
+              color="bg-white shadow"
             >
               <InfoIcon className="size-3 text-gray-600" />
-            </Tooltip>
+            </TooltipComponent>
           </div>
           {(tramite.status === "Activo" || tramite.status === "Baja") &&
             !isComercial && (

@@ -1,32 +1,35 @@
-import { useEffect, useState } from "react";
+"use client";
+import { useState } from "react";
 import { Search } from "lucide-react";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
-import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { FileCard } from "./FileCard";
 import { useUser } from "@/lib/contexts/UserContext";
 import SpinnerComponent from "../core/SpinnerComponent";
+import { InputComponent } from "../tramites/createTramite/InputComponent";
 
 interface SearchBarProps {
   recentlyFiles?: DocumentacionFile[];
 }
 
 export default function SearchBar({ recentlyFiles }: SearchBarProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const { userData } = useUser();
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const [files, setFiles] = useState<DocumentacionFile[]>([]);
   const [filterValue, setFilterValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleClose = () => {
-    onClose();
+  const onOpen = () => setIsOpen(true);
+
+  const onClose = () => {
+    setIsOpen(false);
     setFilterValue("");
     setFiles([]);
   };
@@ -57,12 +60,13 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
       });
       const { data, success } = await response.json();
 
-      if (success) {
-        setFiles(data as DocumentacionFile[]);
-      } else {
+      if (!success) {
         console.error("Error fetching files:", data);
         setFiles([]);
+        return;
       }
+
+      setFiles(data as DocumentacionFile[]);
     } catch (error) {
       console.error("Error fetching files:", error);
       setFiles([]);
@@ -78,97 +82,71 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
     debouncedSearch(value); // trigger the debounced search
   };
 
-  // Handle escape key
-  useEffect(() => {
-    const handleEscapeKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleEscapeKey);
-    return () => {
-      document.removeEventListener("keydown", handleEscapeKey);
-    };
-  }, [onClose]);
-
   return (
-    <>
-      <Button
-        variant="flat"
-        size="sm"
-        className="bg-transparent"
-        onPress={onOpen}
-        isIconOnly
+    <Dialog open={isOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" onClick={onOpen} size="icon">
+          <Search className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        className="max-w-2xl w-full"
+        onEscapeKeyDown={onClose}
+        onInteractOutside={onClose}
       >
-        <Search className="h-4 w-4" />
-      </Button>
-
-      <Modal
-        placement="top"
-        hideCloseButton
-        size="5xl"
-        radius="sm"
-        isOpen={isOpen}
-        onClose={handleClose}
-      >
-        <ModalContent>
-          <ModalHeader>
-            <Input
-              size="lg"
-              type="text"
-              radius="sm"
-              placeholder="Buscar archivos..."
-              value={filterValue}
-              onChange={handleInputChange}
-              className="w-full "
-            />
-          </ModalHeader>
-          <ModalBody>
-            {isLoading ? (
-              <div className="flex justify-center py-4">
-                <SpinnerComponent userData={userData as User} />
-              </div>
+        <DialogHeader>
+          <DialogTitle className="text-xl text-primary-800">
+            Buscar archivos
+          </DialogTitle>
+          <InputComponent
+            type="text"
+            name="search"
+            placeholder="Buscar archivos..."
+            value={filterValue}
+            onChange={handleInputChange}
+          />
+        </DialogHeader>
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <SpinnerComponent userData={userData as User} />
+          </div>
+        ) : (
+          <div className="space-y-4 py-4">
+            {files.length > 0 ? (
+              <>
+                <h2 className="text-lg font-semibold text-primary-800">
+                  {files.length} {files.length === 1 ? "archivo " : "archivos "}
+                  encontrados
+                </h2>
+                {files.map((file) => (
+                  <FileCard
+                    userData={userData as User}
+                    view="list"
+                    key={file.id}
+                    file={file}
+                  />
+                ))}
+              </>
+            ) : filterValue ? (
+              <p>No se encontraron resultados</p>
             ) : (
-              <div className="space-y-4 py-4">
-                {files.length > 0 ? (
-                  <>
-                    <h2 className="text-lg font-semibold text-primary-800">
-                      {files.length}{" "}
-                      {files.length === 1 ? "archivo " : "archivos "}
-                      encontrados
-                    </h2>
-                    {files.map((file) => (
-                      <FileCard
-                        userData={userData as User}
-                        view="list"
-                        key={file.id}
-                        file={file}
-                      />
-                    ))}
-                  </>
-                ) : filterValue ? (
-                  <p>No se encontraron resultados</p>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <h2 className="text-xl font-semibold text-primary-800">
-                      Archivos recientes
-                    </h2>
-                    {recentlyFiles?.map((file) => (
-                      <FileCard
-                        userData={userData as User}
-                        view="list"
-                        key={file.id}
-                        file={file}
-                      />
-                    ))}
-                  </div>
-                )}
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-semibold text-primary-800">
+                  Archivos recientes
+                </h2>
+                {recentlyFiles?.map((file) => (
+                  <FileCard
+                    userData={userData as User}
+                    view="list"
+                    key={file.id}
+                    file={file}
+                  />
+                ))}
               </div>
             )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

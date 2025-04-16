@@ -43,6 +43,7 @@ const STATUS_BADGES = {
   Activo: <Badge variant="success">Activo</Badge>,
   Baja: <Badge variant="danger">Baja</Badge>,
   Scoring: <Badge variant="danger">Scoring</Badge>,
+  Incidencia: <Badge variant="warning">Incidencia</Badge>,
   default: <Badge>Sin Asignar</Badge>,
 };
 

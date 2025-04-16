@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/auth-client";
 import { User } from "@/lib/core/types";
 import { showCustomToast } from "../core/CustomToast";
@@ -84,12 +84,9 @@ export default function UpdatePassword({ userData, refreshUserData }: Props) {
         />
       </div>
       <Button
-        onPress={handleUpdate}
+        onClick={handleUpdate}
         className="mt-4 max-w-44 shadow-md"
-        variant="solid"
-        radius="sm"
-        color="primary"
-        isDisabled={currentPassword === "" || newPassword === ""}
+        disabled={currentPassword === "" || newPassword === ""}
       >
         Actualizar contraseña
       </Button>

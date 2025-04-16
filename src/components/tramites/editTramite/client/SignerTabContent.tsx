@@ -1,8 +1,6 @@
 import { SignerDB } from "@/lib/core/types";
-import { Button } from "@heroui/button";
-import { useDisclosure } from "@heroui/modal";
-import { BriefcaseBusiness, IdCard, Mail, Phone, UserPen } from "lucide-react";
-import EditSignerDrawer from "./EditSignerDrawer";
+import { BriefcaseBusiness, IdCard, Mail, Phone } from "lucide-react";
+import EditDrawer from "./EditTramiteDrawer";
 
 interface Props {
   signer: SignerDB;
@@ -15,7 +13,6 @@ export default function SignerTabContent({
   onSignerUpdated,
   isEditable,
 }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
   return (
     <>
       <div className="space-y-12">
@@ -54,23 +51,11 @@ export default function SignerTabContent({
           </div>
         </div>
         {isEditable && (
-          <Button
-            variant="bordered"
-            color="primary"
-            radius="sm"
-            onPress={onOpen}
-            startContent={<UserPen size={16} />}
-          >
-            Editar Firmante
-          </Button>
+          <div className="absolute bottom-4 left-0 w-full px-4">
+            <EditDrawer signer={signer} onUpdate={onSignerUpdated} />
+          </div>
         )}
       </div>
-      <EditSignerDrawer
-        signer={signer}
-        isOpen={isOpen}
-        onClose={onClose}
-        onSignerUpdated={onSignerUpdated}
-      />
     </>
   );
 }

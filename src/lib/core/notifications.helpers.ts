@@ -1,8 +1,7 @@
 import { UpdatedFields } from "@/lib/hooks/track-tramite-changes";
-import { BadgeProps } from "@heroui/badge";
 import { Notification } from "./types";
 
-export const getColorPriority = (priority: number): BadgeProps["color"] => {
+export const getColorPriority = (priority: number) => {
   switch (priority) {
     case 1:
       return "danger";
@@ -11,7 +10,7 @@ export const getColorPriority = (priority: number): BadgeProps["color"] => {
     case 3:
       return "success";
     default:
-      return "primary";
+      return "pending";
   }
 };
 
@@ -114,10 +113,10 @@ export const generateComparativaNotificationMessage = (
         status === "pending"
           ? "Pendiente de Estudio"
           : status === "completed"
-          ? "Estudio Realizado"
-          : status === "processed"
-          ? "Completada"
-          : "Desconocido"
+            ? "Estudio Realizado"
+            : status === "processed"
+              ? "Completada"
+              : "Desconocido"
       }`
     );
   }

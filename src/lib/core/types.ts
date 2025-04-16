@@ -433,7 +433,8 @@ export type Status =
   | "Procesando"
   | "Activo"
   | "Baja"
-  | "Scoring";
+  | "Scoring"
+  | "Incidencia";
 
 export type LiquidezStatus =
   | "Pendiente de Cobro"

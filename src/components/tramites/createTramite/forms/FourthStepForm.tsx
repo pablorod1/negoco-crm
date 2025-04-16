@@ -1,4 +1,3 @@
-import { Divider } from "@heroui/divider";
 import { ComparativaFile, TramiteDB } from "@/lib/core/types";
 
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
@@ -9,6 +8,7 @@ import { FileIcon } from "lucide-react";
 import { User } from "@/lib/core/types";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface Props {
   onBack: () => void;
@@ -86,7 +86,7 @@ export default function FourthStepForm({
                 </ul>
               </div>
             )}
-            <Divider />
+            <Separator />
             <div className="w-full h-auto">
               <NotesBoard
                 notes={tramite.notes as string[]}

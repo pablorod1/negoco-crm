@@ -149,9 +149,8 @@ export default function NotificationsMenu() {
                       <div className="flex items-start ">
                         <div className="flex flex-col justify-center items-center gap-2">
                           <Badge
-                            variant="pending"
-                            className="mt-2 w-1 h-1 p-1 rounded-full bg-primary-400"
-                            color={getColorPriority(notification.priority)}
+                            className="mt-2 w-1 h-1 p-1 rounded-full"
+                            variant={getColorPriority(notification.priority)}
                           >
                             <span />
                           </Badge>

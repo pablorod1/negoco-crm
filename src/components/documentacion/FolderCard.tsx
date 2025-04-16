@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, CircleX, MoreVertical } from "lucide-react";
+import { CheckCircle, CircleX, MoreVertical, Trash } from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,11 +101,11 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="cursor-pointer text-danger"
-                  onClick={handleDelete}
-                >
-                  Delete
+                <DropdownMenuItem>
+                  <Button variant="destructive" onClick={handleDelete}>
+                    <Trash />
+                    Eliminar carpeta
+                  </Button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

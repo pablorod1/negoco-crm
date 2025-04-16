@@ -5,7 +5,6 @@ import {
   RENOVATION_DATE,
   PLAIN_STATUS_TYPES,
 } from "@/lib/core/const";
-import { Divider } from "@heroui/divider";
 import { ContractDB, Status, TramiteDB, User } from "@/lib/core/types";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
@@ -17,6 +16,7 @@ import EmptyComisionModal from "../EmptyComisionModal";
 import { Euro, FileX2, Pencil } from "lucide-react";
 import ContractForm from "./ContractForm";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 interface Props {
   onBack: () => void;
@@ -192,7 +192,7 @@ export default function ThirdStepForm({
                 )}
             </div>
           </div>
-          <Divider className="my-8" />
+          <Separator className="my-8" />
           <div className="flex items-center gap-4 mb-4">
             <h3 className="text-xl font-semibold text-primary-500 ">
               Contratos

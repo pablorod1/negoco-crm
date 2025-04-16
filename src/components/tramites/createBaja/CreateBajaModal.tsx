@@ -1,21 +1,24 @@
 "use client";
 import React from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalBody,
-  useDisclosure,
-  ModalHeader,
-} from "@heroui/modal";
-import { Button } from "@heroui/button";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { CircleX, PlusCircle } from "lucide-react";
 import CreateBajaForm from "./CreateBajaForm";
 import { useTramites } from "@/lib/contexts/TramitesContext";
 import { showCustomToast } from "@/components/core/CustomToast";
 
 export default function CreateBajaModal() {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = React.useState(false);
   const { refreshTramites } = useTramites();
+
+  const onClose = () => setIsOpen(false);
+  const onOpen = () => setIsOpen(true);
 
   const handleFinish = async () => {
     try {
@@ -36,32 +39,27 @@ export default function CreateBajaModal() {
 
   return (
     <>
-      <Button onPress={onOpen} color="danger" radius="sm" className="shadow-md">
-        <PlusCircle size={20} />
-        <span>Nueva Baja</span>
-      </Button>
-
-      <Modal
-        className="relative max-h-[90vh] overflow-y-auto py-2"
-        classNames={{
-          wrapper: "overflow-hidden",
-        }}
-        isDismissable={false}
-        hideCloseButton
-        size="3xl"
-        backdrop="blur"
-        isOpen={isOpen}
-        onClose={onClose}
-      >
-        <ModalContent>
-          <ModalHeader className="text-2xl text-danger font-bold">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button
+            onClick={onOpen}
+            variant="destructiveOutline"
+            className="w-full"
+          >
+            <PlusCircle size={16} />
             Nueva Baja
-          </ModalHeader>
-          <ModalBody>
-            <CreateBajaForm onCancel={onClose} onFinish={handleFinish} />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader
+            className="text-2xl text-danger font-bold"
+            aria-describedby={undefined}
+          >
+            <DialogTitle>Nueva Baja</DialogTitle>
+          </DialogHeader>
+          <CreateBajaForm onCancel={onClose} onFinish={handleFinish} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

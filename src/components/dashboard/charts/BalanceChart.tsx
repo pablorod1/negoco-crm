@@ -14,8 +14,6 @@ import {
   TrendingDownIcon,
   TrendingUpIcon,
 } from "lucide-react";
-import { Chip } from "@heroui/chip";
-import { Tooltip } from "@heroui/tooltip";
 import { User } from "@/lib/core/types";
 import { formatComission } from "@/lib/core/format";
 import {
@@ -25,6 +23,8 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Line, LineChart, XAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface Props {
   loading: boolean;
@@ -156,16 +156,15 @@ export default function BalanceChart({ loading, userData }: Props) {
               </CardTitle>
             </div>
             {difference !== undefined && (
-              <Chip
-                variant="shadow"
-                className="rounded-lg text-xs text-white"
-                color={
+              <Badge
+                variant={
                   difference > 0
-                    ? "success"
+                    ? "successShadow"
                     : difference < 0
-                    ? "danger"
-                    : "primary"
+                      ? "dangerShadow"
+                      : "shadow"
                 }
+                className="rounded-lg text-xs text-white"
               >
                 <div className="flex items-center gap-2">
                   <span>
@@ -179,7 +178,7 @@ export default function BalanceChart({ loading, userData }: Props) {
                   </span>
                   {difference !== 0 && <span>{difference}%</span>}
                 </div>
-              </Chip>
+              </Badge>
             )}
           </CardHeader>
           <CardContent className="flex-1">
@@ -241,9 +240,9 @@ export default function BalanceChart({ loading, userData }: Props) {
               Balance total de tus comisiones 2025
             </span>
             {difference !== undefined && (
-              <Tooltip content="Variación respecto al mes anterior">
+              <TooltipComponent content="Variación respecto al mes anterior">
                 <InfoIcon size={12} className="text-gray-600" />
-              </Tooltip>
+              </TooltipComponent>
             )}
           </CardFooter>
         </Card>

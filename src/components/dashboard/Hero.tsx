@@ -17,11 +17,11 @@ import { User } from "@/lib/core/types";
 import AvatarComponent from "../core/AvatarComponent";
 import { DashboardCardValue } from "./DashboardBentoGrid";
 import { formatComission } from "@/lib/core/format";
-import { Tooltip } from "@heroui/tooltip";
 import AddTramiteDialog from "../tramites/createTramite/AddTramiteDialog";
 import AddComparativaDialog from "../comparativas/createComparativa/AddComparativaDialog";
-import { Chip } from "@heroui/chip";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
+import TooltipComponent from "../core/TooltipComponent";
+import { Badge } from "../ui/badge";
 
 interface HeroDashboardProps {
   userData: User;
@@ -111,7 +111,7 @@ export default function HeroDashboard({
           </div>
 
           <div className="flex items-center gap-3 mt-4 md:mt-0">
-            <Button isIconOnly onPress={refreshData} variant="light">
+            <Button size="icon" onClick={refreshData} variant="ghost">
               <RefreshCcw size={16} className="text-white" />
             </Button>
             <AddTramiteDialog variant="primaryOutline" />
@@ -231,16 +231,14 @@ function StatCard({
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: delay + 0.3, type: "spring", stiffness: 200 }}
           >
-            <Chip
-              size="sm"
-              color={
+            <Badge
+              variant={
                 trend === "up"
-                  ? "success"
+                  ? "successShadow"
                   : trend === "normal"
-                    ? "default"
-                    : "danger"
+                    ? "shadow"
+                    : "dangerShadow"
               }
-              variant="shadow"
             >
               <div
                 className={`flex items-center gap-2 ${
@@ -259,7 +257,7 @@ function StatCard({
                   {trendValue?.toFixed(2)}%
                 </span>
               </div>
-            </Chip>
+            </Badge>
           </motion.div>
         )}
         {chart && (
@@ -276,20 +274,25 @@ function StatCard({
       <div className="flex justify-between items-center z-30">
         <p className="text-xs text-white/90 mt-2">{description}</p>
         {trendValue !== undefined && (
-          <Tooltip
+          <TooltipComponent
+            color="bg-white"
             content={
-              <div className="p-3 max-w-xs">
-                <h2 className="font-semibold text-base mb-2 border-b pb-1">
+              <div className="p-2 max-w-xs">
+                <h2 className="font-semibold text-base mb-2 border-b pb-1 text-primary-700">
                   Variación respecto al mes anterior
                 </h2>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Este mes:</span>
-                    <span className="font-medium">{value}</span>
+                    <span className="font-medium text-primary-500">
+                      {value}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Mes anterior:</span>
-                    <span className="font-medium">{prev_value}</span>
+                    <span className="font-medium text-primary-500">
+                      {prev_value}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center mt-2 pt-1 border-t">
                     <span className="text-sm text-gray-600">Variación:</span>
@@ -317,7 +320,7 @@ function StatCard({
                 strokeWidth={3}
               />
             </div>
-          </Tooltip>
+          </TooltipComponent>
         )}
       </div>
 

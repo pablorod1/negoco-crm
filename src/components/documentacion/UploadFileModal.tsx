@@ -1,14 +1,14 @@
+"use client";
 import { getAllFoldersWithPaths } from "@/lib/firebase/data/getFolders";
-import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
+import { Button } from "@/components/ui/button";
 import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Folder, ChevronRight, UploadIcon, ChevronDown } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
@@ -16,6 +16,7 @@ import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import { useUser } from "@/lib/contexts/UserContext";
 import SpinnerComponent from "../core/SpinnerComponent";
 import { User } from "@/lib/core/types";
+import { InputComponent } from "../tramites/createTramite/InputComponent";
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -36,9 +37,9 @@ interface FolderGroup {
 }
 
 export default function UploadFileModal() {
+  const [isOpen, setIsOpen] = useState(false);
   const { userData } = useUser();
   const { refreshDocumentacion } = useDocumentacion();
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
@@ -48,6 +49,9 @@ export default function UploadFileModal() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(["/"])
   );
+
+  const onOpen = () => setIsOpen(true);
+  const onClose = () => setIsOpen(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const filesWithPreview = acceptedFiles.map((file) =>
@@ -255,185 +259,164 @@ export default function UploadFileModal() {
 
   return (
     <>
-      <Button
-        variant="ghost"
-        color="primary"
-        onPress={onOpen}
-        radius="sm"
-        className="w-full max-w-64"
-        startContent={<UploadIcon width={16} height={16} />}
-      >
-        <span className="text-base font-bold">Subir archivos</span>
-      </Button>
-      <Modal
-        isOpen={isOpen}
-        onClose={handleClose}
-        size="2xl"
-        classNames={{
-          wrapper: "overflow-hidden",
-        }}
-      >
-        <ModalContent>
-          {" "}
-          <ModalHeader className="flex flex-col gap-1">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button variant="ghost" onClick={onOpen} className="w-full max-w-64">
+            <UploadIcon width={16} height={16} />
             Subir archivos
-          </ModalHeader>
-          <ModalBody>
-            {isUploading && (
-              <div className="h-full w-full absolute top-0 left-0 bg-white/60 flex justify-center items-center">
-                <SpinnerComponent userData={userData as User} />
-              </div>
-            )}
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-xl w-full">
+          {" "}
+          <DialogHeader
+            className="flex flex-col gap-1"
+            aria-describedby={undefined}
+          >
+            <DialogTitle className="text-xl text-primary-800">
+              Subir archivos
+            </DialogTitle>
+          </DialogHeader>
+          {isUploading && (
+            <div className="h-full w-full absolute top-0 left-0 bg-white/60 flex justify-center items-center">
+              <SpinnerComponent userData={userData as User} />
+            </div>
+          )}
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
                     ${
                       isDragActive
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-300 hover:border-gray-400"
                     }`}
-            >
-              <input {...getInputProps()} />
-              {isDragActive ? (
-                <p>Suelta los archivos aquí...</p>
-              ) : (
-                <div>
-                  <p>
-                    Arrastra y suelta archivos aquí, o haz clic para seleccionar
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Formatos soportados: PNG, JPG, PDF, DOC, DOCX
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col max-h-[130px] overflow-y-auto mt-4">
-              {files.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm truncate max-w-[200px]">
-                          {file.name}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          ({(file.size / 1024).toFixed(1)} KB)
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        color="danger"
-                        variant="light"
-                        onPress={() => removeFile(index)}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-4 mt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Carpeta destino</label>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => setSelectedFolder("/")}
-                    className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-                      selectedFolder === "/" ? "bg-blue-50 text-blue-600" : ""
-                    }`}
+          >
+            <input {...getInputProps()} />
+            {isDragActive ? (
+              <p>Suelta los archivos aquí...</p>
+            ) : (
+              <div>
+                <p>
+                  Arrastra y suelta archivos aquí, o haz clic para seleccionar
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Formatos soportados: PNG, JPG, PDF, DOC, DOCX
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col max-h-[130px] overflow-y-auto mt-4">
+            {files.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {files.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
                   >
-                    <Folder size={16} />
-                    <span>Inicio</span>
-                  </button>
-                  <div className="flex flex-col max-h-[220px] overflow-y-auto ">
-                    {folderGroups.map(
-                      (group) =>
-                        group.path && (
-                          <div key={group.path} className="space-y-1 ps-6">
-                            <button
-                              onClick={() => setSelectedFolder(group.path)}
-                              className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-                                selectedFolder === group.path
-                                  ? "bg-blue-50 text-blue-600"
-                                  : ""
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm truncate max-w-[200px]">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      onClick={() => removeFile(index)}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-4 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Carpeta destino</label>
+              <div className="space-y-1">
+                <button
+                  onClick={() => setSelectedFolder("/")}
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
+                    selectedFolder === "/" ? "bg-blue-50 text-blue-600" : ""
+                  }`}
+                >
+                  <Folder size={16} />
+                  <span>Inicio</span>
+                </button>
+                <div className="flex flex-col max-h-[220px] overflow-y-auto ">
+                  {folderGroups.map(
+                    (group) =>
+                      group.path && (
+                        <div key={group.path} className="space-y-1 ps-6">
+                          <button
+                            onClick={() => setSelectedFolder(group.path)}
+                            className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
+                              selectedFolder === group.path
+                                ? "bg-blue-50 text-blue-600"
+                                : ""
+                            }`}
+                          >
+                            <Folder size={16} />
+                            <span>{group.name}</span>
+                            <div
+                              onClick={(e) => toggleFolder(group.path, e)}
+                              className="hover:bg-gray-200 rounded p-0.5"
+                            >
+                              {group.subfolders.length > 0 &&
+                                (expandedFolders.has(group.path) ? (
+                                  <ChevronDown size={16} />
+                                ) : (
+                                  <ChevronRight size={16} />
+                                ))}
+                            </div>
+                          </button>
+                          {group.subfolders.length > 0 && (
+                            <div
+                              className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                                expandedFolders.has(group.path)
+                                  ? "max-h-screen"
+                                  : "max-h-0"
                               }`}
                             >
-                              <Folder size={16} />
-                              <span>{group.name}</span>
-                              <div
-                                onClick={(e) => toggleFolder(group.path, e)}
-                                className="hover:bg-gray-200 rounded p-0.5"
-                              >
-                                {group.subfolders.length > 0 &&
-                                  (expandedFolders.has(group.path) ? (
-                                    <ChevronDown size={16} />
-                                  ) : (
-                                    <ChevronRight size={16} />
-                                  ))}
-                              </div>
-                            </button>
-                            {group.subfolders.length > 0 && (
-                              <div
-                                className={`overflow-hidden transition-all duration-200 ease-in-out ${
-                                  expandedFolders.has(group.path)
-                                    ? "max-h-screen"
-                                    : "max-h-0"
-                                }`}
-                              >
-                                {renderSubfolders(group.subfolders)}
-                              </div>
-                            )}
-                          </div>
-                        )
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setCreateFolder(true)}
-                    className="w-full px-3 py-2 text-left text-blue-600 hover:bg-gray-100 rounded"
-                  >
-                    + Crear nueva carpeta
-                  </button>
+                              {renderSubfolders(group.subfolders)}
+                            </div>
+                          )}
+                        </div>
+                      )
+                  )}
                 </div>
+                <button
+                  onClick={() => setCreateFolder(true)}
+                  className="w-full px-3 py-2 text-left text-blue-600 hover:bg-gray-100 rounded"
+                >
+                  + Crear nueva carpeta
+                </button>
               </div>
-
-              {createFolder && (
-                <Input
-                  name="newFolder"
-                  label="Nueva carpeta"
-                  placeholder="Nombre de la carpeta"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                />
-              )}
             </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="danger"
-              variant="light"
-              onPress={handleClose}
-              radius="sm"
-            >
+
+            {createFolder && (
+              <InputComponent
+                type="text"
+                name="newFolder"
+                label="Nueva carpeta"
+                placeholder="Nombre de la carpeta"
+                value={newFolderName}
+                disabled={isUploading}
+                onChange={(e) => setNewFolderName(e.target.value)}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <Button color="danger" variant="destructive" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button
-              radius="sm"
-              color="primary"
-              onPress={handleUpload}
-              isLoading={isUploading}
-              isDisabled={files.length === 0}
-            >
-              Subir archivos
+            <Button onClick={handleUpload} disabled={files.length === 0}>
+              {isUploading ? "Subiendo..." : "Subir archivos"}
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

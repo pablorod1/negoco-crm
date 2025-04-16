@@ -16,9 +16,13 @@ import { useState } from "react";
 
 interface Props {
   onCancel: () => void;
+  disabled?: boolean;
 }
 
-export default function CancelOperationConfirmationModal({ onCancel }: Props) {
+export default function CancelOperationConfirmationModal({
+  onCancel,
+  disabled,
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const onOpen = () => setIsOpen(true);
   const onClose = () => setIsOpen(false);
@@ -37,7 +41,7 @@ export default function CancelOperationConfirmationModal({ onCancel }: Props) {
     <>
       <Dialog open={isOpen}>
         <DialogTrigger asChild>
-          <Button onClick={onOpen} variant="destructive">
+          <Button disabled={disabled} onClick={onOpen} variant="destructive">
             Cancelar
           </Button>
         </DialogTrigger>

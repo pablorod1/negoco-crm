@@ -11,16 +11,24 @@ export default function TooltipComponent({
   content,
   children,
   color,
+  placement = "top",
+  disabled = false,
 }: {
-  content: string;
+  content: string | React.ReactNode;
   children: React.ReactNode;
   color?: string;
+  placement?: "top" | "bottom" | "left" | "right" | undefined;
+  disabled?: boolean;
 }) {
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent className={color}>{content}</TooltipContent>
+        <TooltipTrigger disabled={disabled} asChild>
+          {children}
+        </TooltipTrigger>
+        <TooltipContent side={placement} className={color}>
+          {content}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

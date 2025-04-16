@@ -1,13 +1,14 @@
 import { TramiteRow } from "@/lib/core/types";
 import {
-  Dropdown,
-  DropdownTrigger,
+  DropdownMenuTrigger,
   DropdownMenu,
-  DropdownSection,
-  DropdownItem,
-} from "@heroui/dropdown";
-import { Button } from "@heroui/button";
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuContent,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
+import Link from "next/link";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -122,34 +123,35 @@ export const DeleteDocumentIcon = (props: IconProps) => {
 };
 
 export default function LiquidezDropdown({ tramite }: { tramite: TramiteRow }) {
-  const iconClasses =
-    "text-xl text-default-500 pointer-events-none flex-shrink-0 group-hover:text-white transition-colors duration-200 ease-in-out";
-
   return (
-    <>
-      <Dropdown radius="sm">
-        <DropdownTrigger>
-          <Button isIconOnly variant="bordered">
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownTrigger>
-        <DropdownMenu
-          aria-label="Dropdown menu with description"
-          variant="shadow"
-          color="primary"
-        >
-          <DropdownSection showDivider>
-            <DropdownItem
-              href={`/tramites/${tramite.id}`}
-              key="edit"
-              description="Editar los datos trámite"
-              startContent={<PencilLine className={iconClasses} />}
-            >
-              Editar Trámite
-            </DropdownItem>
-          </DropdownSection>
-        </DropdownMenu>
-      </Dropdown>
-    </>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="icon" variant="ghost">
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        aria-label="Dropdown menu with description"
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            key="edit"
+            textValue="Visualizar Comparativa"
+            className="p-0"
+          >
+            <Button variant={"link"}>
+              <Link
+                className="inline-flex items-center justify-start gap-2"
+                href={`/tramites/${tramite.id}`}
+              >
+                <PencilLine size={16} />
+                Visualizar Trámite
+              </Link>
+            </Button>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

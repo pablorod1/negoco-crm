@@ -1,7 +1,7 @@
+"use client";
 import { ClientDB } from "@/lib/core/types";
 
 import { CLIENT_TYPES, DOCUMENT_TYPES } from "@/lib/core/const";
-import { EditFormWrapper } from "../../EditFormWrapper";
 import { useState } from "react";
 import {
   InputComponent,
@@ -23,6 +23,7 @@ export default function EditClientForm({
   onCancel,
 }: Props) {
   const [formData, setFormData] = useState<ClientDB>(client);
+  const [loading, setLoading] = useState(false);
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,6 +45,7 @@ export default function EditClientForm({
   };
 
   const handleSubmit = async () => {
+    setLoading(true);
     try {
       if (!checkChanges()) {
         showCustomToast({
@@ -53,6 +55,7 @@ export default function EditClientForm({
           iconSize: 24,
           icon: CircleX,
         });
+        onCancel();
         return;
       }
 
@@ -94,117 +97,119 @@ export default function EditClientForm({
         iconSize: 24,
         icon: CircleX,
       });
+    } finally {
+      setLoading(false);
     }
   };
   return (
-    <>
-      <EditFormWrapper title="Datos del cliente">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-stretch gap-4">
-            <InputComponent
-              name="name"
-              label="Nombre"
-              value={formData.name}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-            <InputComponent
-              name="last_name"
-              label="Apellidos"
-              value={formData.last_name}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-          </div>
-          <div className="flex items-stretch gap-4">
-            <SelectComponent
-              name="type"
-              label="Tipo de cliente"
-              selectedKey={formData.type}
-              isRequired
-              items={CLIENT_TYPES}
-              onChange={(value) => handleSelectChange(value, "type")}
-            />
-            <SelectComponent
-              name="document_type"
-              label="Tipo de documento"
-              selectedKey={formData.document_type}
-              isRequired
-              onChange={(value) => handleSelectChange(value, "document_type")}
-              items={
-                client.type
-                  ? DOCUMENT_TYPES[client.type as keyof typeof DOCUMENT_TYPES]
-                      .documentTypes
-                  : []
-              }
-            />
-            <InputComponent
-              name="document_number"
-              label="Número de documento"
-              value={formData.document_number}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-          </div>
-          <div className="flex items-stretch gap-4">
-            <InputComponent
-              name="phone"
-              label="Teléfono"
-              value={formData.phone}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-            <InputComponent
-              name="email"
-              label="Email"
-              value={formData.email}
-              isRequired
-              onChange={handleFieldChange}
-              type="email"
-            />
-          </div>
-          <div className="flex items-stretch gap-4">
-            <InputComponent
-              name="address"
-              label="Dirección"
-              value={formData.address}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-            <InputComponent
-              name="postal_code"
-              label="Código Postal"
-              value={formData.postal_code}
-              onChange={handleFieldChange}
-              type="text"
-            />
-            <InputComponent
-              name="province"
-              label="Provincia"
-              value={formData.province}
-              onChange={handleFieldChange}
-              type="text"
-            />
-            <InputComponent
-              name="city"
-              label="Ciudad"
-              value={formData.city}
-              onChange={handleFieldChange}
-              type="text"
-            />
-          </div>
+    <div className="h-full">
+      <div className="flex flex-col gap-4 w-full">
+        <div className="flex items-stretch gap-4">
+          <InputComponent
+            name="name"
+            label="Nombre"
+            value={formData.name}
+            isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
+          <InputComponent
+            name="last_name"
+            label="Apellidos"
+            value={formData.last_name}
+            isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
         </div>
+        <SelectComponent
+          name="type"
+          label="Tipo de cliente"
+          selectedKey={formData.type}
+          isRequired
+          items={CLIENT_TYPES}
+          onChange={(value) => handleSelectChange(value, "type")}
+        />
+        <div className="flex items-stretch gap-4">
+          <SelectComponent
+            name="document_type"
+            label="Tipo de documento"
+            selectedKey={formData.document_type}
+            isRequired
+            onChange={(value) => handleSelectChange(value, "document_type")}
+            items={
+              client.type
+                ? DOCUMENT_TYPES[client.type as keyof typeof DOCUMENT_TYPES]
+                    .documentTypes
+                : []
+            }
+          />
+          <InputComponent
+            name="document_number"
+            label="Número de documento"
+            value={formData.document_number}
+            isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
+        </div>
+        <InputComponent
+          name="phone"
+          label="Teléfono"
+          value={formData.phone}
+          isRequired
+          onChange={handleFieldChange}
+          type="text"
+        />
+        <InputComponent
+          name="email"
+          label="Email"
+          value={formData.email}
+          isRequired
+          onChange={handleFieldChange}
+          type="email"
+        />
+        <InputComponent
+          name="address"
+          label="Dirección"
+          value={formData.address}
+          isRequired
+          onChange={handleFieldChange}
+          type="text"
+        />
+        <div className="flex items-stretch gap-4">
+          <InputComponent
+            name="postal_code"
+            label="Código Postal"
+            value={formData.postal_code}
+            onChange={handleFieldChange}
+            type="text"
+          />
+          <InputComponent
+            name="province"
+            label="Provincia"
+            value={formData.province}
+            onChange={handleFieldChange}
+            type="text"
+          />
+          <InputComponent
+            name="city"
+            label="Ciudad"
+            value={formData.city}
+            onChange={handleFieldChange}
+            type="text"
+          />
+        </div>
+      </div>
+
+      <div className="absolute bottom-4 left-0 w-full px-4">
         <ButtonGroupComponent
           onSubmit={handleSubmit}
           onCancel={onCancel}
           lastStep
+          loading={loading}
         />
-      </EditFormWrapper>
-    </>
+      </div>
+    </div>
   );
 }

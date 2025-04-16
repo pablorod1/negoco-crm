@@ -1,9 +1,8 @@
-import { TramiteVM, User } from "@/lib/core/types";
+import { ClientDB, TramiteVM, User } from "@/lib/core/types";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 import UpdateTramiteStatusModal from "./UpdateTramiteStatusModal";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import RenewTramiteConfirmationDialog from "../RenewTramiteConfirmationDialog";
-import { useState } from "react";
 import AvatarComponent from "@/components/core/AvatarComponent";
 import { formatDateTime } from "@/lib/core/format";
 import {
@@ -15,6 +14,7 @@ import { Clock, Info } from "lucide-react";
 
 interface Props {
   tramite: TramiteVM;
+  client: ClientDB;
   userData: User;
   onUpdate: () => void;
   isEditable: boolean | null;
@@ -29,8 +29,8 @@ export default function TramiteStatusSection({
   isEditable,
   isRenewable,
   onRenew,
+  client,
 }: Props) {
-  const [isRenewOpen, setIsRenewOpen] = useState(false);
   const isAdmin = userData.role === "admin";
   const isBackoffice = userData.role === "1";
   return (
@@ -46,9 +46,11 @@ export default function TramiteStatusSection({
             />
           )}
           {isRenewable && (isAdmin || isBackoffice) && (
-            <Button onPress={() => setIsRenewOpen(true)}>
-              Renovar Trámite
-            </Button>
+            <RenewTramiteConfirmationDialog
+              tramite={tramite}
+              onRenew={onRenew}
+              client={client}
+            />
           )}
         </div>
         {tramite.updated_by && (
@@ -89,12 +91,6 @@ export default function TramiteStatusSection({
           </Popover>
         )}
       </div>
-      <RenewTramiteConfirmationDialog
-        tramite={tramite}
-        isOpen={isRenewOpen}
-        onClose={() => setIsRenewOpen(false)}
-        onRenew={onRenew}
-      />
     </>
   );
 }

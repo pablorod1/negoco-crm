@@ -157,6 +157,7 @@ export default function TramiteDetails() {
           isEditable={isEditable}
           isRenewable={isRenewable}
           onRenew={fetchTramite}
+          client={client}
         />
       </div>
 
@@ -172,6 +173,7 @@ export default function TramiteDetails() {
           client={client}
           signer={signer}
           onUpdated={fetchTramite}
+          isEditable={isEditable as boolean}
         />
 
         {/* Commission Info */}

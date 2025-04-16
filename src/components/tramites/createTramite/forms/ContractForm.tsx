@@ -25,7 +25,8 @@ interface Props {
   tramite_id: string;
   onCancel: () => void;
   contract?: ContractDB | null;
-  onUpdateContract?: (contract: ContractDB) => void;
+  loading?: boolean;
+  lastStep?: boolean;
 }
 
 export default function ContractForm({
@@ -33,6 +34,8 @@ export default function ContractForm({
   tramite_id,
   onCancel,
   contract,
+  loading,
+  lastStep,
 }: Props) {
   const [errors, setErrors] = React.useState<ContractError>(
     createEmptyContractError
@@ -229,7 +232,12 @@ export default function ContractForm({
           </div>
         </div>
       </form>
-      <ButtonGroupComponent onSubmit={handleAddContract} onCancel={onCancel} />
+      <ButtonGroupComponent
+        loading={loading}
+        onSubmit={handleAddContract}
+        onCancel={onCancel}
+        lastStep={lastStep}
+      />
     </>
   );
 }

@@ -18,6 +18,12 @@ const badgeVariants = cva(
         info: "bg-info-50 text-info-600 border-info-400",
         pending: "bg-pending-50 text-pending-600 border-pending-400",
         secondary: "bg-secondary-50 text-secondary-600 border-secondary-400",
+        successShadow:
+          "bg-success-500 text-white border-0 shadow-lg shadow-success-500/50",
+        dangerShadow:
+          "bg-danger-500 text-white border-0 shadow-lg shadow-danger-500/50",
+        shadow:
+          "bg-primary-500 text-white border-0 shadow-lg shadow-primary-500/50",
       },
     },
     defaultVariants: {

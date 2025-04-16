@@ -1,7 +1,8 @@
+"use client";
 import { User } from "@/lib/core/types";
 import AvatarComponent from "../core/AvatarComponent";
 import { useState } from "react";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle, FileX2 } from "lucide-react";
 
@@ -157,22 +158,17 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
           onChange={handleUploadAvatar}
         />
         <Button
-          variant="solid"
-          color="primary"
-          onPress={() => document.getElementById("avatar-upload")?.click()}
-          isDisabled={loading}
+          onClick={() => document.getElementById("avatar-upload")?.click()}
+          disabled={loading}
           className="shadow-md"
-          radius="sm"
         >
           {loading ? "Subiendo..." : "Subir Imagen"}
         </Button>
         <Button
-          onPress={handleDeleteAvatar}
-          isDisabled={userData && (!userData.image || loading) ? true : false}
-          variant="solid"
-          color="danger"
+          onClick={handleDeleteAvatar}
+          disabled={userData && (!userData.image || loading) ? true : false}
           className="shadow-md"
-          radius="sm"
+          variant="destructiveOutline"
         >
           {loading ? "Eliminando..." : "Eliminar Imagen"}
         </Button>

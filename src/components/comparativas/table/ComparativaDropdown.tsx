@@ -133,71 +133,69 @@ export default function ComparativaDropdown({
   const { userData } = useUser();
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="icon" variant="outline">
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          aria-label="Dropdown menu with description"
-        >
-          <DropdownMenuGroup>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="icon" variant="ghost">
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        aria-label="Dropdown menu with description"
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            key="edit"
+            textValue="Visualizar Comparativa"
+            className="p-0"
+          >
+            <Button variant={"link"}>
+              <Link
+                className="inline-flex items-center justify-start gap-2"
+                href={`/comparativas/${comparativa.id}`}
+              >
+                <PencilLine size={16} />
+                Visualizar Comparativa
+              </Link>
+            </Button>
+          </DropdownMenuItem>
+          {comparativa.status === "processed" && comparativa.tramite_id ? (
             <DropdownMenuItem
-              key="edit"
-              textValue="Visualizar Comparativa"
+              key="tramite"
+              textValue="Visualizar Trámite"
               className="p-0"
             >
               <Button variant={"link"}>
                 <Link
+                  href={`/tramites/${comparativa.tramite_id}`}
                   className="inline-flex items-center justify-start gap-2"
-                  href={`/comparativas/${comparativa.id}`}
                 >
-                  <PencilLine size={16} />
-                  Visualizar Comparativa
+                  <ReceiptEuro size={16} />
+                  Visualizar Trámite
                 </Link>
               </Button>
             </DropdownMenuItem>
-            {comparativa.status === "processed" && comparativa.tramite_id ? (
-              <DropdownMenuItem
-                key="tramite"
-                textValue="Visualizar Trámite"
-                className="p-0"
-              >
-                <Button variant={"link"}>
-                  <Link
-                    href={`/tramites/${comparativa.tramite_id}`}
-                    className="inline-flex items-center justify-start gap-2"
-                  >
-                    <ReceiptEuro size={16} />
-                    Visualizar Trámite
-                  </Link>
-                </Button>
-              </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuGroup>
-          {userData && userData.role === "admin" ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  textValue="Eliminar Comparativa"
-                  key="delete"
-                  className="text-danger p-0"
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  <DeleteComparativaConfirmationModal
-                    comparativa={comparativa}
-                    userData={userData as User}
-                  />
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </>
           ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+        </DropdownMenuGroup>
+        {userData && userData.role === "admin" ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                textValue="Eliminar Comparativa"
+                key="delete"
+                className="text-danger p-0"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <DeleteComparativaConfirmationModal
+                  comparativa={comparativa}
+                  userData={userData as User}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

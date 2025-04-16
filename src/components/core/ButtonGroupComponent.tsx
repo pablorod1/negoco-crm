@@ -19,15 +19,20 @@ export default function ButtonGroupComponent({
 }: ButtonGroupProps) {
   return (
     <div className="flex justify-between items-center w-full mt-4 z-10">
-      {onCancel && <CancelOperationConfirmationModal onCancel={onCancel} />}
+      {onCancel && (
+        <CancelOperationConfirmationModal
+          disabled={loading}
+          onCancel={onCancel}
+        />
+      )}
       <div className="flex justify-end gap-4 w-full">
         {onBack && (
-          <Button onClick={onBack} variant="destructive">
+          <Button onClick={onBack} variant="destructive" disabled={loading}>
             Atrás
           </Button>
         )}
-        <Button onClick={onSubmit}>
-          {lastStep ? "Guardar" : loading ? "Guardando..." : "Siguiente"}
+        <Button onClick={onSubmit} disabled={loading}>
+          {loading ? "Guardando..." : lastStep ? "Guardar" : "Siguiente"}
         </Button>
       </div>
     </div>

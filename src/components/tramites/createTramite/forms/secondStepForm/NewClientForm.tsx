@@ -7,8 +7,8 @@ import {
 } from "@/lib/validation/validation.types";
 import { InputComponent, SelectComponent } from "../../InputComponent";
 import { CARGOS, CLIENT_TYPES, DOCUMENT_TYPES } from "@/lib/core/const";
-import { Divider } from "@heroui/divider";
 import { ClientDB, DocumentType } from "@/lib/core/types";
+import { Separator } from "@/components/ui/separator";
 
 interface Props {
   formData: SecondForm;
@@ -234,7 +234,7 @@ export default function NewClientForm({
         formData.type === "Comunidad de Propietarios") &&
         signerData && (
           <>
-            <Divider className="my-4" />
+            <Separator className="my-4" />
             <div className="flex flex-col gap-y-4 w-full">
               <h2 className="text-xl font-semibold text-primary-500">
                 Datos de la persona firmante

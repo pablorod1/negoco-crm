@@ -13,10 +13,8 @@ import { Building2, CircleX, FilePen, FileText, MapPin } from "lucide-react";
 import { ContractDB } from "@/lib/core/types";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import CreateContractDrawer from "../../createTramite/CreateContractDrawer";
-import { Button } from "@heroui/button";
 import { showCustomToast } from "@/components/core/CustomToast";
-import EditContractDrawer from "./EditContractDrawer";
+import EditDrawer from "../client/EditTramiteDrawer";
 
 interface Props {
   contracts: ContractDB[];
@@ -32,11 +30,10 @@ export default function ContractSection({
   onContractUpdated,
   isEditable,
 }: Props) {
-  const [isCreateContractOpen, setIsCreateContractOpen] = useState(false);
-  const [isEditContractOpen, setIsEditContractOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<ContractDB>(
     contracts[0]
   );
+  const [loading, setLoading] = useState(false);
 
   const checkChanges = (contract: ContractDB) => {
     return JSON.stringify(contract) !== JSON.stringify(selectedContract);
@@ -54,6 +51,7 @@ export default function ContractSection({
   };
 
   const handleCreateContract = async (contract: ContractDB) => {
+    setLoading(true);
     try {
       const formData = new FormData();
       formData.append("contracts", JSON.stringify([contract]));
@@ -83,7 +81,6 @@ export default function ContractSection({
         iconColor: "var(--success-color)",
         iconSize: 24,
       });
-      setIsCreateContractOpen(false);
       onContractAdded();
     } catch (error) {
       console.error(error);
@@ -94,6 +91,8 @@ export default function ContractSection({
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,10 +105,9 @@ export default function ContractSection({
         iconColor: "var(--warning-color)",
         iconSize: 24,
       });
-      setIsEditContractOpen(false);
       return;
     }
-
+    setLoading(true);
     try {
       const res = await fetch(`/api/tramites/update/contract`, {
         method: "PATCH",
@@ -140,7 +138,6 @@ export default function ContractSection({
         iconSize: 24,
       });
       onContractUpdated();
-      setIsEditContractOpen(false);
       setSelectedContract(contract);
     } catch (error) {
       console.error(error);
@@ -151,6 +148,8 @@ export default function ContractSection({
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -347,43 +346,22 @@ export default function ContractSection({
         </CardContent>
         {isEditable && (
           <CardFooter className="gap-4">
-            <Button
-              variant="bordered"
-              color="primary"
-              radius="sm"
-              onPress={() => setIsCreateContractOpen(true)}
-              startContent={<FileText size={16} />}
-            >
-              Añadir Contrato
-            </Button>
+            <EditDrawer
+              tramite_id={tramite_id}
+              newContract
+              onContract={handleCreateContract}
+              loading={loading}
+            />
             {contracts.length > 0 && (
-              <Button
-                variant="bordered"
-                color="primary"
-                radius="sm"
-                onPress={() => setIsEditContractOpen(true)}
-                startContent={<FilePen size={16} />}
-              >
-                Editar Contrato
-              </Button>
+              <EditDrawer
+                contract={selectedContract}
+                onContract={handleUpdateContract}
+                loading={loading}
+              />
             )}
           </CardFooter>
         )}
       </Card>
-
-      <CreateContractDrawer
-        tramite_id={tramite_id}
-        onCreateContract={handleCreateContract}
-        isOpenProp={isCreateContractOpen}
-        onCloseProp={() => setIsCreateContractOpen(false)}
-      />
-
-      <EditContractDrawer
-        contract={selectedContract}
-        isOpenProp={isEditContractOpen}
-        onCloseProp={() => setIsEditContractOpen(false)}
-        onSavingContract={handleUpdateContract}
-      />
     </>
   );
 }

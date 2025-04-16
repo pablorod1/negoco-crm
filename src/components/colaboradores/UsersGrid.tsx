@@ -48,6 +48,7 @@ function UsersGridTable({
 
   // Variable para verificar si el usuario actual es administrador
   const isAdmin = userData?.role === "admin";
+  const isBackoffice = userData?.role === "1";
 
   // Columnas base que siempre se muestran
   const baseColumns: ColumnDef<User, any>[] = [
@@ -204,7 +205,7 @@ function UsersGridTable({
       ) : (
         <>
           <div className="flex items-end gap-4 justify-between mb-8 w-full">
-            {isAdmin && (
+            {(isAdmin || isBackoffice) && (
               <div className="flex items-center gap-4 w-full">
                 <Input
                   type="text"

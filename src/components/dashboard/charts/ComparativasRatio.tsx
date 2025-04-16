@@ -28,9 +28,9 @@ import type { User } from "@/lib/core/types";
 import { CalendarIcon, RefreshCw } from "lucide-react";
 
 import SpinnerComponent from "@/components/core/SpinnerComponent";
-import { Divider } from "@heroui/divider";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const chartConfig = {
   comparativas: {
@@ -457,7 +457,7 @@ export function ComparativasRatio({
               </div>
               <span className="font-medium">{comparativasData.total}</span>
             </div>
-            <Divider className="my-1" />
+            <Separator className="my-1" />
             <div className="flex justify-between items-center gap-2 me-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-primary-600 rounded-full"></div>

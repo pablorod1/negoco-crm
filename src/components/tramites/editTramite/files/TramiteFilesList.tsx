@@ -1,5 +1,5 @@
 import { showCustomToast } from "@/components/core/CustomToast";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { formatDate, formatFileSize } from "@/lib/core/format";
 import { TramiteFile } from "@/lib/core/types";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
@@ -80,9 +80,9 @@ export default function TramiteFilesList({
           <div className="flex items-center gap-2">
             {file.download_url && (
               <Button
-                variant="bordered"
-                isIconOnly
-                onPress={() => handleDownloadFile(file.filename)}
+                variant="outline"
+                size="icon"
+                onClick={() => handleDownloadFile(file.filename)}
               >
                 <Download size={20} />
               </Button>
@@ -90,7 +90,7 @@ export default function TramiteFilesList({
             {isTramitableBorrador && (
               <DeleteTramiteFileConfirmationModal
                 tramite_id={tramite_id}
-                filename={file.filename}
+                file={file}
                 organization_id={organization_id}
                 onDeleted={onDeleted}
               />

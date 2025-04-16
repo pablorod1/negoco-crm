@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/core/format";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -10,11 +10,11 @@ import {
   Copy,
   InfoIcon,
 } from "lucide-react";
-import { Tooltip } from "@heroui/tooltip";
 import type { LiquidezStatus, Status, TramiteRow } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import TramiteDropdown from "./TramiteDropdown";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 const isRenewable = (
   renovation_date: string
@@ -45,10 +45,10 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
           {column.getIsSorted() === "asc" ? (
@@ -83,10 +83,10 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Activación
           {column.getIsSorted() === "asc" ? (
@@ -125,7 +125,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     header: "Cliente",
     cell: ({ row }) => {
       return (
-        <Tooltip
+        <TooltipComponent
           content={
             <div className="flex flex-col gap-1">
               <span>{row.original.client_name}</span>
@@ -143,7 +143,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
               {row.original.client_email}
             </span>
           </div>
-        </Tooltip>
+        </TooltipComponent>
       );
     },
   },
@@ -155,24 +155,31 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
       return (
         <div className="flex flex-col">
           {row.original.CUPS.map((CUPS, index) => (
-            <Tooltip
+            <TooltipComponent
               key={index}
               content={
                 <div className="flex items-center gap-2">
                   <span className="text-ellipsis overflow-hidden whitespace-nowrap">
                     {CUPS}
                   </span>
-                  <Copy className="mr-2" size={16} color="white" />
+                  <Button
+                    size="icon"
+                    onClick={() => copyLink(CUPS)}
+                    variant="ghost"
+                  >
+                    <Copy
+                      className="mr-2 cursor-pointer"
+                      size={16}
+                      color="white"
+                    />
+                  </Button>
                 </div>
               }
-              className="bg-primary-500 rounded-full text-white cursor-pointer"
-              radius="lg"
-              onClick={() => copyLink(CUPS)}
             >
               <span className="block max-w-36 w-full overflow-hidden text-ellipsis whitespace-nowrap">
                 {CUPS}
               </span>
-            </Tooltip>
+            </TooltipComponent>
           ))}
         </div>
       );
@@ -206,17 +213,11 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
       return (
         <div className="flex flex-col">
           {row.original.contract_type.map((type, index) => (
-            <Tooltip
-              key={index}
-              content={type}
-              radius="lg"
-              color="primary"
-              className="text-white"
-            >
+            <TooltipComponent key={index} content={type} color="primary">
               <span className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full">
                 {type}
               </span>
-            </Tooltip>
+            </TooltipComponent>
           ))}
         </div>
       );
@@ -250,10 +251,10 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
           {column.getIsSorted() === "asc" ? (
@@ -288,10 +289,10 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Activación
           {column.getIsSorted() === "asc" ? (
@@ -330,7 +331,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     header: "Cliente",
     cell: ({ row }) => {
       return (
-        <Tooltip
+        <TooltipComponent
           content={
             <div className="flex flex-col gap-1">
               <span>{row.original.client_name}</span>
@@ -348,7 +349,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
               {row.original.client_email}
             </span>
           </div>
-        </Tooltip>
+        </TooltipComponent>
       );
     },
   },
@@ -360,24 +361,27 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
       return (
         <div className="flex flex-col">
           {row.original.CUPS.map((CUPS, index) => (
-            <Tooltip
+            <TooltipComponent
               key={index}
               content={
                 <div className="flex items-center gap-2">
                   <span className="text-ellipsis overflow-hidden whitespace-nowrap">
                     {CUPS}
                   </span>
-                  <Copy className="mr-2" size={16} color="white" />
+                  <Button
+                    onClick={() => copyLink(CUPS)}
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <Copy className="mr-2" size={16} color="white" />
+                  </Button>
                 </div>
               }
-              className="bg-primary-500 rounded-full text-white cursor-pointer"
-              radius="lg"
-              onClick={() => copyLink(CUPS)}
             >
               <span className="block max-w-36 w-full overflow-hidden text-ellipsis whitespace-nowrap">
                 {CUPS}
               </span>
-            </Tooltip>
+            </TooltipComponent>
           ))}
         </div>
       );
@@ -411,17 +415,11 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
       return (
         <div className="flex flex-col">
           {row.original.contract_type.map((type, index) => (
-            <Tooltip
-              key={index}
-              content={type}
-              radius="lg"
-              color="primary"
-              className="text-white"
-            >
+            <TooltipComponent key={index} content={type}>
               <span className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full">
                 {type}
               </span>
-            </Tooltip>
+            </TooltipComponent>
           ))}
         </div>
       );
@@ -486,10 +484,10 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
           {column.getIsSorted() === "asc" ? (
@@ -524,10 +522,10 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Activación
           {column.getIsSorted() === "asc" ? (
@@ -562,10 +560,10 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Renovación
           {column.getIsSorted() === "asc" ? (
@@ -589,15 +587,15 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
                 renewableStatus.option === "30"
                   ? "bg-primary-50 text-primary-500"
                   : renewableStatus.option === "15"
-                  ? "bg-warning-50 text-warning-500"
-                  : renewableStatus.option === "7"
-                  ? "bg-danger-50 text-danger-500"
-                  : ""
+                    ? "bg-warning-50 text-warning-500"
+                    : renewableStatus.option === "7"
+                      ? "bg-danger-50 text-danger-500"
+                      : ""
               }`}
             >
               <span>{formatDate(row.original.renovation_date)}</span>
               {renewableStatus.renewable && (
-                <Tooltip
+                <TooltipComponent
                   content={`Renovación en ${renewableStatus.days} ${
                     renewableStatus.days === 1 ? "día" : "días"
                   }`}
@@ -609,14 +607,14 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
                       renewableStatus.option === "30"
                         ? "text-primary-500"
                         : renewableStatus.option === "15"
-                        ? "text-warning-500"
-                        : renewableStatus.option === "7"
-                        ? "text-danger-500"
-                        : ""
+                          ? "text-warning-500"
+                          : renewableStatus.option === "7"
+                            ? "text-danger-500"
+                            : ""
                     }
                     `}
                   />
-                </Tooltip>
+                </TooltipComponent>
               )}
             </div>
           ) : (
@@ -647,7 +645,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     header: "Cliente",
     cell: ({ row }) => {
       return (
-        <Tooltip
+        <TooltipComponent
           content={
             <div className="flex flex-col gap-1">
               <span>{row.original.client_name}</span>
@@ -665,7 +663,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
               {row.original.client_email}
             </span>
           </div>
-        </Tooltip>
+        </TooltipComponent>
       );
     },
   },
@@ -677,24 +675,27 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
       return (
         <div className="flex flex-col">
           {row.original.CUPS.map((CUPS, index) => (
-            <Tooltip
+            <TooltipComponent
               key={index}
               content={
                 <div className="flex items-center gap-2">
                   <span className="text-ellipsis overflow-hidden whitespace-nowrap">
                     {CUPS}
                   </span>
-                  <Copy className="mr-2" size={16} color="white" />
+                  <Button
+                    onClick={() => copyLink(CUPS)}
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <Copy className="mr-2" size={16} color="white" />
+                  </Button>
                 </div>
               }
-              className="bg-primary-500 rounded-full text-white cursor-pointer"
-              radius="lg"
-              onClick={() => copyLink(CUPS)}
             >
               <span className="block max-w-36 w-full overflow-hidden text-ellipsis whitespace-nowrap">
                 {CUPS}
               </span>
-            </Tooltip>
+            </TooltipComponent>
           ))}
         </div>
       );
@@ -728,17 +729,11 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
       return (
         <div className="flex flex-col">
           {row.original.contract_type.map((type, index) => (
-            <Tooltip
-              key={index}
-              content={type}
-              radius="lg"
-              color="primary"
-              className="text-white"
-            >
+            <TooltipComponent key={index} content={type}>
               <span className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full">
                 {type}
               </span>
-            </Tooltip>
+            </TooltipComponent>
           ))}
         </div>
       );

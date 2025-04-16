@@ -22,7 +22,6 @@ import {
   CircleX,
   CheckSquare,
 } from "lucide-react";
-import { Tooltip } from "@heroui/tooltip";
 import { formatDate } from "@/lib/core/format";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +40,7 @@ import { DatePicker } from "@/components/core/DatePicker";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface Props {
   tramite: TramiteVM;
@@ -432,9 +432,9 @@ export default function UpdateTramiteStatusModal({
               <DialogTitle className="text-xl font-semibold text-primary">
                 Actualizar Estado
               </DialogTitle>
-              <Tooltip content="ID del trámite">
+              <TooltipComponent content="ID del trámite">
                 <span className="text-xs text-primary-400">#{tramite.id}</span>
-              </Tooltip>
+              </TooltipComponent>
             </div>
 
             {getStatusBadge(tramite.status)}
@@ -528,12 +528,17 @@ export default function UpdateTramiteStatusModal({
                   </div>
                 )}
                 {isVerificado && tramite.status === "Tramitable" && (
-                  <DatePicker
-                    date={formData.tramitation_date as Date}
-                    setDate={(value) =>
-                      handleDateChange(value as Date, "tramitation_date")
-                    }
-                  />
+                  <div className="space-y-1 w-full">
+                    <Label htmlFor="renovation_date">
+                      Fecha de Tramitación
+                    </Label>
+                    <DatePicker
+                      date={formData.tramitation_date as Date}
+                      setDate={(value) =>
+                        handleDateChange(value as Date, "tramitation_date")
+                      }
+                    />
+                  </div>
                 )}
 
                 {/* Notas */}
