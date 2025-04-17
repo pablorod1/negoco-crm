@@ -181,7 +181,7 @@ export default function SelectClient({
         />
       ) : (
         <ScrollArea>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 justify-center w-full pt-2 pb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-center w-full pt-2 pb-4">
             <Button
               size={"card"}
               variant={"outline"}
