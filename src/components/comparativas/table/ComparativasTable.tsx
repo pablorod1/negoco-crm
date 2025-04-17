@@ -32,7 +32,7 @@ export default function ComparativasTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [loading, setLoading] = useState(false);
   const [pageIndex, setPageIndex] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState<string | number>(15);
 
   const {
     filterValue,
@@ -61,7 +61,8 @@ export default function ComparativasTable<TData, TValue>({
               },
               body: JSON.stringify({
                 page: pageIndex,
-                rowsPerPage: pageSize,
+                rowsPerPage:
+                  typeof pageSize === "number" ? pageSize : "Sin Límite",
                 user_id: userData.id,
                 user_role: userData.role,
                 filterValue,

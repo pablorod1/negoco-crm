@@ -32,7 +32,7 @@ export function DataTable<TData, TValue>({
   const [tramites, setTramites] = useState<TramiteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState<number | string>(15);
   const [pageIndex, setPageIndex] = useState(1);
   const [totalTramites, setTotalTramites] = useState(0);
 
@@ -80,7 +80,7 @@ export function DataTable<TData, TValue>({
           },
           body: JSON.stringify({
             page: pageIndex,
-            rowsPerPage: pageSize,
+            rowsPerPage: typeof pageSize === "number" ? pageSize : "Sin Límite",
             user_id: userData.id,
             user_role: userData.role,
             filterValue,

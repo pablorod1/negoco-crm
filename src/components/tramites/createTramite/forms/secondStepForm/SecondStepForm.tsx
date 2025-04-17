@@ -80,8 +80,6 @@ export default function SecondStepForm({
     return stored ? JSON.parse(stored) : null;
   }, []);
 
-  console.log("formData", formData);
-
   useEffect(() => {
     if (newClientState && newClient) {
       setFormData({

@@ -23,10 +23,10 @@ interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
   loading: boolean;
   columns: ColumnDef<TData, TValue>[];
-  rowsPerPage: number;
+  rowsPerPage: number | string;
   pageIndex: number;
   setPageIndex: (pageIndex: number) => void;
-  setPageSize: (pageSize: number) => void;
+  setPageSize: (pageSize: number | string) => void;
   total: number;
 }
 
