@@ -1,7 +1,6 @@
 import { SignerDB } from "@/lib/core/types";
 
 import { CARGOS } from "@/lib/core/const";
-import { EditFormWrapper } from "../../EditFormWrapper";
 import { useState } from "react";
 import {
   InputComponent,
@@ -24,12 +23,15 @@ export default function EditSignerForm({
 }: Props) {
   const [formData, setFormData] = useState<SignerDB>(signer);
 
-  const handleFieldChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -94,69 +96,70 @@ export default function EditSignerForm({
     }
   };
   return (
-    <>
-      <EditFormWrapper title="Datos del firmante">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-stretch gap-4">
-            <InputComponent
-              name="name"
-              label="Nombre"
-              value={formData.name}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-            <InputComponent
-              name="last_name"
-              label="Apellidos"
-              value={formData.last_name}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-          </div>
-          <div className="flex items-stretch gap-4">
-            <InputComponent
-              name="phone"
-              label="Teléfono"
-              value={formData.phone}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-            <InputComponent
-              name="email"
-              label="Email"
-              value={formData.email}
-              isRequired
-              onChange={handleFieldChange}
-              type="email"
-            />
-            <InputComponent
-              name="document_number"
-              label="Número de documento"
-              value={formData.document_number}
-              isRequired
-              onChange={handleFieldChange}
-              type="text"
-            />
-          </div>
-          {signer.cargo && (
-            <SelectComponent
-              name="cargo"
-              label="Cargo"
-              selectedKey={formData.cargo || ""}
-              onChange={handleFieldChange}
-              items={CARGOS}
-            />
-          )}
+    <div className="h-full">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-stretch gap-4">
+          <InputComponent
+            name="name"
+            label="Nombre"
+            value={formData.name}
+            isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
+          <InputComponent
+            name="last_name"
+            label="Apellidos"
+            value={formData.last_name}
+            isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
         </div>
+        <InputComponent
+          name="email"
+          label="Email"
+          value={formData.email}
+          isRequired
+          onChange={handleFieldChange}
+          type="email"
+        />
+        <div className="flex items-stretch gap-4">
+          <InputComponent
+            name="phone"
+            label="Teléfono"
+            value={formData.phone}
+            isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
+
+          <InputComponent
+            name="document_number"
+            label="Número de documento"
+            value={formData.document_number}
+            isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
+        </div>
+        {signer.cargo && (
+          <SelectComponent
+            name="cargo"
+            label="Cargo"
+            selectedKey={formData.cargo || ""}
+            onChange={(value) => handleSelectChange(value, "cargo")}
+            items={CARGOS}
+          />
+        )}
+      </div>
+      <div className="absolute bottom-4 left-0 w-full px-4">
         <ButtonGroupComponent
           onSubmit={handleSubmit}
           onCancel={onCancel}
           lastStep
         />
-      </EditFormWrapper>
-    </>
+      </div>
+    </div>
   );
 }

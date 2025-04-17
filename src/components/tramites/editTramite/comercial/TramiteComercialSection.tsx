@@ -1,12 +1,13 @@
+"use client";
 import AvatarComponent from "@/components/core/AvatarComponent";
 import { User } from "@/lib/core/types";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { CircleX, Copy, UserPen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SelectComponent } from "../../createTramite/InputComponent";
 import { showCustomToast } from "@/components/core/CustomToast";
-import { Tooltip } from "@heroui/tooltip";
 import { copyLink } from "@/lib/core/utils";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface Props {
   userData: User;
@@ -58,10 +59,10 @@ export default function TramiteComercialSection({
     }
   }, [isEditMode, userData]);
 
-  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleChange = async (value: string) => {
     try {
       const selectedComercial = comerciales.find(
-        (comercial) => comercial.id === e.target.value
+        (comercial) => comercial.id === value
       );
 
       if (!selectedComercial) {
@@ -124,20 +125,23 @@ export default function TramiteComercialSection({
     <div className="space-y-2">
       <p className="text-sm font-medium text-primary-400">Comercial</p>
 
-      <div className="flex justify-between items-center gap-4">
+      <div className="flex justify-between items-end gap-4">
         {!isEditMode ? (
           <div className="flex items-center gap-3">
-            <AvatarComponent userData={user} className="!rounded-full" />
+            <AvatarComponent
+              userData={user as User}
+              className="!rounded-full"
+            />
             <div>
               <p className="font-medium">{user.name}</p>
-              <Tooltip
+              <TooltipComponent
                 content={
                   <div className="flex items-center gap-2">
                     <span>{user.email}</span>
                     <Button
-                      size="sm"
-                      isIconOnly
-                      onPress={() => copyLink(user.email as string)}
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => copyLink(user.email as string)}
                     >
                       <Copy size={16} />
                     </Button>
@@ -147,7 +151,7 @@ export default function TramiteComercialSection({
                 <p className="text-sm text-muted-foreground block xl:max-w-44 2xl:max-w-none overflow-hidden text-ellipsis whitespace-nowrap w-full">
                   {user.email}
                 </p>
-              </Tooltip>
+              </TooltipComponent>
             </div>
           </div>
         ) : (
@@ -156,16 +160,14 @@ export default function TramiteComercialSection({
             label="Comercial"
             items={comerciales}
             selectedKey={user.id as string}
+            textValue={user.name}
             onChange={handleChange}
           />
         )}
         {isEditable && (
           <Button
-            isIconOnly
-            radius="sm"
-            variant="light"
-            color={isEditMode ? "danger" : "primary"}
-            onPress={() => setIsEditMode(!isEditMode)}
+            variant={isEditMode ? "destructive" : "default"}
+            onClick={() => setIsEditMode(!isEditMode)}
           >
             {!isEditMode ? (
               <UserPen size={16} />

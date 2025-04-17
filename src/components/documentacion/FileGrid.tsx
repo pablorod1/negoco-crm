@@ -1,17 +1,21 @@
 "use client";
 import { useState } from "react";
-import { ArrowLeft, Grid2X2, List, Trash, X } from "lucide-react";
+import { ArrowLeft, Grid2X2, List, X } from "lucide-react";
 
 import { FileCard } from "./FileCard";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { FolderCard } from "./FolderCard";
-import { BreadcrumbItem, Breadcrumbs } from "@heroui/breadcrumbs";
-import { Divider } from "@heroui/divider";
 import UploadFileModal from "./UploadFileModal";
 import SearchBar from "./SearchBar";
 import DeleteFileConfirmationModal from "./DeleteFileConfirmationModal";
-import { useDisclosure } from "@heroui/modal";
+import { Separator } from "../ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+} from "../ui/breadcrumb";
 
 interface FileGridProps {
   files?: DocumentacionFile[];
@@ -36,7 +40,6 @@ export function FileGrid({
   handleBack,
   userData,
 }: FileGridProps) {
-  const { onOpen, isOpen, onClose } = useDisclosure();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [filesSelected, setFilesSelected] = useState<DocumentacionFile[]>([]);
 
@@ -53,33 +56,33 @@ export function FileGrid({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-4">
             <Button
-              size="sm"
-              radius="full"
+              size="icon"
               variant="ghost"
-              isIconOnly
               color="primary"
-              onPress={handleBack}
-              isDisabled={folderPath ? folderPath.length === 0 : false}
+              onClick={handleBack}
+              disabled={folderPath ? folderPath.length === 0 : false}
               className="transition-opacity"
-              title="Go to parent folder"
             >
               <ArrowLeft width={16} height={16} />
             </Button>
           </div>
-          <Breadcrumbs size="lg">
-            {folderPath &&
-              folderPath.map((folder, index) => (
-                <BreadcrumbItem
-                  key={`${folder}-${index}`}
-                  href={`/documentacion/${getBreadcrumbPath(
-                    folderPath,
-                    index
-                  )}`}
-                >
-                  {folder}
-                </BreadcrumbItem>
-              ))}
-          </Breadcrumbs>
+          <Breadcrumb>
+            <BreadcrumbList>
+              {folderPath &&
+                folderPath.map((folder, index) => (
+                  <BreadcrumbItem key={index}>
+                    <BreadcrumbLink
+                      href={`/documentacion/${getBreadcrumbPath(
+                        folderPath,
+                        index
+                      )}`}
+                    >
+                      {folder}
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                ))}
+            </BreadcrumbList>
+          </Breadcrumb>
         </div>
         <div className="flex items-center gap-4">
           {filesSelected.length > 0 && (
@@ -87,21 +90,14 @@ export function FileGrid({
               <p className="text-xs text-muted-foreground text-nowrap">
                 {filesSelected.length} archivo(s) seleccionado(s)
               </p>
+              <DeleteFileConfirmationModal
+                files={filesSelected}
+                userData={userData as User}
+              />
               <Button
-                variant="light"
-                size="sm"
-                color="danger"
-                isIconOnly
-                onPress={onOpen}
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="light"
-                size="sm"
-                color="primary"
-                isIconOnly
-                onPress={() => setFilesSelected([])}
+                variant="outline"
+                size="icon"
+                onClick={() => setFilesSelected([])}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -109,11 +105,10 @@ export function FileGrid({
           )}
           <SearchBar recentlyFiles={recentlyFiles} />
           <Button
-            variant="flat"
-            size="sm"
-            isIconOnly
+            variant="ghost"
+            size="icon"
             className="px-2 bg-transparent"
-            onPress={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+            onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
           >
             {viewMode === "grid" ? (
               <List className="h-4 w-4" />
@@ -130,11 +125,11 @@ export function FileGrid({
             <h2 className="text-xl font-semibold text-primary-800">
               Archivos recientes
             </h2>
-            <Divider />
+            <Separator />
             <div
               className={
                 viewMode === "grid"
-                  ? "grid grid-cols-1 md:grid-cols-2  xl:grid-cols-3 gap-4 items-stretch"
+                  ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-stretch"
                   : "space-y-2"
               }
             >
@@ -154,11 +149,11 @@ export function FileGrid({
         {folders.length > 0 && (
           <div className="flex flex-col gap-4 w-full">
             <h2 className="text-xl font-semibold text-primary-800">Carpetas</h2>
-            <Divider />
+            <Separator />
             <div
               className={
                 viewMode === "grid"
-                  ? "grid grid-cols-1 md:grid-cols-2  xl:grid-cols-3 gap-4 items-stretch"
+                  ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-stretch"
                   : "space-y-2"
               }
             >
@@ -176,11 +171,11 @@ export function FileGrid({
         {files && files.length > 0 && (
           <div className="flex flex-col gap-4 w-full">
             <h2 className="text-xl font-semibold text-primary-800">Archivos</h2>
-            <Divider />
+            <Separator />
             <div
               className={
                 viewMode === "grid"
-                  ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch"
+                  ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-stretch"
                   : "space-y-2"
               }
             >
@@ -198,13 +193,6 @@ export function FileGrid({
           </div>
         )}
       </div>
-
-      <DeleteFileConfirmationModal
-        isOpen={isOpen}
-        onClose={onClose}
-        files={filesSelected}
-        userData={userData as User}
-      />
     </>
   );
 }

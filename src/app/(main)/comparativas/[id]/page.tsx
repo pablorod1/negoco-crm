@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AvatarComponent from "@/components/core/AvatarComponent";
-import { Divider } from "@heroui/divider";
+import { Separator } from "@/components/ui/separator";
 import { formatDateTime } from "@/lib/core/format";
 import { showCustomToast } from "@/components/core/CustomToast";
 import UploadComparativaFilesModal from "@/components/comparativas/editComparativa/UploadComparativaFilesModal";
@@ -32,11 +32,11 @@ import { ServiceInfo } from "@/components/comparativas/editComparativa/ServiceIn
 import { FilesList } from "@/components/comparativas/editComparativa/FilesList";
 import { CommissionsTabContent } from "@/components/comparativas/editComparativa/ComissionsTabContent";
 import UpdateComparativaStatusModal from "@/components/comparativas/editComparativa/UpdateComparativaStatusModal";
-import ComparativaToTramite from "@/components/comparativas/editComparativa/ComparativaToTramite";
-import SpinnerComponent from "@/components/core/SpinnerComponent";
-import { Tooltip } from "@heroui/tooltip";
 import Link from "next/link";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
+import TooltipComponent from "@/components/core/TooltipComponent";
+import AddTramiteDialog from "@/components/tramites/createTramite/AddTramiteDialog";
+import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();
@@ -156,9 +156,10 @@ export default function EditComparativaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <SpinnerComponent userData={userData as User} />
-      </div>
+      <FullScreenLoaderComponent
+        title="Cargando comparativa..."
+        description="Por favor, espera mientras se cargan los datos de la comparativa."
+      />
     );
   }
 
@@ -190,7 +191,7 @@ export default function EditComparativaPage() {
         <div className="flex items-center gap-2">
           {getStatusBadge(comparativa.status)}
           {comparativa.status === "processed" && comparativa.tramite_id && (
-            <Tooltip content="Ver trámite">
+            <TooltipComponent content="Ver Trámite">
               <Link
                 href={`/tramites/${comparativa.tramite_id}`}
                 className="flex items-center gap-1 ml-4 text-primary-400 hover:underline hover:text-primary-500"
@@ -198,17 +199,20 @@ export default function EditComparativaPage() {
                 <ClipboardList className="h-4 w-4" />
                 <span>Trámite: {comparativa.tramite_id}</span>
               </Link>
-            </Tooltip>
+            </TooltipComponent>
           )}
 
-          {comparativa.status !== "completed" && !isComercial ? (
+          {comparativa.status !== "completed" &&
+          comparativa.status !== "processed" &&
+          !isComercial ? (
             <UpdateComparativaStatusModal
               comparativa={comparativa}
               onUpdate={fetchComparativa}
               userData={userData as User}
             />
           ) : comparativa.status === "completed" ? (
-            <ComparativaToTramite
+            <AddTramiteDialog
+              variant="outline"
               comparativa={comparativa}
               onComparativaUpdated={fetchComparativa}
             />
@@ -256,7 +260,6 @@ export default function EditComparativaPage() {
                   <UpdateComissionsModal
                     onUpdate={fetchComparativa}
                     comparativa={comparativa}
-                    userData={userData as User}
                   />
                 )}
               </TabsContent>
@@ -304,7 +307,7 @@ export default function EditComparativaPage() {
               </div>
             </div>
 
-            <Divider />
+            <Separator />
 
             {/* Date Info */}
             <div className="space-y-3">
@@ -317,7 +320,7 @@ export default function EditComparativaPage() {
               </p>
             </div>
 
-            <Divider />
+            <Separator />
 
             {/* Status Info */}
             <div className="space-y-3">

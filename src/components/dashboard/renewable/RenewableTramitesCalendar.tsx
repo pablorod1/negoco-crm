@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { User } from "@/lib/core/types";
 import { DatePickerDemo } from "../DatePicker";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { RenewableTramitesAnimatedList } from "./RenewableTramitesAnimatedList";
 import Image from "next/image";
 
@@ -186,9 +186,8 @@ export default function RenewableTramitesCalendar({
 
                     {mostRecentRenewableDate && (
                       <Button
-                        variant="light"
-                        color="primary"
-                        onPress={handleMostRecentRenewableDate}
+                        variant="outline"
+                        onClick={handleMostRecentRenewableDate}
                         className="animate-fadeIn"
                       >
                         Ver el próximo trámite renovable

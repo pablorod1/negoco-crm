@@ -1,16 +1,17 @@
 "use client";
 import { useState } from "react";
+
 import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { CheckCircle, CircleX, Plus } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
-import { Button } from "@heroui/button";
-import { ButtonProps } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { CreateComparativaStepper } from "./CreateComparativaStepper";
 import {
   ComparativaDB,
@@ -24,24 +25,26 @@ import ThirdStepForm from "./forms/ThirdStepForm";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { useComparativas } from "@/lib/contexts/ComparativasContext";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";
+import { type VariantProps } from "class-variance-authority";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function AddComparativaDialog({
-  color,
+  variant,
 }: {
-  color?: ButtonProps["color"];
+  variant?: string;
 }) {
   const { userData } = useUser();
   const { refreshComparativas } = useComparativas();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  const { isOpen, onClose, onOpen } = useDisclosure();
   const [comparativa, setComparativa] = useState<ComparativaDB>(
     createEmptyComparativaDB(userData as User)
   );
   const [documents, setDocuments] = useState<File[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleOpen = () => {
-    onOpen();
+  const onClose = () => {
+    setIsOpen(false);
     setActiveTab(0);
     setComparativa(createEmptyComparativaDB(userData as User));
     setDocuments([]);
@@ -117,6 +120,8 @@ export default function AddComparativaDialog({
         iconColor: "var(--success-color)",
         iconSize: 24,
         icon: CheckCircle,
+        buttonLink: `/comparativas/${comparativa.id}`,
+        buttonLinkText: "Ver comparativa",
       });
       try {
         await refreshComparativas();
@@ -171,39 +176,40 @@ export default function AddComparativaDialog({
       onCancel={onClose}
       onSubmit={handleSubmit}
       loading={loading}
-      userData={userData as User}
     />,
   ];
 
   return (
     <>
-      <Button
-        onPress={handleOpen}
-        color={color ? color : "primary"}
-        radius="sm"
-        className="shadow-md"
-      >
-        <Plus size={20} />
-        <span>Nueva Comparativa</span>
-      </Button>
-
-      <Modal
-        isDismissable={false}
-        radius="sm"
-        hideCloseButton
-        inert={!isOpen}
-        isOpen={isOpen}
-        onClose={onClose}
-      >
-        <ModalContent
-          className={`transition-all duration-700 ease-in-out w-full h-auto max-w-[900px]`}
-        >
-          <ModalHeader>
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant={
+              variant
+                ? (variant as VariantProps<typeof buttonVariants>["variant"])
+                : "default"
+            }
+            onClick={() => setIsOpen(true)}
+          >
+            <Plus size={20} />
+            <span>Nueva Comparativa</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="transition-all duration-700 ease-in-out w-full h-auto max-w-[900px] [&>button]:hidden">
+          <DialogHeader className="mb-6">
+            <div className="hidden">
+              <DialogTitle className="text-lg text-primary-800 font-semibold">
+                Creando una nueva comparativa
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-500 mb-4">
+                Completa los pasos para crear una nueva comparativa
+              </DialogDescription>
+            </div>
             <CreateComparativaStepper steps={3} currentStep={activeTab} />
-          </ModalHeader>
-          <ModalBody className="py-4">{formElements[activeTab]}</ModalBody>
-        </ModalContent>
-      </Modal>
+          </DialogHeader>
+          {formElements[activeTab]}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

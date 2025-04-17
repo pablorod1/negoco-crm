@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       userFilter,
     }: {
       page: number;
-      rowsPerPage: number;
+      rowsPerPage: number | string;
       user_id: string;
       user_role: string;
       filterValue?: string;
@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const offset = (page - 1) * rowsPerPage;
+    const offset =
+      typeof rowsPerPage === "number" ? (page - 1) * rowsPerPage : 0;
     let query = `SELECT 
                   c.id AS id,
                   c.creation_date AS creation_date,
@@ -147,8 +148,10 @@ export async function POST(req: NextRequest) {
 
     query += ` ORDER BY c.creation_date DESC`;
 
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(rowsPerPage, offset);
+    if (typeof rowsPerPage === "number") {
+      query += ` LIMIT ? OFFSET ?`;
+      params.push(rowsPerPage, offset);
+    }
 
     const rs = await tursoClient.execute({
       sql: query,

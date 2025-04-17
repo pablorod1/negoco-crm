@@ -23,12 +23,14 @@ export async function sendComparativaStatusUpdatedNotification({
   status,
   link,
   req,
+  comparativa_name,
 }: {
   user_to: { name: string; email: string; org_logo: string | undefined };
   comparativa_id: string;
   status: { old: string; new: string };
   link: string;
   req: NextRequest;
+  comparativa_name: string;
 }) {
   // Configurar el transporter de nodemailer
   const host = req.headers.get("host");
@@ -66,6 +68,7 @@ export async function sendComparativaStatusUpdatedNotification({
       status={status}
       org_logo={user_to.org_logo}
       subdomain={subdomain}
+      comparativa_name={comparativa_name}
     />
   );
 
@@ -75,7 +78,7 @@ export async function sendComparativaStatusUpdatedNotification({
       name: subdomain.toUpperCase(),
     },
     to: user_to.email,
-    subject: `Actualización de Comparativa - ${comparativa_id}`,
+    subject: `Actualización de Comparativa - ${comparativa_name}`,
     html: emailHtml,
   };
 
@@ -94,20 +97,37 @@ const ComparativaStatusUpdateEmail = ({
   status,
   org_logo,
   subdomain,
+  comparativa_name,
 }: {
   name: string;
   comparativaLink: string;
   status: { old: string; new: string };
   org_logo: string | undefined;
   subdomain: string;
+  comparativa_name: string;
 }) => {
+  const formatStatus = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Pendiente de Estudio";
+      case "completed":
+        return "Estudio Realizado";
+      case "processed":
+        return "Completada";
+      case "rejected":
+        return "Comparativa Rechazada";
+      default:
+        return status;
+    }
+  };
   return (
     <Html lang="es">
       <Head>
-        <title>Actualización de Comparativa</title>
+        <title>Actualización de Comparativa - {comparativa_name}</title>
       </Head>
       <Preview>
-        El estado de tu comparativa ha cambiado de {status.old} a {status.new}
+        El estado de tu comparativa ha cambiado de {formatStatus(status.old)} a{" "}
+        {formatStatus(status.new)}
       </Preview>
       <Tailwind>
         <Body
@@ -129,7 +149,7 @@ const ComparativaStatusUpdateEmail = ({
               <Heading
                 className={`${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"} text-[24px] font-semibold m-0 mb-[20px]`}
               >
-                Actualización de Comparativa
+                Actualización de Comparativa - {comparativa_name}
               </Heading>
 
               <Text className="text-[16px] leading-[26px] m-0 mb-[15px]">
@@ -138,7 +158,8 @@ const ComparativaStatusUpdateEmail = ({
 
               <Text className="text-[16px] leading-[26px] m-0 mb-[15px]">
                 El estado de tu comparativa ha cambiado de{" "}
-                <strong>{status.old}</strong> a <strong>{status.new}</strong>.
+                <strong>{formatStatus(status.old)}</strong> a{" "}
+                <strong>{formatStatus(status.new)}</strong>.
               </Text>
 
               <Section className="my-[30px]">

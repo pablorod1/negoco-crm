@@ -7,6 +7,7 @@ import { TeamTramitesBarChart } from "./charts/TeamTramitesBarChar";
 import { useCallback, useEffect, useState } from "react";
 import { ComparativasResume } from "./comparativas/ComparativasResume";
 import { ObjetivosCard } from "./objectives/ObjectivesSection";
+import { Skeleton } from "../ui/skeleton";
 
 interface Props {
   userData: User;
@@ -16,29 +17,59 @@ interface Props {
 export const DireccionView = ({ userData, loading }: Props) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 items-stretch gap-4">
-      <div className="lg:col-span-2 row-span-2">
-        <YearlyTramitesBarChart loading={loading} userData={userData} />
-      </div>
-      <div className="row-start-3 row-span-2  2xl:row-start-1 2xl:col-start-3 ">
-        <ComparativasRatio userData={userData} loading={loading} />
-      </div>
-      <div className="row-start-5 row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-1 2xl:col-start-4 ">
-        <ObjetivosCard loading={loading} userData={userData} />
-      </div>
+      {loading ? (
+        <>
+          <div className="lg:col-span-2 row-span-2">
+            <Skeleton className="w-full h-[500px]" />
+          </div>
+          <div className="row-start-3 row-span-2  2xl:row-start-1 2xl:col-start-3 ">
+            <Skeleton className="w-full h-[500px]" />
+          </div>
+          <div className="row-start-5 row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-1 2xl:col-start-4 ">
+            <Skeleton className="w-full h-[500px]" />
+          </div>
 
-      <div className="row-start-7 row-span-2 col-start-1 lg:row-start-5 2xl:row-start-3 2xl:col-span-1">
-        <RenewableTramitesCalendar userData={userData} loading={loading} />
-      </div>
+          <div className="row-start-7 row-span-2 col-start-1 lg:row-start-5 2xl:row-start-3 2xl:col-span-1">
+            <Skeleton className="w-full h-44" />
+          </div>
 
-      <div className="row-start-9 row-span-2  lg:row-start-5 2xl:row-start-3 2xl:col-span-1 2xl:col-start-2">
-        <ComparativasResume userData={userData} loading={loading} />
-      </div>
-      <div className="row-start-11 row-span-2 lg:col-span-2 lg:row-start-7 2xl:row-start-3 2xl:col-start-3">
-        <PersonalTramitesChart userData={userData} loading={loading} />
-      </div>
-      <div className="row-start-13  row-span-2 lg:col-span-2 lg:row-start-9 2xl:row-start-5 2xl:col-span-4">
-        <TeamTramitesBarChart loading={loading} userData={userData} />
-      </div>
+          <div className="row-start-9 row-span-2  lg:row-start-5 2xl:row-start-3 2xl:col-span-1 2xl:col-start-2">
+            <Skeleton className="w-full h-44" />
+          </div>
+          <div className="row-start-11 row-span-2 lg:col-span-2 lg:row-start-7 2xl:row-start-3 2xl:col-start-3">
+            <Skeleton className="w-full h-44" />
+          </div>
+          <div className="row-start-13  row-span-2 lg:col-span-2 lg:row-start-9 2xl:row-start-5 2xl:col-span-4">
+            <Skeleton className="w-full h-44" />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="lg:col-span-2 row-span-2">
+            <YearlyTramitesBarChart loading={loading} userData={userData} />
+          </div>
+          <div className="row-start-3 row-span-2  2xl:row-start-1 2xl:col-start-3 ">
+            <ComparativasRatio userData={userData} loading={loading} />
+          </div>
+          <div className="row-start-5 row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-1 2xl:col-start-4 ">
+            <ObjetivosCard loading={loading} userData={userData} />
+          </div>
+
+          <div className="row-start-7 row-span-2 col-start-1 lg:row-start-5 2xl:row-start-3 2xl:col-span-1">
+            <RenewableTramitesCalendar userData={userData} loading={loading} />
+          </div>
+
+          <div className="row-start-9 row-span-2  lg:row-start-5 2xl:row-start-3 2xl:col-span-1 2xl:col-start-2">
+            <ComparativasResume userData={userData} loading={loading} />
+          </div>
+          <div className="row-start-11 row-span-2 lg:col-span-2 lg:row-start-7 2xl:row-start-3 2xl:col-start-3">
+            <PersonalTramitesChart userData={userData} loading={loading} />
+          </div>
+          <div className="row-start-13  row-span-2 lg:col-span-2 lg:row-start-9 2xl:row-start-5 2xl:col-span-4">
+            <TeamTramitesBarChart loading={loading} userData={userData} />
+          </div>
+        </>
+      )}
     </div>
   );
 };

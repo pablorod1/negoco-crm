@@ -27,12 +27,14 @@ export async function POST(req: NextRequest) {
 
     if (role === "2") {
       const subcomercialesRes = await getSubcomerciales(tursoClient, id);
-      if (subcomercialesRes.success && subcomercialesRes.ids) {
-        query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map((id) => `'${id}'`).join(",")})`;
-        params.push(id, ...subcomercialesRes.ids);
-      } else {
-        query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ?`;
-        params.push(id);
+      if (subcomercialesRes.success) {
+        if (subcomercialesRes.ids && subcomercialesRes.ids.length > 0) {
+          query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map(() => "?").join(",")})`;
+          params.push(id, ...subcomercialesRes.ids);
+        } else {
+          query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ?`;
+          params.push(id);
+        }
       }
     }
 

@@ -1,17 +1,16 @@
 "use client";
 import { Table } from "@tanstack/react-table";
-import { Tooltip } from "@heroui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Button as HeroUIButton } from "@heroui/button";
-import { CircleX, RefreshCcw } from "lucide-react";
+import { CircleX, RefreshCcw, CheckCircle } from "lucide-react";
 import {
-  Modal,
-  useDisclosure,
-  ModalBody,
-  ModalFooter,
-  ModalContent,
-  ModalHeader,
-} from "@heroui/modal";
+  Dialog,
+  DialogFooter,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useState, useMemo, useCallback } from "react";
 import { LiquidezStatus, Status, TramiteRow, User } from "@/lib/core/types";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
@@ -20,21 +19,26 @@ import { PLAIN_LIQUIDEZ_STATUS } from "@/lib/core/const";
 import { showCustomToast } from "@/components/core/CustomToast";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import { useTramites } from "@/lib/contexts/TramitesContext";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface Props<TData> {
   table: Table<TData>;
   userData: User;
 }
 
-export function UpdateMultipleTramitesModal<TData>({
-  table,
-  userData,
-}: Props<TData>) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
+  const [isOpen, setIsOpen] = useState(false);
   const [selectedTramites, setSelectedTramites] = useState<TramiteRow[]>([]);
   const [status, setStatus] = useState<LiquidezStatus>(null);
   const [loading, setLoading] = useState(false);
   const { refreshTramites } = useTramites();
+
+  const onOpen = useCallback(() => setIsOpen(true), []);
+  const onClose = useCallback(() => {
+    setIsOpen(false);
+    setSelectedTramites([]);
+    setStatus(null);
+  }, []);
 
   const selectedRowsLength = table.getSelectedRowModel().flatRows.length;
 
@@ -120,7 +124,7 @@ export function UpdateMultipleTramitesModal<TData>({
             : "El trámite ha sido actualizado correctamente",
         iconColor: "var(--success-color)",
         iconSize: 24,
-        icon: CircleX,
+        icon: CheckCircle,
       });
       table.resetRowSelection();
       setSelectedTramites([]);
@@ -186,50 +190,52 @@ export function UpdateMultipleTramitesModal<TData>({
     [selectedTramites.length]
   );
 
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
+  const handleStatusChange = (value: string) => {
     setStatus(value as LiquidezStatus);
   };
 
   return (
     <>
-      <Tooltip content={tooltipContent}>
-        <Button
-          onClick={handleOpenModal}
-          variant="outline"
-          size="icon"
-          className={buttonClasses}
-          disabled={!hasSelectedRows}
-        >
-          <div className="relative">
-            <RefreshCcw className="h-4 w-4" />
-            {hasSelectedRows && (
-              <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
-            )}
-          </div>
-        </Button>
-      </Tooltip>
-
-      <Modal
-        hideCloseButton
-        isDismissable={false}
-        inert={!isOpen}
-        size="2xl"
-        isOpen={isOpen}
-        onClose={onClose}
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-start gap-4">
-            <RefreshCcw className="size-12 text-primary" />
-            <div className="flex flex-col">
-              <h2 className="text-lg font-semibold text-primary">
-                {modalTitle}
-              </h2>
-              <p className="text-gray-600 text-sm">{modalDescription}</p>
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <TooltipComponent content={tooltipContent}>
+            <Button
+              onClick={handleOpenModal}
+              variant="outline"
+              size="icon"
+              className={buttonClasses}
+              disabled={!hasSelectedRows}
+            >
+              <div className="relative">
+                <RefreshCcw className="h-4 w-4" />
+                {hasSelectedRows && (
+                  <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
+                )}
+              </div>
+            </Button>
+          </TooltipComponent>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl w-full">
+          <DialogHeader>
+            <div className="flex items-start gap-4">
+              <RefreshCcw className="size-12 text-primary" />
+              <div className="flex flex-col">
+                <DialogTitle className="text-lg font-semibold text-primary">
+                  {modalTitle}
+                </DialogTitle>
+                <DialogDescription className="text-gray-600 text-sm">
+                  {modalDescription}
+                </DialogDescription>
+              </div>
             </div>
-          </ModalHeader>
-          <ModalBody className="flex flex-col gap-4 mt-2">
-            {loading && <LoadingStateModal userData={userData as User} />}
+          </DialogHeader>
+          <div className="flex flex-col gap-4 mt-2">
+            {loading && (
+              <LoadingStateModal
+                title="Actualizando trámites..."
+                description="Espere unos segundos mientras actualizamos el estado de los trámites seleccionados."
+              />
+            )}
             <SelectComponent
               name="status"
               label="Estado Liquidez"
@@ -298,22 +304,17 @@ export function UpdateMultipleTramitesModal<TData>({
                 </div>
               )
             )}
-          </ModalBody>
-          <ModalFooter>
-            <HeroUIButton
-              variant="light"
-              color="danger"
-              onPress={onClose}
-              radius="sm"
-            >
+          </div>
+          <DialogFooter>
+            <Button variant="destructive" onClick={onClose}>
               Cancelar
-            </HeroUIButton>
-            <HeroUIButton color="primary" onPress={handleUpdate} radius="sm">
+            </Button>
+            <Button color="primary" onClick={handleUpdate}>
               {updateButtonText}
-            </HeroUIButton>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

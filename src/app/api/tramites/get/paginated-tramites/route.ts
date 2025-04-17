@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       userFilter,
     }: {
       page: number;
-      rowsPerPage: number;
+      rowsPerPage: number | string;
       user_id: string;
       user_role: string;
       filterValue?: string;
@@ -55,7 +55,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const offset = (page - 1) * rowsPerPage;
+    const offset =
+      rowsPerPage === "Sin Límite"
+        ? 0
+        : typeof rowsPerPage === "number"
+          ? (page - 1) * rowsPerPage
+          : 0;
     const filters: string[] = [];
     const params: (string | number)[] = [];
 
@@ -229,6 +234,8 @@ export async function POST(req: NextRequest) {
       ${baseQuery}
     `;
 
+    const limitQuery = `LIMIT ? OFFSET ?`;
+
     // Main query with data retrieval
     const dataQuery = `
       SELECT 
@@ -259,12 +266,15 @@ export async function POST(req: NextRequest) {
           t.comision_sales_person, t.comision, t.status, t.liquidez_status,
           c.name, c.last_name, c.email
       ORDER BY t.creation_date DESC
-      LIMIT ? OFFSET ?
+      ${rowsPerPage === "Sin Límite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
     `;
 
     // Add pagination parameters
     const countParams = [...params];
-    const dataParams = [...params, rowsPerPage, offset];
+    const dataParams =
+      typeof rowsPerPage === "number"
+        ? [...params, rowsPerPage, offset]
+        : [...params];
 
     // Execute count query
     const countResult = await tursoClient.execute({

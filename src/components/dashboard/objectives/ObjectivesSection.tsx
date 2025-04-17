@@ -183,7 +183,7 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
             </TabsContent>
           </Tabs>
         ) : (
-          <LoadingStateCard userData={userData} />
+          <LoadingStateCard />
         )}
       </CardContent>
     </Card>

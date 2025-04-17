@@ -1,7 +1,7 @@
+import TooltipComponent from "@/components/core/TooltipComponent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/core/format";
 import { TramiteDB } from "@/lib/core/types";
-import { Tooltip } from "@heroui/tooltip";
 import { Clock, InfoIcon, RefreshCcw } from "lucide-react";
 
 interface Props {
@@ -39,8 +39,8 @@ export default function TramiteTimeLineSection({
                   <p className="text-sm font-medium text-primary-400">
                     Fecha de Tramitación
                   </p>
-                  <Tooltip
-                    radius="sm"
+                  <TooltipComponent
+                    color="bg-white shadow"
                     content={
                       <div className="max-w-sm flex items-start gap-2">
                         <RefreshCcw className="size-5 text-primary-800" />
@@ -57,7 +57,7 @@ export default function TramiteTimeLineSection({
                     }
                   >
                     <InfoIcon className="size-3 text-gray-600" />
-                  </Tooltip>
+                  </TooltipComponent>
                 </div>
                 <p className="font-medium ">
                   {tramite.tramitation_date
@@ -73,8 +73,8 @@ export default function TramiteTimeLineSection({
                 <p className="text-sm font-medium text-primary-400">
                   Fecha de Tramitación
                 </p>
-                <Tooltip
-                  radius="sm"
+                <TooltipComponent
+                  color="bg-white shadow"
                   content={
                     <div className="max-w-sm flex items-start gap-2">
                       <RefreshCcw className="size-5 text-primary-800" />
@@ -91,7 +91,7 @@ export default function TramiteTimeLineSection({
                   }
                 >
                   <InfoIcon className="size-3 text-gray-600" />
-                </Tooltip>
+                </TooltipComponent>
               </div>
               <p className="font-medium ">
                 {tramite.tramitation_date
@@ -106,8 +106,8 @@ export default function TramiteTimeLineSection({
                 <p className="text-sm font-medium text-primary-400">
                   Fecha de Activación
                 </p>
-                <Tooltip
-                  radius="sm"
+                <TooltipComponent
+                  color="bg-white shadow"
                   content={
                     <div className="max-w-sm flex items-start gap-2">
                       <RefreshCcw className="size-5 text-primary-800" />
@@ -124,7 +124,7 @@ export default function TramiteTimeLineSection({
                   }
                 >
                   <InfoIcon className="size-3 text-gray-600" />
-                </Tooltip>
+                </TooltipComponent>
               </div>
               <p className="font-medium ">
                 {tramite.activation_date
@@ -139,8 +139,8 @@ export default function TramiteTimeLineSection({
                   <p className="text-sm font-medium text-primary-400">
                     Fecha de Renovación
                   </p>
-                  <Tooltip
-                    radius="sm"
+                  <TooltipComponent
+                    color="bg-white shadow"
                     content={
                       <div className="max-w-sm flex items-start gap-2">
                         <RefreshCcw className="size-5 text-primary-800" />
@@ -157,7 +157,7 @@ export default function TramiteTimeLineSection({
                     }
                   >
                     <InfoIcon className="size-3 text-gray-600" />
-                  </Tooltip>
+                  </TooltipComponent>
                 </div>
                 <p className="font-medium ">
                   {tramite.renovation_date
@@ -174,8 +174,8 @@ export default function TramiteTimeLineSection({
                   <p className="text-sm font-medium text-primary-400">
                     Fecha de Cobro
                   </p>
-                  <Tooltip
-                    radius="sm"
+                  <TooltipComponent
+                    color="bg-white shadow"
                     content={
                       <div className="max-w-sm flex items-start gap-2">
                         <RefreshCcw className="size-5 text-primary-800" />
@@ -193,7 +193,7 @@ export default function TramiteTimeLineSection({
                     }
                   >
                     <InfoIcon className="size-3 text-gray-600" />
-                  </Tooltip>
+                  </TooltipComponent>
                 </div>
                 <p className="font-medium ">
                   {tramite.collection_date
@@ -208,8 +208,8 @@ export default function TramiteTimeLineSection({
                     <p className="text-sm font-medium text-primary-400">
                       Fecha de Pago
                     </p>
-                    <Tooltip
-                      radius="sm"
+                    <TooltipComponent
+                      color="bg-white shadow"
                       content={
                         <div className="max-w-sm flex items-start gap-2">
                           <RefreshCcw className="size-5 text-primary-800" />
@@ -227,7 +227,7 @@ export default function TramiteTimeLineSection({
                       }
                     >
                       <InfoIcon className="size-3 text-gray-600" />
-                    </Tooltip>
+                    </TooltipComponent>
                   </div>
                   <p className="font-medium ">
                     {tramite.payment_date

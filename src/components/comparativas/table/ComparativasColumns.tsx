@@ -6,7 +6,7 @@ import {
   User,
 } from "@/lib/core/types";
 import { ColumnDef } from "@tanstack/react-table";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon } from "lucide-react";
 import { formatDate } from "@/lib/core/format";
 import AvatarComponent from "@/components/core/AvatarComponent";
@@ -35,10 +35,10 @@ export const createSubcomercialComparativasColumns = (
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold m-0 border-0 bg-transparent text-primary-900"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
           {column.getIsSorted() === "asc" ? (
@@ -244,10 +244,10 @@ export const createComercialComparativasColumns = (
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold m-0 border-0 bg-transparent text-primary-900"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
           {column.getIsSorted() === "asc" ? (
@@ -378,10 +378,10 @@ export const createComparativasColumns = (
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold m-0 border-0 bg-transparent text-primary-900"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Creación
           {column.getIsSorted() === "asc" ? (

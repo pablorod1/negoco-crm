@@ -9,8 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 import { Table } from "@tanstack/react-table";
-import { Tooltip } from "@heroui/tooltip";
 import { useEffect } from "react";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface ColumnSelectorProps<TData> {
   table: Table<TData>;
@@ -77,7 +77,7 @@ export function ColumnSelector<TData>({
 
   return (
     <DropdownMenu>
-      <Tooltip
+      <TooltipComponent
         content={
           hasHiddenColumns()
             ? `${getHiddenColumnsCount()} columnas ocultas`
@@ -94,7 +94,7 @@ export function ColumnSelector<TData>({
             </div>
           </Button>
         </DropdownMenuTrigger>
-      </Tooltip>
+      </TooltipComponent>
       <DropdownMenuContent align="end" className="w-56">
         {table
           .getAllColumns()

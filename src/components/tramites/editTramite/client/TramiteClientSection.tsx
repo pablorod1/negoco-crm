@@ -17,7 +17,7 @@ export default function TramiteClientSection({
   onUpdated,
 }: Props) {
   return (
-    <Card className="xl:col-span-2">
+    <Card className="xl:col-span-2 relative">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-primary-800">
           <UserIcon className="h-5 w-5" />
@@ -41,7 +41,7 @@ export default function TramiteClientSection({
             )}
           </TabsList>
 
-          <TabsContent value="client" className="space-y-4 h-full">
+          <TabsContent value="client" className="space-y-4 h-full ">
             <ClientTabContent
               client={client}
               onClientUpdated={onUpdated}

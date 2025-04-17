@@ -7,14 +7,12 @@ import {
   ComercialView,
   DireccionView,
 } from "./DashboardBentoGridViews";
-import { Spinner } from "@heroui/spinner";
 import toast from "react-hot-toast";
 import Hero from "./Hero";
-import Image from "next/image";
-import SpinnerComponent from "../core/SpinnerComponent";
-import { User } from "@/lib/core/types";
 import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle, CircleX } from "lucide-react";
+import { User } from "@/lib/core/types";
+import { Skeleton } from "../ui/skeleton";
 
 export interface DashboardCardValue {
   total: number;
@@ -129,7 +127,6 @@ export default function DashboardBentoGrid() {
         0
       );
 
-
       setDashboardData({
         clients,
         activeTramites: active,
@@ -184,37 +181,8 @@ export default function DashboardBentoGrid() {
     }
   };
 
-  if (!userData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="min-h-screen flex flex-col gap-4 items-center justify-center">
-          <Spinner
-            variant="gradient"
-            color="primary"
-            size="lg"
-            className="relative"
-          >
-            <Image
-              src="/logo_sin_letras.webp"
-              alt="Logo"
-              width={48}
-              height={48}
-              className="absolute -top-2 left-0 right-0 bottom-0 m-auto"
-            />
-          </Spinner>
-          <div className="flex flex-col items-center text-center">
-            <span className="text-xl font-bold">Cargando...</span>
-            <span className="mt-2 text-gray-600 text-sm">
-              Espera mientras cargamos todos los datos
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const commonProps = {
-    userData,
+    userData: userData as User,
     loading,
     clients: dashboardData.clients,
     activeTramites: dashboardData.activeTramites,
@@ -224,23 +192,19 @@ export default function DashboardBentoGrid() {
   };
 
   return (
-    <>
+    <section className="flex flex-col gap-4 mx-2 py-8">
       {loading ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <SpinnerComponent userData={userData as User} />
-        </div>
+        <Skeleton className="w-full h-72 rounded-xl bg-primary-500" />
       ) : (
-        <section className="flex flex-col gap-4 mx-2 py-8">
-          <Hero {...commonProps} />
-          {isComercial ? (
-            <ComercialView {...commonProps} />
-          ) : isBackOffice ? (
-            <BackofficeView {...commonProps} />
-          ) : isDireccion ? (
-            <DireccionView {...commonProps} />
-          ) : null}
-        </section>
+        <Hero {...commonProps} />
       )}
-    </>
+      {isComercial ? (
+        <ComercialView {...commonProps} />
+      ) : isBackOffice ? (
+        <BackofficeView {...commonProps} />
+      ) : isDireccion ? (
+        <DireccionView {...commonProps} />
+      ) : null}
+    </section>
   );
 }

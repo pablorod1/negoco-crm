@@ -1,13 +1,13 @@
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
-import { LiquidezStatus, Status, TramiteVM, User } from "@/lib/core/types";
-import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 import {
-  Modal,
-  ModalHeader,
-  ModalContent,
-  ModalBody,
-  ModalFooter,
-} from "@heroui/modal";
+  ClientDB,
+  LiquidezStatus,
+  Status,
+  TramiteVM,
+  User,
+} from "@/lib/core/types";
+import { getStatusBadge } from "@/lib/hooks/use-status-badge";
+
 import {
   InputComponent,
   SelectComponent,
@@ -15,11 +15,12 @@ import {
 import {
   BAJA_LIQUIDEZ_STATUS,
   COMERCIAL_STATUS_TYPES,
+  NOW_DATE,
   PLAIN_LIQUIDEZ_STATUS,
   PLAIN_STATUS_TYPES,
+  RENOVATION_DATE,
 } from "@/lib/core/const";
 import { useState, useEffect } from "react";
-import { Divider } from "@heroui/divider";
 import {
   CalendarIcon,
   AlertCircleIcon,
@@ -27,22 +28,31 @@ import {
   CircleX,
   CheckSquare,
 } from "lucide-react";
-import { Tooltip } from "@heroui/tooltip";
 import { formatDate } from "@/lib/core/format";
 import { showCustomToast } from "@/components/core/CustomToast";
-import { Textarea } from "@heroui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateTramiteUpdatedNotification } from "@/lib/core/notifications.helpers";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
-import { DatePicker, DateValue } from "@heroui/react";
-import { getLocalTimeZone, today } from "@internationalized/date";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { DatePicker } from "@/components/core/DatePicker";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface Props {
   tramite: TramiteVM;
-  isOpen: boolean;
-  onClose: () => void;
   userData: User;
   onUpdate: () => void;
+  client: ClientDB;
 }
 
 interface FormData {
@@ -53,19 +63,18 @@ interface FormData {
   note?: string;
   comisionConfirmed: boolean;
   comisionSalesPersonConfirmed: boolean;
-  collection_date: string | null;
-  payment_date: string | null;
-  activation_date: DateValue | null;
-  renovation_date: DateValue | null;
-  tramitation_date: DateValue | null;
+  collection_date: Date | null;
+  payment_date: Date | null;
+  activation_date: Date | null;
+  renovation_date: Date | null;
+  tramitation_date: Date | null;
 }
 
 export default function UpdateTramiteStatusModal({
   tramite,
-  isOpen,
-  onClose,
   userData,
   onUpdate,
+  client,
 }: Props) {
   const [formData, setFormData] = useState<FormData>({
     status: tramite.status,
@@ -81,6 +90,7 @@ export default function UpdateTramiteStatusModal({
     renovation_date: null,
     tramitation_date: null,
   });
+  const [isOpen, setIsOpen] = useState(false);
 
   const isComercial = userData && userData.role === "2";
   const isTramitable = formData.status === "Tramitable";
@@ -98,7 +108,8 @@ export default function UpdateTramiteStatusModal({
     tramite.status === "Tramitable" &&
     formData.status !== "Borrador" &&
     formData.status !== "Tramitable" &&
-    formData.status !== "Baja";
+    formData.status !== "Baja" &&
+    formData.status !== "Scoring";
 
   useEffect(() => {
     // Si es comercial o el estado es Tramitable o Borrador, siempre se puede actualizar
@@ -120,13 +131,18 @@ export default function UpdateTramiteStatusModal({
     isComercial,
   ]);
 
-  const handleDateChange = (date: DateValue, name: string) => {
+  const handleDateChange = (date: Date, name: string) => {
     if (date) {
       setFormData((prev) => ({
         ...prev,
         [name]: date,
         ...(name === "activation_date" && {
-          renovation_date: date.add({ years: 1 }),
+          // activation date + 1 year
+          renovation_date: new Date(
+            date.getFullYear() + 1,
+            date.getMonth(),
+            date.getDate()
+          ),
         }),
       }));
     } else {
@@ -145,51 +161,6 @@ export default function UpdateTramiteStatusModal({
       | React.ChangeEvent<HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    if (name === "status" && value === "Activo") {
-      setFormData((prev) => ({
-        ...prev,
-        liquidez_status: "Pendiente de Cobro",
-        comision: Math.abs(prev.comision),
-        comision_sales_person: Math.abs(prev.comision_sales_person),
-      }));
-      handleDateChange(today(getLocalTimeZone()), "activation_date");
-    }
-
-    if (name === "status" && value === "Verificado") {
-      setFormData((prev) => ({
-        ...prev,
-        tramitation_date: today(getLocalTimeZone()),
-      }));
-    }
-
-    if (name === "status" && value === "Baja") {
-      setFormData((prev) => ({
-        ...prev,
-        comision: -prev.comision,
-        comision_sales_person: -prev.comision_sales_person,
-      }));
-    }
-
-    if (name === "liquidez_status") {
-      if (value === "Cobrado por Comercializadora") {
-        setFormData((prev) => ({
-          ...prev,
-          liquidez_status: value,
-          collection_date: new Date().toISOString(),
-        }));
-      } else if (value === "Pagado al Comercial") {
-        setFormData((prev) => ({
-          ...prev,
-          liquidez_status: value,
-          payment_date: new Date().toISOString(),
-        }));
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          liquidez_status: value as LiquidezStatus,
-        }));
-      }
-    }
 
     setFormData((prev) => ({
       ...prev,
@@ -225,6 +196,10 @@ export default function UpdateTramiteStatusModal({
 
   const checkStatusChanged = () => {
     return formData.status !== tramite.status;
+  };
+
+  const onClose = () => {
+    setIsOpen(false);
   };
 
   const handleSubmit = async () => {
@@ -274,37 +249,19 @@ export default function UpdateTramiteStatusModal({
             : undefined,
           user_id: userData.id,
           collection_date: formData.collection_date
-            ? formData.collection_date
+            ? formData.collection_date.toISOString()
             : undefined,
           payment_date: formData.payment_date
-            ? formData.payment_date
+            ? formData.payment_date.toISOString()
             : undefined,
           activation_date: formData.activation_date
-            ? new Date(
-                Date.UTC(
-                  formData.activation_date.year,
-                  formData.activation_date.month - 1, // JavaScript usa base 0 para meses
-                  formData.activation_date.day
-                )
-              )
+            ? formData.activation_date.toISOString()
             : undefined,
           tramitation_date: formData.tramitation_date
-            ? new Date(
-                Date.UTC(
-                  formData.tramitation_date.year,
-                  formData.tramitation_date.month - 1,
-                  formData.tramitation_date.day
-                )
-              )
+            ? formData.tramitation_date.toISOString()
             : undefined,
-          renovation_date: formData.activation_date
-            ? new Date(
-                Date.UTC(
-                  formData.activation_date.year + 1,
-                  formData.activation_date.month - 1,
-                  formData.activation_date.day
-                )
-              )
+          renovation_date: formData.renovation_date
+            ? formData.renovation_date.toISOString()
             : undefined,
         }),
       });
@@ -362,6 +319,7 @@ export default function UpdateTramiteStatusModal({
             },
             tramite_id: tramite.id,
             status: { old: tramite.status, new: formData.status },
+            client: { name: client.name, last_name: client.last_name },
           }),
           headers: {
             "Content-Type": "application/json",
@@ -406,35 +364,101 @@ export default function UpdateTramiteStatusModal({
     }
   };
 
+  const handleSelectChange = (value: string, name: string) => {
+    setFormData((prev) => {
+      if (name === "status") {
+        if (value === "Activo") {
+          return {
+            ...prev,
+            status: value as Status,
+            liquidez_status: "Pendiente de Cobro",
+            comision: Math.abs(prev.comision),
+            comision_sales_person: Math.abs(prev.comision_sales_person),
+            activation_date: NOW_DATE,
+            renovation_date: RENOVATION_DATE,
+          };
+        } else if (value === "Verificado") {
+          return {
+            ...prev,
+            status: value as Status,
+            tramitation_date: NOW_DATE,
+          };
+        } else if (value === "Baja") {
+          return {
+            ...prev,
+            status: value as Status,
+            comision: -prev.comision,
+            comision_sales_person: -prev.comision_sales_person,
+          };
+        } else {
+          return {
+            ...prev,
+            status: value as Status,
+          };
+        }
+      } else if (name === "liquidez_status") {
+        if (value === "Cobrado por Comercializadora") {
+          return {
+            ...prev,
+            liquidez_status: value,
+            collection_date: NOW_DATE,
+          };
+        } else if (value === "Pagado al Comercial") {
+          return {
+            ...prev,
+            liquidez_status: value as LiquidezStatus,
+            payment_date: NOW_DATE,
+          };
+        } else {
+          return {
+            ...prev,
+            liquidez_status: value as LiquidezStatus,
+          };
+        }
+      } else {
+        return {
+          ...prev,
+          [name]: value,
+        };
+      }
+    });
+  };
+
   return (
     <>
-      <Modal
-        isDismissable={false}
-        hideCloseButton
-        size="2xl"
-        isOpen={isOpen}
-        onClose={onClose}
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" onClick={() => setIsOpen(true)}>
+            Actualizar Estado
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="[&>button]:hidden">
+          <DialogHeader
+            className="flex flex-row items-center justify-between space-y-0 pb-2"
+            aria-describedby="modal-description"
+          >
             <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-semibold text-primary">
+              <DialogTitle className="text-xl font-semibold text-primary">
                 Actualizar Estado
-              </h2>
-              <Tooltip content="ID del trámite">
+              </DialogTitle>
+              <TooltipComponent content="ID del trámite">
                 <span className="text-xs text-primary-400">#{tramite.id}</span>
-              </Tooltip>
+              </TooltipComponent>
             </div>
-            <div className="flex-shrink-0">
-              {getStatusBadge(tramite.status)}
-            </div>
-          </ModalHeader>
 
-          <Divider className="my-1" />
+            {getStatusBadge(tramite.status)}
+          </DialogHeader>
 
-          <ModalBody>
+          <Separator className="my-1" />
+
+          <>
             {/* Información del trámite */}
-            {loading && <LoadingStateModal userData={userData as User} />}
+            {loading && (
+              <LoadingStateModal
+                title="Actualizando trámite..."
+                description="Espere unos segundos mientras actualizamos el estado del trámite."
+              />
+            )}
             <div className="grid grid-cols-2 gap-4 bg-primary-50 p-3 rounded-md text-sm">
               <div className="flex items-center space-x-2">
                 <CalendarIcon className="h-4 w-4 text-primary-500" />
@@ -442,7 +466,8 @@ export default function UpdateTramiteStatusModal({
                 <span>{formatDate(tramite.creation_date || "")}</span>
               </div>
               {tramite.status !== "Tramitable" &&
-                tramite.status !== "Borrador" && (
+                tramite.status !== "Borrador" &&
+                tramite.status !== "Scoring" && (
                   <div className="flex items-center space-x-2">
                     <CalendarIcon className="h-4 w-4 text-primary-500" />
                     <span className="font-medium">Tramitado:</span>
@@ -460,10 +485,10 @@ export default function UpdateTramiteStatusModal({
 
             <div className="grid gap-6 py-4">
               {/* Estado */}
-              <div className="mx-auto w-full space-y-4">
+              <div className="mx-auto w-full space-y-8">
                 <div className="flex items-center gap-4">
                   <SelectComponent
-                    onChange={handleChange}
+                    onChange={(value) => handleSelectChange(value, "status")}
                     name="status"
                     label="Estado"
                     items={
@@ -477,7 +502,9 @@ export default function UpdateTramiteStatusModal({
                   />
                   {(isActivo || isBaja) && !isComercial && (
                     <SelectComponent
-                      onChange={handleChange}
+                      onChange={(value) =>
+                        handleSelectChange(value, "liquidez_status")
+                      }
                       name="liquidez_status"
                       label="Estado de liquidez"
                       items={
@@ -489,53 +516,51 @@ export default function UpdateTramiteStatusModal({
                 </div>
 
                 {isActivo && tramite.status !== "Activo" && (
-                  <div className="flex items-center gap-4">
-                    <DatePicker
-                      radius="sm"
-                      variant="bordered"
-                      color="primary"
-                      name="activation_date"
-                      label="Fecha de activación"
-                      value={formData.activation_date}
-                      onChange={(value) =>
-                        handleDateChange(value as DateValue, "activation_date")
-                      }
-                      hideTimeZone
-                    />
-                    <DatePicker
-                      radius="sm"
-                      variant="bordered"
-                      color="primary"
-                      name="renovation_date"
-                      label="Fecha de renovación"
-                      value={formData.renovation_date}
-                      onChange={(value) =>
-                        handleDateChange(value as DateValue, "renovation_date")
-                      }
-                      hideTimeZone
-                    />
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="space-y-1 w-full">
+                      <Label htmlFor="activation_date">
+                        Fecha de Activación
+                      </Label>
+                      <DatePicker
+                        date={formData.activation_date as Date}
+                        setDate={(value) =>
+                          handleDateChange(value as Date, "activation_date")
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1 w-full">
+                      <Label htmlFor="renovation_date">
+                        Fecha de Renovación
+                      </Label>
+                      <DatePicker
+                        date={formData.renovation_date as Date}
+                        setDate={(value) =>
+                          handleDateChange(value as Date, "renovation_date")
+                        }
+                      />
+                    </div>
                   </div>
                 )}
                 {isVerificado && tramite.status === "Tramitable" && (
-                  <DatePicker
-                    radius="sm"
-                    variant="bordered"
-                    color="primary"
-                    name="tramitation_date"
-                    label="Fecha de tramitación"
-                    value={formData.tramitation_date}
-                    onChange={(value) =>
-                      handleDateChange(value as DateValue, "tramitation_date")
-                    }
-                    hideTimeZone
-                  />
+                  <div className="space-y-1 w-full">
+                    <Label htmlFor="renovation_date">
+                      Fecha de Tramitación
+                    </Label>
+                    <DatePicker
+                      date={formData.tramitation_date as Date}
+                      setDate={(value) =>
+                        handleDateChange(value as Date, "tramitation_date")
+                      }
+                    />
+                  </div>
                 )}
 
                 {/* Notas */}
                 <div className="mt-4">
+                  <Label htmlFor="note">Notas</Label>
                   <Textarea
+                    id="note"
                     name="note"
-                    label="Notas sobre el cambio de estado"
                     value={formData.note || ""}
                     onChange={handleChange}
                     placeholder="Añade información relevante sobre este cambio de estado..."
@@ -548,7 +573,7 @@ export default function UpdateTramiteStatusModal({
               {/* Comisiones (solo para no comerciales) */}
               {!isComercial && (
                 <>
-                  <Divider className="my-2" />
+                  <Separator className="my-2" />
 
                   <div className="space-y-4">
                     <div className="flex flex-col">
@@ -660,16 +685,16 @@ export default function UpdateTramiteStatusModal({
                 </div>
               )}
             </div>
-          </ModalBody>
-          <ModalFooter>
+          </>
+          <DialogFooter>
             <ButtonGroupComponent
               onCancel={onClose}
               onSubmit={handleSubmit}
               lastStep
             />
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

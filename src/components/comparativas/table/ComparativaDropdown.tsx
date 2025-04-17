@@ -1,16 +1,17 @@
-import {
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownSection,
-  DropdownItem,
-} from "@heroui/dropdown";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { MoreVertical, PencilLine, ReceiptEuro } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useDisclosure } from "@heroui/react";
 import DeleteComparativaConfirmationModal from "../DeleteComparativaConfirmationModal";
 import { ComparativaVM, User } from "@/lib/core/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import Link from "next/link";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -130,74 +131,71 @@ export default function ComparativaDropdown({
   comparativa: ComparativaVM;
 }) {
   const { userData } = useUser();
-  const { isOpen, onClose, onOpen } = useDisclosure();
-  const iconClasses =
-    "text-xl text-default-500 pointer-events-none flex-shrink-0 group-hover:text-white transition-colors duration-200 ease-in-out";
 
   return (
-    <>
-      <Dropdown radius="sm">
-        <DropdownTrigger>
-          <Button isIconOnly variant="light">
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownTrigger>
-        <DropdownMenu
-          aria-label="Dropdown menu with description"
-          variant="shadow"
-          color="primary"
-        >
-          <DropdownSection
-            showDivider={userData && userData.role === "admin" ? true : false}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="icon" variant="ghost">
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        aria-label="Dropdown menu with description"
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            key="edit"
+            textValue="Visualizar Comparativa"
+            className="p-0"
           >
-            <DropdownItem
-              key="edit"
-              description="Visualizar, actualizar y tramitar la comparativa"
-              startContent={<PencilLine className={iconClasses} />}
-              textValue="Visualizar Comparativa"
-              href={`/comparativas/${comparativa.id}`}
-              className="group"
-            >
-              Visualizar Comparativa
-            </DropdownItem>
-            {comparativa.status === "processed" && comparativa.tramite_id ? (
-              <DropdownItem
-                key="tramite"
-                description="Visualizar trámite asociado a la comparativa"
-                startContent={<ReceiptEuro className={iconClasses} />}
-                textValue="Visualizar Trámite"
-                href={`/tramites/${comparativa.tramite_id}`}
+            <Button variant={"link"}>
+              <Link
+                className="inline-flex items-center justify-start gap-2"
+                href={`/comparativas/${comparativa.id}`}
               >
-                Visualizar Trámite
-              </DropdownItem>
-            ) : null}
-          </DropdownSection>
-          {userData && userData.role === "admin" ? (
-            <DropdownSection>
-              <DropdownItem
+                <PencilLine size={16} />
+                Visualizar Comparativa
+              </Link>
+            </Button>
+          </DropdownMenuItem>
+          {comparativa.status === "processed" && comparativa.tramite_id ? (
+            <DropdownMenuItem
+              key="tramite"
+              textValue="Visualizar Trámite"
+              className="p-0"
+            >
+              <Button variant={"link"}>
+                <Link
+                  href={`/tramites/${comparativa.tramite_id}`}
+                  className="inline-flex items-center justify-start gap-2"
+                >
+                  <ReceiptEuro size={16} />
+                  Visualizar Trámite
+                </Link>
+              </Button>
+            </DropdownMenuItem>
+          ) : null}
+        </DropdownMenuGroup>
+        {userData && userData.role === "admin" ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem
                 textValue="Eliminar Comparativa"
                 key="delete"
-                onPress={onOpen}
-                className="text-danger"
-                color="danger"
-                description="Eliminar la comparativa de forma permanente"
-                startContent={
-                  <DeleteDocumentIcon className="text-xl pointer-events-none flex-shrink-0 text-danger" />
-                }
+                className="text-danger p-0"
+                onSelect={(e) => e.preventDefault()}
               >
-                Eliminar Comparativa
-              </DropdownItem>
-            </DropdownSection>
-          ) : null}
-        </DropdownMenu>
-      </Dropdown>
-
-      <DeleteComparativaConfirmationModal
-        comparativa={comparativa}
-        isOpen={isOpen}
-        onClose={onClose}
-        userData={userData as User}
-      />
-    </>
+                <DeleteComparativaConfirmationModal
+                  comparativa={comparativa}
+                  userData={userData as User}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

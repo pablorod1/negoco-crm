@@ -2,7 +2,7 @@ import { useState } from "react";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
 import { authClient } from "@/lib/auth/auth-client";
 import { User } from "@/lib/core/types";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { showCustomToast } from "../core/CustomToast";
 import { CheckCircle, CircleX, PencilOff } from "lucide-react";
 
@@ -113,12 +113,9 @@ export default function UpdateUser({ userData, refreshUserData }: Props) {
         />
       </div>
       <Button
-        onPress={handleSubmit}
+        onClick={handleSubmit}
         className="mt-4 max-w-36 shadow-md"
-        variant="solid"
-        radius="sm"
-        color="primary"
-        isDisabled={name === userData.name && email === userData.email}
+        disabled={name === userData.name && email === userData.email}
       >
         Guardar Cambios
       </Button>

@@ -16,19 +16,17 @@ import {
 } from "@tanstack/react-table";
 import { cn } from "@/lib/core/utils";
 import Image from "next/image";
-import LoadingComponent from "@/components/documentacion/LoadingComponent";
-import { User } from "@/lib/core/types";
 import { DataTablePagination } from "./DataTablePagination";
+import LoaderComponent from "../LoaderComponent";
 
 interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
   loading: boolean;
   columns: ColumnDef<TData, TValue>[];
-  userData: User;
-  rowsPerPage: number;
+  rowsPerPage: number | string;
   pageIndex: number;
   setPageIndex: (pageIndex: number) => void;
-  setPageSize: (pageSize: number) => void;
+  setPageSize: (pageSize: number | string) => void;
   total: number;
 }
 
@@ -36,7 +34,6 @@ export function TableContent<TData, TValue>({
   table,
   loading,
   columns,
-  userData,
   rowsPerPage,
   pageIndex,
   setPageIndex,
@@ -111,7 +108,7 @@ export function TableContent<TData, TValue>({
                     colSpan={columns.length}
                     className="h-[300px] text-center"
                   >
-                    <LoadingComponent userData={userData} />
+                    <LoaderComponent />
                   </TableCell>
                 </TableRow>
               ) : (

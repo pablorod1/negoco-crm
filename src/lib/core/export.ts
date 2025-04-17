@@ -63,7 +63,9 @@ export async function exportToExcel<TData>({
           cell?.column.id === "Fecha de Renovación" ||
           cell?.column.id === "Fecha de Creación"
         ) {
-          rowData[headerName] = formatDate(cell?.getValue() as string);
+          rowData[headerName] = cell.getValue()
+            ? formatDate(cell.getValue() as string)
+            : "---";
         } else if (cell?.column.id === "Comercial") {
           const value = cell?.getValue();
 
@@ -141,7 +143,7 @@ export async function exportToExcel<TData>({
         } else if (Array.isArray(cell?.getValue())) {
           rowData[headerName] = (cell?.getValue() as string[]).join(", ");
         } else {
-          rowData[headerName] = cell?.getValue();
+          rowData[headerName] = cell?.getValue() ? cell.getValue() : "---";
         }
       });
       return rowData;

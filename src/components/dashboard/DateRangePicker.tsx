@@ -60,6 +60,7 @@ export function DateRangePicker({ className, date, setDateRange }: Props) {
             numberOfMonths={2}
             locale={es}
             className="capitalize"
+            required={false}
           />
         </PopoverContent>
       </Popover>

@@ -1,14 +1,16 @@
 "use client";
 import React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@heroui/button";
-import { Select, SelectItem } from "@heroui/select";
-import { Input } from "@heroui/input";
+import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/auth-client";
 import { ROLES } from "@/lib/core/const";
 import { useUser } from "@/lib/contexts/UserContext";
 import { showCustomToast } from "../core/CustomToast";
 import { Info, UserRoundCheck, UserRoundX } from "lucide-react";
+import {
+  InputComponent,
+  SelectComponent,
+} from "../tramites/createTramite/InputComponent";
 
 interface FormData {
   email: string;
@@ -28,20 +30,23 @@ const initialFormState: FormData = {
   company: null,
 };
 
-interface Comercial {
+export interface Comercial {
   id: string;
   name: string;
 }
 
 export default function CreateUserForm({
   onUserCreated,
+  onClose,
 }: {
   onUserCreated: () => void;
+  onClose: () => void;
 }) {
   const { userData } = useUser();
   const [formData, setFormData] = useState<FormData>(initialFormState);
   const [isLoading, setIsLoading] = useState(false);
   const [comerciales, setComerciales] = useState<Comercial[]>([]);
+  const [selectedSubcomercial, setSelectedSubcomercial] = useState<string>("");
 
   const fetchComerciales = useCallback(async () => {
     const res = await fetch(`/api/users/get/users`, {
@@ -66,16 +71,37 @@ export default function CreateUserForm({
     fetchComerciales();
   }, [fetchComerciales]);
 
-  const handleChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleSelectChange = (
+    value: string,
+    e: React.ChangeEvent<HTMLSelectElement>,
+    name: string
+  ) => {
+    if (e) e.preventDefault();
+    setFormData((prev) => {
+      if (name === "super_id") {
+        const comercial = comerciales.find(
+          (comercial) => comercial.id === value
+        );
+        if (comercial) setSelectedSubcomercial(comercial.name);
+        return {
+          ...prev,
+          super_id: value,
+        };
+      } else {
+        return {
+          ...prev,
+          [name]: value,
+        };
+      }
+    });
   };
 
   const addUserToOrganization = async (
@@ -140,7 +166,24 @@ export default function CreateUserForm({
     }
   };
 
-  const handleSubmit = async () => {
+  const validateFields = () => {
+    const { email, password, name, role } = formData;
+    if (!email || !password || !name || !role) {
+      showCustomToast({
+        title: "Error",
+        message: "Por favor, rellena todos los campos obligatorios",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: UserRoundX,
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!validateFields()) return;
     setIsLoading(true);
 
     try {
@@ -281,49 +324,38 @@ export default function CreateUserForm({
     }
   };
 
+  const handleClose = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    onClose();
+  };
+
   return (
     <form className="space-y-6 w-full py-2">
-      <Input
-        id="name"
+      <InputComponent
+        type="text"
         name="name"
         value={formData.name}
         onChange={handleChange}
         isRequired
         label="Nombre"
-        placeholder="Ingrese el nombre"
-        className="w-full"
-        color="primary"
-        variant="bordered"
-        radius="sm"
       />
 
-      <Input
-        id="email"
+      <InputComponent
         name="email"
         type="email"
         value={formData.email}
         onChange={handleChange}
         isRequired
         label="Correo Electrónico"
-        placeholder="correo@ejemplo.com"
-        className="w-full"
-        color="primary"
-        variant="bordered"
-        radius="sm"
       />
 
       <div className="flex flex-col gap-2">
-        <Input
-          id="company"
+        <InputComponent
           label="Empresa"
           name="company"
           type="text"
           value={formData.company || ""}
           onChange={handleChange}
-          className="w-full"
-          color="primary"
-          variant="bordered"
-          radius="sm"
         />
         <div className="flex items-start gap-1 text-xs text-muted-foreground">
           <Info size={12} className="mt-0.5" />
@@ -333,64 +365,63 @@ export default function CreateUserForm({
         </div>
       </div>
 
-      <Input
-        id="password"
+      <InputComponent
         name="password"
         type="password"
         value={formData.password}
         onChange={handleChange}
         isRequired
         label="Contraseña"
-        placeholder="••••••••"
-        className="w-full"
-        color="primary"
-        variant="bordered"
-        radius="sm"
       />
 
-      <Select
+      <SelectComponent
         name="role"
         isRequired
-        selectedKeys={[formData.role]}
-        onChange={handleChange}
+        selectedKey={
+          formData.role === "admin"
+            ? "Dirección"
+            : ROLES[parseInt(formData.role)]
+        }
+        onChange={(value, e) =>
+          handleSelectChange(
+            ROLES.indexOf(value).toString(),
+            e as React.ChangeEvent<HTMLSelectElement>,
+            "role"
+          )
+        }
         label="Rol"
-        color="primary"
-        variant="bordered"
-        radius="sm"
-      >
-        {ROLES.map((role, index) => (
-          <SelectItem key={index} textValue={role}>
-            {role}
-          </SelectItem>
-        ))}
-      </Select>
+        items={ROLES}
+      />
 
       {formData.role === "2" && (
-        <Select
+        <SelectComponent
           name="super_id"
           label="Comercial"
-          onChange={handleChange}
-          selectedKeys={[formData.super_id]}
-          color="primary"
-          variant="bordered"
-          radius="sm"
-        >
-          {comerciales.map((item) => (
-            <SelectItem key={item.id} textValue={item.name}>
-              {item.name}
-            </SelectItem>
-          ))}
-        </Select>
+          onChange={(value, e) =>
+            handleSelectChange(
+              value,
+              e as React.ChangeEvent<HTMLSelectElement>,
+              "super_id"
+            )
+          }
+          selectedKey={selectedSubcomercial}
+          items={comerciales}
+        />
       )}
 
-      <Button
-        onPress={handleSubmit}
-        className="w-full"
-        disabled={isLoading}
-        color="primary"
-      >
-        {isLoading ? "Creando usuario..." : "Crear Usuario"}
-      </Button>
+      <div className="flex justify-between items-center gap-2">
+        <Button
+          variant="destructive"
+          className="w-full"
+          onClick={handleClose}
+          disabled={isLoading}
+        >
+          Cancelar
+        </Button>
+        <Button onClick={handleSubmit} className="w-full" disabled={isLoading}>
+          {isLoading ? "Creando usuario..." : "Crear Usuario"}
+        </Button>
+      </div>
     </form>
   );
 }

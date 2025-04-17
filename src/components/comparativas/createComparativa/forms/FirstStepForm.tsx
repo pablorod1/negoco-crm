@@ -1,12 +1,15 @@
 "use client";
+import { showCustomToast } from "@/components/core/CustomToast";
 import FormWrapper from "@/components/tramites/createTramite/FormWrapper";
 import {
   InputComponent,
   SelectComponent,
 } from "@/components/tramites/createTramite/InputComponent";
+import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { ComparativaDB, ComparativaPlan, User } from "@/lib/core/types";
-import { Button } from "@heroui/react";
-import { Select, SelectItem } from "@heroui/select";
+import { Button } from "@/components/ui/button";
+import { CircleX } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface Props {
@@ -25,6 +28,13 @@ export default function FirstStepForm({
   onNext,
 }: Props) {
   const [comerciales, setComerciales] = useState<User[]>([]);
+  const [selectedComercial, setSelectedComercial] = useState<string>("");
+  const [errors, setErrors] = useState({
+    user_id: "",
+    client: "",
+    service: "",
+    plan: "",
+  });
 
   useEffect(() => {
     const fetchComerciales = async () => {
@@ -46,16 +56,28 @@ export default function FirstStepForm({
 
       if (data) {
         setComerciales(data as User[]);
+        setSelectedComercial(
+          data.find((c: User) => c.id === userData.id)?.name || ""
+        );
       }
     };
     fetchComerciales();
   }, [userData]);
 
-  const handleFieldChange = (
-    e:
-      | React.ChangeEvent<HTMLSelectElement>
-      | React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleSelectChange = (value: string, name: string) => {
+    if (name === "user_id") {
+      const comercial = comerciales.find((c) => c.id === value);
+      if (comercial) {
+        setSelectedComercial(comercial.name);
+      }
+    }
+    setComparativa({
+      ...comparativa,
+      [name]: value,
+    });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setComparativa({
       ...comparativa,
@@ -74,8 +96,38 @@ export default function FirstStepForm({
     });
   };
 
+  const validateFields = () => {
+    const requiredFields = ["user_id", "client", "service", "plan"];
+    for (const field of requiredFields) {
+      if (
+        !comparativa[field as keyof ComparativaDB] ||
+        comparativa[field as keyof ComparativaDB] === "" ||
+        (Array.isArray(comparativa[field as keyof ComparativaDB]) &&
+          (comparativa[field as keyof ComparativaDB] as ComparativaPlan[])
+            .length === 0)
+      ) {
+        setErrors((prevState) => ({
+          ...prevState,
+          [field]: "Este campo es obligatorio",
+        }));
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!validateFields()) {
+      showCustomToast({
+        title: "Error de validación",
+        message: "Por favor, completa todos los campos obligatorios.",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      return;
+    }
     onNext();
   };
 
@@ -87,24 +139,20 @@ export default function FirstStepForm({
             <SelectComponent
               name="user_id"
               label="Comercial"
-              selectedKey={
-                comerciales.find(
-                  (comercial) => comercial.id === comparativa.user_id
-                )
-                  ? comparativa.user_id
-                  : ""
-              }
+              selectedKey={comparativa.user_id}
+              textValue={selectedComercial || ""}
               isRequired
               items={comerciales}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "user_id")}
+              errors={errors.user_id}
             />
             <InputComponent
               type="text"
               name="client"
               label="Cliente"
               value={comparativa.client}
-              onChange={handleFieldChange}
-              isRequired
+              onChange={handleInputChange}
+              errors={errors.client}
             />
           </div>
           <div className="flex items-stretch gap-4 w-full">
@@ -112,45 +160,38 @@ export default function FirstStepForm({
               name="service"
               label="Servicio"
               items={["Luz", "Gas"]}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "service")}
               isRequired
               selectedKey={comparativa.service}
+              errors={errors.service}
             />
-            <Select
-              name="plan"
-              label="Plan"
-              size="lg"
-              variant="bordered"
-              color="primary"
-              radius="sm"
-              isRequired
-              selectionMode="multiple"
-              selectedKeys={comparativa.plan || []}
-              onSelectionChange={(keys) =>
-                handlePlanChange(Array.from(keys) as string[])
-              }
-            >
-              <SelectItem key="fijo" textValue="Fijo">
-                Fijo
-              </SelectItem>
-              <SelectItem key="indexado" textValue="Indexado">
-                Indexado
-              </SelectItem>
-            </Select>
+            <div className="w-full ">
+              <Label>
+                Plan <span className="text-red-500">*</span>
+              </Label>
+              <MultiSelect
+                modalPopover
+                name="plan"
+                value={comparativa.plan || []}
+                defaultValue={comparativa.plan || []}
+                onValueChange={handlePlanChange}
+                options={[
+                  { label: "Fijo", value: "fijo" },
+                  { label: "Indexado", value: "indexado" },
+                ]}
+                variant="primary"
+                maxCount={2}
+              />
+              {errors.plan && (
+                <p className="text-red-500 text-sm">{errors.plan}</p>
+              )}
+            </div>
           </div>
-          <div className="w-full justify-end flex gap-4">
-            <Button
-              variant="light"
-              color="danger"
-              onPress={onCancel}
-              type="button"
-              radius="sm"
-            >
+          <div className="w-full justify-between flex gap-4 mt-4">
+            <Button variant="destructive" onClick={onCancel} type="button">
               Cancelar
             </Button>
-            <Button radius="sm" color="primary" variant="solid" type="submit">
-              Siguiente
-            </Button>
+            <Button type="submit">Siguiente</Button>
           </div>
         </div>
       </form>

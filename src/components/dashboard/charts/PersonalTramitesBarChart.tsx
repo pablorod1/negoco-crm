@@ -256,9 +256,7 @@ export function PersonalTramitesChart({
 
   return (
     <Card
-      className={`flex flex-col justify-between relative h-full backdrop-blur-lg transition-colors duration-300 overflow-hidden ${
-        loading ? "bg-gray-200 " : "bg-white "
-      }`}
+      className={`flex flex-col justify-between relative h-full backdrop-blur-lg transition-colors duration-300 overflow-hidden `}
     >
       {/* Decorative background elements */}
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl"></div>
@@ -274,14 +272,6 @@ export function PersonalTramitesChart({
           priority
           className="w-auto h-auto"
         />
-      </div>
-
-      <div
-        className={`absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300 ${
-          loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
-        }`}
-      >
-        <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
       </div>
 
       <CardHeader

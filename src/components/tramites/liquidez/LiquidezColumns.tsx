@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
 import { Status, TramiteRow } from "@/lib/core/types";
 import { copyLink } from "@/lib/core/utils";
 import LiquidezDropdown from "./LiquidezDropdown";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
@@ -44,10 +44,10 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Activación
           {column.getIsSorted() === "asc" ? (
@@ -81,10 +81,10 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Cobrado
           {column.getIsSorted() === "asc" ? (
@@ -118,10 +118,10 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     header: ({ column }) => {
       return (
         <Button
-          variant="faded"
+          variant="ghost"
           size="sm"
           className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
-          onPress={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Pago
           {column.getIsSorted() === "asc" ? (

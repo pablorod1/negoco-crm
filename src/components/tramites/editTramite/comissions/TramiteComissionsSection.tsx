@@ -1,7 +1,7 @@
 "use client";
 import { formatComission } from "@/lib/core/format";
 import { TramiteDB, User } from "@/lib/core/types";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { CheckCircle, CircleX, Pencil } from "lucide-react";
 import { useState } from "react";
 import { InputComponent } from "../../createTramite/InputComponent";
@@ -120,7 +120,7 @@ export default function TramiteComissionsSection({
         <p className="text-sm font-medium text-primary-400">
           {isComercial ? "Comisión" : "Comisión Comercial"}
         </p>
-        <div className="flex items-center gap-4">
+        <div className="flex items-end gap-4">
           {!isSalesComissionEditMode ? (
             <p className="text-xl font-bold ">
               {formatComission(tramite.comision_sales_person)}
@@ -138,32 +138,26 @@ export default function TramiteComissionsSection({
             <>
               {!isSalesComissionEditMode ? (
                 <Button
-                  isIconOnly
-                  variant="light"
-                  onPress={() =>
+                  size="icon"
+                  variant="primaryGhost"
+                  onClick={() =>
                     setIsSalesComissionEditMode(!isSalesComissionEditMode)
                   }
                   className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                 >
-                  <Pencil size={16} />
+                  <Pencil size={14} />
                 </Button>
               ) : (
                 <div className="flex gap-2">
-                  <Button
-                    isIconOnly
-                    variant="light"
-                    color="danger"
-                    onPress={() => setIsSalesComissionEditMode(false)}
-                  >
-                    <CircleX size={16} />
+                  <Button size="icon" variant="success" onClick={handleSubmit}>
+                    <CheckCircle size={16} />
                   </Button>
                   <Button
-                    isIconOnly
-                    variant="light"
-                    color="success"
-                    onPress={handleSubmit}
+                    size="icon"
+                    variant="destructiveOutline"
+                    onClick={() => setIsSalesComissionEditMode(false)}
                   >
-                    <CheckCircle size={16} />
+                    <CircleX size={16} />
                   </Button>
                 </div>
               )}
@@ -177,7 +171,7 @@ export default function TramiteComissionsSection({
           <p className="text-sm font-medium text-primary-400">
             Comisión {userData?.organization.name}
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-end gap-4">
             {!isComissionEditMode ? (
               <p className="text-xl font-bold ">
                 {formatComission(tramite.comision)}
@@ -195,9 +189,9 @@ export default function TramiteComissionsSection({
               <>
                 {!isComissionEditMode ? (
                   <Button
-                    isIconOnly
-                    variant="light"
-                    onPress={() => setIsComissionEditMode(!isComissionEditMode)}
+                    size="icon"
+                    variant="primaryGhost"
+                    onClick={() => setIsComissionEditMode(!isComissionEditMode)}
                     className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                   >
                     <Pencil size={16} />
@@ -205,20 +199,18 @@ export default function TramiteComissionsSection({
                 ) : (
                   <div className="flex gap-2">
                     <Button
-                      isIconOnly
-                      variant="light"
-                      color="danger"
-                      onPress={() => setIsComissionEditMode(false)}
-                    >
-                      <CircleX size={16} />
-                    </Button>
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      color="success"
-                      onPress={handleSubmit}
+                      size="icon"
+                      variant="success"
+                      onClick={handleSubmit}
                     >
                       <CheckCircle size={16} />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="destructiveOutline"
+                      onClick={() => setIsComissionEditMode(false)}
+                    >
+                      <CircleX size={16} />
                     </Button>
                   </div>
                 )}

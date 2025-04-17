@@ -32,21 +32,23 @@ const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onCreateNote }) => {
         </div>
 
         {/* Post-its */}
-        <div className="flex flex-wrap items-start gap-4 relative z-10">
+        <div className="flex flex-col items-start gap-4 relative z-10">
           <CreateNoteDialog onCreateNote={onCreateNote} />
-          {notes &&
-            notes.map((note, index) => (
-              <div
-                key={index}
-                className={`${
-                  postItColors[index % postItColors.length]
-                } p-4 rounded-lg shadow-md transform w-full rotate-${
-                  Math.floor(Math.random() * 5) - 2
-                } hover:rotate-0 transition-transform duration-200 ease-in-out`}
-              >
-                <p className="text-gray-800 text-lg">{note}</p>
-              </div>
-            ))}
+          <div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto w-full">
+            {notes &&
+              notes.map((note, index) => (
+                <div
+                  key={index}
+                  className={`${
+                    postItColors[index % postItColors.length]
+                  } p-4 rounded-lg shadow-md transform w-full rotate-${
+                    Math.floor(Math.random() * 5) - 2
+                  } hover:rotate-0 transition-transform duration-200 ease-in-out`}
+                >
+                  <p className="text-gray-800 text-lg">{note}</p>
+                </div>
+              ))}
+          </div>
         </div>
       </div>
     </EditFormWrapper>

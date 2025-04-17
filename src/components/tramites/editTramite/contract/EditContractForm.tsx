@@ -13,7 +13,7 @@ import {
   ContractError,
   createEmptyContractError,
 } from "@/lib/validation/validation.types";
-import { Textarea } from "@heroui/input";
+import { Textarea } from "@/components/ui/textarea";
 import React from "react";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import FormWrapper from "../../createTramite/FormWrapper";
@@ -21,17 +21,22 @@ import {
   InputComponent,
   SelectComponent,
 } from "../../createTramite/InputComponent";
+import { Label } from "@/components/ui/label";
 
 interface Props {
   onSavingContract: (contract: ContractDB) => void;
   contract: ContractDB;
   onCancel: () => void;
+  loading?: boolean;
+  lastStep?: boolean;
 }
 
 export default function EditContractForm({
   onSavingContract,
   contract,
   onCancel,
+  loading,
+  lastStep,
 }: Props) {
   const [errors, setErrors] = React.useState<ContractError>(
     createEmptyContractError
@@ -42,11 +47,22 @@ export default function EditContractForm({
     e:
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLTextAreaElement>
-      | React.ChangeEvent<HTMLSelectElement>
   ) => {
     const value = e.target.value;
     const name = e.target.name;
 
+    setErrors((prev) => ({
+      ...prev,
+      [name]: validateField(value).errorMessage || "",
+    }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
     setErrors((prev) => ({
       ...prev,
       [name]: validateField(value).errorMessage || "",
@@ -85,7 +101,7 @@ export default function EditContractForm({
               name="type"
               label="Tipo de contrato"
               items={PLAIN_CONTRACT_TYPES}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "type")}
               errors={errors.type}
               isRequired
               selectedKey={formData.type}
@@ -94,7 +110,7 @@ export default function EditContractForm({
               name="plan"
               label="Tipo de tarifa"
               items={PLANS}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "plan")}
               errors={errors.plan}
               isRequired
               selectedKey={formData.plan}
@@ -153,7 +169,7 @@ export default function EditContractForm({
               name="old_company"
               label="Compañía Antigua"
               items={[...PLAIN_COMPANIES, "Otra"]}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "old_company")}
               isRequired
               selectedKey={formData.old_company}
             />
@@ -161,7 +177,7 @@ export default function EditContractForm({
               name="new_company"
               label="Compañía Nueva"
               items={PLAIN_COMPANIES}
-              onChange={handleFieldChange}
+              onChange={(value) => handleSelectChange(value, "new_company")}
               errors={errors.new_company}
               isRequired
               selectedKey={formData.new_company}
@@ -185,20 +201,26 @@ export default function EditContractForm({
                 value={formData[
                   `pot${index + 1}` as keyof ContractDB
                 ]?.toString()}
-                startContent={<Zap width={20} height={20} stroke="#333" />}
+                startContent={<Zap size={16} stroke="#333" />}
               />
             ))}
           </div>
-          <Textarea
-            size="lg"
-            name="description"
-            onChange={handleFieldChange}
-            label="Descripción"
-            radius="sm"
-          />
+          <div className="space-y-2 w-full">
+            <Label>Descripción</Label>
+            <Textarea
+              name="description"
+              onChange={handleFieldChange}
+              value={formData.description}
+            />
+          </div>
         </div>
       </form>
-      <ButtonGroupComponent onSubmit={handleAddContract} onCancel={onCancel} />
+      <ButtonGroupComponent
+        loading={loading}
+        lastStep={lastStep}
+        onSubmit={handleAddContract}
+        onCancel={onCancel}
+      />
     </FormWrapper>
   );
 }

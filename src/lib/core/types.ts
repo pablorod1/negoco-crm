@@ -85,8 +85,8 @@ export const createEmptyTramiteDB = (
   sales_name: comparativa
     ? (comparativa.user.name as string)
     : userData
-    ? userData.name
-    : "",
+      ? userData.name
+      : "",
   comision_sales_person:
     comparativa && plan
       ? getComission(comparativa, plan).comision_sales_person
@@ -99,8 +99,8 @@ export const createEmptyTramiteDB = (
   user_id: comparativa
     ? (comparativa.user.id as string)
     : userData
-    ? userData.id
-    : "",
+      ? userData.id
+      : "",
 });
 
 export type ClientDB = {
@@ -122,8 +122,8 @@ export type ClientDB = {
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   id: `CLI-${Math.floor(Math.random() * 10000)}`,
   name: comparativa ? comparativa.client : "",
-  last_name: comparativa ? comparativa.client.split(" ")[1] : "",
-  type: "",
+  last_name: comparativa ? comparativa.client.split(" ")[1] || "" : "",
+  type: "Particular",
   email: "",
   phone: "",
   address: "",
@@ -333,7 +333,7 @@ export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
   id: `CMP-${Math.floor(Math.random() * 10000)}`,
   client: "",
   service: "Luz",
-  plan: [],
+  plan: ["fijo"],
   comision: {
     fijo: 0,
     indexado: 0,
@@ -432,7 +432,9 @@ export type Status =
   | "Pendiente de Firma"
   | "Procesando"
   | "Activo"
-  | "Baja";
+  | "Baja"
+  | "Scoring"
+  | "Incidencia";
 
 export type LiquidezStatus =
   | "Pendiente de Cobro"

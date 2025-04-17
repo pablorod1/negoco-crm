@@ -2,7 +2,6 @@
 
 import { ColumnSelector } from "@/components/tramites/table/ColumnSelector";
 import { User } from "@/lib/core/types";
-import { Input } from "@heroui/input";
 import { Table } from "@tanstack/react-table";
 import { motion } from "framer-motion";
 import { Download, Filter, Search, X } from "lucide-react";
@@ -14,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { COMPARATIVA_STATUS_TYPES } from "@/lib/core/const";
 import { cn } from "@/lib/core/utils";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip } from "@heroui/react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -24,6 +22,8 @@ import {
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { DateRange } from "react-day-picker";
 import UserFilter from "@/components/core/table/UserFilter";
+import { InputComponent } from "@/components/tramites/createTramite/InputComponent";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface Props<TData> {
   filterValue: string;
@@ -127,12 +127,10 @@ const ComparativasHeader = <TData,>({
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative w-80">
-              <Input
-                radius="sm"
-                variant="bordered"
+              <InputComponent
+                type="text"
                 value={filterValue}
-                onValueChange={setFilterValue}
-                placeholder="Buscar por CUPS, cliente, compañía..."
+                onChange={(e) => setFilterValue(e.target.value)}
                 startContent={<Search className="h-4 w-4" />}
                 endContent={
                   filterValue && (
@@ -144,12 +142,14 @@ const ComparativasHeader = <TData,>({
                     </button>
                   )
                 }
+                name="search"
+                placeholder="Buscar por cliente, comercial..."
               />
             </div>
 
             {/* Filter Button */}
 
-            <Tooltip content="Filtros avanzados">
+            <TooltipComponent content="Filtros avanzados">
               <Button
                 variant="outline"
                 size="icon"
@@ -168,7 +168,7 @@ const ComparativasHeader = <TData,>({
                   )}
                 </div>
               </Button>
-            </Tooltip>
+            </TooltipComponent>
 
             {/* Column Selector */}
 
@@ -178,7 +178,7 @@ const ComparativasHeader = <TData,>({
 
             {!isComercial && (
               <Popover>
-                <Tooltip content="Exportar datos">
+                <TooltipComponent content="Exportar datos">
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -188,7 +188,7 @@ const ComparativasHeader = <TData,>({
                       <Download className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
-                </Tooltip>
+                </TooltipComponent>
                 <PopoverContent className="p-0 w-fit">
                   <ExportTableModal table={table} name={"Comparativas"} />
                 </PopoverContent>

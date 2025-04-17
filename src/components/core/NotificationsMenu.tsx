@@ -6,7 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Badge } from "@heroui/badge";
+import { Badge } from "@/components/ui/badge";
 import { useCallback, useEffect, useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { formatDateTime } from "@/lib/core/format";
@@ -111,18 +111,19 @@ export default function NotificationsMenu() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative px-2">
-          <Badge
-            content={notifications.length}
-            color="danger"
-            isInvisible={notifications.length === 0}
-            isDot
-            variant="solid"
-            className="absolute -top-1 -right-0"
-          >
-            <Bell size={24} />
-          </Badge>
-        </Button>
+        <div className="relative">
+          {notifications.length > 0 && (
+            <Badge
+              variant="danger"
+              className="cursor-pointer absolute -top-1 -right-0 rounded-full w-4 h-4 p-2"
+            >
+              {notifications.length}
+            </Badge>
+          )}
+          <Button variant="ghost" size="icon">
+            <Bell size={44} />
+          </Button>
+        </div>
       </PopoverTrigger>
       <PopoverContent className="w-[500px] p-0">
         <Card className="border-0 shadow-none">
@@ -146,13 +147,10 @@ export default function NotificationsMenu() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start ">
-                        <div className="flex flex-col justify-center items-center gap-6">
+                        <div className="flex flex-col justify-center items-center gap-2">
                           <Badge
-                            className="mt-3"
-                            content=""
-                            size="sm"
-                            isDot
-                            color={getColorPriority(notification.priority)}
+                            className="mt-2 w-1 h-1 p-1 rounded-full"
+                            variant={getColorPriority(notification.priority)}
                           >
                             <span />
                           </Badge>
@@ -166,7 +164,7 @@ export default function NotificationsMenu() {
                               size="icon"
                               variant="ghost"
                             >
-                              <Trash size={16} stroke="red" />
+                              <Trash size={14} stroke="red" />
                             </Button>
                           </div>
                         </div>

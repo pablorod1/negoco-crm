@@ -1,13 +1,13 @@
 "use client";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import {
-  useDisclosure,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@heroui/modal";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import DocumentsForm from "@/components/tramites/DocumentsForm";
 import React, { useState } from "react";
 
@@ -33,9 +33,12 @@ export default function UploadTramiteFilesModal({
   user_id,
   userData,
 }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const onOpen = () => setIsOpen(true);
+  const onClose = () => setIsOpen(false);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -149,57 +152,37 @@ export default function UploadTramiteFilesModal({
 
   return (
     <>
-      <Button
-        startContent={<FilePlus2 size={16} />}
-        onPress={onOpen}
-        variant="bordered"
-        color="primary"
-        radius="sm"
-      >
-        Añadir Archivo
-      </Button>
-      <Modal
-        isDismissable={false}
-        hideCloseButton
-        inert={!isOpen}
-        size="3xl"
-        isOpen={isOpen}
-        onClose={onClose}
-        radius="sm"
-      >
-        <ModalContent>
-          <ModalHeader>
-            <h2 className="text-2xl font-bold text-primary-800">
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button onClick={onOpen} variant="outline">
+            <FilePlus2 size={16} />
+            Añadir Archivo
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader aria-describedby={undefined}>
+            <DialogTitle className="text-2xl font-bold text-primary-800">
               Subir Archivos
-            </h2>
-          </ModalHeader>
-          <ModalBody>
-            {loading && <LoadingStateModal userData={userData} />}
-            <DocumentsForm
-              uploadedFiles={uploadedFiles}
-              setUploadedFiles={setUploadedFiles}
+            </DialogTitle>
+          </DialogHeader>
+          {loading && (
+            <LoadingStateModal
+              title="Subiendo archivos..."
+              description="Espere unos segundos mientras se suben los archivos al trámite."
             />
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              radius="sm"
-              color="danger"
-              onPress={handleCancel}
-              variant="light"
-            >
+          )}
+          <DocumentsForm
+            uploadedFiles={uploadedFiles}
+            setUploadedFiles={setUploadedFiles}
+          />
+          <DialogFooter>
+            <Button onClick={handleCancel} variant="destructive">
               Cancelar
             </Button>
-            <Button
-              variant="solid"
-              color="primary"
-              radius="sm"
-              onPress={handleSubmit}
-            >
-              Subir Archivos
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <Button onClick={handleSubmit}>Subir Archivos</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

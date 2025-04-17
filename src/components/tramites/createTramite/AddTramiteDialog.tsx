@@ -16,41 +16,44 @@ import {
   User,
 } from "@/lib/core/types";
 
-import SecondStepForm from "../createTramite/forms/SecondStepForm";
+import SecondStepForm from "./forms/secondStepForm/SecondStepForm";
 import ThirdStepForm from "../createTramite/forms/ThirdStepForm";
 import { CreateTramiteStepper } from "../CreateTramiteStepper";
 import FourthStepForm from "../createTramite/forms/FourthStepForm";
 
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
-import { CheckCircle, CircleX, FilePlus2, PlusCircle } from "lucide-react";
+import { CheckCircle, CircleX, PlusCircle } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { showCustomToast } from "../../core/CustomToast";
-import { ButtonProps } from "@heroui/button";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 import { deleteFiles } from "@/lib/firebase/data/deleteFile";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { VariantProps } from "class-variance-authority";
+import { buttonVariants } from "@/components/ui/button";
+import ReviewStep from "./forms/ReviewStep";
+import ComparativaToTramiteStep from "./forms/ComparativaToTramiteStep";
 
 export default function AddTramiteDialog({
-  shortcut,
-  color,
+  variant,
   comparativa,
-  plan,
   onComparativaUpdated,
 }: {
-  shortcut?: boolean;
-  color?: ButtonProps["color"];
+  variant?: string;
   comparativa?: ComparativaVM;
-  plan?: string;
   onComparativaUpdated?: () => void;
 }) {
+  const [plan, setPlan] = useState<"fijo" | "indexado" | undefined>(
+    comparativa ? comparativa.plan[0] : undefined
+  );
   const { userData } = useUser();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(comparativa ? 0 : 1);
   const [tramite, setTramite] = useState<TramiteDB>(
     createEmptyTramiteDB(
       userData as User,
@@ -65,21 +68,23 @@ export default function AddTramiteDialog({
   const [contracts, setContracts] = useState<ContractDB[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const { refreshTramites } = useTramites();
 
   const comparativaFiles = comparativa
     ? (comparativa.files as ComparativaFile[])
     : undefined;
 
-  const handleOpen = () => {
-    onOpen();
+  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(true);
     setActiveTab(0);
     setTramite(
       createEmptyTramiteDB(
         userData as User,
-        plan as "fijo" | "indexado",
-        comparativa
+        plan ? (plan as "fijo" | "indexado") : undefined,
+        comparativa ? comparativa : undefined
       )
     );
     setClient(createEmptyClientDB(comparativa ? comparativa : undefined));
@@ -88,22 +93,16 @@ export default function AddTramiteDialog({
     setDocuments([]);
   };
 
+  const handleClose = () => {
+    setIsOpen(false);
+  };
+
   const handleBack = () => {
-    setActiveTab(() => activeTab - 1);
+    setActiveTab((prev) => prev - 1);
   };
 
   const handleNext = () => {
-    if (activeTab === 3) {
-      addIds();
-    }
-
-    setActiveTab(() => activeTab + 1);
-  };
-
-  const addIds = () => {
-    contracts.forEach((contract) => {
-      contract.tramite_id = tramite.id;
-    });
+    setActiveTab((prev) => prev + 1);
   };
 
   const handleSubmit = async () => {
@@ -175,6 +174,8 @@ export default function AddTramiteDialog({
         iconColor: "var(--success-color)",
         iconSize: 24,
         icon: CheckCircle,
+        buttonLinkText: "Ver Trámite",
+        buttonLink: `/tramites/${tramite.id}`,
       });
 
       if (comparativa) {
@@ -230,6 +231,40 @@ export default function AddTramiteDialog({
           return;
         }
 
+        const emailRes = await fetch(
+          "/api/send-email/comparativa-status-updated",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              user_to: {
+                email: comparativa.user.email,
+                name: comparativa.user.name,
+                org_logo: userData?.organization.logo,
+              },
+              comparativa_id: comparativa.id,
+              status: { old: "completed", new: "processed" },
+              comparativa_name: comparativa.client,
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const { success: emailSuccess, error: emailError } =
+          await emailRes.json();
+
+        if (!emailSuccess) {
+          showCustomToast({
+            title: "Error al enviar notificación por email",
+            message: emailError as string,
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
         showCustomToast({
           title: "Comparativa actualizada",
           message: "La comparativa ha sido actualizada correctamente",
@@ -240,13 +275,16 @@ export default function AddTramiteDialog({
 
         if (onComparativaUpdated) {
           onComparativaUpdated();
-          onClose();
+          handleClose();
         }
       }
 
+      localStorage.removeItem("signer");
+      localStorage.removeItem("client");
+
       try {
         await refreshTramites();
-        onClose();
+        handleClose();
       } catch (error) {
         console.error("Error al refrescar los trámites:", error);
         showCustomToast({
@@ -256,7 +294,7 @@ export default function AddTramiteDialog({
           iconSize: 24,
           icon: CircleX,
         });
-        onClose();
+        handleClose();
       }
     } catch (error) {
       console.error("Submission error:", error);
@@ -271,16 +309,23 @@ export default function AddTramiteDialog({
       setLoading(false);
     }
   };
-  const formElements = [
+  const comparativaFormElements = [
+    <ComparativaToTramiteStep
+      key={0}
+      comparativa={comparativa as ComparativaVM}
+      onSubmit={handleNext}
+      onCancel={handleClose}
+      setPlan={setPlan}
+      plan={plan}
+      userData={userData as User}
+    />,
     <FirstStepForm
       key={1}
-      setClient={setClient}
       setTramite={setTramite}
       onSubmitSuccess={handleNext}
       tramite={tramite}
-      onCancel={onClose}
-      client={client}
-      setSigner={setSigner}
+      onCancel={handleClose}
+      onBack={handleBack}
     />,
     <SecondStepForm
       key={2}
@@ -288,9 +333,12 @@ export default function AddTramiteDialog({
       setClient={setClient}
       onSecondSubmitSuccess={handleNext}
       onBack={handleBack}
-      onCancel={onClose}
+      onCancel={handleClose}
       setSigner={setSigner}
       signer={signer as SignerDB}
+      userData={userData as User}
+      setTramite={setTramite}
+      comparativa={comparativa as ComparativaVM}
     />,
     <ThirdStepForm
       key={3}
@@ -298,72 +346,165 @@ export default function AddTramiteDialog({
       onSubmit={handleNext}
       tramite={tramite}
       setTramite={setTramite}
-      onCancel={onClose}
+      onCancel={handleClose}
       contracts={contracts}
       setContracts={setContracts}
       userData={userData as User}
     />,
     <FourthStepForm
-      userData={userData as User}
       key={4}
       onBack={handleBack}
-      onFinish={handleSubmit}
+      onFinish={handleNext}
       tramite={tramite}
       setTramite={setTramite}
-      onCancel={onClose}
+      onCancel={handleClose}
       documents={documents}
       setDocuments={setDocuments}
       loading={loading}
       comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
     />,
+    <ReviewStep
+      key={5}
+      tramite={tramite}
+      client={client}
+      signer={signer}
+      contracts={contracts}
+      documents={documents}
+      onBack={handleBack}
+      onSubmit={handleSubmit}
+      onCancel={handleClose}
+      loading={loading}
+      userData={userData as User}
+    />,
+  ];
+  const formElements = [
+    <FirstStepForm
+      key={1}
+      setTramite={setTramite}
+      onSubmitSuccess={handleNext}
+      tramite={tramite}
+      onCancel={handleClose}
+    />,
+    <SecondStepForm
+      key={2}
+      client={client}
+      setClient={setClient}
+      onSecondSubmitSuccess={handleNext}
+      onBack={handleBack}
+      onCancel={handleClose}
+      setSigner={setSigner}
+      signer={signer as SignerDB}
+      userData={userData as User}
+      setTramite={setTramite}
+    />,
+    <ThirdStepForm
+      key={3}
+      onBack={handleBack}
+      onSubmit={handleNext}
+      tramite={tramite}
+      setTramite={setTramite}
+      onCancel={handleClose}
+      contracts={contracts}
+      setContracts={setContracts}
+      userData={userData as User}
+    />,
+    <FourthStepForm
+      key={4}
+      onBack={handleBack}
+      onFinish={handleNext}
+      tramite={tramite}
+      setTramite={setTramite}
+      onCancel={handleClose}
+      documents={documents}
+      setDocuments={setDocuments}
+      loading={loading}
+      comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
+    />,
+    <ReviewStep
+      key={5}
+      tramite={tramite}
+      client={client}
+      signer={signer}
+      contracts={contracts}
+      documents={documents}
+      onBack={handleBack}
+      onSubmit={handleSubmit}
+      onCancel={handleClose}
+      loading={loading}
+      userData={userData as User}
+    />,
   ];
 
   return (
-    <>
-      {!shortcut ? (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
         <Button
-          onPress={handleOpen}
-          color={color ? color : "primary"}
-          radius="sm"
-          className="shadow-md"
+          onClick={handleOpen}
+          variant={
+            variant
+              ? (variant as VariantProps<typeof buttonVariants>["variant"])
+              : "default"
+          }
         >
-          <PlusCircle size={20} />
-          <span>Nuevo Trámite</span>
+          {comparativa ? (
+            <span>Completar Comparativa</span>
+          ) : (
+            <>
+              <PlusCircle size={20} />
+              <span>Nuevo Trámite</span>
+            </>
+          )}
         </Button>
-      ) : (
-        <div onClick={handleOpen} className="flex flex-col items-center gap-2">
-          <FilePlus2 size={24} />
-          <span className="text-nowrap">Nuevo trámite</span>
-        </div>
-      )}
+      </DialogTrigger>
 
-      <Modal
-        isDismissable={false}
-        radius="sm"
-        hideCloseButton
-        inert={!isOpen}
-        isOpen={isOpen}
-        onClose={onClose}
-        classNames={{
-          wrapper: "overflow-hidden",
-          base: "max-h-[90vh] overflow-y-auto",
+      <DialogContent
+        onInteractOutside={(e) => {
+          e.preventDefault();
         }}
-      >
-        <ModalContent
-          className={`transition-all duration-700 ease-in-out w-full h-auto ${
-            activeTab === 1 || activeTab === 3
+        className={`transition-all duration-700 ease-in-out w-full h-auto ${
+          activeTab === 0
+            ? "max-w-[1200px]"
+            : activeTab === 1
               ? "max-w-[1400px]"
               : activeTab === 2
-                ? "max-w-[1200px]"
-                : "max-w-[800px]"
-          }`}
-        >
-          <ModalHeader className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between p-4">
-            <CreateTramiteStepper steps={4} currentStep={activeTab} />
-          </ModalHeader>
-          <ModalBody>{formElements[activeTab]}</ModalBody>
-        </ModalContent>
-      </Modal>
-    </>
+                ? "max-w-[1300px]"
+                : "max-w-[1400px]"
+        }`}
+      >
+        <DialogHeader>
+          <div className="hidden">
+            <DialogTitle className="text-lg text-primary-800 font-semibold">
+              Creando una nueva comparativa
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 mb-4">
+              Completa los pasos para crear una nueva comparativa
+            </DialogDescription>
+          </div>
+          <CreateTramiteStepper
+            steps={comparativa ? 6 : 5}
+            currentStep={activeTab}
+            selectedComercial={
+              {
+                id: tramite.user_id,
+                name: tramite.sales_name,
+              } as User
+            }
+            selectedClient={{
+              id: client.id,
+              name: client.name,
+              last_name: client.last_name,
+              type: client.type,
+              document_type: client.document_type,
+              document_number: client.document_number,
+            }}
+            setActiveStep={setActiveTab}
+            comparativa={comparativa ? true : false}
+          />
+        </DialogHeader>
+        {comparativa
+          ? comparativaFormElements[activeTab]
+          : formElements[activeTab]}
+      </DialogContent>
+    </Dialog>
   );
 }

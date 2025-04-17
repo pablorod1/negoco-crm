@@ -6,11 +6,13 @@ export async function POST(req: NextRequest) {
     const {
       user_to,
       comparativa_id,
+      comparativa_name,
       status,
     }: {
       user_to: { email: string; name: string; org_logo: string | undefined };
       comparativa_id: string;
       status: { old: string; new: string };
+      comparativa_name: string;
     } = await req.json();
 
     const origin = req.headers.get("origin");
@@ -20,6 +22,7 @@ export async function POST(req: NextRequest) {
       status,
       link: origin as string,
       req: req as NextRequest,
+      comparativa_name,
     });
     return NextResponse.json({ success: true });
   } catch (error) {

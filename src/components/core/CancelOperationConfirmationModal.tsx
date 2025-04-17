@@ -1,22 +1,31 @@
+"use client";
 import { showCustomToast } from "@/components/core/CustomToast";
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-} from "@heroui/modal";
-import { Button } from "@heroui/button";
+
+import { Button } from "@/components/ui/button";
 import { AlertTriangle, CircleX } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { useState } from "react";
 
 interface Props {
   onCancel: () => void;
+  disabled?: boolean;
 }
 
-export default function CancelOperationConfirmationModal({ onCancel }: Props) {
-  const { isOpen, onClose, onOpen } = useDisclosure();
-
+export default function CancelOperationConfirmationModal({
+  onCancel,
+  disabled,
+}: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const onOpen = () => setIsOpen(true);
+  const onClose = () => setIsOpen(false);
   const handleCancel = () => {
     onClose();
     onCancel();
@@ -30,52 +39,38 @@ export default function CancelOperationConfirmationModal({ onCancel }: Props) {
   };
   return (
     <>
-      <Button onPress={onOpen} variant="light" color="danger" radius="sm">
-        Cancelar
-      </Button>
-
-      <Modal
-        isDismissable={false}
-        hideCloseButton
-        inert={!isOpen}
-        isOpen={isOpen}
-        onClose={onClose}
-        size="xl"
-        radius="sm"
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-start gap-4">
-            <AlertTriangle size={24} className="text-danger mt-1" />
-            <div className="flex flex-col gap-1 h-full">
-              <span className="text-danger text-xl">
-                Hay cambios sin guardar
-              </span>
-              <span className="flex text-gray-500 text-base flex-1">
-                Se perderá el progreso si sales sin guardar.
-              </span>
+      <Dialog open={isOpen}>
+        <DialogTrigger asChild>
+          <Button disabled={disabled} onClick={onOpen} variant="destructive">
+            Cancelar
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-start gap-4 w-full">
+              <AlertTriangle size={24} className="text-danger mt-1" />
+              <div className="flex flex-col gap-1 h-full">
+                <DialogTitle className="text-danger text-xl">
+                  Hay cambios sin guardar
+                </DialogTitle>
+                <DialogDescription className="flex text-gray-500 text-base flex-1">
+                  Se perderá el progreso si sales sin guardar.
+                </DialogDescription>
+              </div>
             </div>
-          </ModalHeader>
-          <ModalBody>
-            <span className="text-gray-500 text-sm">
-              Puedes guardar el trámite como borrador si deseas continuar en
-              otro momento.
-            </span>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              onPress={handleCancel}
-              variant="ghost"
-              color="danger"
-              radius="sm"
-            >
+          </DialogHeader>
+          <span className="text-gray-500 text-sm">
+            Puedes guardar el trámite como borrador si deseas continuar en otro
+            momento.
+          </span>
+          <DialogFooter>
+            <Button onClick={handleCancel} variant="destructive">
               Deshacer cambios
             </Button>
-            <Button onPress={onClose} color="primary" radius="sm">
-              Continuar creando
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <Button onClick={onClose}>Continuar creando</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

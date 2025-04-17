@@ -1,4 +1,4 @@
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Select,
@@ -10,10 +10,10 @@ import {
 
 interface DataTablePaginationProps {
   total: number;
-  rowsPerPage: number;
+  rowsPerPage: number | string;
   pageIndex: number;
   setPageIndex: (pageIndex: number) => void;
-  setPageSize: (pageSize: number) => void;
+  setPageSize: (pageSize: number | string) => void;
 }
 
 export function DataTablePagination({
@@ -23,7 +23,8 @@ export function DataTablePagination({
   setPageIndex,
   setPageSize,
 }: DataTablePaginationProps) {
-  const totalPages = Math.ceil(total / rowsPerPage);
+  const totalPages =
+    rowsPerPage === "Sin Límite" ? 1 : Math.ceil(total / Number(rowsPerPage));
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   // Determine which page numbers to show
@@ -54,8 +55,9 @@ export function DataTablePagination({
   const visiblePages = getVisiblePages();
 
   const handleSetPageSize = (value: string) => {
-    const newSize = Number(value);
-    setPageSize(newSize);
+    const newPageSize =
+      value === "Sin Límite" ? "Sin Límite" : parseInt(value, 10);
+    setPageSize(newPageSize);
     setPageIndex(1); // Reset to first page when changing page size
   };
 
@@ -66,7 +68,7 @@ export function DataTablePagination({
           {total} {total === 1 ? "item" : "items"} encontrados
         </p>
         <p className="text-xs text-gray-500">
-          Página {pageIndex} de {totalPages}
+          Página {pageIndex} de {rowsPerPage === "Sin Límite" ? 1 : totalPages}
         </p>
       </div>
 
@@ -77,15 +79,19 @@ export function DataTablePagination({
             value={rowsPerPage.toString()}
             onValueChange={handleSetPageSize}
           >
-            <SelectTrigger className="h-9 w-20 border-gray-300">
-              <SelectValue placeholder={rowsPerPage} />
+            <SelectTrigger className="h-9 w-auto border-gray-300 px-4 gap-2">
+              <SelectValue placeholder={rowsPerPage}>
+                {rowsPerPage.toString()}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent side="top">
-              {[5, 10, 15, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={pageSize.toString()}>
-                  {pageSize}
-                </SelectItem>
-              ))}
+              {[5, 10, 15, 20, 30, 40, 50, "Sin Límite"].map(
+                (pageSize, index) => (
+                  <SelectItem key={index} value={pageSize.toString()}>
+                    {pageSize}
+                  </SelectItem>
+                )
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -93,9 +99,7 @@ export function DataTablePagination({
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="sm"
-            isIconOnly
-            onPress={() => setPageIndex(pageIndex - 1)}
+            onClick={() => setPageIndex(pageIndex - 1)}
             disabled={pageIndex === 1}
             className="text-gray-600 hover:bg-gray-100"
           >
@@ -106,16 +110,14 @@ export function DataTablePagination({
             visiblePages.map((page) => (
               <Button
                 key={page}
-                size="sm"
-                isIconOnly
-                variant={pageIndex === page ? "solid" : "light"}
+                variant={pageIndex === page ? "default" : "outline"}
                 color="primary"
                 className={`rounded-lg w-9 h-9 ${
                   pageIndex === page
                     ? "bg-primary-500 text-white shadow-md"
                     : "text-gray-500 hover:bg-gray-100"
                 }`}
-                onPress={() => setPageIndex(page)}
+                onClick={() => setPageIndex(page)}
                 disabled={pageIndex === page}
               >
                 {page}
@@ -124,9 +126,7 @@ export function DataTablePagination({
 
           <Button
             variant="ghost"
-            isIconOnly
-            size="sm"
-            onPress={() => setPageIndex(pageIndex + 1)}
+            onClick={() => setPageIndex(pageIndex + 1)}
             disabled={pageIndex >= totalPages}
             className="text-gray-600 hover:bg-gray-100"
           >

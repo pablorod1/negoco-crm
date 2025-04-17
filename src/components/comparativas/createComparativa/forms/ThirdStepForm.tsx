@@ -1,8 +1,8 @@
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import FormWrapper from "@/components/tramites/createTramite/FormWrapper";
 import NotesBoard from "@/components/core/NotesBoard";
-import { ComparativaDB, User } from "@/lib/core/types";
-import { Button } from "@heroui/button";
+import { ComparativaDB } from "@/lib/core/types";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   comparativa: ComparativaDB;
@@ -11,7 +11,6 @@ interface Props {
   onBack: () => void;
   onSubmit: () => void;
   loading: boolean;
-  userData: User;
 }
 
 export default function ThirdStepForm({
@@ -21,7 +20,6 @@ export default function ThirdStepForm({
   onBack,
   onSubmit,
   loading,
-  userData,
 }: Props) {
   const handleAddNote = (note: string) => {
     setComparativa((prev) => ({
@@ -31,26 +29,24 @@ export default function ThirdStepForm({
   };
   return (
     <FormWrapper>
-      {loading && <LoadingStateModal userData={userData} />}
+      {loading && (
+        <LoadingStateModal
+          title="Creando comparativa..."
+          description="Espere unos segundos mientras creamos la comparativa."
+        />
+      )}
       <div className="w-full h-auto">
         <NotesBoard notes={comparativa.notes} onCreateNote={handleAddNote} />
       </div>
       <div className="w-full justify-between flex items-center mt-4">
-        <Button variant="light" color="danger" onPress={onCancel} radius="sm">
+        <Button variant="destructive" onClick={onCancel}>
           Cancelar
         </Button>
         <div className="flex items-center gap-4">
-          <Button variant="light" color="default" onPress={onBack} radius="sm">
+          <Button variant="destructive" onClick={onBack}>
             Atrás
           </Button>
-          <Button
-            radius="sm"
-            color="primary"
-            variant="solid"
-            onPress={onSubmit}
-          >
-            Crear Comparativa
-          </Button>
+          <Button onClick={onSubmit}>Crear Comparativa</Button>
         </div>
       </div>
     </FormWrapper>

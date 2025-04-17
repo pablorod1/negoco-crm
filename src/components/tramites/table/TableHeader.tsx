@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Filter, Search, Download, X, PlusCircle } from "lucide-react";
-import { Input } from "@heroui/input";
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@heroui/tooltip";
 import { Badge } from "@/components/ui/badge";
 
 import { cn } from "@/lib/core/utils";
@@ -30,10 +28,11 @@ import {
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import CreateBajaModal from "../createBaja/CreateBajaModal";
-import { PopoverPortal } from "@radix-ui/react-popover";
 import { UpdateMultipleTramitesModal } from "../liquidez/UpdateMultipleTramitesModal";
 import UserFilter from "@/components/core/table/UserFilter";
 import { format } from "date-fns";
+import { InputComponent } from "../createTramite/InputComponent";
+import TooltipComponent from "@/components/core/TooltipComponent";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -232,13 +231,13 @@ export default function TramitesHeader<TData>({
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative w-80">
-              <Input
-                radius="sm"
-                variant="bordered"
+              <InputComponent
+                name="search"
+                type="text"
                 value={filterValue}
-                onValueChange={setFilterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
                 placeholder="Buscar por CUPS, cliente, compañía..."
-                startContent={<Search className="h-4 w-4" />}
+                startContent={<Search size={16} />}
                 endContent={
                   filterValue && (
                     <button
@@ -254,7 +253,7 @@ export default function TramitesHeader<TData>({
 
             {/* Filter Button */}
 
-            <Tooltip content="Filtros avanzados">
+            <TooltipComponent content="Filtros avanzados">
               <Button
                 variant="outline"
                 size="icon"
@@ -272,7 +271,7 @@ export default function TramitesHeader<TData>({
                   )}
                 </div>
               </Button>
-            </Tooltip>
+            </TooltipComponent>
 
             {/* Column Selector */}
 
@@ -287,7 +286,7 @@ export default function TramitesHeader<TData>({
 
             {!isComercial && (
               <Popover>
-                <Tooltip content="Exportar datos">
+                <TooltipComponent content="Exportar datos">
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -297,7 +296,7 @@ export default function TramitesHeader<TData>({
                       <Download className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
-                </Tooltip>
+                </TooltipComponent>
                 <PopoverContent className="p-0 w-fit">
                   <ExportTableModal table={table} name={title} />
                 </PopoverContent>
@@ -314,7 +313,7 @@ export default function TramitesHeader<TData>({
             {/* Create Button */}
             {isTramitesTable && (
               <Popover>
-                <Tooltip content="Crear nuevo trámite">
+                <TooltipComponent content="Crear nuevo trámite">
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -324,16 +323,14 @@ export default function TramitesHeader<TData>({
                       <PlusCircle className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
-                </Tooltip>
-                <PopoverPortal>
-                  <PopoverContent
-                    align="end"
-                    className="flex flex-col gap-4 p-2"
-                  >
-                    <AddTramiteDialog />
-                    {!isComercial && <CreateBajaModal />}
-                  </PopoverContent>
-                </PopoverPortal>
+                </TooltipComponent>
+                <PopoverContent
+                  align="end"
+                  className="flex flex-col p-2 gap-2 w-full"
+                >
+                  <AddTramiteDialog />
+                  {!isComercial && <CreateBajaModal />}
+                </PopoverContent>
               </Popover>
             )}
           </div>
