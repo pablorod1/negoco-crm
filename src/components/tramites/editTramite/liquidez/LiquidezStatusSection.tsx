@@ -1,4 +1,5 @@
-import { TramiteVM, User } from "@/lib/core/types";
+"use client";
+import { ClientDB, TramiteVM, User } from "@/lib/core/types";
 import { InfoIcon, RefreshCcw } from "lucide-react";
 import UpdateTramiteStatusModal from "../UpdateTramiteStatusModal";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
@@ -9,12 +10,14 @@ interface Props {
   isComercial: boolean;
   userData: User;
   onUpdate: () => void;
+  client: ClientDB;
 }
 export default function LiquidezStatusSection({
   tramite,
   isComercial,
   userData,
   onUpdate,
+  client,
 }: Props) {
   return (
     <>
@@ -51,6 +54,7 @@ export default function LiquidezStatusSection({
                 tramite={tramite}
                 userData={userData as User}
                 onUpdate={onUpdate}
+                client={client}
               />
             )}
         </div>

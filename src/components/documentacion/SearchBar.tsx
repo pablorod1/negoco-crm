@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileCard } from "./FileCard";
 import { useUser } from "@/lib/contexts/UserContext";
-import SpinnerComponent from "../core/FullScreenLoaderComponent";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
 import LoaderComponent from "../core/LoaderComponent";
 

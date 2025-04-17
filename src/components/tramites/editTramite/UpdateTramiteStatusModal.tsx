@@ -1,3 +1,4 @@
+"use client";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import {
   ClientDB,

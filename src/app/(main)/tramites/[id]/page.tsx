@@ -211,6 +211,7 @@ export default function TramiteDetails() {
                   isComercial={isComercial as boolean}
                   userData={userData as User}
                   onUpdate={fetchTramite}
+                  client={client}
                 />
               </>
             )}

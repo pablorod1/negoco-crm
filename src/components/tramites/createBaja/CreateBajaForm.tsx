@@ -1,3 +1,4 @@
+"use client";
 import { useUser } from "@/lib/contexts/UserContext";
 import {
   ClientDB,
@@ -132,6 +133,7 @@ export default function CreateBajaForm({
           />
           <div className="flex items-center gap-4">
             <InputComponent
+              value={client.name}
               isRequired
               type="text"
               label="Nombre Cliente"
@@ -139,6 +141,7 @@ export default function CreateBajaForm({
               onChange={handleFieldChange}
             />
             <InputComponent
+              value={client.document_number}
               isRequired
               label="DNI"
               name="document_number"
@@ -147,6 +150,7 @@ export default function CreateBajaForm({
             />
           </div>
           <InputComponent
+            value={contracts[0].CUPS}
             isRequired
             label="CUPS"
             name="CUPS"
@@ -155,6 +159,7 @@ export default function CreateBajaForm({
           />
           <div className="flex items-center gap-4">
             <InputComponent
+              value={tramite.comision}
               isRequired
               label="Comisión"
               name="comision"
@@ -162,6 +167,7 @@ export default function CreateBajaForm({
               type="number"
             />
             <InputComponent
+              value={tramite.comision_sales_person}
               isRequired
               type="number"
               label="Comisión comercial"
