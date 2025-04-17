@@ -26,15 +26,23 @@ export async function POST(req: NextRequest) {
     const params: string[] = [];
 
     if (role === "2") {
+      // Primero añadimos el JOIN que es obligatorio en ambos casos
+      query += ` JOIN tramites ON clients.id = tramites.client_id WHERE`;
+
       const subcomercialesRes = await getSubcomerciales(tursoClient, id);
-      if (subcomercialesRes.success) {
-        if (subcomercialesRes.ids && subcomercialesRes.ids.length > 0) {
-          query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map(() => "?").join(",")})`;
-          params.push(id, ...subcomercialesRes.ids);
-        } else {
-          query += ` JOIN tramites ON clients.id = tramites.client_id WHERE tramites.user_id = ?`;
-          params.push(id);
-        }
+
+      if (
+        subcomercialesRes.success &&
+        subcomercialesRes.ids &&
+        subcomercialesRes.ids.length > 0
+      ) {
+        // Si hay subcomerciales, buscamos trámites del usuario o de cualquiera de sus subcomerciales
+        query += ` tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map(() => "?").join(",")})`;
+        params.push(id, ...subcomercialesRes.ids);
+      } else {
+        // Si no hay subcomerciales o falló la consulta, solo buscamos los trámites del usuario
+        query += ` tramites.user_id = ?`;
+        params.push(id);
       }
     }
 

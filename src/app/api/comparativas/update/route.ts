@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
     let comissions;
     if (comissionsString) {
       comissions = JSON.parse(comissionsString);
-      console.log("Commissions:", comissions);
     }
 
     if (!comparativa_id || !organization_id) {
