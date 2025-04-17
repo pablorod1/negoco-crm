@@ -52,11 +52,9 @@ export const DeleteDocumentIcon = (props: IconProps) => {
 export default function DeleteFileConfirmationModal({
   files,
   userData,
-  onSubmit,
 }: {
   files: DocumentacionFile[];
   userData: User;
-  onSubmit?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const { refreshDocumentacion } = useDocumentacion();
@@ -107,7 +105,6 @@ export default function DeleteFileConfirmationModal({
         iconSize: 24,
         icon: CheckCircle,
       });
-      if (onSubmit) onSubmit();
       refreshDocumentacion();
       onClose();
     } catch (error) {

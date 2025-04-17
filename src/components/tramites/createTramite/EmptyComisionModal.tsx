@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
+import { formatComission } from "@/lib/core/format";
 
 interface Props {
   tramite: TramiteDB;
@@ -46,25 +47,43 @@ export default function EmptyComisionModal({
         />
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader className="flex items-start gap-4">
-          <AlertTriangle size={36} className="text-danger mt-1" />
-          <div className="flex flex-col h-full">
-            <DialogTitle className="text-danger text-xl">
-              Comisiones sin asignar
-            </DialogTitle>
-            <DialogDescription className="flex text-gray-500 text-sm flex-1">
-              Es necesario asignar comisiones antes de continuar.
-            </DialogDescription>
+        <DialogHeader>
+          <div className="flex items-start gap-4">
+            <AlertTriangle size={20} className="text-danger mt-1" />
+            <div className="flex flex-col h-full">
+              <DialogTitle className="text-danger text-xl">
+                Comisiones sin asignar
+              </DialogTitle>
+              <DialogDescription className="flex text-gray-500 text-sm flex-1">
+                Es necesario asignar comisiones antes de continuar.
+              </DialogDescription>
+            </div>
           </div>
         </DialogHeader>
-        <div className="space-y-2 ">
-          <p className=" text-gray-700 font-bold">
-            Comisión: <span className="font-medium">{tramite.comision}</span>
-          </p>
-          <p className="font-bold text-gray-700">
-            Comisión {tramite.sales_name}:{" "}
-            <span className="font-medium">{tramite.comision_sales_person}</span>
-          </p>
+        <div className="border rounded-md p-2">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                  Comisión
+                </th>
+
+                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                  Comision Comercial
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr key={tramite.id} className="bg-white">
+                <td className="px-3 py-2">
+                  {formatComission(tramite.comision)}
+                </td>
+                <td className="px-3 py-2">
+                  {formatComission(tramite.comision_sales_person)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
         <DialogFooter>
           <Button onClick={onClose}>Entendido</Button>

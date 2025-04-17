@@ -9,14 +9,12 @@ interface Props {
   client: ClientDB;
   signer: SignerDB;
   onUpdated: () => void;
-  isEditable: boolean;
 }
 
 export default function TramiteClientSection({
   client,
   signer,
   onUpdated,
-  isEditable,
 }: Props) {
   return (
     <Card className="xl:col-span-2 relative">
@@ -47,7 +45,7 @@ export default function TramiteClientSection({
             <ClientTabContent
               client={client}
               onClientUpdated={onUpdated}
-              isEditable={isEditable}
+              isEditable={false}
             />
           </TabsContent>
           {(client.type === "Empresa" ||
@@ -56,7 +54,7 @@ export default function TramiteClientSection({
               <SignerTabContent
                 signer={signer}
                 onSignerUpdated={onUpdated}
-                isEditable={isEditable}
+                isEditable={false}
               />
             </TabsContent>
           )}

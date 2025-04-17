@@ -213,20 +213,6 @@ export function ComparativasRatio({
         loading ? "bg-gray-200 " : "bg-white "
       }`}
     >
-      {/* Loading Overlay */}
-      <AnimatePresence>
-        {loading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 h-full flex items-center justify-center rounded-lg z-20"
-          >
-            <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Decorative background elements */}
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl"></div>
       <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl"></div>
@@ -282,7 +268,7 @@ export function ComparativasRatio({
 
       <CardContent className="relative flex-1 pb-0 pt-2 z-10">
         <AnimatePresence mode="wait">
-          {comparativasData ? (
+          {comparativasData && !loading ? (
             <div className="relative w-full h-full">
               {/* Chart View */}
               <AnimatePresence mode="wait">
@@ -407,37 +393,7 @@ export function ComparativasRatio({
             <div className="w-full h-full flex justify-center items-center py-12">
               <LoadingStateCard />
             </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center justify-center h-full py-12"
-            >
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-24 h-24 rounded-full bg-primary-50 flex items-center justify-center">
-                  <svg
-                    width="48"
-                    height="48"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z"
-                      fill="var(--primary-color-300)"
-                    />
-                    <path
-                      d="M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z"
-                      fill="var(--primary-color-200)"
-                    />
-                  </svg>
-                </div>
-                <span className="font-medium text-primary-600 text-center">
-                  No hay comparativas para mostrar
-                </span>
-              </div>
-            </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
       </CardContent>
 

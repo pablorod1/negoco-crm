@@ -53,6 +53,7 @@ export const PLAIN_STATUS_TYPES = [
   "Activo",
   "Baja",
   "Scoring",
+  "Incidencia",
 ];
 
 export const COMPARATIVA_STATUS_TYPES = [

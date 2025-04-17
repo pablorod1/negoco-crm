@@ -165,11 +165,12 @@ export default function FirstStepForm({
               selectedKey={comparativa.service}
               errors={errors.service}
             />
-            <div className="w-full">
+            <div className="w-full ">
               <Label>
                 Plan <span className="text-red-500">*</span>
               </Label>
               <MultiSelect
+                modalPopover
                 name="plan"
                 value={comparativa.plan || []}
                 defaultValue={comparativa.plan || []}
