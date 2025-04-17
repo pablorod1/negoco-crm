@@ -1,7 +1,4 @@
-"use client";
-
 import { Card, CardContent } from "@/components/ui/card";
-
 import { DocumentacionFile, User } from "@/lib/core/types";
 import Image from "next/image";
 import { formatDateTime } from "@/lib/core/format";

@@ -106,7 +106,7 @@ export default function FileCardDropdown({
   userData: User;
   file: DocumentacionFile;
 }) {
-  const isComercial = userData && userData.role === "2";
+  const isComercial = userData.role === "2";
 
   const handleDownload = async () => {
     try {
