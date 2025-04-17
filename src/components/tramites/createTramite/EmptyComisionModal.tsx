@@ -5,11 +5,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { TramiteDB } from "@/lib/core/types";
 
 import { Button } from "@/components/ui/button";
-import { DialogDescription, DialogTrigger } from "@radix-ui/react-dialog";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";

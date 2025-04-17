@@ -305,7 +305,6 @@ export default function SecondStepForm({
         />
       ) : (
         <SelectClient
-          userData={userData}
           setClient={setClient}
           setSigner={setSigner}
           setNewClientState={setNewClientState}

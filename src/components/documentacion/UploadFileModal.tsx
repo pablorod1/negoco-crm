@@ -14,9 +14,8 @@ import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import { useUser } from "@/lib/contexts/UserContext";
-import SpinnerComponent from "../core/SpinnerComponent";
-import { User } from "@/lib/core/types";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
+import LoadingStateModal from "../core/LoadingStateModal";
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -261,13 +260,12 @@ export default function UploadFileModal() {
     <>
       <Dialog open={isOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" onClick={onOpen} className="w-full max-w-64">
+          <Button variant="outline" onClick={onOpen}>
             <UploadIcon width={16} height={16} />
             Subir archivos
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-xl w-full">
-          {" "}
           <DialogHeader
             className="flex flex-col gap-1"
             aria-describedby={undefined}
@@ -277,9 +275,10 @@ export default function UploadFileModal() {
             </DialogTitle>
           </DialogHeader>
           {isUploading && (
-            <div className="h-full w-full absolute top-0 left-0 bg-white/60 flex justify-center items-center">
-              <SpinnerComponent userData={userData as User} />
-            </div>
+            <LoadingStateModal
+              title="Subiendo archivos..."
+              description="Espere unos segundos mientras subimos los archivos."
+            />
           )}
           <div
             {...getRootProps()}

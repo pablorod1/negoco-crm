@@ -4,7 +4,6 @@ import {
   createEmptyClientDB,
   SignerDB,
   TramiteDB,
-  User,
 } from "@/lib/core/types";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
@@ -16,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 interface Props {
-  userData: User;
   setClient: React.Dispatch<React.SetStateAction<ClientDB>>;
   setSigner: React.Dispatch<React.SetStateAction<SignerDB | null>>;
   setNewClientState: React.Dispatch<React.SetStateAction<boolean>>;
@@ -31,7 +29,6 @@ interface Props {
 }
 
 export default function SelectClient({
-  userData,
   setClient,
   setSigner,
   setNewClientState,
@@ -178,7 +175,10 @@ export default function SelectClient({
         />
       </div>
       {loading ? (
-        <LoadingStateModal userData={userData} />
+        <LoadingStateModal
+          title="Cargando clientes..."
+          description="Espere unos segundos mientras cargamos sus clientes."
+        />
       ) : (
         <ScrollArea>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 justify-center w-full pt-2 pb-4">

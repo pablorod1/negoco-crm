@@ -1,3 +1,4 @@
+"use client";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
 import {
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
 import DeleteFileConfirmationModal from "./DeleteFileConfirmationModal";
+import { useState } from "react";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -105,7 +107,15 @@ export default function FileCardDropdown({
   userData: User;
   file: DocumentacionFile;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
   const isComercial = userData && userData.role === "2";
+  const onClose = () => {
+    setIsOpen(false);
+  };
+
+  const onOpen = () => {
+    setIsOpen(true);
+  };
   const handleDownload = async () => {
     try {
       const { success, errors } = await downloadFile(
@@ -145,9 +155,9 @@ export default function FileCardDropdown({
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen}>
       <DropdownMenuTrigger asChild className="z-10">
-        <Button size="icon" variant="ghost">
+        <Button size="icon" variant="ghost" onClick={onOpen}>
           <MoreVertical className="size-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -171,7 +181,11 @@ export default function FileCardDropdown({
               onSelect={(e) => e.preventDefault()}
               className="text-danger p-0"
             >
-              <DeleteFileConfirmationModal files={[file]} userData={userData} />
+              <DeleteFileConfirmationModal
+                files={[file]}
+                userData={userData}
+                onSubmit={onClose}
+              />
             </DropdownMenuItem>
           </>
         )}

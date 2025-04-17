@@ -1,12 +1,12 @@
 "use client";
 import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
 import { FileGrid } from "@/components/documentacion/FileGrid";
-import LoadingComponent from "@/components/documentacion/LoadingComponent";
 import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { useCallback, useEffect, useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
+import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
 
 export default function DocumentacionPage() {
   const { userData } = useUser();
@@ -86,7 +86,7 @@ export default function DocumentacionPage() {
   return (
     <>
       {isLoading ? (
-        <LoadingComponent userData={userData as User} />
+        <FullScreenLoaderComponent />
       ) : files.length > 0 || folders.length > 0 ? (
         <div className="flex flex-col gap-4">
           <FileGrid

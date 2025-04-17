@@ -9,8 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { DialogDescription, DialogTrigger } from "@radix-ui/react-dialog";
 import { Textarea } from "@/components/ui/textarea";
 
 interface Props {

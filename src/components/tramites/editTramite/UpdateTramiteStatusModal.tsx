@@ -1,5 +1,11 @@
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
-import { LiquidezStatus, Status, TramiteVM, User } from "@/lib/core/types";
+import {
+  ClientDB,
+  LiquidezStatus,
+  Status,
+  TramiteVM,
+  User,
+} from "@/lib/core/types";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 
 import {
@@ -46,6 +52,7 @@ interface Props {
   tramite: TramiteVM;
   userData: User;
   onUpdate: () => void;
+  client: ClientDB;
 }
 
 interface FormData {
@@ -67,6 +74,7 @@ export default function UpdateTramiteStatusModal({
   tramite,
   userData,
   onUpdate,
+  client,
 }: Props) {
   const [formData, setFormData] = useState<FormData>({
     status: tramite.status,
@@ -311,6 +319,7 @@ export default function UpdateTramiteStatusModal({
             },
             tramite_id: tramite.id,
             status: { old: tramite.status, new: formData.status },
+            client: { name: client.name, last_name: client.last_name },
           }),
           headers: {
             "Content-Type": "application/json",
@@ -444,7 +453,12 @@ export default function UpdateTramiteStatusModal({
 
           <>
             {/* Información del trámite */}
-            {loading && <LoadingStateModal userData={userData as User} />}
+            {loading && (
+              <LoadingStateModal
+                title="Actualizando trámite..."
+                description="Espere unos segundos mientras actualizamos el estado del trámite."
+              />
+            )}
             <div className="grid grid-cols-2 gap-4 bg-primary-50 p-3 rounded-md text-sm">
               <div className="flex items-center space-x-2">
                 <CalendarIcon className="h-4 w-4 text-primary-500" />

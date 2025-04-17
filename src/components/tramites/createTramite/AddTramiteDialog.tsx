@@ -33,8 +33,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { DialogTrigger } from "@radix-ui/react-dialog";
 import { VariantProps } from "class-variance-authority";
 import { buttonVariants } from "@/components/ui/button";
 import ReviewStep from "./forms/ReviewStep";
@@ -174,6 +174,8 @@ export default function AddTramiteDialog({
         iconColor: "var(--success-color)",
         iconSize: 24,
         icon: CheckCircle,
+        buttonLinkText: "Ver Trámite",
+        buttonLink: `/tramites/${tramite.id}`,
       });
 
       if (comparativa) {
@@ -222,6 +224,40 @@ export default function AddTramiteDialog({
           showCustomToast({
             title: "Error al mover archivos",
             message: moveFileError || "Error desconocido",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
+        const emailRes = await fetch(
+          "/api/send-email/comparativa-status-updated",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              user_to: {
+                email: comparativa.user.email,
+                name: comparativa.user.name,
+                org_logo: userData?.organization.logo,
+              },
+              comparativa_id: comparativa.id,
+              status: { old: "completed", new: "processed" },
+              comparativa_name: comparativa.client,
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const { success: emailSuccess, error: emailError } =
+          await emailRes.json();
+
+        if (!emailSuccess) {
+          showCustomToast({
+            title: "Error al enviar notificación por email",
+            message: emailError as string,
             iconColor: "var(--danger-color)",
             iconSize: 24,
             icon: CircleX,
@@ -316,7 +352,6 @@ export default function AddTramiteDialog({
       userData={userData as User}
     />,
     <FourthStepForm
-      userData={userData as User}
       key={4}
       onBack={handleBack}
       onFinish={handleNext}
@@ -374,7 +409,6 @@ export default function AddTramiteDialog({
       userData={userData as User}
     />,
     <FourthStepForm
-      userData={userData as User}
       key={4}
       onBack={handleBack}
       onFinish={handleNext}

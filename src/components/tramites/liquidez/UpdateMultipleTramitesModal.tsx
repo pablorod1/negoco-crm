@@ -26,10 +26,7 @@ interface Props<TData> {
   userData: User;
 }
 
-export function UpdateMultipleTramitesModal<TData>({
-  table,
-  userData,
-}: Props<TData>) {
+export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTramites, setSelectedTramites] = useState<TramiteRow[]>([]);
   const [status, setStatus] = useState<LiquidezStatus>(null);
@@ -233,7 +230,12 @@ export function UpdateMultipleTramitesModal<TData>({
             </div>
           </DialogHeader>
           <div className="flex flex-col gap-4 mt-2">
-            {loading && <LoadingStateModal userData={userData as User} />}
+            {loading && (
+              <LoadingStateModal
+                title="Actualizando trámites..."
+                description="Espere unos segundos mientras actualizamos el estado de los trámites seleccionados."
+              />
+            )}
             <SelectComponent
               name="status"
               label="Estado Liquidez"

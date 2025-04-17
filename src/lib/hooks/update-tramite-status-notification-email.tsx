@@ -23,12 +23,14 @@ export async function sendTramiteStatusUpdatedNotification({
   status,
   link,
   req,
+  client,
 }: {
   user_to: { name: string; email: string; org_logo: string | undefined };
   tramite_id: string;
   status: { old: string; new: string };
   link: string;
   req: NextRequest;
+  client: { name: string; last_name: string };
 }) {
   // Configurar el transporter de nodemailer
   const host = req.headers.get("host");
@@ -66,6 +68,7 @@ export async function sendTramiteStatusUpdatedNotification({
       status={status}
       org_logo={user_to.org_logo}
       subdomain={subdomain}
+      client={client}
     />
   );
 
@@ -75,7 +78,7 @@ export async function sendTramiteStatusUpdatedNotification({
       name: subdomain.toUpperCase(),
     },
     to: user_to.email,
-    subject: `Actualización de Trámite - ${tramite_id}`,
+    subject: `Actualización de Trámite - ${client.name} ${client.last_name}`,
     html: emailHtml,
   };
 
@@ -94,17 +97,21 @@ const TramiteStatusUpdateEmail = ({
   status,
   org_logo,
   subdomain,
+  client,
 }: {
   name: string;
   tramiteLink: string;
   status: { old: string; new: string };
   org_logo: string | undefined;
   subdomain: string;
+  client: { name: string; last_name: string };
 }) => {
   return (
     <Html lang="es">
       <Head>
-        <title>Actualización de Trámite</title>
+        <title>
+          Actualización de Trámite - {client.name} {client.last_name}
+        </title>
       </Head>
       <Preview>
         El estado de tu trámite ha cambiado de {status.old} a {status.new}
@@ -129,7 +136,7 @@ const TramiteStatusUpdateEmail = ({
               <Heading
                 className={`${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"} text-[24px] font-semibold m-0 mb-[20px]`}
               >
-                Actualización de Trámite
+                Actualización de Trámite - {client.name} {client.last_name}
               </Heading>
 
               <Text className="text-[16px] leading-[26px] m-0 mb-[15px]">

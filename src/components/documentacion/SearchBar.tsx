@@ -12,8 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileCard } from "./FileCard";
 import { useUser } from "@/lib/contexts/UserContext";
-import SpinnerComponent from "../core/SpinnerComponent";
+import SpinnerComponent from "../core/FullScreenLoaderComponent";
 import { InputComponent } from "../tramites/createTramite/InputComponent";
+import LoaderComponent from "../core/LoaderComponent";
 
 interface SearchBarProps {
   recentlyFiles?: DocumentacionFile[];
@@ -108,7 +109,10 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
         </DialogHeader>
         {isLoading ? (
           <div className="flex justify-center py-4">
-            <SpinnerComponent userData={userData as User} />
+            <LoaderComponent
+              title="Buscando archivos..."
+              description="Espere unos segundos mientras buscamos si existe algún archivo con ese nombre."
+            />
           </div>
         ) : (
           <div className="space-y-4 py-4">

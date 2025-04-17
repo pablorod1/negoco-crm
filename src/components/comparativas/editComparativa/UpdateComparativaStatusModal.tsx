@@ -161,6 +161,7 @@ export default function UpdateComparativaStatusModal({
                 },
                 comparativa_id: comparativa.id,
                 status: { old: comparativa.status, new: newStatus },
+                comparativa_name: comparativa.client,
               }),
               headers: {
                 "Content-Type": "application/json",
@@ -241,7 +242,12 @@ export default function UpdateComparativaStatusModal({
               {getStatusBadge(comparativa.status)}
             </div>
           </DialogHeader>
-          {loading && <LoadingStateModal userData={userData as User} />}
+          {loading && (
+            <LoadingStateModal
+              title="Actualizando comparativa..."
+              description="Espere unos segundos mientras actualizamos el estado de la comparativa."
+            />
+          )}
           <div className="space-y-4">
             <div className="space-y-2">
               <SelectComponent

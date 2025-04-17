@@ -6,12 +6,12 @@ import {
   DialogFooter,
   DialogTrigger,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, CircleX, Trash } from "lucide-react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { memo, useState } from "react";
-import { DialogDescription } from "@radix-ui/react-dialog";
 
 interface DeleteNoteConfirmationModalProps {
   note: string;

@@ -43,6 +43,7 @@ export default function TramiteStatusSection({
               tramite={tramite}
               userData={userData}
               onUpdate={onUpdate}
+              client={client}
             />
           )}
           {isRenewable && (isAdmin || isBackoffice) && (

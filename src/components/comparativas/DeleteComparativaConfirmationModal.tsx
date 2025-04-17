@@ -156,7 +156,12 @@ export default function DeleteComparativaConfirmationModal({
               </DialogDescription>
             </div>
           </DialogHeader>
-          {loading && <LoadingStateModal userData={userData} />}
+          {loading && (
+            <LoadingStateModal
+              title="Eliminando comparativa..."
+              description="Espere unos segundos mientras eliminamos la comparativa..."
+            />
+          )}
           <div className="border rounded-lg p-4 bg-gray-50">
             <h3 className="text-md font-medium mb-3">
               Detalles de la comparativa:

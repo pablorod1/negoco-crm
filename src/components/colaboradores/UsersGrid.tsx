@@ -21,10 +21,10 @@ import AvatarComponent from "../core/AvatarComponent";
 import DeleteUserConfirmationModal from "./BanUserConfirmationModal";
 import { useUser } from "@/lib/contexts/UserContext";
 import UnbanUserConfirmationModal from "./UnbanUserConfirmationModal";
-import SpinnerComponent from "../core/SpinnerComponent";
 import { MultiSelect } from "../ui/multi-select";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
+import LoaderComponent from "../core/LoaderComponent";
 
 const columnHelper = createColumnHelper<User>();
 
@@ -197,11 +197,12 @@ function UsersGridTable({
   };
 
   return (
-    <section className="relative">
+    <div className="relative">
       {loading ? (
-        <div className="w-full h-44 flex items-center justify-center">
-          <SpinnerComponent userData={userData as User} />
-        </div>
+        <LoaderComponent
+          title="Cargando usuarios..."
+          description="Espere unos segundos mientras se cargan los datos de los usuarios."
+        />
       ) : (
         <>
           <div className="flex items-end gap-4 justify-between mb-8 w-full">
@@ -291,7 +292,7 @@ function UsersGridTable({
           )}
         </>
       )}
-    </section>
+    </div>
   );
 }
 

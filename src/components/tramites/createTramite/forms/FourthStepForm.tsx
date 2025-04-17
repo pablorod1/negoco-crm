@@ -5,8 +5,6 @@ import FormWrapper from "../FormWrapper";
 import DocumentsForm from "../../DocumentsForm";
 import NotesBoard from "@/components/core/NotesBoard";
 import { FileIcon } from "lucide-react";
-import { User } from "@/lib/core/types";
-import LoadingStateModal from "@/components/core/LoadingStateModal";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
@@ -20,7 +18,6 @@ interface Props {
   setDocuments: React.Dispatch<React.SetStateAction<File[]>>;
   loading: boolean;
   comparativaFiles?: ComparativaFile[];
-  userData: User;
 }
 
 export default function FourthStepForm({
@@ -33,7 +30,6 @@ export default function FourthStepForm({
   setDocuments,
   loading,
   comparativaFiles,
-  userData,
 }: Props) {
   const handleNewNote = (note: string) => {
     setTramite((prev) => ({
@@ -48,7 +44,6 @@ export default function FourthStepForm({
 
   return (
     <FormWrapper>
-      {loading && <LoadingStateModal userData={userData} />}
       <form className="relative">
         <ScrollArea className="h-[calc(100vh-400px)] w-full pe-8">
           <div className={`flex flex-col gap-4 w-full ${loading && "blur-sm"}`}>

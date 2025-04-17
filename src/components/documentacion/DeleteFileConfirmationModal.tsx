@@ -14,6 +14,7 @@ import { AlertTriangle, CheckCircle, CircleX } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
 import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
 import { useState } from "react";
+import LoadingStateModal from "../core/LoadingStateModal";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -51,18 +52,22 @@ export const DeleteDocumentIcon = (props: IconProps) => {
 export default function DeleteFileConfirmationModal({
   files,
   userData,
+  onSubmit,
 }: {
   files: DocumentacionFile[];
   userData: User;
+  onSubmit?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const { refreshDocumentacion } = useDocumentacion();
+  const [loading, setLoading] = useState(false);
 
   const onClose = () => {
     setIsOpen(false);
   };
 
   const handleDelete = async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/documentacion/delete/file", {
         method: "POST",
@@ -102,6 +107,7 @@ export default function DeleteFileConfirmationModal({
         iconSize: 24,
         icon: CheckCircle,
       });
+      if (onSubmit) onSubmit();
       refreshDocumentacion();
       onClose();
     } catch (error) {
@@ -113,6 +119,22 @@ export default function DeleteFileConfirmationModal({
         iconSize: 24,
         icon: CircleX,
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getLoadingMessage = () => {
+    if (files.length > 1) {
+      return {
+        title: "Eliminando archivos...",
+        description: "Espere unos segundos mientras eliminamos los archivos.",
+      };
+    } else {
+      return {
+        title: "Eliminando archivo...",
+        description: "Espere unos segundos mientras eliminamos el archivo.",
+      };
     }
   };
 
@@ -125,6 +147,12 @@ export default function DeleteFileConfirmationModal({
         </Button>
       </DialogTrigger>
       <DialogContent>
+        {loading && (
+          <LoadingStateModal
+            title={getLoadingMessage().title}
+            description={getLoadingMessage().description}
+          />
+        )}
         <DialogHeader>
           <div className="flex items-start gap-4">
             <AlertTriangle className="size-12 text-danger" />

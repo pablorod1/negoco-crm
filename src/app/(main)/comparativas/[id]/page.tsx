@@ -32,11 +32,11 @@ import { ServiceInfo } from "@/components/comparativas/editComparativa/ServiceIn
 import { FilesList } from "@/components/comparativas/editComparativa/FilesList";
 import { CommissionsTabContent } from "@/components/comparativas/editComparativa/ComissionsTabContent";
 import UpdateComparativaStatusModal from "@/components/comparativas/editComparativa/UpdateComparativaStatusModal";
-import SpinnerComponent from "@/components/core/SpinnerComponent";
 import Link from "next/link";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 import TooltipComponent from "@/components/core/TooltipComponent";
 import AddTramiteDialog from "@/components/tramites/createTramite/AddTramiteDialog";
+import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();
@@ -156,9 +156,10 @@ export default function EditComparativaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <SpinnerComponent userData={userData as User} />
-      </div>
+      <FullScreenLoaderComponent
+        title="Cargando comparativa..."
+        description="Por favor, espera mientras se cargan los datos de la comparativa."
+      />
     );
   }
 
@@ -259,7 +260,6 @@ export default function EditComparativaPage() {
                   <UpdateComissionsModal
                     onUpdate={fetchComparativa}
                     comparativa={comparativa}
-                    userData={userData as User}
                   />
                 )}
               </TabsContent>

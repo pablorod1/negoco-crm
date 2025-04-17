@@ -5,12 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
-import LoadingComponent from "@/components/documentacion/LoadingComponent";
 import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
 import { FileGrid } from "@/components/documentacion/FileGrid";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleX } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
+import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -92,7 +92,7 @@ export default function FolderPage() {
   return (
     <>
       {isLoading ? (
-        <LoadingComponent userData={userData as User} />
+        <FullScreenLoaderComponent />
       ) : files.length > 0 || folders.length > 0 ? (
         <div className="flex flex-col gap-4">
           <FileGrid

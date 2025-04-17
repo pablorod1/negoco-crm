@@ -165,7 +165,12 @@ export default function UploadTramiteFilesModal({
               Subir Archivos
             </DialogTitle>
           </DialogHeader>
-          {loading && <LoadingStateModal userData={userData} />}
+          {loading && (
+            <LoadingStateModal
+              title="Subiendo archivos..."
+              description="Espere unos segundos mientras se suben los archivos al trámite."
+            />
+          )}
           <DocumentsForm
             uploadedFiles={uploadedFiles}
             setUploadedFiles={setUploadedFiles}

@@ -1,7 +1,7 @@
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import FormWrapper from "@/components/tramites/createTramite/FormWrapper";
 import NotesBoard from "@/components/core/NotesBoard";
-import { ComparativaDB, User } from "@/lib/core/types";
+import { ComparativaDB } from "@/lib/core/types";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -11,7 +11,6 @@ interface Props {
   onBack: () => void;
   onSubmit: () => void;
   loading: boolean;
-  userData: User;
 }
 
 export default function ThirdStepForm({
@@ -21,7 +20,6 @@ export default function ThirdStepForm({
   onBack,
   onSubmit,
   loading,
-  userData,
 }: Props) {
   const handleAddNote = (note: string) => {
     setComparativa((prev) => ({
@@ -31,7 +29,12 @@ export default function ThirdStepForm({
   };
   return (
     <FormWrapper>
-      {loading && <LoadingStateModal userData={userData} />}
+      {loading && (
+        <LoadingStateModal
+          title="Creando comparativa..."
+          description="Espere unos segundos mientras creamos la comparativa."
+        />
+      )}
       <div className="w-full h-auto">
         <NotesBoard notes={comparativa.notes} onCreateNote={handleAddNote} />
       </div>

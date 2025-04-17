@@ -103,7 +103,10 @@ export default function SelectSalesPerson({
   return (
     <>
       {loading ? (
-        <LoadingStateModal userData={userData} />
+        <LoadingStateModal
+          title="Cargando comerciales..."
+          description="Espere unos segundos mientras cargamos sus comerciales."
+        />
       ) : (
         <>
           <div className="w-full flex justify-between gap-4 items-center mb-4">

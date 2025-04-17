@@ -167,10 +167,6 @@ export default function ComparativaToTramiteStep({
         </ScrollArea>
       </div>
       <ButtonGroupComponent onSubmit={handleSubmit} onCancel={onCancel} />
-      {/* <Button onClick={onCancel} variant="destructive">
-          Cancelar
-        </Button>
-        <Button onClick={handleSubmit}>Tramitar</Button> */}
     </FormWrapper>
   );
 }

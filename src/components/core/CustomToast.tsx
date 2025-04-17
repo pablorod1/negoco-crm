@@ -3,6 +3,8 @@ import React from "react";
 import toast from "react-hot-toast";
 import { LucideIcon } from "lucide-react";
 import Image from "next/image";
+import { Button } from "../ui/button";
+import Link from "next/link";
 
 // Definición de tipos para las props del componente
 interface CustomToastProps {
@@ -14,7 +16,8 @@ interface CustomToastProps {
   iconSize?: number;
   onClose: () => void;
   buttonText?: string;
-  buttonColor?: string;
+  buttonLink?: string;
+  buttonLinkText?: string;
 }
 
 // Definición de tipos para la función de mostrar toast
@@ -27,7 +30,8 @@ interface ShowCustomToastParams {
   iconSize?: number;
   duration?: number;
   buttonText?: string;
-  buttonColor?: string;
+  buttonLink?: string;
+  buttonLinkText?: string;
 }
 
 // Componente que define la estructura del toast
@@ -40,7 +44,8 @@ const CustomToast: React.FC<CustomToastProps> = ({
   iconSize = 24,
   onClose,
   buttonText = "Cerrar",
-  buttonColor = "indigo",
+  buttonLink = undefined,
+  buttonLinkText = undefined,
 }) => {
   // Verificamos si se está usando un icono o una imagen
   const hasIcon = Icon !== undefined;
@@ -77,13 +82,15 @@ const CustomToast: React.FC<CustomToastProps> = ({
           </div>
         </div>
       </div>
-      <div className="flex border-l border-gray-200">
-        <button
-          onClick={onClose}
-          className={`w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-${buttonColor}-600 hover:text-${buttonColor}-500 focus:outline-none focus:ring-2 focus:ring-${buttonColor}-500`}
-        >
+      <div className="flex flex-col justify-center items-center gap-2 border-l border-gray-200 px-4">
+        {buttonLink && buttonLinkText && (
+          <Button variant="link" onClick={onClose}>
+            <Link href={buttonLink}>{buttonLinkText}</Link>
+          </Button>
+        )}
+        <Button variant="destructive" onClick={onClose}>
           {buttonText}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -99,7 +106,8 @@ export const showCustomToast = ({
   iconSize = 24,
   duration = 5000,
   buttonText = "Cerrar",
-  buttonColor = "indigo",
+  buttonLink = undefined,
+  buttonLinkText = undefined,
 }: ShowCustomToastParams) => {
   // Validamos que no se pasen ambos (imagen e icono) al mismo tiempo
   if (imageUrl && icon) {
@@ -124,8 +132,9 @@ export const showCustomToast = ({
           iconColor={iconColor}
           iconSize={iconSize}
           buttonText={buttonText}
-          buttonColor={buttonColor}
           onClose={() => toast.dismiss(t.id)}
+          buttonLink={buttonLink}
+          buttonLinkText={buttonLinkText}
         />
       </div>
     ),

@@ -55,7 +55,12 @@ export default function ReviewStep({
   };
   return (
     <>
-      {loading && <LoadingStateModal userData={userData} />}
+      {loading && (
+        <LoadingStateModal
+          title="Creando trámite..."
+          description="Espere unos segundos mientras creamos el trámite."
+        />
+      )}
       <ScrollArea className="h-full w-full  max-h-[calc(100vh-400px)]">
         <div className="space-y-6 pb-6 px-4">
           {/* Tramite Info */}

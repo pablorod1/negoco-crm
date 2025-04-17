@@ -187,7 +187,6 @@ export default function ComparativasTable<TData, TValue>({
           table={table}
           loading={loading}
           columns={columns}
-          userData={userData as User}
           rowsPerPage={pageSize}
           pageIndex={pageIndex}
           total={totalComparativas}

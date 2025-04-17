@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { CheckCircle, CircleX, Coins } from "lucide-react";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
-import { ComparativaVM, User } from "@/lib/core/types";
+import { ComparativaVM } from "@/lib/core/types";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
@@ -18,13 +18,11 @@ import LoadingStateModal from "@/components/core/LoadingStateModal";
 interface Props {
   comparativa: ComparativaVM;
   onUpdate: () => void;
-  userData: User;
 }
 
 export default function UpdateComissionsModal({
   comparativa,
   onUpdate,
-  userData,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -179,7 +177,12 @@ export default function UpdateComissionsModal({
               Actualizar comisiones
             </DialogTitle>
           </DialogHeader>
-          {loading && <LoadingStateModal userData={userData} />}
+          {loading && (
+            <LoadingStateModal
+              title="Actualizando comisiones..."
+              description="Espere unos segundos mientras actualizamos las comisiones."
+            />
+          )}
           <ComissionsForm
             comparativa={comparativa}
             setFormDataComissions={setFormDataComissions}

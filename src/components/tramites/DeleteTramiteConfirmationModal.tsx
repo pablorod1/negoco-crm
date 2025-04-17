@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,6 @@ import {
 import { showCustomToast } from "../core/CustomToast";
 import { useTramites } from "@/lib/contexts/TramitesContext";
 import Link from "next/link";
-import { DialogDescription } from "@radix-ui/react-dialog";
 import { useState } from "react";
 
 type IconProps = React.SVGProps<SVGSVGElement>;

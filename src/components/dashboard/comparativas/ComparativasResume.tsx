@@ -11,9 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../ui/select";
-import SpinnerComponent from "../../core/SpinnerComponent";
 import Image from "next/image";
 import AddComparativaDialog from "@/components/comparativas/createComparativa/AddComparativaDialog";
+import LoadingStateCard from "../LoadingStateCard";
 
 interface Props {
   loading: boolean;
@@ -115,7 +115,7 @@ export function ComparativasResume({ loading, userData }: Props) {
       >
         {loadingData ? (
           <div className="flex items-center justify-center w-full h-64">
-            <SpinnerComponent userData={userData} />
+            <LoadingStateCard />
           </div>
         ) : comparativas.length > 0 ? (
           <ComparativasAnimatedList items={comparativas || []} />

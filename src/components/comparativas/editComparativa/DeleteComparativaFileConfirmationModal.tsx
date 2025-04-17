@@ -5,12 +5,12 @@ import {
   DialogFooter,
   DialogTrigger,
   DialogDescription,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CloudAlert, Trash } from "lucide-react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { memo, useState } from "react";
-import { DialogTitle } from "@radix-ui/react-dialog";
 import { ComparativaFile } from "@/lib/core/types";
 import { formatFileSize } from "@/lib/core/format";
 

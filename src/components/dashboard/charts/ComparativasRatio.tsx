@@ -27,10 +27,10 @@ import {
 import type { User } from "@/lib/core/types";
 import { CalendarIcon, RefreshCw } from "lucide-react";
 
-import SpinnerComponent from "@/components/core/SpinnerComponent";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import LoadingStateCard from "../LoadingStateCard";
 
 const chartConfig = {
   comparativas: {
@@ -405,7 +405,7 @@ export function ComparativasRatio({
             </div>
           ) : !loading && loadingData ? (
             <div className="w-full h-full flex justify-center items-center py-12">
-              <SpinnerComponent userData={userData} />
+              <LoadingStateCard />
             </div>
           ) : (
             <motion.div

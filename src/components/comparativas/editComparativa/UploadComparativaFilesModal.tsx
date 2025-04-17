@@ -327,7 +327,12 @@ export default function UploadComparativaFilesModal({
               Subir Archivos
             </DialogTitle>
           </DialogHeader>
-          {loading && <LoadingStateModal userData={userData} />}
+          {loading && (
+            <LoadingStateModal
+              title="Subiendo archivos..."
+              description="Espere unos segundos mientras subimos los archivos a la comparativa."
+            />
+          )}
           <DocumentsForm
             uploadedFiles={uploadedFiles}
             setUploadedFiles={setUploadedFiles}

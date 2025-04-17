@@ -10,8 +10,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "../ui/dialog";
-import { DialogTrigger } from "@radix-ui/react-dialog";
 import { useState } from "react";
 
 interface Props {

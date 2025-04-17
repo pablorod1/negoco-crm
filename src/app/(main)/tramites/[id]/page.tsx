@@ -22,8 +22,8 @@ import TramiteClientSection from "@/components/tramites/editTramite/client/Trami
 import TramiteComercialSection from "@/components/tramites/editTramite/comercial/TramiteComercialSection";
 import TramiteComissionsSection from "@/components/tramites/editTramite/comissions/TramiteComissionsSection";
 import TramiteStatusSection from "@/components/tramites/editTramite/TramiteStatusSection";
-import SpinnerComponent from "@/components/core/SpinnerComponent";
 import LiquidezStatusSection from "@/components/tramites/editTramite/liquidez/LiquidezStatusSection";
+import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
 
 export default function TramiteDetails() {
   const { userData } = useUser();
@@ -135,9 +135,10 @@ export default function TramiteDetails() {
 
   if (loading || !loadedData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <SpinnerComponent userData={userData as User} />
-      </div>
+      <FullScreenLoaderComponent
+        title="Cargando trámite..."
+        description="Espere unos segundos mientras se cargan los datos del trámite."
+      />
     );
   }
 

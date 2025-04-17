@@ -260,7 +260,6 @@ export function DataTable<TData, TValue>({
           table={table}
           loading={loading}
           columns={columns}
-          userData={userData as User}
         />
       </TableLayout>
     </div>

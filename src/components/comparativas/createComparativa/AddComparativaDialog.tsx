@@ -6,6 +6,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTrigger,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { CheckCircle, CircleX, Plus } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
@@ -23,7 +25,6 @@ import ThirdStepForm from "./forms/ThirdStepForm";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { useComparativas } from "@/lib/contexts/ComparativasContext";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";
-import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
 import { type VariantProps } from "class-variance-authority";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -119,6 +120,8 @@ export default function AddComparativaDialog({
         iconColor: "var(--success-color)",
         iconSize: 24,
         icon: CheckCircle,
+        buttonLink: `/comparativas/${comparativa.id}`,
+        buttonLinkText: "Ver comparativa",
       });
       try {
         await refreshComparativas();
@@ -173,7 +176,6 @@ export default function AddComparativaDialog({
       onCancel={onClose}
       onSubmit={handleSubmit}
       loading={loading}
-      userData={userData as User}
     />,
   ];
 
