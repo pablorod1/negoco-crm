@@ -3,7 +3,6 @@ import { ClientDB, ContractDB, SignerDB } from "@/lib/core/types";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -11,7 +10,7 @@ import {
 import EditClientForm from "./forms/EditClientForm";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Info, UserPen } from "lucide-react";
+import { UserPen } from "lucide-react";
 import EditSignerForm from "./forms/EditSignerForm";
 import ContractForm from "../../createTramite/forms/ContractForm";
 import EditContractForm from "../contract/EditContractForm";
@@ -77,28 +76,14 @@ export default function EditDrawer({
                     ? "Datos del contrato" + contract.id
                     : null}
           </SheetTitle>
-          {(client || signer) && (
-            <SheetDescription className="inline-flex items-start gap-2 border border-danger bg-danger-50 rounded-md p-4">
-              <Info size={28} className="text-danger pb-2" />
-              <span className="text-danger text-xs">
-                {client
-                  ? `Si este cliente tiene otros trámites asociados, se actualizarán
-              automáticamente los datos de este cliente en todos los trámites
-              asociados a él.`
-                  : signer
-                    ? `Este firmante está asociado a un cliente, por lo que si se
-              actualizan los datos de este firmante, se actualizarán los datos
-              de este firmante en todos los trámites asociados a él.`
-                    : null}
-              </span>
-            </SheetDescription>
-          )}
         </SheetHeader>
         {client ? (
           <EditClientForm
             client={client}
             onCancel={onClose}
             onClientUpdated={handleUpdate}
+            tramite_id={tramite_id as string}
+            signer={signer}
           />
         ) : signer ? (
           <EditSignerForm

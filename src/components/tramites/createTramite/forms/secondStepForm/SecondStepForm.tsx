@@ -1,3 +1,4 @@
+"use client";
 import {
   createEmptySecondFormError,
   SecondForm,
@@ -17,10 +18,9 @@ import {
   ClientDB,
   ComparativaVM,
   createEmptyClientDB,
-  createEmptySignerDB,
-  SignerDB,
   TramiteDB,
   User,
+  SignerDB,
 } from "@/lib/core/types";
 import FormWrapper from "../../FormWrapper";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
@@ -54,171 +54,122 @@ export default function SecondStepForm({
   setTramite,
   comparativa,
 }: Props) {
+  // State for client management
   const [clients, setClients] = useState<ClientDB[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [newClientState, setNewClientState] = useState<boolean>(false);
 
+  // Form state
   const [errors, setErrors] = useState<SecondFormError>(
     createEmptySecondFormError
   );
   const [formData, setFormData] = useState<SecondForm>(
-    createEmptySecondForm(comparativa ? comparativa : undefined)
+    createEmptySecondForm(comparativa)
   );
   const [signerData, setSignerData] = useState<SignerForm | null>(null);
   const [signerErrors, setSignerErrors] = useState<SignerFormError>(
     createEmptySignerFormError
   );
-  const [newClientState, setNewClientState] = useState<boolean>(false);
 
-  const newClient = useMemo(() => {
+  // Get cached client/signer data from localStorage
+  const cachedClientData = useMemo(() => {
     const stored = localStorage.getItem("client");
     return stored ? JSON.parse(stored) : null;
   }, []);
 
-  const newSigner = useMemo(() => {
+  const cachedSignerData = useMemo(() => {
     const stored = localStorage.getItem("signer");
     return stored ? JSON.parse(stored) : null;
   }, []);
 
-  useEffect(() => {
-    if (newClientState && newClient) {
-      setFormData({
-        type: newClient.type,
-        name: newClient.name,
-        last_name: newClient.last_name || "",
-        email: newClient.email,
-        phone: newClient.phone,
-        IBAN: newClient.IBAN,
-        address: newClient.address,
-        postal_code: newClient.postal_code,
-        province: newClient.province,
-        city: newClient.city,
-        document_type: newClient.document_type,
-        document_number: newClient.document_number,
-      });
-
-      if (newSigner) {
-        setSignerData({
-          name: newSigner.name,
-          last_name: newSigner.last_name,
-          email: newSigner.email,
-          phone: newSigner.phone,
-          document_number: newSigner.document_number,
-          cargo: newSigner.cargo || null,
-        });
-      }
-    }
-
-    return () => {
-      // Cleanup function
-      if (!newClientState) {
-        setFormData(
-          createEmptySecondForm(comparativa ? comparativa : undefined)
-        );
-        setSignerData(null);
-      }
-    };
-  }, [newClientState, newClient, newSigner, comparativa]); // Only depend on newClientState
-
+  // Validate form and handle submit for new client creation
   const handleSecondSubmit = () => {
+    // Different validation paths depending on client type
+    let formIsValid = false;
+    let signerIsValid = true;
+
+    // Validate main form
+    const formValidationResult = secondFormValidation(formData);
+    setErrors(formValidationResult.errors);
+    formIsValid = formValidationResult.succeeded;
+
+    // If client type requires a signer, validate signer data too
     if (signerData) {
       const signerFormValidationResult = signerFormValidation(signerData);
-      const formValidationResult = secondFormValidation(formData);
-      setErrors(formValidationResult.errors);
-      // Update signer errors while preserving the rest of the state
       setSignerErrors(signerFormValidationResult.errors);
-      if (
-        signerFormValidationResult.succeeded &&
-        formValidationResult.succeeded
-      ) {
-        setSigner((prevState) => {
-          if (!prevState) return null;
-          return {
-            ...prevState,
-            name: signerData.name,
-            last_name: signerData.last_name,
-            email: signerData.email,
-            phone: signerData.phone,
-            document_number: signerData.document_number,
-            cargo: signerData.cargo || null,
-            client_id: client.id,
-          };
-        });
-
-        setClient((prevState) => ({
-          ...prevState,
-          type: formData.type,
-          name: formData.name,
-          last_name: formData.last_name || "",
-          email: formData.email,
-          phone: formData.phone,
-          IBAN: formData.IBAN,
-          address: formData.address,
-          postal_code: formData.postal_code,
-          province: formData.province,
-          city: formData.city,
-          document_type: formData.document_type,
-          document_number: formData.document_number,
-        }));
-        setTramite((prevState) => ({
-          ...prevState,
-          client_id: client.id,
-        }));
-        onSecondSubmitSuccess();
-      }
+      signerIsValid = signerFormValidationResult.succeeded;
     }
 
-    const formValidationResult = secondFormValidation(formData);
-
-    setErrors(formValidationResult.errors);
-
-    if (formValidationResult.succeeded) {
-      setClient((prevState) => ({
-        ...prevState,
+    // If all validations pass
+    if (formIsValid && signerIsValid) {
+      // Update client data
+      setClient({
+        ...client,
+        type: formData.type,
         name: formData.name,
-        last_name: formData.last_name,
+        last_name: formData.last_name || "",
         email: formData.email,
         phone: formData.phone,
         IBAN: formData.IBAN,
         address: formData.address,
-        document_type: formData.document_type,
-        document_number: formData.document_number,
         postal_code: formData.postal_code,
         province: formData.province,
         city: formData.city,
-        type: formData.type,
-      }));
+        document_type: formData.document_type,
+        document_number: formData.document_number,
+      });
 
+      // Update tramite with client ID
       setTramite((prevState) => ({
         ...prevState,
         client_id: client.id,
       }));
+
+      // Update signer if needed
+      if (signerData) {
+        setSigner({
+          id: `SGN-${Math.floor(Math.random() * 10000)}`,
+          name: signerData.name,
+          last_name: signerData.last_name,
+          email: signerData.email,
+          phone: signerData.phone,
+          document_number: signerData.document_number,
+          cargo: signerData.cargo || null,
+          client_id: client.id,
+        });
+      }
+
+      // Save client data to localStorage
+      saveToLocalStorage();
+
+      // Continue to next step
       onSecondSubmitSuccess();
     }
+  };
 
-    // save client & signer to localstorage
-    localStorage.setItem(
-      "client",
-      JSON.stringify({
-        ...formData,
-        id: client.id,
-        document_type: formData.document_type,
-      })
-    );
-    if (signer) {
-      localStorage.setItem(
-        "signer",
-        JSON.stringify({
-          ...signerData,
-          id: signer.id,
-          client_id: client.id,
-        })
-      );
+  // Save current client and signer data to local storage
+  const saveToLocalStorage = () => {
+    const clientToSave = {
+      ...formData,
+      id: client.id,
+    };
+
+    localStorage.setItem("client", JSON.stringify(clientToSave));
+
+    if (signerData) {
+      const signerToSave = {
+        ...signerData,
+        id: signer.id,
+        client_id: client.id,
+      };
+      localStorage.setItem("signer", JSON.stringify(signerToSave));
     } else {
       localStorage.removeItem("signer");
     }
   };
 
+  // Handle submission for existing client selection
   const handleSubmitWithoutValidation = () => {
     if (!selectedClient) {
       showCustomToast({
@@ -233,15 +184,22 @@ export default function SecondStepForm({
     onSecondSubmitSuccess();
   };
 
+  // Handle back button
   const handleBack = () => {
+    // Reset form state
     setClient(createEmptyClientDB());
-    setSigner(signer ? createEmptySignerDB() : null);
+    setSigner(null);
+    setFormData(createEmptySecondForm(comparativa));
+    setSignerData(null);
     onBack();
   };
 
+  // Fetch clients when component mounts
   useEffect(() => {
-    if (!userData) return;
+    if (!userData || !userData.id) return;
+
     const fetchClients = async () => {
+      setLoading(true);
       try {
         const res = await fetch(`/api/clients/get`, {
           method: "POST",
@@ -253,11 +211,13 @@ export default function SecondStepForm({
             role: userData.role,
           }),
         });
+
         const { success, data, error } = await res.json();
+
         if (!success) {
           showCustomToast({
             title: "Error",
-            message: error,
+            message: error || "Error desconocido",
             icon: CircleX,
             iconColor: "var(--danger-color)",
             iconSize: 24,
@@ -266,15 +226,16 @@ export default function SecondStepForm({
         }
 
         if (data) {
-          const sortClients = (data as ClientDB[]).sort((a, b) =>
+          // Sort clients alphabetically by name
+          const sortedClients = (data as ClientDB[]).sort((a, b) =>
             a.name.localeCompare(b.name)
           );
-          setClients(sortClients);
+          setClients(sortedClients);
         }
       } catch (error) {
         showCustomToast({
           title: "Error",
-          message: (error as string) || "Error desconocido",
+          message: (error as Error).message || "Error desconocido",
           icon: CircleX,
           iconColor: "var(--danger-color)",
           iconSize: 24,
@@ -284,6 +245,7 @@ export default function SecondStepForm({
         setLoading(false);
       }
     };
+
     fetchClients();
   }, [userData]);
 
@@ -299,7 +261,6 @@ export default function SecondStepForm({
           setSignerData={setSignerData}
           signerErrors={signerErrors}
           setSignerErrors={setSignerErrors}
-          setClients={setClients}
         />
       ) : (
         <SelectClient
@@ -309,13 +270,15 @@ export default function SecondStepForm({
           setTramite={setTramite}
           clients={clients}
           loading={loading}
-          newClient={newClient}
-          newSigner={newSigner}
-          setSelectedClient={setSelectedClient}
+          cachedClient={cachedClientData}
+          cachedSigner={cachedSignerData}
           selectedClient={selectedClient}
-          comparativa={comparativa}
+          setSelectedClient={setSelectedClient}
+          setFormData={setFormData}
+          setSignerData={setSignerData}
         />
       )}
+
       <ButtonGroupComponent
         onCancel={onCancel}
         onBack={handleBack}

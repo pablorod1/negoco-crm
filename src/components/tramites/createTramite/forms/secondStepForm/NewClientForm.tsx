@@ -7,7 +7,6 @@ import {
 } from "@/lib/validation/validation.types";
 import { InputComponent, SelectComponent } from "../../InputComponent";
 import { CARGOS, CLIENT_TYPES, DOCUMENT_TYPES } from "@/lib/core/const";
-import { ClientDB, DocumentType } from "@/lib/core/types";
 import { Separator } from "@/components/ui/separator";
 
 interface Props {
@@ -19,7 +18,6 @@ interface Props {
   setSignerData: React.Dispatch<React.SetStateAction<SignerForm | null>>;
   setSignerErrors: React.Dispatch<React.SetStateAction<SignerFormError>>;
   signerErrors: SignerFormError;
-  setClients: React.Dispatch<React.SetStateAction<ClientDB[]>>;
 }
 
 export default function NewClientForm({
@@ -32,42 +30,39 @@ export default function NewClientForm({
   signerData,
   signerErrors,
 }: Props) {
+  // Handler for client type changes
   const handleClientTypeChange = (value: string) => {
     setFormData((prevState) => ({
       ...prevState,
       type: value,
     }));
-    if (value === "Empresa" || value === "Comunidad de Propietarios") {
-      setSignerData(createEmptySignerForm);
-    } else {
-      setSignerData(null);
-    }
+
+    // Reset signer data based on client type
+    const needsSigner =
+      value === "Empresa" || value === "Comunidad de Propietarios";
+    setSignerData(needsSigner ? createEmptySignerForm : null);
   };
-  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const { name, value } = e.target;
-    if (name.includes("signer")) {
+
+  // Unified handler for all form field changes
+  const handleChange = (
+    name: string,
+    value: string,
+    isSignerField: boolean = false
+  ) => {
+    if (isSignerField) {
+      const fieldName = name.split(".")[1];
       setSignerData((prevState) => {
-        if (!prevState) {
-          return null;
-        }
+        if (!prevState) return null;
         return {
           ...prevState,
-          [name.split(".")[1]]: value,
+          [fieldName]: value,
         };
       });
       setSignerErrors((prevState) => ({
         ...prevState,
-        [name.split(".")[1]]: "",
+        [fieldName]: "",
       }));
     } else {
-      if (name === "type") {
-        if (value === "Empresa" || value === "Comunidad de Propietarios") {
-          setSignerData(createEmptySignerForm);
-        } else {
-          setSignerData(null);
-        }
-      }
       setFormData((prevState) => ({
         ...prevState,
         [name]: value,
@@ -76,42 +71,46 @@ export default function NewClientForm({
         ...prevState,
         [name]: "",
       }));
+
+      // Handle client type change which affects signer data
+      if (name === "type") {
+        const needsSigner =
+          value === "Empresa" || value === "Comunidad de Propietarios";
+        setSignerData(needsSigner ? createEmptySignerForm : null);
+      }
     }
   };
 
-  const handleSelectChange = (name: string, value: string) => {
-    if (name.includes("signer")) {
-      setSignerData((prevState) => {
-        if (!prevState) {
-          return null;
-        }
-        return {
-          ...prevState,
-          [name.split(".")[1]]: value,
-        };
-      });
-      setSignerErrors((prevState) => ({
-        ...prevState,
-        [name.split(".")[1]]: "",
-      }));
-    } else {
-      setFormData((prevState) => ({
-        ...prevState,
-        [name]: value,
-      }));
-      setErrors((prevState) => ({
-        ...prevState,
-        [name]: "",
-      }));
-    }
+  // Input field change handler (wrapper around handleChange)
+  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const { name, value } = e.target;
+    const isSignerField = name.includes("signer");
+    handleChange(name, value, isSignerField);
   };
+
+  // Select component change handler (wrapper around handleChange)
+  const handleSelectChange = (name: string, value: string) => {
+    const isSignerField = name.includes("signer");
+    handleChange(name, value, isSignerField);
+  };
+
+  // Determine if we need to show signer data form
+  const showSignerForm =
+    (formData.type === "Empresa" ||
+      formData.type === "Comunidad de Propietarios") &&
+    signerData;
+
+  // Get display name for form title
+  const clientTypeDisplayName =
+    formData.type === "Empresa" ? "de la empresa" : "del cliente";
+
   return (
     <form className="w-full pt-6">
       <div className="flex flex-col gap-8 w-full">
         <div className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-primary-500 text-nowrap">
-            Datos{" "}
-            {formData.type === "Empresa" ? "de la empresa" : "del cliente"}
+            Datos {clientTypeDisplayName}
           </h2>
           <SelectComponent
             name="type"
@@ -122,18 +121,22 @@ export default function NewClientForm({
             isRequired
           />
         </div>
+
         <div className="flex items-stretch gap-8 w-full">
           <SelectComponent
             name="document_type"
             items={
+              formData.type &&
               DOCUMENT_TYPES[formData.type as keyof typeof DOCUMENT_TYPES]
-                .documentTypes
+                ? DOCUMENT_TYPES[formData.type as keyof typeof DOCUMENT_TYPES]
+                    .documentTypes
+                : []
             }
             onChange={(value) => handleSelectChange("document_type", value)}
             errors={errors.document_type}
             label="Tipo de documento"
             isRequired
-            selectedKey={formData.document_type as DocumentType}
+            selectedKey={formData.document_type as string}
           />
 
           <InputComponent
@@ -167,6 +170,7 @@ export default function NewClientForm({
               />
             )}
         </div>
+
         <div className="flex items-stretch gap-8 w-full">
           <InputComponent
             name="email"
@@ -187,6 +191,7 @@ export default function NewClientForm({
             isRequired
             value={formData.phone}
           />
+
           <InputComponent
             name="IBAN"
             label="Número de cuenta"
@@ -197,6 +202,7 @@ export default function NewClientForm({
             value={formData.IBAN}
           />
         </div>
+
         <div className="flex items-stretch gap-8 w-full">
           <InputComponent
             name="address"
@@ -207,6 +213,7 @@ export default function NewClientForm({
             isRequired
             value={formData.address}
           />
+
           <InputComponent
             name="postal_code"
             label="Código Postal"
@@ -214,6 +221,7 @@ export default function NewClientForm({
             value={formData.postal_code}
             type="text"
           />
+
           <InputComponent
             name="province"
             label="Provincia"
@@ -221,6 +229,7 @@ export default function NewClientForm({
             value={formData.province}
             type="text"
           />
+
           <InputComponent
             name="city"
             label="Ciudad"
@@ -230,80 +239,82 @@ export default function NewClientForm({
           />
         </div>
       </div>
-      {(formData.type === "Empresa" ||
-        formData.type === "Comunidad de Propietarios") &&
-        signerData && (
-          <>
-            <Separator className="my-4" />
-            <div className="flex flex-col gap-y-4 w-full">
-              <h2 className="text-xl font-semibold text-primary-500">
-                Datos de la persona firmante
-              </h2>
-              <div className="flex items-stretch gap-8 w-full">
-                <InputComponent
-                  name="signer.document_number"
-                  label="Número de documento"
-                  value={signerData.document_number}
-                  onChange={handleFieldChange}
-                  type="text"
-                  errors={signerErrors.document_number}
-                  isRequired
-                />
-                <InputComponent
-                  name="signer.name"
-                  label="Nombre"
-                  value={signerData.name}
-                  onChange={handleFieldChange}
-                  type="text"
-                  errors={signerErrors.name}
-                  isRequired
-                />
 
-                <InputComponent
-                  name="signer.last_name"
-                  label="Apellidos"
-                  value={signerData.last_name}
-                  onChange={handleFieldChange}
-                  type="text"
-                  errors={signerErrors.last_name}
-                  isRequired
-                />
-              </div>
-              <div className="flex items-stretch gap-8 w-full">
-                <InputComponent
-                  name="signer.email"
-                  label="Correo Electrónico"
-                  value={signerData.email}
-                  onChange={handleFieldChange}
-                  type="email"
-                  errors={signerErrors.email}
-                  isRequired
-                />
-                <InputComponent
-                  name="signer.phone"
-                  label="Teléfono"
-                  value={signerData.phone}
-                  onChange={handleFieldChange}
-                  type="number"
-                  errors={signerErrors.phone}
-                  isRequired
-                />
+      {showSignerForm && (
+        <>
+          <Separator className="my-4" />
+          <div className="flex flex-col gap-y-4 w-full">
+            <h2 className="text-xl font-semibold text-primary-500">
+              Datos de la persona firmante
+            </h2>
+            <div className="flex items-stretch gap-8 w-full">
+              <InputComponent
+                name="signer.document_number"
+                label="Número de documento"
+                value={signerData.document_number}
+                onChange={handleFieldChange}
+                type="text"
+                errors={signerErrors.document_number}
+                isRequired
+              />
 
-                {formData.type === "Comunidad de Propietarios" && (
-                  <SelectComponent
-                    name="signer.cargo"
-                    items={CARGOS}
-                    onChange={(value) =>
-                      handleSelectChange("signer.cargo", value)
-                    }
-                    label="Cargo"
-                    selectedKey={signerData.cargo || ""}
-                  />
-                )}
-              </div>
+              <InputComponent
+                name="signer.name"
+                label="Nombre"
+                value={signerData.name}
+                onChange={handleFieldChange}
+                type="text"
+                errors={signerErrors.name}
+                isRequired
+              />
+
+              <InputComponent
+                name="signer.last_name"
+                label="Apellidos"
+                value={signerData.last_name}
+                onChange={handleFieldChange}
+                type="text"
+                errors={signerErrors.last_name}
+                isRequired
+              />
             </div>
-          </>
-        )}
+
+            <div className="flex items-stretch gap-8 w-full">
+              <InputComponent
+                name="signer.email"
+                label="Correo Electrónico"
+                value={signerData.email}
+                onChange={handleFieldChange}
+                type="email"
+                errors={signerErrors.email}
+                isRequired
+              />
+
+              <InputComponent
+                name="signer.phone"
+                label="Teléfono"
+                value={signerData.phone}
+                onChange={handleFieldChange}
+                type="number"
+                errors={signerErrors.phone}
+                isRequired
+              />
+
+              {formData.type === "Comunidad de Propietarios" && (
+                <SelectComponent
+                  name="signer.cargo"
+                  items={CARGOS}
+                  onChange={(value) =>
+                    handleSelectChange("signer.cargo", value)
+                  }
+                  label="Cargo"
+                  selectedKey={signerData.cargo || ""}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </form>
   );
 }

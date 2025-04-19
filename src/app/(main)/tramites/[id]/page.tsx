@@ -175,6 +175,8 @@ export default function TramiteDetails() {
           client={client}
           signer={signer}
           onUpdated={fetchTramite}
+          isEditable={isEditable as boolean}
+          tramite_id={tramite.id}
         />
 
         {/* Commission Info */}

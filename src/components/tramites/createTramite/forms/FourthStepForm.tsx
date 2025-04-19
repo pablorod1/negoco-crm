@@ -1,3 +1,4 @@
+"use client";
 import { ComparativaFile, TramiteDB } from "@/lib/core/types";
 
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
@@ -45,7 +46,7 @@ export default function FourthStepForm({
   return (
     <FormWrapper>
       <form className="relative">
-        <ScrollArea className="h-[calc(100vh-400px)] w-full pe-8">
+        <ScrollArea className="h-[calc(100vh-440px)] w-full pe-2">
           <div className={`flex flex-col gap-4 w-full ${loading && "blur-sm"}`}>
             <h2 className="text-xl text-primary-500 font-semibold">
               Documentos

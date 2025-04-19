@@ -1,5 +1,5 @@
 "use client";
-import { ClientDB } from "@/lib/core/types";
+import { ClientDB, SignerDB } from "@/lib/core/types";
 
 import { CLIENT_TYPES, DOCUMENT_TYPES } from "@/lib/core/const";
 import { useState } from "react";
@@ -12,15 +12,19 @@ import { CircleX } from "lucide-react";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 
 interface Props {
+  tramite_id: string;
   client: ClientDB;
   onCancel: () => void;
   onClientUpdated: () => void;
+  signer?: SignerDB | undefined;
 }
 
 export default function EditClientForm({
   client,
   onClientUpdated,
   onCancel,
+  tramite_id,
+  signer,
 }: Props) {
   const [formData, setFormData] = useState<ClientDB>(client);
   const [loading, setLoading] = useState(false);
@@ -58,13 +62,19 @@ export default function EditClientForm({
         onCancel();
         return;
       }
-
-      const res = await fetch(`/api/tramites/update/client`, {
-        method: "PATCH",
+      const res = await fetch(`/api/tramites/add/client`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ client: formData }),
+        body: JSON.stringify({
+          client: {
+            ...formData,
+            id: `CLI-${Math.floor(Math.random() * 10000)}`,
+          },
+          tramite_id,
+          signer,
+        }),
       });
 
       const { success, error } = await res.json();

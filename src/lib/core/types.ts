@@ -130,7 +130,7 @@ export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   postal_code: "",
   province: "",
   city: "",
-  document_type: "",
+  document_type: "DNI",
   document_number: "",
   IBAN: "",
 });
