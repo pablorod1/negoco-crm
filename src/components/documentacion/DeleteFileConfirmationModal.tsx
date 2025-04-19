@@ -64,6 +64,10 @@ export default function DeleteFileConfirmationModal({
     setIsOpen(false);
   };
 
+  const onOpen = () => {
+    setIsOpen(true);
+  };
+
   const handleDelete = async () => {
     setLoading(true);
     try {
@@ -105,8 +109,8 @@ export default function DeleteFileConfirmationModal({
         iconSize: 24,
         icon: CheckCircle,
       });
-      refreshDocumentacion();
       onClose();
+      refreshDocumentacion();
     } catch (error) {
       console.error("Error eliminando archivos:", error);
       showCustomToast({
@@ -138,7 +142,7 @@ export default function DeleteFileConfirmationModal({
   return (
     <Dialog open={isOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" onClick={() => setIsOpen(true)}>
+        <Button variant="destructive" onClick={onOpen}>
           <DeleteDocumentIcon />
           Eliminar Archivo
         </Button>

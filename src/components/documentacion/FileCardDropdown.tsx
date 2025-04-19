@@ -1,13 +1,7 @@
 "use client";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { downloadFile } from "@/lib/firebase/data/downloadFile";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuContent,
-} from "@/components/ui/dropdown-menu";
+
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle,
@@ -17,6 +11,11 @@ import {
 } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
 import DeleteFileConfirmationModal from "./DeleteFileConfirmationModal";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -147,37 +146,23 @@ export default function FileCardDropdown({
   };
 
   return (
-    <DropdownMenu modal>
-      <DropdownMenuTrigger asChild className="z-10">
+    <Popover>
+      <PopoverTrigger asChild>
         <Button size="icon" variant="ghost">
           <MoreVertical className="size-4" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        aria-label="Dropdown menu with description"
-        className="bg-white rounded-md shadow-lg p-2 space-y-2 border border-gray-200"
-        sideOffset={10}
-        arrowPadding={5}
-      >
-        <DropdownMenuItem textValue="Descargar archivo" className="p-0">
+      </PopoverTrigger>
+      <PopoverContent className="bg-white rounded-md shadow-lg p-2 space-y-2 border border-gray-200 max-w-sm w-full">
+        <div className="flex flex-col space-y-2">
           <Button className="justify-start w-full" onClick={handleDownload}>
             <DownloadCloud />
             Descargar
           </Button>
-        </DropdownMenuItem>
-        {!isComercial && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              key="delete"
-              onSelect={(e) => e.preventDefault()}
-              className="text-danger p-0"
-            >
-              <DeleteFileConfirmationModal files={[file]} userData={userData} />
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {!isComercial && (
+            <DeleteFileConfirmationModal files={[file]} userData={userData} />
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
