@@ -7,7 +7,7 @@ import {
 } from "@/lib/core/types";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
-import { CircleX } from "lucide-react";
+import { CircleX, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -180,19 +180,26 @@ export default function SelectClient({
           description="Espere unos segundos mientras cargamos sus clientes."
         />
       ) : (
-        <ScrollArea className="h-full w-full max-h-[400px]">
+        <ScrollArea className="h-full w-full max-h-[200px] px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-center w-full pt-2 pb-4">
             <Button
               size={"card"}
               variant={"outline"}
               onClick={handleNewClient}
-              className="w-full justify-start gap-2 border border-gray-100 shadow-sm"
+              className="w-full justify-start gap-2 border   border-primary-700 bg-primary-500 shadow-md"
             >
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-semibold">Nuevo Cliente</span>
-                <span className="text-xs text-gray-500 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
-                  Crear un nuevo cliente
-                </span>
+              <div className="flex items-center gap-4 w-full">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-50 shadow-md">
+                  <UserPlus />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-base font-medium text-white">
+                    Nuevo Cliente
+                  </span>
+                  <span className="text-sm text-gray-50 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
+                    Crear un nuevo cliente
+                  </span>
+                </div>
               </div>
             </Button>
             {newClient && (
