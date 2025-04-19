@@ -180,7 +180,7 @@ export default function SelectClient({
           description="Espere unos segundos mientras cargamos sus clientes."
         />
       ) : (
-        <ScrollArea>
+        <ScrollArea className="h-full w-full max-h-[400px]">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-center w-full pt-2 pb-4">
             <Button
               size={"card"}
