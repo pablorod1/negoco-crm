@@ -71,17 +71,5 @@ export const getAuth = (req: NextRequest) => {
       expiresIn: 24 * 60 * 60,
     },
     plugins: [organization(), admin()],
-    trustedOrigins: [
-      "http://localhost:3000/api/auth",
-      "http://localhost:3000",
-      "http://beenergy.localhost:3000",
-      "http://beenergy.localhost:3000/api/auth",
-      "https://negococloud.es/api/auth",
-      "https://negococloud.es",
-      "https://beenergy.negococloud.es/api/auth",
-      "https://beenergy.negococloud.es",
-      "https://test.negococloud.es/api/auth",
-      "https://test.negococloud.es",
-    ],
   });
 };
