@@ -23,7 +23,7 @@ interface Props {
 export function DatePicker({ className, date, setDate }: Props) {
   return (
     <div className={cn("grid w-full", className)}>
-      <Popover>
+      <Popover modal>
         <PopoverTrigger asChild className="w-full">
           <Button
             id="date"

@@ -42,6 +42,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/core/DatePicker";
 import { Separator } from "@/components/ui/separator";
@@ -427,7 +428,7 @@ export default function UpdateTramiteStatusModal({
 
   return (
     <>
-      <Dialog open={isOpen}>
+      <Dialog open={isOpen} modal>
         <DialogTrigger asChild>
           <Button variant="outline" onClick={() => setIsOpen(true)}>
             Actualizar Estado
@@ -442,9 +443,13 @@ export default function UpdateTramiteStatusModal({
               <DialogTitle className="text-xl font-semibold text-primary">
                 Actualizar Estado
               </DialogTitle>
-              <TooltipComponent content="ID del trámite">
-                <span className="text-xs text-primary-400">#{tramite.id}</span>
-              </TooltipComponent>
+              <DialogDescription>
+                <TooltipComponent content="ID del trámite">
+                  <span className="text-xs text-primary-400">
+                    #{tramite.id}
+                  </span>
+                </TooltipComponent>
+              </DialogDescription>
             </div>
 
             {getStatusBadge(tramite.status)}
