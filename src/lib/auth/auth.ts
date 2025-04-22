@@ -80,6 +80,8 @@ export const getAuth = (req: NextRequest) => {
       "https://negococloud.es",
       "https://beenergy.negococloud.es/api/auth",
       "https://beenergy.negococloud.es",
+      "https://test.negococloud.es/api/auth",
+      "https://test.negococloud.es",
     ],
   });
 };
