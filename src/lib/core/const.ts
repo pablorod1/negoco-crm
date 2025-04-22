@@ -136,6 +136,7 @@ export const PLAIN_COMPANIES = [
   "Repsol",
   "UniElectrica",
   "Zima Energia",
+  "Otra",
 ];
 
 export const LIQUIDEZ_STATUS = [

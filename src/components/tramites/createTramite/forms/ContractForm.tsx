@@ -186,7 +186,7 @@ export default function ContractForm({
             <SelectComponent
               name="old_company"
               label="Compañía Antigua"
-              items={[...PLAIN_COMPANIES, "Otra"]}
+              items={PLAIN_COMPANIES}
               onChange={(value) => handleSelectChange(value, "old_company")}
               selectedKey={formData.old_company || ""}
             />
