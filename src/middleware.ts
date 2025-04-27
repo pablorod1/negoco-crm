@@ -10,9 +10,9 @@ export async function middleware(request: NextRequest) {
     "/tramites/:path*",
     "/colaboradores",
     "/documentacion",
-    "liquidez",
-    "comparativas",
-    "comparativas/:path*",
+    "/liquidez",
+    "/comparativas",
+    "/comparativas/:path*",
     "/documentacion/:path*",
     "/",
   ];
@@ -21,6 +21,8 @@ export async function middleware(request: NextRequest) {
   if (protectedPaths.includes(path)) {
     if (!sessionCookie) {
       return NextResponse.redirect(new URL("/login", request.url));
+    } else {
+      return NextResponse.next();
     }
   }
 
@@ -52,11 +54,15 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/",
-    "/login",
     "/tramites",
+    "/tramites/:path*",
     "/colaboradores",
+    "/documentacion",
+    "/liquidez",
+    "/comparativas",
+    "/comparativas/:path*",
     "/documentacion/:path*",
+    "/",
     "/api/:path*",
   ],
 };

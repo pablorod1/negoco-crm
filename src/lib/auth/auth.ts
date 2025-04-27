@@ -21,6 +21,7 @@ export const getAuth = (req: NextRequest) => {
   const db = drizzle(tursoClient);
 
   const host = req.headers.get("host");
+  const origin = req.headers.get("origin");
 
   if (!host) {
     throw new Error("No host found in request headers");
@@ -71,5 +72,6 @@ export const getAuth = (req: NextRequest) => {
       expiresIn: 24 * 60 * 60,
     },
     plugins: [organization(), admin()],
+    trustedOrigins: [origin as string],
   });
 };
