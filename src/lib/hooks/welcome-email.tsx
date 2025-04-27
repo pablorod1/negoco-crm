@@ -38,11 +38,11 @@ export async function sendWelcomeEmail({
   // Extraer el subdominio (client1, client2, etc.)
   const subdomain = host.split(".")[0];
   const email =
-    subdomain === "localhost:3000" || subdomain === "negococloud"
+    subdomain === "localhost:3000"
       ? process.env.EMAIL
       : process.env[`EMAIL_${subdomain.toUpperCase()}`];
   const password =
-    subdomain === "localhost:3000" || subdomain === "negococloud"
+    subdomain === "localhost:3000"
       ? process.env.EMAIL_PASS
       : process.env[`EMAIL_PASS_${subdomain.toUpperCase()}`];
 
