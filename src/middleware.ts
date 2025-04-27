@@ -5,6 +5,25 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const sessionCookie = getSessionCookie(request);
 
+  const protectedPaths = [
+    "/tramites",
+    "/tramites/:path*",
+    "/colaboradores",
+    "/documentacion",
+    "liquidez",
+    "comparativas",
+    "comparativas/:path*",
+    "/documentacion/:path*",
+    "/",
+  ];
+
+  // Mantén la lógica de redirección para rutas de interfaz de usuario
+  if (protectedPaths.includes(path)) {
+    if (!sessionCookie) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
   // Si hay un sessionToken y se intenta acceder a /login, redirigir a /
   if (path === "/login" && sessionCookie) {
     return NextResponse.redirect(new URL("/", request.url));
@@ -25,13 +44,6 @@ export async function middleware(request: NextRequest) {
           },
         }
       );
-    }
-  }
-
-  // Mantén la lógica de redirección para rutas de interfaz de usuario
-  if (["/", "/tramites", "/colaboradores", "/documentacion"].includes(path)) {
-    if (!sessionCookie) {
-      return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
