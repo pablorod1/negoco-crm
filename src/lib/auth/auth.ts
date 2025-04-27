@@ -26,6 +26,10 @@ export const getAuth = (req: NextRequest) => {
   if (!host) {
     throw new Error("No host found in request headers");
   }
+
+  if (!origin) {
+    throw new Error("No origin found in request headers");
+  }
   const resetLink = host.includes("localhost")
     ? `http://${host}/reset-pass`
     : `https://${host}/reset-pass`;
@@ -72,6 +76,13 @@ export const getAuth = (req: NextRequest) => {
       expiresIn: 24 * 60 * 60,
     },
     plugins: [organization(), admin()],
-    trustedOrigins: [origin as string],
+    trustedOrigins: [
+      origin,
+      "https://test.negococloud.es",
+      "https://beenergy.negococloud.es",
+      "http://localhost:3000",
+      "http://beenergy.localhost:3000",
+      "http://test.localhost:3000",
+    ],
   });
 };
