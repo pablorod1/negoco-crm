@@ -5,48 +5,31 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const sessionCookie = getSessionCookie(request);
 
-  const protectedPaths = [
-    "/tramites",
-    "/tramites/:path*",
-    "/colaboradores",
-    "/documentacion",
-    "/liquidez",
-    "/comparativas",
-    "/comparativas/:path*",
-    "/documentacion/:path*",
-    "/",
+  const protectedPathsRegex = [
+    /^\/tramites(\/.*)?$/,
+    /^\/colaboradores(\/.*)?$/,
+    /^\/documentacion(\/.*)?$/,
+    /^\/liquidez(\/.*)?$/,
+    /^\/comparativas(\/.*)?$/,
+    /^\/$/,
   ];
 
-  // Mantén la lógica de redirección para rutas de interfaz de usuario
-  if (protectedPaths.includes(path)) {
-    if (!sessionCookie) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    } else {
-      return NextResponse.next();
-    }
+  const isProtectedPath = protectedPathsRegex.some((regex) => regex.test(path));
+  const isApiProtected = path.startsWith("/api") && !path.includes("auth");
+
+  // Redirigir a login si no hay sesión en rutas protegidas
+  if (isProtectedPath && !sessionCookie) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Si hay un sessionToken y se intenta acceder a /login, redirigir a /
-  if (path === "/login" && sessionCookie) {
+  // Redirigir a la home si el usuario ya está autenticado y accede a /login
+  if (sessionCookie && path === "/login") {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Excluir específicamente /api/auth de la autenticación
-  if (path.startsWith("/api/") && !path.startsWith("/api/auth/")) {
-    if (!sessionCookie) {
-      return new NextResponse(
-        JSON.stringify({
-          success: false,
-          error: "Unauthorized",
-        }),
-        {
-          status: 401,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
+  // Verificar autenticación para las rutas de API protegidas
+  if (isApiProtected && !sessionCookie) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   return NextResponse.next();
@@ -54,6 +37,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/api/auth", // Excluir rutas de autenticación de la verificación
     "/tramites",
     "/tramites/:path*",
     "/colaboradores",
