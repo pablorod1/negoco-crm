@@ -63,7 +63,7 @@ export default function LoginForm() {
     setErrors({});
 
     try {
-      const { error, data } = await authClient.signIn.email(
+      const { error } = await authClient.signIn.email(
         {
           email: formData.email,
           password: formData.password,
@@ -83,8 +83,6 @@ export default function LoginForm() {
       if (error) {
         setErrors({ general: error.message as string });
       }
-
-      console.log("Login response:", data);
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
       setErrors({

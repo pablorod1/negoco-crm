@@ -22,7 +22,6 @@ export const getAuth = (req: NextRequest) => {
 
   const host = req.headers.get("host");
   const origin = req.headers.get("origin");
-  console.log("Origin:", origin);
 
   if (!host) {
     throw new Error("No host found in request headers");
