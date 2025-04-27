@@ -4,7 +4,7 @@ import { getSessionCookie } from "better-auth/cookies";
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const sessionCookie = getSessionCookie(request);
-
+  console.log("Session Cookie:", sessionCookie);
   const protectedPathsRegex = [
     /^\/tramites(\/.*)?$/,
     /^\/colaboradores(\/.*)?$/,
