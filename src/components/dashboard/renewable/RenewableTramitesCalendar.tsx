@@ -162,7 +162,7 @@ export default function RenewableTramitesCalendar({
               {filteredTramites.length > 0 ? (
                 <RenewableTramitesAnimatedList items={filteredTramites} />
               ) : (
-                <div className="w-full h-full flex justify-center items-center flex-col space-y-4 p-6 text-center transition-all duration-300">
+                <div className="w-full h-full flex justify-center items-center flex-col gap-4 space-y-4 p-6 text-center transition-all duration-300">
                   <div className="relative">
                     <Image
                       src="/icons/renovacion.webp"
@@ -173,7 +173,7 @@ export default function RenewableTramitesCalendar({
                     />
                   </div>
 
-                  <div className=" text-center">
+                  <div className="flex flex-col items-center gap-4 text-center">
                     {mostRecentRenewableDate ? (
                       <h2 className="text-base font-bold text-gray-600">
                         No hay trámites renovables para esta fecha
@@ -188,7 +188,7 @@ export default function RenewableTramitesCalendar({
                       <Button
                         variant="outline"
                         onClick={handleMostRecentRenewableDate}
-                        className="animate-fadeIn"
+                        className="animate-fadeIn w-64"
                       >
                         Ver el próximo trámite renovable
                       </Button>
