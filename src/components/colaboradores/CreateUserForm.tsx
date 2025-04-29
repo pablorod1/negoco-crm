@@ -35,6 +35,8 @@ export interface Comercial {
   name: string;
 }
 
+type Role = "admin" | "1" | "2";
+
 export default function CreateUserForm({
   onUserCreated,
   onClose,
@@ -191,7 +193,7 @@ export default function CreateUserForm({
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        role: "user",
+        role: formData.role as Role,
       });
 
       if (error) {
@@ -208,23 +210,23 @@ export default function CreateUserForm({
       }
 
       if (data?.user.id && userData) {
-        const updatedUser = await authClient.admin.setRole({
-          userId: data.user.id,
-          role: formData.role === "0" ? "admin" : formData.role.toString(),
-        });
+        // const updatedUser = await authClient.admin.setRole({
+        //   userId: data.user.id,
+        //   role: formData.role === "0" ? "admin" : (formData.role as Role),
+        // });
 
-        if (updatedUser.error) {
-          showCustomToast({
-            title: "Error al actualizar el rol",
-            message: updatedUser.error.message,
-            icon: UserRoundX,
-            iconColor: "red",
-            iconSize: 24,
-            duration: 3000,
-          });
-          setIsLoading(false);
-          return;
-        }
+        // if (updatedUser.error) {
+        //   showCustomToast({
+        //     title: "Error al actualizar el rol",
+        //     message: updatedUser.error.message,
+        //     icon: UserRoundX,
+        //     iconColor: "red",
+        //     iconSize: 24,
+        //     duration: 3000,
+        //   });
+        //   setIsLoading(false);
+        //   return;
+        // }
 
         await addUserToOrganization(
           data.user.id,

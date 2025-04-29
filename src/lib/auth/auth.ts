@@ -15,6 +15,7 @@ import {
 import { hashPassword, verifyPassword } from "./auth-utils";
 import { organization, admin } from "better-auth/plugins";
 import { sendPasswordResetEmail } from "../hooks/reset-pass-email";
+import { admin as adminRole, comercial, backoffice, ac } from "./permissions";
 
 export const getAuth = (req: NextRequest) => {
   const tursoClient = getTursoClient(req);
@@ -73,7 +74,17 @@ export const getAuth = (req: NextRequest) => {
     session: {
       expiresIn: 24 * 60 * 60,
     },
-    plugins: [organization(), admin()],
+    plugins: [
+      organization(),
+      admin({
+        ac,
+        roles: {
+          admin: adminRole,
+          "1": backoffice,
+          "2": comercial,
+        },
+      }),
+    ],
     advanced: {
       useSecureCookies: process.env.NODE_ENV === "production",
     },

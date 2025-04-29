@@ -38,13 +38,13 @@ export async function sendWelcomeEmail({
   // Extraer el subdominio (client1, client2, etc.)
   const subdomain = host.split(".")[0];
   const email =
-    subdomain === "localhost:3000"
-      ? process.env.EMAIL
-      : process.env[`EMAIL_${subdomain.toUpperCase()}`];
+    subdomain === "beenergy"
+      ? process.env.EMAIL_BEENERGY
+      : process.env.EMAIL_NOREPLY;
   const password =
-    subdomain === "localhost:3000"
-      ? process.env.EMAIL_PASS
-      : process.env[`EMAIL_PASS_${subdomain.toUpperCase()}`];
+    subdomain === "beenergy"
+      ? process.env.EMAIL_PASS_BEENERGY
+      : process.env.EMAIL_PASS_NOREPLY;
 
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -67,7 +67,7 @@ export async function sendWelcomeEmail({
   );
   const mailOptions = {
     from: {
-      name: subdomain.toUpperCase(),
+      name: subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud",
       address: email as string,
     },
     to: email_to,

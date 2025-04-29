@@ -22,8 +22,8 @@ export async function sendPasswordResetEmail({
   email: string;
   resetLink: string;
 }) {
-  const emailFrom = process.env.EMAIL || "";
-  const password = process.env.EMAIL_PASS || "";
+  const emailFrom = process.env.EMAIL_NOREPLY || "";
+  const password = process.env.EMAIL_PASS_NOREPLY || "";
   // Configurar el transporter de nodemailer
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
