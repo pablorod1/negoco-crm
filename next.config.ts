@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  allowedDevOrigins: [
+    "http://localhost:3000",
+    "http://test.localhost:3000",
+    "http://beenergy.localhost:3000",
+  ],
 };
 
 export default nextConfig;

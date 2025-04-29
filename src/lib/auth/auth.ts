@@ -11,7 +11,7 @@ import {
   organization as organizationSchema,
   member,
   invitation,
-} from "../../../auth-schema";
+} from "./auth-schema";
 import { hashPassword, verifyPassword } from "./auth-utils";
 import { organization, admin } from "better-auth/plugins";
 import { sendPasswordResetEmail } from "../hooks/reset-pass-email";
