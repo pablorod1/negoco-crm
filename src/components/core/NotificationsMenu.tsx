@@ -17,6 +17,7 @@ import {
   getLinkContext,
 } from "@/lib/core/notifications.helpers";
 import { showCustomToast } from "./CustomToast";
+import { Separator } from "../ui/separator";
 
 export default function NotificationsMenu() {
   const { userData, refreshUserData } = useUser();
@@ -66,6 +67,53 @@ export default function NotificationsMenu() {
         icon: CircleX,
       });
       console.error("Error deleting notification", error);
+    }
+  };
+
+  const handleDeleteAllNotifications = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+    ids: string[]
+  ) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/notifications/delete/all`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids }),
+      });
+      const { success, error } = await res.json();
+
+      if (!success && error) {
+        showCustomToast({
+          title: "Error eliminando las notificaciones",
+          message: error,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+
+      showCustomToast({
+        title: "Notificaciones eliminadas",
+        message: "Todas las notificaciones han sido eliminadas correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CheckCircle,
+      });
+      fetchNotifications();
+      refreshUserData();
+    } catch (error) {
+      showCustomToast({
+        title: "Error eliminando las notificaciones",
+        message: "Inténtalo de nuevo más tarde",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      console.error("Error deleting notifications", error);
     }
   };
 
@@ -125,64 +173,83 @@ export default function NotificationsMenu() {
           </Button>
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-[500px] p-0">
+      <PopoverContent className="w-[500px] p-0" align="end">
         <Card className="border-0 shadow-none">
-          <CardHeader className="border-b px-4 py-3">
-            <CardTitle className="flex items-center gap-2 text-xl font-medium text-primary-800">
-              <Bell size={20} />
-              Notificaciones
-            </CardTitle>
+          <CardHeader>
+            <div className=" flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2 text-xl font-medium text-primary-800">
+                <Bell size={20} />
+                Notificaciones
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleDeleteAllNotifications(
+                    e,
+                    notifications.map((n) => n.id)
+                  );
+                }}
+                className="text-sm"
+                disabled={notifications.length === 0}
+              >
+                Eliminar todas
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="ps-0 pe-4 py-2">
-            <div className="space-y-1">
+          <Separator />
+          <CardContent className="px-4 py-3">
+            <div className="space-y-4">
               {notifications.length > 0 ? (
                 notifications.map((notification, index) => (
-                  <Link
-                    href={getLinkContext(
-                      notification.context,
-                      notification.link
-                    )}
-                    key={index}
-                    className="group flex flex-col gap-3 border-b border-b-gray-200  py-4 hover:bg-muted/50 cursor-pointer overflow-hidden"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start ">
-                        <div className="flex flex-col justify-center items-center gap-2">
-                          <Badge
-                            className="mt-2 w-1 h-1 p-1 rounded-full"
-                            variant={getColorPriority(notification.priority)}
-                          >
-                            <span />
-                          </Badge>
-                          <div
-                            className={` -translate-x-10  group-hover:translate-x-0 transition-transform`}
-                          >
-                            <Button
-                              onClick={(e) =>
-                                handleDeleteNotification(e, notification.id)
-                              }
-                              size="icon"
-                              variant="ghost"
-                            >
-                              <Trash size={14} stroke="red" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <p className="text-base font-medium">
-                            {notification.title}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {notification.message}
-                          </p>
-                        </div>
+                  <>
+                    <Link
+                      href={getLinkContext(
+                        notification.context,
+                        notification.link
+                      )}
+                      key={index}
+                      className="group flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex-shrink-0">
+                        <Badge
+                          className="w-3 h-3 p-1 rounded-full"
+                          variant={getColorPriority(notification.priority)}
+                        >
+                          <span />
+                        </Badge>
                       </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        {formatDateTime(notification.created_at)}
-                      </p>
-                    </div>
-                  </Link>
+                      <div className="flex-grow">
+                        <p className="text-base font-semibold text-primary-900">
+                          {notification.title}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {notification.message}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {formatDateTime(notification.created_at)}
+                        </p>
+                        <Button
+                          onClick={(e) =>
+                            handleDeleteNotification(e, notification.id)
+                          }
+                          size="icon"
+                          variant="ghost"
+                          className="text-red-500 hover:bg-red-100"
+                        >
+                          <Trash size={14} />
+                        </Button>
+                      </div>
+                    </Link>
+                    <>
+                      {index !== notifications.length - 1 && (
+                        <Separator className="my-2" key={index + "sep"} />
+                      )}
+                    </>
+                  </>
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center gap-4 p-4">
