@@ -75,7 +75,7 @@ export const getAuth = (req: NextRequest) => {
     },
     plugins: [organization(), admin()],
     advanced: {
-      useSecureCookies: true,
+      useSecureCookies: process.env.NODE_ENV === "production",
     },
   });
 };
