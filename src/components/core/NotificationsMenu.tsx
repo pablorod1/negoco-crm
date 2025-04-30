@@ -128,7 +128,6 @@ export default function NotificationsMenu() {
           body: JSON.stringify({ id: userData.id }),
         });
         const data = await res.json();
-        console.log("Notifications data", data);
         if (data) {
           setNotifications(data.data || []);
         }

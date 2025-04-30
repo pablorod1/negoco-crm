@@ -46,7 +46,7 @@ export async function sendTramiteStatusUpdatedNotification({
       : process.env.EMAIL_NOREPLY;
   const password =
     subdomain === "beenergy"
-      ? process.env.EMAIL_PASS
+      ? process.env.EMAIL_PASS_BEENERGY
       : process.env.EMAIL_PASS_NOREPLY;
 
   const transporter = nodemailer.createTransport({
