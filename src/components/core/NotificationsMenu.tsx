@@ -246,7 +246,10 @@ export default function NotificationsMenu() {
                     </Link>
                     <>
                       {index !== notifications.length - 1 && (
-                        <Separator className="my-2" key={index + "sep"} />
+                        <Separator
+                          className="my-2"
+                          key={`separator-${index}`}
+                        />
                       )}
                     </>
                   </>

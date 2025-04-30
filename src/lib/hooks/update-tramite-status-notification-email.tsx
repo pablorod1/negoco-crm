@@ -75,7 +75,7 @@ export async function sendTramiteStatusUpdatedNotification({
   const mailOptions = {
     from: {
       address: email as string,
-      name: subdomain.toUpperCase(),
+      name: subdomain === "beenergy" ? "BEENERGY" : "Negoco Cloud",
     },
     to: user_to.email,
     subject: `Actualización de Trámite - ${client.name} ${client.last_name}`,
