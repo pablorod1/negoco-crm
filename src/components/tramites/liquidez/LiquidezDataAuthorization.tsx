@@ -19,6 +19,7 @@ export default function LiquidezDataAuthorization() {
         title: "No autorizado",
         message: "No tienes permisos para acceder a esta sección",
         icon: ShieldAlert,
+        iconColor: "var(--danger-color)",
         iconSize: 24,
       });
       router.push("/");

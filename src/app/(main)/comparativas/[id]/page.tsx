@@ -7,9 +7,10 @@ import {
   ClipboardList,
   CloudAlert,
   LucideUser,
+  ShieldAlert,
   Tag,
 } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   Card,
@@ -43,6 +44,7 @@ export default function EditComparativaPage() {
   const { id } = useParams();
   const [comparativa, setComparativa] = useState<ComparativaVM>();
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const isAdmin = userData?.role === "admin";
   const isBackOffice = userData?.role === "1";
@@ -64,17 +66,61 @@ export default function EditComparativaPage() {
         }),
       });
 
-      const { success, error, data } = await rs.json();
-      if (!success) {
-        throw new Error(error);
+      if (rs.status === 404) {
+        showCustomToast({
+          title: "Acceso denegado",
+          message:
+            "La comparativa no existe o no tienes permiso para acceder a ella.",
+          iconColor: "var(--danger-color)",
+          icon: ShieldAlert,
+          iconSize: 24,
+        });
+        router.push("/comparativas");
+        return;
       }
-      setComparativa(data);
+
+      if (!rs.ok) {
+        const errorData = await rs.json();
+        showCustomToast({
+          title: "Error",
+          message: errorData.error || "Error al cargar la comparativa",
+          icon: CloudAlert,
+          iconSize: 24,
+          iconColor: "var(--danger-color)",
+        });
+        router.push("/comparativas");
+        return;
+      }
+
+      const { success, data } = await rs.json();
+      if (success && data) {
+        setComparativa(data);
+      } else {
+        showCustomToast({
+          title: "Error",
+          message: "No se encontraron datos de la comparativa",
+          icon: CloudAlert,
+          iconSize: 24,
+          iconColor: "var(--danger-color)",
+        });
+        router.push("/comparativas");
+        return;
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error en la solicitud:", error);
+      showCustomToast({
+        title: "Error",
+        message: "Error de conexión",
+        icon: CloudAlert,
+        iconSize: 24,
+        iconColor: "var(--danger-color)",
+      });
+      router.push("/comparativas");
+      return;
     } finally {
       setLoading(false);
     }
-  }, [id, userData?.id, userData?.role]);
+  }, [id, userData?.id, userData?.role, router]);
 
   const handleAddNewNote = async (note: string) => {
     if (!comparativa) return;
@@ -155,20 +201,12 @@ export default function EditComparativaPage() {
     fetchComparativa();
   }, [fetchComparativa]);
 
-  if (loading) {
+  if (loading || !comparativa) {
     return (
       <FullScreenLoaderComponent
         title="Cargando comparativa..."
         description="Por favor, espera mientras se cargan los datos de la comparativa."
       />
-    );
-  }
-
-  if (!comparativa) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-primary-400">Comparativa no encontrada.</p>
-      </div>
     );
   }
 

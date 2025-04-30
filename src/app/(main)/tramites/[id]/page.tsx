@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CircleX } from "lucide-react";
+import { CloudAlert, ShieldAlert } from "lucide-react";
 import {
   EditTramiteFormData,
   createEmptyTramiteForm,
@@ -56,7 +56,7 @@ export default function TramiteDetails() {
         showCustomToast({
           title: "Acceso denegado",
           message: "No tienes permiso para acceder a este trámite",
-          icon: CircleX,
+          icon: ShieldAlert,
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
@@ -69,7 +69,7 @@ export default function TramiteDetails() {
         showCustomToast({
           title: "Error",
           message: errorData.error || "Error al cargar el trámite",
-          icon: CircleX,
+          icon: CloudAlert,
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
@@ -90,7 +90,7 @@ export default function TramiteDetails() {
         showCustomToast({
           title: "Error",
           message: "No se encontraron datos del trámite",
-          icon: CircleX,
+          icon: CloudAlert,
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
@@ -102,7 +102,7 @@ export default function TramiteDetails() {
       showCustomToast({
         title: "Error",
         message: "Error de conexión",
-        icon: CircleX,
+        icon: CloudAlert,
         iconSize: 24,
         iconColor: "var(--danger-color)",
       });
