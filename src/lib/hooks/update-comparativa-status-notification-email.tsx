@@ -75,7 +75,7 @@ export async function sendComparativaStatusUpdatedNotification({
   const mailOptions = {
     from: {
       address: email as string,
-      name: subdomain.toUpperCase(),
+      name: subdomain === "beenergy" ? "BEENERGY" : "Negoco Cloud",
     },
     to: user_to.email,
     subject: `Actualización de Comparativa - ${comparativa_name}`,

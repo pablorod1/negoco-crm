@@ -232,7 +232,10 @@ export default function UpdateComparativaStatusModal({
             Actualizar
           </Button>
         </DialogTrigger>
-        <DialogContent aria-describedby={undefined}>
+        <DialogContent
+          aria-describedby={undefined}
+          className="w-full max-w-2xl"
+        >
           <DialogHeader>
             <div className="flex items-center justify-between w-full">
               <DialogTitle className="text-xl font-semibold text-primary-800">
