@@ -156,25 +156,23 @@ export default function DocumentacionSidebar() {
               </span>
             </div>
           </Link>
-          <Button
-            size="icon"
-            className="bg-transparent"
-            onClick={() => {
-              if (subfolder.subfolders.length > 0) {
-                toggleFolder(subfolder.path);
-              }
-            }}
-          >
-            {subfolder.subfolders.length > 0 ? (
-              expandedFolders.has(subfolder.path) ? (
+          {subfolder.subfolders.length > 0 && (
+            <Button
+              size="icon"
+              className="bg-transparent"
+              onClick={() => {
+                if (subfolder.subfolders.length > 0) {
+                  toggleFolder(subfolder.path);
+                }
+              }}
+            >
+              {expandedFolders.has(subfolder.path) ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
                 <ChevronRight className="h-4 w-4" />
-              )
-            ) : (
-              <div className="w-4" />
-            )}
-          </Button>
+              )}
+            </Button>
+          )}
         </div>
         {subfolder.subfolders.length > 0 && (
           <ul
