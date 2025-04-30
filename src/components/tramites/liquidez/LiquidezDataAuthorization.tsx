@@ -1,15 +1,16 @@
 "use client";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { DataTable } from "../table/Table";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { ShieldAlert } from "lucide-react";
 import { LiquidezColumns } from "./LiquidezColumns";
+import { useTransitionRouter } from "next-view-transitions";
+import { slideOut } from "@/lib/view-transitions/view-transitions";
 
 export default function LiquidezDataAuthorization() {
   const { userData } = useUser();
-  const router = useRouter();
+  const router = useTransitionRouter();
 
   const isComercial = userData && userData.role === "2";
 
@@ -22,7 +23,9 @@ export default function LiquidezDataAuthorization() {
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
-      router.push("/");
+      router.push("/", {
+        onTransitionReady: slideOut,
+      });
     }
   }, [isComercial, router]);
 

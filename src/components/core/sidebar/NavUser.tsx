@@ -20,7 +20,7 @@ import {
 import { authClient } from "@/lib/auth/auth-client";
 import { redirect } from "next/navigation";
 import { useUser } from "@/lib/contexts/UserContext";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import AvatarComponent from "../AvatarComponent";
 
 export function NavUser({

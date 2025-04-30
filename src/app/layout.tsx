@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { inter } from "@/fonts/fonts";
 import { headers } from "next/headers";
+import { ViewTransitions } from "next-view-transitions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
@@ -24,13 +25,15 @@ export default async function RootLayout({
   const subdomain = host.split(".")[0];
 
   return (
-    <html lang="en">
-      <body
-        data-client={subdomain}
-        className={`${inter.className} antialiased ${subdomain}`}
-      >
-        {children}
-      </body>
-    </html>
+    <ViewTransitions>
+      <html lang="en">
+        <body
+          data-client={subdomain}
+          className={`${inter.className} antialiased ${subdomain}`}
+        >
+          {children}
+        </body>
+      </html>
+    </ViewTransitions>
   );
 }

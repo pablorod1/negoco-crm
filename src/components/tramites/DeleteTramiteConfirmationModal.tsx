@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { showCustomToast } from "../core/CustomToast";
 import { useTramites } from "@/lib/contexts/TramitesContext";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { useState } from "react";
 
 type IconProps = React.SVGProps<SVGSVGElement>;

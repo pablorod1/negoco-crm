@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, AlertCircle, Lock, CheckCircle } from "lucide-react";
 import { authClient } from "@/lib/auth/auth-client";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 // Validación de formulario optimizada
 type FormErrors = {

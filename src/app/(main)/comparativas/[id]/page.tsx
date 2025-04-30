@@ -10,7 +10,7 @@ import {
   ShieldAlert,
   Tag,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   Card,
@@ -33,18 +33,19 @@ import { ServiceInfo } from "@/components/comparativas/editComparativa/ServiceIn
 import { FilesList } from "@/components/comparativas/editComparativa/FilesList";
 import { CommissionsTabContent } from "@/components/comparativas/editComparativa/ComissionsTabContent";
 import UpdateComparativaStatusModal from "@/components/comparativas/editComparativa/UpdateComparativaStatusModal";
-import Link from "next/link";
+import { Link, useTransitionRouter } from "next-view-transitions";
 import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 import TooltipComponent from "@/components/core/TooltipComponent";
 import AddTramiteDialog from "@/components/tramites/createTramite/AddTramiteDialog";
 import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { slideOut } from "@/lib/view-transitions/view-transitions";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();
   const { id } = useParams();
   const [comparativa, setComparativa] = useState<ComparativaVM>();
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const router = useTransitionRouter();
 
   const isAdmin = userData?.role === "admin";
   const isBackOffice = userData?.role === "1";
@@ -75,7 +76,9 @@ export default function EditComparativaPage() {
           icon: ShieldAlert,
           iconSize: 24,
         });
-        router.push("/comparativas");
+        router.push("/comparativas", {
+          onTransitionReady: slideOut,
+        });
         return;
       }
 
@@ -88,7 +91,9 @@ export default function EditComparativaPage() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/comparativas");
+        router.push("/comparativas", {
+          onTransitionReady: slideOut,
+        });
         return;
       }
 
@@ -103,7 +108,9 @@ export default function EditComparativaPage() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/comparativas");
+        router.push("/comparativas", {
+          onTransitionReady: slideOut,
+        });
         return;
       }
     } catch (error) {
@@ -115,7 +122,9 @@ export default function EditComparativaPage() {
         iconSize: 24,
         iconColor: "var(--danger-color)",
       });
-      router.push("/comparativas");
+      router.push("/comparativas", {
+        onTransitionReady: slideOut,
+      });
       return;
     } finally {
       setLoading(false);

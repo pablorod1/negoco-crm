@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { showCustomToast } from "../core/CustomToast";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { ClientDB, Notification, TramiteVM } from "@/lib/core/types";
 import { formatDate } from "@/lib/core/format";
 import { NOW_DATE, RENOVATION_DATE } from "@/lib/core/const";

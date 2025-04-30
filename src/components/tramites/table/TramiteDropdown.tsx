@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
 import DeleteTramiteConfirmationModal from "../DeleteTramiteConfirmationModal";
 import { useUser } from "@/lib/contexts/UserContext";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 

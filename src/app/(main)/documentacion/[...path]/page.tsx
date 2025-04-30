@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
 import { DocumentacionFile, User } from "@/lib/core/types";
 import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
@@ -11,6 +11,8 @@ import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleX } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
 import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { useTransitionRouter } from "next-view-transitions";
+import { slideOut } from "@/lib/view-transitions/view-transitions";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -25,7 +27,7 @@ const getParentPath = (currentPath: string[]): string => {
 
 export default function FolderPage() {
   const { userData } = useUser();
-  const router = useRouter();
+  const router = useTransitionRouter();
   const { path } = useParams();
   const { setRefreshDocumentacion, isLoading, setIsLoading } =
     useDocumentacion();
@@ -86,7 +88,9 @@ export default function FolderPage() {
 
   const handleBack = useCallback(() => {
     const parentPath = getParentPath(folderPath);
-    router.push(parentPath);
+    router.push(parentPath, {
+      onTransitionReady: slideOut,
+    });
   }, [folderPath, router]);
 
   return (

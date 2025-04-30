@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import React, { useCallback, useEffect, useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { formatDateTime } from "@/lib/core/format";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { Notification } from "@/lib/core/types";
 import {
   getColorPriority,

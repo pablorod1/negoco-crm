@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 

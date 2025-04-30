@@ -4,7 +4,7 @@ import { cn } from "@/lib/core/utils";
 import { AnimatedList } from "@/components/magicui/animated-list";
 import { ExternalLink } from "lucide-react";
 import { formatDateTime } from "@/lib/core/format";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { useEffect } from "react";
 import Image from "next/image";
 

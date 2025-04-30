@@ -13,7 +13,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { NavUser } from "./NavUser";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/lib/contexts/UserContext";

@@ -12,7 +12,7 @@ import {
   User,
 } from "@/lib/core/types";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { TramiteNotesSection } from "@/components/tramites/editTramite/notes/NotesTabContent";
 import ContractSection from "@/components/tramites/editTramite/contract/ContractSection";
 import { showCustomToast } from "@/components/core/CustomToast";
@@ -24,11 +24,13 @@ import TramiteComissionsSection from "@/components/tramites/editTramite/comissio
 import TramiteStatusSection from "@/components/tramites/editTramite/TramiteStatusSection";
 import LiquidezStatusSection from "@/components/tramites/editTramite/liquidez/LiquidezStatusSection";
 import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { useTransitionRouter } from "next-view-transitions";
+import { slideOut } from "@/lib/view-transitions/view-transitions";
 
 export default function TramiteDetails() {
   const { userData } = useUser();
   const { id } = useParams();
-  const router = useRouter();
+  const router = useTransitionRouter();
   const [formData, setFormData] = useState<EditTramiteFormData>(
     createEmptyTramiteForm()
   );
@@ -60,7 +62,9 @@ export default function TramiteDetails() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/tramites");
+        router.push("/tramites", {
+          onTransitionReady: slideOut,
+        });
         return;
       }
 
@@ -73,7 +77,9 @@ export default function TramiteDetails() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/tramites");
+        router.push("/tramites", {
+          onTransitionReady: slideOut,
+        });
         return;
       }
 
@@ -94,7 +100,9 @@ export default function TramiteDetails() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/tramites");
+        router.push("/tramites", {
+          onTransitionReady: slideOut,
+        });
         return;
       }
     } catch (error) {
@@ -106,7 +114,9 @@ export default function TramiteDetails() {
         iconSize: 24,
         iconColor: "var(--danger-color)",
       });
-      router.push("/tramites");
+      router.push("/tramites", {
+        onTransitionReady: slideOut,
+      });
       return;
     } finally {
       setLoading(false);

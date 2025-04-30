@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle, CircleX, MoreVertical, Trash } from "lucide-react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 // Definición de tipos para las props del componente
 interface CustomToastProps {

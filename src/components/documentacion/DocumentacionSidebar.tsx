@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { getAllFoldersWithPaths } from "@/lib/firebase/data/getFolders";
