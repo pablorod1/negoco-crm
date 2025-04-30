@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { CheckCircle, CircleX, Coins } from "lucide-react";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
-import { ComparativaVM } from "@/lib/core/types";
+import { ComparativaVM, Notification } from "@/lib/core/types";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
+import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -85,12 +86,17 @@ export default function UpdateComissionsModal({
   };
 
   const checkEmptyComissions = () => {
-    const requiredFields = [
-      "comision_fijo",
-      "comision_indexado",
-      "comision_sales_person_fijo",
-      "comision_sales_person_indexado",
-    ];
+    const requiredFields =
+      comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
+        ? [
+            "comision_fijo",
+            "comision_sales_person_fijo",
+            "comision_indexado",
+            "comision_sales_person_indexado",
+          ]
+        : comparativa.plan.includes("fijo")
+          ? ["comision_fijo", "comision_sales_person_fijo"]
+          : ["comision_indexado", "comision_sales_person_indexado"];
     return requiredFields.some(
       (field) =>
         formDataComissions[field as keyof ComissionFormValues] === undefined ||
@@ -131,6 +137,35 @@ export default function UpdateComissionsModal({
           showCustomToast({
             title: "Error al actualizar comisiones",
             message: error,
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
+        const notification: Notification =
+          generateComparativaUpdatedNotification({
+            comparativa_id: comparativa.id,
+            client: comparativa.client,
+            user_id: comparativa.user.id as string,
+            comissions: changes ? true : undefined,
+          });
+
+        const NotificationResponse = await fetch(`/api/notifications/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ notification }),
+        });
+        const { success: NotificationSuccess, error: NotificationError } =
+          await NotificationResponse.json();
+
+        if (!NotificationSuccess && NotificationError) {
+          showCustomToast({
+            title: "Error al notificar cambios",
+            message: NotificationError,
             iconColor: "var(--danger-color)",
             iconSize: 24,
             icon: CircleX,

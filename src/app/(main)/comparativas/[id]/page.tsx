@@ -103,11 +103,12 @@ export default function EditComparativaPage() {
         return;
       }
 
-      const notification = generateComparativaUpdatedNotification(
-        comparativa.id,
-        comparativa.user.id as string,
-        true
-      );
+      const notification = generateComparativaUpdatedNotification({
+        comparativa_id: comparativa.id,
+        client: comparativa.client,
+        user_id: comparativa.user.id as string,
+        notes: true,
+      });
 
       const response = await fetch(`/api/notifications/create`, {
         method: "POST",

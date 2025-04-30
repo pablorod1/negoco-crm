@@ -15,7 +15,7 @@ import { CheckCircle, CircleX, FilePlus2 } from "lucide-react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import LoadingStateModal from "@/components/core/LoadingStateModal";
 import { generateTramiteUpdatedNotification } from "@/lib/core/notifications.helpers";
-import { TramiteFile, User } from "@/lib/core/types";
+import { ClientDB, TramiteFile, User } from "@/lib/core/types";
 import { uploadFile } from "@/lib/firebase/data/uploadFiles";
 
 interface Props {
@@ -24,6 +24,7 @@ interface Props {
   organization_id: string;
   user_id: string;
   userData: User;
+  client: ClientDB;
 }
 
 export default function UploadTramiteFilesModal({
@@ -32,6 +33,7 @@ export default function UploadTramiteFilesModal({
   organization_id,
   user_id,
   userData,
+  client,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -98,12 +100,12 @@ export default function UploadTramiteFilesModal({
         return;
       }
 
-      const notification = generateTramiteUpdatedNotification(
-        {},
+      const notification = generateTramiteUpdatedNotification({
         uploadedFiles,
+        client: `${client.name} ${client.last_name}`,
         tramite_id,
-        user_id
-      );
+        user_id,
+      });
 
       const notificationRes = await fetch("/api/notifications/create", {
         method: "POST",
@@ -159,7 +161,7 @@ export default function UploadTramiteFilesModal({
             Añadir Archivo
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="w-full max-w-2xl">
           <DialogHeader aria-describedby={undefined}>
             <DialogTitle className="text-2xl font-bold text-primary-800">
               Subir Archivos

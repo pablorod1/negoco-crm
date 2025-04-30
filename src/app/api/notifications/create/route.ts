@@ -13,8 +13,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { id, title, message, context, priority, link, user_id, created_at } =
-      notification;
+    const {
+      id,
+      title,
+      message,
+      context,
+      priority,
+      link,
+      user_id,
+      created_at,
+      client,
+    } = notification;
 
     const tursoClient = getTursoClient(req);
     if (!tursoClient) {
@@ -48,11 +57,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // Validate the 'client' field and ensure null values are handled explicitly
+    const sanitizedClient =
+      client !== undefined && client !== null ? client : null;
+
     const insertResponse = await tursoClient.execute({
       sql: `
-            INSERT INTO notifications (id, title, message, context, priority, link, user_id, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, title, message, context, priority, link, user_id, created_at],
+            INSERT INTO notifications (id, title, message, context, priority, link, user_id, created_at, client) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+
+      args: [
+        id,
+        title,
+        message,
+        context,
+        priority,
+        link,
+        user_id,
+        created_at,
+        sanitizedClient, // Use sanitized value for 'client'
+      ],
     });
 
     if (insertResponse.rowsAffected === 0) {

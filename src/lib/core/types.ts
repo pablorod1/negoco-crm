@@ -302,6 +302,7 @@ export interface Notification {
   id: string;
   title: string;
   message: string;
+  client?: string | undefined;
   created_at: string;
   context: string;
   link: string;

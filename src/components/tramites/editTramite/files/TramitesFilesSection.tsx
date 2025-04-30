@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { FileIcon } from "lucide-react";
-import { TramiteDB, TramiteFile, User } from "@/lib/core/types";
+import { ClientDB, TramiteDB, TramiteFile, User } from "@/lib/core/types";
 import UploadTramiteFilesModal from "./UploadTramiteFilesModal";
 
 interface Props {
@@ -18,6 +18,7 @@ interface Props {
   onUpload: () => void;
   isEditable: boolean | null;
   isTramitableBorrador: boolean;
+  client: ClientDB;
 }
 
 export default function TramiteFilesSection({
@@ -27,6 +28,7 @@ export default function TramiteFilesSection({
   onUpload,
   isEditable,
   isTramitableBorrador,
+  client,
 }: Props) {
   return (
     <Card>
@@ -63,6 +65,7 @@ export default function TramiteFilesSection({
             organization_id={userData?.organization.id as string}
             user_id={tramite.user_id as string}
             userData={userData}
+            client={client}
           />
         )}
       </CardFooter>

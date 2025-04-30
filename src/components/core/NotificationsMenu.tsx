@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { formatDateTime } from "@/lib/core/format";
 import Link from "next/link";
@@ -128,6 +128,7 @@ export default function NotificationsMenu() {
           body: JSON.stringify({ id: userData.id }),
         });
         const data = await res.json();
+        console.log("Notifications data", data);
         if (data) {
           setNotifications(data.data || []);
         }
@@ -139,6 +140,7 @@ export default function NotificationsMenu() {
               id: "1",
               title: "Cambio de contraseña",
               message: "Se recomienda cambiar la contraseña",
+              client: undefined,
               context: "Password",
               created_at: userData.created_at,
               priority: 1,
@@ -173,7 +175,7 @@ export default function NotificationsMenu() {
           </Button>
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-[500px] p-0" align="end">
+      <PopoverContent className="w-[600px] p-0" align="end">
         <Card className="border-0 shadow-none">
           <CardHeader>
             <div className=" flex justify-between items-center">
@@ -203,14 +205,13 @@ export default function NotificationsMenu() {
             <div className="space-y-4">
               {notifications.length > 0 ? (
                 notifications.map((notification, index) => (
-                  <>
+                  <React.Fragment key={notification.id}>
                     <Link
                       href={getLinkContext(
                         notification.context,
                         notification.link
                       )}
-                      key={index}
-                      className="group flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm hover:shadow-md transition-shadow"
+                      className="group flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <div className="flex-shrink-0">
                         <Badge
@@ -220,15 +221,22 @@ export default function NotificationsMenu() {
                           <span />
                         </Badge>
                       </div>
-                      <div className="flex-grow">
-                        <p className="text-base font-semibold text-primary-900">
-                          {notification.title}
-                        </p>
+                      <div className="flex-grow space-y-2">
+                        <div>
+                          <p className="text-base font-semibold text-primary-900">
+                            {notification.title}
+                          </p>
+                          {notification.client && (
+                            <p className="text-sm text-primary-500">
+                              Cliente: {notification.client}
+                            </p>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600">
                           {notification.message}
                         </p>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="flex flex-col items-end gap-6">
                         <p className="text-xs text-muted-foreground">
                           {formatDateTime(notification.created_at)}
                         </p>
@@ -252,7 +260,7 @@ export default function NotificationsMenu() {
                         />
                       )}
                     </>
-                  </>
+                  </React.Fragment>
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center gap-4 p-4">

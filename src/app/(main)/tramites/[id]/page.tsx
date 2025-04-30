@@ -239,6 +239,7 @@ export default function TramiteDetails() {
         tramite_id={tramite.id}
         user_id={userData?.id as string}
         user_name={userData?.name as string}
+        client={client}
       />
 
       {/* Files Section */}
@@ -249,6 +250,7 @@ export default function TramiteDetails() {
         onUpload={fetchTramite}
         isEditable={isEditable}
         isTramitableBorrador={isTramitableBorrador}
+        client={client}
       />
     </div>
   );

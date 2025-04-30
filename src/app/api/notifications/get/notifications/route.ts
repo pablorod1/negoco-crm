@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     if (response.rows.length === 0) {
       return NextResponse.json({
         success: true,
-        error: "No notifications found",
+        data: [],
       });
     }
 
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
         created_at: row.created_at as string,
         link: row.link as string,
         user_id: row.user_id as string,
+        client: row.client as string,
       })),
     });
   } catch (error) {

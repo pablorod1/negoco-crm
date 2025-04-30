@@ -3,6 +3,7 @@ import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import {
   ClientDB,
   LiquidezStatus,
+  Notification,
   Status,
   TramiteVM,
   User,
@@ -281,12 +282,12 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
-      const notification = generateTramiteUpdatedNotification(
-        { tramite: { status: formData.status } },
-        [],
-        tramite.id,
-        tramite.user_id
-      );
+      const notification: Notification = generateTramiteUpdatedNotification({
+        changes: { tramite: { status: formData.status } },
+        client: `${client.name} ${client.last_name}`,
+        tramite_id: tramite.id,
+        user_id: tramite.user_id,
+      });
 
       const notificationRes = await fetch("/api/notifications/create", {
         method: "POST",
@@ -345,7 +346,7 @@ export default function UpdateTramiteStatusModal({
 
       showCustomToast({
         title: "Cambios guardados",
-        message: `Los cambios se han guardado correctamente. Se ha notitificado a ${tramite.user.name}.`,
+        message: `Los cambios se han guardado correctamente. Se ha notificado a ${tramite.user.name}.`,
         iconColor: "var(--success-color)",
         iconSize: 24,
         icon: CheckSquare,

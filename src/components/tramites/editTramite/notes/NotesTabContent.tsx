@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ClientDB } from "@/lib/core/types";
 
 const postItColors = [
   "bg-yellow-200",
@@ -28,6 +29,7 @@ interface NotesSectionProps {
   onAddNote: () => void;
   user_id: string;
   user_name: string;
+  client: ClientDB;
 }
 
 export const TramiteNotesSection = ({
@@ -37,6 +39,7 @@ export const TramiteNotesSection = ({
   tramite_id,
   user_id,
   user_name,
+  client,
 }: NotesSectionProps) => {
   const handleUpdateNotes = async (note: string) => {
     try {
@@ -72,16 +75,16 @@ export const TramiteNotesSection = ({
         iconSize: 24,
       });
 
-      const notification = generateTramiteUpdatedNotification(
-        {
+      const notification = generateTramiteUpdatedNotification({
+        changes: {
           tramite: {
-            notes: notes,
+            notes,
           },
         },
-        [],
+        client: `${client.name} ${client.last_name}`,
         tramite_id,
-        user_id
-      );
+        user_id,
+      });
 
       const notificationRes = await fetch("/api/notifications/create", {
         method: "POST",

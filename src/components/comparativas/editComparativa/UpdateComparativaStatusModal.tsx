@@ -7,7 +7,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ComparativaStatus, ComparativaVM, User } from "@/lib/core/types";
+import {
+  ComparativaStatus,
+  ComparativaVM,
+  Notification,
+  User,
+} from "@/lib/core/types";
 import { useState } from "react";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { CircleCheck, CircleX } from "lucide-react";
@@ -17,6 +22,7 @@ import { getStatusBadge } from "@/lib/hooks/use-status-badge";
 import { SelectComponent } from "@/components/tramites/createTramite/InputComponent";
 import { COMPARATIVA_STATUS_TYPES } from "@/lib/core/const";
 import { Separator } from "@/components/ui/separator";
+import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -144,6 +150,36 @@ export default function UpdateComparativaStatusModal({
             icon: CircleX,
             iconColor: "var(--danger-color)",
             iconSize: 24,
+          });
+          return;
+        }
+
+        const notification: Notification =
+          generateComparativaUpdatedNotification({
+            comparativa_id: comparativa.id,
+            client: comparativa.client,
+            user_id: comparativa.user.id as string,
+            status: checkStatusChanged() ? newStatus : undefined,
+            comissions: changes ? true : undefined,
+          });
+
+        const NotificationResponse = await fetch(`/api/notifications/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ notification }),
+        });
+        const { success: NotificationSuccess, error: NotificationError } =
+          await NotificationResponse.json();
+
+        if (!NotificationSuccess && NotificationError) {
+          showCustomToast({
+            title: "Error al notificar cambios",
+            message: NotificationError,
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
           });
           return;
         }

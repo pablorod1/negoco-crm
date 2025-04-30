@@ -205,11 +205,13 @@ export default function UploadComparativaFilesModal({
       }
 
       const notification: Notification = generateComparativaUpdatedNotification(
-        comparativa.id,
-        comparativa.user.id as string,
-        false,
-        estudioRealizado ? "Estudio Realizado" : undefined,
-        true
+        {
+          comparativa_id: comparativa.id,
+          client: comparativa.client,
+          user_id: comparativa.user.id as string,
+          status: estudioRealizado ? "Estudio Realizado" : undefined,
+          files: true,
+        }
       );
 
       const NotificationResponse = await fetch(`/api/notifications/create`, {
