@@ -177,6 +177,7 @@ export default function TramiteDetails() {
       <TramiteTimeLineSection
         tramite={tramite}
         isComercial={isComercial as boolean}
+        onUpdate={fetchTramite}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">

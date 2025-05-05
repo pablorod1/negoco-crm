@@ -1,17 +1,18 @@
-import TooltipComponent from "@/components/core/TooltipComponent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate } from "@/lib/core/format";
 import { TramiteDB } from "@/lib/core/types";
-import { Clock, InfoIcon, RefreshCcw } from "lucide-react";
+import { Clock } from "lucide-react";
+import TimelineItem from "./TimelineItem";
 
 interface Props {
   tramite: TramiteDB;
   isComercial: boolean;
+  onUpdate?: () => void;
 }
 
 export default function TramiteTimeLineSection({
   tramite,
   isComercial,
+  onUpdate,
 }: Props) {
   return (
     <Card className="mb-6">
@@ -24,218 +25,79 @@ export default function TramiteTimeLineSection({
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="flex flex-col gap-4">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-primary-400">
-                Fecha de Creación
-              </p>
-              <p className="font-medium ">
-                {formatDate(tramite.creation_date)}
-              </p>
-            </div>
+            <TimelineItem
+              label="Fecha de Creación"
+              date={tramite.creation_date}
+              tramite_id={tramite.id}
+            />
 
             {!isComercial && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-primary-400">
-                    Fecha de Tramitación
-                  </p>
-                  <TooltipComponent
-                    color="bg-white shadow"
-                    content={
-                      <div className="max-w-sm flex items-start gap-2">
-                        <RefreshCcw className="size-5 text-primary-800" />
-                        <div className="flex flex-col gap-1">
-                          <h3 className=" font-semibold text-primary-800">
-                            Actualización Automática
-                          </h3>
-                          <p className="text-primary-500">
-                            La fecha de tramitación se asignará cuando el estado
-                            del trámite cambie a <strong>Verificado</strong>.
-                          </p>
-                        </div>
-                      </div>
-                    }
-                  >
-                    <InfoIcon className="size-3 text-gray-600" />
-                  </TooltipComponent>
-                </div>
-                <p className="font-medium ">
-                  {tramite.tramitation_date
-                    ? formatDate(tramite.tramitation_date)
-                    : "---"}
-                </p>
-              </div>
+              <TimelineItem
+                label="Fecha de Tramitación"
+                date={tramite.tramitation_date}
+                tooltipContent="La fecha de tramitación se asignará cuando el estado del trámite cambie a Verificado."
+                tramite_id={tramite.id}
+                fieldToChange="tramitation_date"
+                onUpdate={onUpdate}
+                isAdmin={!isComercial}
+              />
             )}
           </div>
           {isComercial && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-primary-400">
-                  Fecha de Tramitación
-                </p>
-                <TooltipComponent
-                  color="bg-white shadow"
-                  content={
-                    <div className="max-w-sm flex items-start gap-2">
-                      <RefreshCcw className="size-5 text-primary-800" />
-                      <div className="flex flex-col gap-1">
-                        <h3 className=" font-semibold text-primary-800">
-                          Actualización Automática
-                        </h3>
-                        <p className="text-primary-500">
-                          La fecha de tramitación se asignará cuando el estado
-                          del trámite cambie a <strong>Verificado</strong>.
-                        </p>
-                      </div>
-                    </div>
-                  }
-                >
-                  <InfoIcon className="size-3 text-gray-600" />
-                </TooltipComponent>
-              </div>
-              <p className="font-medium ">
-                {tramite.tramitation_date
-                  ? formatDate(tramite.tramitation_date)
-                  : "---"}
-              </p>
-            </div>
+            <TimelineItem
+              label="Fecha de Tramitación"
+              date={tramite.tramitation_date}
+              tooltipContent="La fecha de tramitación se asignará cuando el estado del trámite cambie a Verificado."
+              tramite_id={tramite.id}
+              fieldToChange="tramitation_date"
+              onUpdate={onUpdate}
+              isAdmin={!isComercial}
+            />
           )}
           <div className="flex flex-col gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-primary-400">
-                  Fecha de Activación
-                </p>
-                <TooltipComponent
-                  color="bg-white shadow"
-                  content={
-                    <div className="max-w-sm flex items-start gap-2">
-                      <RefreshCcw className="size-5 text-primary-800" />
-                      <div className="flex flex-col gap-1">
-                        <h3 className=" font-semibold text-primary-800">
-                          Actualización Automática
-                        </h3>
-                        <p className="text-primary-500">
-                          La fecha de activación se asignará cuando el estado
-                          del trámite cambie a <strong>Activo</strong>.
-                        </p>
-                      </div>
-                    </div>
-                  }
-                >
-                  <InfoIcon className="size-3 text-gray-600" />
-                </TooltipComponent>
-              </div>
-              <p className="font-medium ">
-                {tramite.activation_date
-                  ? formatDate(tramite.activation_date)
-                  : "---"}
-              </p>
-            </div>
+            <TimelineItem
+              label="Fecha de Activación"
+              date={tramite.activation_date}
+              tooltipContent="La fecha de activación se asignará cuando el estado del trámite cambie a Activo."
+              tramite_id={tramite.id}
+              fieldToChange="activation_date"
+              onUpdate={onUpdate}
+              isAdmin={!isComercial}
+            />
 
             {!isComercial && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-primary-400">
-                    Fecha de Renovación
-                  </p>
-                  <TooltipComponent
-                    color="bg-white shadow"
-                    content={
-                      <div className="max-w-sm flex items-start gap-2">
-                        <RefreshCcw className="size-5 text-primary-800" />
-                        <div className="flex flex-col gap-1">
-                          <h3 className=" font-semibold text-primary-800">
-                            Actualización Automática
-                          </h3>
-                          <p className="text-primary-500">
-                            La fecha de renovación se asignará cuando el estado
-                            del trámite cambie a <strong>Activo</strong>.
-                          </p>
-                        </div>
-                      </div>
-                    }
-                  >
-                    <InfoIcon className="size-3 text-gray-600" />
-                  </TooltipComponent>
-                </div>
-                <p className="font-medium ">
-                  {tramite.renovation_date
-                    ? formatDate(tramite.renovation_date)
-                    : "---"}
-                </p>
-              </div>
+              <TimelineItem
+                label="Fecha de Renovación"
+                date={tramite.renovation_date}
+                tooltipContent="La fecha de renovación se asignará cuando el estado del trámite cambie a Activo."
+                tramite_id={tramite.id}
+                fieldToChange="renovation_date"
+                onUpdate={onUpdate}
+                isAdmin={!isComercial}
+              />
             )}
           </div>
           {!isComercial && (
             <div className="flex flex-col gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-primary-400">
-                    Fecha de Cobro
-                  </p>
-                  <TooltipComponent
-                    color="bg-white shadow"
-                    content={
-                      <div className="max-w-sm flex items-start gap-2">
-                        <RefreshCcw className="size-5 text-primary-800" />
-                        <div className="flex flex-col gap-1">
-                          <h3 className=" font-semibold text-primary-800">
-                            Actualización Automática
-                          </h3>
-                          <p className="text-primary-500">
-                            La fecha de activación se asignará cuando el estado
-                            de liquidez del trámite cambie a{" "}
-                            <strong>Cobrado por Comercializadora</strong>.
-                          </p>
-                        </div>
-                      </div>
-                    }
-                  >
-                    <InfoIcon className="size-3 text-gray-600" />
-                  </TooltipComponent>
-                </div>
-                <p className="font-medium ">
-                  {tramite.collection_date
-                    ? formatDate(tramite.collection_date)
-                    : "---"}
-                </p>
-              </div>
+              <TimelineItem
+                label="Fecha de Cobro"
+                date={tramite.collection_date}
+                tooltipContent="La fecha de activación se asignará cuando el estado de liquidez del trámite cambie a Cobrado por Comercializadora."
+                tramite_id={tramite.id}
+                fieldToChange="collection_date"
+                onUpdate={onUpdate}
+                isAdmin={!isComercial}
+              />
 
-              {!isComercial && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-primary-400">
-                      Fecha de Pago
-                    </p>
-                    <TooltipComponent
-                      color="bg-white shadow"
-                      content={
-                        <div className="max-w-sm flex items-start gap-2">
-                          <RefreshCcw className="size-5 text-primary-800" />
-                          <div className="flex flex-col gap-1">
-                            <h3 className=" font-semibold text-primary-800">
-                              Actualización Automática
-                            </h3>
-                            <p className="text-primary-500">
-                              La fecha de renovación se asignará cuando el
-                              estado de liquidez del trámite cambie a{" "}
-                              <strong>Pagado al Comercial</strong>.
-                            </p>
-                          </div>
-                        </div>
-                      }
-                    >
-                      <InfoIcon className="size-3 text-gray-600" />
-                    </TooltipComponent>
-                  </div>
-                  <p className="font-medium ">
-                    {tramite.payment_date
-                      ? formatDate(tramite.payment_date)
-                      : "---"}
-                  </p>
-                </div>
-              )}
+              <TimelineItem
+                label="Fecha de Pago"
+                date={tramite.payment_date}
+                tooltipContent="La fecha de renovación se asignará cuando el estado de liquidez del trámite cambie a Pagado al Comercial."
+                tramite_id={tramite.id}
+                fieldToChange="payment_date"
+                onUpdate={onUpdate}
+                isAdmin={!isComercial}
+              />
             </div>
           )}
         </div>

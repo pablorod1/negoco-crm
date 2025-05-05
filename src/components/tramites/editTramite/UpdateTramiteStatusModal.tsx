@@ -435,7 +435,7 @@ export default function UpdateTramiteStatusModal({
             Actualizar Estado
           </Button>
         </DialogTrigger>
-        <DialogContent className="[&>button]:hidden">
+        <DialogContent className="[&>button]:hidden overflow-hidden">
           <DialogHeader
             className="flex flex-row items-center justify-between space-y-0 pb-2"
             aria-describedby="modal-description"
