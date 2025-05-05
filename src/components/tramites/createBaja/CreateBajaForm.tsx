@@ -9,7 +9,7 @@ import {
   TramiteDB,
   User,
 } from "@/lib/core/types";
-import React from "react";
+import React, { useState, ChangeEvent, useCallback } from "react";
 import {
   InputComponent,
   SelectComponent,
@@ -19,6 +19,12 @@ import { CheckCircle, CircleX } from "lucide-react";
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
 import { BAJA_LIQUIDEZ_STATUS } from "@/lib/core/const";
 
+interface FormData {
+  tramite: TramiteDB;
+  client: ClientDB;
+  contracts: ContractDB[];
+}
+
 export default function CreateBajaForm({
   onFinish,
   onCancel,
@@ -27,63 +33,143 @@ export default function CreateBajaForm({
   onCancel: () => void;
 }) {
   const { userData } = useUser();
-  const [tramite, setTramite] = React.useState<TramiteDB>(
-    createEmptyTramiteDB(userData as User)
+
+  const [formData, setFormData] = useState<FormData>({
+    tramite: createEmptyTramiteDB(userData as User),
+    client: createEmptyClientDB(),
+    contracts: [createEmptyContractDB()],
+  });
+
+  const { tramite, client, contracts } = formData;
+
+  const updateFormData = useCallback((updates: Partial<FormData>) => {
+    setFormData((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleFieldChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+
+      // Enhanced field change logic with cleaner structure
+      switch (name) {
+        case "name":
+        case "document_number": {
+          const clientUpdates = { ...client };
+
+          if (name === "name") {
+            clientUpdates.name = value;
+          } else {
+            clientUpdates.document_number = value;
+            clientUpdates.document_type = "DNI";
+          }
+
+          updateFormData({ client: clientUpdates });
+          break;
+        }
+        case "CUPS":
+          updateFormData({
+            contracts: [
+              { ...contracts[0], CUPS: value, tramite_id: tramite.id },
+            ],
+          });
+          break;
+        case "comision":
+        case "comision_sales_person": {
+          // Store comission values as positive for better UX during editing
+          const tramiteUpdates = { ...tramite };
+          tramiteUpdates[name] = Number(value) || 0;
+
+          // Only add these properties when changing comision_sales_person
+          if (name === "comision_sales_person") {
+            tramiteUpdates.client_id = client.id;
+            tramiteUpdates.status = "Baja";
+            tramiteUpdates.creation_date = new Date().toISOString();
+            tramiteUpdates.tramitation_date = new Date().toISOString();
+            tramiteUpdates.activation_date = new Date().toISOString();
+          }
+
+          updateFormData({ tramite: tramiteUpdates });
+          break;
+        }
+        default:
+          updateFormData({
+            tramite: { ...tramite, [name]: value },
+          });
+      }
+    },
+    [client, contracts, tramite, updateFormData]
   );
-  const [client, setClient] = React.useState<ClientDB>(createEmptyClientDB());
-  const [contracts, setContracts] = React.useState<ContractDB[]>([
-    createEmptyContractDB(),
-  ]);
 
-  const handleFieldChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    if (name === "name") {
-      setClient({ ...client, name: value });
-    } else if (name === "document_number") {
-      setClient({ ...client, document_number: value, document_type: "DNI" });
-    } else if (name === "CUPS") {
-      setContracts([{ ...contracts[0], CUPS: value, tramite_id: tramite.id }]);
-    } else if (name === "comision") {
-      setTramite({ ...tramite, comision: -value });
-    } else if (name === "comision_sales_person") {
-      setTramite({
-        ...tramite,
-        comision_sales_person: -value,
-        client_id: client.id,
-        status: "Baja",
-        creation_date: new Date().toISOString(),
-        tramitation_date: new Date().toISOString(),
-        activation_date: new Date().toISOString(),
+  const handleSelectChange = useCallback(
+    (value: string, name: string) => {
+      updateFormData({
+        tramite: { ...tramite, [name]: value },
       });
-    } else {
-      setTramite({ ...tramite, [name]: value });
+    },
+    [tramite, updateFormData]
+  );
+
+  const validateForm = useCallback((): boolean => {
+    // Basic validation
+    if (!client.name || !client.document_number) {
+      showCustomToast({
+        title: "Datos incompletos",
+        message: "Debes completar la información del cliente",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      return false;
     }
-  };
 
-  const handleSelectChange = (value: string, name: string) => {
-    setTramite((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+    if (!contracts[0].CUPS) {
+      showCustomToast({
+        title: "Datos incompletos",
+        message: "El CUPS es obligatorio",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      return false;
+    }
 
-  const handleSubmit = async () => {
+    if (!tramite.liquidez_status) {
+      showCustomToast({
+        title: "Datos incompletos",
+        message: "Debes seleccionar un estado de liquidez",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      return false;
+    }
+
+    return true;
+  }, [client, contracts, tramite]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!validateForm()) return;
+
     try {
-      const formData = new FormData();
+      const formDataToSend = new FormData();
 
-      formData.append("tramite", JSON.stringify(tramite));
-      formData.append("client", JSON.stringify(client));
-      formData.append("contracts", JSON.stringify(contracts));
-      formData.append("userData", JSON.stringify(userData));
+      // Convert comissions to negative values only when submitting
+      const tramiteToSubmit = {
+        ...tramite,
+        comision: tramite.comision ? -Math.abs(tramite.comision) : 0,
+        comision_sales_person: tramite.comision_sales_person
+          ? -Math.abs(tramite.comision_sales_person)
+          : 0,
+      };
+
+      formDataToSend.append("tramite", JSON.stringify(tramiteToSubmit));
+      formDataToSend.append("client", JSON.stringify(client));
+      formDataToSend.append("contracts", JSON.stringify(contracts));
+      formDataToSend.append("userData", JSON.stringify(userData));
 
       const result = await fetch(`/api/tramites/add`, {
         method: "POST",
-        body: formData,
+        body: formDataToSend,
       });
 
       const { success, error } = await result.json();
@@ -96,7 +182,6 @@ export default function CreateBajaForm({
           iconColor: "var(--danger-color)",
           iconSize: 24,
         });
-
         return;
       }
 
@@ -112,17 +197,18 @@ export default function CreateBajaForm({
       console.error("Error adding tramite:", error);
       showCustomToast({
         title: "Error al crear la baja",
-        message: error + " Inténtalo de nuevo más tarde",
+        message: String(error) + " Inténtalo de nuevo más tarde",
         icon: CircleX,
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
     }
-  };
+  }, [client, contracts, onFinish, tramite, userData, validateForm]);
+
   return (
     <div className="w-full p-2 space-y-6">
       <form>
-        <div className="flex flex-col  gap-4 ">
+        <div className="flex flex-col gap-4">
           <SelectComponent
             isRequired
             label="Estado de Liquidez"
@@ -159,7 +245,7 @@ export default function CreateBajaForm({
           />
           <div className="flex items-center gap-4">
             <InputComponent
-              value={tramite.comision}
+              value={tramite.comision || ""}
               isRequired
               label="Comisión"
               name="comision"
@@ -167,7 +253,7 @@ export default function CreateBajaForm({
               type="number"
             />
             <InputComponent
-              value={tramite.comision_sales_person}
+              value={tramite.comision_sales_person || ""}
               isRequired
               type="number"
               label="Comisión comercial"

@@ -50,7 +50,7 @@ export default function CreateBajaModal() {
             Nueva Baja
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="w-full max-w-2xl">
           <DialogHeader
             className="text-2xl text-danger font-bold"
             aria-describedby={undefined}

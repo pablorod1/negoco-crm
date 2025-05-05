@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
         const dayStr = date.toLocaleDateString("es-ES", { weekday: "long" });
         results.set(dayStr, {
           active: Number(row.active),
-          baja: Number(row.baja),
+          baja: -Math.abs(Number(row.baja)), // Convert to negative value
           comision: Number(row.comision) || 0,
           comision_sales_person: Number(row.comision_sales_person) || 0,
         });
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
         const dayStr = `${date.getDate()}`;
         results.set(dayStr, {
           active: Number(row.active || 0),
-          baja: Number(row.baja || 0),
+          baja: -Math.abs(Number(row.baja || 0)), // Convert to negative value
           comision: Number(row.comision || 0),
           comision_sales_person: Number(row.comision_sales_person || 0),
         });
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
         const monthStr = months[date.getMonth()];
         results.set(monthStr, {
           active: Number(row.active),
-          baja: Number(row.baja),
+          baja: -Math.abs(Number(row.baja)), // Convert to negative value
           comision: Number(row.comision) || 0,
           comision_sales_person: Number(row.comision_sales_person) || 0,
         });
@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
         });
         results.set(dayStr, {
           active: Number(row.active),
-          baja: Number(row.baja),
+          baja: -Math.abs(Number(row.baja)), // Convert to negative value
           comision: Number(row.comision) || 0,
           comision_sales_person: Number(row.comision_sales_person) || 0,
         });
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
         if (results.has(dateStr)) {
           results.set(dateStr, {
             active: Number(row.active),
-            baja: Number(row.baja),
+            baja: -Math.abs(Number(row.baja)), // Convert to negative value
             comision: Number(row.comision) || 0,
             comision_sales_person: Number(row.comision_sales_person) || 0,
           });

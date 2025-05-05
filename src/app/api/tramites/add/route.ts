@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Añadir metadatos de archivos
-      if (tramiteFiles.length > 0) {
+      if (tramiteFiles && tramiteFiles.length > 0) {
         const insertResult = await addTramiteFiles(tramiteFiles, tursoClient);
         if (!insertResult.success) {
           throw new Error(insertResult.error);

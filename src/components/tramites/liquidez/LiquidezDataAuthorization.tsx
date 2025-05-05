@@ -29,11 +29,6 @@ export default function LiquidezDataAuthorization() {
     }
   }, [isComercial, router]);
 
-  // Only render content if authorized
-  if (!userData) {
-    return null; // Show nothing while checking/redirecting
-  }
-
   return (
     <section className="pb-12">
       <DataTable title="Liquidez" columns={LiquidezColumns} />
