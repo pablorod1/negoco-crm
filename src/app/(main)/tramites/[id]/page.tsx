@@ -132,9 +132,7 @@ export default function TramiteDetails() {
   const isEditable =
     userData &&
     (userData.role === "admin" ||
-      (userData.role === "1" &&
-        tramite.status !== "Activo" &&
-        tramite.status !== "Baja") ||
+      userData.role === "1" ||
       (userData.role === "2" && tramite.status === "Borrador"));
 
   const isTramitableBorrador =
