@@ -89,7 +89,7 @@ export default function SelectClient({
   const fetchSigner = useCallback(
     async (clientId: string): Promise<SignerDB | null> => {
       try {
-        const res = await fetch(`/api/clients/get/signer`, {
+        const res = await fetch(`/api/clients/get/${clientId}/signer`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -149,6 +149,7 @@ export default function SelectClient({
 
       if (needsSigner) {
         const signerData = await fetchSigner(selectedClient.id);
+        console.log("Signer data:", signerData);
         setSigner(signerData);
       } else {
         setSigner(null);

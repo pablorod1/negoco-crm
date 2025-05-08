@@ -201,7 +201,7 @@ export default function SecondStepForm({
     const fetchClients = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/clients/get`, {
+        const res = await fetch(`/api/clients/get/all`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
