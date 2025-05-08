@@ -465,7 +465,7 @@ export default function AddTramiteDialog({
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
-        className={`transition-all duration-700 ease-in-out w-full h-auto ${
+        className={`transition-all duration-700 ease-in-out w-full h-auto  ${
           activeTab === 0
             ? "max-w-[1200px]"
             : activeTab === 1

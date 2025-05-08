@@ -113,7 +113,7 @@ export default function ContractForm({
   return (
     <>
       <form>
-        <div className="flex flex-col gap-y-8 w-full">
+        <div className="flex flex-col gap-y-8 w-full max-h-[500px] overflow-y-auto">
           <div className="flex items-stretch gap-4 w-full">
             <SelectComponent
               name="type"

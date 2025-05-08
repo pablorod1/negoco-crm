@@ -427,280 +427,268 @@ export default function UpdateTramiteStatusModal({
   };
 
   return (
-    <>
-      <Dialog open={isOpen} modal>
-        <DialogTrigger asChild>
-          <Button variant="outline" onClick={() => setIsOpen(true)}>
-            Actualizar Estado
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="[&>button]:hidden overflow-hidden">
-          <DialogHeader
-            className="flex flex-row items-center justify-between space-y-0 pb-2"
-            aria-describedby="modal-description"
-          >
+    <Dialog open={isOpen} modal>
+      <DialogTrigger asChild>
+        <Button variant="outline" onClick={() => setIsOpen(true)}>
+          Actualizar Estado
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="[&>button]:hidden overflow-auto max-h-[90vh]">
+        <DialogHeader
+          className="flex flex-row items-center justify-between space-y-0 pb-2"
+          aria-describedby="modal-description"
+        >
+          <div className="flex items-center space-x-2">
+            <DialogTitle className="text-xl font-semibold text-primary">
+              Actualizar Estado
+            </DialogTitle>
+            <DialogDescription>
+              <TooltipComponent content="ID del trámite">
+                <span className="text-xs text-primary-400">#{tramite.id}</span>
+              </TooltipComponent>
+            </DialogDescription>
+          </div>
+
+          {getStatusBadge(tramite.status)}
+        </DialogHeader>
+
+        <Separator className="my-1" />
+
+        <>
+          {/* Información del trámite */}
+          {loading && (
+            <LoadingStateModal
+              title="Actualizando trámite..."
+              description="Espere unos segundos mientras actualizamos el estado del trámite."
+            />
+          )}
+          <div className="grid grid-cols-2 gap-4 bg-primary-50 p-3 rounded-md text-sm">
             <div className="flex items-center space-x-2">
-              <DialogTitle className="text-xl font-semibold text-primary">
-                Actualizar Estado
-              </DialogTitle>
-              <DialogDescription>
-                <TooltipComponent content="ID del trámite">
-                  <span className="text-xs text-primary-400">
-                    #{tramite.id}
-                  </span>
-                </TooltipComponent>
-              </DialogDescription>
+              <CalendarIcon className="h-4 w-4 text-primary-500" />
+              <span className="font-medium">Creado:</span>
+              <span>{formatDate(tramite.creation_date || "")}</span>
             </div>
-
-            {getStatusBadge(tramite.status)}
-          </DialogHeader>
-
-          <Separator className="my-1" />
-
-          <>
-            {/* Información del trámite */}
-            {loading && (
-              <LoadingStateModal
-                title="Actualizando trámite..."
-                description="Espere unos segundos mientras actualizamos el estado del trámite."
-              />
-            )}
-            <div className="grid grid-cols-2 gap-4 bg-primary-50 p-3 rounded-md text-sm">
-              <div className="flex items-center space-x-2">
-                <CalendarIcon className="h-4 w-4 text-primary-500" />
-                <span className="font-medium">Creado:</span>
-                <span>{formatDate(tramite.creation_date || "")}</span>
-              </div>
-              {tramite.status !== "Tramitable" &&
-                tramite.status !== "Borrador" &&
-                tramite.status !== "Scoring" && (
-                  <div className="flex items-center space-x-2">
-                    <CalendarIcon className="h-4 w-4 text-primary-500" />
-                    <span className="font-medium">Tramitado:</span>
-                    <span>{formatDate(tramite.tramitation_date || "")}</span>
-                  </div>
-                )}
-              {tramite.status === "Activo" && (
+            {tramite.status !== "Tramitable" &&
+              tramite.status !== "Borrador" &&
+              tramite.status !== "Scoring" && (
                 <div className="flex items-center space-x-2">
                   <CalendarIcon className="h-4 w-4 text-primary-500" />
-                  <span className="font-medium">Activado:</span>
-                  <span>{formatDate(tramite.activation_date || "")}</span>
+                  <span className="font-medium">Tramitado:</span>
+                  <span>{formatDate(tramite.tramitation_date || "")}</span>
                 </div>
               )}
-            </div>
+            {tramite.status === "Activo" && (
+              <div className="flex items-center space-x-2">
+                <CalendarIcon className="h-4 w-4 text-primary-500" />
+                <span className="font-medium">Activado:</span>
+                <span>{formatDate(tramite.activation_date || "")}</span>
+              </div>
+            )}
+          </div>
 
-            <div className="grid gap-6 py-4">
-              {/* Estado */}
-              <div className="mx-auto w-full space-y-8">
-                <div className="flex items-center gap-4">
+          <div className="grid gap-6 py-4">
+            {/* Estado */}
+            <div className="mx-auto w-full space-y-8">
+              <div className="flex items-center gap-4">
+                <SelectComponent
+                  onChange={(value) => handleSelectChange(value, "status")}
+                  name="status"
+                  label="Estado"
+                  items={
+                    userData.role === "2"
+                      ? COMERCIAL_STATUS_TYPES
+                      : PLAIN_STATUS_TYPES
+                  }
+                  selectedKey={formData.status}
+                  disabled={tramite.status === "Activo"}
+                  isRequired
+                />
+                {(isActivo || isBaja) && !isComercial && (
                   <SelectComponent
-                    onChange={(value) => handleSelectChange(value, "status")}
-                    name="status"
-                    label="Estado"
-                    items={
-                      userData.role === "2"
-                        ? COMERCIAL_STATUS_TYPES
-                        : PLAIN_STATUS_TYPES
+                    onChange={(value) =>
+                      handleSelectChange(value, "liquidez_status")
                     }
-                    selectedKey={formData.status}
-                    disabled={tramite.status === "Activo"}
-                    isRequired
+                    name="liquidez_status"
+                    label="Estado de liquidez"
+                    items={
+                      isBaja ? BAJA_LIQUIDEZ_STATUS : PLAIN_LIQUIDEZ_STATUS
+                    }
+                    selectedKey={formData.liquidez_status || ""}
                   />
-                  {(isActivo || isBaja) && !isComercial && (
-                    <SelectComponent
-                      onChange={(value) =>
-                        handleSelectChange(value, "liquidez_status")
-                      }
-                      name="liquidez_status"
-                      label="Estado de liquidez"
-                      items={
-                        isBaja ? BAJA_LIQUIDEZ_STATUS : PLAIN_LIQUIDEZ_STATUS
-                      }
-                      selectedKey={formData.liquidez_status || ""}
-                    />
-                  )}
-                </div>
-
-                {isActivo && tramite.status !== "Activo" && (
-                  <div className="flex items-center gap-4 w-full">
-                    <div className="space-y-1 w-full">
-                      <Label htmlFor="activation_date">
-                        Fecha de Activación
-                      </Label>
-                      <DatePicker
-                        date={formData.activation_date as Date}
-                        setDate={(value) =>
-                          handleDateChange(value as Date, "activation_date")
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1 w-full">
-                      <Label htmlFor="renovation_date">
-                        Fecha de Renovación
-                      </Label>
-                      <DatePicker
-                        date={formData.renovation_date as Date}
-                        setDate={(value) =>
-                          handleDateChange(value as Date, "renovation_date")
-                        }
-                      />
-                    </div>
-                  </div>
                 )}
-                {isVerificado && tramite.status === "Tramitable" && (
-                  <div className="space-y-1 w-full">
-                    <Label htmlFor="renovation_date">
-                      Fecha de Tramitación
-                    </Label>
-                    <DatePicker
-                      date={formData.tramitation_date as Date}
-                      setDate={(value) =>
-                        handleDateChange(value as Date, "tramitation_date")
-                      }
-                    />
-                  </div>
-                )}
-
-                {/* Notas */}
-                <div className="mt-4">
-                  <Label htmlFor="note">Notas</Label>
-                  <Textarea
-                    id="note"
-                    name="note"
-                    value={formData.note || ""}
-                    onChange={handleChange}
-                    placeholder="Añade información relevante sobre este cambio de estado..."
-                    rows={3}
-                    className="resize-none"
-                  />
-                </div>
               </div>
 
-              {/* Comisiones (solo para no comerciales) */}
-              {!isComercial && (
-                <>
-                  <Separator className="my-2" />
-
-                  <div className="space-y-4">
-                    <div className="flex flex-col">
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold text-primary">
-                          Comisiones
-                        </h3>
-                        <Coins className="h-4 w-4 text-primary-500" />
-                      </div>
-                      <p className="text-sm text-primary-400">
-                        Asegurate de que las comisiones sean correctas antes de
-                        actualizar el estado.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <InputComponent
-                          type="number"
-                          name="comision"
-                          value={formData.comision.toString()}
-                          label="Comisión"
-                          onChange={handleChange}
-                        />
-                        {needsConfirmation && (
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Checkbox
-                              id="comision-checkbox"
-                              name="comisionConfirmed"
-                              checked={formData.comisionConfirmed}
-                              onCheckedChange={() =>
-                                handleCheckboxChange(
-                                  !formData.comisionConfirmed,
-                                  "comisionConfirmed"
-                                )
-                              }
-                            />
-                            <label
-                              htmlFor="comision-checkbox"
-                              className="text-xs text-primary-600 cursor-pointer"
-                            >
-                              Confirmar
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <InputComponent
-                          type="number"
-                          name="comision_sales_person"
-                          value={formData.comision_sales_person.toString()}
-                          label="Comisión Comercial"
-                          onChange={handleChange}
-                        />
-                        {needsConfirmation && (
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Checkbox
-                              id="comision-sales-checkbox"
-                              name="comisionSalesPersonConfirmed"
-                              checked={formData.comisionSalesPersonConfirmed}
-                              onCheckedChange={() =>
-                                handleCheckboxChange(
-                                  !formData.comisionSalesPersonConfirmed,
-                                  "comisionSalesPersonConfirmed"
-                                )
-                              }
-                            />
-                            <label
-                              htmlFor="comision-sales-checkbox"
-                              className="text-xs text-primary-600 cursor-pointer"
-                            >
-                              Confirmar
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+              {isActivo && tramite.status !== "Activo" && (
+                <div className="flex items-center gap-4 w-full">
+                  <div className="space-y-1 w-full">
+                    <Label htmlFor="activation_date">Fecha de Activación</Label>
+                    <DatePicker
+                      date={formData.activation_date as Date}
+                      setDate={(value) =>
+                        handleDateChange(value as Date, "activation_date")
+                      }
+                    />
                   </div>
-                </>
-              )}
-
-              {/* Alertas o notificaciones */}
-              {needsConfirmation && !isComercial && (
-                <div className="flex items-start space-x-2 bg-yellow-50 p-3 rounded-md mt-2">
-                  <AlertCircleIcon className="h-5 w-5 text-yellow-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-800">
-                      Confirmación requerida
-                    </p>
-                    <p className="text-xs text-yellow-600">
-                      Para actualizar a un estado distinto de Tramitable o
-                      Borrador, debes confirmar ambas comisiones marcando las
-                      casillas de verificación.
-                    </p>
+                  <div className="space-y-1 w-full">
+                    <Label htmlFor="renovation_date">Fecha de Renovación</Label>
+                    <DatePicker
+                      date={formData.renovation_date as Date}
+                      setDate={(value) =>
+                        handleDateChange(value as Date, "renovation_date")
+                      }
+                    />
                   </div>
                 </div>
               )}
-
-              {isBaja && (
-                <div className="flex items-start space-x-2 bg-red-50 p-3 rounded-md mt-2">
-                  <AlertCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-red-800">Atención</p>
-                    <p className="text-xs text-red-600">
-                      Al cancelar este trámite, todas las comisiones asociadas
-                      pasarán a ser negativas y el trámite no podrá ser
-                      reactivado.
-                    </p>
-                  </div>
+              {isVerificado && tramite.status === "Tramitable" && (
+                <div className="space-y-1 w-full">
+                  <Label htmlFor="renovation_date">Fecha de Tramitación</Label>
+                  <DatePicker
+                    date={formData.tramitation_date as Date}
+                    setDate={(value) =>
+                      handleDateChange(value as Date, "tramitation_date")
+                    }
+                  />
                 </div>
               )}
+
+              {/* Notas */}
+              <div className="mt-4">
+                <Label htmlFor="note">Notas</Label>
+                <Textarea
+                  id="note"
+                  name="note"
+                  value={formData.note || ""}
+                  onChange={handleChange}
+                  placeholder="Añade información relevante sobre este cambio de estado..."
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
             </div>
-          </>
-          <DialogFooter>
-            <ButtonGroupComponent
-              onCancel={onClose}
-              onSubmit={handleSubmit}
-              lastStep
-            />
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+
+            {/* Comisiones (solo para no comerciales) */}
+            {!isComercial && (
+              <>
+                <Separator className="my-2" />
+
+                <div className="space-y-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold text-primary">Comisiones</h3>
+                      <Coins className="h-4 w-4 text-primary-500" />
+                    </div>
+                    <p className="text-sm text-primary-400">
+                      Asegurate de que las comisiones sean correctas antes de
+                      actualizar el estado.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <InputComponent
+                        type="number"
+                        name="comision"
+                        value={formData.comision.toString()}
+                        label="Comisión"
+                        onChange={handleChange}
+                      />
+                      {needsConfirmation && (
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Checkbox
+                            id="comision-checkbox"
+                            name="comisionConfirmed"
+                            checked={formData.comisionConfirmed}
+                            onCheckedChange={() =>
+                              handleCheckboxChange(
+                                !formData.comisionConfirmed,
+                                "comisionConfirmed"
+                              )
+                            }
+                          />
+                          <label
+                            htmlFor="comision-checkbox"
+                            className="text-xs text-primary-600 cursor-pointer"
+                          >
+                            Confirmar
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <InputComponent
+                        type="number"
+                        name="comision_sales_person"
+                        value={formData.comision_sales_person.toString()}
+                        label="Comisión Comercial"
+                        onChange={handleChange}
+                      />
+                      {needsConfirmation && (
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Checkbox
+                            id="comision-sales-checkbox"
+                            name="comisionSalesPersonConfirmed"
+                            checked={formData.comisionSalesPersonConfirmed}
+                            onCheckedChange={() =>
+                              handleCheckboxChange(
+                                !formData.comisionSalesPersonConfirmed,
+                                "comisionSalesPersonConfirmed"
+                              )
+                            }
+                          />
+                          <label
+                            htmlFor="comision-sales-checkbox"
+                            className="text-xs text-primary-600 cursor-pointer"
+                          >
+                            Confirmar
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Alertas o notificaciones */}
+            {needsConfirmation && !isComercial && (
+              <div className="flex items-start space-x-2 bg-yellow-50 p-3 rounded-md mt-2">
+                <AlertCircleIcon className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    Confirmación requerida
+                  </p>
+                  <p className="text-xs text-yellow-600">
+                    Para actualizar a un estado distinto de Tramitable o
+                    Borrador, debes confirmar ambas comisiones marcando las
+                    casillas de verificación.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {isBaja && (
+              <div className="flex items-start space-x-2 bg-red-50 p-3 rounded-md mt-2">
+                <AlertCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">Atención</p>
+                  <p className="text-xs text-red-600">
+                    Al cancelar este trámite, todas las comisiones asociadas
+                    pasarán a ser negativas y el trámite no podrá ser
+                    reactivado.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+        <DialogFooter>
+          <ButtonGroupComponent
+            onCancel={onClose}
+            onSubmit={handleSubmit}
+            lastStep
+          />
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

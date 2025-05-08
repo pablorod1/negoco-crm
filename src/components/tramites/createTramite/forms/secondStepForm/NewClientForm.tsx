@@ -106,7 +106,7 @@ export default function NewClientForm({
     formData.type === "Empresa" ? "de la empresa" : "del cliente";
 
   return (
-    <form className="w-full pt-6">
+    <form className="w-full pt-6 max-h-[500px] overflow-y-auto">
       <div className="flex flex-col gap-8 w-full">
         <div className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-primary-500 text-nowrap">
