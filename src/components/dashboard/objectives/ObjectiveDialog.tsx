@@ -85,20 +85,22 @@ export default function ObjectiveDialog({
       }
 
       try {
-        const res = await fetch("/api/objectives/update", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: editingObjetivo.id,
-            changes: {
-              type: changes.type,
-              peak: changes.peak,
-              period: changes.period,
+        const res = await fetch(
+          `/api/objectives/update/${editingObjetivo.id}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          }),
-        });
+            body: JSON.stringify({
+              changes: {
+                type: changes.type,
+                peak: changes.peak,
+                period: changes.period,
+              },
+            }),
+          }
+        );
 
         const { success, error } = await res.json();
 
@@ -186,7 +188,7 @@ export default function ObjectiveDialog({
           <Plus className="h-4 w-4 " />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
             {editingObjetivo ? "Editar Objetivo" : "Crear Nuevo Objetivo"}
@@ -222,8 +224,8 @@ export default function ObjectiveDialog({
               {newObjetivo.type === "comisiones"
                 ? " (€)"
                 : newObjetivo.type === "ratio"
-                ? " (%)"
-                : ""}
+                  ? " (%)"
+                  : ""}
             </Label>
             <Input
               id="meta"

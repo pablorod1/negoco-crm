@@ -20,14 +20,17 @@ export const CelebrationAnimation = ({
   const [isVisible, setIsVisible] = useState(false);
 
   const markAsCompleted = async () => {
+    if (!objective) return;
     try {
-      const res = await fetch(`/api/objectives/update/mark-as-completed`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id: objective?.id }),
-      });
+      const res = await fetch(
+        `/api/objectives/update/${objective.id}/mark-as-completed`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const { success, error } = await res.json();
 
@@ -192,8 +195,8 @@ export const CelebrationAnimation = ({
                     {objective.type === "comisiones"
                       ? "€"
                       : objective.type === "ratio"
-                      ? "%"
-                      : ""}
+                        ? "%"
+                        : ""}
                   </span>
                   . ¡Felicidades por este logro!
                 </p>

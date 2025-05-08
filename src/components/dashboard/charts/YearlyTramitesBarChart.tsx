@@ -238,7 +238,7 @@ export function YearlyTramitesBarChart({
   };
 
   const totalTramites = chartData.reduce(
-    (acc, item) => acc + item.active + item.baja,
+    (acc, item) => acc + item.active + Math.abs(item.baja),
     0
   );
 

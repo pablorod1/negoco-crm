@@ -1,13 +1,15 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const { id } = params;
     const {
-      id,
       changes,
     }: {
-      id: string;
       changes: {
         type: string | undefined;
         peak: number | undefined;
