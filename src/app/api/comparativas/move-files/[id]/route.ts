@@ -2,11 +2,15 @@ import { moveFolderFromComparativasToTramites } from "@/lib/firebase/data/moveFo
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { organization_id, comparativa_id, tramite_id } = await req.json();
+    const { id } = params;
+    const { organization_id, tramite_id } = await req.json();
 
-    if (!organization_id || !comparativa_id || !tramite_id) {
+    if (!organization_id || !id || !tramite_id) {
       return NextResponse.json(
         {
           success: false,
@@ -32,7 +36,7 @@ export async function POST(req: NextRequest) {
       await moveFolderFromComparativasToTramites(
         tursoClient,
         organization_id,
-        comparativa_id,
+        id,
         tramite_id
       );
 

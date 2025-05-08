@@ -7,12 +7,15 @@ import {
 } from "@/lib/libsql/comparativas/updateComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const { id } = params;
     const formData = await req.formData();
 
     const organization_id = formData.get("organization_id") as string;
-    const comparativa_id = formData.get("comparativa_id") as string;
     const documents = formData.get("files") as string;
     const estudio_realizado = formData.get("estudio_realizado") as string;
     const comissionsString = formData.get("comissions") as string;
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
       comissions = JSON.parse(comissionsString);
     }
 
-    if (!comparativa_id || !organization_id) {
+    if (!id || !organization_id) {
       return NextResponse.json(
         {
           success: false,
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     const updateStatusResult = await updateComparativaStatus(
       tursoClient,
-      comparativa_id,
+      id,
       estudio_realizado === "true" ? "completed" : "pending"
     );
 
@@ -94,7 +97,7 @@ export async function POST(req: NextRequest) {
 
       const comissionsResponse = await updateComparativaComissions(
         tursoClient,
-        comparativa_id,
+        id,
         comision_fijo ? comision_fijo : undefined,
         comision_indexado ? comision_indexado : undefined,
         comision_sales_person_fijo ? comision_sales_person_fijo : undefined,

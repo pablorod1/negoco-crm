@@ -129,17 +129,19 @@ export default function UpdateComparativaStatusModal({
       } else {
         const changes = checkComissionsChanged();
 
-        const res = await fetch("/api/comparativas/update/status", {
-          method: "PATCH",
-          body: JSON.stringify({
-            id: comparativa.id,
-            status: newStatus,
-            comissions: changes ? changes : undefined,
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const res = await fetch(
+          `/api/comparativas/update/${comparativa.id}/status`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              status: newStatus,
+              comissions: changes ? changes : undefined,
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const { success, error } = await res.json();
 

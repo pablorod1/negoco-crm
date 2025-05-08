@@ -5,6 +5,8 @@ import {
   DialogContent,
   DialogFooter,
   DialogTrigger,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, CircleX, Trash } from "lucide-react";
@@ -36,13 +38,16 @@ const DeleteNoteConfirmationModal = memo(
     };
     const handleDelete = async () => {
       try {
-        const rs = await fetch(`/api/comparativas/delete/note`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ note, id: comparativa_id, notes }),
-        });
+        const rs = await fetch(
+          `/api/comparativas/delete/${comparativa_id}/note`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ note, notes }),
+          }
+        );
 
         const { success, error } = await rs.json();
 
@@ -92,12 +97,12 @@ const DeleteNoteConfirmationModal = memo(
               <div className="flex items-start gap-4">
                 <AlertTriangle size={32} className="text-danger" />
                 <div className="flex flex-col">
-                  <h2 className="text-lg font-semibold text-danger">
+                  <DialogTitle className="text-lg font-semibold text-danger">
                     ¿Estás seguro de que deseas eliminar la nota?
-                  </h2>
-                  <p className="text-gray-600 text-sm">
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 text-sm">
                     Se eliminará de forma permanente.
-                  </p>
+                  </DialogDescription>
                 </div>
               </div>
             </DialogHeader>

@@ -135,13 +135,12 @@ export default function EditComparativaPage() {
     if (!comparativa) return;
 
     try {
-      const rs = await fetch(`/api/comparativas/add/notes`, {
+      const rs = await fetch(`/api/comparativas/add/${id}/notes`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           notes: comparativa.notes,
           note,
-          id,
         }),
       });
 

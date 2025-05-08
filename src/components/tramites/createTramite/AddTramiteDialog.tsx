@@ -179,17 +179,19 @@ export default function AddTramiteDialog({
       });
 
       if (comparativa) {
-        const comparativaRes = await fetch("/api/comparativas/update/status", {
-          method: "PATCH",
-          body: JSON.stringify({
-            id: comparativa.id,
-            status: "processed",
-            tramite_id: tramite.id,
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const comparativaRes = await fetch(
+          `/api/comparativas/update${comparativa.id}/status`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              status: "processed",
+              tramite_id: tramite.id,
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const { success: comparativaSuccess, error: comparativaError } =
           await comparativaRes.json();
@@ -205,17 +207,19 @@ export default function AddTramiteDialog({
           return;
         }
 
-        const moveFileRes = await fetch("/api/comparativas/move-files", {
-          method: "POST",
-          body: JSON.stringify({
-            organization_id: userData?.organization.id,
-            comparativa_id: comparativa.id,
-            tramite_id: tramite.id,
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const moveFileRes = await fetch(
+          `/api/comparativas/move-files/${comparativa.id}`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              organization_id: userData?.organization.id,
+              tramite_id: tramite.id,
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const { success: moveFilesSuccess, error: moveFileError } =
           await moveFileRes.json();

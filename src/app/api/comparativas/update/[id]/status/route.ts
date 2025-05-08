@@ -5,9 +5,13 @@ import {
 } from "@/lib/libsql/comparativas/updateComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id, status, comissions, tramite_id } = await req.json();
+    const { id } = params;
+    const { status, comissions, tramite_id } = await req.json();
 
     if (!id || !status) {
       return NextResponse.json(

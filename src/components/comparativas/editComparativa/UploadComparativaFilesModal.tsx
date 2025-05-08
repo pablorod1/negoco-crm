@@ -153,7 +153,6 @@ export default function UploadComparativaFilesModal({
       }
 
       const formData = new FormData();
-      formData.append("comparativa_id", comparativa.id);
       formData.append("organization_id", organization_id);
       const comissionsData = {
         comision_fijo:
@@ -186,10 +185,13 @@ export default function UploadComparativaFilesModal({
 
       formData.append("files", JSON.stringify(comparativaFiles));
       formData.append("estudio_realizado", estudioRealizado.toString());
-      const response = await fetch("/api/comparativas/update", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `/api/comparativas/add/${comparativa.id}/files`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       const { success, error } = await response.json();
 

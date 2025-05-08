@@ -120,16 +120,18 @@ export default function UpdateComissionsModal({
     try {
       const changes = checkComissionsChanged();
       if (changes) {
-        const response = await fetch(`/api/comparativas/update/comissions`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: comparativa.id,
-            comissions: changes,
-          }),
-        });
+        const response = await fetch(
+          `/api/comparativas/update/${comparativa.id}/comissions`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              comissions: changes,
+            }),
+          }
+        );
 
         const { success, error } = await response.json();
 

@@ -3,9 +3,13 @@ import { getTursoClient } from "@/lib/libsql/client";
 import { deleteComparativa } from "@/lib/libsql/comparativas/deleteComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id, organization_id } = await req.json();
+    const { id } = params;
+    const { organization_id } = await req.json();
 
     if (!id || !organization_id) {
       return NextResponse.json(

@@ -2,11 +2,15 @@ import { deleteFileFromStorage } from "@/lib/firebase/data/deleteFile";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { file_name, comparativa_id, organization_id } = await req.json();
+    const { id } = params;
+    const { file_name, organization_id } = await req.json();
 
-    if (!file_name || !comparativa_id || !organization_id) {
+    if (!file_name || !id || !organization_id) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -30,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     const { success, error } = await deleteFileFromStorage(
       `comparativas`,
-      comparativa_id,
+      id,
       file_name,
       organization_id
     );
@@ -47,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const res = await tursoClient.execute({
       sql: `DELETE FROM comparativa_files WHERE filename = ? AND comparativa_id = ?`,
-      args: [file_name, comparativa_id],
+      args: [file_name, id],
     });
 
     if (res.rowsAffected === 0) {

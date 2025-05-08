@@ -34,17 +34,19 @@ const DeleteComparativaFileConfirmationModal = memo(
     };
     const handleDeleteFile = async () => {
       try {
-        const res = await fetch("/api/comparativas/delete/file", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            file_name: file.filename,
-            comparativa_id,
-            organization_id,
-          }),
-        });
+        const res = await fetch(
+          `/api/comparativas/delete/${comparativa_id}/file`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              file_name: file.filename,
+              organization_id,
+            }),
+          }
+        );
 
         const { success, error } = await res.json();
 

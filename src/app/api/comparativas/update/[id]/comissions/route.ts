@@ -2,9 +2,13 @@ import { getTursoClient } from "@/lib/libsql/client";
 import { updateComparativaComissions } from "@/lib/libsql/comparativas/updateComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id, comissions } = await req.json();
+    const { id } = params;
+    const { comissions } = await req.json();
 
     if (!id || !comissions) {
       return NextResponse.json(

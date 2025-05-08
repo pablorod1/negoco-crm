@@ -76,13 +76,12 @@ export default function DeleteComparativaConfirmationModal({
     }
 
     try {
-      const res = await fetch(`/api/comparativas/delete`, {
+      const res = await fetch(`/api/comparativas/delete/${comparativa.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: comparativa.id,
           organization_id,
         }),
       });
