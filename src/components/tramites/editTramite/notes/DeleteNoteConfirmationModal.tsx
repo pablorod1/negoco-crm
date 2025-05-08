@@ -32,12 +32,12 @@ const DeleteTramiteNoteConfirmationModal = memo(
     const onClose = () => setIsOpen(false);
     const handleDelete = async () => {
       try {
-        const rs = await fetch(`/api/tramites/delete/note`, {
+        const rs = await fetch(`/api/tramites/delete/${tramite_id}/note`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ note, id: tramite_id, notes }),
+          body: JSON.stringify({ note, notes }),
         });
 
         const { success, error } = await rs.json();

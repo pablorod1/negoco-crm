@@ -1,11 +1,15 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { field, date, id } = await req.json();
+    const { id: tramite_id } = params;
+    const { user_id, sales_name } = await req.json();
 
-    if (!field || !date || !id) {
+    if (!tramite_id || !user_id || !sales_name) {
       return NextResponse.json(
         {
           success: false,
@@ -27,33 +31,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const updateFields = [`${field} = ?`];
-    const queryArgs = [date];
+    const res = await tursoClient.execute({
+      sql: `UPDATE tramites SET user_id = ?, sales_name = ? WHERE id = ?`,
+      args: [user_id, sales_name, tramite_id],
+    });
 
-    const query = `UPDATE tramites SET ${updateFields.join(", ")} WHERE id = ?`;
-
-    queryArgs.push(id);
-    const result = await tursoClient.execute(query, queryArgs);
-
-    if (result.rowsAffected === 0) {
+    if (res.rowsAffected === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "Tramite not found",
+          error: "No rows affected",
         },
-        { status: 404 }
+        { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-    });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error al actualizar el estado del trámite :", error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Error desconocido",
+        error: error as string,
       },
       { status: 500 }
     );

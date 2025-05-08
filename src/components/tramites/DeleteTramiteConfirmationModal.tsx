@@ -67,13 +67,12 @@ export default function DeleteTramiteConfirmationModal({
   const onClose = () => setIsOpen(false);
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/tramites/delete`, {
+      const res = await fetch(`/api/tramites/delete/${tramite.id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tramite_id: tramite.id,
           organization_id: userData.organization.id,
         }),
       });

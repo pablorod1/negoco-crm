@@ -43,7 +43,7 @@ export const TramiteNotesSection = ({
 }: NotesSectionProps) => {
   const handleUpdateNotes = async (note: string) => {
     try {
-      const res = await fetch(`/api/tramites/add/notes`, {
+      const res = await fetch(`/api/tramites/add/${tramite_id}/notes`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

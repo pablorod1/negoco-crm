@@ -2,10 +2,13 @@ import { NOW_DATE } from "@/lib/core/const";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const { id: tramite_id } = params;
     const {
-      tramite_id,
       status,
       comision,
       comision_sales_person,

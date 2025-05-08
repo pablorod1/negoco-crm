@@ -3,13 +3,16 @@ import { getTursoClient } from "@/lib/libsql/client";
 import { addContracts } from "@/lib/libsql/tramites/addTramiteHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const { id: tramite_id } = params;
     const formData = await req.formData();
 
     const contractsString = formData.get("contracts") as string;
     const contracts: ContractDB[] = JSON.parse(contractsString);
-    const tramite_id = formData.get("tramite_id") as string;
 
     if (!contracts || !tramite_id) {
       return NextResponse.json(

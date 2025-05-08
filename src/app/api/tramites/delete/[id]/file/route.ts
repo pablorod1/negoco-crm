@@ -2,9 +2,13 @@ import { deleteFileFromStorage } from "@/lib/firebase/data/deleteFile";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { file_name, tramite_id, organization_id } = await req.json();
+    const { id: tramite_id } = params;
+    const { file_name, organization_id } = await req.json();
 
     if (!file_name || !tramite_id || !organization_id) {
       return new Response(

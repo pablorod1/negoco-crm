@@ -32,15 +32,17 @@ export default function SelectSalesPerson({
   useEffect(() => {
     const fetchComerciales = async () => {
       setLoading(true);
+      if (!userData) {
+        return;
+      }
       try {
-        const res = await fetch(`/api/users/get/users`, {
+        const res = await fetch(`/api/users/get/${userData.id}/all`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            id: userData?.id,
-            role: userData?.role,
+            role: userData.role,
           }),
         });
         const { success, data } = await res.json();

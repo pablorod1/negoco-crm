@@ -37,12 +37,11 @@ export default function RenewTramiteConfirmationDialog({
 
   const handleRenewTramite = async () => {
     try {
-      const res = await fetch(`/api/tramites/renew`, {
+      const res = await fetch(`/api/tramites/renew/${tramite.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: tramite.id }),
       });
 
       const { success, error } = await res.json();

@@ -1,11 +1,15 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { tramite_id, comision, comision_sales_person } = await req.json();
+    const { id } = params;
+    const { field, date } = await req.json();
 
-    if (!tramite_id || (!comision && !comision_sales_person)) {
+    if (!field || !date || !id) {
       return NextResponse.json(
         {
           success: false,
@@ -27,29 +31,13 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Build query dynamically with proper parameter handling
-    const updateFields = [];
-    const queryArgs = [];
+    const updateFields = [`${field} = ?`];
+    const queryArgs = [date];
 
-    if (comision !== undefined) {
-      updateFields.push("comision = ?");
-      queryArgs.push(comision);
-    }
+    const query = `UPDATE tramites SET ${updateFields.join(", ")} WHERE id = ?`;
 
-    if (comision_sales_person !== undefined) {
-      updateFields.push("comision_sales_person = ?");
-      queryArgs.push(comision_sales_person);
-    }
-
-    // Add tramite_id as last argument
-    queryArgs.push(tramite_id);
-
-    const sql = `UPDATE tramites SET ${updateFields.join(", ")} WHERE id = ?`;
-
-    const result = await tursoClient.execute({
-      sql,
-      args: queryArgs,
-    });
+    queryArgs.push(id);
+    const result = await tursoClient.execute(query, queryArgs);
 
     if (result.rowsAffected === 0) {
       return NextResponse.json(
@@ -65,11 +53,11 @@ export async function PATCH(req: NextRequest) {
       success: true,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error al actualizar el estado del trámite :", error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
+        error: error instanceof Error ? error.message : "Error desconocido",
       },
       { status: 500 }
     );

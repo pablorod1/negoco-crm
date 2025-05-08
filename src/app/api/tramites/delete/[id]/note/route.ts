@@ -1,11 +1,15 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id, notes, note } = await req.json();
+    const { id } = params;
+    const { note, notes } = await req.json();
 
-    if (!id || !notes || !note) {
+    if (!id || !note || !notes) {
       return NextResponse.json(
         {
           success: false,
@@ -15,9 +19,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Añadir la nueva nota al array existente
-    const updatedNotes = [...notes, note];
-    // Convertir a JSON para almacenar en la base de datos
+    const updatedNotes = notes.filter((n: string) => n !== note);
     const notesJSON = JSON.stringify(updatedNotes);
 
     const tursoClient = getTursoClient(req);
@@ -57,7 +59,7 @@ export async function PATCH(req: NextRequest) {
       success: true,
     });
   } catch (error) {
-    console.error("Error al actualizar notas del trámite :", error);
+    console.error("Error al eliminar nota del trámite:", error);
     return NextResponse.json(
       {
         success: false,

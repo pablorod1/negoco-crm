@@ -78,12 +78,11 @@ export const ComercialView = ({ userData, loading }: Props) => {
   const [hasSubComerciales, setComercialHasSubComerciales] = useState(false);
   const id = userData.id;
   const comercialHasSubComerciales = useCallback(async () => {
-    const res = await fetch(`/api/users/get/subcomerciales`, {
+    const res = await fetch(`/api/users/get/${id}/subcomerciales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id }),
     });
     const { success } = await res.json();
     if (success) {

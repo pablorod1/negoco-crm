@@ -55,8 +55,7 @@ export default function ContractSection({
     try {
       const formData = new FormData();
       formData.append("contracts", JSON.stringify([contract]));
-      formData.append("tramite_id", tramite_id);
-      const res = await fetch(`/api/tramites/add/contract`, {
+      const res = await fetch(`/api/tramites/add/${tramite_id}/contract`, {
         method: "POST",
         body: formData,
       });

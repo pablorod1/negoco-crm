@@ -233,13 +233,12 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
-      const res = await fetch(`/api/tramites/update/status`, {
+      const res = await fetch(`/api/tramites/update/${tramite.id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tramite_id: tramite.id,
           status: formData.status,
           comision_sales_person: checkSalesComissionChanges()
             ? formData.comision_sales_person

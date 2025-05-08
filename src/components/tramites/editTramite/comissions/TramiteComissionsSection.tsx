@@ -65,13 +65,12 @@ export default function TramiteComissionsSection({
         });
         return;
       }
-      const res = await fetch(`/api/tramites/update/comissions`, {
+      const res = await fetch(`/api/tramites/update/${tramite.id}/comissions`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tramite_id: tramite.id,
           comision_sales_person: checkSalesComissionChanges()
             ? formData.comision_sales_person
             : undefined,

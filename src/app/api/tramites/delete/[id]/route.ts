@@ -3,10 +3,13 @@ import { getTursoClient } from "@/lib/libsql/client";
 import { deleteObject, listAll, ref } from "firebase/storage";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const { id: tramite_id } = params;
     const {
-      tramite_id,
       organization_id,
     }: {
       tramite_id: string;

@@ -62,7 +62,7 @@ export default function EditClientForm({
         onCancel();
         return;
       }
-      const res = await fetch(`/api/tramites/add/client`, {
+      const res = await fetch(`/api/tramites/add/${tramite_id}/client`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -72,7 +72,6 @@ export default function EditClientForm({
             ...formData,
             id: `CLI-${Math.floor(Math.random() * 10000)}`,
           },
-          tramite_id,
           signer,
         }),
       });

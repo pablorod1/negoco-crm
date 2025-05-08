@@ -34,12 +34,11 @@ const DeleteTramiteFileConfirmationModal = memo(
     const onClose = () => setIsOpen(false);
     const handleDeleteFile = async () => {
       try {
-        const res = await fetch("/api/tramites/delete/file", {
+        const res = await fetch(`/api/tramites/delete/${tramite_id}/file`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             file_name: file.filename,
-            tramite_id,
             organization_id,
           }),
         });
