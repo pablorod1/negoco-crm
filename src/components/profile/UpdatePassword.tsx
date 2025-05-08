@@ -38,16 +38,20 @@ export default function UpdatePassword({ userData, refreshUserData }: Props) {
         return;
       }
 
-      const res = await fetch(`/api/users/update/should-reset-pass`, {
-        method: "PATCH",
-        body: JSON.stringify({ userData }),
-      });
+      if (userData.should_reset_password) {
+        const res = await fetch(
+          `/api/users/update/${userData.id}/should-reset-pass`,
+          {
+            method: "PATCH",
+          }
+        );
 
-      const { success, error } = await res.json();
+        const { success, error } = await res.json();
 
-      if (!success) {
-        console.error(error);
-        return;
+        if (!success) {
+          console.error(error);
+          return;
+        }
       }
 
       showCustomToast({

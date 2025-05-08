@@ -1,9 +1,13 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id, company } = await req.json();
+    const { id } = params;
+    const { company } = await req.json();
 
     if (!id || !company) {
       return NextResponse.json({

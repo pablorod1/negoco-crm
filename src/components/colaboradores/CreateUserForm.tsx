@@ -51,12 +51,13 @@ export default function CreateUserForm({
   const [selectedSubcomercial, setSelectedSubcomercial] = useState<string>("");
 
   const fetchComerciales = useCallback(async () => {
-    const res = await fetch(`/api/users/get/users`, {
+    if (!userData) return;
+    const res = await fetch(`/api/users/get/${userData.id}/all`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id: userData?.id, role: userData?.role }),
+      body: JSON.stringify({ role: userData.role }),
     });
     const { success, data } = await res.json();
 
@@ -110,7 +111,7 @@ export default function CreateUserForm({
     userId: string,
     organizationId: string
   ) => {
-    await fetch("/api/users/add/member", {
+    await fetch(`/api/users/add/${userId}/member`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -131,13 +132,12 @@ export default function CreateUserForm({
     company: string;
   }) => {
     try {
-      const res = await fetch("/api/users/add/company", {
+      const res = await fetch(`/api/users/add/${id}/company`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id,
           company,
         }),
       });
@@ -234,13 +234,12 @@ export default function CreateUserForm({
         );
 
         if (formData.super_id) {
-          const res = await fetch("/api/users/add/super", {
+          const res = await fetch(`/api/users/add/${data.user.id}/super`, {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              user_id: data.user.id,
               super_id: formData.super_id,
             }),
           });
@@ -398,7 +397,7 @@ export default function CreateUserForm({
       {formData.role === "2" && (
         <SelectComponent
           name="super_id"
-          label="Comercial"
+          label="Jefe de Equipo"
           onChange={(value, e) =>
             handleSelectChange(
               value,

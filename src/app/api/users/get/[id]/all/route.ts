@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/lib/libsql/client";
 import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id, role } = await req.json();
+    const { id } = params;
+    const { role } = await req.json();
 
     if (!role || !id) {
       return NextResponse.json(
@@ -37,7 +41,7 @@ export async function POST(req: NextRequest) {
       )
     `;
 
-    const params: (string | number)[] = [];
+    const queryParams: (string | number)[] = [];
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
@@ -45,14 +49,17 @@ export async function POST(req: NextRequest) {
         query += ` WHERE u.id = ? OR u.id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")})`;
-        params.push(id, ...subcomerciales.ids);
+        queryParams.push(id, ...subcomerciales.ids);
       } else {
         query += ` WHERE u.id = ?`;
-        params.push(id);
+        queryParams.push(id);
       }
     }
 
-    const response = await tursoClient.execute({ sql: query, args: params });
+    const response = await tursoClient.execute({
+      sql: query,
+      args: queryParams,
+    });
 
     const mappedData = response.rows.map((row) => ({
       id: String(row.id),

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth/auth"; // Importar configuración de BetterAuth
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { userId, organizationId, role } = await req.json();
+    const { id: userId } = params;
+    const { organizationId, role } = await req.json();
 
     if (!userId || !organizationId || !role) {
       return NextResponse.json(

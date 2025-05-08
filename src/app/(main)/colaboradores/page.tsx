@@ -25,13 +25,22 @@ export default function ColaboradoresPage() {
 
   const fetchData = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }));
+    if (!userData) {
+      setState((prev) => ({
+        ...prev,
+        users: [],
+        loading: false,
+        initialized: true,
+      }));
+      return;
+    }
     try {
-      const res = await fetch(`/api/users/get/users`, {
+      const res = await fetch(`/api/users/get/${userData.id}/all`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: userData?.id, role: userData?.role }),
+        body: JSON.stringify({ role: userData.role }),
       });
       const { success, data } = await res.json();
       if (!success) {

@@ -1,21 +1,21 @@
-import { User } from "@/lib/core/types";
 import { uploadAvatar } from "@/lib/firebase/data/uploadFiles";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const { id: user_id } = params;
     // Obtener los datos del formulario
     const formData = await req.formData();
 
     // Obtener el archivo
     const file = formData.get("file") as File;
+    const organization_id = formData.get("organization_id") as string;
 
-    // Obtener los datos del usuario (parseados desde JSON)
-    const userDataString = formData.get("userData") as string;
-    const userData: User = JSON.parse(userDataString);
-
-    if (!userData || !file) {
+    if (!user_id || !file || !organization_id) {
       return NextResponse.json(
         {
           success: false,
@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const { downloadURL } = await uploadAvatar(file, userData);
+    const { downloadURL } = await uploadAvatar(file, user_id, organization_id);
 
     if (!downloadURL) {
       return NextResponse.json(
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest) {
 
     const response = await tursoClient.execute({
       sql: `UPDATE user SET image = ? WHERE id = ?`,
-      args: [downloadURL, userData.id],
+      args: [downloadURL, user_id],
     });
 
     if (response.rowsAffected === 0) {

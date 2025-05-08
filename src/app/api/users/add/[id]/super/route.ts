@@ -1,9 +1,13 @@
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { user_id, super_id } = await req.json();
+    const { id: user_id } = params;
+    const { super_id } = await req.json();
 
     if (!user_id || !super_id) {
       return NextResponse.json(

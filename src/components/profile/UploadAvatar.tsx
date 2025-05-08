@@ -41,9 +41,12 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
           // Crear FormData para enviar el archivo
           const formData = new FormData();
           formData.append("file", file);
-          formData.append("userData", JSON.stringify(userData));
+          formData.append(
+            "organization_id",
+            JSON.stringify(userData.organization.id)
+          );
 
-          const res = await fetch(`/api/users/update/avatar`, {
+          const res = await fetch(`/api/users/update/${userData.id}/avatar`, {
             method: "PATCH",
             body: formData,
           });
@@ -89,16 +92,18 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
     setLoading(true);
     if (userData) {
       try {
-        const response = await fetch(`/api/users/delete/avatar`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: userData.id,
-            organization_id: userData.organization.id,
-          }),
-        });
+        const response = await fetch(
+          `/api/users/delete/${userData.id}/avatar`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              organization_id: userData.organization.id,
+            }),
+          }
+        );
 
         const { success, errors } = await response.json();
 

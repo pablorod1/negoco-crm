@@ -1,12 +1,14 @@
-import { User } from "@/lib/core/types";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { userData }: { userData: User } = await req.json();
+    const { id } = params;
 
-    if (!userData) {
+    if (!id) {
       return NextResponse.json(
         {
           success: false,
@@ -28,13 +30,9 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    if (!userData.should_reset_password) {
-      return;
-    }
-
     const response = await tursoClient.execute({
       sql: `UPDATE user SET should_reset_password = 0 WHERE id = ?`,
-      args: [userData.id],
+      args: [id],
     });
 
     if (response.rowsAffected === 0) {

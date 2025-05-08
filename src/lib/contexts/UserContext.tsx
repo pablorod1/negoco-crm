@@ -32,12 +32,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const res = await fetch(`/api/users/get/user-by-id`, {
+      const res = await fetch(`/api/users/get/${userID}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: userID }),
       });
       const { success, data, error } = await res.json();
       if (!success) {

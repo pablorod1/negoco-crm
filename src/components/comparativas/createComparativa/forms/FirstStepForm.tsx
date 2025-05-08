@@ -38,14 +38,16 @@ export default function FirstStepForm({
 
   useEffect(() => {
     const fetchComerciales = async () => {
-      const res = await fetch(`/api/users/get/users`, {
+      if (!userData) {
+        return;
+      }
+      const res = await fetch(`/api/users/get/${userData.id}/all`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: userData?.id,
-          role: userData?.role,
+          role: userData.role,
         }),
       });
       const { success, data } = await res.json();

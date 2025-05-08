@@ -27,11 +27,11 @@ export default function UserFilter({
   const [comerciales, setComerciales] = useState<UserOption[]>([]);
 
   const fetchComerciales = useCallback(async () => {
-    if (isComercial) {
+    if (isComercial || !userData) {
       return;
     }
     try {
-      const res = await fetch("/api/users/get/users", {
+      const res = await fetch(`/api/users/get/${userData.id}/all`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
