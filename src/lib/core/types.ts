@@ -14,6 +14,7 @@ export type TramiteDB = {
   notes: string[];
   client_id: string;
   user_id: string;
+  rejected_date?: string | null;
 };
 
 export interface TramiteVM extends TramiteDB {

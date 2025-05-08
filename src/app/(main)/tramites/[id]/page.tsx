@@ -133,7 +133,8 @@ export default function TramiteDetails() {
     userData &&
     (userData.role === "admin" ||
       userData.role === "1" ||
-      (userData.role === "2" && tramite.status === "Borrador"));
+      (userData.role === "2" && tramite.status === "Borrador")) &&
+    tramite.status !== "Baja";
 
   const isTramitableBorrador =
     tramite.status === "Tramitable" || tramite.status === "Borrador";
@@ -141,6 +142,8 @@ export default function TramiteDetails() {
   const isRenewable =
     new Date(tramite.renovation_date) <=
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  const isActive = tramite.status === "Activo";
 
   if (loading || !loadedData) {
     return (
@@ -168,6 +171,7 @@ export default function TramiteDetails() {
           isRenewable={isRenewable}
           onRenew={fetchTramite}
           client={client}
+          isActive={isActive}
         />
       </div>
 

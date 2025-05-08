@@ -28,6 +28,7 @@ export default function NotificationsMenu() {
     id: string
   ) => {
     e.preventDefault();
+    e.stopPropagation();
     try {
       const res = await fetch(`/api/notifications/delete/${id}`, {
         method: "POST",

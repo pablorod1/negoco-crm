@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Clock, Info } from "lucide-react";
+import RejectTramiteModal from "./RejectTramiteModal";
 
 interface Props {
   tramite: TramiteVM;
@@ -20,6 +21,7 @@ interface Props {
   isEditable: boolean | null;
   isRenewable: boolean;
   onRenew: () => void;
+  isActive: boolean;
 }
 
 export default function TramiteStatusSection({
@@ -30,15 +32,17 @@ export default function TramiteStatusSection({
   isRenewable,
   onRenew,
   client,
+  isActive,
 }: Props) {
   const isAdmin = userData.role === "admin";
   const isBackoffice = userData.role === "1";
+  const isBaja = tramite.status === "Baja";
   return (
     <>
-      <div className="flex flex-col items-end">
+      <div className="flex flex-col gap-2 items-end">
         <div className="flex items-center gap-2">
           {getStatusBadge(tramite.status)}
-          {isEditable && (
+          {(isEditable || isBaja) && (
             <UpdateTramiteStatusModal
               tramite={tramite}
               userData={userData}
@@ -46,6 +50,14 @@ export default function TramiteStatusSection({
               client={client}
             />
           )}
+          {isActive && (
+            <RejectTramiteModal
+              tramite={tramite}
+              userData={userData}
+              onSubmit={onUpdate}
+            />
+          )}
+
           {isRenewable && (isAdmin || isBackoffice) && (
             <RenewTramiteConfirmationDialog
               tramite={tramite}

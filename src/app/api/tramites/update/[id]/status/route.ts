@@ -82,6 +82,11 @@ export async function PATCH(
       queryArgs.push(tramitation_date);
     }
 
+    if (status === "Baja") {
+      updateFields.push("rejected_date = ?");
+      queryArgs.push(NOW_DATE.toISOString());
+    }
+
     if (liquidez_status === "Cobrado por Comercializadora" && collection_date) {
       updateFields.push("collection_date = ?");
       queryArgs.push(collection_date);
