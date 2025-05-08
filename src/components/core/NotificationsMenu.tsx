@@ -29,12 +29,11 @@ export default function NotificationsMenu() {
   ) => {
     e.preventDefault();
     try {
-      const res = await fetch(`/api/notifications/delete`, {
+      const res = await fetch(`/api/notifications/delete/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id }),
       });
       const { success, error } = await res.json();
 
