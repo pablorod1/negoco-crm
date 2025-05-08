@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: user_id } = params;
+    const { id: user_id } = await params;
     // Obtener los datos del formulario
     const formData = await req.formData();
 

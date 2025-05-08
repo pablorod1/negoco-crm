@@ -4,10 +4,10 @@ import { NextRequest } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: tramite_id } = params;
+    const { id: tramite_id } = await params;
     const { file_name, organization_id } = await req.json();
 
     if (!file_name || !tramite_id || !organization_id) {

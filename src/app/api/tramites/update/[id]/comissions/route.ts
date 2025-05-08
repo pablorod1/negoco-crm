@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: tramite_id } = params;
+    const { id: tramite_id } = await params;
     const { comision, comision_sales_person } = await req.json();
 
     if (!tramite_id || (!comision && !comision_sales_person)) {

@@ -5,10 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: tramite_id } = params;
+    const { id: tramite_id } = await params;
     const formData = await req.formData();
 
     const contractsString = formData.get("contracts") as string;

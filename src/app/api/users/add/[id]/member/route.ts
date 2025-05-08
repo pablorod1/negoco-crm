@@ -3,10 +3,10 @@ import { getAuth } from "@/lib/auth/auth"; // Importar configuración de BetterA
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: userId } = params;
+    const { id: userId } = await params;
     const { organizationId, role } = await req.json();
 
     if (!userId || !organizationId || !role) {

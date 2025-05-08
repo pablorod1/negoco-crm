@@ -5,10 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: user_id } = params;
+    const { id: user_id } = await params;
     const { organization_id } = await req.json();
 
     if (!user_id || !organization_id) {
