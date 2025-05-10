@@ -37,7 +37,7 @@ export const getObjectivesTramitesValues = async (
           ? "SUM(comision_sales_person) as comision"
           : "SUM(comision) as comision"
       }
-    FROM tramites WHERE substr(activation_date, 1, 7) = ? AND status = 'Activo'`;
+    FROM tramites WHERE substr(activation_date, 1, 7) = ? `;
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
