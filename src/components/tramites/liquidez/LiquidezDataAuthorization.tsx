@@ -12,9 +12,8 @@ export default function LiquidezDataAuthorization() {
   const { userData } = useUser();
   const router = useTransitionRouter();
 
-  const isComercial = userData && userData.role === "2";
-
   useEffect(() => {
+    const isComercial = userData && userData.role === "2";
     if (isComercial) {
       showCustomToast({
         title: "No autorizado",
@@ -27,7 +26,7 @@ export default function LiquidezDataAuthorization() {
         onTransitionReady: slideOut,
       });
     }
-  }, [isComercial, router]);
+  }, [router, userData]);
 
   return (
     <section className="pb-12">
