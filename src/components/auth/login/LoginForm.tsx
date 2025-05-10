@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
 import { authClient } from "@/lib/auth/auth-client";
 import SendResetPassForm from "./SendResetPassForm";
+import { useTransitionRouter } from "next-view-transitions";
 
 // Validación de formulario optimizada
 type FormErrors = {
@@ -23,6 +24,7 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [forgotPass, setForgotPass] = useState(false);
+  const router = useTransitionRouter();
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -72,7 +74,7 @@ export default function LoginForm() {
         {
           onRequest: () => setIsLoading(true),
           onResponse: () => {
-            setIsLoading(false);
+            router.push("/");
           },
           onError: (ctx) => {
             setErrors({ general: ctx.error.message || "Error desconocido" });
