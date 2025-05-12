@@ -180,7 +180,7 @@ export default function AddTramiteDialog({
 
       if (comparativa) {
         const comparativaRes = await fetch(
-          `/api/comparativas/update${comparativa.id}/status`,
+          `/api/comparativas/update/${comparativa.id}/status`,
           {
             method: "PATCH",
             body: JSON.stringify({
