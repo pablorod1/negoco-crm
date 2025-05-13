@@ -1,4 +1,3 @@
-import { deleteFileFromStorage } from "@/lib/firebase/data/deleteFile";
 import { getTursoClient } from "@/lib/libsql/client";
 import { NextRequest } from "next/server";
 
@@ -27,23 +26,6 @@ export async function POST(
         JSON.stringify({
           success: false,
           error: "Error al conectar a la base de datos",
-        }),
-        { status: 500 }
-      );
-    }
-
-    const { success, error } = await deleteFileFromStorage(
-      `tramites`,
-      tramite_id,
-      file_name,
-      organization_id
-    );
-
-    if (!success) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: error,
         }),
         { status: 500 }
       );

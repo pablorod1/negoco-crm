@@ -1,18 +1,9 @@
-import { storage } from "@/lib/firebase/firebaseConfig";
-import { getDownloadURL, ref } from "firebase/storage";
-
 export const downloadFile = async (
-  folder_name: string,
-  file_name: string,
-  organization_id: string
+  download_url: string,
+  file_name: string
 ): Promise<{ success: boolean; errors?: string }> => {
   try {
-    const fileRef = ref(
-      storage,
-      `${organization_id}/${folder_name}/${file_name}`
-    );
-    const url = await getDownloadURL(fileRef);
-    const response = await fetch(url);
+    const response = await fetch(download_url);
     if (!response.ok) {
       return { success: false, errors: "Network response was not ok" };
     }

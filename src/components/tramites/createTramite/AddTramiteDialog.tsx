@@ -67,6 +67,9 @@ export default function AddTramiteDialog({
   const [signer, setSigner] = useState<SignerDB | null>(null);
   const [contracts, setContracts] = useState<ContractDB[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
+  const [selectedExistingFiles, setSelectedExistingFiles] = useState<
+    TramiteFile[] | null
+  >(null);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { refreshTramites } = useTramites();
@@ -147,6 +150,21 @@ export default function AddTramiteDialog({
       }
       if (contracts.length > 0) {
         formData.append("contracts", JSON.stringify(contracts));
+      }
+
+      if (selectedExistingFiles && selectedExistingFiles.length > 0) {
+        const selectedFiles = selectedExistingFiles.map((file) => ({
+          id: crypto.randomUUID(),
+          tramite_id: tramite.id,
+          filename: file.filename,
+          size: file.size,
+          extension: file.extension,
+          upload_date: file.upload_date,
+          download_url: file.download_url,
+          preview_url: file.preview_url,
+        }));
+
+        formData.append("existingFiles", JSON.stringify(selectedFiles));
       }
 
       const res = await fetch("/api/tramites/add", {
@@ -366,6 +384,9 @@ export default function AddTramiteDialog({
       setDocuments={setDocuments}
       loading={loading}
       comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
+      client={client}
+      selectedExistingFiles={selectedExistingFiles}
+      setSelectedExistingFiles={setSelectedExistingFiles}
     />,
     <ReviewStep
       key={5}
@@ -379,6 +400,7 @@ export default function AddTramiteDialog({
       onCancel={handleClose}
       loading={loading}
       userData={userData as User}
+      selectedExistingFiles={selectedExistingFiles}
     />,
   ];
   const formElements = [
@@ -423,6 +445,9 @@ export default function AddTramiteDialog({
       setDocuments={setDocuments}
       loading={loading}
       comparativaFiles={comparativaFiles ? comparativaFiles : undefined}
+      client={client}
+      selectedExistingFiles={selectedExistingFiles}
+      setSelectedExistingFiles={setSelectedExistingFiles}
     />,
     <ReviewStep
       key={5}
@@ -436,6 +461,7 @@ export default function AddTramiteDialog({
       onCancel={handleClose}
       loading={loading}
       userData={userData as User}
+      selectedExistingFiles={selectedExistingFiles}
     />,
   ];
 
@@ -465,15 +491,7 @@ export default function AddTramiteDialog({
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
-        className={`transition-all duration-700 ease-in-out w-full h-auto  ${
-          activeTab === 0
-            ? "max-w-[1200px]"
-            : activeTab === 1
-              ? "max-w-[1400px]"
-              : activeTab === 2
-                ? "max-w-[1300px]"
-                : "max-w-[1400px]"
-        }`}
+        className={`transition-all duration-700 ease-in-out w-full h-auto max-w-[90vw]`}
       >
         <DialogHeader>
           <div className="hidden">

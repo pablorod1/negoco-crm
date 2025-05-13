@@ -255,6 +255,7 @@ export default function UploadComparativaFilesModal({
                   ? "Estudio Realizado"
                   : "Pendiente de Estudio",
               },
+              comparativa_name: comparativa.client,
             }),
             headers: {
               "Content-Type": "application/json",
@@ -410,7 +411,12 @@ export default function UploadComparativaFilesModal({
             <Button onClick={onClose} variant="destructive">
               Cancelar
             </Button>
-            <Button onClick={handleSubmit}>Subir Archivos</Button>
+            <Button
+              disabled={uploadedFiles.length === 0}
+              onClick={handleSubmit}
+            >
+              Subir Archivos
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

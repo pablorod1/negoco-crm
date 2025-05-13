@@ -38,56 +38,66 @@ export default function DocumentsForm({
   };
 
   return (
-    <div className="w-full mb-4">
+    <div className="w-full">
       <div
         {...getRootProps()}
-        className={`overflow-hidden relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-lg cursor-pointer transition-colors
-          ${
-            isDragActive
-              ? "border-primary bg-primary-50"
-              : "border-gray-300 bg-gray-50 hover:bg-gray-100"
-          }`}
+        className={`
+          group relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all
+          ${isDragActive ? "border-primary-500 bg-primary-50" : "border-gray-200 bg-white hover:border-primary-400 hover:bg-primary-50"}
+          shadow-sm mb-4
+        `}
       >
         <input {...getInputProps()} />
-        <Image
-          src={isBeenergy ? "/beenergy.png" : "/logo.webp"}
-          width={500}
-          height={500}
-          alt="Beenergy Logo"
-          className="absolute top-0 left-0 w-1/4 opacity-50"
-        />
-        <div className="flex flex-col items-center justify-center pt-5 pb-6 relative">
-          <UploadCloud width={40} height={40} className="mb-3 text-gray-400" />
-          <p className="mb-2 text-sm text-gray-500 font-semibold">
+        <div className="absolute top-3 left-3 opacity-30 pointer-events-none">
+          <Image
+            src={isBeenergy ? "/beenergy.png" : "/logo.webp"}
+            width={160}
+            height={160}
+            alt="Logo"
+            className="rounded"
+          />
+        </div>
+        <div className="flex flex-col items-center justify-center z-10">
+          <UploadCloud
+            width={48}
+            height={48}
+            className="mb-2 text-primary-400 group-hover:text-primary-500 transition-colors"
+          />
+          <p className="mb-1 text-base text-primary-600 font-semibold">
             {isDragActive
-              ? "Suelta los archivos aquí..."
+              ? "¡Suelta los archivos aquí!"
               : "Arrastra y suelta archivos o haz clic para seleccionar"}
           </p>
-          <p className="text-xs text-gray-500">(MÁX. 10MB)</p>
+          <p className="text-xs text-gray-400">(Máx. 10MB por archivo)</p>
         </div>
       </div>
 
       {uploadedFiles.length > 0 && (
-        <div className="mt-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
-            Archivos subidos
+        <div className="mt-2">
+          <h4 className="text-sm font-semibold text-primary-500 mb-2">
+            Archivos nuevos seleccionados
           </h4>
-          <ul className="space-y-2 max-h-60 overflow-y-auto">
+          <ul className="space-y-2 max-h-40 overflow-y-auto">
             {uploadedFiles.map((file, index) => (
               <li
                 key={index}
-                className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                className="flex items-center justify-between px-3 py-2 bg-primary-50 rounded-lg border border-primary-100"
               >
-                <div className="flex items-center space-x-2">
-                  <FileIcon width={16} height={16} />
-                  <span className="text-sm">{file.name}</span>
-                  <span className="text-xs text-gray-500">
+                <div className="flex items-center gap-2">
+                  <FileIcon
+                    width={16}
+                    height={16}
+                    className="text-primary-400"
+                  />
+                  <span className="text-sm font-medium">{file.name}</span>
+                  <span className="text-xs text-gray-500 ml-2">
                     ({(file.size / 1024).toFixed(1)} KB)
                   </span>
                 </div>
                 <button
                   onClick={(e) => handleRemoveFile(e, file)}
-                  className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+                  className="hover:bg-primary-100 p-1 rounded-full transition-colors"
+                  title="Eliminar archivo"
                 >
                   <XIcon width={16} height={16} stroke="var(--danger-color)" />
                 </button>

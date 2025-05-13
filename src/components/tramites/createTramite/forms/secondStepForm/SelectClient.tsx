@@ -149,7 +149,6 @@ export default function SelectClient({
 
       if (needsSigner) {
         const signerData = await fetchSigner(selectedClient.id);
-        console.log("Signer data:", signerData);
         setSigner(signerData);
       } else {
         setSigner(null);

@@ -26,13 +26,9 @@ export const FilesList = ({
   isProcessed,
 }: FilesListProps) => {
   const handleDownloadFile = useCallback(
-    async (filename: string) => {
+    async (filename: string, download_url: string) => {
       try {
-        const { success, errors } = await downloadFile(
-          `comparativas/${comparativa_id}`,
-          filename,
-          organization_id
-        );
+        const { success, errors } = await downloadFile(download_url, filename);
 
         if (!success) {
           console.error(errors);
@@ -49,7 +45,7 @@ export const FilesList = ({
         console.error(error);
       }
     },
-    [comparativa_id, organization_id]
+    []
   );
 
   // Memoize the file list to prevent unnecessary re-renders
@@ -90,7 +86,9 @@ export const FilesList = ({
             <Button
               variant="outline"
               size="icon"
-              onClick={() => handleDownloadFile(file.filename as string)}
+              onClick={() =>
+                handleDownloadFile(file.filename, file.download_url)
+              }
             >
               <Download className="h-4 w-4" />
             </Button>

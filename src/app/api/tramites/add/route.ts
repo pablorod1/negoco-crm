@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     const documents = formData.get("files") as string;
     const signerString = formData.get("signer") as string;
     const userDataString = formData.get("userData") as string;
+    const existingFilesString = formData.get("existingFiles") as string;
 
     const tramite: TramiteDB = JSON.parse(tramiteString);
     const client: ClientDB = JSON.parse(clientString);
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
       : null;
     const tramiteFiles: TramiteFile[] = JSON.parse(documents);
     const userData: User = JSON.parse(userDataString);
+    const existingFiles: TramiteFile[] = JSON.parse(existingFilesString);
 
     if (!tramite || !client || !userData) {
       return NextResponse.json(
@@ -99,6 +101,16 @@ export async function POST(req: NextRequest) {
         const insertResult = await addTramiteFiles(tramiteFiles, tursoClient);
         if (!insertResult.success) {
           throw new Error(insertResult.error);
+        }
+      }
+
+      if (existingFiles && existingFiles.length > 0) {
+        const insertExistingFilesResult = await addTramiteFiles(
+          existingFiles,
+          tursoClient
+        );
+        if (!insertExistingFilesResult.success) {
+          throw new Error(insertExistingFilesResult.error);
         }
       }
 

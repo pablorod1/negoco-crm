@@ -6,6 +6,7 @@ import {
   SignerDB,
   Status,
   TramiteDB,
+  TramiteFile,
   User,
 } from "@/lib/core/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ interface Props {
   signer?: SignerDB | null;
   contracts: ContractDB[];
   documents: File[];
+  selectedExistingFiles: TramiteFile[] | null;
   onSubmit: () => void;
   onBack: () => void;
   onCancel: () => void;
@@ -36,6 +38,7 @@ export default function ReviewStep({
   signer,
   contracts,
   documents,
+  selectedExistingFiles,
   onSubmit,
   onBack,
   onCancel,
@@ -53,6 +56,9 @@ export default function ReviewStep({
       contract.pot6 === 0
     );
   };
+
+  const totalDocuments =
+    documents.length + (selectedExistingFiles || []).length;
   return (
     <>
       {loading && (
@@ -61,7 +67,7 @@ export default function ReviewStep({
           description="Espere unos segundos mientras creamos el trámite."
         />
       )}
-      <ScrollArea className="h-full w-full  max-h-[calc(100vh-400px)]">
+      <ScrollArea className="h-full w-full max-h-[calc(100vh-400px)]">
         <div className="space-y-6 pb-6 px-4">
           {/* Tramite Info */}
           <Card>
@@ -211,109 +217,135 @@ export default function ReviewStep({
           {/* Contracts Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-primary-800">
-                Contratos ({contracts.length})
-              </CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg text-primary-800">
+                  Contrato {contracts.length > 0 ? `- #${contracts[0].id}` : ""}
+                </CardTitle>
+                {contracts.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge>{contracts[0].type}</Badge>
+                    <Badge variant="outline">{contracts[0].plan}</Badge>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {contracts.map((contract) => (
-                <div
-                  key={contract.id}
-                  className="border rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex justify-between items-center">
-                    <p className="text-primary-500">#{contract.id}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge>{contract.type}</Badge>
-                      <Badge variant="outline">{contract.plan}</Badge>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium">CUPS</p>
-                      <p className="text-sm text-muted-foreground">
-                        {contract.CUPS}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Consumo</p>
-                      <p className="text-sm text-muted-foreground">
-                        {contract.consumption} kWh
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Compañía</p>
-                      <p className="text-sm text-muted-foreground">
-                        {contract.old_company} → {contract.new_company}
-                      </p>
-                    </div>
+              {contracts.length > 0 ? (
+                <>
+                  {contracts.map((contract) => (
+                    <div key={contract.id} className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Badge>{contract.type}</Badge>
+                          <Badge variant="outline">{contract.plan}</Badge>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium">CUPS</p>
+                          <p className="text-sm text-muted-foreground">
+                            {contract.CUPS}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Consumo</p>
+                          <p className="text-sm text-muted-foreground">
+                            {contract.consumption} kWh
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Compañía</p>
+                          <p className="text-sm text-muted-foreground">
+                            {contract.old_company} → {contract.new_company}
+                          </p>
+                        </div>
 
-                    {!checkEmptyPots(contract) ? (
-                      <div className="flex items-center gap-4">
-                        {contract.pot1 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium ">Potencia P1</p>
-                            <p className="font-medium text-muted-foreground">
-                              {contract.pot1} kW
-                            </p>
+                        {!checkEmptyPots(contract) ? (
+                          <div className="flex items-center gap-4">
+                            {contract.pot1 > 0 && (
+                              <div>
+                                <p className="text-sm font-medium ">
+                                  Potencia P1
+                                </p>
+                                <p className="font-medium text-muted-foreground">
+                                  {contract.pot1} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot2 > 0 && (
+                              <div>
+                                <p className="text-sm font-medium ">
+                                  Potencia P2
+                                </p>
+                                <p className="font-medium text-muted-foreground">
+                                  {contract.pot2} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot3 > 0 && (
+                              <div>
+                                <p className="text-sm font-medium ">
+                                  Potencia P3
+                                </p>
+                                <p className="font-medium text-muted-foreground">
+                                  {contract.pot3} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot4 > 0 && (
+                              <div>
+                                <p className="text-sm font-medium ">
+                                  Potencia P4
+                                </p>
+                                <p className="font-medium text-muted-foreground">
+                                  {contract.pot4} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot5 > 0 && (
+                              <div>
+                                <p className="text-sm font-medium ">
+                                  Potencia P5
+                                </p>
+                                <p className="font-medium text-muted-foreground">
+                                  {contract.pot5} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot6 > 0 && (
+                              <div>
+                                <p className="text-sm font-medium ">
+                                  Potencia P6
+                                </p>
+                                <p className="font-medium text-muted-foreground">
+                                  {contract.pot6} kW
+                                </p>
+                              </div>
+                            )}
                           </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            No hay potencias asignadas
+                          </span>
                         )}
-                        {contract.pot2 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium ">Potencia P2</p>
-                            <p className="font-medium text-muted-foreground">
-                              {contract.pot2} kW
-                            </p>
-                          </div>
-                        )}
-                        {contract.pot3 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium ">Potencia P3</p>
-                            <p className="font-medium text-muted-foreground">
-                              {contract.pot3} kW
-                            </p>
-                          </div>
-                        )}
-                        {contract.pot4 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium ">Potencia P4</p>
-                            <p className="font-medium text-muted-foreground">
-                              {contract.pot4} kW
-                            </p>
-                          </div>
-                        )}
-                        {contract.pot5 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium ">Potencia P5</p>
-                            <p className="font-medium text-muted-foreground">
-                              {contract.pot5} kW
-                            </p>
-                          </div>
-                        )}
-                        {contract.pot6 > 0 && (
-                          <div>
-                            <p className="text-sm font-medium ">Potencia P6</p>
-                            <p className="font-medium text-muted-foreground">
-                              {contract.pot6} kW
-                            </p>
-                          </div>
-                        )}
+                        <div>
+                          <p className="text-sm font-medium">
+                            Dirección Completa
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {contract.address}, {contract.postal_code}{" "}
+                            {contract.city}, {contract.province}
+                          </p>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-16 ">
-                        No hay potencias asignadas
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm font-medium">Dirección Completa</p>
-                      <p className="text-sm text-muted-foreground">
-                        {contract.address}, {contract.postal_code}{" "}
-                        {contract.city}, {contract.province}
-                      </p>
                     </div>
-                  </div>
+                  ))}
+                </>
+              ) : (
+                <div className="text-gray-400 text-sm italic">
+                  No hay contratos asociados.
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
 
@@ -321,44 +353,66 @@ export default function ReviewStep({
           <Card>
             <CardHeader>
               <CardTitle className="text-primary-800 text-lg">
-                Documents ({documents.length})
+                Documentos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {documents.map((doc, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 border rounded-lg"
-                  >
-                    <span className="text-sm">{doc.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatFileSize(Number(doc.size))}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {totalDocuments > 0 ? (
+                <div className="space-y-2">
+                  {documents.map((doc, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 border rounded-lg"
+                    >
+                      <span className="text-sm">{doc.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {formatFileSize(Number(doc.size))}
+                      </span>
+                    </div>
+                  ))}
+                  {selectedExistingFiles &&
+                    selectedExistingFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 border rounded-lg"
+                      >
+                        <span className="text-sm">{file.filename}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {formatFileSize(Number(file.size))}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="text-gray-400 text-sm italic">
+                  No hay documentos asociados.
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Notes */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-primary-800">
-                Notas ({tramite.notes.length})
-              </CardTitle>
+              <CardTitle className="text-lg text-primary-800">Notas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {tramite.notes.map((note, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 border rounded-lg"
-                  >
-                    <span className="text-sm">{note}</span>
-                  </div>
-                ))}
-              </div>
+              {tramite.notes.length > 0 ? (
+                <div className="space-y-2">
+                  {tramite.notes.map((note, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 border rounded-lg"
+                    >
+                      <span className="text-sm">{note}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-400 text-sm italic">
+                  No hay notas asociadas.
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

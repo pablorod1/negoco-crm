@@ -22,13 +22,9 @@ export default function TramiteFilesList({
   onDeleted,
   isTramitableBorrador,
 }: Props) {
-  const handleDownloadFile = async (filename: string) => {
+  const handleDownloadFile = async (filename: string, download_url: string) => {
     try {
-      const { success, errors } = await downloadFile(
-        `tramites/${tramite_id}`,
-        filename,
-        organization_id
-      );
+      const { success, errors } = await downloadFile(download_url, filename);
 
       if (!success) {
         console.error(errors);
@@ -82,7 +78,9 @@ export default function TramiteFilesList({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handleDownloadFile(file.filename)}
+                onClick={() =>
+                  handleDownloadFile(file.filename, file.download_url)
+                }
               >
                 <Download size={20} />
               </Button>

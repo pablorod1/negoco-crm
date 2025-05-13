@@ -130,7 +130,7 @@ export default function SelectSalesPerson({
             />
           </div>
           <ScrollArea className="h-full w-full max-h-[300px]">
-            <div className="grid grid-cols-4 gap-6 justify-center w-full py-2 px-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-center w-full py-2 px-4">
               {filteredComerciales.map((comercial) => (
                 <Button
                   size={"card"}
@@ -151,7 +151,7 @@ export default function SelectSalesPerson({
                     <span className="text-sm font-semibold">
                       {comercial.name}
                     </span>
-                    <span className="text-xs text-gray-500 text-ellipsis overflow-hidden whitespace-nowrap max-w-48 w-full">
+                    <span className="text-xs text-gray-500 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
                       {comercial.email}
                     </span>
                   </div>

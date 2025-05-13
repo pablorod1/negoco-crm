@@ -19,6 +19,7 @@ import { InputComponent, SelectComponent } from "../InputComponent";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
@@ -113,124 +114,125 @@ export default function ContractForm({
   return (
     <>
       <form>
-        <div className="flex flex-col gap-y-8 w-full max-h-[500px] overflow-y-auto">
-          <div className="flex items-stretch gap-4 w-full">
-            <SelectComponent
-              name="type"
-              label="Tipo de contrato"
-              items={PLAIN_CONTRACT_TYPES}
-              onChange={(value) => handleSelectChange(value, "type")}
-              errors={errors.type}
-              isRequired
-              selectedKey={formData.type}
-            />
-            <SelectComponent
-              name="plan"
-              label="Tipo de tarifa"
-              items={PLANS}
-              onChange={(value) => handleSelectChange(value, "plan")}
-              errors={errors.plan}
-              isRequired
-              selectedKey={formData.plan}
-            />
-          </div>
-          <div className="flex items-stretch gap-4 w-full">
-            <InputComponent
-              name="province"
-              label="Provincia"
-              onChange={handleFieldChange}
-              value={formData.province}
-              errors={errors.province}
-              type="text"
-              isRequired
-            />
-            <InputComponent
-              name="city"
-              label="Población"
-              onChange={handleFieldChange}
-              value={formData.city}
-              errors={errors.city}
-              type="text"
-              isRequired
-            />
-            <InputComponent
-              name="postal_code"
-              label="Código Postal"
-              onChange={handleFieldChange}
-              value={formData.postal_code}
-              errors={errors.postal_code}
-              type="text"
-              isRequired
-            />
-          </div>
-          <InputComponent
-            name="address"
-            label="Dirección"
-            onChange={handleFieldChange}
-            value={formData.address}
-            errors={errors.address}
-            type="text"
-            isRequired
-          />
-
-          <div className="flex items-stretch gap-4 w-full">
-            <InputComponent
-              name="CUPS"
-              label="CUPS"
-              onChange={handleFieldChange}
-              value={formData.CUPS}
-              errors={errors.CUPS}
-              type="text"
-              isRequired
-            />
-            <SelectComponent
-              name="old_company"
-              label="Compañía Antigua"
-              items={PLAIN_COMPANIES}
-              onChange={(value) => handleSelectChange(value, "old_company")}
-              selectedKey={formData.old_company || ""}
-            />
-            <SelectComponent
-              name="new_company"
-              label="Compañía Nueva"
-              items={PLAIN_COMPANIES}
-              onChange={(value) => handleSelectChange(value, "new_company")}
-              errors={errors.new_company}
-              isRequired
-              selectedKey={formData.new_company || ""}
-            />
-            <InputComponent
-              name="consumption"
-              label="Consumo"
-              value={formData.consumption}
-              onChange={handleFieldChange}
-              type="number"
-            />
-          </div>
-          <div className="flex items-stretch gap-4 w-full">
-            {POTS.map((pot, index) => (
-              <InputComponent
-                key={index}
-                onChange={handleFieldChange}
-                name={`pot${index + 1}`}
-                label={pot}
-                type="number"
-                value={formData[`pot${index + 1}` as keyof ContractDB]}
-                startContent={<Zap size={16} stroke="#333" />}
+        <ScrollArea className="w-full h-full max-h-[calc(100vh-400px)]">
+          <div className="flex flex-col gap-y-4 w-full px-4">
+            <div className="flex items-stretch gap-4 w-full">
+              <SelectComponent
+                name="type"
+                label="Tipo de contrato"
+                items={PLAIN_CONTRACT_TYPES}
+                onChange={(value) => handleSelectChange(value, "type")}
+                errors={errors.type}
+                isRequired
+                selectedKey={formData.type}
               />
-            ))}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="description" className="text-sm font-semibold">
-              Descripción
-            </Label>
-            <Textarea
-              id="description"
-              name="description"
-              onChange={handleTextAreaChange}
+              <SelectComponent
+                name="plan"
+                label="Tipo de tarifa"
+                items={PLANS}
+                onChange={(value) => handleSelectChange(value, "plan")}
+                errors={errors.plan}
+                isRequired
+                selectedKey={formData.plan}
+              />
+            </div>
+            <div className="flex items-stretch gap-4 w-full">
+              <InputComponent
+                name="province"
+                label="Provincia"
+                onChange={handleFieldChange}
+                value={formData.province}
+                errors={errors.province}
+                type="text"
+                isRequired
+              />
+              <InputComponent
+                name="city"
+                label="Población"
+                onChange={handleFieldChange}
+                value={formData.city}
+                errors={errors.city}
+                type="text"
+                isRequired
+              />
+              <InputComponent
+                name="postal_code"
+                label="Código Postal"
+                onChange={handleFieldChange}
+                value={formData.postal_code}
+                errors={errors.postal_code}
+                type="text"
+                isRequired
+              />
+            </div>
+            <InputComponent
+              name="address"
+              label="Dirección"
+              onChange={handleFieldChange}
+              value={formData.address}
+              errors={errors.address}
+              type="text"
+              isRequired
             />
+            <div className="flex items-stretch gap-4 w-full">
+              <InputComponent
+                name="CUPS"
+                label="CUPS"
+                onChange={handleFieldChange}
+                value={formData.CUPS}
+                errors={errors.CUPS}
+                type="text"
+                isRequired
+              />
+              <SelectComponent
+                name="old_company"
+                label="Compañía Antigua"
+                items={PLAIN_COMPANIES}
+                onChange={(value) => handleSelectChange(value, "old_company")}
+                selectedKey={formData.old_company || ""}
+              />
+              <SelectComponent
+                name="new_company"
+                label="Compañía Nueva"
+                items={PLAIN_COMPANIES}
+                onChange={(value) => handleSelectChange(value, "new_company")}
+                errors={errors.new_company}
+                isRequired
+                selectedKey={formData.new_company || ""}
+              />
+              <InputComponent
+                name="consumption"
+                label="Consumo"
+                value={formData.consumption}
+                onChange={handleFieldChange}
+                type="number"
+              />
+            </div>
+            <div className="flex items-stretch gap-4 w-full">
+              {POTS.map((pot, index) => (
+                <InputComponent
+                  key={index}
+                  onChange={handleFieldChange}
+                  name={`pot${index + 1}`}
+                  label={pot}
+                  type="number"
+                  value={formData[`pot${index + 1}` as keyof ContractDB]}
+                  startContent={<Zap size={16} stroke="#333" />}
+                />
+              ))}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="description" className="text-sm font-semibold">
+                Descripción
+              </Label>
+              <Textarea
+                id="description"
+                name="description"
+                onChange={handleTextAreaChange}
+              />
+            </div>
           </div>
-        </div>
+        </ScrollArea>
       </form>
       <ButtonGroupComponent
         loading={loading}
