@@ -33,12 +33,12 @@ export default function TramiteTimeLineSection({
       items: [
         {
           label: "Fecha de Creación",
-          date: tramite.creation_date,
+          date: tramite.creation_date || "---",
           tramite_id: tramite.id,
         },
         {
           label: "Fecha de Tramitación",
-          date: tramite.tramitation_date,
+          date: tramite.tramitation_date || "---",
           tooltipContent:
             "La fecha de tramitación se asignará cuando el estado del trámite cambie a Verificado.",
           tramite_id: tramite.id,
@@ -48,7 +48,7 @@ export default function TramiteTimeLineSection({
         },
         {
           label: "Fecha de Activación",
-          date: tramite.activation_date,
+          date: tramite.activation_date || "---",
           tooltipContent:
             "La fecha de activación se asignará cuando el estado del trámite cambie a Activo.",
           tramite_id: tramite.id,
@@ -66,7 +66,7 @@ export default function TramiteTimeLineSection({
     const additionalItems = [
       {
         label: "Fecha de Renovación",
-        date: tramite.renovation_date,
+        date: tramite.renovation_date || "---",
         tooltipContent:
           "La fecha de renovación se asignará cuando el estado del trámite cambie a Activo.",
         tramite_id: tramite.id,
@@ -79,7 +79,7 @@ export default function TramiteTimeLineSection({
     if (tramite.rejected_date) {
       additionalItems.push({
         label: "Fecha de Baja",
-        date: tramite.rejected_date,
+        date: tramite.rejected_date || "---",
         tooltipContent:
           "La fecha de baja se asignará cuando el estado del trámite cambie a Baja.",
         tramite_id: tramite.id,

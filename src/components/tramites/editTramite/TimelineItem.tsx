@@ -24,7 +24,7 @@ export default function TimelineItem({
   isAdmin,
 }: TimelineItemProps) {
   // Determine status based on date presence
-  const hasDate = !!date;
+  const hasDate = date && date !== "---";
 
   return (
     <div className="group px-3 py-2.5 transition-colors hover:bg-gray-50">
