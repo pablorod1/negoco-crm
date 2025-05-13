@@ -262,7 +262,7 @@ export default function SelectClient({
         </div>
       </div>
 
-      <ScrollArea className="h-full w-full max-h-[200px] px-8">
+      <ScrollArea className="h-full w-full max-h-[300px] px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-center w-full pt-2 pb-4">
           {/* New Client Button */}
           <Button

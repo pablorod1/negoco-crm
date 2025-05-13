@@ -1,6 +1,6 @@
 "use client";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { DataTable } from "../table/Table";
 import { showCustomToast } from "@/components/core/CustomToast";
 import { ShieldAlert } from "lucide-react";
@@ -11,10 +11,19 @@ import { slideOut } from "@/lib/view-transitions/view-transitions";
 export default function LiquidezDataAuthorization() {
   const { userData } = useUser();
   const router = useTransitionRouter();
+  const isMounted = useRef(false);
 
   useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
     const isComercial = userData && userData.role === "2";
-    if (isComercial) {
+    if (isComercial && isMounted.current) {
       showCustomToast({
         title: "No autorizado",
         message: "No tienes permisos para acceder a esta sección",
@@ -22,10 +31,18 @@ export default function LiquidezDataAuthorization() {
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
-      router.push("/", {
-        onTransitionReady: slideOut,
-      });
+      // Asegura que el router.push solo se ejecute si el componente sigue montado
+      setTimeout(() => {
+        if (isMounted.current && isActive) {
+          router.push("/", {
+            onTransitionReady: slideOut,
+          });
+        }
+      }, 0);
     }
+    return () => {
+      isActive = false;
+    };
   }, [router, userData]);
 
   return (

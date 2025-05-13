@@ -129,7 +129,7 @@ export default function SelectSalesPerson({
               className="max-w-sm w-full"
             />
           </div>
-          <ScrollArea className="h-full w-full max-h-[400px]">
+          <ScrollArea className="h-full w-full max-h-[300px]">
             <div className="grid grid-cols-4 gap-6 justify-center w-full py-2 px-4">
               {filteredComerciales.map((comercial) => (
                 <Button
