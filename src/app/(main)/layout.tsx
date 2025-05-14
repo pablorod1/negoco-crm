@@ -1,7 +1,5 @@
 "use client";
 import "../globals.css";
-import { SidebarInset } from "@/components/ui/sidebar";
-import { SidebarComponent } from "@/components/core/sidebar/Sidebar";
 import Header from "@/components/core/Header";
 import { Toaster } from "react-hot-toast";
 import { Providers } from "../providers";
@@ -21,17 +19,11 @@ export default function MainLayout({
   }, []);
 
   return (
-    <main
-      data-client={activeOrganization}
-      className={`${activeOrganization} px-2`}
-    >
+    <main data-client={activeOrganization} className={`${activeOrganization}`}>
       <Providers>
         <Toaster position="bottom-right" />
-        <SidebarComponent />
-        <SidebarInset>
-          <Header />
-          {children}
-        </SidebarInset>
+        <Header activeOrganization={activeOrganization} />
+        {children}
       </Providers>
     </main>
   );

@@ -192,7 +192,7 @@ export default function DashboardBentoGrid() {
   };
 
   return (
-    <section className="flex flex-col gap-4 mx-2 py-8">
+    <section className="flex flex-col gap-4 px-8 py-8">
       {loading ? (
         <Skeleton className="w-full h-72 rounded-xl bg-primary-500" />
       ) : (

@@ -1,5 +1,4 @@
 "use client";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ComparativasProvider } from "@/lib/contexts/ComparativasContext";
 import { TramitesProvider } from "@/lib/contexts/TramitesContext";
@@ -11,11 +10,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <TooltipProvider>
       <UserProvider>
         <UsersProvider>
-          <SidebarProvider defaultOpen={false}>
-            <TramitesProvider>
-              <ComparativasProvider>{children}</ComparativasProvider>
-            </TramitesProvider>
-          </SidebarProvider>
+          <TramitesProvider>
+            <ComparativasProvider>{children}</ComparativasProvider>
+          </TramitesProvider>
         </UsersProvider>
       </UserProvider>
     </TooltipProvider>
