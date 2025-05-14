@@ -58,17 +58,17 @@ export default function NavigationMenuComponent({
     title: "Operaciones",
     icon: <BarChart3 className="w-4 h-4 mr-2" />,
     banner: (
-      <div className="relative rounded-xl bg-gradient-to-b from-white to-primary-50 p-4 flex flex-col justify-between shadow-sm">
+      <div className="relative rounded-xl bg-gradient-to-b from-white to-primary-50 p-4 flex flex-col justify-between gap-8 shadow-sm">
         <Image
           src={
             activeOrganization === "beenergy"
-              ? "/beenergy/favicon.png"
-              : "/logo_200x200.png"
+              ? "/beenergy.png"
+              : "/logo_inline.png"
           }
           alt="Logo"
           width={200}
           height={200}
-          className="w-12 h-12"
+          className="w-48 h-auto"
         />
         <div>
           <h4 className="text-sm font-semibold text-primary mb-2">
@@ -115,13 +115,13 @@ export default function NavigationMenuComponent({
         <Image
           src={
             activeOrganization === "beenergy"
-              ? "/beenergy/beenergy-logo.png"
-              : "/logo_200x200.png"
+              ? "/beenergy.png"
+              : "/logo_inline.png"
           }
           alt="Logo"
           width={200}
           height={200}
-          className="w-12 h-12"
+          className="w-48 h-auto"
         />
         <div>
           <h4 className="text-sm font-semibold text-primary mb-2">
@@ -161,7 +161,7 @@ export default function NavigationMenuComponent({
         {
           href: "/colaboradores",
           title: "Colaboradores",
-          icon: <Users color="var(--primary-color)" className="w-5 h-5" />,
+          icon: <Users className="w-5 h-5 text-primary" />,
           description: "Control de usuarios y colaboradores.",
         },
         {

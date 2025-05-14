@@ -108,7 +108,7 @@ function UsersGridTable({
         info.getValue() ? (
           <div className="flex items-center gap-2">
             <Image
-              src={(info.getValue().logo as string) || "/logo_sin_letras.webp"}
+              src={(info.getValue().logo as string) || "/logo_inline.png"}
               alt={`Avatar for ${info.row.original.name}`}
               width={32}
               height={32}
@@ -372,7 +372,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
             <div className="flex items-center gap-2 mt-3">
               <div className="bg-gray-50 p-1 rounded-full">
                 <Image
-                  src={user.organization.logo || "/logo_sin_letras.webp"}
+                  src={user.organization.logo || "/logo_inline.png"}
                   alt={`Logo de ${user.organization.name}`}
                   width={24}
                   height={24}

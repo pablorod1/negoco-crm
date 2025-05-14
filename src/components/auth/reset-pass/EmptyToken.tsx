@@ -9,7 +9,7 @@ export default function EmptyToken() {
       <div className="max-w-md w-full px-6 py-8 bg-white shadow-md rounded-lg">
         <div className="text-center mb-6">
           <Image
-            src="/logo.webp"
+            src="/logo_inline.png"
             alt="Negoco Cloud IT Logo"
             width={150}
             height={50}

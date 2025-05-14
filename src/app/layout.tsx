@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud",
     icons: {
-      icon: subdomain === "beenergy" ? "/beenergy/favicon.png" : "/favicon.png",
+      icon: subdomain === "beenergy" ? "/beenergy/favicon.png" : "/favicon.ico",
     },
   };
 }

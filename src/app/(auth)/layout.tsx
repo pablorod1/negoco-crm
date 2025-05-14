@@ -16,7 +16,9 @@ export default function AuthLayout({
 
   useEffect(() => {
     const host = window.location.hostname;
-    const image = host.includes("beenergy") ? "/beenergy.png" : "/logo.webp";
+    const image = host.includes("beenergy")
+      ? "/beenergy.png"
+      : "/logo_inline.png";
     setData({ host, image });
   }, []);
 

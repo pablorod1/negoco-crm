@@ -15,24 +15,18 @@ export default function Header({
     <header className="sticky top-0 z-50 bg-white backdrop-blur-lg border-b border-border/40 shadow-sm">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/">
             <Image
               src={
                 activeOrganization === "beenergy"
-                  ? "/beenergy/favicon.png"
-                  : "/logo_200x200.png"
+                  ? "/beenergy.png"
+                  : "/logo_inline.png"
               }
               alt="Logo"
-              width={36}
-              height={36}
-              className={cn(
-                "transition-all duration-300",
-                activeOrganization === "beenergy" ? "w-8 h-8" : "w-9 h-9"
-              )}
+              width={200}
+              height={200}
+              className={cn("transition-all duration-300", "w-44 h-auto")}
             />
-            <span className="font-semibold text-primary hidden sm:inline-block">
-              {activeOrganization === "beenergy" ? "BeEnergy" : "Negoco"}
-            </span>
           </Link>
 
           <NavigationMenuComponent activeOrganization={activeOrganization} />

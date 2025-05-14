@@ -272,7 +272,7 @@ export function YearlyTramitesBarChart({
       {/* Decorative chart pattern */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-92 opacity-15 pointer-events-none">
         <Image
-          src={isBeenergy ? "/beenergy.png" : "/logo.webp"}
+          src={isBeenergy ? "/beenergy.png" : "/logo_inline.png"}
           alt="Negoco Cloud"
           width={256}
           height={256}

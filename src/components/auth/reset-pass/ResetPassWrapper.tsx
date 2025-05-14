@@ -9,7 +9,7 @@ export default function ResetPassWrapper({ token }: { token: string }) {
       <div className="w-full max-w-md">
         <div className="lg:hidden mb-8">
           <Image
-            src="/logo.webp"
+            src="/logo_inline.png"
             alt="Negoco CRM"
             width={150}
             height={50}

@@ -80,8 +80,8 @@ const direccionItems = [
   },
 ];
 
-const DEFAULT_LOGO_COLLAPSED = "/logo_sin_letras.webp";
-const DEFAULT_LOGO = "/logo.webp";
+const DEFAULT_LOGO_COLLAPSED = "/logo_inline.png";
+const DEFAULT_LOGO = "/logo_inline.png";
 
 export function SidebarComponent() {
   const pathname = usePathname();

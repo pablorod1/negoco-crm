@@ -50,7 +50,7 @@ export default function DocumentsForm({
         <input {...getInputProps()} />
         <div className="absolute top-3 left-3 opacity-30 pointer-events-none">
           <Image
-            src={isBeenergy ? "/beenergy.png" : "/logo.webp"}
+            src={isBeenergy ? "/beenergy.png" : "/logo_inline.png"}
             width={160}
             height={160}
             alt="Logo"
