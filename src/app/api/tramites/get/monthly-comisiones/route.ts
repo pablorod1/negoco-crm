@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
 
     let query = `
       SELECT 
-          strftime('%Y-%m', creation_date) AS month_key,
+          strftime('%Y-%m', activation_date) AS month_key,
           SUM(${role === "2" ? "comision_sales_person" : "comision"}) AS total
       FROM tramites
-      WHERE strftime('%Y', creation_date) = strftime('%Y', 'now')`;
+      WHERE strftime('%Y', activation_date) = strftime('%Y', 'now')`;
 
     const params: (string | number)[] = [];
 

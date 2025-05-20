@@ -24,6 +24,7 @@ import {
   Factory,
   BookUser,
   Megaphone,
+  Sun,
 } from "lucide-react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
@@ -101,6 +102,15 @@ export default function NavigationMenuComponent({
           icon: <Wallet className="w-5 h-5 text-primary" />,
           description: "Registro y control de liquidaciones.",
           requiresAdmin: true,
+        },
+      ],
+      [
+        {
+          href: "/fotovoltaica",
+          title: "Fotovoltaica",
+          icon: <Sun className="w-5 h-5 text-primary" />,
+          description: "Solicita tu estudio fotovoltaico.",
+          comingSoon: true,
         },
       ],
     ],
