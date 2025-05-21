@@ -110,8 +110,8 @@ export default function FileCardDropdown({
   const handleDownload = async () => {
     try {
       const { success, errors } = await downloadFile(
-        file.name,
-        file.download_url
+        file.download_url,
+        file.name
       );
 
       if (!success && errors) {
