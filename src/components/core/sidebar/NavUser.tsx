@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronsUpDown, LogOut, User } from "lucide-react";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,11 +14,13 @@ import {
 import { authClient } from "@/lib/auth/auth-client";
 import { redirect } from "next/navigation";
 import { useUser } from "@/lib/contexts/UserContext";
-import { Link } from "next-view-transitions";
+import { useTransitionRouter } from "next-view-transitions";
 import AvatarComponent from "../AvatarComponent";
+import { slideIn } from "@/lib/view-transitions/view-transitions";
 
 export function NavUser() {
   const { userData } = useUser();
+  const router = useTransitionRouter();
 
   const handleSignOut = async () => {
     await authClient.signOut({
@@ -60,11 +61,15 @@ export function NavUser() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Link className="flex items-center gap-2" href="/perfil">
-                <User size={18} />
-                <span>Perfil</span>
-              </Link>
+            <DropdownMenuItem
+              onClick={() =>
+                router.push("/perfil", {
+                  onTransitionReady: slideIn,
+                })
+              }
+            >
+              <User size={18} />
+              <span>Perfil</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
