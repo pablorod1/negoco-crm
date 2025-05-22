@@ -62,6 +62,7 @@ export function NavUser() {
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem
+              className="flex items-center gap-2"
               onClick={() =>
                 router.push("/perfil", {
                   onTransitionReady: slideIn,
