@@ -167,7 +167,7 @@ export default function ClientContactDetails({
         </div>
         <div className="h-full min-h-[320px]">
           <ClientMap
-            className="w-full h-full min-h-[320px]"
+            className="w-full h-full min-h-[320px] z-10"
             coordinates={client.coordinates as [number, number]}
           />
         </div>

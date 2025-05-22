@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
       SELECT 
         clients.*, 
         COUNT(DISTINCT tramites.id) AS tramites_count,
-        COUNT(DISTINCT tramite_files.id) AS files_count 
+        COUNT(DISTINCT tramite_files.id) AS files_count,
+        MAX(tramites.creation_date) AS last_tramite_date
       FROM clients 
       LEFT JOIN tramites ON clients.id = tramites.client_id
       LEFT JOIN tramite_files ON tramites.id = tramite_files.tramite_id`;
@@ -55,6 +56,9 @@ export async function POST(req: NextRequest) {
 
     // Agrupamos por cliente para obtener los conteos correctos
     query += ` GROUP BY clients.id`;
+    
+    // Ordenamos por fecha de último trámite en orden descendente
+    query += ` ORDER BY last_tramite_date DESC NULLS LAST`;
 
     const res = await tursoClient.execute({ sql: query, args: params });
 
