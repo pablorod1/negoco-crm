@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       collectionDateRange,
       paymentDateRange,
       userFilter,
+      clientFilter,
     }: {
       page: number;
       rowsPerPage: number | string;
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
       collectionDateRange?: DateRange | undefined;
       paymentDateRange?: DateRange | undefined;
       userFilter?: string[];
+      clientFilter?: string;
     } = await req.json();
 
     // Validate required parameters
@@ -129,6 +131,9 @@ export async function POST(req: NextRequest) {
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
+    if (clientFilter) {
+      addArrayFilter("c.id", [clientFilter]);
+    }
 
     // Date range filter
     if (

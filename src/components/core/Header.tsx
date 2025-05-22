@@ -13,7 +13,7 @@ export default function Header({
 }) {
   return (
     <header className="sticky top-0 z-50 bg-white backdrop-blur-lg border-b border-border/40 shadow-sm">
-      <div className="container mx-auto flex items-center justify-between px-4 py-3">
+      <div className="container mx-auto flex items-center justify-between px-4 ">
         <div className="flex items-center gap-6">
           <Link href="/">
             <Image

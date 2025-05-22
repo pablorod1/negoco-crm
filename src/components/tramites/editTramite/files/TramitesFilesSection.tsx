@@ -17,7 +17,6 @@ interface Props {
   tramite: TramiteDB;
   onUpload: () => void;
   isEditable: boolean | null;
-  isTramitableBorrador: boolean;
   client: ClientDB;
 }
 
@@ -27,7 +26,6 @@ export default function TramiteFilesSection({
   tramite,
   onUpload,
   isEditable,
-  isTramitableBorrador,
   client,
 }: Props) {
   return (
@@ -51,7 +49,7 @@ export default function TramiteFilesSection({
             tramite_id={tramite.id}
             organization_id={userData?.organization.id as string}
             onDeleted={onUpload}
-            isTramitableBorrador={isTramitableBorrador}
+            isEditable={isEditable as boolean}
           />
         ) : (
           <p className="text-muted-foreground">No hay archivos adjuntos.</p>

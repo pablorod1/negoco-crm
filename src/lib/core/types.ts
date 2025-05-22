@@ -118,6 +118,7 @@ export type ClientDB = {
   document_type: string;
   document_number: string;
   IBAN: string;
+  coordinates: [number, number] | null;
 };
 
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
@@ -134,6 +135,7 @@ export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   document_type: "DNI",
   document_number: "",
   IBAN: "",
+  coordinates: null,
 });
 
 export type SignerDB = {

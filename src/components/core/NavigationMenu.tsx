@@ -24,6 +24,7 @@ import {
   Factory,
   BookUser,
   Megaphone,
+  SunMediumIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
@@ -87,13 +88,13 @@ export default function NavigationMenuComponent({
           href: "/comparativas",
           title: "Comparativas",
           icon: <ArrowRightLeft className="w-5 h-5 text-primary" />,
-          description: "Comparativa de tarifas y servicios.",
+          description: "Solicita tu comparativa energética.",
         },
         {
           href: "/tramites",
           title: "Trámites",
           icon: <ClipboardList className="w-5 h-5 text-primary" />,
-          description: "Gestión de altas, bajas y modificaciones.",
+          description: "Gestión de trámites y seguimiento.",
         },
         {
           href: "/liquidez",
@@ -101,6 +102,16 @@ export default function NavigationMenuComponent({
           icon: <Wallet className="w-5 h-5 text-primary" />,
           description: "Registro y control de liquidaciones.",
           requiresAdmin: true,
+        },
+      ],
+
+      [
+        {
+          href: "/fotovoltaicas",
+          title: "Fotovoltaicas",
+          icon: <SunMediumIcon className="w-5 h-5 text-primary" />,
+          description: "Solicita tu estudio de placas solares.",
+          comingSoon: true,
         },
       ],
     ],
@@ -141,7 +152,6 @@ export default function NavigationMenuComponent({
           title: "Clientes",
           icon: <BookUser className="w-5 h-5 text-primary" />,
           description: "Gestión y seguimiento de clientes.",
-          comingSoon: true,
         },
         {
           href: "/comercializadoras",

@@ -24,9 +24,28 @@ export const addClient = async (
       };
     }
 
+    // Construimos la dirección completa para geocodificar
+    const direccionCompleta = `${client.address}, ${client.postal_code}, ${client.city}, ${client.province}`;
+
+    // Obtenemos las coordenadas desde OpenCage
+    const openCageKey = process.env.GEOCODE_API_KEY;
+    const geoRes = await fetch(
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+        direccionCompleta
+      )}&key=${openCageKey}`
+    );
+    const geoData = await geoRes.json();
+
+    let coordinates: [number, number] | null = null;
+
+    if (geoData.results.length > 0) {
+      const { lat, lng } = geoData.results[0].geometry;
+      coordinates = [lat, lng];
+    }
+
     const query = `
-      INSERT INTO clients (id, name, last_name, email, phone, address, document_number, document_type, type, IBAN, postal_code, province, city)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO clients (id, name, last_name, email, phone, address, document_number, document_type, type, IBAN, postal_code, province, city, coordinates)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // Ejecutamos la consulta
@@ -46,6 +65,7 @@ export const addClient = async (
         client.postal_code,
         client.province,
         client.city,
+        coordinates ? JSON.stringify(coordinates) : null,
       ],
     });
 

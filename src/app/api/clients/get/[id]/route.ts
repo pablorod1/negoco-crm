@@ -2,11 +2,15 @@ import { getTursoClient } from "@/lib/libsql/client";
 import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id, role } = await req.json();
+    const { id } = await params;
+    const { user_id, user_role } = await req.json();
 
-    if (!id || !role) {
+    if (!user_id || !user_role) {
       return NextResponse.json(
         { success: false, message: "Missing Parameters" },
         { status: 400 }
@@ -27,16 +31,18 @@ export async function POST(req: NextRequest) {
         clients.*, 
         COUNT(DISTINCT tramites.id) AS tramites_count,
         COUNT(DISTINCT tramite_files.id) AS files_count 
-      FROM clients 
+      FROM clients
       LEFT JOIN tramites ON clients.id = tramites.client_id
-      LEFT JOIN tramite_files ON tramites.id = tramite_files.tramite_id`;
-    const params: string[] = [];
+      LEFT JOIN tramite_files ON tramites.id = tramite_files.tramite_id
+      WHERE clients.id = ?
+      `;
+    const queryParams: string[] = [id];
 
-    if (role === "2") {
+    if (user_role === "2") {
       // Añadimos WHERE para filtrar por usuario o subcomerciales
-      query += ` WHERE`;
+      query += ` AND (`;
 
-      const subcomercialesRes = await getSubcomerciales(tursoClient, id);
+      const subcomercialesRes = await getSubcomerciales(tursoClient, user_id);
 
       if (
         subcomercialesRes.success &&
@@ -44,35 +50,45 @@ export async function POST(req: NextRequest) {
         subcomercialesRes.ids.length > 0
       ) {
         // Si hay subcomerciales, buscamos trámites del usuario o de cualquiera de sus subcomerciales
-        query += ` tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map(() => "?").join(",")})`;
-        params.push(id, ...subcomercialesRes.ids);
+        query += ` tramites.user_id = ? OR tramites.user_id IN (${subcomercialesRes.ids.map(() => "?").join(",")}))`;
+        queryParams.push(user_id, ...subcomercialesRes.ids);
       } else {
         // Si no hay subcomerciales o falló la consulta, solo buscamos los trámites del usuario
-        query += ` tramites.user_id = ?`;
-        params.push(id);
+        query += ` tramites.user_id = ?)`;
+        queryParams.push(user_id);
       }
     }
 
     // Agrupamos por cliente para obtener los conteos correctos
     query += ` GROUP BY clients.id`;
 
-    const res = await tursoClient.execute({ sql: query, args: params });
+    const res = await tursoClient.execute({ sql: query, args: queryParams });
 
     if (res.rows.length === 0) {
       return NextResponse.json(
-        { success: true, message: "No clients found" },
-        { status: 200 }
+        {
+          success: false,
+          error:
+            "Cliente no encontrado o no tienes permisos para ver este cliente.",
+        },
+        { status: 403 }
       );
     }
 
     return NextResponse.json(
-      { success: true, data: res.rows },
+      {
+        success: true,
+        data: {
+          ...res.rows[0],
+          coordinates: JSON.parse(res.rows[0].coordinates as string),
+        },
+      },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error fetching clients:", error);
+    console.error("Error fetching client:", error);
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
+      { success: false, error: "Error interno del servidor" },
       { status: 500 }
     );
   }
