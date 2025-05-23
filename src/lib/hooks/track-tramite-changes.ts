@@ -36,8 +36,11 @@ export function trackChanges(
   // Track client changes
   const clientChanges = Object.entries(updated.client).reduce(
     (acc, [key, value]) => {
-      if (value !== original.client[key as keyof ClientDB]) {
-        acc[key as keyof ClientDB] = value;
+      if (key === "coordinates") return acc; // ignore coordinates
+      if (
+        value !== original.client[key as keyof Omit<ClientDB, "coordinates">]
+      ) {
+        acc[key as keyof Omit<ClientDB, "coordinates">] = value as string;
       }
       return acc;
     },
