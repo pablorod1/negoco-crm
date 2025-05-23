@@ -25,7 +25,7 @@ export const addClient = async (
     }
 
     // Construimos la dirección completa para geocodificar
-    const direccionCompleta = `${client.address}, ${client.postal_code}, ${client.city}, ${client.province}`;
+    const direccionCompleta = `${client.address}, ${client.postal_code}, ${client.province}, "España"`;
 
     // Obtenemos las coordenadas desde OpenCage
     const openCageKey = process.env.GEOCODE_API_KEY;
@@ -35,7 +35,6 @@ export const addClient = async (
       )}&key=${openCageKey}`
     );
     const geoData = await geoRes.json();
-
     let coordinates: [number, number] | null = null;
 
     if (geoData.results.length > 0) {
