@@ -227,7 +227,7 @@ export default function EditComparativaPage() {
   const isProcessed = comparativa.status === "processed";
 
   return (
-    <div className="mx-12 py-6">
+    <div className="px-12 py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary-800">

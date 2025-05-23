@@ -189,7 +189,7 @@ export default function DocumentacionSidebar() {
 
   return (
     <div
-      className={`animate-size transition-all duration-300 h-full bg-background border-r flex flex-col max-w-96 ${
+      className={`animate-size transition-all duration-300 h-full min-h-[90vh] bg-background border-r flex flex-col max-w-96 ${
         isOpen ? "w-full" : "w-64"
       }`}
     >

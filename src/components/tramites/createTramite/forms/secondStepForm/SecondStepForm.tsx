@@ -40,6 +40,7 @@ interface Props {
   userData: User;
   setTramite: React.Dispatch<React.SetStateAction<TramiteDB>>;
   comparativa?: ComparativaVM;
+  savedClient?: ClientDB;
 }
 
 export default function SecondStepForm({
@@ -53,11 +54,14 @@ export default function SecondStepForm({
   userData,
   setTramite,
   comparativa,
+  savedClient,
 }: Props) {
   // State for client management
   const [clients, setClients] = useState<ClientDB[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<string | null>(
+    savedClient ? savedClient.id : null
+  );
   const [newClientState, setNewClientState] = useState<boolean>(false);
 
   // Form state

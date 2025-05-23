@@ -46,7 +46,7 @@ export default function LiquidezDataAuthorization() {
   }, [router, userData]);
 
   return (
-    <section className="pb-12">
+    <section className="pb-12 px-4">
       <DataTable title="Liquidez" columns={LiquidezColumns} />
     </section>
   );
