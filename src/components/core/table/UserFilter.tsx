@@ -71,7 +71,7 @@ export default function UserFilter({
         iconSize: 24,
       });
     }
-  }, [isComercial, userData.role, userData.id]);
+  }, [isComercial, userData]);
 
   // Fetch comerciales when the component mounts or when isComercial changes
   useEffect(() => {
