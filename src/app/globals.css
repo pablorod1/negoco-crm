@@ -176,6 +176,7 @@
   --primary-color-800: #8f4d11;
   --primary-color-900: #763f11;
   --primary-color-950: #442004;
+  --primary-color: #f0b210;
 }
 
 @theme inline {
@@ -185,7 +186,6 @@
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
