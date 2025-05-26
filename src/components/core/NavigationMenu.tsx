@@ -25,6 +25,7 @@ import {
   BookUser,
   Megaphone,
   Sun,
+  Rocket,
 } from "lucide-react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
@@ -37,6 +38,7 @@ type MenuItemType = {
   description: string;
   requiresAdmin?: boolean;
   comingSoon?: boolean;
+  plans: string[]; // Array of plans that can access this item
 };
 
 type MenuSectionType = {
@@ -51,8 +53,10 @@ export default function NavigationMenuComponent({
 }: {
   activeOrganization: string;
 }) {
-  const { userData } = useUser();
+  const { userData, getPlan } = useUser();
   const isDireccion = userData?.role === "admin" || userData?.role === "1";
+  const isElite = getPlan() === "elite";
+  const userPlan = getPlan();
 
   // Operations menu configuration
   const operationsMenu: MenuSectionType = {
@@ -60,17 +64,28 @@ export default function NavigationMenuComponent({
     icon: <BarChart3 className="w-4 h-4 mr-2" />,
     banner: (
       <div className="relative rounded-xl bg-gradient-to-b from-white to-primary-50 p-4 flex flex-col justify-between gap-8 shadow-sm">
-        <Image
-          src={
-            activeOrganization === "beenergy"
-              ? "/beenergy.png"
-              : "/logo_inline.png"
-          }
-          alt="Logo"
-          width={200}
-          height={200}
-          className="w-48 h-auto"
-        />
+        <div className="flex flex-col items-start">
+          <Image
+            src={
+              activeOrganization === "beenergy"
+                ? "/beenergy.png"
+                : "/logo_inline.png"
+            }
+            alt="Logo"
+            width={200}
+            height={200}
+            className="w-48 h-auto"
+          />
+          {!isElite && (
+            <a
+              href="mailto:soporte@negococloud.es?subject=Interesado en actualizar mi plan"
+              className="inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-xs font-medium text-primary"
+            >
+              <Rocket className="w-4 h-4 mr-1" />
+              <span>Mejora tu suscripción</span>
+            </a>
+          )}
+        </div>
         <div>
           <h4 className="text-sm font-semibold text-primary mb-2">
             Gestiona tus operaciones
@@ -89,12 +104,14 @@ export default function NavigationMenuComponent({
           title: "Comparativas",
           icon: <ArrowRightLeft className="w-5 h-5 text-primary" />,
           description: "Solicita tu comparativa energética.",
+          plans: ["pro", "elite"],
         },
         {
           href: "/tramites",
           title: "Trámites",
           icon: <ClipboardList className="w-5 h-5 text-primary" />,
           description: "Gestión de trámites y seguimiento.",
+          plans: ["starter", "pro", "elite"],
         },
         {
           href: "/liquidez",
@@ -102,6 +119,7 @@ export default function NavigationMenuComponent({
           icon: <Wallet className="w-5 h-5 text-primary" />,
           description: "Registro y control de liquidaciones.",
           requiresAdmin: true,
+          plans: ["starter", "pro", "elite"],
         },
       ],
       [
@@ -111,6 +129,7 @@ export default function NavigationMenuComponent({
           icon: <Sun className="w-5 h-5 text-primary" />,
           description: "Solicita tu estudio fotovoltaico.",
           comingSoon: true,
+          plans: ["starter", "pro", "elite"],
         },
       ],
     ],
@@ -121,18 +140,29 @@ export default function NavigationMenuComponent({
     title: "Gestión",
     icon: <FileText className="w-4 h-4 mr-2" />,
     banner: (
-      <div className="relative rounded-xl bg-gradient-to-b from-white to-primary-50 p-4 flex flex-col justify-between shadow-sm">
-        <Image
-          src={
-            activeOrganization === "beenergy"
-              ? "/beenergy.png"
-              : "/logo_inline.png"
-          }
-          alt="Logo"
-          width={200}
-          height={200}
-          className="w-48 h-auto"
-        />
+      <div className="relative rounded-xl bg-gradient-to-b from-white to-primary-50 p-4 flex flex-col justify-between gap-8 shadow-sm">
+        <div className="flex flex-col items-start">
+          <Image
+            src={
+              activeOrganization === "beenergy"
+                ? "/beenergy.png"
+                : "/logo_inline.png"
+            }
+            alt="Logo"
+            width={200}
+            height={200}
+            className="w-48 h-auto"
+          />
+          {!isElite && (
+            <a
+              href="mailto:soporte@negococloud.es?subject=Interesado en actualizar mi plan"
+              className="inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-xs font-medium text-primary"
+            >
+              <Rocket className="w-4 h-4 mr-1" />
+              <span>Mejora tu suscripción</span>
+            </a>
+          )}
+        </div>
         <div>
           <h4 className="text-sm font-semibold text-primary mb-2">
             Gestión organizativa
@@ -151,6 +181,7 @@ export default function NavigationMenuComponent({
           title: "Clientes",
           icon: <BookUser className="w-5 h-5 text-primary" />,
           description: "Gestión y seguimiento de clientes.",
+          plans: ["starter", "pro", "elite"],
         },
         {
           href: "/comercializadoras",
@@ -158,12 +189,14 @@ export default function NavigationMenuComponent({
           icon: <Factory className="w-5 h-5 text-primary" />,
           description: "Gestión de proveedores energéticos.",
           comingSoon: true,
+          plans: ["starter", "pro", "elite"],
         },
         {
           href: "/documentacion",
           title: "Documentación",
           icon: <FolderOpen className="w-5 h-5 text-primary" />,
           description: "Archivos y documentos asociados.",
+          plans: ["starter", "pro", "elite"],
         },
       ],
       [
@@ -172,6 +205,7 @@ export default function NavigationMenuComponent({
           title: "Colaboradores",
           icon: <Users className="w-5 h-5 text-primary" />,
           description: "Control de usuarios y colaboradores.",
+          plans: ["starter", "pro", "elite"],
         },
         {
           href: "/difusiones",
@@ -180,6 +214,7 @@ export default function NavigationMenuComponent({
           description: "Comunicaciones y campañas informativas.",
           requiresAdmin: true,
           comingSoon: true,
+          plans: ["pro", "elite"],
         },
       ],
     ],
@@ -205,10 +240,18 @@ export default function NavigationMenuComponent({
         </NavigationMenuItem>
 
         {/* Operations menu section */}
-        <MenuSection section={operationsMenu} isDireccion={isDireccion} />
+        <MenuSection
+          section={operationsMenu}
+          isDireccion={isDireccion}
+          userPlan={userPlan as string}
+        />
 
         {/* Management menu section */}
-        <MenuSection section={managementMenu} isDireccion={isDireccion} />
+        <MenuSection
+          section={managementMenu}
+          isDireccion={isDireccion}
+          userPlan={userPlan as string}
+        />
       </NavigationMenuList>
     </NavigationMenu>
   );
@@ -218,9 +261,11 @@ export default function NavigationMenuComponent({
 function MenuSection({
   section,
   isDireccion,
+  userPlan,
 }: {
   section: MenuSectionType;
   isDireccion: boolean;
+  userPlan: string;
 }) {
   return (
     <NavigationMenuItem>
@@ -250,6 +295,8 @@ function MenuSection({
                       title={item.title}
                       icon={item.icon}
                       comingSoon={item.comingSoon}
+                      plans={item.plans}
+                      userPlan={userPlan}
                     >
                       <span className="text-xs">{item.description}</span>
                     </ListItem>
@@ -268,40 +315,55 @@ const ListItem = React.forwardRef<
   React.ComponentPropsWithoutRef<"a"> & {
     icon?: React.ReactNode;
     comingSoon?: boolean;
+    plans?: string[];
+    userPlan?: string;
   }
->(({ className, title, children, icon, comingSoon, ...props }, ref) => {
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <Link
-          ref={ref}
-          href={props.href as string}
-          className={cn(
-            "flex items-start gap-3 select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            comingSoon && "opacity-70 cursor-not-allowed pointer-events-none",
-            className
-          )}
-          {...(!comingSoon
-            ? props
-            : { onClick: (e) => e.preventDefault(), ...props })}
-        >
-          {icon && <div className="flex-shrink-0 mt-0.5">{icon}</div>}
-          <div className="space-y-1">
-            <div className="text-sm font-medium leading-none flex items-center gap-2">
-              {title}
-              {comingSoon && (
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  Próximamente
-                </span>
-              )}
+>(
+  (
+    { className, title, children, icon, comingSoon, plans, userPlan, ...props },
+    ref
+  ) => {
+    const isPlanAvailable = !plans || !userPlan || plans.includes(userPlan);
+    const isDisabled = comingSoon || !isPlanAvailable;
+
+    return (
+      <li>
+        <NavigationMenuLink asChild>
+          <Link
+            ref={ref}
+            href={props.href as string}
+            className={cn(
+              "flex items-start gap-3 select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+              isDisabled && "opacity-70 cursor-not-allowed pointer-events-none",
+              className
+            )}
+            {...(!isDisabled
+              ? props
+              : { onClick: (e) => e.preventDefault(), ...props })}
+          >
+            {icon && <div className="flex-shrink-0 mt-0.5">{icon}</div>}
+            <div className="space-y-1">
+              <div className="text-sm font-medium leading-none flex items-center gap-2">
+                {title}
+                {comingSoon && (
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    Próximamente
+                  </span>
+                )}
+                {!isPlanAvailable && !comingSoon && (
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                    Plan superior
+                  </span>
+                )}
+              </div>
+              <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                {children}
+              </p>
             </div>
-            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-              {children}
-            </p>
-          </div>
-        </Link>
-      </NavigationMenuLink>
-    </li>
-  );
-});
+          </Link>
+        </NavigationMenuLink>
+      </li>
+    );
+  }
+);
 ListItem.displayName = "ListItem";

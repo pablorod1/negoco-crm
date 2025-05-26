@@ -52,7 +52,7 @@ const CustomToast: React.FC<CustomToastProps> = ({
   const hasImage = imageUrl;
 
   return (
-    <div className=" w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5">
+    <div className=" w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black/5 ">
       <div className="flex-1 w-0 p-4">
         <div className="flex items-start">
           {/* Renderizamos o bien el icono o bien la imagen, pero no ambos */}

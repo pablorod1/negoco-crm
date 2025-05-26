@@ -18,7 +18,7 @@ const Notification = ({ id, renovationDate, sales_name }: RenewableTramite) => {
   return (
     <figure
       className={cn(
-        "relative mx-auto min-h-fit h-full max-w-[800px] w-full overflow-hidden rounded-2xl p-4",
+        "relative mx-auto min-h-fit h-full w-full overflow-hidden rounded-2xl p-4",
         // animation styles
         "transition-all duration-200 ease-in-out hover:scale-[101%]",
         // light styles

@@ -35,6 +35,7 @@ export async function POST(
         o.id as org_id,
         o.name as org_name,
         o.logo as org_logo,
+        o.plan as org_plan,
         COUNT(n.id) as notifications
       FROM user u
       INNER JOIN member m ON u.id = m.user_id
@@ -77,6 +78,7 @@ export async function POST(
           id: row.org_id ? String(row.org_id) : "",
           name: row.org_name ? String(row.org_name) : "",
           logo: row.org_logo ? String(row.org_logo) : null,
+          plan: row.org_plan ? String(row.org_plan) : null,
         },
       },
     });

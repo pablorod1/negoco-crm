@@ -14,6 +14,7 @@ interface UserContextType {
   userData: User | null; // Cambiamos el tipo para manejar explícitamente el caso nulo
   loading: boolean;
   refreshUserData: () => Promise<void>;
+  getPlan: () => string | null; // New function to get organization plan
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -42,7 +43,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!success) {
         throw new Error(error || "Error fetching user data");
       }
-
       setUserData(data || null);
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -51,6 +51,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   }, [userID]);
+
+  const getPlan = useCallback(() => {
+    if (!userData || !userData.organization) {
+      return null;
+    }
+    return userData.organization.plan || null;
+  }, [userData]);
 
   useEffect(() => {
     refreshUserData();
@@ -61,7 +68,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <UserContext.Provider value={{ userData, loading, refreshUserData }}>
+    <UserContext.Provider
+      value={{ userData, loading, refreshUserData, getPlan }}
+    >
       {children}
     </UserContext.Provider>
   );

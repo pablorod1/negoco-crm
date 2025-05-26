@@ -275,7 +275,7 @@ export function PersonalTramitesChart({
       </div>
 
       <CardHeader
-        className={`flex justify-between flex-row transition-opacity duration-300 relative z-10 ${
+        className={`flex justify-between flex-row items-start transition-opacity duration-300 relative z-10 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >

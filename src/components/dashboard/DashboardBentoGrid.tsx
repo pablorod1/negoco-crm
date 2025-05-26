@@ -38,7 +38,7 @@ const initialDashboardData: DashboardData = {
 };
 
 export default function DashboardBentoGrid() {
-  const { userData } = useUser();
+  const { userData, getPlan } = useUser();
   const [dashboardData, setDashboardData] =
     React.useState<DashboardData>(initialDashboardData);
   const [loading, setLoading] = React.useState(true);
@@ -189,6 +189,7 @@ export default function DashboardBentoGrid() {
     totalBalance: dashboardData.totalBalance,
     comparativas: dashboardData.comparativas,
     refreshData,
+    getPlan,
   };
 
   return (

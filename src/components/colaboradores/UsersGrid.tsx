@@ -108,11 +108,11 @@ function UsersGridTable({
         info.getValue() ? (
           <div className="flex items-center gap-2">
             <Image
-              src={(info.getValue().logo as string) || "/logo_inline.png"}
-              alt={`Avatar for ${info.row.original.name}`}
-              width={32}
-              height={32}
-              className="rounded-full"
+              src={(info.getValue().logo as string) || "/logo_200x200.png"}
+              alt={`Avatar for ${info.row.original.name || "Negoco Cloud"}`}
+              width={200}
+              height={200}
+              className="rounded-full w-6 h-6 object-cover"
             />
             <span className="text-sm font-medium text-primary-700">
               {info.row.original.company
@@ -372,11 +372,11 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
             <div className="flex items-center gap-2 mt-3">
               <div className="bg-gray-50 p-1 rounded-full">
                 <Image
-                  src={user.organization.logo || "/logo_inline.png"}
-                  alt={`Logo de ${user.organization.name}`}
-                  width={24}
-                  height={24}
-                  className="rounded-full"
+                  src={user.organization.logo || "/logo_200x200.png"}
+                  alt={`Logo de ${user.organization.name || "Negoco Cloud"}`}
+                  width={200}
+                  height={200}
+                  className="rounded-full w-6 h-6"
                 />
               </div>
               <div className="flex-1">
