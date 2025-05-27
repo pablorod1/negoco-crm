@@ -232,7 +232,7 @@ export const TramiteNotesSection = ({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {internalNotes.length > 0 ? (
+              {internalNotes && internalNotes.length > 0 ? (
                 <ScrollArea className="w-full h-36">
                   <ul className="space-y-2 mx-4 py-4">
                     {internalNoteElements}

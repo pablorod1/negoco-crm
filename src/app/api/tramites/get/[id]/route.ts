@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
       tramite: {
         ...tramiteData,
         notes: JSON.parse(notesString), // Convertir de string a array
-        internal_notes: JSON.parse(internalNotes), // Convertir de string a array
+        internal_notes: JSON.parse(internalNotes) || [], // Asegurar que sea un array
         user: {
           id: tramiteData.user_id,
           name: user_name,
