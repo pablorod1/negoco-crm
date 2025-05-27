@@ -1,6 +1,6 @@
 import { Table } from "@tanstack/react-table";
 import * as XLSX from "xlsx";
-import { formatComission, formatDate } from "./format";
+import { formatDate } from "./format";
 import { ComparativaStatus } from "./types";
 
 interface Props<TData> {
@@ -35,17 +35,6 @@ export async function exportToExcel<TData>({
     // Crear un array de objetos para el workbook
     const workbookData = rows.map((row) => {
       const rowData: Record<string, unknown> = {};
-
-      // First, check if there's a plan column to reference later
-      let plan: string | string[] | undefined;
-      selectedColumnIds.forEach((columnId) => {
-        if (columnId === "Plan") {
-          const planCell = row
-            .getAllCells()
-            .find((cell) => cell.column.id === columnId);
-          plan = planCell?.getValue() as string | string[] | undefined;
-        }
-      });
 
       selectedColumnIds.forEach((columnId) => {
         const cell = row
@@ -99,42 +88,16 @@ export async function exportToExcel<TData>({
               indexado: number;
             };
 
-            if (plan) {
-              // If plan is an array, show both values
-              if (
-                Array.isArray(plan) &&
-                plan.includes("fijo") &&
-                plan.includes("indexado")
-              ) {
-                rowData[headerName] =
-                  `Fijo: ${formatComission(comisionObj.fijo) || 0}, Indexado: ${formatComission(comisionObj.indexado) || 0}`;
-              }
-              // If plan is "fijo" or includes "fijo" but not "indexado", only show fijo
-              else if (
-                plan === "fijo" ||
-                (Array.isArray(plan) && plan.includes("fijo"))
-              ) {
-                rowData[headerName] =
-                  `Fijo: ${formatComission(comisionObj.fijo) || 0}`;
-              }
-              // If plan is "indexado" or includes "indexado" but not "fijo", only show indexado
-              else if (
-                plan === "indexado" ||
-                (Array.isArray(plan) && plan.includes("indexado"))
-              ) {
-                rowData[headerName] =
-                  `Indexado: ${formatComission(comisionObj.indexado) || 0}`;
-              }
-              // Fallback if plan doesn't match expected values
-              else {
-                rowData[headerName] =
-                  `Fijo: ${formatComission(comisionObj.fijo) || 0}, Indexado: ${formatComission(comisionObj.indexado) || 0}`;
-              }
-            } else {
-              // If there's no plan information, show both values
-              rowData[headerName] =
-                `Fijo: ${formatComission(comisionObj.fijo) || 0}, Indexado: ${formatComission(comisionObj.indexado) || 0}`;
-            }
+            // Create separate columns for fijo and indexado
+            const fijoHeaderName = headerName.includes("Comercial")
+              ? "Comisión Comercial Fijo"
+              : "Comisión Fijo";
+            const indexadoHeaderName = headerName.includes("Comercial")
+              ? "Comisión Comercial Indexado"
+              : "Comisión Indexado";
+
+            rowData[fijoHeaderName] = comisionObj.fijo || 0;
+            rowData[indexadoHeaderName] = comisionObj.indexado || 0;
           } else if (Array.isArray(value)) {
             rowData[headerName] = value.join(", ");
           } else {
