@@ -7,9 +7,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { notes, note } = await req.json();
+    const { internal_notes, notes, note, is_internal } = await req.json();
 
-    if (!id || !notes || !note) {
+    if (!id || !note || typeof is_internal !== "boolean") {
       return NextResponse.json(
         {
           success: false,
@@ -19,9 +19,9 @@ export async function PATCH(
       );
     }
 
-    // Añadir la nueva nota al array existente
-    const updatedNotes = [...notes, note];
-    // Convertir a JSON para almacenar en la base de datos
+    // Determinar qué array actualizar basado en is_internal
+    const currentNotes = is_internal ? internal_notes : notes;
+    const updatedNotes = [...currentNotes, note];
     const notesJSON = JSON.stringify(updatedNotes);
 
     const tursoClient = getTursoClient(req);
@@ -36,9 +36,10 @@ export async function PATCH(
       );
     }
 
+    const columnToUpdate = is_internal ? "internal_notes" : "notes";
     const query = `
       UPDATE tramites
-      SET notes = ?
+      SET ${columnToUpdate} = ?
       WHERE id = ?
     `;
 

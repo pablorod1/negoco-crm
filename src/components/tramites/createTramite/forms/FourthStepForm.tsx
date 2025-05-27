@@ -4,6 +4,7 @@ import {
   ComparativaFile,
   TramiteDB,
   TramiteFile,
+  User,
 } from "@/lib/core/types";
 
 import ButtonGroupComponent from "@/components/core/ButtonGroupComponent";
@@ -30,6 +31,7 @@ interface Props {
     React.SetStateAction<TramiteFile[] | null>
   >;
   comparativaFiles?: ComparativaFile[];
+  userData: User;
 }
 
 export default function FourthStepForm({
@@ -45,6 +47,7 @@ export default function FourthStepForm({
   client,
   selectedExistingFiles,
   setSelectedExistingFiles,
+  userData,
 }: Props) {
   const [loadingExistingFiles, setLoadingExistingFiles] =
     useState<boolean>(false);
@@ -52,10 +55,19 @@ export default function FourthStepForm({
     null
   );
 
+  const isComercial = userData.role === "2";
+
   const handleNewNote = (note: string) => {
     setTramite((prev) => ({
       ...prev,
       notes: [...prev.notes, note],
+    }));
+  };
+
+  const handleNewInternalNote = (note: string) => {
+    setTramite((prev) => ({
+      ...prev,
+      internal_notes: [...prev.internal_notes, note],
     }));
   };
 
@@ -113,9 +125,9 @@ export default function FourthStepForm({
 
   return (
     <FormWrapper>
-      <form className="relative">
+      <form className="relative ">
         <div
-          className={`flex flex-col xl:flex-row gap-4 w-full ${loading && "blur-sm"} p-2`}
+          className={`flex flex-col xl:grid ${isComercial ? "xl:grid-cols-2" : "xl:grid-cols-3"} gap-4 w-full ${loading && "blur-sm"} p-2`}
         >
           <div className="flex-1 bg-white rounded-xl shadow-md border border-gray-100 p-6 ">
             {/* Sección de archivos */}
@@ -247,13 +259,11 @@ export default function FourthStepForm({
           </div>
 
           {/* Sección de notas */}
-          <div className=" flex flex-col bg-gradient-to-b from-primary-50 to-white rounded-xl shadow-md border border-gray-100 p-6 min-h-[350px]">
+          <div className=" flex flex-col bg-gradient-to-b from-primary-50 to-white rounded-xl shadow-md border border-gray-100 p-6 min-h-[350px] w-full">
             <ScrollArea className="w-full h-full max-h-[calc(100vh-350px)] px-2">
-              <h3 className="text-xl font-bold text-primary-600 mb-2">
-                Notas internas
-              </h3>
-              <p className="text-gray-500 mb-4">
-                Añade comentarios o instrucciones internas para este trámite.
+              <h3 className="text-xl font-bold text-primary-600 mb-2">Notas</h3>
+              <p className="text-gray-500 mb-4 text-xs">
+                Añade comentarios para este trámite.
               </p>
               <div className="flex-1">
                 <NotesBoard
@@ -263,6 +273,25 @@ export default function FourthStepForm({
               </div>
             </ScrollArea>
           </div>
+          {!isComercial && (
+            <div className=" flex flex-col bg-gradient-to-b from-primary-50 to-white rounded-xl shadow-md border border-gray-100 p-6 min-h-[350px] w-full">
+              <ScrollArea className="w-full h-full max-h-[calc(100vh-350px)] px-2">
+                <h3 className="text-xl font-bold text-primary-600 mb-2">
+                  Notas Internas
+                </h3>
+                <p className="text-gray-500 mb-4 text-xs">
+                  Añade comentarios internos para este trámite. Estas notas no
+                  son visibles para el comercial y son solo para uso interno.
+                </p>
+                <div className="flex-1">
+                  <NotesBoard
+                    notes={tramite.internal_notes as string[]}
+                    onCreateNote={handleNewInternalNote}
+                  />
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </div>
       </form>
       <ButtonGroupComponent

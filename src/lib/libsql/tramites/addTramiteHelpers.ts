@@ -168,8 +168,8 @@ export const addTramite = async (
   try {
     // Preparamos la consulta SQL
     const query = `
-      INSERT INTO tramites (id, creation_date, tramitation_date, activation_date, renovation_date, sales_name, comision, comision_sales_person, status, liquidez_status, notes, client_id, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tramites (id, creation_date, tramitation_date, activation_date, renovation_date, sales_name, comision, comision_sales_person, status, liquidez_status, notes, internal_notes, client_id, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // Ejecutamos la consulta
@@ -187,6 +187,7 @@ export const addTramite = async (
         tramite.status,
         tramite.liquidez_status || null,
         JSON.stringify(tramite.notes),
+        JSON.stringify(tramite.internal_notes),
         tramite.client_id,
         tramite.user_id,
       ],

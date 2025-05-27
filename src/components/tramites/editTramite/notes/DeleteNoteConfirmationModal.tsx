@@ -15,7 +15,8 @@ import { memo, useState } from "react";
 
 interface DeleteNoteConfirmationModalProps {
   note: string;
-  notes: string[];
+  notes?: string[];
+  internal_notes?: string[];
   tramite_id: string;
   onDeleted: () => void;
 }
@@ -26,6 +27,7 @@ const DeleteTramiteNoteConfirmationModal = memo(
     notes,
     tramite_id,
     onDeleted,
+    internal_notes,
   }: DeleteNoteConfirmationModalProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const onOpen = () => setIsOpen(true);
@@ -37,7 +39,7 @@ const DeleteTramiteNoteConfirmationModal = memo(
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ note, notes }),
+          body: JSON.stringify({ note, notes, internal_notes }),
         });
 
         const { success, error } = await rs.json();

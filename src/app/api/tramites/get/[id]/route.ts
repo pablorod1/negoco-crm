@@ -12,8 +12,10 @@ import { Client } from "@libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 // Tipo para los resultados de la consulta de trámite con usuario
-interface TramiteQueryResult extends Omit<TramiteDB, "notes"> {
+interface TramiteQueryResult
+  extends Omit<TramiteDB, "notes" | "internal_notes"> {
   notes: string; // En la BD está como string, se convierte a string[] después
+  internal_notes: string; // En la BD está como string, se convierte a string[] después
   user_id: string;
   user_name: string;
   user_email: string;
@@ -163,6 +165,7 @@ export async function POST(req: NextRequest) {
       updated_by_role,
       updated_by_image,
       notes: notesString,
+      internal_notes: internalNotes,
       ...tramiteData
     } = tramiteRow;
 
@@ -171,6 +174,7 @@ export async function POST(req: NextRequest) {
       tramite: {
         ...tramiteData,
         notes: JSON.parse(notesString), // Convertir de string a array
+        internal_notes: JSON.parse(internalNotes), // Convertir de string a array
         user: {
           id: tramiteData.user_id,
           name: user_name,

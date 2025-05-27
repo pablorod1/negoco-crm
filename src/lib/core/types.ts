@@ -12,6 +12,7 @@ export type TramiteDB = {
   status: Status;
   liquidez_status: LiquidezStatus;
   notes: string[];
+  internal_notes: string[];
   client_id: string;
   user_id: string;
   rejected_date?: string | null;
@@ -37,6 +38,7 @@ export const createEmptyTramiteVM = (): TramiteVM => ({
   status: "Borrador",
   liquidez_status: null,
   notes: [],
+  internal_notes: [],
   client_id: "",
   user_id: "",
   user: {},
@@ -96,6 +98,7 @@ export const createEmptyTramiteDB = (
   status: "Borrador",
   liquidez_status: null,
   notes: comparativa ? comparativa.notes : [],
+  internal_notes: [],
   client_id: "",
   user_id: comparativa
     ? (comparativa.user.id as string)

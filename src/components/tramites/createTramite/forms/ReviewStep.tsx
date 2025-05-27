@@ -415,6 +415,33 @@ export default function ReviewStep({
               )}
             </CardContent>
           </Card>
+          {!isComercial && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg text-primary-800">
+                  Notas Internas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {tramite.internal_notes.length > 0 ? (
+                  <div className="space-y-2">
+                    {tramite.internal_notes.map((note, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 border rounded-lg"
+                      >
+                        <span className="text-sm">{note}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-400 text-sm italic">
+                    No hay notas asociadas.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </ScrollArea>
       <ButtonGroupComponent

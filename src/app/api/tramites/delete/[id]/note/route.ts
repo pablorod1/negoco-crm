@@ -7,9 +7,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { note, notes } = await req.json();
+    const { note, notes, internal_notes } = await req.json();
 
-    if (!id || !note || !notes) {
+    if (!id || !note) {
       return NextResponse.json(
         {
           success: false,
@@ -19,7 +19,9 @@ export async function PATCH(
       );
     }
 
-    const updatedNotes = notes.filter((n: string) => n !== note);
+    const updatedNotes = internal_notes
+      ? internal_notes.filter((n: string) => n !== note)
+      : notes.filter((n: string) => n !== note);
     const notesJSON = JSON.stringify(updatedNotes);
 
     const tursoClient = getTursoClient(req);
@@ -36,7 +38,7 @@ export async function PATCH(
 
     const query = `
       UPDATE tramites
-      SET notes = ?
+      SET ${internal_notes ? "internal_notes" : "notes"} = ?
       WHERE id = ?
     `;
 

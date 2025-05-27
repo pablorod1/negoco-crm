@@ -16,7 +16,7 @@ const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onCreateNote }) => {
   ];
 
   return (
-    <EditFormWrapper title="Notas">
+    <EditFormWrapper>
       <div className="bg-gray-50 p-6 rounded-md shadow-inner min-h-[300px] relative overflow-hidden">
         {/* Líneas de la pizarra */}
         <div className="absolute inset-0 grid grid-cols-[repeat(10,1fr)] opacity-10">

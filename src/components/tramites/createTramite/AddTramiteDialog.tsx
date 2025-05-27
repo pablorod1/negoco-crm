@@ -435,6 +435,7 @@ export default function AddTramiteDialog({
         client={client}
         selectedExistingFiles={selectedExistingFiles}
         setSelectedExistingFiles={setSelectedExistingFiles}
+        userData={userData as User}
       />,
       <ReviewStep
         key={5}
@@ -499,6 +500,7 @@ export default function AddTramiteDialog({
         client={client}
         selectedExistingFiles={selectedExistingFiles}
         setSelectedExistingFiles={setSelectedExistingFiles}
+        userData={userData as User}
       />,
       <ReviewStep
         key={5}

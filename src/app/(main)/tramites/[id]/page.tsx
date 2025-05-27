@@ -84,7 +84,7 @@ export default function TramiteDetails() {
       }
 
       const { success, data } = await rs.json();
-
+      console.log("Datos del trámite:", data);
       if (success && data) {
         setFormData({
           ...data,
@@ -247,9 +247,9 @@ export default function TramiteDetails() {
         onDeletedNote={fetchTramite}
         onAddNote={fetchTramite}
         tramite_id={tramite.id}
-        user_id={userData?.id as string}
-        user_name={userData?.name as string}
+        userData={userData as User}
         client={client}
+        internalNotes={tramite.internal_notes}
       />
 
       {/* Files Section */}
