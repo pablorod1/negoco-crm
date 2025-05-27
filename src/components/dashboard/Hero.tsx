@@ -22,6 +22,7 @@ import AddComparativaDialog from "../comparativas/createComparativa/AddComparati
 import { Button } from "@/components/ui/button";
 import TooltipComponent from "../core/TooltipComponent";
 import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 interface HeroDashboardProps {
   userData: User;
@@ -30,6 +31,7 @@ interface HeroDashboardProps {
   totalBalance: number;
   comparativas: DashboardCardValue;
   refreshData: () => void;
+  getPlan: () => string | null; // Optional function to get organization plan
 }
 
 const MotionCard = motion.create(Card);
@@ -42,7 +44,9 @@ export default function HeroDashboard({
   totalBalance,
   comparativas,
   refreshData,
+  getPlan,
 }: HeroDashboardProps) {
+  const isPlanStarter = getPlan() === "starter";
   return (
     <MotionCard
       className="border-none shadow-sm bg-gradient-to-r from-primary-500 to-primary-400 overflow-hidden"
@@ -116,11 +120,18 @@ export default function HeroDashboard({
             </Button>
             <AddTramiteDialog variant="primaryOutline" />
 
-            <AddComparativaDialog variant="primaryOutline" />
+            {!isPlanStarter && (
+              <AddComparativaDialog variant="primaryOutline" />
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4 mt-6">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4 mt-6",
+            isPlanStarter ? "lg:grid-cols-3" : "lg:grid-cols-2 2xl:grid-cols-4"
+          )}
+        >
           <StatCard
             title="Clientes"
             value={clients.value}
@@ -153,22 +164,24 @@ export default function HeroDashboard({
             trendValue={activeTramites.difference}
             delay={0.9}
           />
-          <StatCard
-            title="Comparativas Completadas"
-            total={comparativas.total}
-            value={comparativas.value}
-            prev_value={comparativas.prev_value}
-            trend={
-              comparativas.difference > 0
-                ? "up"
-                : comparativas.difference === 0
-                  ? "normal"
-                  : "down"
-            }
-            trendValue={comparativas.difference}
-            description="Total de comparativas completadas 2025"
-            delay={1.0}
-          />
+          {!isPlanStarter && (
+            <StatCard
+              title="Comparativas Completadas"
+              total={comparativas.total}
+              value={comparativas.value}
+              prev_value={comparativas.prev_value}
+              trend={
+                comparativas.difference > 0
+                  ? "up"
+                  : comparativas.difference === 0
+                    ? "normal"
+                    : "down"
+              }
+              trendValue={comparativas.difference}
+              description="Total de comparativas completadas 2025"
+              delay={1.0}
+            />
+          )}
           <StatCard
             title="Balance Total"
             total={totalBalance}

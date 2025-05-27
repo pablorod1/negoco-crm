@@ -12,7 +12,7 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow hover:bg-primary/90",
         destructive:
-          "bg-transparent text-danger shadow shadow-danger/20 hover:bg-danger-500/90 hover:text-white",
+          "bg-transparent text-danger shadow shadow-danger/20 hover:bg-danger hover:text-white",
         destructiveOutline:
           "border border-danger bg-background text-danger shadow-sm ",
         outline:
@@ -27,6 +27,8 @@ const buttonVariants = cva(
         success: "bg-success text-white shadow hover:bg-success/90",
         successGhost: "bg-transparent text-success",
         primaryGhost: "bg-transparent text-primary-500",
+        dangerGhost:
+          "bg-transparent text-danger hover:bg-destructive hover:text-white",
       },
       size: {
         default: "h-9 px-4 py-2",

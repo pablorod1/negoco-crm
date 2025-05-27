@@ -126,7 +126,7 @@ export default function RenewableTramitesCalendar({
         <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg"></div>
       </div>
       <CardHeader
-        className={`flex flex-row justify-between w-full transition-opacity duration-300 ${
+        className={`flex flex-row items-start justify-between w-full transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >

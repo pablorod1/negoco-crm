@@ -302,6 +302,7 @@ export interface Organization {
   id: string;
   name: string;
   logo: string | null;
+  plan: string;
 }
 
 export interface Notification {

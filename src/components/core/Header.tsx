@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import Image from "next/image";
 import NavigationMenuComponent from "./NavigationMenu";
@@ -5,12 +6,15 @@ import NotificationsMenu from "./NotificationsMenu";
 import { NavUser } from "./sidebar/NavUser";
 import { cn } from "@/lib/core/utils";
 import { Separator } from "@/components/ui/separator";
+import { useUser } from "@/lib/contexts/UserContext";
 
 export default function Header({
   activeOrganization,
 }: {
   activeOrganization: string;
 }) {
+  const { getPlan, userData } = useUser();
+  const isComercial = userData?.role === "2";
   return (
     <header className="sticky top-0 z-50 bg-white backdrop-blur-lg border-b border-border/40 shadow-sm">
       <div className="container mx-auto flex items-center justify-between px-4 ">
@@ -34,12 +38,14 @@ export default function Header({
 
         <div className="flex items-center">
           {/* Status indicator - only on desktop */}
-          <div className="hidden xl:flex items-center mr-6">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-50 text-xs font-medium text-primary">
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              Conectado
+          {!isComercial && (
+            <div className="hidden xl:flex items-center mr-6">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-50 text-xs font-medium text-primary capitalize">
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                {getPlan()}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Notifications with separator */}
           <div className="flex items-center">

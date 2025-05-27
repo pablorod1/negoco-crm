@@ -8,8 +8,9 @@ import {
   DialogTrigger,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { CheckCircle, CircleX, Plus } from "lucide-react";
+import { CheckCircle, CircleX, Plus, Rocket } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { CreateComparativaStepper } from "./CreateComparativaStepper";
@@ -33,15 +34,18 @@ export default function AddComparativaDialog({
 }: {
   variant?: string;
 }) {
-  const { userData } = useUser();
+  const { userData, getPlan } = useUser();
   const { refreshComparativas } = useComparativas();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const userPlan = getPlan();
+  const isStarterPlan = userPlan === "starter";
+
   const [comparativa, setComparativa] = useState<ComparativaDB>(
     createEmptyComparativaDB(userData as User)
   );
   const [documents, setDocuments] = useState<File[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
 
   const onClose = () => {
     setIsOpen(false);
@@ -181,7 +185,7 @@ export default function AddComparativaDialog({
 
   return (
     <>
-      <Dialog open={isOpen}>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button
             variant={
@@ -195,19 +199,62 @@ export default function AddComparativaDialog({
             <span>Nueva Comparativa</span>
           </Button>
         </DialogTrigger>
-        <DialogContent className="transition-all duration-700 ease-in-out w-full h-auto max-w-[900px] [&>button]:hidden">
-          <DialogHeader className="mb-6">
-            <div className="hidden">
-              <DialogTitle className="text-lg text-primary-800 font-semibold">
-                Creando una nueva comparativa
-              </DialogTitle>
-              <DialogDescription className="text-sm text-gray-500 mb-4">
-                Completa los pasos para crear una nueva comparativa
-              </DialogDescription>
-            </div>
-            <CreateComparativaStepper steps={3} currentStep={activeTab} />
-          </DialogHeader>
-          {formElements[activeTab]}
+        <DialogContent
+          className={
+            isStarterPlan
+              ? "sm:max-w-[425px]"
+              : "transition-all duration-700 ease-in-out w-full h-auto max-w-[900px] [&>button]:hidden"
+          }
+        >
+          {isStarterPlan ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-primary">
+                  <Rocket size={20} />
+                  Mejora tu plan
+                </DialogTitle>
+                <DialogDescription>
+                  La creación de comparativas está disponible en nuestros planes
+                  Pro y Elite.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <p className="text-sm text-gray-500">
+                  Actualiza tu suscripción para acceder a todas las
+                  funcionalidades premium como la creación de comparativas.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => {
+                    window.location.href =
+                      "mailto:soporte@negococloud.es?subject=Interesado en actualizar mi plan";
+                    setIsOpen(false);
+                  }}
+                >
+                  Contactar a soporte
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader className="mb-6">
+                <div className="hidden">
+                  <DialogTitle className="text-lg text-primary-800 font-semibold">
+                    Creando una nueva comparativa
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-gray-500 mb-4">
+                    Completa los pasos para crear una nueva comparativa
+                  </DialogDescription>
+                </div>
+                <CreateComparativaStepper steps={3} currentStep={activeTab} />
+              </DialogHeader>
+              {formElements[activeTab]}
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>

@@ -78,10 +78,8 @@ export default function BanUserConfirmationModal({ user_id, userName }: Props) {
           <TooltipComponent color="bg-danger" content="Deshabilitar usuario">
             <Button
               variant="destructive"
-              color="danger"
               size="icon"
               onClick={() => setIsOpen(true)}
-              className="opacity-70 hover:opacity-100 hover:bg-red-50 transition-all"
             >
               <Ban size={16} />
             </Button>

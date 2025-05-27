@@ -44,11 +44,12 @@ export default function CreateUserForm({
   onUserCreated: () => void;
   onClose: () => void;
 }) {
-  const { userData } = useUser();
+  const { userData, getPlan } = useUser();
   const [formData, setFormData] = useState<FormData>(initialFormState);
   const [isLoading, setIsLoading] = useState(false);
   const [comerciales, setComerciales] = useState<Comercial[]>([]);
   const [selectedSubcomercial, setSelectedSubcomercial] = useState<string>("");
+  const isStarterPlan = getPlan() === "starter";
 
   const fetchComerciales = useCallback(async () => {
     if (!userData) return;
@@ -394,7 +395,7 @@ export default function CreateUserForm({
         items={ROLES}
       />
 
-      {formData.role === "2" && (
+      {!isStarterPlan && formData.role === "2" && (
         <SelectComponent
           name="super_id"
           label="Jefe de Equipo"
