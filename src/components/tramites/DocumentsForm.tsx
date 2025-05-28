@@ -63,7 +63,7 @@ export default function DocumentsForm({
             height={48}
             className="mb-2 text-primary-400 group-hover:text-primary-500 transition-colors"
           />
-          <p className="mb-1 text-base text-primary-600 font-semibold">
+          <p className="mb-1 text-base text-primary-600 font-semibold text-center">
             {isDragActive
               ? "¡Suelta los archivos aquí!"
               : "Arrastra y suelta archivos o haz clic para seleccionar"}
