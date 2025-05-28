@@ -41,10 +41,7 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
           // Crear FormData para enviar el archivo
           const formData = new FormData();
           formData.append("file", file);
-          formData.append(
-            "organization_id",
-            JSON.stringify(userData.organization.id)
-          );
+          formData.append("organization_id", userData.organization.id);
 
           const res = await fetch(`/api/users/update/${userData.id}/avatar`, {
             method: "PATCH",
