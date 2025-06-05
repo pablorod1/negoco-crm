@@ -195,6 +195,7 @@ export default function UploadFotovoltaicaFilesDialog({
               user_to: {
                 email: fotovoltaica.user.email,
                 name: fotovoltaica.user.name,
+                org_logo: userData.organization.logo,
               },
               fotovoltaica_id: fotovoltaica.id,
               client: fotovoltaica.client,

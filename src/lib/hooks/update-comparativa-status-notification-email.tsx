@@ -141,7 +141,11 @@ const ComparativaStatusUpdateEmail = ({
                 alt="Logo"
                 className="mx-auto"
                 height={50}
-                src={org_logo ? org_logo : "https://negococloud.es/favicon.png"}
+                src={
+                  org_logo
+                    ? org_logo
+                    : "https://negococloud.es/favicon-96x96.png"
+                }
               />
             </Section>
 

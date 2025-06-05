@@ -123,6 +123,7 @@ export default function UpdateFotovoltaicaStatusDialog({
               user_to: {
                 email: fotovoltaica.user.email,
                 name: fotovoltaica.user.name,
+                org_logo: userData.organization.logo,
               },
               fotovoltaica_id: fotovoltaica.id,
               client: fotovoltaica.client,
