@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { VariantProps } from "class-variance-authority";
-import { CheckCircle, CircleX, Plus } from "lucide-react";
+import { CheckCircle, CircleX, Plus, Sun } from "lucide-react";
 import { useState } from "react";
 import { CreateFotovoltaicaStepper } from "./CreateFotovoltaicaStepper";
 import {
@@ -30,8 +30,10 @@ import { useFotovoltaicas } from "@/lib/contexts/FotovoltaicasContext";
 
 export default function AddFotovoltaicaDialog({
   variant,
+  shortcut = false,
 }: {
   variant?: string;
+  shortcut?: boolean;
 }) {
   const { userData } = useUser();
   const { refreshFotovoltaicas } = useFotovoltaicas();
@@ -193,17 +195,36 @@ export default function AddFotovoltaicaDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant={
-            variant
-              ? (variant as VariantProps<typeof buttonVariants>["variant"])
-              : "default"
-          }
-          onClick={() => setIsOpen(true)}
-        >
-          <Plus size={20} />
-          <span>Solicita Estudio Placas Solares</span>
-        </Button>
+        {!shortcut ? (
+          <Button
+            variant={
+              variant
+                ? (variant as VariantProps<typeof buttonVariants>["variant"])
+                : "default"
+            }
+            onClick={() => setIsOpen(true)}
+          >
+            <Plus size={20} />
+            <span>Solicita Estudio Placas Solares</span>
+          </Button>
+        ) : (
+          <button
+            onClick={onOpen}
+            className="group cursor-pointer w-full flex items-start gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-orange-50 hover:shadow-sm border border-transparent hover:border-orange-200"
+          >
+            <div className="p-2 rounded-md bg-orange-50 group-hover:bg-orange-100 text-orange-600 transition-colors duration-200">
+              <Sun className="w-4 h-4" />
+            </div>
+            <div className="flex-1 text-left">
+              <h5 className="font-medium text-sm text-gray-900">
+                Solicitar Estudio Placas Solares
+              </h5>
+              <p className="text-xs text-gray-600">
+                Solicita tu estudio de placas solares
+              </p>
+            </div>
+          </button>
+        )}
       </DialogTrigger>
       <DialogContent
         className={cn(

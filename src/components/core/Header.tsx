@@ -7,6 +7,7 @@ import { NavUser } from "./sidebar/NavUser";
 import { cn } from "@/lib/core/utils";
 import { Separator } from "@/components/ui/separator";
 import { useUser } from "@/lib/contexts/UserContext";
+import ShortcutsMenu from "./ShortcutsMenu";
 
 export default function Header({
   activeOrganization,
@@ -36,16 +37,17 @@ export default function Header({
           <NavigationMenuComponent activeOrganization={activeOrganization} />
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center gap-4">
           {/* Status indicator - only on desktop */}
           {!isComercial && (
-            <div className="hidden xl:flex items-center mr-6">
+            <div className="hidden xl:flex items-center">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-50 text-xs font-medium text-primary capitalize">
                 <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 {getPlan()}
               </div>
             </div>
           )}
+          <ShortcutsMenu />
 
           {/* Notifications with separator */}
           <div className="flex items-center">

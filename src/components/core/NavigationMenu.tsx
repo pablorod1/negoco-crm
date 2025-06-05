@@ -25,10 +25,10 @@ import {
   BookUser,
   Megaphone,
   Sun,
-  Rocket,
 } from "lucide-react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
+import UpgradePlanDialog from "./UpgradePlanDialog";
 
 // Type definitions for menu items
 type MenuItemType = {
@@ -76,15 +76,7 @@ export default function NavigationMenuComponent({
             height={200}
             className="w-48 h-auto"
           />
-          {!isElite && (
-            <a
-              href="mailto:soporte@negococloud.es?subject=Interesado en actualizar mi plan"
-              className="inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-xs font-medium text-primary"
-            >
-              <Rocket className="w-4 h-4 mr-1" />
-              <span>Mejora tu suscripción</span>
-            </a>
-          )}
+          {!isElite && isDireccion && <UpgradePlanDialog />}
         </div>
         <div>
           <h4 className="text-sm font-semibold text-primary mb-2">
@@ -128,7 +120,7 @@ export default function NavigationMenuComponent({
           title: "Fotovoltaica",
           icon: <Sun className="w-5 h-5 text-primary" />,
           description: "Solicita tu estudio fotovoltaico.",
-          plans: ["starter", "pro", "elite"],
+          plans: ["pro", "elite"],
         },
       ],
     ],
@@ -152,15 +144,7 @@ export default function NavigationMenuComponent({
             height={200}
             className="w-48 h-auto"
           />
-          {!isElite && (
-            <a
-              href="mailto:soporte@negococloud.es?subject=Interesado en actualizar mi plan"
-              className="inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-xs font-medium text-primary"
-            >
-              <Rocket className="w-4 h-4 mr-1" />
-              <span>Mejora tu suscripción</span>
-            </a>
-          )}
+          {!isElite && isDireccion && <UpgradePlanDialog />}
         </div>
         <div>
           <h4 className="text-sm font-semibold text-primary mb-2">

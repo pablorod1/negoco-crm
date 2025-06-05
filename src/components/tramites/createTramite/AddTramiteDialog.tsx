@@ -21,7 +21,7 @@ import ThirdStepForm from "../createTramite/forms/ThirdStepForm";
 import { CreateTramiteStepper } from "../CreateTramiteStepper";
 import FourthStepForm from "../createTramite/forms/FourthStepForm";
 
-import { CheckCircle, CircleX, PlusCircle } from "lucide-react";
+import { CheckCircle, CircleX, FileText, PlusCircle } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { showCustomToast } from "../../core/CustomToast";
@@ -45,6 +45,7 @@ interface AddTramiteDialogProps {
   comparativa?: ComparativaVM;
   onComparativaUpdated?: () => void;
   savedClient?: ClientDB;
+  shortcut?: boolean;
 }
 
 export default function AddTramiteDialog({
@@ -52,6 +53,7 @@ export default function AddTramiteDialog({
   comparativa,
   onComparativaUpdated,
   savedClient,
+  shortcut = false,
 }: AddTramiteDialogProps) {
   // State management
   const [plan, setPlan] = useState<"fijo" | "indexado" | undefined>(
@@ -564,16 +566,33 @@ export default function AddTramiteDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          onClick={handleOpen}
-          variant={
-            variant
-              ? (variant as VariantProps<typeof buttonVariants>["variant"])
-              : "default"
-          }
-        >
-          {getButtonText()}
-        </Button>
+        {!shortcut ? (
+          <Button
+            onClick={handleOpen}
+            variant={
+              variant
+                ? (variant as VariantProps<typeof buttonVariants>["variant"])
+                : "default"
+            }
+          >
+            {getButtonText()}
+          </Button>
+        ) : (
+          <button
+            onClick={handleOpen}
+            className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:shadow-sm border border-transparent hover:border-blue-200"
+          >
+            <div className="p-2 rounded-md bg-blue-50 group-hover:bg-blue-100 text-blue-600 transition-colors duration-200">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className="flex-1 text-left">
+              <h5 className="font-medium text-sm text-gray-900">
+                Nuevo Trámite
+              </h5>
+              <p className="text-xs text-gray-600">Crear nuevo contrato</p>
+            </div>
+          </button>
+        )}
       </DialogTrigger>
 
       <DialogContent

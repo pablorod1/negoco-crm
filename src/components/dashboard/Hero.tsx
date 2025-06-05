@@ -17,13 +17,10 @@ import { User } from "@/lib/core/types";
 import AvatarComponent from "../core/AvatarComponent";
 import { DashboardCardValue } from "./DashboardBentoGrid";
 import { formatComission } from "@/lib/core/format";
-import AddTramiteDialog from "../tramites/createTramite/AddTramiteDialog";
-import AddComparativaDialog from "../comparativas/createComparativa/AddComparativaDialog";
-import { Button } from "@/components/ui/button";
 import TooltipComponent from "../core/TooltipComponent";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
-import AddFotovoltaicaDialog from "../fotovoltaica/createFotovoltaica/AddFotovoltaicaDialog";
+import AddTramiteDialog from "../tramites/createTramite/AddTramiteDialog";
 
 interface HeroDashboardProps {
   userData: User;
@@ -70,17 +67,16 @@ export default function HeroDashboard({
                 userData={userData}
               />
             </MotionAvatar>
-
-            <div className="space-y-1">
+            <div className="space-y-2">
               <motion.h1
-                className="text-2xl font-bold text-white flex items-center gap-2"
+                className="text-4xl font-bold text-white flex items-center gap-2"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
               >
                 Bienvenido, {userData.name}
                 <motion.span
-                  className="text-xl"
+                  className="text-2xl"
                   initial={{ rotate: -45, opacity: 0 }}
                   animate={{ rotate: 0, opacity: 1 }}
                   transition={{ delay: 0.7, duration: 0.5, type: "spring" }}
@@ -88,10 +84,9 @@ export default function HeroDashboard({
                   👋
                 </motion.span>
               </motion.h1>
-
               {userData.notifications && userData.notifications > 0 ? (
                 <motion.div
-                  className="flex items-center text-white/90 text-sm bg-white/10 px-3 py-1.5 rounded-full"
+                  className="flex justify-center items-center text-white/90 text-sm bg-white/10 px-4 py-1.5 rounded-full w-fit"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.5, duration: 0.4 }}
@@ -103,7 +98,7 @@ export default function HeroDashboard({
                 </motion.div>
               ) : (
                 <motion.div
-                  className="flex items-center text-white/90 text-sm bg-white/10 px-3 py-1.5 rounded-full"
+                  className="flex justify-center items-center text-white/90 text-sm bg-white/10 px-4 py-1.5 rounded-full w-fit"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.5, duration: 0.4 }}
@@ -114,17 +109,18 @@ export default function HeroDashboard({
               )}
             </div>
           </div>
-
-          <div className="flex items-center gap-3 mt-4 md:mt-0">
-            <Button size="icon" onClick={refreshData} variant="ghost">
-              <RefreshCcw size={16} className="text-white" />
-            </Button>
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <motion.button
+              className="cursor-pointer flex items-center gap-2 text-sm text-white/90 bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors"
+              onClick={refreshData}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6, duration: 0.4 }}
+            >
+              <RefreshCcw className="w-4 h-4" />
+              <span>Actualizar Datos</span>
+            </motion.button>
             <AddTramiteDialog variant="primaryOutline" />
-
-            {!isPlanStarter && (
-              <AddComparativaDialog variant="primaryOutline" />
-            )}
-            <AddFotovoltaicaDialog variant="primaryOutline" />
           </div>
         </div>
 

@@ -56,8 +56,8 @@ export default function RejectTramiteModal({
             status: "Baja",
             liquidez_status: liquidezStatus,
             user_id: userData.id,
-            comision: Math.abs(-tramite.comision),
-            comision_sales_person: Math.abs(-tramite.comision_sales_person),
+            comision: -Math.abs(tramite.comision),
+            comision_sales_person: -Math.abs(tramite.comision_sales_person),
           }),
         }
       );

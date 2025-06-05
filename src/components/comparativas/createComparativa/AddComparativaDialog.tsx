@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { CheckCircle, CircleX, Plus, Rocket } from "lucide-react";
+import { BarChart3, CheckCircle, CircleX, Plus, Rocket } from "lucide-react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { CreateComparativaStepper } from "./CreateComparativaStepper";
@@ -31,8 +31,10 @@ import { buttonVariants } from "@/components/ui/button";
 
 export default function AddComparativaDialog({
   variant,
+  shortcut = false,
 }: {
   variant?: string;
+  shortcut?: boolean;
 }) {
   const { userData, getPlan } = useUser();
   const { refreshComparativas } = useComparativas();
@@ -187,17 +189,36 @@ export default function AddComparativaDialog({
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Button
-            variant={
-              variant
-                ? (variant as VariantProps<typeof buttonVariants>["variant"])
-                : "default"
-            }
-            onClick={() => setIsOpen(true)}
-          >
-            <Plus size={20} />
-            <span>Nueva Comparativa</span>
-          </Button>
+          {!shortcut ? (
+            <Button
+              variant={
+                variant
+                  ? (variant as VariantProps<typeof buttonVariants>["variant"])
+                  : "default"
+              }
+              onClick={() => setIsOpen(true)}
+            >
+              <Plus size={20} />
+              <span>Nueva Comparativa</span>
+            </Button>
+          ) : (
+            <button
+              onClick={() => setIsOpen(true)}
+              className="group cursor-pointer w-full flex items-start gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-green-50 hover:shadow-sm border border-transparent hover:border-green-200"
+            >
+              <div className="p-2 rounded-md bg-green-50 group-hover:bg-green-100 text-green-600 transition-colors duration-200">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div className="flex-1 text-left">
+                <h5 className="font-medium text-sm text-gray-900">
+                  Nueva Comparativa
+                </h5>
+                <p className="text-xs text-gray-600">
+                  Solicita tu estudio energético
+                </p>
+              </div>
+            </button>
+          )}
         </DialogTrigger>
         <DialogContent
           className={

@@ -50,5 +50,9 @@ export const config = {
     "/",
     "/api/:path*",
     "/login",
+    "/fotovoltaica",
+    "/fotovoltaica/:path*",
+    "/clientes",
+    "/clientes/:path*",
   ],
 };
