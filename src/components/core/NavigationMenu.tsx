@@ -128,7 +128,6 @@ export default function NavigationMenuComponent({
           title: "Fotovoltaica",
           icon: <Sun className="w-5 h-5 text-primary" />,
           description: "Solicita tu estudio fotovoltaico.",
-          comingSoon: true,
           plans: ["starter", "pro", "elite"],
         },
       ],

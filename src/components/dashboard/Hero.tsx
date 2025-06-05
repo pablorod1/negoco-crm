@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import TooltipComponent from "../core/TooltipComponent";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
+import AddFotovoltaicaDialog from "../fotovoltaica/createFotovoltaica/AddFotovoltaicaDialog";
 
 interface HeroDashboardProps {
   userData: User;
@@ -123,6 +124,7 @@ export default function HeroDashboard({
             {!isPlanStarter && (
               <AddComparativaDialog variant="primaryOutline" />
             )}
+            <AddFotovoltaicaDialog variant="primaryOutline" />
           </div>
         </div>
 

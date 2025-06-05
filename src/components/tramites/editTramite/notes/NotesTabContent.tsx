@@ -54,7 +54,6 @@ export const TramiteNotesSection = ({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: tramite_id,
           notes,
           internal_notes: internalNotes,
           note: note,
@@ -164,6 +163,7 @@ export const TramiteNotesSection = ({
   }, [notes, onDeletedNote, tramite_id]);
 
   const internalNoteElements = useMemo(() => {
+    if (!internalNotes) return;
     return internalNotes.map((note, index) => (
       <li
         key={index}
@@ -226,13 +226,18 @@ export const TramiteNotesSection = ({
               Notas Internas
             </CardTitle>
             <CardDescription className="text-primary-400">
-              {internalNotes.length} nota
-              {internalNotes.length !== 1 ? "s" : ""} sobre este trámite
+              {internalNotes ? internalNotes.length : 0} nota
+              {internalNotes
+                ? internalNotes.length !== 1
+                  ? "s"
+                  : ""
+                : "s"}{" "}
+              sobre este trámite
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {internalNotes.length > 0 ? (
+              {internalNotes && internalNotes.length > 0 ? (
                 <ScrollArea className="w-full h-36">
                   <ul className="space-y-2 mx-4 py-4">
                     {internalNoteElements}

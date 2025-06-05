@@ -1,6 +1,11 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
-import { ComparativaStatus, LiquidezStatus, Status } from "../core/types";
+import {
+  ComparativaStatus,
+  FotovoltaicaStatus,
+  LiquidezStatus,
+  Status,
+} from "../core/types";
 
 const COMPARATIVA_STATUS_BADGES = {
   pending: <Badge variant="warning">Pendiente de Estudio</Badge>,
@@ -47,8 +52,17 @@ const STATUS_BADGES = {
   default: <Badge>Sin Asignar</Badge>,
 };
 
+const FOTOVOLTAICA_STATUS_BADGES = {
+  pending: <Badge variant="warning">Pendiente</Badge>,
+  validated: <Badge variant="secondary">Validado</Badge>,
+  processing: <Badge variant="pending">Procesando</Badge>,
+  completed: <Badge variant="success">Completado</Badge>,
+  rejected: <Badge variant="danger">Rechazado</Badge>,
+  default: <Badge>Sin Asignar</Badge>,
+};
+
 export const getStatusBadge = (
-  status: ComparativaStatus | LiquidezStatus | Status,
+  status: ComparativaStatus | LiquidezStatus | Status | FotovoltaicaStatus,
   isTable: boolean = false
 ) => {
   // Verificar si el status pertenece a ComparativaStatus
@@ -85,6 +99,17 @@ export const getStatusBadge = (
         LIQUIDEZ_STATUS_BADGES.default
       );
     }
+  }
+
+  if (
+    ["pending", "validated", "processing", "completed", "rejected"].includes(
+      status as FotovoltaicaStatus
+    )
+  ) {
+    return (
+      FOTOVOLTAICA_STATUS_BADGES[status as FotovoltaicaStatus] ||
+      FOTOVOLTAICA_STATUS_BADGES.default
+    );
   }
 
   // Por defecto, asumir que es un Status general

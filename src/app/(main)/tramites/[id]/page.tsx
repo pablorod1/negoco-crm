@@ -84,7 +84,6 @@ export default function TramiteDetails() {
       }
 
       const { success, data } = await rs.json();
-      console.log("Datos del trámite:", data);
       if (success && data) {
         setFormData({
           ...data,

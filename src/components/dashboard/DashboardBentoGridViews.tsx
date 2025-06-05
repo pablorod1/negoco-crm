@@ -142,6 +142,7 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
       <div
         className={cn(
           "row-span-2 2xl:col-span-3",
+          hasSubComerciales ? "2xl:col-span-2" : "",
           isStarterPlan ? "lg:col-span-2" : ""
         )}
       >
@@ -182,7 +183,7 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
       ) : (
         <>
           {!isStarterPlan && (
-            <div className="row-span-2 lg:row-start-3 2xl:row-start-1 2xl:col-start-3 2xl:col-span-2">
+            <div className="row-span-2 lg:row-start-3 2xl:row-start-1 2xl:col-start-4 2xl:col-span-1">
               <ComparativasRatio userData={userData} loading={loading} />
             </div>
           )}
@@ -236,7 +237,7 @@ export const BackofficeView = ({ userData, loading, getPlan }: Props) => {
         />
       </div>
 
-      <div className="col-span-1 lg:col-span-2 row-span-2 2xl:col-span-2">
+      <div className="col-span-1 lg:col-span-2 row-span-2 2xl:col-span-3">
         <PersonalTramitesChart userData={userData} loading={loading} />
       </div>
     </div>

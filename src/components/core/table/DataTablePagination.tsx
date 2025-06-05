@@ -62,7 +62,7 @@ export function DataTablePagination({
   };
 
   return (
-    <div className="flex items-center justify-between bg-white px-6 ">
+    <div className="flex items-center justify-between  px-6 ">
       <div className="flex-1 text-sm text-gray-600">
         <p className="font-medium">
           {total} {total === 1 ? "item" : "items"} encontrados

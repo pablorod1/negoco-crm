@@ -431,7 +431,67 @@ export const createEmptyObjective = (userData: User): Objective => ({
   user_id: userData ? userData.id : "",
 });
 
+export interface FotovoltaicaDB {
+  id: string;
+  type: FotovoltaicaType;
+  client: string;
+  client_type: FotovoltaicaClientType;
+  location: string;
+  coordinates: [number, number] | null;
+  creation_date: string;
+  activation_date: string | null;
+  status: FotovoltaicaStatus;
+  notes: string[];
+  internal_notes: string[];
+  comision: number;
+  comision_sales_person: number;
+  user_id: string;
+}
+
+export interface FotovoltaicaVM extends FotovoltaicaDB {
+  files: FotovoltaicaFile[];
+  user: Partial<User>;
+  updated_by: Partial<User> | null;
+  updated_at: string | null;
+}
+
+export type FotovoltaicaFile = {
+  id: string;
+  fotovoltaica_id: string;
+  filename: string;
+  size: number;
+  extension: string;
+  upload_date: string;
+  download_url: string;
+  preview_url: string | null;
+};
+
+export const createEmptyFotovoltaicaDB = (userData: User): FotovoltaicaDB => ({
+  id: `FOT-${Math.floor(Math.random() * 10000)}`,
+  type: "PPA",
+  client: "",
+  client_type: "company",
+  location: "",
+  coordinates: null,
+  creation_date: new Date().toISOString(),
+  activation_date: null,
+  status: "pending",
+  notes: [],
+  internal_notes: [],
+  comision: 0,
+  comision_sales_person: 0,
+  user_id: userData ? userData.id : "",
+});
+
 export type ObjectiveType = "comisiones" | "tramites" | "ratio";
+export type FotovoltaicaType = "PPA" | "renting" | "cubierta" | "";
+export type FotovoltaicaClientType = "company" | "public_org" | "community";
+
+export type FotovoltaicaStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "rejected";
 
 export type Status =
   | "Borrador"

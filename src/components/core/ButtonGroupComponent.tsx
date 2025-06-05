@@ -31,7 +31,7 @@ export default function ButtonGroupComponent({
             Atrás
           </Button>
         )}
-        <Button onClick={onSubmit} disabled={loading}>
+        <Button onClick={onSubmit} disabled={loading} type="button">
           {loading ? "Guardando..." : lastStep ? "Guardar" : "Siguiente"}
         </Button>
       </div>

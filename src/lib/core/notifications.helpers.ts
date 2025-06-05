@@ -190,3 +190,62 @@ export const generateComparativaUpdatedNotification = ({
     user_id: user_id,
   };
 };
+
+interface FotovoltaicaNotification {
+  fotovoltaica_id: string;
+  client: string;
+  user_id: string;
+  notes?: boolean;
+  status?: string;
+  files?: boolean;
+}
+
+export const generateFotovoltaicaNotificationMessage = (
+  notes: boolean | undefined,
+  status: string | undefined,
+  files: boolean | undefined
+): string => {
+  const messages: string[] = [];
+
+  if (notes) {
+    messages.push("Se han añadido notas a la solicitud fotovoltaica");
+  }
+
+  if (status) {
+    messages.push(
+      `Se ha actualizado el estado de la solicitud fotovoltaica a ${status}`
+    );
+  }
+
+  if (files) {
+    messages.push("Se han subido nuevos archivos a la solicitud fotovoltaica");
+  }
+
+  if (messages.length > 1) {
+    return "Se han actualizado varios campos de la solicitud fotovoltaica";
+  }
+
+  return messages.length > 0
+    ? messages.join(", ")
+    : "Se han realizado cambios en la solictud fotovoltaica";
+};
+export const generateFotovoltaicaUpdatedNotification = ({
+  fotovoltaica_id,
+  client,
+  user_id,
+  notes,
+  status,
+  files,
+}: FotovoltaicaNotification): Notification => {
+  return {
+    id: fotovoltaica_id,
+    title: `Solicitud fotovoltaica ${fotovoltaica_id} actualizada`,
+    message: generateFotovoltaicaNotificationMessage(notes, status, files),
+    client,
+    created_at: new Date().toISOString(),
+    context: "Fotovoltaicas",
+    link: fotovoltaica_id,
+    priority: 3,
+    user_id: user_id,
+  };
+};

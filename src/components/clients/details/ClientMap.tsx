@@ -1,77 +1,53 @@
-"use client";
-import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { MapPinX } from "lucide-react";
 
 interface ClientMapProps {
-  className?: string;
-  coordinates?: [number, number];
+  coordinates: [number, number];
   zoom?: number;
-  markerIconUrl?: string;
+  width?: string;
+  height?: string;
 }
 
 const ClientMap = ({
-  className,
   coordinates,
   zoom = 16,
-  markerIconUrl = "/icons/map-pin.gif",
+  width = "100%",
+  height = "100%",
 }: ClientMapProps) => {
-  const mapRef = useRef<L.Map | null>(null);
-
-  useEffect(() => {
-    if (!coordinates) return;
-    if (typeof window === "undefined") return;
-    // Initialize map only if it doesn't exist
-    if (!mapRef.current) {
-      mapRef.current = L.map("map", {
-        zoomControl: false,
-      }).setView(coordinates, zoom);
-
-      // Add tile layer
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }
-      ).addTo(mapRef.current);
-    } else {
-      // If map exists, just update the view
-      mapRef.current.setView(coordinates, zoom);
-    }
-
-    // Create marker icon
-    const markerIcon = L.icon({
-      iconUrl: markerIconUrl,
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
-
-    // Add marker
-    const marker = L.marker(coordinates, {
-      icon: markerIcon,
-    }).addTo(mapRef.current);
-
-    // Cleanup function
-    return () => {
-      if (mapRef.current) {
-        marker.remove();
-      }
-    };
-  }, [coordinates, zoom, markerIconUrl]);
-
-  // Complete cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
-
-  return <div id="map" className={className}></div>;
+  if (
+    !coordinates ||
+    coordinates.length !== 2 ||
+    coordinates[0] < -90 ||
+    coordinates[0] > 90 ||
+    coordinates[1] < -180 ||
+    coordinates[1] > 180
+  ) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-br-lg p-8"
+        style={{ width, height, minHeight: "200px" }}
+      >
+        <div className="text-gray-400 mb-4">
+          <MapPinX className="h-16 w-16" />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          Ubicación no disponible
+        </h3>
+        <p className="text-sm text-gray-500 text-center max-w-sm">
+          No se han proporcionado coordenadas válidas para mostrar el mapa de
+          este cliente.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <iframe
+      src={`https://maps.google.com/maps?q=${coordinates.join(",")}&z=${zoom}&output=embed`}
+      width={width}
+      height={height}
+      allowFullScreen
+      loading="lazy"
+    ></iframe>
+  );
 };
 
 export default ClientMap;

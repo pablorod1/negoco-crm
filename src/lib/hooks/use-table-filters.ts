@@ -55,6 +55,10 @@ export function useTableFilters(id?: string) {
     initialValues.userFilter
   );
 
+  const [typeFilter, setTypeFilter] = useState<string[] | undefined>(
+    initialValues.typeFilter
+  );
+
   // Try to load filters from localStorage on initial load
   const loadFiltersFromStorage = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -84,6 +88,8 @@ export function useTableFilters(id?: string) {
         if (parsedFilters.paymentDateRange)
           setPaymentDateRange(parsedFilters.paymentDateRange);
         if (parsedFilters.userFilter) setUserFilter(parsedFilters.userFilter);
+
+        if (parsedFilters.typeFilter) setTypeFilter(parsedFilters.typeFilter);
       }
     } catch (error) {
       console.error("Error loading filters from localStorage:", error);
@@ -114,6 +120,7 @@ export function useTableFilters(id?: string) {
         collectionDateRange,
         paymentDateRange,
         userFilter,
+        typeFilter,
       };
       localStorage.setItem(storageKey, JSON.stringify(filtersToSave));
     } catch (error) {
@@ -131,6 +138,7 @@ export function useTableFilters(id?: string) {
     collectionDateRange,
     paymentDateRange,
     userFilter,
+    typeFilter,
   ]);
 
   // Only reset the filters in state and clear localStorage
@@ -146,6 +154,7 @@ export function useTableFilters(id?: string) {
     setCollectionDateRange(undefined);
     setPaymentDateRange(undefined);
     setUserFilter(undefined);
+    setTypeFilter(undefined);
 
     // Clear localStorage when filters are reset
     if (typeof window !== "undefined") {
@@ -164,6 +173,8 @@ export function useTableFilters(id?: string) {
     renovationDateRange,
     collectionDateRange,
     paymentDateRange,
+    typeFilter,
+    setTypeFilter,
     setFilterValue,
     setCompanyFilter,
     setStatusFilter,

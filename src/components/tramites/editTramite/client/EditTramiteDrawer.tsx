@@ -67,13 +67,13 @@ export default function EditDrawer({
         <SheetHeader className="mb-8">
           <SheetTitle className="text-xl font-semibold text-primary-800">
             {client
-              ? "Datos del cliente" + client.id
+              ? "Datos del cliente " + client.id
               : signer
-                ? "Datos del Firmante" + signer.id
+                ? "Datos del Firmante " + signer.id
                 : newContract
                   ? "Nuevo Contrato"
                   : contract
-                    ? "Datos del contrato" + contract.id
+                    ? "Datos del contrato " + contract.id
                     : null}
           </SheetTitle>
         </SheetHeader>

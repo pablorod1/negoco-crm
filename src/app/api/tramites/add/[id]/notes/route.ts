@@ -21,7 +21,10 @@ export async function PATCH(
 
     // Determinar qué array actualizar basado en is_internal
     const currentNotes = is_internal ? internal_notes : notes;
-    const updatedNotes = [...currentNotes, note];
+
+    // Ensure currentNotes is an array, fallback to empty array if null/undefined
+    const notesArray = Array.isArray(currentNotes) ? currentNotes : [];
+    const updatedNotes = [...notesArray, note];
     const notesJSON = JSON.stringify(updatedNotes);
 
     const tursoClient = getTursoClient(req);
