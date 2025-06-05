@@ -5,7 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import TooltipComponent from "@/components/core/TooltipComponent";
 import EditFotovoltaicaDialog from "../EditFotovoltaicaDialog";
-import { FOTOVOLTAICA_TYPES } from "@/lib/core/const";
+import {
+  FOTOVOLTAICA_CLIENT_TYPES,
+  FOTOVOLTAICA_TYPES,
+} from "@/lib/core/const";
 
 export default function FotovoltaicaClientTab({
   fotovoltaica,
@@ -24,6 +27,11 @@ export default function FotovoltaicaClientTab({
   const getTypeLabel =
     FOTOVOLTAICA_TYPES.find(
       (fotovoltaicaType) => fotovoltaicaType.value === fotovoltaica.type
+    )?.label || "No especificado";
+
+  const getClientTypeLabel =
+    FOTOVOLTAICA_CLIENT_TYPES.find(
+      (clientType) => clientType.value === fotovoltaica.client_type
     )?.label || "No especificado";
 
   return (
@@ -59,7 +67,7 @@ export default function FotovoltaicaClientTab({
               Tipo de Cliente
             </Label>
             <Badge variant="secondary" className="mt-1">
-              {fotovoltaica.client_type}
+              {getClientTypeLabel}
             </Badge>
           </div>
           <div className="flex flex-col items-start gap-2">

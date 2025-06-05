@@ -30,7 +30,7 @@ export default function FotovoltaicaInternalNotes({
           },
           body: JSON.stringify({
             note,
-            notes: fotovoltaica.internal_notes,
+            internal_notes: fotovoltaica.internal_notes,
             is_internal: true, // Aseguramos que es una nota pública
           }),
         }
