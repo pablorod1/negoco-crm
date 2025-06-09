@@ -4,6 +4,7 @@ import Header from "@/components/core/Header";
 import { Toaster } from "react-hot-toast";
 import { Providers } from "../providers";
 import React, { useEffect, useState } from "react";
+import Chatbot from "@/components/core/chatbot/Chatbot";
 
 export default function MainLayout({
   children,
@@ -24,6 +25,7 @@ export default function MainLayout({
         <Toaster position="bottom-right" />
         <Header activeOrganization={activeOrganization} />
         {children}
+        <Chatbot />
       </Providers>
     </main>
   );
