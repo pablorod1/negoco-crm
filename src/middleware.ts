@@ -19,7 +19,8 @@ export async function middleware(request: NextRequest) {
   ];
 
   const isProtectedPath = protectedPathsRegex.some((regex) => regex.test(path));
-  const isApiProtected = path.startsWith("/api") && !path.includes("auth");
+  const isApiProtected =
+    path.startsWith("/api") && !path.startsWith("/api/auth");
 
   // Redirigir a login si no hay sesión en rutas protegidas
   if (isProtectedPath && !sessionCookie) {
