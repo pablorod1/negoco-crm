@@ -121,7 +121,10 @@ export const createSubcomercialComparativasColumns = (
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as ComparativaStatus);
+      return getStatusBadge(
+        row.original.status as ComparativaStatus,
+        "comparativa"
+      );
     },
   },
   {
@@ -350,7 +353,10 @@ export const createComercialComparativasColumns = (
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as ComparativaStatus);
+      return getStatusBadge(
+        row.original.status as ComparativaStatus,
+        "comparativa"
+      );
     },
   },
   {
@@ -504,7 +510,10 @@ export const createComparativasColumns = (
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as ComparativaStatus);
+      return getStatusBadge(
+        row.original.status as ComparativaStatus,
+        "comparativa"
+      );
     },
   },
   {

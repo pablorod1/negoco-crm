@@ -120,7 +120,7 @@ export default function RejectTramiteModal({
             </DialogDescription>
           </div>
 
-          {getStatusBadge(tramite.status)}
+          {getStatusBadge(tramite.status, "general")}
         </DialogHeader>
 
         <Separator className="my-1" />

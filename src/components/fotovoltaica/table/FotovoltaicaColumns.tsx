@@ -176,7 +176,10 @@ export const SubcomercialFotovoltaicaColumns: ColumnDef<FotovoltaicaVM>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as FotovoltaicaStatus);
+      return getStatusBadge(
+        row.original.status as FotovoltaicaStatus,
+        "fotovoltaica"
+      );
     },
   },
   {
@@ -368,7 +371,10 @@ export const ComercialFotovoltaicaColumns: ColumnDef<FotovoltaicaVM>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as FotovoltaicaStatus);
+      return getStatusBadge(
+        row.original.status as FotovoltaicaStatus,
+        "fotovoltaica"
+      );
     },
   },
   {
@@ -576,7 +582,10 @@ export const FotovoltaicaColumns: ColumnDef<FotovoltaicaVM>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as FotovoltaicaStatus);
+      return getStatusBadge(
+        row.original.status as FotovoltaicaStatus,
+        "fotovoltaica"
+      );
     },
   },
   {

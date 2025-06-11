@@ -49,6 +49,7 @@ const STATUS_BADGES = {
   Baja: <Badge variant="danger">Baja</Badge>,
   Scoring: <Badge variant="danger">Scoring</Badge>,
   Incidencia: <Badge variant="warning">Incidencia</Badge>,
+  KO: <Badge variant="danger">KO</Badge>,
   default: <Badge>Sin Asignar</Badge>,
 };
 
@@ -63,8 +64,56 @@ const FOTOVOLTAICA_STATUS_BADGES = {
 
 export const getStatusBadge = (
   status: ComparativaStatus | LiquidezStatus | Status | FotovoltaicaStatus,
+  statusType?: "comparativa" | "liquidez" | "fotovoltaica" | "general",
   isTable: boolean = false
 ) => {
+  // If statusType is explicitly provided, use it directly
+  if (statusType === "fotovoltaica") {
+    return (
+      FOTOVOLTAICA_STATUS_BADGES[status as FotovoltaicaStatus] ||
+      FOTOVOLTAICA_STATUS_BADGES.default
+    );
+  }
+
+  if (statusType === "comparativa") {
+    return (
+      COMPARATIVA_STATUS_BADGES[status as ComparativaStatus] ||
+      COMPARATIVA_STATUS_BADGES.default
+    );
+  }
+
+  if (statusType === "liquidez") {
+    if (isTable) {
+      return (
+        TABLE_LIQUIDEZ_STATUS_BADGES[
+          status as keyof typeof TABLE_LIQUIDEZ_STATUS_BADGES
+        ] || TABLE_LIQUIDEZ_STATUS_BADGES.default
+      );
+    } else {
+      return (
+        LIQUIDEZ_STATUS_BADGES[status as keyof typeof LIQUIDEZ_STATUS_BADGES] ||
+        LIQUIDEZ_STATUS_BADGES.default
+      );
+    }
+  }
+
+  if (statusType === "general") {
+    return STATUS_BADGES[status as Status] || STATUS_BADGES.default;
+  }
+
+  // Fallback to old logic for backward compatibility
+  // Verificar si el status pertenece a FotovoltaicaStatus
+  if (
+    ["pending", "validated", "processing", "completed", "rejected"].includes(
+      status as FotovoltaicaStatus
+    )
+  ) {
+    return (
+      FOTOVOLTAICA_STATUS_BADGES[status as FotovoltaicaStatus] ||
+      FOTOVOLTAICA_STATUS_BADGES.default
+    );
+  }
+
   // Verificar si el status pertenece a ComparativaStatus
   if (
     ["pending", "completed", "processed", "rejected"].includes(
@@ -99,17 +148,6 @@ export const getStatusBadge = (
         LIQUIDEZ_STATUS_BADGES.default
       );
     }
-  }
-
-  if (
-    ["pending", "validated", "processing", "completed", "rejected"].includes(
-      status as FotovoltaicaStatus
-    )
-  ) {
-    return (
-      FOTOVOLTAICA_STATUS_BADGES[status as FotovoltaicaStatus] ||
-      FOTOVOLTAICA_STATUS_BADGES.default
-    );
   }
 
   // Por defecto, asumir que es un Status general

@@ -250,7 +250,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as Status);
+      return getStatusBadge(row.original.status as Status, "general");
     },
   },
   {
@@ -264,7 +264,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
         return <div className="flex justify-end">---</div>;
       return (
         <div className="flex justify-end">
-          {getStatusBadge(row.original.liquidez_status as Status)}
+          {getStatusBadge(row.original.liquidez_status as Status, "liquidez")}
         </div>
       );
     },

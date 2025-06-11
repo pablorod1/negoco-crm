@@ -104,9 +104,9 @@ const TramiteDetails = memo(({ tramite }: { tramite: TramiteVM }) => (
         <p className="text-base font-semibold">{tramite.id}</p>
       </div>
       <div className="flex items-center gap-2">
-        {getStatusBadge(tramite.status as Status)}
+        {getStatusBadge(tramite.status as Status, "general")}
         {tramite.liquidez_status &&
-          getStatusBadge(tramite.liquidez_status as LiquidezStatus)}
+          getStatusBadge(tramite.liquidez_status as LiquidezStatus, "liquidez")}
       </div>
     </div>
 

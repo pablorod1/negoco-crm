@@ -502,7 +502,8 @@ export type Status =
   | "Activo"
   | "Baja"
   | "Scoring"
-  | "Incidencia";
+  | "Incidencia"
+  | "KO";
 
 export type LiquidezStatus =
   | "Pendiente de Cobro"

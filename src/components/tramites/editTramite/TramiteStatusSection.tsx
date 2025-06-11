@@ -41,7 +41,7 @@ export default function TramiteStatusSection({
     <>
       <div className="flex flex-col gap-2 items-end">
         <div className="flex items-center gap-2">
-          {getStatusBadge(tramite.status)}
+          {getStatusBadge(tramite.status, "general")}
           {(isEditable || isBaja) && (
             <UpdateTramiteStatusModal
               tramite={tramite}

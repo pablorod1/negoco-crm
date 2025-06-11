@@ -76,7 +76,7 @@ export default function ReviewStep({
                 <CardTitle className="text-primary-800 text-lg">
                   Información del trámite - #{tramite.id}
                 </CardTitle>
-                {getStatusBadge(tramite.status as Status)}
+                {getStatusBadge(tramite.status as Status, "general")}
               </div>
             </CardHeader>
             <CardContent className="grid grid-cols-3 gap-4">

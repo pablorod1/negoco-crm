@@ -228,7 +228,7 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as Status);
+      return getStatusBadge(row.original.status as Status, "general");
     },
   },
   {
@@ -447,7 +447,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as Status);
+      return getStatusBadge(row.original.status as Status, "general");
     },
   },
   {
@@ -460,6 +460,7 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
         return getStatusBadge("Pendiente de Cobro");
       return getStatusBadge(
         row.original.liquidez_status as LiquidezStatus,
+        "liquidez",
         true
       );
     },
@@ -775,7 +776,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as Status);
+      return getStatusBadge(row.original.status as Status, "general");
     },
   },
   {
@@ -786,6 +787,7 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
       if (!row.original.liquidez_status) return "---";
       return getStatusBadge(
         row.original.liquidez_status as LiquidezStatus,
+        "liquidez",
         true
       );
     },

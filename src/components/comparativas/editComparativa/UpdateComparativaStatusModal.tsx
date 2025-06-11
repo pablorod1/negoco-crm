@@ -280,7 +280,7 @@ export default function UpdateComparativaStatusModal({
                 Comparativa {comparativa.id} · {comparativa.client}
               </DialogTitle>
 
-              {getStatusBadge(comparativa.status)}
+              {getStatusBadge(comparativa.status, "comparativa")}
             </div>
           </DialogHeader>
           {loading && (

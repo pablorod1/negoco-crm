@@ -62,7 +62,7 @@ export default function LiquidezStatusSection({
         tramite.liquidez_status === "Cobrado por Comercializadora" ? (
           <>{getStatusBadge("Pendiente de Cobro")}</>
         ) : (
-          <>{getStatusBadge(tramite.liquidez_status)}</>
+          <>{getStatusBadge(tramite.liquidez_status, "liquidez")}</>
         )}
       </div>
     </>

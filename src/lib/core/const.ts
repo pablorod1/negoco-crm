@@ -42,6 +42,7 @@ export const STATUS_TYPES = [
   { label: "Baja", value: "Baja" },
   { label: "Scoring", value: "Scoring" },
   { label: "Incidencia", value: "Incidencia" },
+  { label: "KO", value: "KO" },
 ];
 
 export const PLAIN_STATUS_TYPES = [
@@ -54,6 +55,7 @@ export const PLAIN_STATUS_TYPES = [
   "Baja",
   "Scoring",
   "Incidencia",
+  "KO",
 ];
 
 export const COMPARATIVA_STATUS_TYPES = [

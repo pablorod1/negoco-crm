@@ -449,7 +449,7 @@ export default function UpdateTramiteStatusModal({
             </DialogDescription>
           </div>
 
-          {getStatusBadge(tramite.status)}
+          {getStatusBadge(tramite.status, "general")}
         </DialogHeader>
 
         <Separator className="my-1" />

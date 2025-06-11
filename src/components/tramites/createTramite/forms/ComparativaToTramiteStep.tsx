@@ -82,7 +82,10 @@ export default function ComparativaToTramiteStep({
                   <CardTitle className="text-primary-800 text-lg">
                     Información de la comparativa - #{comparativa.id}
                   </CardTitle>
-                  {getStatusBadge(comparativa.status as ComparativaStatus)}
+                  {getStatusBadge(
+                    comparativa.status as ComparativaStatus,
+                    "comparativa"
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">

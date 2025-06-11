@@ -268,11 +268,12 @@ export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
                       >
                         <td className="px-3 py-2">{tramite.id}</td>
                         <td className="px-3 py-2">
-                          {getStatusBadge(tramite.status as Status)}
+                          {getStatusBadge(tramite.status as Status, "general")}
                         </td>
                         <td className="px-3 py-2">
                           {getStatusBadge(
-                            tramite.liquidez_status as LiquidezStatus
+                            tramite.liquidez_status as LiquidezStatus,
+                            "liquidez"
                           )}
                         </td>
                       </tr>
@@ -289,12 +290,16 @@ export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
                   </div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold">Estado:</h3>
-                    {getStatusBadge(selectedTramites[0]?.status as Status)}
+                    {getStatusBadge(
+                      selectedTramites[0]?.status as Status,
+                      "general"
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold">Estado Liquidez:</h3>
                     {getStatusBadge(
-                      selectedTramites[0]?.liquidez_status as LiquidezStatus
+                      selectedTramites[0]?.liquidez_status as LiquidezStatus,
+                      "liquidez"
                     )}
                   </div>
                 </div>

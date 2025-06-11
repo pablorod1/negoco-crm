@@ -236,7 +236,7 @@ export default function EditComparativaPage() {
           <p className="text-primary-400">ID: {comparativa.id}</p>
         </div>
         <div className="flex items-center gap-2">
-          {getStatusBadge(comparativa.status)}
+          {getStatusBadge(comparativa.status, "comparativa")}
           {comparativa.status === "processed" && comparativa.tramite_id && (
             <TooltipComponent content="Ver Trámite">
               <Link
@@ -375,7 +375,7 @@ export default function EditComparativaPage() {
                 <Tag className="h-4 w-4" />
                 <span>Estado</span>
               </h3>
-              <div>{getStatusBadge(comparativa.status)}</div>
+              <div>{getStatusBadge(comparativa.status, "comparativa")}</div>
             </div>
           </CardContent>
         </Card>
