@@ -11,6 +11,10 @@ export async function middleware(request: NextRequest) {
     /^\/documentacion(\/.*)?$/,
     /^\/liquidez(\/.*)?$/,
     /^\/comparativas(\/.*)?$/,
+    /^\/fotovoltaica(\/.*)?$/,
+    /^\/clientes(\/.*)?$/,
+    /^\/comercializadoras(\/.*)?$/,
+    /^\/perfil(\/.*)?$/,
     /^\/$/,
   ];
 
@@ -37,22 +41,17 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/api/auth", // Excluir rutas de autenticación de la verificación
-    "/tramites",
-    "/tramites/:path*",
-    "/colaboradores",
-    "/documentacion",
-    "/liquidez",
-    "/comparativas",
-    "/comparativas/:path*",
-    "/documentacion/:path*",
-    "/perfil",
-    "/",
     "/api/:path*",
-    "/login",
-    "/fotovoltaica",
+    "/tramites/:path*",
+    "/colaboradores/:path*",
+    "/documentacion/:path*",
+    "/liquidez/:path*",
+    "/comparativas/:path*",
     "/fotovoltaica/:path*",
-    "/clientes",
     "/clientes/:path*",
+    "/comercializadoras/:path*",
+    "/perfil/:path*",
+    "/",
+    "/login",
   ],
 };
