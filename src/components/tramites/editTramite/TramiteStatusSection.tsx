@@ -36,27 +36,28 @@ export default function TramiteStatusSection({
 }: Props) {
   const isAdmin = userData.role === "admin";
   const isBackoffice = userData.role === "1";
+  const isComercial = userData.role === "2";
   const isBaja = tramite.status === "Baja";
   return (
     <>
       <div className="flex flex-col gap-2 items-end">
         <div className="flex items-center gap-2">
           {getStatusBadge(tramite.status, "general")}
-          {(isEditable || isBaja) && (
+          {isEditable || isBaja ? (
             <UpdateTramiteStatusModal
               tramite={tramite}
               userData={userData}
               onUpdate={onUpdate}
               client={client}
             />
-          )}
-          {isActive && (
+          ) : null}
+          {isActive && !isComercial ? (
             <RejectTramiteModal
               tramite={tramite}
               userData={userData}
               onSubmit={onUpdate}
             />
-          )}
+          ) : null}
 
           {isRenewable && (isAdmin || isBackoffice) && (
             <RenewTramiteConfirmationDialog

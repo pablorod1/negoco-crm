@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/core/utils";
 import { AnimatedList } from "@/components/magicui/animated-list";
-import { ExternalLink } from "lucide-react";
 import { formatDateTime } from "@/lib/core/format";
 import { Link } from "next-view-transitions";
 import { useEffect } from "react";
@@ -14,43 +13,57 @@ interface RenewableTramite {
   sales_name: string;
 }
 
-const Notification = ({ id, renovationDate, sales_name }: RenewableTramite) => {
+const RenewableTramite = ({
+  id,
+  renovationDate,
+  sales_name,
+}: RenewableTramite) => {
   return (
     <figure
       className={cn(
-        "relative mx-auto min-h-fit h-full w-full overflow-hidden rounded-2xl p-4",
+        "relative mx-auto min-h-fit h-full w-full overflow-hidden rounded-xl p-3",
         // animation styles
-        "transition-all duration-200 ease-in-out hover:scale-[101%]",
+        "transition-all duration-300 ease-in-out hover:scale-[102%] hover:-translate-y-1",
         // light styles
-        "bg-white [box-shadow:0_0_0_1px_rgba(0,0,0,.03),0_2px_4px_rgba(0,0,0,.05),0_12px_24px_rgba(0,0,0,.05)]",
-        // dark styles
-        "transform-gpu dark:bg-transparent dark:backdrop-blur-md dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset]"
+        "bg-gradient-to-br from-white to-gray-50/50 border border-gray-100/80",
+        "shadow-sm hover:shadow-lg hover:shadow-primary-500/10"
       )}
     >
       <Link
         href={`/tramites/${id}`}
-        className="group flex flex-row items-center gap-3"
+        className="group flex flex-row items-center gap-4 relative"
       >
         <div className="relative">
-          <Image
-            src="/icons/renovacion.webp"
-            alt="Renovación Icon"
-            width={40}
-            height={40}
-          />
+          <div className="flex size-12 items-center justify-center rounded-xl shadow-sm ring-2 ring-white/50 bg-primary-50">
+            <Image
+              src="/icons/renovacion.webp"
+              alt="Renovación Icon"
+              width={24}
+              height={24}
+            />
+          </div>
         </div>
-        <div className="flex flex-col overflow-hidden">
-          <figcaption className="flex flex-row items-center whitespace-pre text-lg font-medium dark:text-white ">
-            <span className="text-sm sm:text-lg">{sales_name}</span>
-            <span className="mx-1">·</span>
-            <span className="text-xs text-gray-500">
-              {formatDateTime(renovationDate)}
-            </span>
-          </figcaption>
-          <p className="flex items-center gap-2 text-primary-500 text-sm font-normal dark:text-white/60 group-hover:underline">
-            {id}
-            <ExternalLink className="size-4" />
-          </p>
+
+        <div className="flex flex-col overflow-hidden w-full min-w-0">
+          <div className="flex justify-between items-start w-full mb-2">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors duration-200">
+                  {sales_name}
+                </h3>
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <div className="px-2 py-1 bg-primary-50 text-primary-500 text-xs font-medium rounded-md">
+                    Ver trámite
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span className="text-xs">
+                  {formatDateTime(renovationDate)}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </Link>
     </figure>
@@ -65,7 +78,7 @@ export function RenewableTramitesAnimatedList({
   items: RenewableTramite[];
 }) {
   useEffect(() => {
-    const container = document.getElementById("AnimatedList");
+    const container = document.getElementById("RenewableAnimatedList");
     if (!container) return;
 
     const handleMouseEnter = () => {
@@ -94,12 +107,12 @@ export function RenewableTramitesAnimatedList({
     >
       {items.length > 0 ? (
         <AnimatedList>
-          {items.map((item, idx) => (
-            <Notification {...item} key={idx} />
+          {items.map((item) => (
+            <RenewableTramite {...item} key={item.id} />
           ))}
         </AnimatedList>
       ) : (
-        <Notification {...items[0]} />
+        <RenewableTramite {...items[0]} />
       )}
     </div>
   );
