@@ -14,20 +14,13 @@ import {
   SubComercialTramitesColumns,
   TramiteColumns,
 } from "@/components/tramites/table/TramiteColumns";
-import { useUser } from "@/lib/contexts/UserContext";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { showCustomToast } from "@/components/core/CustomToast";
 
 interface Props {
   name: string;
+  userData: User;
 }
 
 // Custom hook to fetch tramites data
@@ -128,20 +121,24 @@ const ErrorState = ({
   message: string;
   onRetry: () => void;
 }) => (
-  <div className="flex flex-col items-center justify-center py-10 space-y-4">
-    <AlertCircle className="h-12 w-12 text-red-500" />
-    <div className="text-center">
-      <h3 className="text-lg font-medium">Error al cargar los datos</h3>
-      <p className="text-sm text-muted-foreground mt-1">{message}</p>
+  <div className="flex flex-col items-center justify-center py-16 space-y-6">
+    <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center">
+      <AlertCircle className="h-10 w-10 text-red-500" />
     </div>
-    <Button onClick={onRetry} variant="outline">
+    <div className="text-center space-y-2">
+      <h3 className="text-lg font-semibold text-gray-900">
+        Error al cargar los datos
+      </h3>
+      <p className="text-sm text-gray-500 max-w-md">{message}</p>
+    </div>
+    <Button onClick={onRetry} variant="outline" className="gap-2">
+      <RefreshCw className="h-4 w-4" />
       Reintentar
     </Button>
   </div>
 );
 
-export function ComercializadoraTramitesTable({ name }: Props) {
-  const { userData } = useUser();
+export function ComercializadoraTramitesTable({ name, userData }: Props) {
   const [pageSize, setPageSize] = useState<number | string>(15);
   const [pageIndex, setPageIndex] = useState(1);
 
@@ -183,25 +180,28 @@ export function ComercializadoraTramitesTable({ name }: Props) {
   const table = useReactTable(tableConfig);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <CardTitle>Trámites Asociados</CardTitle>
-          <CardDescription>
-            Listado de todos los trámites del cliente.
+          <h3 className="text-lg font-semibold text-gray-900">
+            Trámites Asociados
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Listado de todos los trámites de la comercializadora
             {totalTramites > 0 && (
-              <span className="font-medium text-primary">
-                {" "}
-                ({totalTramites})
+              <span className="font-medium text-primary-600 ml-1">
+                ({totalTramites} total
+                {totalTramites !== 1 ? "es" : ""})
               </span>
             )}
-          </CardDescription>
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
-        {error ? (
-          <ErrorState message={error} onRetry={refetch} />
-        ) : (
+      </div>
+
+      {error ? (
+        <ErrorState message={error} onRetry={refetch} />
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <TableLayout>
             <TableContent
               table={table}
@@ -214,8 +214,8 @@ export function ComercializadoraTramitesTable({ name }: Props) {
               loading={loading}
             />
           </TableLayout>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,24 +1,84 @@
-import { memo } from "react";
-import { Building2, ClipboardList, FileText } from "lucide-react";
+import { memo, useState } from "react";
+import { Building2, ClipboardList, CloudAlert, FileText } from "lucide-react";
 import Image from "next/image";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ComercializadoraVM } from "@/lib/core/types";
+import { ComercializadoraVM, User } from "@/lib/core/types";
 import { useTransitionRouter } from "next-view-transitions";
+import { Switch } from "../ui/switch";
+import { showCustomToast } from "../core/CustomToast";
+import { Badge } from "../ui/badge";
 
 interface ComercializadoraCardProps {
   comercializadora: ComercializadoraVM;
+  userData: User;
+  refetch: () => void;
 }
 
 export const ComercializadoraCard = memo(function ComercializadoraCard({
   comercializadora,
+  userData,
+  refetch,
 }: ComercializadoraCardProps) {
   const router = useTransitionRouter();
+  const isComercial = userData.role === "2";
+
+  const [isActive, setIsActive] = useState(comercializadora.active);
 
   const handleClick = () => {
     router.push(`/comercializadoras/${comercializadora.name}`);
+  };
+
+  const handleCheckChange = async (checked: boolean) => {
+    const previousValue = isActive;
+    setIsActive(checked);
+    try {
+      const response = await fetch(
+        `/api/comercializadoras/update/${comercializadora.id}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: checked }),
+        }
+      );
+
+      const { success, error } = await response.json();
+      if (!success) {
+        showCustomToast({
+          title: "Error al actualizar estado",
+          message:
+            error || "No se pudo actualizar el estado de la comercializadora.",
+          icon: CloudAlert,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        setIsActive(previousValue); // Revert to previous value on error
+        return;
+      }
+
+      showCustomToast({
+        title: "Estado actualizado",
+        message: `La comercializadora ${comercializadora.name} ha sido ${checked ? "activada" : "desactivada"}.`,
+        icon: checked ? ClipboardList : FileText,
+        iconColor: checked ? "var(--success-color)" : "var(--warning-color)",
+        iconSize: 24,
+      });
+      refetch(); // Refetch to update the list
+    } catch (error) {
+      console.error("Error updating status:", error);
+      showCustomToast({
+        title: "Error al actualizar estado",
+        message:
+          "Ocurrió un error al intentar actualizar el estado de la comercializadora.",
+        icon: CloudAlert,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      setIsActive(previousValue); // Revert to previous value on error
+    }
   };
   return (
     <Card className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden bg-white border border-gray-200">
@@ -63,16 +123,19 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
               <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-primary transition-colors duration-200 truncate">
                 {comercializadora.name}
               </h3>
-              <Badge
-                variant={comercializadora.active ? "default" : "secondary"}
-                className={`text-xs font-medium ${
-                  comercializadora.active
-                    ? "bg-green-100 text-green-800 border-green-200"
-                    : "bg-gray-100 text-gray-600 border-gray-200"
-                }`}
-              >
-                {comercializadora.active ? "Activa" : "Inactiva"}
-              </Badge>
+              {!isComercial ? (
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={handleCheckChange}
+                />
+              ) : (
+                <Badge
+                  variant={comercializadora.active ? "success" : "warning"}
+                  className="text-xs"
+                >
+                  {comercializadora.active ? "Activo" : "Inactivo"}
+                </Badge>
+              )}
             </div>
           </div>
         </div>

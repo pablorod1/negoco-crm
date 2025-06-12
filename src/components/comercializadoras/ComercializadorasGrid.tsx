@@ -1,13 +1,17 @@
 import { memo } from "react";
-import { ComercializadoraVM } from "@/lib/core/types";
+import { ComercializadoraVM, User } from "@/lib/core/types";
 import { ComercializadoraCard } from "./ComercializadoraCard";
 
 interface ComercializadorasGridProps {
   comercializadoras: ComercializadoraVM[];
+  userData: User;
+  refetch: () => void;
 }
 
 export const ComercializadorasGrid = memo(function ComercializadorasGrid({
   comercializadoras,
+  userData,
+  refetch,
 }: ComercializadorasGridProps) {
   if (comercializadoras.length === 0) {
     return (
@@ -25,6 +29,8 @@ export const ComercializadorasGrid = memo(function ComercializadorasGrid({
         <ComercializadoraCard
           key={comercializadora.id}
           comercializadora={comercializadora}
+          userData={userData}
+          refetch={refetch}
         />
       ))}
     </div>

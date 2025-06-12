@@ -1,7 +1,7 @@
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ComercializadoraVM } from "@/lib/core/types";
+import { ComercializadoraVM, User } from "@/lib/core/types";
 
 interface ComercializadorasFiltersProps {
   searchTerm: string;
@@ -9,6 +9,7 @@ interface ComercializadorasFiltersProps {
   statusFilter: "all" | "active" | "inactive";
   onStatusFilterChange: (value: "all" | "active" | "inactive") => void;
   comercializadoras: ComercializadoraVM[];
+  userData: User;
 }
 
 export function ComercializadorasFilters({
@@ -17,9 +18,11 @@ export function ComercializadorasFilters({
   statusFilter,
   onStatusFilterChange,
   comercializadoras,
+  userData,
 }: ComercializadorasFiltersProps) {
   const activeCount = comercializadoras.filter((c) => c.active).length;
   const inactiveCount = comercializadoras.filter((c) => !c.active).length;
+  const isComercial = userData.role === "2";
 
   return (
     <div className="flex flex-col sm:flex-row gap-4">
@@ -33,27 +36,31 @@ export function ComercializadorasFilters({
         />
       </div>
       <div className="flex gap-2">
+        {!isComercial ? (
+          <Badge
+            variant={statusFilter === "all" ? "shadow" : "outline"}
+            className="cursor-pointer"
+            onClick={() => onStatusFilterChange("all")}
+          >
+            Todas ({comercializadoras.length})
+          </Badge>
+        ) : null}
         <Badge
-          variant={statusFilter === "all" ? "default" : "outline"}
-          className="cursor-pointer"
-          onClick={() => onStatusFilterChange("all")}
-        >
-          Todas ({comercializadoras.length})
-        </Badge>
-        <Badge
-          variant={statusFilter === "active" ? "default" : "outline"}
+          variant={statusFilter === "active" ? "shadow" : "outline"}
           className="cursor-pointer"
           onClick={() => onStatusFilterChange("active")}
         >
           Activas ({activeCount})
         </Badge>
-        <Badge
-          variant={statusFilter === "inactive" ? "default" : "outline"}
-          className="cursor-pointer"
-          onClick={() => onStatusFilterChange("inactive")}
-        >
-          Inactivas ({inactiveCount})
-        </Badge>
+        {!isComercial ? (
+          <Badge
+            variant={statusFilter === "inactive" ? "shadow" : "outline"}
+            className="cursor-pointer"
+            onClick={() => onStatusFilterChange("inactive")}
+          >
+            Inactivas ({inactiveCount})
+          </Badge>
+        ) : null}
       </div>
     </div>
   );

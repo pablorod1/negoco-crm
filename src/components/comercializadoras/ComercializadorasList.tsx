@@ -8,13 +8,16 @@ import { ComercializadorasFilters } from "@/components/comercializadoras/Comerci
 import { ComercializadorasStats } from "@/components/comercializadoras/ComercializadorasStats";
 import { useComercializadoras } from "@/lib/hooks/comercializadoras/useComercializadoras";
 import FullScreenLoaderComponent from "../core/FullScreenLoaderComponent";
+import { useUser } from "@/lib/contexts/UserContext";
+import { User } from "@/lib/core/types";
 
 export default function ComercializadorasList() {
-  const { comercializadoras, loading } = useComercializadoras();
+  const { comercializadoras, loading, refetch } = useComercializadoras();
+  const { userData } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "inactive"
-  >("all");
+  >("active");
 
   const filteredComercializadoras = comercializadoras.filter(
     (comercializadora) => {
@@ -42,9 +45,14 @@ export default function ComercializadorasList() {
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         comercializadoras={comercializadoras}
+        userData={userData as User}
       />
 
-      <ComercializadorasGrid comercializadoras={filteredComercializadoras} />
+      <ComercializadorasGrid
+        comercializadoras={filteredComercializadoras}
+        userData={userData as User}
+        refetch={refetch}
+      />
 
       <ComercializadorasStats comercializadoras={comercializadoras} />
     </div>
