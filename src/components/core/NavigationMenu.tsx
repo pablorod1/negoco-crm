@@ -171,7 +171,6 @@ export default function NavigationMenuComponent({
           title: "Comercializadoras",
           icon: <Factory className="w-5 h-5 text-primary" />,
           description: "Gestión de proveedores energéticos.",
-          comingSoon: true,
           plans: ["starter", "pro", "elite"],
         },
         {

@@ -1,4 +1,4 @@
-export type TramiteDB = {
+export interface TramiteDB {
   id: string;
   creation_date: string;
   tramitation_date: string;
@@ -16,7 +16,7 @@ export type TramiteDB = {
   client_id: string;
   user_id: string;
   rejected_date?: string | null;
-};
+}
 
 export interface TramiteVM extends TramiteDB {
   user: Partial<User>;
@@ -107,7 +107,7 @@ export const createEmptyTramiteDB = (
       : "",
 });
 
-export type ClientDB = {
+export interface ClientDB {
   id: string;
   name: string;
   last_name: string;
@@ -122,7 +122,7 @@ export type ClientDB = {
   document_number: string;
   IBAN: string;
   coordinates: [number, number] | null;
-};
+}
 
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   id: `CLI-${Math.floor(Math.random() * 10000)}`,
@@ -141,7 +141,7 @@ export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
   coordinates: null,
 });
 
-export type SignerDB = {
+export interface SignerDB {
   id: string;
   name: string;
   last_name: string;
@@ -150,7 +150,7 @@ export type SignerDB = {
   document_number: string;
   cargo: string | null;
   client_id: string;
-};
+}
 
 export const createEmptySignerDB = (): SignerDB => ({
   id: `SGN-${Math.floor(Math.random() * 10000)}`,
@@ -163,7 +163,7 @@ export const createEmptySignerDB = (): SignerDB => ({
   client_id: "",
 });
 
-export type ContractDB = {
+export interface ContractDB {
   id: string;
   type: string;
   province: string;
@@ -183,7 +183,7 @@ export type ContractDB = {
   pot6: number;
   description: string;
   tramite_id: string;
-};
+}
 
 export const createEmptyContractDB = (): ContractDB => ({
   id: `CTR-${Math.floor(Math.random() * 10000)}`,
@@ -207,7 +207,7 @@ export const createEmptyContractDB = (): ContractDB => ({
   tramite_id: "",
 });
 
-export type TramiteFile = {
+export interface TramiteFile {
   id: string;
   tramite_id: string;
   filename: string;
@@ -216,7 +216,7 @@ export type TramiteFile = {
   upload_date: string;
   download_url: string;
   preview_url: string | null;
-};
+}
 
 export const createEmptyTramiteFile = (): TramiteFile => ({
   id: "",
@@ -229,7 +229,7 @@ export const createEmptyTramiteFile = (): TramiteFile => ({
   preview_url: null,
 });
 
-export type DocumentacionFile = {
+export interface DocumentacionFile {
   id: string;
   name: string;
   size: number;
@@ -239,9 +239,9 @@ export type DocumentacionFile = {
   preview_url: string | null;
   folder_name: string;
   type: "file" | "folder";
-};
+}
 
-export type TramiteRow = {
+export interface TramiteRow {
   id: string;
   creation_date: string;
   activation_date: string;
@@ -262,15 +262,15 @@ export type TramiteRow = {
   comision: number;
   status: string;
   liquidez_status: string;
-};
+}
 
-export type EditTramiteFormData = {
+export interface EditTramiteFormData {
   tramite: TramiteVM;
   client: ClientDB;
   contracts: ContractDB[];
   signer: SignerDB;
   files?: TramiteFile[];
-};
+}
 
 export const createEmptyTramiteForm = (): EditTramiteFormData => ({
   tramite: createEmptyTramiteVM(),
@@ -396,7 +396,7 @@ export interface ComparativaRow {
   status: ComparativaStatus;
 }
 
-export type ComparativaFile = {
+export interface ComparativaFile {
   id: string;
   comparativa_id: string;
   filename: string;
@@ -405,8 +405,9 @@ export type ComparativaFile = {
   upload_date: string;
   download_url: string;
   preview_url: string | null;
-};
+}
 
+// Keep as types (these are unions/primitives)
 export type ComparativaPlan = "fijo" | "indexado";
 
 export interface Objective {
@@ -455,7 +456,7 @@ export interface FotovoltaicaVM extends FotovoltaicaDB {
   updated_at: string | null;
 }
 
-export type FotovoltaicaFile = {
+export interface FotovoltaicaFile {
   id: string;
   fotovoltaica_id: string;
   filename: string;
@@ -464,7 +465,7 @@ export type FotovoltaicaFile = {
   upload_date: string;
   download_url: string;
   preview_url: string | null;
-};
+}
 
 export const createEmptyFotovoltaicaDB = (userData: User): FotovoltaicaDB => ({
   id: `FOT-${Math.floor(Math.random() * 10000)}`,
@@ -483,10 +484,33 @@ export const createEmptyFotovoltaicaDB = (userData: User): FotovoltaicaDB => ({
   user_id: userData ? userData.id : "",
 });
 
+export interface ComercializadoraVM {
+  id: string;
+  name: string;
+  active: boolean;
+  logo: string | null;
+  num_tramites: number;
+  num_files: number;
+}
+
+export interface ComercializadoraDetails extends ComercializadoraVM {
+  files: DocumentacionFile[];
+  rates: Rate[];
+}
+
+export interface Rate {
+  id: string;
+  name: string;
+  type: "fijo" | "indexado";
+  price: number;
+  created_at: string;
+  updated_at: string | null;
+  comercializadora_id: string;
+}
+// Keep as types (these are unions)
 export type ObjectiveType = "comisiones" | "tramites" | "ratio";
 export type FotovoltaicaType = "PPA" | "renting" | "cubierta" | "";
 export type FotovoltaicaClientType = "company" | "public_org" | "community";
-
 export type FotovoltaicaStatus =
   | "pending"
   | "processing"

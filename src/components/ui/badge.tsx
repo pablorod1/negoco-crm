@@ -24,6 +24,7 @@ const badgeVariants = cva(
           "bg-danger-500 text-white border-0 shadow-lg shadow-danger-500/50",
         shadow:
           "bg-primary-500 text-white border-0 shadow-lg shadow-primary-500/50",
+        // Removed 'primary' variant as it duplicates 'shadow' variant
       },
     },
     defaultVariants: {
