@@ -209,6 +209,8 @@ export async function POST(req: NextRequest) {
           user_id: row.user_id,
           creation_date: row.creation_date,
           status: row.status,
+          comision: row.comision || 0,
+          comision_sales_person: row.comision_sales_person || 0,
           user: {
             name: row.user_name,
             email: row.user_email,
