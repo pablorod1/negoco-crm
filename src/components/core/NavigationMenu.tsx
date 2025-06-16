@@ -25,6 +25,7 @@ import {
   BookUser,
   Megaphone,
   Sun,
+  Stars,
 } from "lucide-react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
@@ -234,6 +235,22 @@ export default function NavigationMenuComponent({
           isDireccion={isDireccion}
           userPlan={userPlan as string}
         />
+        {isElite ? (
+          <NavigationMenuItem>
+            <NavigationMenuLink asChild>
+              <Link
+                href="/negoco-ai"
+                className={cn(
+                  navigationMenuTriggerStyle(),
+                  "bg-white hover:bg-primary-50 transition-all"
+                )}
+              >
+                <Stars className="w-4 h-4 mr-2" />
+                Asistente IA
+              </Link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+        ) : null}
       </NavigationMenuList>
     </NavigationMenu>
   );

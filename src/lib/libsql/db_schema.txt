@@ -1,0 +1,157 @@
+
+CREATE TABLE clients (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    IBAN TEXT NOT NULL,
+    document_type TEXT NOT NULL,
+    document_number TEXT NOT NULL,
+    address TEXT NOT NULL
+, "postal_code" TEXT NOT NULL DEFAULT "", "province" TEXT NOT NULL DEFAULT "", "city" TEXT NOT NULL DEFAULT "", `coordinates` text DEFAULT '""');
+
+CREATE TABLE comparativa_files (
+  id TEXT PRIMARY KEY,
+  comparativa_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  extension TEXT NOT NULL,
+  upload_date TEXT NOT NULL,
+  download_url TEXT NOT NULL,
+  preview_url TEXT,
+  FOREIGN KEY (comparativa_id) REFERENCES comparativas (id) ON DELETE CASCADE
+);
+
+CREATE TABLE comparativas (
+  id TEXT PRIMARY KEY,
+  client TEXT NOT NULL,
+  service TEXT CHECK (service IN ('Luz', 'Gas')) NOT NULL,
+  plan TEXT  NOT NULL,
+  comision_fijo REAL NOT NULL,
+  comision_indexado REAL NOT NULL,
+  comision_sales_person_fijo REAL NOT NULL,
+  comision_sales_person_indexado REAL NOT NULL,
+  notes TEXT,
+  user_id TEXT NOT NULL,
+  creation_date TEXT NOT NULL,
+  status TEXT NOT NULL,
+  tramite_id TEXT,
+  FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE,
+  FOREIGN KEY (tramite_id) REFERENCES tramites (id) ON DELETE CASCADE
+);
+
+CREATE TABLE contracts (
+  id TEXT PRIMARY KEY NOT NULL,
+  type TEXT NOT NULL,
+  province TEXT NOT NULL,
+  city TEXT NOT NULL,
+  address TEXT NOT NULL,
+  postal_code TEXT NOT NULL,
+  "new_company" TEXT NOT NULL,
+  plan TEXT NOT NULL,
+  consumption INTEGER DEFAULT 0,
+  CUPS TEXT NOT NULL,
+  pot1 INTEGER DEFAULT 0,
+  pot2 INTEGER DEFAULT 0,
+  pot3 INTEGER DEFAULT 0,
+  pot4 INTEGER DEFAULT 0,
+  pot5 INTEGER DEFAULT 0,
+  pot6 INTEGER DEFAULT 0,
+  description TEXT,
+  tramite_id TEXT, "old_company" TEXT NOT NULL DEFAULT "",
+  FOREIGN KEY (tramite_id) REFERENCES tramites(id) ON DELETE CASCADE
+);
+
+CREATE TABLE `fotovoltaica` (
+	`id` text PRIMARY KEY NOT NULL,
+	`type` text DEFAULT 'PPA' NOT NULL,
+	`client` text NOT NULL,
+	`client_type` text DEFAULT 'Empresa' NOT NULL,
+	`location` text NOT NULL,
+	`coordinates` text,
+	`creation_date` text NOT NULL,
+	`activation_date` text,
+	`status` text NOT NULL,
+	`notes` text,
+	`internal_notes` text,
+	`user_id` text NOT NULL, `comision` real DEFAULT '0' NOT NULL, `comision_sales_person` real DEFAULT '0' NOT NULL, `updated_by` text, `updated_at` text,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "fotovoltaica_files" (
+	`id` text PRIMARY KEY NOT NULL UNIQUE,
+	`fotovoltaica_id` text NOT NULL,
+	`filename` text,
+	`size` real,
+	`extension` text,
+	`upload_date` text,
+	`download_url` text,
+	`preview_url` text,
+	FOREIGN KEY (`fotovoltaica_id`) REFERENCES `fotovoltaica`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+CREATE TABLE signers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    document_number TEXT NOT NULL,
+    cargo TEXT,
+    client_id TEXT NOT NULL,
+
+    -- Clave foránea para enlazar con la tabla clients
+    CONSTRAINT fk_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+);
+
+CREATE TABLE tramite_files (
+  id TEXT PRIMARY KEY,
+  tramite_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  extension TEXT NOT NULL,
+  upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+  download_url TEXT NOT NULL,
+  preview_url TEXT,
+  FOREIGN KEY (tramite_id) REFERENCES tramites (id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE tramites (
+  id TEXT PRIMARY KEY,
+  creation_date TEXT NOT NULL,
+  tramitation_date TEXT NOT NULL,
+  activation_date TEXT NOT NULL,
+  renovation_date TEXT NOT NULL,
+  sales_name TEXT NOT NULL,
+  comision_sales_person REAL NOT NULL,
+  comision REAL NOT NULL,
+  status TEXT NOT NULL,
+  liquidez_status TEXT,
+  notes TEXT,
+  client_id TEXT,
+  user_id TEXT, "updated_by" TEXT REFERENCES "user"("id"), "updated_at" TEXT, "collection_date" TEXT, "payment_date" TEXT, "rejected_date" TEXT, `internal_notes` text,
+  FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE SET NULL
+);
+
+CREATE TABLE user (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    email_verified BOOLEAN NOT NULL,
+    image TEXT,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    role TEXT,
+    banned BOOLEAN,
+    ban_reason TEXT,
+    ban_expires TIMESTAMP,
+    super_id TEXT, should_reset_password INTEGER NOT NULL DEFAULT 1, "company" TEXT,
+    FOREIGN KEY (super_id) REFERENCES user(id) ON DELETE CASCADE
+);
+
+
+

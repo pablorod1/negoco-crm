@@ -62,12 +62,12 @@ const getComission = (
 ) => {
   return plan === "fijo"
     ? {
-        comision: comparativa.comision.fijo,
-        comision_sales_person: comparativa.comision_sales_person.fijo,
+        comision: comparativa.comision?.fijo || 0,
+        comision_sales_person: comparativa.comision_sales_person?.fijo || 0,
       }
     : {
-        comision: comparativa.comision.indexado,
-        comision_sales_person: comparativa.comision_sales_person.indexado,
+        comision: comparativa.comision?.indexado || 0,
+        comision_sales_person: comparativa.comision_sales_person?.indexado || 0,
       };
 };
 
@@ -362,11 +362,11 @@ export interface ComparativaVM {
   client: string;
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
-  comision: {
+  comision?: {
     fijo: number;
     indexado: number;
   };
-  comision_sales_person: {
+  comision_sales_person?: {
     fijo: number;
     indexado: number;
   };

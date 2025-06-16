@@ -50,6 +50,7 @@
     "next": "^15.3.1",
     "next-view-transitions": "^0.3.4",
     "nodemailer": "^6.10.1",
+    "ollama": "^0.5.16",
     "postcss": "^8.5.3",
     "react": "^19.1.0",
     "react-day-picker": "^9.6.7",
