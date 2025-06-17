@@ -1,5 +1,18 @@
 import { Ollama } from "ollama";
 
+// Types and interfaces
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+export interface UserContext {
+  id: string;
+  role: string;
+  superId?: string | null;
+}
+
 export interface DatabaseSchema {
   clients: {
     id: string;
@@ -150,6 +163,12 @@ export interface DatabaseSchema {
   };
 }
 
+// Configuration constants
+const OLLAMA_HOST = "http://127.0.0.1:11434";
+const DEFAULT_MODEL = "llama3.2";
+const MAX_CONVERSATION_CONTEXT = 6;
+const MAX_GENERAL_CONTEXT = 4;
+
 // Status translations from Spanish (user input) to English (database values)
 const STATUS_TRANSLATIONS = {
   comparativas: {
@@ -222,113 +241,207 @@ const preprocessQuery = (query: string): string => {
 };
 
 const DATABASE_SCHEMA_PROMPT = `
-Eres un experto en SQL para un CRM energético. Genera consultas SQL simples y directas. La base de datos está alojada en Turso con LibSQL.
+# CRM ENERGÉTICO - GENERADOR SQL EXPERTO
 
-🔍 IDENTIFICACIÓN DE TABLAS:
-- "estudios energéticos" → tabla comparativas
-- "estudios fotovoltaicos" o "placas solares" → tabla fotovoltaica  
-- "trámites" → tabla tramites
-- "clientes" → tabla clients
+Eres un experto en SQL para un CRM energético. Genera consultas SQL optimizadas y precisas para LibSQL/SQLite (Turso).
 
-📋 ESQUEMA DE TABLAS:
+## 🎯 CONTEXTO ACTUAL
+- Año actual: 2025
+- Base de datos: Turso (LibSQL/SQLite)
+- Responde ÚNICAMENTE con la consulta SQL, sin explicaciones
 
-TABLA comparativas:
-- id, client (nombre completo), service, plan, notes, status, user_id, creation_date
-- Estados en BD: pending, completed, processed, rejected
-- Estados en español: "Pendiente de Estudio", "Estudio Realizado", "Completada", "Rechazada"
+## �️ MAPEO DE CONCEPTOS
 
-TABLA fotovoltaica:
-- id, client (nombre completo), type, location, notes, status, user_id, creation_date, activation_date
-- Estados en BD: pending, processing, completed, rejected  
-- Estados en español: "Pendiente", "Procesando", "Completado", "Rechazada"
+### Términos del usuario → Tabla de BD:
+- "estudios energéticos" / "comparativas" → **comparativas**
+- "fotovoltaica" / "placas solares" / "estudios fotovoltaicos" → **fotovoltaica**
+- "trámites" / "contratos" → **tramites**
+- "clientes" / "personas" → **clients**
+- "usuarios" / "comerciales" → **user**
+- "contratos" / "información de suministro" → **contracts**
+- "firmantes" / "signatarios" → **signers**
+- "documentos" / "archivos" → **tramite_files**, **comparativa_files**, **fotovoltaica_files**
 
-TABLA tramites:
-- id, client_id (FK), user_id (FK), status, sales_name, creation_date, activation_date, renovation_date, collection_date, payment_date, comision_sales_person, comision, notes, liquidez_status
-- Estados: Borrador, Verificado, Procesando, Pendiente de Firma, Activo, Baja, Cancelado
-- Estados de liquidez: Pendiente de Cobro, Cobrado por Comercializadora, Pagado al Comercial, Descontado, Pendiente de Descontar
+## � ESQUEMA DETALLADO DE TABLAS
 
-TABLA clients:
-- id, name, last_name, email, phone, address, city, province
+### 🏢 **clients** (Información de clientes)
+\`\`\`sql
+id (TEXT, PK), name (TEXT, NOT NULL), last_name (TEXT, NOT NULL), 
+type (TEXT, NOT NULL), email (TEXT, NOT NULL), phone (TEXT, NOT NULL), 
+IBAN (TEXT, NOT NULL), document_type (TEXT, NOT NULL), 
+document_number (TEXT, NOT NULL), address (TEXT, NOT NULL), 
+postal_code (TEXT, DEFAULT ""), province (TEXT, DEFAULT ""), 
+city (TEXT, DEFAULT ""), coordinates (TEXT, DEFAULT '""')
+\`\`\`
 
-📅 FILTROS POR FECHAS (LibSQL/SQLite):
-Para consultas con fechas, usar la función date() de SQLite:
-- Fecha específica: WHERE date(creation_date) = date('2025-01-15')
-- Rango de fechas: WHERE date(creation_date) BETWEEN date('2025-01-01') AND date('2025-01-31')
-- Últimos 30 días: WHERE date(creation_date) >= date('now', '-30 days')
-- Este año: WHERE date(creation_date) >= date('now', 'start of year')
-- Este mes: WHERE date(creation_date) >= date('now', 'start of month')
-- Esta semana: WHERE date(creation_date) >= date('now', 'weekday 0', '-6 days')
+### 📋 **tramites** (Trámites de contratación)
+\`\`\`sql
+id (TEXT, PK), client_id (TEXT, FK→clients.id), user_id (TEXT, FK→user.id),
+creation_date (TEXT, NOT NULL), tramitation_date (TEXT, NOT NULL), 
+activation_date (TEXT, NOT NULL), renovation_date (TEXT, NOT NULL),
+collection_date (TEXT), payment_date (TEXT), rejected_date (TEXT),
+sales_name (TEXT, NOT NULL), comision (REAL, NOT NULL), 
+comision_sales_person (REAL, NOT NULL), status (TEXT, NOT NULL), 
+liquidez_status (TEXT), notes (TEXT), internal_notes (TEXT), 
+updated_by (TEXT, FK→user.id), updated_at (TEXT)
+\`\`\`
+**Estados válidos:** Borrador, Verificado, Procesando, Pendiente de Firma, Activo, Baja, Cancelado
+**Estados liquidez:** Pendiente de Cobro, Cobrado por Comercializadora, Pagado al Comercial, Descontado, Pendiente de Descontar
 
-⚠️ IMPORTANTE: Estamos en 2025. Cuando el usuario mencione "junio", "enero", etc., sin especificar año, usa 2025.
+### 🔍 **comparativas** (Estudios energéticos)
+\`\`\`sql
+id (TEXT, PK), client (TEXT, NOT NULL, nombre completo), 
+service (TEXT, CHECK IN ('Luz', 'Gas'), NOT NULL),
+plan (TEXT, NOT NULL), comision_fijo (REAL, NOT NULL), 
+comision_indexado (REAL, NOT NULL), comision_sales_person_fijo (REAL, NOT NULL), 
+comision_sales_person_indexado (REAL, NOT NULL), notes (TEXT), 
+user_id (TEXT, NOT NULL, FK→user.id), creation_date (TEXT, NOT NULL),
+status (TEXT, NOT NULL), tramite_id (TEXT, FK→tramites.id)
+\`\`\`
+**Estados BD:** pending, completed, processed, rejected
+**Estados UI:** "Pendiente de Estudio", "Estudio Realizado", "Completada", "Rechazada"
 
-FECHAS DISPONIBLES POR TABLA:
-- tramites: creation_date, activation_date, renovation_date, collection_date, payment_date
-- comparativas: creation_date
-- fotovoltaica: creation_date, activation_date
+### ☀️ **fotovoltaica** (Estudios fotovoltaicos)
+\`\`\`sql
+id (TEXT, PK), type (TEXT, DEFAULT 'PPA', NOT NULL), 
+client (TEXT, NOT NULL, nombre completo), client_type (TEXT, DEFAULT 'Empresa', NOT NULL), 
+location (TEXT, NOT NULL), coordinates (TEXT), creation_date (TEXT, NOT NULL), 
+activation_date (TEXT), status (TEXT, NOT NULL), notes (TEXT), 
+internal_notes (TEXT), user_id (TEXT, NOT NULL, FK→user.id),
+comision (REAL, DEFAULT 0, NOT NULL), comision_sales_person (REAL, DEFAULT 0, NOT NULL), 
+updated_by (TEXT), updated_at (TEXT)
+\`\`\`
+**Estados BD:** pending, processing, completed, rejected
+**Estados UI:** "Pendiente", "Procesando", "Completado", "Rechazada"
 
-🎯 EJEMPLOS CON FECHAS:
+### � **contracts** (Contratos asociados a trámites)
+\`\`\`sql
+id (TEXT, PK), type (TEXT, NOT NULL), province (TEXT, NOT NULL), 
+city (TEXT, NOT NULL), address (TEXT, NOT NULL), postal_code (TEXT, NOT NULL), 
+old_company (TEXT, DEFAULT ""), new_company (TEXT, NOT NULL), 
+plan (TEXT, NOT NULL), consumption (INTEGER, DEFAULT 0), CUPS (TEXT, NOT NULL), 
+pot1 (INTEGER, DEFAULT 0), pot2 (INTEGER, DEFAULT 0), pot3 (INTEGER, DEFAULT 0), 
+pot4 (INTEGER, DEFAULT 0), pot5 (INTEGER, DEFAULT 0), pot6 (INTEGER, DEFAULT 0), 
+description (TEXT), tramite_id (TEXT, FK→tramites.id)
+\`\`\`
 
-"trámites creados este mes" → SELECT t.*, (c.name || ' ' || c.last_name) AS client_name FROM tramites t LEFT JOIN clients c ON t.client_id = c.id WHERE date(t.creation_date) >= date('now', 'start of month') ORDER BY t.creation_date DESC LIMIT 50
+### 👥 **signers** (Firmantes de contratos)
+\`\`\`sql
+id (TEXT, PK), name (TEXT, NOT NULL), last_name (TEXT, NOT NULL), 
+email (TEXT, NOT NULL), phone (TEXT, NOT NULL), 
+document_number (TEXT, NOT NULL), cargo (TEXT), 
+client_id (TEXT, NOT NULL, FK→clients.id)
+\`\`\`
 
-"trámites activados en junio 2025" → SELECT t.*, (c.name || ' ' || c.last_name) AS client_name FROM tramites t LEFT JOIN clients c ON t.client_id = c.id WHERE date(t.activation_date) BETWEEN date('2025-06-01') AND date('2025-06-30') ORDER BY t.activation_date DESC LIMIT 50
+### �👤 **user** (Usuarios del sistema)
+\`\`\`sql
+id (TEXT, PK), name (TEXT, NOT NULL), email (TEXT, NOT NULL, UNIQUE), 
+email_verified (BOOLEAN, NOT NULL), image (TEXT), 
+created_at (TIMESTAMP, NOT NULL), updated_at (TIMESTAMP, NOT NULL), 
+role (TEXT), banned (BOOLEAN), ban_reason (TEXT), ban_expires (TIMESTAMP),
+super_id (TEXT, FK→user.id), should_reset_password (INTEGER, DEFAULT 1), 
+company (TEXT)
+\`\`\`
 
-"estudios energéticos de los últimos 30 días" → SELECT * FROM comparativas WHERE date(creation_date) BETWEEN date('now', '-30 days') AND date('now') ORDER BY creation_date DESC LIMIT 50
+### 📎 **Tablas de archivos**
+- **tramite_files**: id (PK), tramite_id (FK→tramites.id), filename (NOT NULL), size (INTEGER, NOT NULL), extension (NOT NULL), upload_date (DATETIME, DEFAULT CURRENT_TIMESTAMP), download_url (NOT NULL), preview_url
+- **comparativa_files**: id (PK), comparativa_id (FK→comparativas.id), filename (NOT NULL), size (INTEGER, NOT NULL), extension (NOT NULL), upload_date (NOT NULL), download_url (NOT NULL), preview_url
+- **fotovoltaica_files**: id (PK), fotovoltaica_id (FK→fotovoltaica.id), filename, size (REAL), extension, upload_date, download_url, preview_url
 
-"fotovoltaica activada este año" → SELECT * FROM fotovoltaica WHERE date(activation_date) >= date('now', 'start of year') ORDER BY activation_date DESC LIMIT 50
+## 📅 MANEJO DE FECHAS (SQLite/LibSQL)
 
-🎯 EJEMPLOS PARA ADMIN/BACKOFFICE (SIN FILTROS DE USER_ID):
+### Funciones de fecha esenciales:
+- **Fecha específica:** \`date(field) = date('2025-06-15')\`
+- **Rango:** \`date(field) BETWEEN date('2025-06-01') AND date('2025-06-30')\`
+- **Relativos:** \`date(field) >= date('now', '-30 days')\`
+- **Periodos:** \`date(field) >= date('now', 'start of month')\`
 
-"trámites activos" → SELECT t.*, (c.name || ' ' || c.last_name) AS client_name FROM tramites t LEFT JOIN clients c ON t.client_id = c.id WHERE t.status = 'Activo' ORDER BY t.creation_date DESC LIMIT 50
-"estudios energéticos" → SELECT * FROM comparativas ORDER BY creation_date DESC LIMIT 50
-"estudios de placas solares" → SELECT * FROM fotovoltaica ORDER BY creation_date DESC LIMIT 50
-"todos los clientes" → SELECT * FROM clients ORDER BY name LIMIT 50
+### Campos de fecha por tabla:
+- **tramites:** creation_date, tramitation_date, activation_date, renovation_date, collection_date, payment_date, rejected_date
+- **comparativas:** creation_date
+- **fotovoltaica:** creation_date, activation_date
+- **user:** created_at, updated_at
 
-🎯 EJEMPLOS CON FILTROS DE ESTADO:
+## 🔄 TRADUCCIÓN DE ESTADOS
 
-"comparativas con estado estudio realizado" → SELECT * FROM comparativas WHERE status = 'completed' ORDER BY creation_date DESC LIMIT 50
-"comparativas completadas" → SELECT * FROM comparativas WHERE status = 'processed' ORDER BY creation_date DESC LIMIT 50
-"comparativas rechazadas" → SELECT * FROM comparativas WHERE status = 'rejected' ORDER BY creation_date DESC LIMIT 50
-"comparativas pendientes de estudio" → SELECT * FROM comparativas WHERE status = 'pending' ORDER BY creation_date DESC LIMIT 50
+### COMPARATIVAS (español → BD):
+- "Pendiente de Estudio" / "Pendiente" → \`pending\`
+- "Estudio Realizado" / "Realizado" → \`completed\`
+- "Completada" / "Procesada" → \`processed\`
+- "Rechazada" → \`rejected\`
 
-"fotovoltaica completada" → SELECT * FROM fotovoltaica WHERE status = 'completed' ORDER BY creation_date DESC LIMIT 50
-"fotovoltaica procesando" → SELECT * FROM fotovoltaica WHERE status = 'processing' ORDER BY creation_date DESC LIMIT 50
-"fotovoltaica rechazada" → SELECT * FROM fotovoltaica WHERE status = 'rejected' ORDER BY creation_date DESC LIMIT 50
-"fotovoltaica pendiente" → SELECT * FROM fotovoltaica WHERE status = 'pending' ORDER BY creation_date DESC LIMIT 50
+### FOTOVOLTAICA (español → BD):
+- "Pendiente" → \`pending\`
+- "Procesando" / "En Proceso" → \`processing\`
+- "Completado" / "Terminado" → \`completed\`
+- "Rechazada" → \`rejected\`
 
-🎯 EJEMPLOS PARA COMERCIAL (CON FILTROS DE USER_ID OBLIGATORIOS):
+## 🔗 REGLAS DE JOINS CRÍTICAS
 
-"mis trámites activos" → SELECT t.*, (c.name || ' ' || c.last_name) AS client_name FROM tramites t LEFT JOIN clients c ON t.client_id = c.id WHERE t.user_id = 'COMERCIAL_ID' AND t.status = 'Activo' ORDER BY t.creation_date DESC LIMIT 50
+### ✅ JOINS CORRECTOS:
+- **tramites + clients:** \`tramites t LEFT JOIN clients c ON t.client_id = c.id\`
+- **tramites + user:** \`tramites t LEFT JOIN user u ON t.user_id = u.id\`
+- **tramites + contracts:** \`tramites t LEFT JOIN contracts ct ON t.id = ct.tramite_id\`
+- **comparativas + user:** \`comparativas c LEFT JOIN user u ON c.user_id = u.id\`
+- **comparativas + tramites:** \`comparativas c LEFT JOIN tramites t ON c.tramite_id = t.id\`
+- **fotovoltaica + user:** \`fotovoltaica f LEFT JOIN user u ON f.user_id = u.id\`
+- **clients + signers:** \`clients c LEFT JOIN signers s ON c.id = s.client_id\`
+- **Archivos + entidades:** \`tramite_files tf LEFT JOIN tramites t ON tf.tramite_id = t.id\`
 
-"mis estudios energéticos" → SELECT * FROM comparativas WHERE user_id = 'COMERCIAL_ID' ORDER BY creation_date DESC LIMIT 50
+### ❌ JOINS PROHIBIDOS:
+- **comparativas + clients** (client ya contiene nombre completo)
+- **fotovoltaica + clients** (client ya contiene nombre completo)
+- **comparativas + fotovoltaica** (son independientes)
+- **contracts + clients directamente** (usar tramites como intermediario)
 
-⚠️ IMPORTANTE:
-- comparativas.client ya tiene el nombre completo (NO usar JOIN con clients)
-- fotovoltaica.client ya tiene el nombre completo (NO usar JOIN con clients)  
-- tramites SÍ necesita JOIN con clients (tiene client_id)
-- NUNCA crear JOINs entre comparativas y fotovoltaica (son independientes)
-- Para fechas, SIEMPRE usar la función date() de SQLite
-- Las fechas están en formato ISO (YYYY-MM-DD)
-- "trámites activos" = status = 'Activo' (sin filtro de fecha)
-- "trámites activados en junio" = date(activation_date) BETWEEN date('2025-06-01') AND date('2025-06-30')
-- Cuando el usuario dice "mis trámites" SIEMPRE aplicar el filtro de user_id
+## 🎯 PATRONES DE CONSULTA COMUNES
 
-🔄 TRADUCCIÓN DE ESTADOS (ESPAÑOL → INGLÉS BD):
+### Para ADMIN/BACKOFFICE (sin filtros user_id):
+\`\`\`sql
+-- Todos los trámites activos
+SELECT t.*, (c.name || ' ' || c.last_name) AS client_name 
+FROM tramites t LEFT JOIN clients c ON t.client_id = c.id 
+WHERE t.status = 'Activo' ORDER BY t.creation_date DESC LIMIT 50;
 
-COMPARATIVAS:
-- "Pendiente de Estudio" / "Pendiente" → pending
-- "Estudio Realizado" / "Realizado" → completed  
-- "Completada" / "Procesada" → processed
-- "Rechazada" → rejected
+-- Todas las comparativas
+SELECT * FROM comparativas ORDER BY creation_date DESC LIMIT 50;
+\`\`\`
 
-FOTOVOLTAICA:
-- "Pendiente" → pending
-- "Procesando" / "En Proceso" → processing
-- "Completado" / "Terminado" → completed
-- "Rechazada" → rejected
+### Para COMERCIAL (con filtros user_id obligatorios):
+\`\`\`sql
+-- IMPORTANTE: Reemplazar USER_ID_VALUE con el ID real del usuario proporcionado en el contexto
+-- Mis trámites activos
+SELECT t.*, (c.name || ' ' || c.last_name) AS client_name 
+FROM tramites t LEFT JOIN clients c ON t.client_id = c.id 
+WHERE t.user_id = 'USER_ID_VALUE' AND t.status = 'Activo' 
+ORDER BY t.creation_date DESC LIMIT 50;
 
-⚠️ IMPORTANTE: Cuando el usuario mencione estados en español, TRADUCIR al valor inglés de la BD
+-- Mis estudios energéticos
+SELECT * FROM comparativas WHERE user_id = 'USER_ID_VALUE' 
+ORDER BY creation_date DESC LIMIT 50;
+\`\`\`
 
-Responde SOLO con la consulta SQL, sin explicaciones adicionales.
+## 🚀 OPTIMIZACIONES
+
+### Rendimiento:
+- Usar **LIMIT** apropiado (default: 50, máximo: 100)
+- **ORDER BY** por fecha más reciente primero
+- Índices automáticos en PKs y FKs
+
+### Nomenclatura consistente:
+- Alias de tabla: \`t\` (tramites), \`c\` (clients), \`u\` (user), \`co\` (comparativas), \`f\` (fotovoltaica)
+- Nombres de cliente: \`(c.name || ' ' || c.last_name) AS client_name\`
+
+## ⚠️ REGLAS CRÍTICAS
+
+1. **Fechas:** Siempre usar \`date()\` para comparaciones
+2. **Estados:** Traducir español a inglés para BD
+3. **Filtros de usuario:** Obligatorios para rol comercial
+4. **Joins:** Respetar las reglas definidas arriba
+5. **Límites:** Incluir LIMIT para evitar sobrecarga
+6. **Formato:** Solo SQL, sin explicaciones adicionales
+
+Responde ÚNICAMENTE con la consulta SQL optimizada.
 `;
 
 export class OllamaService {
@@ -345,9 +458,8 @@ export class OllamaService {
    * - Data response generation with conversation awareness
    * - General responses that consider previous conversation
    * - Context-aware follow-up question handling
-   */
-  private constructor() {
-    this.ollama = new Ollama({ host: "http://127.0.0.1:11434" });
+   */ private constructor() {
+    this.ollama = new Ollama({ host: OLLAMA_HOST });
   }
 
   public static getInstance(): OllamaService {
@@ -389,93 +501,114 @@ export class OllamaService {
 
     return cleaned.trim();
   }
-  async generateSQLQuery(
-    naturalLanguageQuery: string,
-    userId: string,
-    userRole: string,
-    userSuperId?: string | null,
-    conversationHistory?: {
-      role: "user" | "assistant";
-      content: string;
-      timestamp: string;
-    }[]
-  ): Promise<string> {
-    await this.initialize();
-    // Preprocess query to translate Spanish status terms to English database values
-    const processedQuery = preprocessQuery(naturalLanguageQuery);
 
-    // Debug logging for status translation
-    // Uncomment for debugging only
-    // if (processedQuery !== naturalLanguageQuery.toLowerCase()) {
-    //   console.log("🔄 Status Translation Applied:", {
-    //     original: naturalLanguageQuery,
-    //     processed: processedQuery,
-    //   });
-    // }
+  // Utility methods
+  private buildUserContext({ id, role, superId }: UserContext): string {
+    const debugLog = `
+🔍 User Role Filter Debug: { userId: ${id}, userRole: ${role}, userSuperId: ${superId} }`;
 
-    let userContext = "";
+    console.log(debugLog);
 
-    // Debug logging
-    // Uncomment for debugging only
-    // console.log("🔍 User Role Filter Debug:", {
-    //   userId,
-    //   userRole,
-    //   userSuperId,
-    // });
+    switch (role) {
+      case "2":
+        return superId
+          ? this.buildSubcommercialContext(id, superId)
+          : this.buildCommercialContext(id);
 
-    // The role system uses string "2" for comercial roles and "admin" for admin roles
-    if (userRole === "2") {
-      if (userSuperId) {
-        // Subcomercial: solo sus propios datos
-        userContext = `
+      case "1":
+      case "admin":
+        return this.buildAdminContext(role);
+
+      default:
+        return this.buildUnknownRoleContext(id, role);
+    }
+  }
+
+  private buildSubcommercialContext(userId: string, superId: string): string {
+    return `
 🚨🚨🚨 FILTRO CRÍTICO OBLIGATORIO 🚨🚨🚨
-El usuario es SUBCOMERCIAL con ID: ${userId}
+El usuario es SUBCOMERCIAL (role: "2" con super_id: ${superId}) - ID: ${userId}
 REGLA INFLEXIBLE: TODA consulta SQL DEBE incluir:
 - Para tramites: WHERE t.user_id = '${userId}' AND [otros_filtros]
 - Para comparativas: WHERE user_id = '${userId}' AND [otros_filtros]  
 - Para fotovoltaica: WHERE user_id = '${userId}' AND [otros_filtros]
 🚨 SIN EXCEPCIONES - ESTE FILTRO ES MANDATORY 🚨`;
-      } else {
-        // Comercial: sus datos + de sus subcomerciales
-        userContext = `
+  }
+
+  private buildCommercialContext(userId: string): string {
+    return `
 🚨🚨🚨 FILTRO CRÍTICO OBLIGATORIO 🚨🚨🚨
-El usuario es COMERCIAL con ID: ${userId}
+El usuario es COMERCIAL (role: "2" sin super_id) - ID: ${userId}
 REGLA INFLEXIBLE: TODA consulta SQL DEBE incluir:
 - Para tramites: WHERE (t.user_id = '${userId}' OR t.user_id IN (SELECT id FROM user WHERE super_id = '${userId}')) AND [otros_filtros]
 - Para comparativas: WHERE (user_id = '${userId}' OR user_id IN (SELECT id FROM user WHERE super_id = '${userId}')) AND [otros_filtros]
 - Para fotovoltaica: WHERE (user_id = '${userId}' OR user_id IN (SELECT id FROM user WHERE super_id = '${userId}')) AND [otros_filtros]
 🚨 SIN EXCEPCIONES - ESTE FILTRO ES MANDATORY 🚨`;
-      }
-    } else {
-      // Admin/Backoffice: puede ver todo - NO aplicar filtros de usuario
-      userContext = `
-✅ USUARIO ADMIN/BACKOFFICE DETECTADO
-El usuario tiene permisos de administrador (role: ${userRole})
+  }
+
+  private buildAdminContext(role: string): string {
+    return `
+✅ USUARIO CON PERMISOS COMPLETOS DETECTADO (role: "${role}")
+El usuario tiene permisos completos (Backoffice/Admin) - ambos roles tienen los mismos permisos
 🚫 NO APLICAR FILTROS DE USER_ID - El usuario puede ver todos los datos
 🚫 NO incluir WHERE user_id = ... en ninguna consulta
 🚫 NO filtrar por user_id bajo ninguna circunstancia
 ✅ FILTRO DE USUARIO: Ninguno - acceso completo a todos los datos`;
-    }
+  }
 
-    const prompt = `${userContext}
+  private buildUnknownRoleContext(userId: string, role: string): string {
+    return `
+⚠️ ROL DESCONOCIDO DETECTADO (role: "${role}")
+Por seguridad, aplicando restricciones de COMERCIAL limitado
+🚨 FILTRO CRÍTICO: WHERE user_id = '${userId}' (solo sus propios datos)
+⚠️ Verificar configuración de roles en el sistema`;
+  }
 
-${DATABASE_SCHEMA_PROMPT}
+  private buildConversationContext(history: ConversationMessage[]): string {
+    if (!history || history.length === 0) return "";
 
-${
-  conversationHistory && conversationHistory.length > 0
-    ? `
+    return `
 📚 CONTEXTO DE CONVERSACIÓN ANTERIOR:
-${conversationHistory
-  .slice(-6)
+${history
+  .slice(-MAX_CONVERSATION_CONTEXT)
   .map(
     (msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`
   )
   .join("\n")}
 
 IMPORTANTE: Considera el contexto anterior para entender referencias como "los de ayer", "esos trámites", "el cliente anterior", etc.
-`
-    : ""
-}
+`;
+  }
+
+  private async generateWithOllama(prompt: string): Promise<string> {
+    const response = await this.ollama.generate({
+      model: DEFAULT_MODEL,
+      prompt,
+      stream: false,
+    });
+    return response.response;
+  }
+  async generateSQLQuery(
+    naturalLanguageQuery: string,
+    userContext: UserContext,
+    conversationHistory?: ConversationMessage[]
+  ): Promise<string> {
+    await this.initialize();
+
+    // Preprocess query to translate Spanish status terms to English database values
+    const processedQuery = preprocessQuery(naturalLanguageQuery);
+
+    // Build user context and conversation context
+    const userContextPrompt = this.buildUserContext(userContext);
+    const conversationContext = this.buildConversationContext(
+      conversationHistory || []
+    );
+
+    const prompt = `${userContextPrompt}
+
+${DATABASE_SCHEMA_PROMPT}
+
+${conversationContext}
 
 CONSULTA DEL USUARIO: "${processedQuery}"
 
@@ -483,61 +616,52 @@ CONSULTA DEL USUARIO: "${processedQuery}"
 - Si es sobre COMPARATIVAS: usar SELECT * FROM comparativas (NO hacer JOIN con clients)
 - Si es sobre FOTOVOLTAICA: usar SELECT * FROM fotovoltaica (NO hacer JOIN con clients)
 - Si es sobre TRÁMITES: SÍ hacer JOIN con clients usando t.client_id
+- 🔒 LEER Y APLICAR EL CONTEXTO DE USUARIO arriba (si aplica filtros o NO aplica filtros)
+- Si el usuario es ADMIN (role: "admin") o BACKOFFICE (role: "1"): NO incluir filtros de user_id bajo ninguna circunstancia
+- Si el usuario es COMERCIAL (role: "2") o SUBCOMERCIAL (role: "2" + super_id): APLICAR OBLIGATORIAMENTE el filtro de user_id especificado
 
 Genera una consulta SQL que responda a esta pregunta. La consulta debe:
-1. 🔒 LEER Y APLICAR EL CONTEXTO DE USUARIO arriba (si aplica filtros o NO aplica filtros)
-2. Si el usuario es ADMIN/BACKOFFICE: NO incluir filtros de user_id bajo ninguna circunstancia
-3. Si el usuario es COMERCIAL/SUBCOMERCIAL: APLICAR OBLIGATORIAMENTE el filtro de user_id especificado
-4. Seleccionar las columnas relevantes
-5. Para comparativas y fotovoltaica: NO hacer JOIN con clients (ya tienen el nombre en la columna client)
-6. Para trámites y contratos: SÍ hacer JOIN con clients cuando sea necesario
-7. Combinar todos los filtros usando AND
-8. Usar ORDER BY para ordenar los resultados ANTES de LIMIT
-9. Limitar los resultados a máximo 50 filas con LIMIT
+
+1. USAR EL ID DE USUARIO REAL: Cuando el contexto especifica el ID del usuario (ej: ID: xyz123), usar ese valor exacto en la consulta, NO usar placeholders como 'USER_ID'
+2. Seleccionar las columnas relevantes
+3. Para comparativas y fotovoltaica: NO hacer JOIN con clients (ya tienen el nombre en la columna client)
+4. Para trámites y contratos: SÍ hacer JOIN con clients cuando sea necesario
+5. Combinar todos los filtros usando AND
+6. Usar ORDER BY para ordenar los resultados ANTES de LIMIT
+7. Limitar los resultados a máximo 50 filas con LIMIT
 
 ⚠️ RECORDATORIO CRÍTICO: 
 - Si el contexto dice "NO APLICAR FILTROS DE USER_ID", entonces NO incluir user_id en el WHERE
 - Si el contexto especifica un filtro de user_id, entonces SÍ incluirlo OBLIGATORIAMENTE
+- NUNCA usar placeholders como 'USER_ID' - siempre usar el ID real proporcionado en el contexto
 
 🚨 ESTRUCTURA SQL CORRECTA:
-- Para ADMIN: SELECT ... FROM ... WHERE [solo_filtros_de_negocio] ORDER BY ... LIMIT ...
-- Para COMERCIAL: SELECT ... FROM ... WHERE [filtro_user_id_obligatorio] AND [filtros_de_negocio] ORDER BY ... LIMIT ...
+- Para ADMIN/BACKOFFICE: SELECT ... FROM ... WHERE [solo_filtros_de_negocio] ORDER BY ... LIMIT ...
+- Para COMERCIAL/SUBCOMERCIAL: SELECT ... FROM ... WHERE [filtro_user_id_real] AND [filtros_de_negocio] ORDER BY ... LIMIT ...
 
 Responde SOLO con la consulta SQL, sin formato markdown:`;
 
     try {
-      const response = await this.ollama.generate({
-        model: "llama3.2", // You can change this to your preferred model
-        prompt,
-        stream: false,
-      });
-
-      const cleanedSql = this.cleanSqlResponse(response.response);
-      return cleanedSql;
+      const response = await this.generateWithOllama(prompt);
+      return this.cleanSqlResponse(response);
     } catch (error) {
       console.error("Error generating SQL query:", error);
       throw new Error("Error al generar la consulta SQL con Ollama");
     }
   }
-
   async generateResponse(
     query: string,
     data: Record<string, unknown>[],
-    conversationHistory?: {
-      role: "user" | "assistant";
-      content: string;
-      timestamp: string;
-    }[]
+    conversationHistory?: ConversationMessage[]
   ): Promise<string> {
     await this.initialize();
-    const prompt = `Eres un asistente de CRM energético. El usuario hizo esta consulta: "${query}"
 
-${
-  conversationHistory && conversationHistory.length > 0
-    ? `
+    const conversationContext =
+      conversationHistory && conversationHistory.length > 0
+        ? `
 📚 CONTEXTO DE CONVERSACIÓN:
 ${conversationHistory
-  .slice(-4)
+  .slice(-MAX_GENERAL_CONTEXT)
   .map(
     (msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`
   )
@@ -545,8 +669,11 @@ ${conversationHistory
 
 Ten en cuenta este contexto para proporcionar una respuesta más coherente y personalizada.
 `
-    : ""
-}
+        : "";
+
+    const prompt = `Eres un asistente de CRM energético. El usuario hizo esta consulta: "${query}"
+
+${conversationContext}
 
 Los datos obtenidos son:
 ${JSON.stringify(data, null, 2)}
@@ -562,13 +689,8 @@ Si no hay resultados, sugiere posibles alternativas de búsqueda.
 Respuesta:`;
 
     try {
-      const response = await this.ollama.generate({
-        model: "llama3.2",
-        prompt,
-        stream: false,
-      });
-
-      return response.response.trim();
+      const response = await this.generateWithOllama(prompt);
+      return response.trim();
     } catch (error) {
       console.error("Error generating response:", error);
       return `Encontré ${data.length} resultados para tu consulta.`;
@@ -577,11 +699,7 @@ Respuesta:`;
 
   async generateGeneralResponse(
     prompt: string,
-    conversationHistory?: {
-      role: "user" | "assistant";
-      content: string;
-      timestamp: string;
-    }[]
+    conversationHistory?: ConversationMessage[]
   ): Promise<string> {
     await this.initialize();
 
@@ -591,7 +709,7 @@ Respuesta:`;
       
 📚 CONTEXTO DE CONVERSACIÓN:
 ${conversationHistory
-  .slice(-4)
+  .slice(-MAX_GENERAL_CONTEXT)
   .map(
     (msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`
   )
@@ -601,13 +719,8 @@ Ten en cuenta este contexto para proporcionar una respuesta más coherente y per
         : prompt;
 
     try {
-      const response = await this.ollama.generate({
-        model: "llama3.2",
-        prompt: contextualPrompt,
-        stream: false,
-      });
-
-      return response.response.trim();
+      const response = await this.generateWithOllama(contextualPrompt);
+      return response.trim();
     } catch (error) {
       console.error("Error generating general response:", error);
       throw new Error("Error al generar respuesta con Ollama");

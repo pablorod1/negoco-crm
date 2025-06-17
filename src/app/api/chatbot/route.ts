@@ -1,221 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getTursoClient } from "@/lib/libsql/client";
-import { getAuth } from "@/lib/auth/auth";
+import { verifySession } from "@/lib/dal";
 import { ComparativaVM, ComparativaPlan } from "@/lib/core/types";
-import { ollamaService } from "@/lib/ollama/ollamaService";
+import {
+  ollamaService,
+  type ConversationMessage,
+  type UserContext,
+} from "@/lib/ollama/ollamaService";
+import {
+  DATABASE_QUERY_KEYWORDS,
+  SUGGESTIONS,
+  ERROR_MESSAGES,
+  GENERAL_QUERY_PROMPT,
+} from "@/lib/chatbot/constants";
+import {
+  ChatbotSecurity,
+  SecurityAuditLogger,
+  SECURITY_HEADERS,
+} from "@/lib/chatbot/security";
 
+// Types
 interface ChatbotRequest {
   message: string;
-  userId?: string;
-  userRole?: string;
-  userSuperId?: string | null;
-  conversationHistory?: {
-    role: "user" | "assistant";
-    content: string;
-    timestamp: string;
-  }[];
+  conversationHistory?: ConversationMessage[];
+  super_id: string | null;
 }
 
 interface ChatbotResponse {
   response: string;
-  suggestions?: string[];
+  suggestions?: readonly string[];
   tableData?: Record<string, unknown>[] | ComparativaVM[];
   queryType?: "database" | "general";
-  dataType?:
-    | "tramites"
-    | "clients"
-    | "comparativas"
-    | "fotovoltaica"
-    | "contracts"
-    | "users"
-    | "files"
-    | "signers"
-    | "general_data";
+  dataType?: DataType;
   originalQuery?: string;
-}
-
-// Keywords that indicate a database query
-const DATABASE_QUERY_KEYWORDS = [
-  // Tramites
-  "tramites",
-  "trámites",
-  "tramite",
-  "trámite",
-  // Clients
-  "cliente",
-  "clientes",
-  "cliente",
-  "clientes",
-  // Comparativas
-  "comparativa",
-  "comparativas",
-  "comparacion",
-  "comparación",
-  "tarifa",
-  "tarifas",
-  "estudio",
-  "estudios",
-  "estudio energético",
-  "estudios energéticos",
-  "estudio energetico",
-  "estudios energeticos",
-  // Fotovoltaica
-  "fotovoltaica",
-  "fotovoltaico",
-  "solar",
-  "ppa",
-  "proyecto",
-  "proyectos",
-  "placas solares",
-  "placa solar",
-  "placas fotovoltaicas",
-  "placa fotovoltaica",
-  "placas",
-  "solares",
-  // Contracts
-  "contrato",
-  "contratos",
-  "cups",
-  "potencia",
-  "consumo",
-  // Files
-  "archivo",
-  "archivos",
-  "documento",
-  "documentos",
-  "file",
-  "files",
-  // Signers
-  "firmante",
-  "firmantes",
-  "signer",
-  "signers",
-  "firma",
-  "firmas",
-  // Users
-  "usuario",
-  "usuarios",
-  "comercial",
-  "comerciales",
-  "admin",
-  "backoffice",
-  // General search terms
-  "busca",
-  "encuentra",
-  "buscar",
-  "encontrar",
-  "mostrar",
-  "muestra",
-  "listar",
-  "lista",
-  "ver",
-  "dame",
-  "necesito",
-  "quiero",
-  // Status and states
-  "activos",
-  "activo",
-  "pendientes",
-  "estado",
-  "status",
-  "borrador",
-  "verificado",
-  "procesando",
-  "baja",
-  "cancelado",
-  "completada",
-  "completado",
-  "estudio realizado",
-  "realizado",
-  "en proceso",
-  "rechazado",
-  "rechazada",
-  "pendiente de estudio",
-  "pendiente de cobro",
-  "pendiente de firma",
-  "cobrado por comercializadora",
-
-  // Dates and time
-  "junio",
-  "julio",
-  "agosto",
-  "enero",
-  "febrero",
-  "marzo",
-  "abril",
-  "mayo",
-  "septiembre",
-  "octubre",
-  "noviembre",
-  "diciembre",
-  "mes",
-  "año",
-  "fecha",
-  "fechas",
-  // Financial
-  "comision",
-  "comisión",
-  "comisiones",
-  "cobro",
-  "pago",
-  "liquidez",
-  "iban",
-  "factura",
-  "facturas",
-  // Company and business
-  "empresa",
-  "compañía",
-  "plan",
-  "planes",
-  "servicio",
-  "luz",
-  "gas",
-  "energia",
-  "energía",
-  // Location
-  "direccion",
-  "dirección",
-  "ciudad",
-  "provincia",
-  "postal",
-  "coordenadas",
-  "ubicacion",
-  "ubicación",
-  // Contact info
-  "información",
-  "datos",
-  "historial",
-  "último",
-  "ultima",
-  "reciente",
-  "contacto",
-  "teléfono",
-  "telefono",
-  "email",
-  "mail",
-  // Document types
-  "nombre",
-  "apellido",
-  "apellidos",
-  "documento",
-  "dni",
-  "nif",
-  "cif",
-  "tipo",
-  // Technical
-  "creacion",
-  "creación",
-  "actualización",
-  "update",
-  "updated",
-];
-
-function isDataQuery(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  return DATABASE_QUERY_KEYWORDS.some((keyword) =>
-    lowerMessage.includes(keyword)
-  );
 }
 
 type DataType =
@@ -229,6 +47,15 @@ type DataType =
   | "signers"
   | "general_data";
 
+// Constants
+function isDataQuery(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  return DATABASE_QUERY_KEYWORDS.some((keyword) =>
+    lowerMessage.includes(keyword)
+  );
+}
+
+// Utility functions
 function detectDataType(
   sqlQuery: string,
   data: Record<string, unknown>[],
@@ -502,244 +329,375 @@ function transformComparativaData(
   });
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const {
-      message,
-      userId,
-      userRole,
-      userSuperId,
-      conversationHistory,
-    }: ChatbotRequest = await req.json();
+// Utility functions for suggestions
+function getSuggestionsByDataType(dataType: DataType): readonly string[] {
+  return SUGGESTIONS[dataType] || SUGGESTIONS.general_data;
+}
 
-    if (!message?.trim()) {
+function getGeneralSuggestions(): readonly string[] {
+  return SUGGESTIONS.general;
+}
+
+function getFallbackSuggestions(): readonly string[] {
+  return SUGGESTIONS.fallback;
+}
+
+function getErrorSuggestions(): readonly string[] {
+  return SUGGESTIONS.error;
+}
+
+function validateMessage(message: string): boolean {
+  return Boolean(message?.trim());
+}
+
+// Database query execution
+async function executeQuery(
+  req: NextRequest,
+  sqlQuery: string
+): Promise<Record<string, unknown>[]> {
+  const tursoClient = getTursoClient(req);
+  if (!tursoClient) {
+    throw new Error("Database client not initialized");
+  }
+
+  const result = await tursoClient.execute({ sql: sqlQuery });
+  return result.rows as Record<string, unknown>[];
+}
+
+// Response builders
+function buildDatabaseResponse(
+  naturalResponse: string,
+  data: Record<string, unknown>[],
+  dataType: DataType,
+  originalQuery: string
+): ChatbotResponse {
+  const response: ChatbotResponse = {
+    response: naturalResponse,
+    tableData: data,
+    queryType: "database",
+    originalQuery,
+    dataType,
+    suggestions: getSuggestionsByDataType(dataType),
+  };
+
+  // Transform comparativas data if needed
+  if (dataType === "comparativas") {
+    response.tableData = transformComparativaData(data);
+  }
+
+  return response;
+}
+
+function buildGeneralResponse(response: string): ChatbotResponse {
+  return {
+    response,
+    queryType: "general",
+    suggestions: getGeneralSuggestions(),
+  };
+}
+
+function buildErrorResponse(
+  message: string,
+  suggestions: readonly string[]
+): ChatbotResponse {
+  return {
+    response: message,
+    suggestions,
+  };
+}
+
+export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  let currentUserId = "";
+  let currentUserRole = "";
+
+  try {
+    // Verify session and extract user information
+    const { session } = await verifySession(req);
+    const { message, conversationHistory, super_id }: ChatbotRequest =
+      await req.json(); // Extract user information for security logging
+    currentUserId = session.user.id || "";
+    currentUserRole = session.user.role || "";
+    const currentUserSuperId = super_id;
+    const ip =
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+
+    // Comprehensive security validation
+    const securityValidation = await ChatbotSecurity.validateRequest(
+      req,
+      currentUserId,
+      currentUserRole
+    );
+    if (!securityValidation.isValid) {
+      const response = NextResponse.json(
+        buildErrorResponse(
+          securityValidation.errors.includes("Rate limit exceeded")
+            ? ERROR_MESSAGES.rateLimitExceeded
+            : ERROR_MESSAGES.unauthorizedAccess,
+          []
+        ),
+        {
+          status: securityValidation.errors.includes("Rate limit exceeded")
+            ? 429
+            : 403,
+          headers: SECURITY_HEADERS,
+        }
+      );
+
+      if (securityValidation.retryAfter) {
+        response.headers.set(
+          "Retry-After",
+          securityValidation.retryAfter.toString()
+        );
+      }
+
+      return response;
+    }
+
+    // Validate and sanitize input
+    const inputValidation = await ChatbotSecurity.validateAndSanitizeInput(
+      message,
+      conversationHistory,
+      currentUserId,
+      ip
+    );
+
+    if (!inputValidation.isValid) {
+      SecurityAuditLogger.logSuspiciousPattern(
+        currentUserId,
+        ip,
+        "Input validation failed",
+        inputValidation.errors.join(", ")
+      );
+
       return NextResponse.json(
-        { response: "Por favor, escribe tu consulta." },
-        { status: 400 }
+        buildErrorResponse(ERROR_MESSAGES.invalidInput, []),
+        { status: 400, headers: SECURITY_HEADERS }
       );
     }
 
-    // Get user session using Better Auth
-    const auth = getAuth(req);
-    const session = await auth.api.getSession({
-      headers: req.headers,
-    });
-    const currentUserId = userId || session?.user?.id;
-    const currentUserRole = userRole || session?.user?.role;
-    // For now, get super_id from the request body as the session type doesn't include it
-    const currentUserSuperId = userSuperId;
+    // Use sanitized inputs
+    const sanitizedMessage = inputValidation.sanitizedMessage;
+    const sanitizedHistory = inputValidation.sanitizedHistory;
 
-    if (!currentUserId || !currentUserRole) {
+    // Basic validation (keeping existing logic)
+    if (!validateMessage(sanitizedMessage)) {
       return NextResponse.json(
-        {
-          response:
-            "No se pudo verificar tu sesión. Por favor, inicia sesión de nuevo.",
-        },
-        { status: 401 }
+        buildErrorResponse(ERROR_MESSAGES.emptyMessage, []),
+        { status: 400, headers: SECURITY_HEADERS }
       );
-    } // Check if this is a database query
-    if (isDataQuery(message)) {
+    }
+
+    // Validate user information
+    if (!currentUserId || !currentUserRole) {
+      SecurityAuditLogger.logUnauthorizedAccess(
+        currentUserId || "unknown",
+        currentUserRole || "unknown",
+        ip,
+        "Missing user information"
+      );
+
+      return NextResponse.json(
+        buildErrorResponse(ERROR_MESSAGES.userInfo, []),
+        { status: 401, headers: SECURITY_HEADERS }
+      );
+    }
+
+    // Check if this is a database query
+    if (isDataQuery(sanitizedMessage)) {
       try {
-        // Debug logging
+        // Debug logging with security context
         console.log("🔍 Chatbot API Debug:", {
           currentUserId,
           currentUserRole,
           currentUserSuperId,
-          message,
+          sanitizedMessage,
+          requestDuration: Date.now() - startTime,
         });
 
         // Generate SQL query using Ollama
-        const sqlQuery = await ollamaService.generateSQLQuery(
-          message,
-          currentUserId,
-          currentUserRole,
-          currentUserSuperId,
-          conversationHistory
-        );
+        const userContext: UserContext = {
+          id: currentUserId,
+          role: currentUserRole,
+          superId: currentUserSuperId,
+        };
 
-        console.log("User query:", message);
+        const sqlQuery = await Promise.race([
+          ollamaService.generateSQLQuery(
+            sanitizedMessage,
+            userContext,
+            sanitizedHistory
+          ),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("AI response timeout")), 45000)
+          ),
+        ]);
+
+        console.log("User query:", sanitizedMessage);
         console.log("Generated SQL:", sqlQuery);
         console.log("SQL length:", sqlQuery.length);
         console.log("SQL preview:", sqlQuery.substring(0, 100) + "...");
 
-        // Validate the generated SQL to allow only SELECT statements
-        const isSafeSelect =
-          typeof sqlQuery === "string" &&
-          /^\s*select\s+/i.test(sqlQuery) &&
-          !/;\s*(drop|delete|update|insert|alter|create|replace|truncate|exec|call)\b/i.test(
-            sqlQuery
-          );
-
-        if (!isSafeSelect) {
+        // Enhanced SQL security validation
+        const sqlValidation = ChatbotSecurity.validateSQLQuery(
+          sqlQuery,
+          currentUserId,
+          currentUserRole,
+          ip
+        );
+        if (!sqlValidation.isValid) {
           return NextResponse.json(
-            {
-              response:
-                "La consulta generada no es segura o no es una consulta SELECT. Por favor, reformula tu pregunta.",
-              suggestions: [
-                "Haz una consulta que solo requiera leer datos",
-                "Evita pedir cambios o eliminaciones de datos",
-                "Consulta información sobre clientes, trámites, etc.",
-              ],
-            },
-            { status: 400 }
+            buildErrorResponse(
+              ERROR_MESSAGES.unsafeQuery,
+              SUGGESTIONS.unsafeQuery
+            ),
+            { status: 400, headers: SECURITY_HEADERS }
           );
         }
 
-        // Execute the query
-        const tursoClient = getTursoClient(req);
-        if (!tursoClient) {
-          throw new Error("Database client not initialized");
-        }
+        // Use sanitized SQL
+        const sanitizedSQL = sqlValidation.sanitizedSQL;
 
-        const result = await tursoClient.execute({ sql: sqlQuery });
-        const data = result.rows as Record<string, unknown>[];
+        // Execute query with timeout
+        const data = await Promise.race([
+          executeQuery(req, sanitizedSQL),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Database query timeout")), 30000)
+          ),
+        ]);
 
         console.log("Query executed successfully, rows returned:", data.length);
 
-        // Detect data type (tramites or clients)
-        const dataType = detectDataType(sqlQuery, data, message); // Generate a natural language response
-        const naturalResponse = await ollamaService.generateResponse(
-          message,
-          data,
-          conversationHistory
-        ); // Dynamic suggestions based on data type
-        const suggestions =
-          dataType === "clients"
-            ? [
-                "Busca información de otro cliente",
-                "¿Cuántos clientes hay en total?",
-                "Muestra el historial completo de un cliente",
-                "¿Qué clientes no tienen trámites?",
-              ]
-            : dataType === "comparativas"
-              ? [
-                  "¿Cuántos estudios hay en proceso?",
-                  "Muestra los estudios completados",
-                  "¿Cuál es el estado de estos estudios?",
-                  "Busca estudios por cliente específico",
-                ]
-              : dataType === "fotovoltaica"
-                ? [
-                    "¿Cuántos proyectos están activos?",
-                    "Muestra los proyectos completados",
-                    "¿Cuál es el estado de estos proyectos?",
-                    "Busca proyectos por ubicación",
-                  ]
-                : [
-                    "¿Cuántos hay en total?",
-                    "Muestra más detalles sobre estos",
-                    "¿Cuál es el estado de estos trámites?",
-                    "Busca trámites por cliente específico",
-                  ];
-
-        const response: ChatbotResponse = {
-          response: naturalResponse,
-          tableData: data,
+        // Log successful database access for audit
+        console.log("🔒 Security Audit: Database access", {
+          userId: currentUserId,
+          userRole: currentUserRole,
+          ip,
           queryType: "database",
-          originalQuery: message,
-          dataType: dataType,
-          suggestions: suggestions,
-        };
+          resultCount: data.length,
+          timestamp: new Date().toISOString(),
+        });
 
-        // If the data type is 'comparativas', transform the data to ComparativaVM format
-        if (dataType === "comparativas") {
-          response.tableData = transformComparativaData(data);
-        }
+        // Generate response
+        const dataType = detectDataType(sanitizedSQL, data, sanitizedMessage);
+        const naturalResponse = await ollamaService.generateResponse(
+          sanitizedMessage,
+          data,
+          sanitizedHistory
+        );
 
-        return NextResponse.json(response);
+        const response = buildDatabaseResponse(
+          naturalResponse,
+          data,
+          dataType,
+          sanitizedMessage
+        );
+
+        return NextResponse.json(response, { headers: SECURITY_HEADERS });
       } catch (error) {
         console.error("Database query error:", error);
 
-        // If it's an Ollama connection error, provide specific message
-        if (
-          error instanceof Error &&
-          error.message.includes("conectar con Ollama")
-        ) {
-          return NextResponse.json({
-            response:
-              "No puedo conectar con el sistema de procesamiento de consultas (Ollama). Por favor, asegúrate de que Ollama esté ejecutándose y vuelve a intentarlo.",
-            suggestions: [
-              "Verificar que Ollama esté ejecutándose",
-              "Explicar el problema a soporte técnico",
-              "Usar la búsqueda manual en la página de trámites",
-              "Consultar información general sobre energía",
-            ],
-          });
-        } // Fallback response for database errors
-        return NextResponse.json({
-          response:
-            "No pude acceder a los datos en este momento. Si me das más detalles sobre lo que buscas, tal vez pueda ayudarte de otra manera o sugerir alternativas.",
-          suggestions: [
-            "Explícame qué tipo de información necesitas",
-            "¿Puedes reformular tu consulta?",
-            "Háblame sobre el proceso de trámites",
-            "¿Qué documentos sueles necesitar?",
-          ],
-        });
+        // Enhanced error handling with security logging
+        if (error instanceof Error) {
+          if (error.message.includes("timeout")) {
+            SecurityAuditLogger.logSuspiciousPattern(
+              currentUserId,
+              ip,
+              "Query timeout",
+              sanitizedMessage
+            );
+
+            return NextResponse.json(
+              buildErrorResponse(
+                ERROR_MESSAGES.queryTooComplex,
+                getFallbackSuggestions()
+              ),
+              { headers: SECURITY_HEADERS }
+            );
+          }
+
+          if (error.message.includes("conectar con Ollama")) {
+            return NextResponse.json(
+              buildErrorResponse(
+                ERROR_MESSAGES.ollamaConnection,
+                SUGGESTIONS.ollamaConnection
+              ),
+              { headers: SECURITY_HEADERS }
+            );
+          }
+        }
+
+        // Generic database error fallback
+        return NextResponse.json(
+          buildErrorResponse(
+            ERROR_MESSAGES.databaseAccess,
+            getFallbackSuggestions()
+          ),
+          { headers: SECURITY_HEADERS }
+        );
       }
     }
 
-    // Handle general queries with Ollama
-    try {
-      const generalPrompt = `Eres un asistente experto en el sector energético español y gestión comercial. 
-      Responde de manera profesional y útil a esta consulta: "${message}"
-      
-      Proporciona información precisa y actualizada sobre:
-      - Mercado energético español
-      - Tarifas y precios de energía
-      - Proceso de cambio de comercializadora
-      - Documentación necesaria para trámites
-      - Normativas energéticas
-      - Gestión comercial del sector
-      
-      Mantén un tono profesional pero cercano.`;
-      const response = await ollamaService.generateGeneralResponse(
-        generalPrompt,
-        conversationHistory
-      );
+    // Handle general queries with security logging
+    console.log("🔒 Security Audit: General query", {
+      userId: currentUserId,
+      userRole: currentUserRole,
+      ip,
+      queryType: "general",
+      timestamp: new Date().toISOString(),
+    });
 
-      const chatbotResponse: ChatbotResponse = {
-        response: response,
-        queryType: "general",
-        suggestions: [
-          "Explícame las tarifas eléctricas actuales",
-          "¿Cómo cambio de comercializadora?",
-          "¿Qué es el PVPC?",
-          "Documentos necesarios para un alta",
-        ],
-      };
-
-      return NextResponse.json(chatbotResponse);
-    } catch (error) {
-      console.error("General query error:", error);
-
-      // Fallback response
-      return NextResponse.json({
-        response:
-          "Gracias por tu consulta. En este momento no puedo procesarla completamente, pero estaré encantado de ayudarte con información sobre el sector energético, trámites o cualquier duda comercial que tengas.",
-        suggestions: [
-          "¿Cómo puedo ayudarte con tus trámites?",
-          "Información sobre tarifas energéticas",
-          "Proceso de alta de cliente",
-          "Estados de trámites explicados",
-        ],
-      });
-    }
+    return await handleGeneralQuery(sanitizedMessage, sanitizedHistory);
   } catch (error) {
     console.error("Chatbot API error:", error);
 
+    // Security logging for unhandled errors
+    if (currentUserId) {
+      const ip =
+        req.headers.get("x-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        "unknown";
+      SecurityAuditLogger.logSuspiciousPattern(
+        currentUserId,
+        ip,
+        "Unhandled error",
+        error instanceof Error ? error.message : "Unknown error"
+      );
+    }
+
     return NextResponse.json(
-      {
-        response:
-          "Ha ocurrido un error interno. Por favor, inténtalo de nuevo en unos momentos.",
-        suggestions: [
-          "Explícame el proceso de trámites",
-          "¿Cómo funciona el sector energético?",
-          "Ayúdame con documentación",
-          "Información sobre comisiones",
-        ],
-      },
-      { status: 500 }
+      buildErrorResponse(ERROR_MESSAGES.internalError, getErrorSuggestions()),
+      { status: 500, headers: SECURITY_HEADERS }
+    );
+  }
+}
+
+// Separate function for handling general queries
+async function handleGeneralQuery(
+  message: string,
+  conversationHistory?: ConversationMessage[]
+): Promise<NextResponse> {
+  try {
+    const generalPrompt = GENERAL_QUERY_PROMPT.replace("{message}", message);
+
+    const response = await ollamaService.generateGeneralResponse(
+      generalPrompt,
+      conversationHistory
+    );
+
+    return NextResponse.json(buildGeneralResponse(response), {
+      headers: SECURITY_HEADERS,
+    });
+  } catch (error) {
+    console.error("General query error:", error);
+    return NextResponse.json(
+      buildErrorResponse(
+        ERROR_MESSAGES.generalFallback,
+        getFallbackSuggestions()
+      ),
+      { headers: SECURITY_HEADERS }
     );
   }
 }

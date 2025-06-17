@@ -118,9 +118,7 @@ export default function Chatbot() {
         },
         body: JSON.stringify({
           message: currentInput,
-          userId: userData.id,
-          userRole: userData.role,
-          userSuperId: userData.super_id,
+          super_id: userData.super_id,
           conversationHistory: conversationHistory,
         }),
       });
