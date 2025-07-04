@@ -65,7 +65,7 @@ export default function TimelineItem({
                       <RefreshCcw className="size-4 text-primary-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <h3 className="font-medium text-gray-800 text-sm">
-                          ActualizaciÛn Autom·tica
+                          Actualizaci√≥n Autom√°tica
                         </h3>
                         <p className="text-xs text-gray-600 mt-0.5">
                           {tooltipContent}
@@ -105,4 +105,3 @@ export default function TimelineItem({
     </div>
   );
 }
-

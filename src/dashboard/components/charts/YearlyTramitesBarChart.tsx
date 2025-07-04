@@ -259,7 +259,7 @@ const ChartViewToggle: React.FC<ChartViewToggleProps> = ({
       icon={<Coins size={16} />}
       label="Margen"
       value={isComercial ? totals.comisionSalesPerson : totals.comision}
-      unit="€"
+      unit=""
       isMonetary
     />
   </div>

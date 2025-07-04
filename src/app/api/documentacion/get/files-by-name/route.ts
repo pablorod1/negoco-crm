@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
 
     if (!name) {
       return NextResponse.json(
-        { error: "Par·metros faltantes" },
+        { error: "Par√°metros faltantes" },
         { status: 400 }
       );
     }

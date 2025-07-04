@@ -291,7 +291,7 @@ export function ComparativasRatio({
                         startAngle={startAngle}
                         endAngle={endAngle}
                         innerRadius={80}
-                        outerRadius={110}
+                        outerRadius={95}
                       >
                         <PolarGrid
                           gridType="circle"
@@ -427,4 +427,3 @@ export function ComparativasRatio({
     </Card>
   );
 }
-

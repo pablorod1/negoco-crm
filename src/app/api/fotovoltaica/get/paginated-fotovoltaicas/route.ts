@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     const offset =
-      rowsPerPage === "Sin Límite"
+      rowsPerPage === "Sin LÃ­mite"
         ? 0
         : typeof rowsPerPage === "number"
           ? (page - 1) * rowsPerPage
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
       GROUP BY 
           f.id
       ORDER BY f.creation_date DESC
-      ${rowsPerPage === "Sin Límite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
+      ${rowsPerPage === "Sin LÃ­mite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
     `;
 
     // Add pagination parameters

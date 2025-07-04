@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
       if (updateResponse.rowsAffected === 0) {
         return NextResponse.json(
-          { error: "Error al actualizar la notificación" },
+          { error: "Error al actualizar la notificaciÃ³n" },
           { status: 500 }
         );
       }
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     if (insertResponse.rowsAffected === 0) {
       return NextResponse.json(
-        { error: "Error al crear la notificación" },
+        { error: "Error al crear la notificaciÃ³n" },
         { status: 500 }
       );
     }

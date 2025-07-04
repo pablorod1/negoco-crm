@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const { folder_name }: { folder_name: string } = await req.json();
 
     if (!folder_name) {
-      return NextResponse.json({ error: "Faltan par·metros" }, { status: 400 });
+      return NextResponse.json({ error: "Faltan par√°metros" }, { status: 400 });
     }
 
     const tursoClient = getTursoClient(req);
