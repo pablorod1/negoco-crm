@@ -1,9 +1,9 @@
-import { FotovoltaicaDB, FotovoltaicaFile } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
+import { FotovoltaicaDB, FotovoltaicaFile } from "@/fotovoltaica/types";
+import { getTursoClient } from "@/core/libsql/client";
 import {
   addFotovoltaica,
   addFotovoltaicaFiles,
-} from "@/lib/libsql/fotovoltaica/addFotovoltaicaHelpers";
+} from "@/fotovoltaica/utils/addFotovoltaicaHelpers";
 
 import { NextRequest, NextResponse } from "next/server";
 

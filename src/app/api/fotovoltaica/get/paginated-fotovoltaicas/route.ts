@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTursoClient } from "@/lib/libsql/client";
-import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
+import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { DateRange } from "react-day-picker";
 
 export async function POST(req: NextRequest) {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     const offset =
-      rowsPerPage === "Sin LÃ­mite"
+      rowsPerPage === "Sin Límite"
         ? 0
         : typeof rowsPerPage === "number"
           ? (page - 1) * rowsPerPage
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
       GROUP BY 
           f.id
       ORDER BY f.creation_date DESC
-      ${rowsPerPage === "Sin LÃ­mite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
+      ${rowsPerPage === "Sin Límite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
     `;
 
     // Add pagination parameters

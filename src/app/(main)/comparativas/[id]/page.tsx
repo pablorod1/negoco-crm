@@ -1,6 +1,7 @@
 "use client";
-import { useUser } from "@/lib/contexts/UserContext";
-import { ComparativaFile, ComparativaVM, User } from "@/lib/core/types";
+import { useUser } from "@/core/contexts/UserContext";
+import { User } from "@/core/types";
+import { ComparativaFile, ComparativaVM } from "@/comparativas/types";
 import {
   Calendar,
   CheckCircle,
@@ -19,26 +20,31 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AvatarComponent from "@/components/core/AvatarComponent";
-import { Separator } from "@/components/ui/separator";
-import { formatDateTime } from "@/lib/core/format";
-import { showCustomToast } from "@/components/core/CustomToast";
-import UploadComparativaFilesModal from "@/components/comparativas/editComparativa/UploadComparativaFilesModal";
-import { generateComparativaUpdatedNotification } from "@/lib/core/notifications.helpers";
-import UpdateComissionsModal from "@/components/comparativas/editComparativa/UpdateComissionsModal";
-import { ComparativaNotesSection } from "@/components/comparativas/editComparativa/NotesTabContent";
-import { ServiceInfo } from "@/components/comparativas/editComparativa/ServiceInfo";
-import { FilesList } from "@/components/comparativas/editComparativa/FilesList";
-import { CommissionsTabContent } from "@/components/comparativas/editComparativa/ComissionsTabContent";
-import UpdateComparativaStatusModal from "@/components/comparativas/editComparativa/UpdateComparativaStatusModal";
+} from "@/core/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/core/components/ui/tabs";
+import AvatarComponent from "@/core/components/AvatarComponent";
+import { Separator } from "@/core/components/ui/separator";
+import { formatDateTime } from "@/core/utils/format";
+import { showCustomToast } from "@/core/components/CustomToast";
+import UploadComparativaFilesModal from "@/comparativas/components/editComparativa/UploadComparativaFilesModal";
+import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
+import UpdateComissionsModal from "@/comparativas/components/editComparativa/UpdateComissionsModal";
+import { ComparativaNotesSection } from "@/comparativas/components/editComparativa/NotesTabContent";
+import { ServiceInfo } from "@/comparativas/components/editComparativa/ServiceInfo";
+import { FilesList } from "@/comparativas/components/editComparativa/FilesList";
+import { CommissionsTabContent } from "@/comparativas/components/editComparativa/ComissionsTabContent";
+import UpdateComparativaStatusModal from "@/comparativas/components/editComparativa/UpdateComparativaStatusModal";
 import { Link, useTransitionRouter } from "next-view-transitions";
-import { getStatusBadge } from "@/lib/hooks/use-status-badge";
-import TooltipComponent from "@/components/core/TooltipComponent";
-import AddTramiteDialog from "@/components/tramites/createTramite/AddTramiteDialog";
-import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
-import { slideOut } from "@/lib/view-transitions/view-transitions";
+import { getStatusBadge } from "@/core/hooks/use-status-badge";
+import TooltipComponent from "@/core/components/TooltipComponent";
+import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
+import { slideOut } from "@/core/view-transitions/view-transitions";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();

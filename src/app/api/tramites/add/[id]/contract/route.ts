@@ -1,6 +1,6 @@
-import { ContractDB } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
-import { addContracts } from "@/lib/libsql/tramites/addTramiteHelpers";
+import { ContractDB } from "@/tramites/types";
+import { getTursoClient } from "@/core/libsql/client";
+import { addContracts } from "@/tramites/utils/addTramiteHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(

@@ -1,10 +1,10 @@
-import { ClientDB, SignerDB } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
-import { addClient } from "@/lib/libsql/tramites/addTramiteHelpers";
+import { ClientDB, SignerDB } from "@/tramites/types";
+import { getTursoClient } from "@/core/libsql/client";
+import { addClient } from "@/tramites/utils/addTramiteHelpers";
 import {
   updateSigner,
   updateTramite,
-} from "@/lib/libsql/tramites/updateTramiteHelpers";
+} from "@/tramites/utils/updateTramiteHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(

@@ -1,5 +1,5 @@
-import { DocumentacionProvider } from "@/lib/contexts/DocumentacionContext";
-import DocumentacionSidebar from "@/components/documentacion/DocumentacionSidebar";
+﻿import { DocumentacionProvider } from "@/core/contexts/DocumentacionContext";
+import DocumentacionSidebar from "@/documentacion/components/DocumentacionSidebar";
 
 export default function DocumentacionLayout({
   children,
@@ -15,3 +15,4 @@ export default function DocumentacionLayout({
     </DocumentacionProvider>
   );
 }
+

@@ -1,6 +1,6 @@
-import { DocumentacionFile } from "@/lib/core/types";
-import { uploadFiles } from "@/lib/firebase/data/uploadFiles";
-import { getTursoClient } from "@/lib/libsql/client";
+import { DocumentacionFile } from "@/core/types";
+import { uploadFiles } from "@/core/firebase/data/uploadFiles";
+import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

@@ -1,4 +1,4 @@
-import { sendFotovoltaicaStatusUpdatedNotification } from "@/lib/hooks/update-fotovoltaica-status-notification-email";
+import { sendFotovoltaicaStatusUpdatedNotification } from "@/fotovoltaica/hooks/update-fotovoltaica-status-notification-email";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

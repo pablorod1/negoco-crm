@@ -1,5 +1,5 @@
-import { getTursoClient } from "@/lib/libsql/client";
-import { updateClient } from "@/lib/libsql/tramites/updateTramiteHelpers";
+import { getTursoClient } from "@/core/libsql/client";
+import { updateClient } from "@/tramites/utils/updateTramiteHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(req: NextRequest) {

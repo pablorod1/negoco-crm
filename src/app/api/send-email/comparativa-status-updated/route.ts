@@ -1,4 +1,4 @@
-import { sendComparativaStatusUpdatedNotification } from "@/lib/hooks/update-comparativa-status-notification-email";
+import { sendComparativaStatusUpdatedNotification } from "@/comparativas/hooks/update-comparativa-status-notification-email";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

@@ -1,12 +1,12 @@
-"use client";
-import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
-import { FileGrid } from "@/components/documentacion/FileGrid";
-import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
-import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
-import { DocumentacionFile, User } from "@/lib/core/types";
+﻿"use client";
+import EmptyDocumentacion from "@/documentacion/components/EmptyDocumentacion";
+import { FileGrid } from "@/documentacion/components/FileGrid";
+import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
+import { getSubFoldersFromFolder } from "@/core/firebase/data/getFolders";
+import { DocumentacionFile, User } from "@/core/types";
 import { useCallback, useEffect, useState } from "react";
-import { useUser } from "@/lib/contexts/UserContext";
-import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { useUser } from "@/core/contexts/UserContext";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 
 export default function DocumentacionPage() {
   const { userData } = useUser();

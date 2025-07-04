@@ -1,8 +1,8 @@
-import { getTursoClient } from "@/lib/libsql/client";
+import { getTursoClient } from "@/core/libsql/client";
 import {
   updateComparativaComissions,
   updateComparativaStatus,
-} from "@/lib/libsql/comparativas/updateComparativaHelpers";
+} from "@/comparativas/utils/updateComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(

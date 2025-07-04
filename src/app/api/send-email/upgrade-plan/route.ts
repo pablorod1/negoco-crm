@@ -1,4 +1,4 @@
-import { sendUpgradePlanEmail } from "@/lib/hooks/upgrade-plan-email";
+import { sendUpgradePlanEmail } from "@/core/hooks/upgrade-plan-email";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

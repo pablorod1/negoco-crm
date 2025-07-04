@@ -1,4 +1,4 @@
-import { sendWelcomeEmail } from "@/lib/hooks/welcome-email";
+import { sendWelcomeEmail } from "@/core/hooks/welcome-email";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

@@ -1,5 +1,6 @@
-import { DocumentacionFile, Rate } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
+import { DocumentacionFile } from "@/core/types";
+import { Rate } from "@/comercializadoras/types";
+import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(

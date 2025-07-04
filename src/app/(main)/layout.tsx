@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 import "../globals.css";
-import Header from "@/components/core/Header";
+import Header from "@/core/components/Header";
 import { Toaster } from "react-hot-toast";
 import { Providers } from "../providers";
 import React, { useEffect, useState } from "react";
@@ -28,3 +28,4 @@ export default function MainLayout({
     </main>
   );
 }
+

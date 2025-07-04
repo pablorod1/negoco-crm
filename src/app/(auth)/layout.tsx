@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
-import AnimatedBackground from "@/components/auth/login/AnimatedBackground";
-import FeatureItem from "@/components/auth/login/FeatureItem";
+import AnimatedBackground from "@/core/components/auth/login/AnimatedBackground";
+import FeatureItem from "@/core/components/auth/login/FeatureItem";
 import { BarChart, CheckCircle, ClipboardList } from "lucide-react";
 import Image from "next/image";
 
@@ -92,3 +92,4 @@ export default function AuthLayout({
     </div>
   );
 }
+

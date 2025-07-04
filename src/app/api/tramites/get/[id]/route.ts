@@ -5,9 +5,9 @@ import {
   SignerDB,
   TramiteDB,
   TramiteFile,
-} from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
-import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
+} from "@/tramites/types";
+import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { Client } from "@libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 

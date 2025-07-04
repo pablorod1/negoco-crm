@@ -1,5 +1,5 @@
-import { TimeRange } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
+import { TimeRange } from "@/core/types";
+import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 import { DateRange } from "react-day-picker";
 

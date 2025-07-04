@@ -1,5 +1,5 @@
-import { moveFolderFromComparativasToTramites } from "@/lib/firebase/data/moveFolder";
-import { getTursoClient } from "@/lib/libsql/client";
+import { moveFolderFromComparativasToTramites } from "@/core/firebase/data/moveFolder";
+import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(

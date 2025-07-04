@@ -1,4 +1,4 @@
-import { getTursoClient } from "@/lib/libsql/client";
+import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(

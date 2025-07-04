@@ -1,5 +1,5 @@
-import { storage } from "@/lib/firebase/firebaseConfig";
-import { getTursoClient } from "@/lib/libsql/client";
+import { storage } from "@/core/firebase/firebaseConfig";
+import { getTursoClient } from "@/core/libsql/client";
 import { deleteObject, listAll, ref } from "firebase/storage";
 import { NextRequest, NextResponse } from "next/server";
 

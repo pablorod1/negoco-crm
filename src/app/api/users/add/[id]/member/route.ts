@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "@/lib/auth/auth"; // Importar configuración de BetterAuth
+import { getAuth } from "@/core/auth/auth"; // Importar configuración de BetterAuth
 
 export async function POST(
   req: NextRequest,

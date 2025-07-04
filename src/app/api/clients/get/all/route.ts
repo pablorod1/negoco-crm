@@ -1,5 +1,5 @@
-import { getTursoClient } from "@/lib/libsql/client";
-import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
+import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     // Agrupamos por cliente para obtener los conteos correctos
     query += ` GROUP BY clients.id`;
-    
+
     // Ordenamos por fecha de último trámite en orden descendente
     query += ` ORDER BY last_tramite_date DESC NULLS LAST`;
 

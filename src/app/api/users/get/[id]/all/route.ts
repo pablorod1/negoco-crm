@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTursoClient } from "@/lib/libsql/client";
-import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
+import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 
 export async function POST(
   req: NextRequest,

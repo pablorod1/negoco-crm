@@ -1,5 +1,5 @@
-import { NOW_DATE, RENOVATION_DATE } from "@/lib/core/const";
-import { getTursoClient } from "@/lib/libsql/client";
+import { NOW_DATE, RENOVATION_DATE } from "@/dashboard/constants";
+import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(

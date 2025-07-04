@@ -1,0 +1,22 @@
+import { User } from "@/core/types";
+import { ComparativaDB } from "../types/comparativa.types";
+
+export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
+  id: `CMP-${Math.floor(Math.random() * 10000)}`,
+  client: "",
+  service: "Luz",
+  plan: ["fijo"],
+  comision: {
+    fijo: 0,
+    indexado: 0,
+  },
+  comision_sales_person: {
+    fijo: 0,
+    indexado: 0,
+  },
+  notes: [],
+  user_id: userData ? userData.id : "",
+  creation_date: new Date().toISOString(),
+  status: "pending",
+  tramite_id: undefined,
+});

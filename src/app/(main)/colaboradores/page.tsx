@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 import { useCallback, useEffect, useState } from "react";
-import CreateUserModal from "@/components/colaboradores/CreateUserModal";
-import UsersGridTable from "@/components/colaboradores/UsersGrid";
-import { User } from "@/lib/core/types";
-import { useUser } from "@/lib/contexts/UserContext";
-import { useUsers } from "@/lib/contexts/UsersContext"; // Importar el nuevo contexto
-import { showCustomToast } from "@/components/core/CustomToast";
+import CreateUserModal from "@/colaboradores/components/CreateUserModal";
+import UsersGridTable from "@/colaboradores/components/UsersGrid";
+import { User } from "@/core/types";
+import { useUser } from "@/core/contexts/UserContext";
+import { useUsers } from "@/core/contexts/UsersContext"; // Importar el nuevo contexto
+import { showCustomToast } from "@/core/components/CustomToast";
 import { CircleX } from "lucide-react";
 
 export default function ColaboradoresPage() {
@@ -110,3 +110,4 @@ export default function ColaboradoresPage() {
     </div>
   );
 }
+

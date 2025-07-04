@@ -1,4 +1,4 @@
-import ComercializadoraDetails from "@/components/comercializadoras/details/ComercializadoraDetails";
+import ComercializadoraDetails from "@/comercializadoras/components/details/ComercializadoraDetails";
 
 export default function ComercializadoraDetailsPage() {
   return <ComercializadoraDetails />;

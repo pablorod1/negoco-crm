@@ -1,6 +1,6 @@
-import { deleteFolderFromStorage } from "@/lib/firebase/data/deleteFolder";
-import { getTursoClient } from "@/lib/libsql/client";
-import { deleteComparativa } from "@/lib/libsql/comparativas/deleteComparativaHelpers";
+import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
+import { getTursoClient } from "@/core/libsql/client";
+import { deleteComparativa } from "@/comparativas/utils/deleteComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(

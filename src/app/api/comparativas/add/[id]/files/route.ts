@@ -1,10 +1,10 @@
-import { ComparativaFile } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
-import { addComparativaFiles } from "@/lib/libsql/comparativas/addComparativaHelpers";
+import { ComparativaFile } from "@/comparativas/types";
+import { getTursoClient } from "@/core/libsql/client";
+import { addComparativaFiles } from "@/comparativas/utils/addComparativaHelpers";
 import {
   updateComparativaComissions,
   updateComparativaStatus,
-} from "@/lib/libsql/comparativas/updateComparativaHelpers";
+} from "@/comparativas/utils/updateComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(

@@ -1,6 +1,6 @@
-import { ComparativaPlan } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
-import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
+import { ComparativaPlan } from "@/comparativas/types";
+import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
 import { DateRange } from "react-day-picker";
 

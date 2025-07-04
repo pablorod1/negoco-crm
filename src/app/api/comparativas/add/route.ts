@@ -1,9 +1,9 @@
-import { ComparativaDB, ComparativaFile } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
+import { ComparativaDB, ComparativaFile } from "@/comparativas/types";
+import { getTursoClient } from "@/core/libsql/client";
 import {
   addComparativa,
   addComparativaFiles,
-} from "@/lib/libsql/comparativas/addComparativaHelpers";
+} from "@/comparativas/utils/addComparativaHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

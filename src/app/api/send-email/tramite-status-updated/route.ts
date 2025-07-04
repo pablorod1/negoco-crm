@@ -1,4 +1,4 @@
-import { sendTramiteStatusUpdatedNotification } from "@/lib/hooks/update-tramite-status-notification-email";
+import { sendTramiteStatusUpdatedNotification } from "@/tramites/hooks/update-tramite-status-notification-email";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

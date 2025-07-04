@@ -1,8 +1,8 @@
-import { getTursoClient } from "@/lib/libsql/client";
+import { getTursoClient } from "@/core/libsql/client";
 import {
   getComparativasRatio,
   getObjectivesTramitesValues,
-} from "@/lib/libsql/objectives/getObjectivesHelpers";
+} from "@/core/libsql/objectives/getObjectivesHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

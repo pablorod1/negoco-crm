@@ -1,6 +1,6 @@
-import { TramiteFile } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
-import { addTramiteFiles } from "@/lib/libsql/tramites/addTramiteHelpers";
+import { TramiteFile } from "@/tramites/types/tramite.types";
+import { getTursoClient } from "@/core/libsql/client";
+import { addTramiteFiles } from "@/tramites/utils/addTramiteHelpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

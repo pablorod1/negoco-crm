@@ -1,6 +1,6 @@
-import { ComercializadoraVM } from "@/lib/core/types";
-import { getTursoClient } from "@/lib/libsql/client";
-import { getSubcomerciales } from "@/lib/libsql/users/getSubcomerciales";
+import { ComercializadoraVM } from "@/comercializadoras/types";
+import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { Row } from "@libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 

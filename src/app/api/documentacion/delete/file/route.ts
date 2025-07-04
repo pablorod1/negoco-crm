@@ -1,5 +1,5 @@
-import { deleteFileFromStorage } from "@/lib/firebase/data/deleteFile";
-import { getTursoClient } from "@/lib/libsql/client";
+import { deleteFileFromStorage } from "@/core/firebase/data/deleteFile";
+import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

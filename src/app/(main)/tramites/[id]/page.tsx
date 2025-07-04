@@ -1,31 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { CloudAlert, ShieldAlert } from "lucide-react";
 import {
-  EditTramiteFormData,
-  createEmptyTramiteForm,
-  SignerDB,
-  TramiteFile,
-  User,
-} from "@/lib/core/types";
-import { useUser } from "@/lib/contexts/UserContext";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/core/components/ui/card";
+import { Separator } from "@/core/components/ui/separator";
+import { CloudAlert, ShieldAlert } from "lucide-react";
+import { EditTramiteFormData } from "@/tramites/types/tramite.types";
+import { createEmptyTramiteForm } from "@/tramites/utils/tramite.factories";
+import { SignerDB, TramiteFile } from "@/tramites/types/tramite.types";
+import { User } from "@/core/types";
+import { useUser } from "@/core/contexts/UserContext";
 import { useParams } from "next/navigation";
-import { TramiteNotesSection } from "@/components/tramites/editTramite/notes/NotesTabContent";
-import ContractSection from "@/components/tramites/editTramite/contract/ContractSection";
-import { showCustomToast } from "@/components/core/CustomToast";
-import TramiteFilesSection from "@/components/tramites/editTramite/files/TramitesFilesSection";
-import TramiteTimeLineSection from "@/components/tramites/editTramite/TramiteTimeLineSection";
-import TramiteClientSection from "@/components/tramites/editTramite/client/TramiteClientSection";
-import TramiteComercialSection from "@/components/tramites/editTramite/comercial/TramiteComercialSection";
-import TramiteComissionsSection from "@/components/tramites/editTramite/comissions/TramiteComissionsSection";
-import TramiteStatusSection from "@/components/tramites/editTramite/TramiteStatusSection";
-import LiquidezStatusSection from "@/components/tramites/editTramite/liquidez/LiquidezStatusSection";
-import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { TramiteNotesSection } from "@/tramites/components/editTramite/notes/NotesTabContent";
+import ContractSection from "@/tramites/components/editTramite/contract/ContractSection";
+import { showCustomToast } from "@/core/components/CustomToast";
+import TramiteFilesSection from "@/tramites/components/editTramite/files/TramitesFilesSection";
+import TramiteTimeLineSection from "@/tramites/components/editTramite/TramiteTimeLineSection";
+import TramiteClientSection from "@/tramites/components/editTramite/client/TramiteClientSection";
+import TramiteComercialSection from "@/tramites/components/editTramite/comercial/TramiteComercialSection";
+import TramiteComissionsSection from "@/tramites/components/editTramite/comissions/TramiteComissionsSection";
+import TramiteStatusSection from "@/tramites/components/editTramite/TramiteStatusSection";
+import LiquidezStatusSection from "@/tramites/components/editTramite/liquidez/LiquidezStatusSection";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/lib/view-transitions/view-transitions";
+import { slideOut } from "@/core/view-transitions/view-transitions";
 
 export default function TramiteDetails() {
   const { userData } = useUser();

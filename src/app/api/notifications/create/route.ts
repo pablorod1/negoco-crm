@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTursoClient } from "@/lib/libsql/client";
-import { Notification } from "@/lib/core/types";
+import { getTursoClient } from "@/core/libsql/client";
+import { Notification } from "@/core/types";
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
       if (updateResponse.rowsAffected === 0) {
         return NextResponse.json(
-          { error: "Error al actualizar la notificaciÃ³n" },
+          { error: "Error al actualizar la notificación" },
           { status: 500 }
         );
       }
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     if (insertResponse.rowsAffected === 0) {
       return NextResponse.json(
-        { error: "Error al crear la notificaciÃ³n" },
+        { error: "Error al crear la notificación" },
         { status: 500 }
       );
     }
