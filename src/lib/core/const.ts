@@ -103,6 +103,7 @@ export const RENOVATION_DATE = new Date(NOW_DATE.getTime() + 31536000000);
 export const COMPANIES = [
   { label: "Acciona", value: "Acciona" },
   { label: "Aletteo", value: "Aletteo" },
+  { label: "APOLO", value: "APOLO" },
   { label: "Audax", value: "Audax" },
   { label: "Chc", value: "Chc" },
   { label: "Eleia", value: "Eleia" },
@@ -124,6 +125,7 @@ export const COMPANIES = [
 export const PLAIN_COMPANIES = [
   "Acciona",
   "Aletteo",
+  "APOLO",
   "Audax",
   "Chc",
   "Eleia",
