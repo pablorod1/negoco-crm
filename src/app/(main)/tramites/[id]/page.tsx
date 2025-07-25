@@ -135,6 +135,12 @@ export default function TramiteDetails() {
       (userData.role === "2" && tramite.status === "Borrador")) &&
     tramite.status !== "Baja";
 
+  const isComercialEditable =
+    userData &&
+    (userData.role === "admin" ||
+      userData.role === "1" ||
+      (userData.role === "2" && tramite.status === "Borrador"));
+
   const isRenewable =
     new Date(tramite.renovation_date) <=
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -198,7 +204,7 @@ export default function TramiteDetails() {
           <CardContent className="space-y-4">
             <TramiteComercialSection
               user={tramite.user as User}
-              isEditable={isEditable}
+              isEditable={isComercialEditable}
               userData={userData as User}
               tramite_id={tramite.id}
               onUpdate={fetchTramite}
