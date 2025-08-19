@@ -27,9 +27,11 @@ const ComissionsForm = memo(
   }: ComissionsFormProps) => {
     const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { name, value } = e.target;
+      // Convert string to number, handle empty strings as undefined
+      const numericValue = value === "" ? undefined : parseFloat(value);
       setFormDataComissions((prev) => ({
         ...prev,
-        [name]: value,
+        [name]: numericValue,
       }));
     };
 
@@ -45,7 +47,7 @@ const ComissionsForm = memo(
                 type="number"
                 name="comision_fijo"
                 label="Precio Fijo"
-                value={formDataComissions.comision_fijo || ""}
+                value={formDataComissions.comision_fijo?.toString() || ""}
                 isRequired
                 onChange={handleFieldChange}
               />
@@ -55,7 +57,7 @@ const ComissionsForm = memo(
                 type="number"
                 name="comision_indexado"
                 label="Precio Indexado"
-                value={formDataComissions.comision_indexado || ""}
+                value={formDataComissions.comision_indexado?.toString() || ""}
                 isRequired
                 onChange={handleFieldChange}
               />
@@ -72,7 +74,10 @@ const ComissionsForm = memo(
                 type="number"
                 name="comision_sales_person_fijo"
                 label="Precio Fijo"
-                value={formDataComissions.comision_sales_person_fijo || ""}
+                value={
+                  formDataComissions.comision_sales_person_fijo?.toString() ||
+                  ""
+                }
                 isRequired
                 onChange={handleFieldChange}
               />
@@ -82,7 +87,10 @@ const ComissionsForm = memo(
                 type="number"
                 name="comision_sales_person_indexado"
                 label="Precio Indexado"
-                value={formDataComissions.comision_sales_person_indexado || ""}
+                value={
+                  formDataComissions.comision_sales_person_indexado?.toString() ||
+                  ""
+                }
                 isRequired
                 onChange={handleFieldChange}
               />

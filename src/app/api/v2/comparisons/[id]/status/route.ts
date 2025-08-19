@@ -6,15 +6,29 @@ import { Client } from "@libsql/client";
 /**
  * Request validation schema for comparison status updates
  */
+const optionalCommissionNumber = z.preprocess((val) => {
+  // Treat empty values as undefined (field not provided)
+  if (val === undefined || val === null || val === "") return undefined;
+  // Normalize strings, allowing comma decimal separators
+  if (typeof val === "string") {
+    const normalized = val.replace(",", ".");
+    const num = Number(normalized);
+    return Number.isFinite(num) ? num : NaN; // NaN will fail .finite()
+  }
+  return val;
+}, z.number().finite().optional());
+
 const ComparisonStatusUpdateSchema = z.object({
   status: z.string().min(1, "Status is required"),
   tramite_id: z.string().optional(),
-  comissions: z.object({
-    comision_fijo: z.number().min(0).optional(),
-    comision_indexado: z.number().min(0).optional(),
-    comision_sales_person_fijo: z.number().min(0).optional(),
-    comision_sales_person_indexado: z.number().min(0).optional(),
-  }).optional(),
+  comissions: z
+    .object({
+      comision_fijo: optionalCommissionNumber,
+      comision_indexado: optionalCommissionNumber,
+      comision_sales_person_fijo: optionalCommissionNumber,
+      comision_sales_person_indexado: optionalCommissionNumber,
+    })
+    .optional(),
 });
 
 /**
@@ -80,29 +94,34 @@ async function executeStatusUpdate(
       return {
         success: false,
         error: "Comparativa no encontrada",
-        metrics: { queryTime, fieldsUpdated, optimizationApplied: optimizations }
+        metrics: {
+          queryTime,
+          fieldsUpdated,
+          optimizationApplied: optimizations,
+        },
       };
     }
 
-    console.log(`[DB Performance] Status update executed in ${queryTime.toFixed(2)}ms with ${optimizations.length} optimizations`);
+    console.log(
+      `[DB Performance] Status update executed in ${queryTime.toFixed(2)}ms with ${optimizations.length} optimizations`
+    );
 
     return {
       success: true,
-      metrics: { queryTime, fieldsUpdated, optimizationApplied: optimizations }
+      metrics: { queryTime, fieldsUpdated, optimizationApplied: optimizations },
     };
-
   } catch (error) {
     const endTime = performance.now();
     console.error("[DB Error] Status update failed:", error);
-    
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Error desconocido",
-      metrics: { 
-        queryTime: endTime - startTime, 
-        fieldsUpdated: 0, 
-        optimizationApplied: optimizations 
-      }
+      metrics: {
+        queryTime: endTime - startTime,
+        fieldsUpdated: 0,
+        optimizationApplied: optimizations,
+      },
     };
   }
 }
@@ -140,11 +159,11 @@ async function executeCommissionUpdate(
       optimizations.push("no_commission_updates_needed");
       return {
         success: true,
-        metrics: { 
-          queryTime: 0, 
-          fieldsUpdated: 0, 
-          optimizationApplied: optimizations 
-        }
+        metrics: {
+          queryTime: 0,
+          fieldsUpdated: 0,
+          optimizationApplied: optimizations,
+        },
       };
     }
 
@@ -168,44 +187,53 @@ async function executeCommissionUpdate(
       return {
         success: false,
         error: "Comparativa no encontrada",
-        metrics: { queryTime, fieldsUpdated: updates.length, optimizationApplied: optimizations }
+        metrics: {
+          queryTime,
+          fieldsUpdated: updates.length,
+          optimizationApplied: optimizations,
+        },
       };
     }
 
-    console.log(`[DB Performance] Commission update executed in ${queryTime.toFixed(2)}ms for ${updates.length} fields`);
+    console.log(
+      `[DB Performance] Commission update executed in ${queryTime.toFixed(2)}ms for ${updates.length} fields`
+    );
 
     return {
       success: true,
-      metrics: { queryTime, fieldsUpdated: updates.length, optimizationApplied: optimizations }
+      metrics: {
+        queryTime,
+        fieldsUpdated: updates.length,
+        optimizationApplied: optimizations,
+      },
     };
-
   } catch (error) {
     const endTime = performance.now();
     console.error("[DB Error] Commission update failed:", error);
-    
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Error desconocido",
-      metrics: { 
-        queryTime: endTime - startTime, 
-        fieldsUpdated: 0, 
-        optimizationApplied: optimizations 
-      }
+      metrics: {
+        queryTime: endTime - startTime,
+        fieldsUpdated: 0,
+        optimizationApplied: optimizations,
+      },
     };
   }
 }
 
 /**
  * Updates comparison status with optional tramite_id and commission adjustments
- * 
+ *
  * This endpoint provides atomic updates for comparison status changes,
  * maintaining full backward compatibility with the original endpoint
  * while adding performance optimizations and enhanced type safety.
- * 
+ *
  * @param req - Next.js request object containing update data
  * @param params - URL parameters containing comparison ID
  * @returns Promise<NextResponse<ComparisonStatusUpdateResponse>>
- * 
+ *
  * @example
  * PATCH /new_api/comparisons/[id]/status
  * Body: {
@@ -216,7 +244,7 @@ async function executeCommissionUpdate(
  *     "comision_sales_person_fijo": 35.0
  *   }
  * }
- * 
+ *
  * Response: {
  *   "success": true
  * }
@@ -226,7 +254,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ComparisonStatusUpdateResponse>> {
   const requestStartTime = performance.now();
-  
+
   try {
     // Await params resolution for Next.js 15 compatibility
     const resolvedParams = await params;
@@ -237,7 +265,10 @@ export async function PATCH(
     const validation = ComparisonStatusUpdateSchema.safeParse(body);
 
     if (!validation.success) {
-      console.warn("[Validation Warning] Invalid request parameters:", validation.error.errors);
+      console.warn(
+        "[Validation Warning] Invalid request parameters:",
+        validation.error.errors
+      );
       return NextResponse.json(
         {
           success: false,
@@ -293,11 +324,19 @@ export async function PATCH(
     }
 
     // Execute commission updates if provided (maintaining original logic)
-    let commissionResult: { success: boolean; error?: string; metrics?: QueryMetrics } = { success: true };
-    
+    let commissionResult: {
+      success: boolean;
+      error?: string;
+      metrics?: QueryMetrics;
+    } = { success: true };
+
     if (comissions) {
-      commissionResult = await executeCommissionUpdate(tursoClient, id, comissions);
-      
+      commissionResult = await executeCommissionUpdate(
+        tursoClient,
+        id,
+        comissions
+      );
+
       if (!commissionResult.success) {
         console.error("[Commission Update Error]", commissionResult.error);
         return NextResponse.json(
@@ -313,25 +352,30 @@ export async function PATCH(
     // Performance metrics logging
     const requestEndTime = performance.now();
     const totalTime = requestEndTime - requestStartTime;
-    
-    console.log(`[API Performance] Status update completed in ${totalTime.toFixed(2)}ms`, {
-      statusMetrics: statusResult.metrics,
-      commissionMetrics: commissionResult.metrics,
-      totalOptimizations: [
-        ...(statusResult.metrics?.optimizationApplied || []),
-        ...(commissionResult.metrics?.optimizationApplied || [])
-      ]
-    });
+
+    console.log(
+      `[API Performance] Status update completed in ${totalTime.toFixed(2)}ms`,
+      {
+        statusMetrics: statusResult.metrics,
+        commissionMetrics: commissionResult.metrics,
+        totalOptimizations: [
+          ...(statusResult.metrics?.optimizationApplied || []),
+          ...(commissionResult.metrics?.optimizationApplied || []),
+        ],
+      }
+    );
 
     // Return identical response format to original endpoint
     return NextResponse.json({ success: true });
-
   } catch (error) {
     const requestEndTime = performance.now();
     const totalTime = requestEndTime - requestStartTime;
-    
-    console.error(`[API Error] Status update failed after ${totalTime.toFixed(2)}ms:`, error);
-    
+
+    console.error(
+      `[API Error] Status update failed after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,
