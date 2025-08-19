@@ -55,9 +55,26 @@ export default function ContractForm({
       [name]: validateField(value).errorMessage || "",
     }));
 
+    // Handle numeric fields
+    const numericFields = [
+      "consumption",
+      "pot1",
+      "pot2",
+      "pot3",
+      "pot4",
+      "pot5",
+      "pot6",
+    ];
+    let processedValue: string | number = value;
+
+    if (numericFields.includes(name)) {
+      // Convert string to number, handle empty strings as 0
+      processedValue = value === "" ? 0 : parseFloat(value) || 0;
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: processedValue,
     }));
   };
 
@@ -204,7 +221,11 @@ export default function ContractForm({
               <InputComponent
                 name="consumption"
                 label="Consumo"
-                value={formData.consumption}
+                value={
+                  typeof formData.consumption === "number"
+                    ? formData.consumption.toString()
+                    : formData.consumption || ""
+                }
                 onChange={handleFieldChange}
                 type="number"
               />
@@ -218,9 +239,14 @@ export default function ContractForm({
                   label={pot}
                   type="number"
                   value={
-                    (formData[`pot${index + 1}` as keyof ContractDB] ?? 0) as
-                      | string
-                      | number
+                    formData[`pot${index + 1}` as keyof ContractDB] !==
+                    undefined
+                      ? (
+                          formData[
+                            `pot${index + 1}` as keyof ContractDB
+                          ] as number
+                        ).toString()
+                      : "0"
                   }
                   startContent={<Zap size={16} stroke="#333" />}
                 />

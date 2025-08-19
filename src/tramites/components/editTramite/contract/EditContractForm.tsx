@@ -56,9 +56,26 @@ export default function EditContractForm({
       [name]: validateField(value).errorMessage || "",
     }));
 
+    // Handle numeric fields
+    const numericFields = [
+      "consumption",
+      "pot1",
+      "pot2",
+      "pot3",
+      "pot4",
+      "pot5",
+      "pot6",
+    ];
+    let processedValue: string | number = value;
+
+    if (numericFields.includes(name)) {
+      // Convert string to number, handle empty strings as 0
+      processedValue = value === "" ? 0 : parseFloat(value) || 0;
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: processedValue,
     }));
   };
 
@@ -187,7 +204,11 @@ export default function EditContractForm({
               label="Consumo"
               onChange={handleFieldChange}
               type="number"
-              value={formData.consumption.toString()}
+              value={
+                typeof formData.consumption === "number"
+                  ? formData.consumption.toString()
+                  : (formData.consumption as string) || "0"
+              }
             />
           </div>
           <div className="flex items-stretch gap-4 w-full">

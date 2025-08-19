@@ -5,6 +5,21 @@ import { updateContract } from "@/tramites/utils/updateTramiteHelpers";
 import { addContracts } from "@/tramites/utils/addTramiteHelpers";
 
 // Zod validation schemas
+const optionalNumericField = z.preprocess(
+  (val) => {
+    // Treat empty values as 0 for numeric fields
+    if (val === undefined || val === null || val === "") return 0;
+    // Normalize strings, allowing comma decimal separators
+    if (typeof val === "string") {
+      const normalized = val.replace(",", ".");
+      const num = Number(normalized);
+      return Number.isFinite(num) ? num : 0; // Default to 0 if not a valid number
+    }
+    return val;
+  },
+  z.number().min(0, "Values must be positive")
+);
+
 const ContractSchema = z.object({
   id: z.string().min(1, "Contract ID is required"),
   type: z.string().min(1, "Contract type is required"),
@@ -15,14 +30,14 @@ const ContractSchema = z.object({
   old_company: z.string().optional(),
   new_company: z.string().min(1, "New company is required"),
   plan: z.string().min(1, "Plan is required"),
-  consumption: z.number().min(0, "Consumption must be positive"),
+  consumption: optionalNumericField,
   CUPS: z.string().min(1, "CUPS is required"),
-  pot1: z.number().min(0, "Power values must be positive"),
-  pot2: z.number().min(0, "Power values must be positive"),
-  pot3: z.number().min(0, "Power values must be positive"),
-  pot4: z.number().min(0, "Power values must be positive"),
-  pot5: z.number().min(0, "Power values must be positive"),
-  pot6: z.number().min(0, "Power values must be positive"),
+  pot1: optionalNumericField,
+  pot2: optionalNumericField,
+  pot3: optionalNumericField,
+  pot4: optionalNumericField,
+  pot5: optionalNumericField,
+  pot6: optionalNumericField,
   description: z.string().optional(),
   tramite_id: z.string().min(1, "Contract ID is required"),
 });
