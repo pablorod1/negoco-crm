@@ -96,7 +96,6 @@ export default function SecondStepForm({
 
     // If client type requires a signer, validate signer data too
     if (signerData) {
-      console.log("Validating signer data:", signerData);
       const signerFormValidationResult = signerFormValidation(signerData);
       setSignerErrors(signerFormValidationResult.errors);
       signerIsValid = signerFormValidationResult.succeeded;

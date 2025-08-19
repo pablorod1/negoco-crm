@@ -303,14 +303,7 @@ export default function AddTramiteDialog({
 
         formData.append("existingFiles", JSON.stringify(selectedFiles));
       }
-      console.log("Submitting tramite with data:", {
-        files: uploadedFilePaths,
-        userData,
-        client,
-        tramite,
-        signer,
-        contracts,
-      });
+
       // Send request to create tramite
       setLoadingStep(3);
       setLoadingMessage("Creando cliente, firmante y contratos");

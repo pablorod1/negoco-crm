@@ -60,7 +60,6 @@ export const useDashboardData = (userData: User | null) => {
       }
 
       const { data } = await response.json();
-      console.log("Fetched dashboard data:", data);
       setDashboardData(data);
 
       // Show notification toast only on first render

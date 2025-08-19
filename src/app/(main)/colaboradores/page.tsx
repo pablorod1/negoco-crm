@@ -49,7 +49,6 @@ export default function ColaboradoresPage() {
         throw new Error("Error al obtener los usuarios");
       }
 
-      console.log("Usuarios obtenidos:", data);
       const sortUsers = data.sort((a: User, b: User) =>
         a.name.localeCompare(b.name)
       );
