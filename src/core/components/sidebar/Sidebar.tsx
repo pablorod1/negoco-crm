@@ -1,0 +1,194 @@
+"use client";
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/core/components/ui/sidebar";
+import Image from "next/image";
+import { Link } from "next-view-transitions";
+import NavUser from "./NavUser";
+import { usePathname } from "next/navigation";
+import { useUser } from "@/core/contexts/UserContext";
+import TooltipComponent from "../TooltipComponent";
+
+const items = [
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: "/icons/dashboard.webp",
+  },
+  {
+    title: "Comparativas",
+    url: "/comparativas",
+    icon: "/icons/comparativas2.webp",
+  },
+  {
+    title: "Trámites",
+    url: "/tramites",
+    icon: "/icons/tramite.webp",
+  },
+  {
+    title: "Documentación",
+    url: "/documentacion",
+    icon: "/file-icons/folder.png",
+  },
+  {
+    title: "Colaboradores",
+    url: "/colaboradores",
+    icon: "/icons/equipo.webp",
+  },
+];
+
+const direccionItems = [
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: "/icons/dashboard.webp",
+  },
+  {
+    title: "Comparativas",
+    url: "/comparativas",
+    icon: "/icons/comparativas2.webp",
+  },
+  {
+    title: "Trámites",
+    url: "/tramites",
+    icon: "/icons/tramite.webp",
+  },
+  {
+    title: "Liquidez",
+    url: "/liquidez",
+    icon: "/icons/liquidez.webp",
+  },
+  {
+    title: "Documentación",
+    url: "/documentacion",
+    icon: "/file-icons/folder.png",
+  },
+  {
+    title: "Colaboradores",
+    url: "/colaboradores",
+    icon: "/icons/equipo.webp",
+  },
+];
+
+const DEFAULT_LOGO_COLLAPSED = "/logo_inline.png";
+const DEFAULT_LOGO = "/logo_inline.png";
+
+export function SidebarComponent() {
+  const pathname = usePathname();
+  const { userData } = useUser();
+  const { open } = useSidebar();
+  // Obtener el logo de forma segura
+  const organizationLogo = userData?.organization?.logo;
+
+  const getItemsByRole = () => {
+    if (userData) {
+      if (userData.role === "admin" || userData.role === "1") {
+        return direccionItems;
+      } else {
+        return items;
+      }
+    }
+
+    return items;
+  };
+
+  return (
+    <Sidebar variant="floating" id="sidebar-menu" collapsible="icon">
+      <SidebarHeader className="py-4">
+        <Link href="/">
+          {organizationLogo ? (
+            <div className="flex items-center w-auto gap-2">
+              <Image
+                src={organizationLogo}
+                alt="Logo"
+                width={60}
+                height={60}
+                priority
+                className="w-full h-auto max-w-8"
+              />
+              <h2
+                className={`block overflow-hidden text-3xl font-bold uppercase text-primary-400 animate-size ${
+                  open ? "w-auto" : "w-0"
+                }`}
+              >
+                {userData?.organization?.name}
+              </h2>
+            </div>
+          ) : (
+            <div
+              className={`relative transition-all duration-200 ${
+                open ? "aspect-[633/200]" : "aspect-[512/488]"
+              }`}
+            >
+              {!open ? (
+                <Image
+                  src={DEFAULT_LOGO_COLLAPSED}
+                  alt="Logo"
+                  width={60}
+                  height={60}
+                  priority
+                  className="w-auto h-auto"
+                />
+              ) : (
+                <Image
+                  src={DEFAULT_LOGO}
+                  alt="Logo"
+                  width={200}
+                  height={200}
+                  priority
+                  className="w-auto h-auto"
+                />
+              )}
+            </div>
+          )}
+        </Link>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-8">
+              {getItemsByRole().map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <TooltipComponent placement="right" content={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={`${
+                        pathname === item.url ? "bg-primary-500 text-white" : ""
+                      }  gap-4 hover:bg-primary-400 hover:text-white transition-colors duration-200 ease-in-out`}
+                    >
+                      <Link
+                        href={item.url}
+                        className="inline-flex items-center"
+                      >
+                        <Image
+                          src={item.icon}
+                          alt={item.title}
+                          width={20}
+                          height={20}
+                        />
+                        <span className="text-base">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </TooltipComponent>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser />
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

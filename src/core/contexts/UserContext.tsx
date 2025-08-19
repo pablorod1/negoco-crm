@@ -1,0 +1,87 @@
+﻿"use client";
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useCallback,
+  useState,
+} from "react";
+import { User } from "@/core/types";
+import { authClient } from "@/core/auth/auth-client";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
+interface UserContextType {
+  userData: User | null; // Cambiamos el tipo para manejar explícitamente el caso nulo
+  loading: boolean;
+  refreshUserData: () => Promise<void>;
+  getPlan: () => string | null; // New function to get organization plan
+}
+
+const UserContext = createContext<UserContextType | undefined>(undefined);
+
+export function UserProvider({ children }: { children: React.ReactNode }) {
+  const [userData, setUserData] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { data: session } = authClient.useSession();
+  const userID = session?.user.id;
+
+  const refreshUserData = useCallback(async () => {
+    if (!userID) {
+      setUserData(null);
+      setTimeout(() => setLoading(false), 400);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/v2/users/${userID}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const { success, data, error } = await res.json();
+      if (!success) {
+        throw new Error(error || "Error fetching user data");
+      }
+      setUserData(data || null);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      setUserData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [userID]);
+
+  const getPlan = useCallback(() => {
+    if (!userData || !userData.organization) {
+      return null;
+    }
+    return userData.organization.plan || null;
+  }, [userData]);
+
+  useEffect(() => {
+    refreshUserData();
+  }, [refreshUserData]);
+
+  if (loading) {
+    return <FullScreenLoaderComponent />;
+  }
+
+  return (
+    <UserContext.Provider
+      value={{ userData, loading, refreshUserData, getPlan }}
+    >
+      {children}
+    </UserContext.Provider>
+  );
+}
+
+export function useUser() {
+  const context = useContext(UserContext);
+
+  if (context === undefined) {
+    throw new Error("useUser debe usarse dentro de UserProvider");
+  }
+
+  return context;
+}

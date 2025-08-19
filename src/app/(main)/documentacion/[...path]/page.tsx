@@ -2,17 +2,17 @@
 
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
-import { DocumentacionFile, User } from "@/lib/core/types";
-import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
-import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
-import { FileGrid } from "@/components/documentacion/FileGrid";
-import { showCustomToast } from "@/components/core/CustomToast";
+import { getSubFoldersFromFolder } from "@/core/firebase/data/getFolders";
+import { DocumentacionFile, User } from "@/core/types";
+import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
+import EmptyDocumentacion from "@/documentacion/components/EmptyDocumentacion";
+import { FileGrid } from "@/documentacion/components/FileGrid";
+import { showCustomToast } from "@/core/components/CustomToast";
 import { CircleX } from "lucide-react";
-import { useUser } from "@/lib/contexts/UserContext";
-import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { useUser } from "@/core/contexts/UserContext";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/lib/view-transitions/view-transitions";
+import { slideOut } from "@/core/view-transitions/view-transitions";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -42,7 +42,7 @@ export default function FolderPage() {
   const fetchFiles = useCallback(async () => {
     setIsLoading(true);
     try {
-      const filesRes = await fetch(`/api/documentacion/get/files`, {
+      const filesRes = await fetch(`/api/v2/document-library`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

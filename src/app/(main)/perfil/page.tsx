@@ -1,13 +1,13 @@
-"use client";
-import UpdatePassword from "@/components/profile/UpdatePassword";
-import UpdateUser from "@/components/profile/UpdateUser";
-import UploadAvatar from "@/components/profile/UploadAvatar";
-import { Button } from "@/components/ui/button";
-import { useUser } from "@/lib/contexts/UserContext";
-import { User } from "@/lib/core/types";
-import { authClient } from "@/lib/auth/auth-client";
+﻿"use client";
+import UpdatePassword from "@/perfil/components/UpdatePassword";
+import UpdateUser from "@/perfil/components/UpdateUser";
+import UploadAvatar from "@/perfil/components/UploadAvatar";
+import { Button } from "@/core/components/ui/button";
+import { useUser } from "@/core/contexts/UserContext";
+import { User } from "@/core/types";
+import { authClient } from "@/core/auth/auth-client";
 import { redirect } from "next/navigation";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@/core/components/ui/separator";
 
 export default function AccountSettings() {
   const { userData, refreshUserData } = useUser();

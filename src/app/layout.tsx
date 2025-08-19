@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 import { inter } from "@/fonts/fonts";
 import { headers } from "next/headers";
@@ -37,3 +37,4 @@ export default async function RootLayout({
     </ViewTransitions>
   );
 }
+

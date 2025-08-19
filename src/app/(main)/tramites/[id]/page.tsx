@@ -1,31 +1,34 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { CloudAlert, ShieldAlert } from "lucide-react";
 import {
-  EditTramiteFormData,
-  createEmptyTramiteForm,
-  SignerDB,
-  TramiteFile,
-  User,
-} from "@/lib/core/types";
-import { useUser } from "@/lib/contexts/UserContext";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/core/components/ui/card";
+import { Separator } from "@/core/components/ui/separator";
+import { CloudAlert, ShieldAlert } from "lucide-react";
+import { EditTramiteFormData } from "@/tramites/types/tramite.types";
+import { createEmptyTramiteForm } from "@/tramites/utils/tramite.factories";
+import { SignerDB, TramiteFile } from "@/tramites/types/tramite.types";
+import { User } from "@/core/types";
+import { useUser } from "@/core/contexts/UserContext";
 import { useParams } from "next/navigation";
-import { TramiteNotesSection } from "@/components/tramites/editTramite/notes/NotesTabContent";
-import ContractSection from "@/components/tramites/editTramite/contract/ContractSection";
-import { showCustomToast } from "@/components/core/CustomToast";
-import TramiteFilesSection from "@/components/tramites/editTramite/files/TramitesFilesSection";
-import TramiteTimeLineSection from "@/components/tramites/editTramite/TramiteTimeLineSection";
-import TramiteClientSection from "@/components/tramites/editTramite/client/TramiteClientSection";
-import TramiteComercialSection from "@/components/tramites/editTramite/comercial/TramiteComercialSection";
-import TramiteComissionsSection from "@/components/tramites/editTramite/comissions/TramiteComissionsSection";
-import TramiteStatusSection from "@/components/tramites/editTramite/TramiteStatusSection";
-import LiquidezStatusSection from "@/components/tramites/editTramite/liquidez/LiquidezStatusSection";
-import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { TramiteNotesSection } from "@/tramites/components/editTramite/notes/NotesTabContent";
+import ContractSection from "@/tramites/components/editTramite/contract/ContractSection";
+import { showCustomToast } from "@/core/components/CustomToast";
+import TramiteFilesSection from "@/tramites/components/editTramite/files/TramitesFilesSection";
+import TramiteTimeLineSection from "@/tramites/components/editTramite/TramiteTimeLineSection";
+import TramiteClientSection from "@/tramites/components/editTramite/client/TramiteClientSection";
+import TramiteComercialSection from "@/tramites/components/editTramite/comercial/TramiteComercialSection";
+import TramiteComissionsSection from "@/tramites/components/editTramite/comissions/TramiteComissionsSection";
+import TramiteStatusSection from "@/tramites/components/editTramite/TramiteStatusSection";
+import LiquidezStatusSection from "@/tramites/components/editTramite/liquidez/LiquidezStatusSection";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/lib/view-transitions/view-transitions";
+import { slideOut } from "@/core/view-transitions/view-transitions";
+import { formatUUID } from "@/core/utils/format";
 
 export default function TramiteDetails() {
   const { userData } = useUser();
@@ -43,7 +46,7 @@ export default function TramiteDetails() {
     if (!userData?.id || !userData?.role) return;
 
     try {
-      const rs = await fetch(`/api/tramites/get/${id}`, {
+      const rs = await fetch(`/api/v2/contracts/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -163,7 +166,7 @@ export default function TramiteDetails() {
           <h1 className="text-3xl font-bold tracking-tight text-primary-800">
             Detalles del Trámite
           </h1>
-          <p className="text-primary-400">ID: {tramite.id}</p>
+          <p className="text-primary-400">ID: {formatUUID(tramite.id)}</p>
         </div>
         <TramiteStatusSection
           tramite={tramite}

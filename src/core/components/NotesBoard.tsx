@@ -1,0 +1,57 @@
+﻿import { EditFormWrapper } from "@/tramites/components/editTramite/EditFormWrapper";
+import CreateNoteDialog from "@/tramites/components/editTramite/notes/CreateNoteDialog";
+
+interface NotesBoardProps {
+  notes: string[];
+  onCreateNote: (note: string) => void;
+}
+
+const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onCreateNote }) => {
+  const postItColors = [
+    "bg-yellow-200",
+    "bg-green-200",
+    "bg-blue-200",
+    "bg-pink-200",
+    "bg-purple-200",
+  ];
+
+  return (
+    <EditFormWrapper>
+      <div className="bg-gray-50 p-6 rounded-md shadow-inner min-h-[300px] relative overflow-hidden">
+        {/* Líneas de la pizarra */}
+        <div className="absolute inset-0 grid grid-cols-[repeat(10,1fr)] opacity-10">
+          {[...Array(20)].map((_, i) => (
+            <div key={i} className="border-l border-primary-800"></div>
+          ))}
+        </div>
+        <div className="absolute inset-0 grid grid-rows-[repeat(10,1fr)] opacity-10">
+          {[...Array(20)].map((_, i) => (
+            <div key={i} className="border-t border-primary-800"></div>
+          ))}
+        </div>
+
+        {/* Post-its */}
+        <div className="flex flex-col items-start gap-4 relative z-10">
+          <CreateNoteDialog onCreateNote={onCreateNote} />
+          <div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto w-full">
+            {notes &&
+              notes.map((note, index) => (
+                <div
+                  key={index}
+                  className={`${
+                    postItColors[index % postItColors.length]
+                  } p-4 rounded-lg shadow-md transform w-full rotate-${
+                    Math.floor(Math.random() * 5) - 2
+                  } hover:rotate-0 transition-transform duration-200 ease-in-out`}
+                >
+                  <p className="text-gray-800 text-lg">{note}</p>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    </EditFormWrapper>
+  );
+};
+
+export default NotesBoard;

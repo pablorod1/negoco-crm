@@ -8,30 +8,35 @@ import {
   MessageCircle,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/core/components/ui/badge";
+import { Button } from "@/core/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/core/components/ui/tooltip";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ClientFilesGrid } from "@/components/clients/details/ClientFilesGrid";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/core/components/ui/tabs";
+import { ClientFilesGrid } from "@/clientes/components/details/ClientFilesGrid";
 import { useEffect, useState } from "react";
-import { showCustomToast } from "@/components/core/CustomToast";
-import { ClientListItem } from "@/components/clients/ClientsList";
+import { showCustomToast } from "@/core/components/CustomToast";
+import { ClientListItem } from "@/clientes/components/ClientsList";
 import { Link, useTransitionRouter } from "next-view-transitions";
-import { slideIn } from "@/lib/view-transitions/view-transitions";
-import { useUser } from "@/lib/contexts/UserContext";
+import { slideIn } from "@/core/view-transitions/view-transitions";
+import { useUser } from "@/core/contexts/UserContext";
 import { useParams } from "next/navigation";
-import LoadingStateCard from "@/components/dashboard/LoadingStateCard";
-import ClientError from "@/components/clients/details/ClientError";
-import ClientContactDetails from "@/components/clients/details/ClientContactDetails";
-import { ClientTramitesTable } from "@/components/clients/details/ClientTramitesTable";
-import AddTramiteDialog from "@/components/tramites/createTramite/AddTramiteDialog";
-import ClientRecentlyActivity from "@/components/clients/details/ClientRecentlyActivity";
+import LoadingStateCard from "@/dashboard/components/LoadingStateCard";
+import ClientError from "@/clientes/components/details/ClientError";
+import ClientContactDetails from "@/clientes/components/details/ClientContactDetails";
+import { ClientTramitesTable } from "@/clientes/components/details/ClientTramitesTable";
+import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
+import ClientRecentlyActivity from "@/clientes/components/details/ClientRecentlyActivity";
 
 // Helper function to format phone number for WhatsApp
 const formatWhatsAppNumber = (phone: string | null | undefined): string => {
@@ -62,7 +67,7 @@ export default function ClientDetailsPage() {
       setError(null);
 
       try {
-        const response = await fetch(`/api/clients/get/${id}`, {
+        const response = await fetch(`/api/v2/clients/${id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

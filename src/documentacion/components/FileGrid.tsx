@@ -1,0 +1,198 @@
+﻿"use client";
+import { useState } from "react";
+import { ArrowLeft, Grid2X2, List, X } from "lucide-react";
+
+import { FileCard } from "./FileCard";
+import { Button } from "@/core/components/ui/button";
+import { DocumentacionFile, User } from "@/core/types";
+import { FolderCard } from "./FolderCard";
+import UploadFileModal from "./UploadFileModal";
+import SearchBar from "./SearchBar";
+import DeleteFileConfirmationModal from "./DeleteFileConfirmationModal";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+} from "@/core/components/ui/breadcrumb";
+import { Separator } from "@/core/components/ui/separator";
+
+interface FileGridProps {
+  files?: DocumentacionFile[];
+  recentlyFiles?: DocumentacionFile[];
+  folders: string[];
+  userData: User;
+  currentPath: string;
+  folderPath?: string[];
+  handleBack?: () => void;
+}
+
+const getBreadcrumbPath = (folders: string[], currentIndex: number): string => {
+  return folders.slice(0, currentIndex + 1).join(",");
+};
+
+export function FileGrid({
+  files,
+  folders,
+  currentPath,
+  folderPath,
+  recentlyFiles,
+  handleBack,
+  userData,
+}: FileGridProps) {
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filesSelected, setFilesSelected] = useState<DocumentacionFile[]>([]);
+
+  const handleSelectFile = (file: DocumentacionFile) => {
+    if (filesSelected.some((f) => f.id === file.id)) {
+      setFilesSelected(filesSelected.filter((f) => f.id !== file.id));
+    } else {
+      setFilesSelected([...filesSelected, file]);
+    }
+  };
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              size="icon"
+              variant="ghost"
+              color="primary"
+              onClick={handleBack}
+              disabled={folderPath ? folderPath.length === 0 : false}
+              className="transition-opacity"
+            >
+              <ArrowLeft width={16} height={16} />
+            </Button>
+          </div>
+          <Breadcrumb>
+            <BreadcrumbList>
+              {folderPath &&
+                folderPath.map((folder, index) => (
+                  <BreadcrumbItem key={index}>
+                    <BreadcrumbLink
+                      href={`/documentacion/${getBreadcrumbPath(
+                        folderPath,
+                        index
+                      )}`}
+                    >
+                      {folder}
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                ))}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+        <div className="flex items-center gap-4">
+          {filesSelected.length > 0 && (
+            <div className="flex items-center gap-4 w-full">
+              <p className="text-xs text-muted-foreground text-nowrap">
+                {filesSelected.length} archivo(s) seleccionado(s)
+              </p>
+              <DeleteFileConfirmationModal
+                files={filesSelected}
+                userData={userData as User}
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setFilesSelected([])}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          <SearchBar recentlyFiles={recentlyFiles} />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="px-2 bg-transparent"
+            onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+          >
+            {viewMode === "grid" ? (
+              <List className="h-4 w-4" />
+            ) : (
+              <Grid2X2 className="h-4 w-4" />
+            )}
+          </Button>
+          {userData.role !== "2" && <UploadFileModal />}
+        </div>
+      </div>
+      <div className="flex flex-col gap-12 w-full">
+        {recentlyFiles && recentlyFiles.length > 0 && (
+          <div className="flex flex-col gap-4 w-full">
+            <h2 className="text-xl font-semibold text-primary-800">
+              Archivos recientes
+            </h2>
+            <Separator />
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-stretch"
+                  : "space-y-2"
+              }
+            >
+              {recentlyFiles.map((file: DocumentacionFile, index) => (
+                <FileCard
+                  view={viewMode}
+                  key={index}
+                  file={file}
+                  userData={userData}
+                  handleSelectFile={handleSelectFile}
+                  selectedFiles={filesSelected}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        {folders.length > 0 && (
+          <div className="flex flex-col gap-4 w-full">
+            <h2 className="text-xl font-semibold text-primary-800">Carpetas</h2>
+            <Separator />
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-stretch"
+                  : "space-y-2"
+              }
+            >
+              {folders.map((folder: string, index) => (
+                <FolderCard
+                  key={index}
+                  name={folder}
+                  currentPath={currentPath}
+                  userData={userData as User}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        {files && files.length > 0 && (
+          <div className="flex flex-col gap-4 w-full">
+            <h2 className="text-xl font-semibold text-primary-800">Archivos</h2>
+            <Separator />
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-stretch"
+                  : "space-y-2"
+              }
+            >
+              {files.map((file: DocumentacionFile, index) => (
+                <FileCard
+                  userData={userData}
+                  view={viewMode}
+                  key={index}
+                  file={file}
+                  handleSelectFile={handleSelectFile}
+                  selectedFiles={filesSelected}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

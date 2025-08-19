@@ -1,12 +1,12 @@
-"use client";
-import EmptyDocumentacion from "@/components/documentacion/EmptyDocumentacion";
-import { FileGrid } from "@/components/documentacion/FileGrid";
-import { useDocumentacion } from "@/lib/contexts/DocumentacionContext";
-import { getSubFoldersFromFolder } from "@/lib/firebase/data/getFolders";
-import { DocumentacionFile, User } from "@/lib/core/types";
+﻿"use client";
+import EmptyDocumentacion from "@/documentacion/components/EmptyDocumentacion";
+import { FileGrid } from "@/documentacion/components/FileGrid";
+import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
+import { getSubFoldersFromFolder } from "@/core/firebase/data/getFolders";
+import { DocumentacionFile, User } from "@/core/types";
 import { useCallback, useEffect, useState } from "react";
-import { useUser } from "@/lib/contexts/UserContext";
-import FullScreenLoaderComponent from "@/components/core/FullScreenLoaderComponent";
+import { useUser } from "@/core/contexts/UserContext";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 
 export default function DocumentacionPage() {
   const { userData } = useUser();
@@ -19,7 +19,7 @@ export default function DocumentacionPage() {
   const fetchFolders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const filesRes = await fetch(`/api/documentacion/get/files`, {
+      const filesRes = await fetch(`/api/v2/document-library`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,15 +27,12 @@ export default function DocumentacionPage() {
         body: JSON.stringify({ folder_name: "/" }),
       });
 
-      const recentlyFilesRes = await fetch(
-        `/api/documentacion/get/recently-files`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const recentlyFilesRes = await fetch(`/api/v2/document-library/recent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       const [
         { data: files, success: filesSuccess, error: filesError },

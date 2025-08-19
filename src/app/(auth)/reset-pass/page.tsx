@@ -1,5 +1,5 @@
-"use client";
-import ResetPassWrapper from "@/components/auth/reset-pass/ResetPassWrapper";
+﻿"use client";
+import ResetPassWrapper from "@/core/components/auth/reset-pass/ResetPassWrapper";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -17,3 +17,4 @@ export default function ResetPasswordPage() {
     </Suspense>
   );
 }
+

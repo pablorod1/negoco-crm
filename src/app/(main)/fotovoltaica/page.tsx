@@ -1,15 +1,15 @@
-"use client";
-import { showCustomToast } from "@/components/core/CustomToast";
-import PlanUpgradeView from "@/components/core/PlanUpgradeView";
+﻿"use client";
+import { showCustomToast } from "@/core/components/CustomToast";
+import PlanUpgradeView from "@/core/components/PlanUpgradeView";
 import {
   ComercialFotovoltaicaColumns,
   FotovoltaicaColumns,
   SubcomercialFotovoltaicaColumns,
-} from "@/components/fotovoltaica/table/FotovoltaicaColumns";
-import FotovoltaicasTable from "@/components/fotovoltaica/table/FotovoltaicasTable";
-import { useUser } from "@/lib/contexts/UserContext";
-import { FotovoltaicaVM } from "@/lib/core/types";
-import { slideOut } from "@/lib/view-transitions/view-transitions";
+} from "@/fotovoltaica/components/table/FotovoltaicaColumns";
+import FotovoltaicasTable from "@/fotovoltaica/components/table/FotovoltaicasTable";
+import { useUser } from "@/core/contexts/UserContext";
+import { FotovoltaicaVM } from "@/fotovoltaica/types";
+import { slideOut } from "@/core/view-transitions/view-transitions";
 import { ColumnDef } from "@tanstack/react-table";
 import { ShieldAlert } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";

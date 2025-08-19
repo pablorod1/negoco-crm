@@ -1,4 +1,4 @@
-import ClientsList from "@/components/clients/ClientsList";
+﻿import ClientsList from "@/clientes/components/ClientsList";
 
 export default function ClientsPage() {
   return (
@@ -7,3 +7,4 @@ export default function ClientsPage() {
     </div>
   );
 }
+

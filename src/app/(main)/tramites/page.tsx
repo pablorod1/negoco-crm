@@ -1,14 +1,14 @@
-"use client";
+﻿"use client";
 import {
   ComercialTramiteColumns,
   SubComercialTramitesColumns,
   TramiteColumns,
-} from "@/components/tramites/table/TramiteColumns";
-import { DataTable } from "@/components/tramites/table/Table";
-import { useUser } from "@/lib/contexts/UserContext";
+} from "@/tramites/components/table/TramiteColumns";
+import { DataTable } from "@/tramites/components/table/Table";
+import { useUser } from "@/core/contexts/UserContext";
 import { useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { TramiteRow } from "@/lib/core/types";
+import { TramiteRow } from "@/tramites/types";
 
 export default function TramitesPage() {
   const { userData } = useUser();
