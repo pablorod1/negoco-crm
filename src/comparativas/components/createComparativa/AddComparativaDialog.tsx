@@ -99,7 +99,7 @@ export default function AddComparativaDialog({
       const formData = new FormData();
       formData.append("comparativa", JSON.stringify(comparativa));
       formData.append("files", JSON.stringify(comparativaFiles));
-      const response = await fetch(`/api/comparativas/add`, {
+      const response = await fetch(`/api/v2/comparisons`, {
         method: "POST",
         body: formData,
       });

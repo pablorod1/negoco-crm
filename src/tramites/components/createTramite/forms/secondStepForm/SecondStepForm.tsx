@@ -96,6 +96,7 @@ export default function SecondStepForm({
 
     // If client type requires a signer, validate signer data too
     if (signerData) {
+      console.log("Validating signer data:", signerData);
       const signerFormValidationResult = signerFormValidation(signerData);
       setSignerErrors(signerFormValidationResult.errors);
       signerIsValid = signerFormValidationResult.succeeded;
@@ -129,7 +130,7 @@ export default function SecondStepForm({
       // Update signer if needed
       if (signerData) {
         setSigner({
-          id: `SGN-${Math.floor(Math.random() * 10000)}`,
+          id: `SGN-${crypto.randomUUID()}`,
           name: signerData.name,
           last_name: signerData.last_name,
           email: signerData.email,
@@ -201,7 +202,7 @@ export default function SecondStepForm({
     const fetchClients = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/clients/get/all`, {
+        const res = await fetch(`/api/v2/clients`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

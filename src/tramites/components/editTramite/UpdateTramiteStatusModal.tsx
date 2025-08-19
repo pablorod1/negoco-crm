@@ -23,7 +23,7 @@ import {
   CircleX,
   CheckSquare,
 } from "lucide-react";
-import { formatDate } from "@/core/utils/format";
+import { formatDate, formatUUID } from "@/core/utils/format";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { Textarea } from "@/core/components/ui/textarea";
 import { Checkbox } from "@/core/components/ui/checkbox";
@@ -226,7 +226,7 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
-      const res = await fetch(`/api/tramites/update/${tramite.id}/status`, {
+      const res = await fetch(`/api/v2/contracts/${tramite.id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -281,7 +281,7 @@ export default function UpdateTramiteStatusModal({
         user_id: tramite.user_id,
       });
 
-      const notificationRes = await fetch("/api/notifications/create", {
+      const notificationRes = await fetch("/api/v2/notifications", {
         method: "POST",
         body: JSON.stringify({ notification }),
         headers: {
@@ -304,22 +304,26 @@ export default function UpdateTramiteStatusModal({
       }
 
       if (checkStatusChanged()) {
-        const emailRes = await fetch("/api/send-email/tramite-status-updated", {
-          method: "POST",
-          body: JSON.stringify({
-            user_to: {
-              email: tramite.user.email,
-              name: tramite.user.name,
-              org_logo: userData.organization.logo,
+        const emailRes = await fetch(
+          "/api/v2/communications/emails/status-updates",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              type: "tramite",
+              user_to: {
+                email: tramite.user.email,
+                name: tramite.user.name,
+                org_logo: userData.organization.logo,
+              },
+              tramite_id: tramite.id,
+              status: { old: tramite.status, new: formData.status },
+              client: { name: client.name, last_name: client.last_name },
+            }),
+            headers: {
+              "Content-Type": "application/json",
             },
-            tramite_id: tramite.id,
-            status: { old: tramite.status, new: formData.status },
-            client: { name: client.name, last_name: client.last_name },
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+          }
+        );
 
         const { success: emailSuccess, error: emailError } =
           await emailRes.json();
@@ -437,7 +441,9 @@ export default function UpdateTramiteStatusModal({
             </DialogTitle>
             <DialogDescription>
               <TooltipComponent content="ID del trámite">
-                <span className="text-xs text-primary-400">#{tramite.id}</span>
+                <span className="text-xs text-primary-400">
+                  #{formatUUID(tramite.id)}
+                </span>
               </TooltipComponent>
             </DialogDescription>
           </div>

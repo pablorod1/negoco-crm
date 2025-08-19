@@ -2,7 +2,7 @@
 
 import { showCustomToast } from "@/core/components/CustomToast";
 import LoadingStateCard from "@/dashboard/components/LoadingStateCard";
-import { formatDateTime } from "@/core/utils/format";
+import { formatDateTime, formatUUID } from "@/core/utils/format";
 import type { LiquidezStatus, Status } from "@/core/types";
 import type { TramiteVM } from "@/tramites/types/tramite.types";
 import {
@@ -41,8 +41,8 @@ function useLastTramite(clientId: string) {
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const res = await fetch(`/api/clients/get/${clientId}/last-tramite`, {
-        method: "POST",
+      const res = await fetch(`/api/v2/clients/${clientId}/latest-contract`, {
+        method: "GET",
       });
 
       const { success, error, data } = await res.json();
@@ -102,7 +102,7 @@ const TramiteDetails = memo(({ tramite }: { tramite: TramiteVM }) => (
     <div className="flex justify-between items-center pb-2 border-b">
       <div>
         <p className="text-xs font-medium text-muted-foreground">Trámite ID</p>
-        <p className="text-base font-semibold">{tramite.id}</p>
+        <p className="text-base font-semibold">{formatUUID(tramite.id)}</p>
       </div>
       <div className="flex items-center gap-2">
         {getStatusBadge(tramite.status as Status, "general")}

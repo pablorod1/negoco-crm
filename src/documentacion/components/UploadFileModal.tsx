@@ -174,7 +174,7 @@ export default function UploadFileModal() {
       });
       formData.append("folder_name", getUploadFilePath());
       formData.append("organization_id", userData?.organization.id as string);
-      const response = await fetch("/api/documentacion/add", {
+      const response = await fetch("/api/v2/document-library", {
         method: "POST",
         body: formData,
       });

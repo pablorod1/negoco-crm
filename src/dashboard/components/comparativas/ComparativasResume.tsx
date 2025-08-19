@@ -35,17 +35,15 @@ export function ComparativasResume({ loading, userData }: Props) {
     const fetchComparativas = async () => {
       setLoadingData(true);
       try {
-        const rs = await fetch(`/api/comparativas/get/by-status`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            status,
-            id: userData.id,
-            role: userData.role,
-          }),
-        });
+        const rs = await fetch(
+          `/api/v2/analytics/comparisons?metric=by-status&id=${userData.id}&role=${userData.role}&status=${status}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const { data, success, error } = await rs.json();
         if (!success) {

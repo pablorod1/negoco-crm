@@ -83,7 +83,7 @@ export default function UploadTramiteFilesModal({
       const formData = new FormData();
       formData.append("files", JSON.stringify(tramiteFiles));
       formData.append("userData", JSON.stringify(userData));
-      const res = await fetch("/api/tramites/add/files", {
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/documents`, {
         method: "POST",
         body: formData,
       });
@@ -108,7 +108,7 @@ export default function UploadTramiteFilesModal({
         user_id,
       });
 
-      const notificationRes = await fetch("/api/notifications/create", {
+      const notificationRes = await fetch("/api/v2/notifications", {
         method: "POST",
         body: JSON.stringify({ notification }),
         headers: {

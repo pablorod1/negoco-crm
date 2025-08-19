@@ -35,21 +35,16 @@ export default function RenewableTramitesCalendar({
 
   const fetchTramites = React.useCallback(async () => {
     try {
-      const res = await fetch(
-        `
-        /api/tramites/get/renewable
-      `,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: userData.id,
-            role: userData.role,
-          }),
-        }
-      );
+      const res = await fetch(`/api/v2/contracts/renewable`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: userData.id,
+          role: userData.role,
+        }),
+      });
       const { data, success, error } = await res.json();
       if (!success && error) {
         throw new Error(error || "Error al obtener trámites renovables");

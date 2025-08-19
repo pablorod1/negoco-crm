@@ -57,28 +57,25 @@ export default function FotovoltaicasTable<TData, TValue>({
       setLoading(true);
       if (userData) {
         try {
-          const res = await fetch(
-            `/api/fotovoltaica/get/paginated-fotovoltaicas`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                page: pageIndex,
-                rowsPerPage:
-                  typeof pageSize === "number" ? pageSize : "Sin Límite",
-                user_id: userData.id,
-                user_role: userData.role,
-                filterValue,
-                statusFilter,
-                creationDateRange,
-                activationDateRange,
-                userFilter,
-                typeFilter,
-              }),
-            }
-          );
+          const res = await fetch(`/api/v2/solar-installations`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              page: pageIndex,
+              rowsPerPage:
+                typeof pageSize === "number" ? pageSize : "Sin Límite",
+              user_id: userData.id,
+              user_role: userData.role,
+              filterValue,
+              statusFilter,
+              creationDateRange,
+              activationDateRange,
+              userFilter,
+              typeFilter,
+            }),
+          });
 
           const { success, data, error, total } = await res.json();
           if (!success) {

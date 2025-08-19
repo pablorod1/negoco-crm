@@ -36,18 +36,21 @@ export default function SelectSalesPerson({
         return;
       }
       try {
-        const res = await fetch(`/api/users/get/${userData.id}/all`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            role: userData.role,
-          }),
-        });
-        const { success, data } = await res.json();
+        const url = `/api/v2/users/${userData.id}/all?role=${encodeURIComponent(
+          userData.role
+        )}`;
+        const res = await fetch(url, { method: "GET" });
+
+        const { success, error, data } = await res.json();
 
         if (!success) {
+          showCustomToast({
+            title: "Error",
+            message: error,
+            icon: CircleX,
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+          });
           return;
         }
 
@@ -164,4 +167,3 @@ export default function SelectSalesPerson({
     </>
   );
 }
-

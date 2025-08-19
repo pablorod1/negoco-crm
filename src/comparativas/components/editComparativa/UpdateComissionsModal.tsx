@@ -122,7 +122,7 @@ export default function UpdateComissionsModal({
       const changes = checkComissionsChanged();
       if (changes) {
         const response = await fetch(
-          `/api/comparativas/update/${comparativa.id}/comissions`,
+          `/api/v2/comparisons/${comparativa.id}/commissions`,
           {
             method: "PATCH",
             headers: {
@@ -155,7 +155,7 @@ export default function UpdateComissionsModal({
             comissions: changes ? true : undefined,
           });
 
-        const NotificationResponse = await fetch(`/api/notifications/create`, {
+        const NotificationResponse = await fetch(`/api/v2/notifications`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

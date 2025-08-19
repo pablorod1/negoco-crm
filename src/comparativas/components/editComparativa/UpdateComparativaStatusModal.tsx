@@ -22,6 +22,7 @@ import { SelectComponent } from "@/tramites/components/createTramite/InputCompon
 import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
 import { Separator } from "@/core/components/ui/separator";
 import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
+import { formatUUID } from "@/core/utils/format";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -129,7 +130,7 @@ export default function UpdateComparativaStatusModal({
         const changes = checkComissionsChanged();
 
         const res = await fetch(
-          `/api/comparativas/update/${comparativa.id}/status`,
+          `/api/v2/comparisons/${comparativa.id}/status`,
           {
             method: "PATCH",
             body: JSON.stringify({
@@ -164,7 +165,7 @@ export default function UpdateComparativaStatusModal({
             comissions: changes ? true : undefined,
           });
 
-        const NotificationResponse = await fetch(`/api/notifications/create`, {
+        const NotificationResponse = await fetch(`/api/v2/notifications`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -187,10 +188,11 @@ export default function UpdateComparativaStatusModal({
 
         if (checkStatusChanged()) {
           const emailRes = await fetch(
-            "/api/send-email/comparativa-status-updated",
+            "/api/v2/communications/emails/status-updates",
             {
               method: "POST",
               body: JSON.stringify({
+                type: "comparativa",
                 user_to: {
                   email: comparativa.user.email,
                   name: comparativa.user.name,
@@ -276,7 +278,7 @@ export default function UpdateComparativaStatusModal({
           <DialogHeader>
             <div className="flex items-center justify-between w-full">
               <DialogTitle className="text-xl font-semibold text-primary-800">
-                Comparativa {comparativa.id} · {comparativa.client}
+                Comparativa {formatUUID(comparativa.id)} · {comparativa.client}
               </DialogTitle>
 
               {getStatusBadge(comparativa.status, "comparativa")}

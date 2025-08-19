@@ -141,21 +141,24 @@ export default function UpgradePlanDialog() {
       return;
     }
     try {
-      const response = await fetch(`/api/send-email/upgrade-plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: {
-            old: getPlan(),
-            new: selectedPlan,
-          },
-          user: {
-            name: formData.name,
-            email: formData.email,
-            company: formData.company,
-          },
-        }),
-      });
+      const response = await fetch(
+        `/api/v2/communications/emails/upgrade-plan`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            plan: {
+              old: getPlan(),
+              new: selectedPlan,
+            },
+            user: {
+              name: formData.name,
+              email: formData.email,
+              company: formData.company,
+            },
+          }),
+        }
+      );
 
       const { success, error } = await response.json();
 

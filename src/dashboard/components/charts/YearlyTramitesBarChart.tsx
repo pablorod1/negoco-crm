@@ -118,7 +118,7 @@ const useChartData = (
   const fetchTramites = React.useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch("/api/tramites/get/monthly-active-pending", {
+      const res = await fetch("/api/v2/analytics/contracts/monthly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -130,6 +130,7 @@ const useChartData = (
       });
 
       const { data, success, error } = await res.json();
+      console.log("Fetched data:", data);
       if (!success && error) {
         console.error("Error al obtener trámites:", error);
         return;
@@ -169,7 +170,7 @@ const getActiveTramitesPercentageChange = (data: ChartData[]) => {
   const currentMonthIndex = new Date().getMonth();
   const previousMonthIndex =
     currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
-
+  console.log("Current data:", data);
   const currentMonthData = data.find((item) =>
     item.field
       .toLowerCase()

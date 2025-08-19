@@ -84,7 +84,7 @@ export default function SelectClient({
   const fetchSigner = useCallback(
     async (clientId: string): Promise<SignerDB | null> => {
       try {
-        const res = await fetch(`/api/clients/get/${clientId}/signer`, {
+        const res = await fetch(`/api/v2/clients/${clientId}/signature`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

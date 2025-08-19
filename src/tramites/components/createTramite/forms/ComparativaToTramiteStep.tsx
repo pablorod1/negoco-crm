@@ -10,7 +10,11 @@ import {
   CardTitle,
 } from "@/core/components/ui/card";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
-import { formatComission, formatFileSize } from "@/core/utils/format";
+import {
+  formatComission,
+  formatFileSize,
+  formatUUID,
+} from "@/core/utils/format";
 import { ComparativaVM, ComparativaStatus } from "@/comparativas/types";
 
 interface Props {
@@ -59,7 +63,7 @@ export default function ComparativaToTramiteStep({
       <div>
         <div className="flex items-center justify-between w-full">
           <h2 className="text-xl font-semibold text-primary-800">
-            Comparativa {comparativa.id} • {comparativa.client}
+            Comparativa {formatUUID(comparativa.id)} • {comparativa.client}
           </h2>
         </div>
       </div>
@@ -86,7 +90,8 @@ export default function ComparativaToTramiteStep({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-primary-800 text-lg">
-                    Información de la comparativa - #{comparativa.id}
+                    Información de la comparativa - #
+                    {formatUUID(comparativa.id)}
                   </CardTitle>
                   {getStatusBadge(
                     comparativa.status as ComparativaStatus,

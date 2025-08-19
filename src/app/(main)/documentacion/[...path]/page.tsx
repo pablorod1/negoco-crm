@@ -42,7 +42,7 @@ export default function FolderPage() {
   const fetchFiles = useCallback(async () => {
     setIsLoading(true);
     try {
-      const filesRes = await fetch(`/api/documentacion/get/files`, {
+      const filesRes = await fetch(`/api/v2/document-library`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -25,6 +25,7 @@ export interface DashboardData {
   comisionesPendientes: number;
   totalBalance: number;
   comparativas: DashboardCardValue;
+  totalConsumption: number;
 }
 
 const initialDashboardData: DashboardData = {
@@ -33,6 +34,7 @@ const initialDashboardData: DashboardData = {
   comisionesPendientes: 0,
   totalBalance: 0,
   comparativas: { total: 0, value: 0, prev_value: 0, difference: 0 },
+  totalConsumption: 0,
 };
 
 export const useDashboardData = (userData: User | null) => {
@@ -58,7 +60,7 @@ export const useDashboardData = (userData: User | null) => {
       }
 
       const { data } = await response.json();
-
+      console.log("Fetched dashboard data:", data);
       setDashboardData(data);
 
       // Show notification toast only on first render

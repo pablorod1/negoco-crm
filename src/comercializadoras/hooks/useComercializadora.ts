@@ -29,7 +29,9 @@ export function useComercializadora(name: string | string[] | undefined) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/comercializadoras/get/${name}`, {
+      // Updated to use the new refactored endpoint
+      // New endpoint: /api/v2/energy-suppliers/by-name/[name]
+      const response = await fetch(`/api/v2/energy-suppliers/by-name/${name}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -55,7 +55,7 @@ export default function EditSignerForm({
         return;
       }
 
-      const res = await fetch(`/api/tramites/update/signer`, {
+      const res = await fetch(`/api/v2/clients/${formData.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

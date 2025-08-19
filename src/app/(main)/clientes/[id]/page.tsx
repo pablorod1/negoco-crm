@@ -67,7 +67,7 @@ export default function ClientDetailsPage() {
       setError(null);
 
       try {
-        const response = await fetch(`/api/clients/get/${id}`, {
+        const response = await fetch(`/api/v2/clients/${id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

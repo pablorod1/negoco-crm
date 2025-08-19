@@ -217,7 +217,11 @@ export default function ContractForm({
                   name={`pot${index + 1}`}
                   label={pot}
                   type="number"
-                  value={formData[`pot${index + 1}` as keyof ContractDB]}
+                  value={
+                    (formData[`pot${index + 1}` as keyof ContractDB] ?? 0) as
+                      | string
+                      | number
+                  }
                   startContent={<Zap size={16} stroke="#333" />}
                 />
               ))}

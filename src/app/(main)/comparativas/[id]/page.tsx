@@ -29,7 +29,7 @@ import {
 } from "@/core/components/ui/tabs";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import { Separator } from "@/core/components/ui/separator";
-import { formatDateTime } from "@/core/utils/format";
+import { formatDateTime, formatUUID } from "@/core/utils/format";
 import { showCustomToast } from "@/core/components/CustomToast";
 import UploadComparativaFilesModal from "@/comparativas/components/editComparativa/UploadComparativaFilesModal";
 import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
@@ -63,7 +63,7 @@ export default function EditComparativaPage() {
 
     try {
       setLoading(true);
-      const rs = await fetch(`/api/comparativas/get/${id}`, {
+      const rs = await fetch(`/api/v2/comparisons/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -141,8 +141,8 @@ export default function EditComparativaPage() {
     if (!comparativa) return;
 
     try {
-      const rs = await fetch(`/api/comparativas/add/${id}/notes`, {
-        method: "PATCH",
+      const rs = await fetch(`/api/v2/comparisons/${id}/notes`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           notes: comparativa.notes,
@@ -170,7 +170,7 @@ export default function EditComparativaPage() {
         notes: true,
       });
 
-      const response = await fetch(`/api/notifications/create`, {
+      const response = await fetch(`/api/v2/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notification }),
@@ -239,7 +239,7 @@ export default function EditComparativaPage() {
           <h1 className="text-3xl font-bold tracking-tight text-primary-800">
             Detalles de Comparativa
           </h1>
-          <p className="text-primary-400">ID: {comparativa.id}</p>
+          <p className="text-primary-400">ID: {formatUUID(comparativa.id)}</p>
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge(comparativa.status, "comparativa")}

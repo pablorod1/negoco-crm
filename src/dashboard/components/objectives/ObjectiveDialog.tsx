@@ -82,22 +82,19 @@ export default function ObjectiveDialog({
       }
 
       try {
-        const res = await fetch(
-          `/api/objectives/update/${editingObjetivo.id}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
+        const res = await fetch(`/api/v2/objectives/${editingObjetivo.id}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            changes: {
+              type: changes.type,
+              peak: changes.peak,
+              period: changes.period,
             },
-            body: JSON.stringify({
-              changes: {
-                type: changes.type,
-                peak: changes.peak,
-                period: changes.period,
-              },
-            }),
-          }
-        );
+          }),
+        });
 
         const { success, error } = await res.json();
 
@@ -133,7 +130,7 @@ export default function ObjectiveDialog({
       }
     } else {
       try {
-        const res = await fetch("/api/objectives/create", {
+        const res = await fetch("/api/v2/objectives", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

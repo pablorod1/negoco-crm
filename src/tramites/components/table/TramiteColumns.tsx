@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/core/components/ui/button";
-import { formatDate } from "@/core/utils/format";
+import { formatDate, formatUUID } from "@/core/utils/format";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowDown,
@@ -38,6 +38,9 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",
@@ -244,6 +247,9 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",
@@ -478,6 +484,9 @@ export const TramiteColumns: ColumnDef<TramiteRow>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",

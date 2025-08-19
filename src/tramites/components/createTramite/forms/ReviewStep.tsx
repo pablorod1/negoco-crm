@@ -18,7 +18,11 @@ import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { Badge } from "@/core/components/ui/badge";
 import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
-import { formatComission, formatFileSize } from "@/core/utils/format";
+import {
+  formatComission,
+  formatFileSize,
+  formatUUID,
+} from "@/core/utils/format";
 import { IdCardIcon, Mail, Phone } from "lucide-react";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 
@@ -34,6 +38,8 @@ interface Props {
   onCancel: () => void;
   loading: boolean;
   userData: User;
+  loadingStep?: number;
+  loadingMessage?: string;
 }
 
 export default function ReviewStep({
@@ -48,6 +54,8 @@ export default function ReviewStep({
   onCancel,
   loading,
   userData,
+  loadingStep,
+  loadingMessage,
 }: Props) {
   const isComercial = userData && userData.role === "2";
   const checkEmptyPots = (contract: ContractDB) => {
@@ -67,8 +75,16 @@ export default function ReviewStep({
     <>
       {loading && (
         <LoadingStateModal
-          title="Creando trámite..."
-          description="Espere unos segundos mientras creamos el trámite."
+          title={
+            loadingMessage && loadingMessage.length > 0
+              ? loadingMessage
+              : "Creando trámite..."
+          }
+          description={
+            typeof loadingStep === "number" && loadingStep > 0
+              ? `Paso ${loadingStep} de 4`
+              : "Espere unos segundos mientras creamos el trámite."
+          }
         />
       )}
       <ScrollArea className="h-full w-full max-h-[calc(100vh-400px)]">
@@ -78,7 +94,7 @@ export default function ReviewStep({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-primary-800 text-lg">
-                  Información del trámite - #{tramite.id}
+                  Información del trámite - #{formatUUID(tramite.id)}
                 </CardTitle>
                 {getStatusBadge(tramite.status as Status, "general")}
               </div>
@@ -117,7 +133,7 @@ export default function ReviewStep({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-primary-800">
-                  Cliente - #{client.id}
+                  Cliente - #{formatUUID(client.id)}
                 </CardTitle>
                 <Badge variant="info">{client.type}</Badge>
               </div>
@@ -173,7 +189,7 @@ export default function ReviewStep({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg text-primary-800">
-                    Persona Firmante - #{signer.id}
+                    Persona Firmante - #{formatUUID(signer.id)}
                   </CardTitle>
                   {signer.cargo && (
                     <Badge variant="pending">{signer.cargo}</Badge>
@@ -223,7 +239,10 @@ export default function ReviewStep({
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg text-primary-800">
-                  Contrato {contracts.length > 0 ? `- #${contracts[0].id}` : ""}
+                  Contrato{" "}
+                  {contracts.length > 0
+                    ? `- #${formatUUID(contracts[0].id)}`
+                    : ""}
                 </CardTitle>
                 {contracts.length > 0 && (
                   <div className="flex items-center gap-2">

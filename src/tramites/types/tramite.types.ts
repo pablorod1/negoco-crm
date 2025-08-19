@@ -133,7 +133,7 @@ export interface ContractDB {
   city: string;
   address: string;
   postal_code: string;
-  old_company: string;
+  old_company?: string;
   new_company: string;
   plan: string;
   consumption: number;

@@ -2,7 +2,7 @@ import { User } from "@/core/types";
 import { FotovoltaicaDB } from "../types/fotovoltaica.types";
 
 export const createEmptyFotovoltaicaDB = (userData: User): FotovoltaicaDB => ({
-  id: `FOT-${Math.floor(Math.random() * 10000)}`,
+  id: `FOT-${crypto.randomUUID()}`,
   type: "PPA",
   client: "",
   client_type: "company",

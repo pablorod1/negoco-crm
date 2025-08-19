@@ -27,8 +27,8 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
   const isComercial = userData && userData.role === "2";
   const handleDelete = async () => {
     try {
-      const res = await fetch("/api/documentacion/delete/folder", {
-        method: "POST",
+      const res = await fetch("/api/v2/document-library/folders", {
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },

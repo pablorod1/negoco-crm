@@ -51,7 +51,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
   const fetchFiles = async (searchTerm: string) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/documentacion/get/files-by-name`, {
+      const response = await fetch(`/api/v2/document-library/search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

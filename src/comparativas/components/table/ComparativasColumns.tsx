@@ -8,7 +8,7 @@ import { User } from "@/core/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/core/components/ui/button";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon } from "lucide-react";
-import { formatDate } from "@/core/utils/format";
+import { formatDate, formatUUID } from "@/core/utils/format";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import React from "react";
 import ComparativaDropdown from "./ComparativaDropdown";
@@ -28,6 +28,9 @@ export const createSubcomercialComparativasColumns = (
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",
@@ -240,6 +243,9 @@ export const createComercialComparativasColumns = (
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",
@@ -377,6 +383,9 @@ export const createComparativasColumns = (
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",

@@ -23,6 +23,7 @@ import FotovoltaicaLocationTab from "./FotovoltaicaLocationTab";
 import FotovoltaicaNotesTab from "./notes/FotovoltaicaNotesTab";
 import FotovoltaicaFilesTab from "./files/FotovoltaicaFilesTab";
 import UpdateFotovoltaicaStatusDialog from "./UpdateFotovoltaicaStatusDialog";
+import { formatUUID } from "@/core/utils/format";
 
 const getStatusIcon = (status: FotovoltaicaStatus) => {
   switch (status) {
@@ -128,7 +129,7 @@ export function FotovoltaicaDetailView({ id }: { id: string }) {
     setState({ loading: true, error: null, notFound: false });
 
     try {
-      const response = await fetch(`/api/fotovoltaica/get/${id}`, {
+      const response = await fetch(`/api/v2/solar-installations/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -180,7 +181,7 @@ export function FotovoltaicaDetailView({ id }: { id: string }) {
           <h1 className="text-3xl font-bold tracking-tight text-primary-800">
             Solicitud Placas Solares
           </h1>
-          <p className="text-primary-400">#{fotovoltaica.id}</p>
+          <p className="text-primary-400">#{formatUUID(fotovoltaica.id)}</p>
         </div>
         <div className="flex items-center gap-3">
           <Badge

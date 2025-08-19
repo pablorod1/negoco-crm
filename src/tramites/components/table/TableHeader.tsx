@@ -573,16 +573,18 @@ export default function TramitesHeader<TData>({
                   </div>
                 </>
               )}
-              {isTramitesTable && !isComercial && (
+              {!isComercial ? (
                 <>
-                  <div className="space-y-2">
-                    <Label>Fecha de Renovación</Label>
+                  {isTramitesTable ? (
+                    <div className="space-y-2">
+                      <Label>Fecha de Renovación</Label>
 
-                    <DateRangePicker
-                      date={renovationDateRange}
-                      setDateRange={setRenovationDateRange}
-                    />
-                  </div>
+                      <DateRangePicker
+                        date={renovationDateRange}
+                        setDateRange={setRenovationDateRange}
+                      />
+                    </div>
+                  ) : null}
                   <UserFilter
                     isComercial={isComercial}
                     userData={userData}
@@ -590,7 +592,7 @@ export default function TramitesHeader<TData>({
                     setUserFilter={setUserFilter}
                   />
                 </>
-              )}
+              ) : null}
             </div>
           </motion.div>
         )}

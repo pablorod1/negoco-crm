@@ -9,6 +9,7 @@ import {
   TrendingDownIcon,
   RefreshCcw,
   MoveRight,
+  Zap,
 } from "lucide-react";
 import { Avatar } from "@/core/components/ui/avatar";
 import { Card, CardContent } from "@/core/components/ui/card";
@@ -16,7 +17,7 @@ import { motion } from "framer-motion";
 import { User } from "@/core/types";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import { DashboardCardValue } from "./DashboardBentoGrid";
-import { formatComission } from "@/core/utils/format";
+import { formatComission, formatConsumption } from "@/core/utils/format";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import { Badge } from "@/core/components/ui/badge";
 import { cn } from "@/core/utils";
@@ -28,6 +29,7 @@ interface HeroDashboardProps {
   activeTramites: DashboardCardValue;
   totalBalance: number;
   comparativas: DashboardCardValue;
+  totalConsumption: number;
   refreshData: () => void;
   getPlan: () => string | null; // Optional function to get organization plan
 }
@@ -41,6 +43,7 @@ export default function HeroDashboard({
   activeTramites,
   totalBalance,
   comparativas,
+  totalConsumption,
   refreshData,
   getPlan,
 }: HeroDashboardProps) {
@@ -127,7 +130,7 @@ export default function HeroDashboard({
         <div
           className={cn(
             "grid grid-cols-1 gap-4 mt-6",
-            isPlanStarter ? "lg:grid-cols-3" : "lg:grid-cols-2 2xl:grid-cols-4"
+            isPlanStarter ? "lg:grid-cols-4" : "lg:grid-cols-2 2xl:grid-cols-5"
           )}
         >
           <StatCard
@@ -180,13 +183,23 @@ export default function HeroDashboard({
               delay={1.0}
             />
           )}
+
+          <StatCard
+            title="Consumo Total"
+            total={totalConsumption}
+            value={totalConsumption}
+            description="Consumo total de todos tus contratos"
+            delay={1.1}
+            type="consumption"
+          />
+
           <StatCard
             title="Balance Total"
             total={totalBalance}
             value={totalBalance}
             description="Balance total de tus comisiones 2025"
-            chart
-            delay={1.1}
+            type="chart"
+            delay={1.2}
           />
         </div>
       </CardContent>
@@ -202,7 +215,7 @@ interface StatCardProps {
   description: string;
   trend?: "up" | "down" | "normal";
   trendValue?: number;
-  chart?: boolean;
+  type?: "chart" | "consumption" | "default";
   delay?: number;
 }
 
@@ -214,7 +227,7 @@ function StatCard({
   description,
   trend,
   trendValue,
-  chart,
+  type = "default",
   delay = 0,
 }: StatCardProps) {
   return (
@@ -233,7 +246,11 @@ function StatCard({
             animate={{ opacity: 1 }}
             transition={{ delay: delay + 0.2, duration: 0.5 }}
           >
-            {chart ? formatComission(total) : total}
+            {type === "chart"
+              ? formatComission(total)
+              : type === "consumption"
+                ? formatConsumption(total)
+                : total}
           </motion.p>
         </div>
         {trend && (
@@ -271,7 +288,7 @@ function StatCard({
             </Badge>
           </motion.div>
         )}
-        {chart && (
+        {type === "chart" ? (
           <motion.div
             className="text-white/80"
             initial={{ scale: 0, opacity: 0 }}
@@ -280,7 +297,16 @@ function StatCard({
           >
             <BarChart3 className="h-5 w-5" />
           </motion.div>
-        )}
+        ) : type === "consumption" ? (
+          <motion.div
+            className="text-white/80"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: delay + 0.3, type: "spring", stiffness: 200 }}
+          >
+            <Zap className="h-5 w-5" />
+          </motion.div>
+        ) : null}
       </div>
       <div className="flex justify-between items-center z-30">
         <p className="text-xs text-white/90 mt-2">{description}</p>

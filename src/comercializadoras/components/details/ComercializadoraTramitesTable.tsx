@@ -50,22 +50,23 @@ function useTramites(
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const res = await fetch(`/api/tramites/get/paginated-tramites`, {
-        method: "POST",
+      const params = new URLSearchParams();
+      params.append("page", pageIndex.toString());
+      params.append(
+        "rowsPerPage",
+        typeof pageSize === "number" ? pageSize.toString() : "Sin Límite"
+      );
+      params.append("user_id", userData.id);
+      params.append("user_role", userData.role);
+      params.append("companyFilter", JSON.stringify([name]));
+      const res = await fetch(`/api/v2/contracts?${params.toString()}`, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          page: pageIndex,
-          rowsPerPage: typeof pageSize === "number" ? pageSize : "Sin Límite",
-          user_id: userData.id,
-          user_role: userData.role,
-          companyFilter: [name],
-        }),
       });
 
       const { success, data, error, total } = await res.json();
-
       if (!success && error) {
         console.error("Error al obtener trámites:", error);
         setState((prev) => ({

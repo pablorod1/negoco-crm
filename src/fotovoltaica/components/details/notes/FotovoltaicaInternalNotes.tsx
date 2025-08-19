@@ -22,9 +22,9 @@ export default function FotovoltaicaInternalNotes({
   const handleCreateNote = async (note: string) => {
     try {
       const response = await fetch(
-        `/api/fotovoltaica/add/${fotovoltaica.id}/notes`,
+        `/api/v2/solar-installations/${fotovoltaica.id}/notes`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },

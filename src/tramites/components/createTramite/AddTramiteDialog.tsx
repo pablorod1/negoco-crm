@@ -71,6 +71,8 @@ export default function AddTramiteDialog({
     TramiteFile[] | null
   >(null);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<number>(0);
+  const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
   const { refreshTramites } = useTramites();
 
@@ -108,6 +110,9 @@ export default function AddTramiteDialog({
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
+    setLoading(false);
+    setLoadingStep(0);
+    setLoadingMessage("");
   }, []);
 
   // Navigation handlers
@@ -126,7 +131,7 @@ export default function AddTramiteDialog({
     try {
       // Update comparativa status
       const comparativaRes = await fetch(
-        `/api/comparativas/update/${comparativa.id}/status`,
+        `/api/v2/comparisons/${comparativa.id}/status`,
         {
           method: "PATCH",
           body: JSON.stringify({
@@ -155,7 +160,7 @@ export default function AddTramiteDialog({
 
       // Move files
       const moveFileRes = await fetch(
-        `/api/comparativas/move-files/${comparativa.id}`,
+        `/api/v2/comparisons/${comparativa.id}/convert-to-contract`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -184,10 +189,11 @@ export default function AddTramiteDialog({
 
       // Send notification email
       const emailRes = await fetch(
-        "/api/send-email/comparativa-status-updated",
+        "/api/v2/communications/emails/status-updates",
         {
           method: "POST",
           body: JSON.stringify({
+            type: "comparativa",
             user_to: {
               email: comparativa.user.email,
               name: comparativa.user.name,
@@ -239,6 +245,8 @@ export default function AddTramiteDialog({
       const uploadedFilePaths: string[] = [];
 
       // Upload new documents
+      setLoadingStep(1);
+      setLoadingMessage("Subiendo archivos");
       const tramiteFiles: TramiteFile[] = await Promise.all(
         documents.map(async (file) => {
           const { downloadURL, previewURL, file_path } = await uploadFile(
@@ -265,6 +273,8 @@ export default function AddTramiteDialog({
       const formData = new FormData();
 
       // Prepare form data
+      setLoadingStep(2);
+      setLoadingMessage("Validando datos");
       formData.append("files", JSON.stringify(tramiteFiles));
       formData.append("userData", JSON.stringify(userData));
       formData.append("client", JSON.stringify(client));
@@ -293,9 +303,18 @@ export default function AddTramiteDialog({
 
         formData.append("existingFiles", JSON.stringify(selectedFiles));
       }
-
+      console.log("Submitting tramite with data:", {
+        files: uploadedFilePaths,
+        userData,
+        client,
+        tramite,
+        signer,
+        contracts,
+      });
       // Send request to create tramite
-      const res = await fetch("/api/tramites/add", {
+      setLoadingStep(3);
+      setLoadingMessage("Creando cliente, firmante y contratos");
+      const res = await fetch("/api/v2/contracts", {
         method: "POST",
         body: formData,
       });
@@ -305,7 +324,12 @@ export default function AddTramiteDialog({
       if (!success) {
         showCustomToast({
           title: "Error al añadir trámite",
-          message: error || "Error desconocido",
+          message: error?.includes("Invalid data format")
+            ? "Los datos no son válidos. Revisa cada paso."
+            : error?.toLowerCase().includes("database") ||
+                error?.toLowerCase().includes("constraint")
+              ? "Error de base de datos. Inténtalo de nuevo."
+              : error || "Error desconocido",
           iconColor: "var(--danger-color)",
           iconSize: 24,
           icon: CircleX,
@@ -315,6 +339,8 @@ export default function AddTramiteDialog({
       }
 
       // Show success toast
+      setLoadingStep(4);
+      setLoadingMessage("Finalizando trámite");
       showCustomToast({
         title: "Trámite añadido",
         message: "El trámite ha sido añadido correctamente",
@@ -363,6 +389,8 @@ export default function AddTramiteDialog({
       });
     } finally {
       setLoading(false);
+      setLoadingStep(0);
+      setLoadingMessage("");
     }
   }, [
     userData,
@@ -451,6 +479,8 @@ export default function AddTramiteDialog({
         onSubmit={handleSubmit}
         onCancel={handleClose}
         loading={loading}
+        loadingStep={loadingStep}
+        loadingMessage={loadingMessage}
         userData={userData as User}
         selectedExistingFiles={selectedExistingFiles}
       />,
@@ -516,6 +546,8 @@ export default function AddTramiteDialog({
         onSubmit={handleSubmit}
         onCancel={handleClose}
         loading={loading}
+        loadingStep={loadingStep}
+        loadingMessage={loadingMessage}
         userData={userData as User}
         selectedExistingFiles={selectedExistingFiles}
       />,
@@ -536,6 +568,8 @@ export default function AddTramiteDialog({
     contracts,
     documents,
     loading,
+    loadingStep,
+    loadingMessage,
     comparativaFiles,
     selectedExistingFiles,
     userData,

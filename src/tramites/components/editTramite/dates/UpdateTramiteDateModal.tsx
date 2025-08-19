@@ -61,7 +61,7 @@ export default function UpdateTramiteDateModal({
     }
     setLoading(true);
     try {
-      const response = await fetch(`/api/tramites/update/${tramite_id}/date`, {
+      const response = await fetch(`/api/v2/contracts/${tramite_id}/dates`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -148,4 +148,3 @@ export default function UpdateTramiteDateModal({
     </Dialog>
   );
 }
-

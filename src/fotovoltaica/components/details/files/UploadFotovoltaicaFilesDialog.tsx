@@ -131,7 +131,7 @@ export default function UploadFotovoltaicaFilesDialog({
       }
 
       const response = await fetch(
-        `/api/fotovoltaica/add/${fotovoltaica.id}/files`,
+        `/api/v2/solar-installations/${fotovoltaica.id}/documents`,
         {
           method: "POST",
           body: formDataToSend,
@@ -161,7 +161,7 @@ export default function UploadFotovoltaicaFilesDialog({
           files: uploadedFiles.length > 0,
         });
 
-      const notificationResponse = await fetch(`/api/notifications/create`, {
+      const notificationResponse = await fetch(`/api/v2/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notification }),
@@ -183,11 +183,12 @@ export default function UploadFotovoltaicaFilesDialog({
 
       if (isCompleted) {
         const emailRes = await fetch(
-          `/api/send-email/fotovoltaica-status-updated`,
+          `/api/v2/communications/emails/status-updates`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              type: "fotovoltaica",
               user_to: {
                 email: fotovoltaica.user.email,
                 name: fotovoltaica.user.name,

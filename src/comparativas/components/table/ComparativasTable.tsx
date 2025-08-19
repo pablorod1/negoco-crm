@@ -53,26 +53,34 @@ export default function ComparativasTable<TData, TValue>({
       setLoading(true);
       if (userData) {
         try {
-          const res = await fetch(
-            `/api/comparativas/get/paginated-comparativas`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                page: pageIndex,
-                rowsPerPage:
-                  typeof pageSize === "number" ? pageSize : "Sin Límite",
-                user_id: userData.id,
-                user_role: userData.role,
-                filterValue,
-                statusFilter,
-                dateRange: creationDateRange,
-                userFilter,
-              }),
-            }
+          // Build query params for the new GET endpoint contract
+          const params = new URLSearchParams();
+          params.set("page", String(pageIndex));
+          params.set(
+            "rowsPerPage",
+            typeof pageSize === "number" ? String(pageSize) : pageSize
           );
+          params.set("user_id", userData.id);
+          params.set("user_role", userData.role);
+          if (filterValue && filterValue.trim().length > 0) {
+            params.set("filterValue", filterValue.trim());
+          }
+          if (statusFilter && statusFilter.length > 0) {
+            params.set("statusFilter", JSON.stringify(statusFilter));
+          }
+          if (
+            creationDateRange &&
+            creationDateRange.from &&
+            creationDateRange.to
+          ) {
+            params.set("dateRange", JSON.stringify(creationDateRange));
+          }
+          if (userFilter && userFilter.length > 0) {
+            params.set("userFilter", JSON.stringify(userFilter));
+          }
+
+          const url = `/api/v2/comparisons?${params.toString()}`;
+          const res = await fetch(url, { method: "GET" });
 
           const { success, data, error, total } = await res.json();
           if (!success) {

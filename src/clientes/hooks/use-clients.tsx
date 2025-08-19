@@ -24,7 +24,7 @@ export function useClients(
       setError(null);
 
       try {
-        const response = await fetch(`/api/clients/get/all`, {
+        const response = await fetch(`/api/v2/clients`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -147,4 +147,3 @@ export function useClients(
     totalCount: allClients.length,
   };
 }
-

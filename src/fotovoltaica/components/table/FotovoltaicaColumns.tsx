@@ -1,6 +1,6 @@
 import TooltipComponent from "@/core/components/TooltipComponent";
 import { Button } from "@/core/components/ui/button";
-import { formatComission, formatDate } from "@/core/utils/format";
+import { formatComission, formatDate, formatUUID } from "@/core/utils/format";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon } from "lucide-react";
@@ -16,6 +16,9 @@ export const SubcomercialFotovoltaicaColumns: ColumnDef<FotovoltaicaVM>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",
@@ -195,6 +198,9 @@ export const ComercialFotovoltaicaColumns: ColumnDef<FotovoltaicaVM>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",
@@ -390,6 +396,9 @@ export const FotovoltaicaColumns: ColumnDef<FotovoltaicaVM>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Creación",

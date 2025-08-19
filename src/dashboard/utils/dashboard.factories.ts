@@ -2,7 +2,7 @@ import { User } from "@/core/types";
 import { Objective } from "../types/dashboard.types";
 
 export const createEmptyObjective = (userData: User): Objective => ({
-  id: `OBJ-${Math.floor(Math.random() * 10000)}`,
+  id: `OBJ-${crypto.randomUUID()}`,
   type: "tramites",
   peak: 0,
   current: 0,

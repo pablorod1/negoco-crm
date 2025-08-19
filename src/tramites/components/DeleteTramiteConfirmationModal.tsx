@@ -21,6 +21,7 @@ import { useTramites } from "@/core/contexts/TramitesContext";
 import { Link } from "next-view-transitions";
 import { useState } from "react";
 import { TramiteRow } from "@/tramites/types";
+import { formatUUID } from "@/core/utils/format";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -68,8 +69,8 @@ export default function DeleteTramiteConfirmationModal({
   const onClose = () => setIsOpen(false);
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/tramites/delete/${tramite.id}`, {
-        method: "POST",
+      const res = await fetch(`/api/v2/contracts/${tramite.id}`, {
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
@@ -91,7 +92,7 @@ export default function DeleteTramiteConfirmationModal({
 
       showCustomToast({
         title: "Trámite eliminado",
-        message: `El trámite ${tramite.id} ha sido eliminado correctamente`,
+        message: `El trámite ${formatUUID(tramite.id)} ha sido eliminado correctamente`,
         icon: CheckCircle,
         iconSize: 24,
         iconColor: "var(--success-color)",
@@ -139,7 +140,8 @@ export default function DeleteTramiteConfirmationModal({
             <AlertTriangle className="size-8 text-danger" />
             <div className="flex flex-col">
               <DialogTitle className="text-base font-semibold text-danger">
-                ¿Estás seguro de que deseas eliminar el trámite {tramite.id}?
+                ¿Estás seguro de que deseas eliminar el trámite{" "}
+                {formatUUID(tramite.id)}?
               </DialogTitle>
               <DialogDescription className="text-gray-600 text-sm">
                 Se eliminará el trámite y todos los datos asociados a él de

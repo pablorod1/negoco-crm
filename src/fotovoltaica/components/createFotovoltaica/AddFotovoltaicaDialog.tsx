@@ -24,6 +24,12 @@ import { cn } from "@/core/utils";
 import { uploadFile } from "@/core/firebase/data/uploadFiles";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { useFotovoltaicas } from "@/core/contexts/FotovoltaicasContext";
+import {
+  FotovoltaicaFileSchema,
+  FotovoltaicaSchema,
+} from "@/fotovoltaica/schemas";
+import LoadingStateModal from "@/core/components/LoadingStateModal";
+import { deleteFiles } from "@/core/firebase/data/deleteFile";
 
 export default function AddFotovoltaicaDialog({
   variant,
@@ -41,6 +47,8 @@ export default function AddFotovoltaicaDialog({
   );
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<number>(0);
+  const [loadingMessage, setLoadingMessage] = useState<string>("");
 
   const handleBack = () => setActiveTab((prev) => Math.max(prev - 1, 0));
   const handleNext = () => setActiveTab((prev) => Math.min(prev + 1, 3));
@@ -60,17 +68,39 @@ export default function AddFotovoltaicaDialog({
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Step 1: Validate data
+      setLoadingStep(1);
+      setLoadingMessage("Validando datos");
+      try {
+        FotovoltaicaSchema.parse(formData);
+      } catch {
+        showCustomToast({
+          title: "Datos inválidos",
+          message:
+            "Revisa el cliente y el enlace de la ubicación. Deben ser válidos.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+
       const fotovoltaicaFiles: FotovoltaicaFile[] = [];
 
+      // Step 2: Upload files
+      setLoadingStep(2);
+      setLoadingMessage("Subiendo archivos");
+      const uploadedFilePaths: string[] = [];
       for (const file of uploadedFiles) {
         try {
-          const { downloadURL, previewURL } = await uploadFile(
+          const { downloadURL, previewURL, file_path } = await uploadFile(
             file,
             `${userData?.organization.id}/fotovoltaicas`,
             formData.id
           );
+          if (file_path) uploadedFilePaths.push(file_path);
 
-          fotovoltaicaFiles.push({
+          const filePayload: FotovoltaicaFile = {
             id: crypto.randomUUID(),
             fotovoltaica_id: formData.id,
             filename: file.name,
@@ -79,7 +109,23 @@ export default function AddFotovoltaicaDialog({
             upload_date: new Date().toISOString(),
             download_url: downloadURL,
             preview_url: previewURL || null,
-          });
+          };
+
+          // Validate each file payload (defensive)
+          try {
+            FotovoltaicaFileSchema.parse(filePayload);
+          } catch {
+            showCustomToast({
+              title: "Archivo inválido",
+              message: `El archivo ${file.name} no es válido`,
+              iconColor: "var(--danger-color)",
+              iconSize: 24,
+              icon: CircleX,
+            });
+            return;
+          }
+
+          fotovoltaicaFiles.push(filePayload);
         } catch (error) {
           showCustomToast({
             title: "Error al subir el archivo",
@@ -93,14 +139,24 @@ export default function AddFotovoltaicaDialog({
         }
       }
 
+      // Step 3: Prepare request
+      setLoadingStep(3);
+      setLoadingMessage("Preparando solicitud");
       const fotovoltaicaData = new FormData();
       fotovoltaicaData.append("fotovoltaica", JSON.stringify(formData));
       fotovoltaicaData.append("files", JSON.stringify(fotovoltaicaFiles));
 
-      const response = await fetch(`/api/fotovoltaica/add`, {
-        method: "POST",
+      // Step 4: Submit (transactional on server)
+      setLoadingStep(4);
+      setLoadingMessage("Creando solicitud");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      const response = await fetch(`/api/v2/solar-installations`, {
+        method: "PUT",
         body: fotovoltaicaData,
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -112,6 +168,15 @@ export default function AddFotovoltaicaDialog({
           icon: CircleX,
         });
         console.error("Error submitting fotovoltaica:", errorData);
+        try {
+          if (uploadedFilePaths.length > 0)
+            await deleteFiles(uploadedFilePaths);
+        } catch (e) {
+          console.warn(
+            "No se pudieron eliminar los archivos subidos tras el fallo",
+            e
+          );
+        }
         return;
       }
 
@@ -120,14 +185,26 @@ export default function AddFotovoltaicaDialog({
       if (!success) {
         showCustomToast({
           title: "Error al enviar la solicitud",
-          message: error,
+          message:
+            typeof error === "string" ? error : "No se pudo crear la solicitud",
           icon: CircleX,
           iconColor: "var(--danger-color)",
           iconSize: 24,
         });
+        try {
+          if (uploadedFilePaths.length > 0)
+            await deleteFiles(uploadedFilePaths);
+        } catch (e) {
+          console.warn(
+            "No se pudieron eliminar los archivos subidos tras el fallo",
+            e
+          );
+        }
         return;
       }
 
+      setLoadingStep(5);
+      setLoadingMessage("Finalizando trámite");
       showCustomToast({
         title: "Solicitud Placas Solares Enviada",
         message: "La solicitud ha sido enviada correctamente",
@@ -140,6 +217,16 @@ export default function AddFotovoltaicaDialog({
       refreshFotovoltaicas();
       onClose();
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        showCustomToast({
+          title: "Tiempo de espera excedido",
+          message: "El servidor tardó demasiado en responder.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
       showCustomToast({
         title: "Error al crear la solicitud",
         message: "Inténtalo de nuevo más tarde",
@@ -150,6 +237,8 @@ export default function AddFotovoltaicaDialog({
       console.error("Error al crear la solicitud:", error);
     } finally {
       setLoading(false);
+      setLoadingStep(0);
+      setLoadingMessage("");
     }
   };
 
@@ -190,7 +279,10 @@ export default function AddFotovoltaicaDialog({
     />,
   ];
   return (
-    <Dialog open={isOpen} onOpenChange={onOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => (open ? onOpen() : onClose())}
+    >
       <DialogTrigger asChild>
         {!shortcut ? (
           <Button
@@ -241,6 +333,22 @@ export default function AddFotovoltaicaDialog({
           </div>
           <CreateFotovoltaicaStepper steps={4} currentStep={activeTab} />
         </DialogHeader>
+        {loading ? (
+          <LoadingStateModal
+            title={
+              loadingStep <= 1
+                ? "Validando datos"
+                : loadingStep === 2
+                  ? "Subiendo archivos"
+                  : loadingStep === 3
+                    ? "Preparando solicitud"
+                    : loadingStep === 4
+                      ? "Creando solicitud"
+                      : "Finalizando trámite"
+            }
+            description={loadingMessage || "Por favor, espera..."}
+          />
+        ) : null}
         {formElements[activeTab]}
       </DialogContent>
     </Dialog>

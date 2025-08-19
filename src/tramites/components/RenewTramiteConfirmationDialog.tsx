@@ -15,7 +15,7 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import { Link } from "next-view-transitions";
 import { Notification } from "@/core/types";
 import { ClientDB, TramiteVM } from "@/tramites/types";
-import { formatDate } from "@/core/utils/format";
+import { formatDate, formatUUID } from "@/core/utils/format";
 import { NOW_DATE, RENOVATION_DATE } from "@/dashboard/constants";
 import { useState } from "react";
 
@@ -38,8 +38,8 @@ export default function RenewTramiteConfirmationDialog({
 
   const handleRenewTramite = async () => {
     try {
-      const res = await fetch(`/api/tramites/renew/${tramite.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/v2/contracts/${tramite.id}/renewal`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -60,7 +60,7 @@ export default function RenewTramiteConfirmationDialog({
       const notification: Notification = {
         id: tramite.id,
         title: "Trámite renovado",
-        message: `El trámite ${tramite.id} ha sido renovado.`,
+        message: `El trámite ${formatUUID(tramite.id)} ha sido renovado.`,
         created_at: new Date().toISOString(),
         context: "Tramites",
         link: tramite.id,
@@ -69,7 +69,7 @@ export default function RenewTramiteConfirmationDialog({
       };
 
       if (sendNotification) {
-        const notificationRes = await fetch(`/api/notifications/create`, {
+        const notificationRes = await fetch(`/api/v2/notifications`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -149,7 +149,7 @@ export default function RenewTramiteConfirmationDialog({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <p className="text-sm text-gray-500">ID del trámite</p>
-                <p className="font-medium">{tramite.id}</p>
+                <p className="font-medium">{formatUUID(tramite.id)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Cliente</p>

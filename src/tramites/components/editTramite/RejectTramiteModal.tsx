@@ -21,6 +21,7 @@ import { SelectComponent } from "../createTramite/InputComponent";
 import { BAJA_LIQUIDEZ_STATUS, STATUS_TYPES } from "@/tramites/constants";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { CircleX } from "lucide-react";
+import { formatUUID } from "@/core/utils/format";
 
 interface Props {
   tramite: TramiteVM;
@@ -48,20 +49,17 @@ export default function RejectTramiteModal({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/tramites/update/${tramite.id}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "Baja",
-            liquidez_status: liquidezStatus,
-            user_id: userData.id,
-            comision: -Math.abs(tramite.comision),
-            comision_sales_person: -Math.abs(tramite.comision_sales_person),
-          }),
-        }
-      );
+      const response = await fetch(`/api/v2/contracts/${tramite.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "Baja",
+          liquidez_status: liquidezStatus,
+          user_id: userData.id,
+          comision: -Math.abs(tramite.comision),
+          comision_sales_person: -Math.abs(tramite.comision_sales_person),
+        }),
+      });
 
       const { success, error } = await response.json();
 
@@ -116,7 +114,9 @@ export default function RejectTramiteModal({
             </DialogTitle>
             <DialogDescription>
               <TooltipComponent content="ID del trámite">
-                <span className="text-xs text-danger-400">#{tramite.id}</span>
+                <span className="text-xs text-danger-400">
+                  #{formatUUID(tramite.id)}
+                </span>
               </TooltipComponent>
             </DialogDescription>
           </div>

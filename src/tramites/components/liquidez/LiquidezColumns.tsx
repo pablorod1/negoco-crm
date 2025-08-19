@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDate } from "@/core/utils/format";
+import { formatDate, formatUUID } from "@/core/utils/format";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUpDown, ArrowUpIcon, Copy } from "lucide-react";
 import { Status, TramiteRow } from "@/tramites/types";
@@ -37,6 +37,9 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => {
+      return <span>{formatUUID(row.original.id)}</span>;
+    },
   },
   {
     id: "Fecha de Activación",

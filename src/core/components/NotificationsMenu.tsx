@@ -35,8 +35,8 @@ export default function NotificationsMenu() {
     e.preventDefault();
     e.stopPropagation();
     try {
-      const res = await fetch(`/api/notifications/delete/${id}`, {
-        method: "POST",
+      const res = await fetch(`/api/v2/notifications/${id}`, {
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
@@ -81,8 +81,8 @@ export default function NotificationsMenu() {
   ) => {
     e.preventDefault();
     try {
-      const res = await fetch(`/api/notifications/delete/all`, {
-        method: "POST",
+      const res = await fetch(`/api/v2/notifications`, {
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
@@ -125,13 +125,15 @@ export default function NotificationsMenu() {
   const fetchNotifications = useCallback(async () => {
     if (userData) {
       try {
-        const res = await fetch(`/api/notifications/get/notifications`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: userData.id }),
-        });
+        const res = await fetch(
+          `/api/v2/notifications?user_id=${encodeURIComponent(userData.id)}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
         const data = await res.json();
         if (data) {
           setNotifications(data.data || []);

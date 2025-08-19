@@ -60,7 +60,7 @@ export default function UpdateFotovoltaicaStatusDialog({
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/fotovoltaica/update/${fotovoltaica.id}`,
+        `/api/v2/solar-installations/${fotovoltaica.id}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -94,7 +94,7 @@ export default function UpdateFotovoltaicaStatusDialog({
           status: checkStatusChanged() ? formData.status : undefined,
         });
 
-      const notificationResponse = await fetch(`/api/notifications/create`, {
+      const notificationResponse = await fetch(`/api/v2/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notification }),
@@ -116,11 +116,12 @@ export default function UpdateFotovoltaicaStatusDialog({
 
       if (checkStatusChanged()) {
         const emailRes = await fetch(
-          `/api/send-email/fotovoltaica-status-updated`,
+          `/api/v2/communications/emails/status-updates`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              type: "fotovoltaica",
               user_to: {
                 email: fotovoltaica.user.email,
                 name: fotovoltaica.user.name,

@@ -38,16 +38,13 @@ const DeleteNoteConfirmationModal = memo(
     };
     const handleDelete = async () => {
       try {
-        const rs = await fetch(
-          `/api/comparativas/delete/${comparativa_id}/note`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ note, notes }),
-          }
-        );
+        const rs = await fetch(`/api/v2/comparisons/${comparativa_id}/notes`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ note, notes }),
+        });
 
         const { success, error } = await rs.json();
 
@@ -125,4 +122,3 @@ const DeleteNoteConfirmationModal = memo(
 DeleteNoteConfirmationModal.displayName = "DeleteNoteConfirmationModal";
 
 export default DeleteNoteConfirmationModal;
-

@@ -39,12 +39,9 @@ export default function UpdatePassword({ userData, refreshUserData }: Props) {
       }
 
       if (userData.should_reset_password) {
-        const res = await fetch(
-          `/api/users/update/${userData.id}/should-reset-pass`,
-          {
-            method: "PATCH",
-          }
-        );
+        const res = await fetch(`/api/v2/users/${userData.id}/password-reset`, {
+          method: "PATCH",
+        });
 
         const { success, error } = await res.json();
 

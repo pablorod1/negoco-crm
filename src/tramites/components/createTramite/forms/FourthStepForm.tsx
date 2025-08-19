@@ -78,12 +78,9 @@ export default function FourthStepForm({
     const fetchExistingFiles = async () => {
       setLoadingExistingFiles(true);
       try {
-        const response = await fetch(
-          `/api/clients/get/${client.id}/tramite-files`,
-          {
-            method: "POST",
-          }
-        );
+        const response = await fetch(`/api/v2/clients/${client.id}/documents`, {
+          method: "GET",
+        });
         const { data, success } = await response.json();
 
         if (success && !data) {

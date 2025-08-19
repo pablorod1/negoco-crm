@@ -66,20 +66,23 @@ function useTramites(
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const res = await fetch(`/api/tramites/get/paginated-tramites`, {
-        method: "POST",
+      const params = new URLSearchParams();
+      params.append("page", pageIndex.toString());
+      params.append(
+        "rowsPerPage",
+        typeof pageSize === "number" ? pageSize.toString() : "Sin Límite"
+      );
+      params.append("user_id", userData.id);
+      params.append("user_role", userData.role);
+      params.append("clientFilter", client_id);
+      params.append("searchTerm", filters.searchTerm);
+      params.append("status", filters.status ?? "");
+
+      const res = await fetch(`/api/v2/contracts?${params.toString()}`, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          page: pageIndex,
-          rowsPerPage: typeof pageSize === "number" ? pageSize : "Sin Límite",
-          user_id: userData.id,
-          user_role: userData.role,
-          clientFilter: client_id,
-          searchTerm: filters.searchTerm,
-          status: filters.status,
-        }),
       });
 
       const { success, data, error, total } = await res.json();

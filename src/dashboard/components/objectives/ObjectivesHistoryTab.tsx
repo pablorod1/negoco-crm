@@ -28,13 +28,15 @@ export default function ObjectivesHistoryTab({
 
   const fetchObjetivos = useCallback(async () => {
     try {
-      const res = await fetch(`/api/objectives/get/all`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id: userData.id, role: userData.role }),
-      });
+      const res = await fetch(
+        `/api/v2/objectives?id=${userData.id}&role=${userData.role}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const { success, data, error } = await res.json();
 

@@ -2,7 +2,7 @@ import { User } from "@/core/types";
 import { ComparativaDB } from "../types/comparativa.types";
 
 export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
-  id: `CMP-${Math.floor(Math.random() * 10000)}`,
+  id: `CMP-${crypto.randomUUID()}`,
   client: "",
   service: "Luz",
   plan: ["fijo"],

@@ -1,15 +1,15 @@
 ﻿import { extractCoordinatesFromUrl } from "@/core/utils/extraxtCoordinates";
-import { Client } from "@libsql/client";
+import type { Client, Transaction } from "@libsql/client";
 import { FotovoltaicaDB, FotovoltaicaFile } from "@/fotovoltaica/types";
 
 export const addFotovoltaica = async (
   fotovoltaica: FotovoltaicaDB,
-  tursoClient: Client
+  tursoClient: Client | Transaction
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const query = `
-      INSERT INTO fotovoltaica (id, client, client_type, location, coordinates, type, notes, internal_notes, user_id, creation_date, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO fotovoltaica (id, client, client_type, location, coordinates, type, notes, internal_notes, user_id, creation_date, status, comision, comision_sales_person, activation_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const coordinates = extractCoordinatesFromUrl(fotovoltaica.location);
@@ -28,6 +28,9 @@ export const addFotovoltaica = async (
         fotovoltaica.user_id,
         fotovoltaica.creation_date,
         fotovoltaica.status,
+        fotovoltaica.comision || 0,
+        fotovoltaica.comision_sales_person || 0,
+        fotovoltaica.activation_date || null,
       ],
     });
 
@@ -45,7 +48,7 @@ export const addFotovoltaica = async (
 
 export const addFotovoltaicaFiles = async (
   files: FotovoltaicaFile[],
-  tursoClient: Client
+  tursoClient: Client | Transaction
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const query = `

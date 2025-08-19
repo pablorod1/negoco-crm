@@ -118,7 +118,7 @@ export default function PersonalTramitesChart({
   const fetchData = React.useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch(`/api/tramites/get/active-tramites-by-user-id`, {
+      const res = await fetch("/api/v2/analytics/contracts/personal", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

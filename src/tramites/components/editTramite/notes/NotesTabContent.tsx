@@ -49,7 +49,7 @@ export const TramiteNotesSection = ({
     isInternal: boolean = false
   ) => {
     try {
-      const res = await fetch(`/api/tramites/add/${tramite_id}/notes`, {
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/notes`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -94,7 +94,7 @@ export const TramiteNotesSection = ({
           user_id: userData.id,
         });
 
-        const notificationRes = await fetch("/api/notifications/create", {
+        const notificationRes = await fetch("/api/v2/notifications", {
           method: "POST",
           body: JSON.stringify({ notification }),
           headers: {

@@ -59,8 +59,8 @@ export function ClientFilesGrid({ client_id }: Props) {
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const res = await fetch(`/api/clients/get/${client_id}/tramite-files`, {
-          method: "POST",
+        const res = await fetch(`/api/v2/clients/${client_id}/documents`, {
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
           },

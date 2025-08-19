@@ -21,6 +21,7 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import { useTramites } from "@/core/contexts/TramitesContext";
 import TooltipComponent from "@/core/components/TooltipComponent";
+import { formatUUID } from "@/core/utils/format";
 
 interface Props<TData> {
   table: Table<TData>;
@@ -93,7 +94,7 @@ export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
 
       const ids = selectedTramites.map((tramite) => tramite.id);
 
-      const res = await fetch("/api/tramites/update/multiple-status", {
+      const res = await fetch("/api/v2/contracts/multiple", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -267,7 +268,7 @@ export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
                         key={tramite.id}
                         className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                       >
-                        <td className="px-3 py-2">{tramite.id}</td>
+                        <td className="px-3 py-2">{formatUUID(tramite.id)}</td>
                         <td className="px-3 py-2">
                           {getStatusBadge(tramite.status as Status, "general")}
                         </td>

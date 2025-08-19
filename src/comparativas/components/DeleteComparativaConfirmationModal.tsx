@@ -9,7 +9,7 @@ import { Button } from "@/core/components/ui/button";
 import { AlertTriangle, CheckCircle, CircleX } from "lucide-react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { useComparativas } from "@/core/contexts/ComparativasContext";
-import { formatDate } from "@/core/utils/format";
+import { formatDate, formatUUID } from "@/core/utils/format";
 import { useState } from "react";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
@@ -80,7 +80,7 @@ export default function DeleteComparativaConfirmationModal({
     }
 
     try {
-      const res = await fetch(`/api/comparativas/delete/${comparativa.id}`, {
+      const res = await fetch(`/api/v2/comparisons/${comparativa.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -151,7 +151,7 @@ export default function DeleteComparativaConfirmationModal({
             <div className="flex flex-col">
               <DialogTitle className="text-lg font-semibold text-danger">
                 ¿Estás seguro de que deseas eliminar la comparativa{" "}
-                {comparativa.id}?
+                {formatUUID(comparativa.id)}?
               </DialogTitle>
               <DialogDescription className="text-gray-600 text-sm">
                 Se eliminará la comparativa y todos los datos asociados a él de

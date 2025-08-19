@@ -165,7 +165,7 @@ export default function CreateBajaForm({
       formDataToSend.append("contracts", JSON.stringify(contracts));
       formDataToSend.append("userData", JSON.stringify(userData));
 
-      const result = await fetch(`/api/tramites/add`, {
+      const result = await fetch(`/api/v2/contracts`, {
         method: "POST",
         body: formDataToSend,
       });

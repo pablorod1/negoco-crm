@@ -1,5 +1,4 @@
 ﻿import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
-import LoadingStateModal from "@/core/components/LoadingStateModal";
 import NotesBoard from "@/core/components/NotesBoard";
 import FormWrapper from "@/tramites/components/createTramite/FormWrapper";
 import { Label } from "@/core/components/ui/label";
@@ -42,12 +41,7 @@ export default function FourthStepFotovoltaicaForm({
   };
   return (
     <FormWrapper>
-      {loading ? (
-        <LoadingStateModal
-          title="Enviando Solicitud..."
-          description="Por favor, espera mientras se procesa tu solicitud."
-        />
-      ) : null}
+      {/* Loading overlay is handled by parent dialog with progress steps */}
       <div
         className={cn(
           "grid grid-cols-1 gap-4",

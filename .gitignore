@@ -19,6 +19,10 @@
 
 # production
 /build
+.github
+.vscode
+/scripts
+*.sql
 
 # misc
 .DS_Store

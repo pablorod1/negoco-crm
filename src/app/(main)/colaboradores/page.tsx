@@ -35,18 +35,21 @@ export default function ColaboradoresPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/users/get/${userData.id}/all`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ role: userData.role }),
-      });
+      const res = await fetch(
+        `/api/v2/users/${userData.id}/all?role=${userData.role}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       const { success, data } = await res.json();
       if (!success) {
         throw new Error("Error al obtener los usuarios");
       }
 
+      console.log("Usuarios obtenidos:", data);
       const sortUsers = data.sort((a: User, b: User) =>
         a.name.localeCompare(b.name)
       );
@@ -110,4 +113,3 @@ export default function ColaboradoresPage() {
     </div>
   );
 }
-

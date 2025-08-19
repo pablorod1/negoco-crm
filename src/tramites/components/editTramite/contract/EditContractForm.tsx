@@ -171,7 +171,7 @@ export default function EditContractForm({
               items={[...PLAIN_COMPANIES, "Otra"]}
               onChange={(value) => handleSelectChange(value, "old_company")}
               isRequired
-              selectedKey={formData.old_company}
+              selectedKey={formData.old_company || ""}
             />
             <SelectComponent
               name="new_company"
@@ -198,9 +198,10 @@ export default function EditContractForm({
                 name={`pot${index + 1}`}
                 label={pot}
                 type="number"
-                value={formData[
-                  `pot${index + 1}` as keyof ContractDB
-                ]?.toString()}
+                value={
+                  formData[`pot${index + 1}` as keyof ContractDB]?.toString() ||
+                  "0"
+                }
                 startContent={<Zap size={16} stroke="#333" />}
               />
             ))}

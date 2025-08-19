@@ -62,15 +62,15 @@ export default function EditClientForm({
         onCancel();
         return;
       }
-      const res = await fetch(`/api/tramites/add/${tramite_id}/client`, {
-        method: "POST",
+      const res = await fetch(`/api/v2/contracts/${tramite_id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           client: {
             ...formData,
-            id: `CLI-${Math.floor(Math.random() * 10000)}`,
+            id: `CLI-${crypto.randomUUID()}`,
           },
           signer,
         }),

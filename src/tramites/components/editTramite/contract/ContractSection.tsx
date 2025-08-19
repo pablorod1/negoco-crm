@@ -60,7 +60,7 @@ export default function ContractSection({
     try {
       const formData = new FormData();
       formData.append("contracts", JSON.stringify([contract]));
-      const res = await fetch(`/api/tramites/add/${tramite_id}/contract`, {
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/contract`, {
         method: "POST",
         body: formData,
       });
@@ -113,7 +113,7 @@ export default function ContractSection({
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/tramites/update/contract`, {
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/contract`, {
         method: "PATCH",
         body: JSON.stringify({ contract }),
         headers: {

@@ -64,7 +64,7 @@ export default function EditFotovoltaicaComisionsForm({
         return;
       }
       const response = await fetch(
-        `/api/fotovoltaica/update/${fotovoltaica.id}`,
+        `/api/v2/solar-installations/${fotovoltaica.id}`,
         {
           method: "PATCH",
           headers: {

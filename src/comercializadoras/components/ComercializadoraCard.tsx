@@ -36,7 +36,7 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
     setIsActive(checked);
     try {
       const response = await fetch(
-        `/api/comercializadoras/update/${comercializadora.id}/status`,
+        `/api/v2/energy-suppliers/${comercializadora.id}/status`,
         {
           method: "PATCH",
           headers: {

@@ -20,7 +20,10 @@ export function useComercializadoras() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/comercializadoras/get`, {
+      // Use new endpoint
+      const endpoint = "/api/v2/energy-suppliers";
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -31,7 +34,13 @@ export function useComercializadoras() {
         }),
       });
 
-      const { success, data, error: apiError } = await response.json();
+      const result = await response.json();
+
+      // Handle both old and new response formats
+      const success =
+        result.success !== undefined ? result.success : !result.error;
+      const data = result.data;
+      const apiError = result.error;
 
       if (!success) {
         const errorMessage = apiError || "Error al obtener comercializadoras";

@@ -28,6 +28,7 @@ export default function DashboardBentoGrid() {
     activeTramites: dashboardData.activeTramites,
     totalBalance: dashboardData.totalBalance,
     comparativas: dashboardData.comparativas,
+    totalConsumption: dashboardData.totalConsumption,
     refreshData,
     getPlan,
   };

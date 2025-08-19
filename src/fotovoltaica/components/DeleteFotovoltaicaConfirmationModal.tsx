@@ -22,6 +22,7 @@ import { useState } from "react";
 import { useFotovoltaicas } from "@/core/contexts/FotovoltaicasContext";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import { FotovoltaicaVM } from "../types";
+import { formatUUID } from "@/core/utils/format";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -71,15 +72,18 @@ export default function DeleteFotovoltaicaConfirmationModal({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/fotovoltaica/delete/${fotovoltaica.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          organization_id: userData.organization.id,
-        }),
-      });
+      const res = await fetch(
+        `/api/v2/solar-installations/${fotovoltaica.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            organization_id: userData.organization.id,
+          }),
+        }
+      );
 
       const { success, error } = await res.json();
       if (!success && error) {
@@ -94,7 +98,7 @@ export default function DeleteFotovoltaicaConfirmationModal({
 
       showCustomToast({
         title: "Solicitud eliminada",
-        message: `La solicitud ${fotovoltaica.id} ha sido eliminada correctamente`,
+        message: `La solicitud ${formatUUID(fotovoltaica.id)} ha sido eliminada correctamente`,
         icon: CheckCircle,
         iconSize: 24,
         iconColor: "var(--success-color)",
@@ -151,7 +155,7 @@ export default function DeleteFotovoltaicaConfirmationModal({
             <div className="flex flex-col">
               <DialogTitle className="text-base font-semibold text-danger">
                 ¿Estás seguro de que deseas eliminar la solicitud{" "}
-                {fotovoltaica.id}?
+                {formatUUID(fotovoltaica.id)}?
               </DialogTitle>
               <DialogDescription className="text-gray-600 text-sm">
                 Se eliminará el trámite y todos los datos asociados a él de

@@ -33,7 +33,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const res = await fetch(`/api/users/get/${userID}`, {
+      const res = await fetch(`/api/v2/users/${userID}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,4 +85,3 @@ export function useUser() {
 
   return context;
 }
-

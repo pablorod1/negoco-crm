@@ -133,6 +133,8 @@ export const LIQUIDEZ_STATUS = [
     value: "Cobrado por Comercializadora",
   },
   { label: "Pagado al Comercial", value: "Pagado al Comercial" },
+  { label: "Pendiente de Descontar", value: "Pendiente de Descontar" },
+  { label: "Descontado", value: "Descontado" },
 ];
 
 export const PLAIN_LIQUIDEZ_STATUS = [

@@ -145,7 +145,7 @@ const MenuItemComponent: React.FC<{
                 </span>
               )}
             </div>
-            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
               {item.description}
             </p>
           </div>

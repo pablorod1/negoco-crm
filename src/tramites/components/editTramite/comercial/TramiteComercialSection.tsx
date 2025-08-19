@@ -30,7 +30,7 @@ export default function TramiteComercialSection({
   useEffect(() => {
     const fetchComerciales = async () => {
       try {
-        const res = await fetch(`/api/users/get/${userData.id}/all`, {
+        const res = await fetch(`/api/v2/users/${userData.id}/all`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -74,19 +74,16 @@ export default function TramiteComercialSection({
         });
         return;
       }
-      const res = await fetch(
-        `/api/tramites/update/${tramite_id}/sales_person`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: selectedComercial.id,
-            sales_name: selectedComercial.name,
-          }),
-        }
-      );
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/sales-person`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: selectedComercial.id,
+          sales_name: selectedComercial.name,
+        }),
+      });
 
       const { success, error } = await res.json();
 
@@ -181,4 +178,3 @@ export default function TramiteComercialSection({
     </div>
   );
 }
-

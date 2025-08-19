@@ -15,6 +15,7 @@ import { UserIcon } from "lucide-react";
 import ClientTabContent from "./ClientTabContent";
 import SignerTabContent from "./SignerTabContent";
 import { ClientDB, SignerDB } from "@/tramites/types";
+import { formatUUID } from "@/core/utils/format";
 
 interface Props {
   client: ClientDB;
@@ -51,10 +52,14 @@ export default function TramiteClientSection({
                 : "grid-cols-1"
             }`}
           >
-            <TabsTrigger value="client">Cliente - {client.id}</TabsTrigger>
+            <TabsTrigger value="client">
+              Cliente - {formatUUID(client.id)}
+            </TabsTrigger>
             {(client.type === "Empresa" ||
               client.type === "Comunidad de Propietarios") && (
-              <TabsTrigger value="signer">Firmante - {signer.id}</TabsTrigger>
+              <TabsTrigger value="signer">
+                Firmante - {formatUUID(signer.id)}
+              </TabsTrigger>
             )}
           </TabsList>
 

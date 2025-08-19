@@ -71,8 +71,8 @@ export default function DeleteFileConfirmationModal({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/documentacion/delete/file", {
-        method: "POST",
+      const res = await fetch("/api/v2/document-library", {
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },

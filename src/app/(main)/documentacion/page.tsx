@@ -19,7 +19,7 @@ export default function DocumentacionPage() {
   const fetchFolders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const filesRes = await fetch(`/api/documentacion/get/files`, {
+      const filesRes = await fetch(`/api/v2/document-library`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,15 +27,12 @@ export default function DocumentacionPage() {
         body: JSON.stringify({ folder_name: "/" }),
       });
 
-      const recentlyFilesRes = await fetch(
-        `/api/documentacion/get/recently-files`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const recentlyFilesRes = await fetch(`/api/v2/document-library/recent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       const [
         { data: files, success: filesSuccess, error: filesError },

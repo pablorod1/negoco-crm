@@ -115,7 +115,7 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
   const isStarterPlan = getPlan() === "starter";
   const id = userData.id;
   const comercialHasSubComerciales = useCallback(async () => {
-    const res = await fetch(`/api/users/get/${id}/subcomerciales`, {
+    const res = await fetch(`/api/v2/users/${id}/team-members`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -24,9 +24,9 @@ export default function FotovoltaicaPublicNotes({
   const handleCreateNote = async (note: string) => {
     try {
       const response = await fetch(
-        `/api/fotovoltaica/add/${fotovoltaica.id}/notes`,
+        `/api/v2/solar-installations/${fotovoltaica.id}/notes`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
@@ -67,7 +67,7 @@ export default function FotovoltaicaPublicNotes({
           notes: true,
         });
 
-      const notificationRes = await fetch("/api/notifications/create", {
+      const notificationRes = await fetch("/api/v2/notifications", {
         method: "POST",
         body: JSON.stringify({ notification }),
         headers: {

@@ -34,8 +34,8 @@ const DeleteTramiteNoteConfirmationModal = memo(
     const onClose = () => setIsOpen(false);
     const handleDelete = async () => {
       try {
-        const rs = await fetch(`/api/tramites/delete/${tramite_id}/note`, {
-          method: "PATCH",
+        const rs = await fetch(`/api/v2/contracts/${tramite_id}/notes`, {
+          method: "DELETE",
           headers: {
             "Content-Type": "application/json",
           },
@@ -119,4 +119,3 @@ DeleteTramiteNoteConfirmationModal.displayName =
   "DeleteTramiteNoteConfirmationModal";
 
 export default DeleteTramiteNoteConfirmationModal;
-

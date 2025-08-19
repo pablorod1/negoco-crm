@@ -28,6 +28,7 @@ import LiquidezStatusSection from "@/tramites/components/editTramite/liquidez/Li
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
 import { slideOut } from "@/core/view-transitions/view-transitions";
+import { formatUUID } from "@/core/utils/format";
 
 export default function TramiteDetails() {
   const { userData } = useUser();
@@ -45,7 +46,7 @@ export default function TramiteDetails() {
     if (!userData?.id || !userData?.role) return;
 
     try {
-      const rs = await fetch(`/api/tramites/get/${id}`, {
+      const rs = await fetch(`/api/v2/contracts/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -159,7 +160,7 @@ export default function TramiteDetails() {
           <h1 className="text-3xl font-bold tracking-tight text-primary-800">
             Detalles del Trámite
           </h1>
-          <p className="text-primary-400">ID: {tramite.id}</p>
+          <p className="text-primary-400">ID: {formatUUID(tramite.id)}</p>
         </div>
         <TramiteStatusSection
           tramite={tramite}

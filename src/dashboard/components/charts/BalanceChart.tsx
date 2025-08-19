@@ -49,18 +49,13 @@ export default function BalanceChart({ loading, userData }: Props) {
   const fetchComisiones = React.useCallback(async () => {
     if (!loading) {
       try {
-        const res = await fetch(
-          `
-            /api/tramites/get/monthly-comisiones
-            `,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ id: userData.id, role: userData.role }),
-          }
-        );
+        const res = await fetch(`/api/v2/analytics/contracts`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: userData.id, role: userData.role }),
+        });
         const { success, data, error } = await res.json();
 
         if (!success && error) {
@@ -146,7 +141,7 @@ export default function BalanceChart({ loading, userData }: Props) {
               <CardDescription>Balance Total</CardDescription>
               <CardTitle className="@[250px]/card:text-3xl text-3xl font-semibold tabular-nums text-primary-700">
                 <NumberTicker
-                  endContent="€"
+                  endContent="ï¿½"
                   value={totalBalance}
                   decimalPlaces={2}
                   className="text-3xl font-bold text-primary-800"
@@ -208,7 +203,7 @@ export default function BalanceChart({ loading, userData }: Props) {
                         <div className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-1 font-semibold text-primary-900">
                             <Coins size={14} />
-                            <span>Comisión</span>
+                            <span>Comisiï¿½n</span>
                           </div>
                           <span className="font-bold">
                             {formatComission(value as number)}
@@ -240,7 +235,7 @@ export default function BalanceChart({ loading, userData }: Props) {
               Balance total de tus comisiones 2025
             </span>
             {difference !== undefined && (
-              <TooltipComponent content="Variación respecto al mes anterior">
+              <TooltipComponent content="Variaciï¿½n respecto al mes anterior">
                 <InfoIcon size={12} className="text-gray-600" />
               </TooltipComponent>
             )}
@@ -250,4 +245,3 @@ export default function BalanceChart({ loading, userData }: Props) {
     </>
   );
 }
-

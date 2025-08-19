@@ -55,7 +55,7 @@ export const createEmptyTramiteDB = (
 ): TramiteDB => ({
   id: `${
     userData ? userData.organization.name.slice(0, 3).toUpperCase() : "NEG"
-  }-${Math.floor(Math.random() * 10000)}`,
+  }-${crypto.randomUUID()}`,
   creation_date: new Date().toISOString(),
   tramitation_date: "",
   renovation_date: "",
@@ -85,7 +85,7 @@ export const createEmptyTramiteDB = (
 });
 
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
-  id: `CLI-${Math.floor(Math.random() * 10000)}`,
+  id: `CLI-${crypto.randomUUID()}`,
   name: comparativa ? comparativa.client : "",
   last_name: comparativa ? comparativa.client.split(" ")[1] || "" : "",
   type: "Particular",
@@ -102,7 +102,7 @@ export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
 });
 
 export const createEmptySignerDB = (): SignerDB => ({
-  id: `SGN-${Math.floor(Math.random() * 10000)}`,
+  id: `SGN-${crypto.randomUUID()}`,
   name: "",
   last_name: "",
   email: "",
@@ -113,7 +113,7 @@ export const createEmptySignerDB = (): SignerDB => ({
 });
 
 export const createEmptyContractDB = (): ContractDB => ({
-  id: `CTR-${Math.floor(Math.random() * 10000)}`,
+  id: `CTR-${crypto.randomUUID()}`,
   type: "",
   province: "",
   city: "",

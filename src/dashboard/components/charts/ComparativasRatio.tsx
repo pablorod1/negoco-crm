@@ -137,17 +137,15 @@ export function ComparativasRatio({
     setIsRefreshing(true);
 
     try {
-      const res = await fetch(`/api/comparativas/get/converted-ratio`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          role: userData.role,
-          id: userData.id,
-          month: selectedMonth, // Pasamos la fecha completa
-        }),
-      });
+      const res = await fetch(
+        `/api/v2/analytics/comparisons?metric=converted-ratio&id=${userData.id}&role=${userData.role}&month=${selectedMonth}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       const { data, success, error } = await res.json();
 
       if (!success) {

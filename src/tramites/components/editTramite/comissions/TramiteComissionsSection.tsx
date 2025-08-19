@@ -66,7 +66,7 @@ export default function TramiteComissionsSection({
         });
         return;
       }
-      const res = await fetch(`/api/tramites/update/${tramite.id}/comissions`, {
+      const res = await fetch(`/api/v2/contracts/${tramite.id}/commissions`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -97,7 +97,7 @@ export default function TramiteComissionsSection({
         message: "Los cambios se han guardado correctamente",
         iconColor: "var(--success-color)",
         iconSize: 24,
-        icon: CircleX,
+        icon: CheckCircle,
       });
       setIsComissionEditMode(false);
       setIsSalesComissionEditMode(false);

@@ -185,7 +185,7 @@ export default function UploadComparativaFilesModal({
       formData.append("files", JSON.stringify(comparativaFiles));
       formData.append("estudio_realizado", estudioRealizado.toString());
       const response = await fetch(
-        `/api/comparativas/add/${comparativa.id}/files`,
+        `/api/v2/comparisons/${comparativa.id}/documents`,
         {
           method: "POST",
           body: formData,
@@ -215,7 +215,7 @@ export default function UploadComparativaFilesModal({
         }
       );
 
-      const NotificationResponse = await fetch(`/api/notifications/create`, {
+      const NotificationResponse = await fetch(`/api/v2/notifications`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -238,10 +238,11 @@ export default function UploadComparativaFilesModal({
 
       if (checkStatusChanged()) {
         const emailRes = await fetch(
-          "/api/send-email/comparativa-status-updated",
+          "/api/v2/communications/emails/status-updates",
           {
             method: "POST",
             body: JSON.stringify({
+              type: "comparativa",
               user_to: {
                 email: comparativa.user.email,
                 name: comparativa.user.name,

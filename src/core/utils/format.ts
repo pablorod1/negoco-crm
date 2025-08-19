@@ -134,3 +134,25 @@ export const formatComission = (comission: number): string => {
   // Aseguramos que no haya espacio entre el número y el símbolo
   return formatted.replace(" €", "€");
 };
+
+export const formatConsumption = (consumption: number): string => {
+  const formattedConsumption = consumption / 1000000;
+  return `${formattedConsumption.toFixed(6)} GW`;
+};
+
+export const formatUUID = (uuid: string): string => {
+  if (!uuid) return "";
+
+  // Buscar patrón: 3 letras, guión, y luego el UUID
+  const match = uuid.match(/^([A-Z]{3})-(.+)$/);
+
+  if (match) {
+    const [, prefix, actualUuid] = match;
+    // Tomar los primeros 4 caracteres alfanuméricos del UUID
+    const shortUuid = actualUuid.replace(/-/g, "").substring(0, 4);
+    return `${prefix}-${shortUuid}`;
+  }
+
+  // Fallback: si no tiene el formato esperado, tomar los primeros 4 caracteres
+  return uuid.substring(0, 4);
+};

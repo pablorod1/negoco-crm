@@ -26,7 +26,11 @@ import {
   SelectValue,
 } from "@/core/components/ui/select";
 import { User } from "@/core/types";
-import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/core/components/ui/avatar";
 import { Users } from "lucide-react";
 import { Label } from "@/core/components/ui/label";
 
@@ -74,17 +78,15 @@ export function TeamTramitesBarChart({
   const fetchTramites = React.useCallback(async () => {
     try {
       if (selectedComercial === "all") {
-        const res = await fetch(`/api/tramites/get/team-tramites`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: userData.id,
-            role: userData.role,
-            time_range: timeRange,
-          }),
-        });
+        const res = await fetch(
+          `/api/v2/analytics/team-performance?id=${userData.id}&role=${userData.role}&time_range=${timeRange}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
         const { data, success, error } = await res.json();
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
@@ -92,20 +94,18 @@ export function TeamTramitesBarChart({
         setChartData(data as Data[]);
         setComerciales([...data.map((item: Data) => item.user as User)]);
       } else {
-        const res = await fetch(
-          `/api/tramites/get/active-tramites-by-user-id`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              role: userData.role,
-              id: selectedComercial,
-              time_range: timeRange,
-            }),
-          }
-        );
+        const res = await fetch(`/api/v2/analytics/contracts/personal`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            role: userData.role,
+            id: userData.id,
+            isSubcomercial: userData.super_id ? true : false,
+            time_range: timeRange,
+          }),
+        });
         const { data, success, error } = await res.json();
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
@@ -341,4 +341,3 @@ export function TeamTramitesBarChart({
     </Card>
   );
 }
-
