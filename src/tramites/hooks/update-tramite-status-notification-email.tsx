@@ -30,7 +30,7 @@ export async function sendTramiteStatusUpdatedNotification({
   status: { old: string; new: string };
   link: string;
   req: NextRequest;
-  client: { name: string; last_name: string };
+  client: { name: string; last_name?: string | undefined };
 }) {
   // Configurar el transporter de nodemailer
   const host = req.headers.get("host");
@@ -104,7 +104,7 @@ const TramiteStatusUpdateEmail = ({
   status: { old: string; new: string };
   org_logo: string | undefined;
   subdomain: string;
-  client: { name: string; last_name: string };
+  client: { name: string; last_name?: string | undefined };
 }) => {
   return (
     <Html lang="es">
@@ -136,7 +136,8 @@ const TramiteStatusUpdateEmail = ({
               <Heading
                 className={`${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"} text-[24px] font-semibold m-0 mb-[20px]`}
               >
-                Actualización de Trámite - {client.name} {client.last_name}
+                Actualización de Trámite - {client.name}{" "}
+                {client.last_name ?? ""}
               </Heading>
 
               <Text className="text-[16px] leading-[26px] m-0 mb-[15px]">
@@ -206,4 +207,3 @@ const TramiteStatusUpdateEmail = ({
 };
 
 export default TramiteStatusUpdateEmail;
-

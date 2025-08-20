@@ -31,7 +31,7 @@ const TramiteStatusUpdateSchema = z.object({
   status: StatusSchema,
   client: z.object({
     name: z.string().min(1, "Client name is required"),
-    last_name: z.string().min(1, "Client last name is required"),
+    last_name: z.string().optional(),
   }),
 });
 
