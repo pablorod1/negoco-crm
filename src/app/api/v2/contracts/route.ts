@@ -77,9 +77,83 @@ const TramiteSchema = z.object({
   comision: z.coerce.number().optional().default(0),
   status: StatusSchema,
   liquidez_status: LiquidezStatusSchema,
-  notes: z.array(z.string()).default([]),
-  internal_notes: z.array(z.string()).default([]),
-  client_id: z.string().min(1, "Client ID is required"),
+  notes: z
+    .union([
+      z.array(z.string()),
+      z.string().transform((str, ctx) => {
+        if (str === "" || str === "[]") return [];
+        try {
+          const parsed = JSON.parse(str);
+          if (
+            Array.isArray(parsed) &&
+            parsed.every((item) => typeof item === "string")
+          ) {
+            return parsed as string[];
+          }
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid notes format - must be array of strings",
+          });
+          return z.NEVER;
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid JSON in notes",
+          });
+          return z.NEVER;
+        }
+      }),
+    ])
+    .default([]),
+  internal_notes: z
+    .union([
+      z.array(z.string()),
+      z.string().transform((str, ctx) => {
+        if (str === "" || str === "[]") return [];
+        try {
+          const parsed = JSON.parse(str);
+          if (
+            Array.isArray(parsed) &&
+            parsed.every((item) => typeof item === "string")
+          ) {
+            return parsed as string[];
+          }
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid internal_notes format - must be array of strings",
+          });
+          return z.NEVER;
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid JSON in internal_notes",
+          });
+          return z.NEVER;
+        }
+      }),
+    ])
+    .default([]),
+  client_id: z
+    .string()
+    .optional()
+    .default("")
+    .transform((val, ctx) => {
+      // Allow empty string temporarily - will be fixed after client validation
+      if (!val || val.trim() === "") {
+        return "";
+      }
+      if (val.length < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.too_small,
+          minimum: 1,
+          type: "string",
+          inclusive: true,
+          message: "Client ID is required",
+        });
+        return z.NEVER;
+      }
+      return val;
+    }),
   user_id: z.string().min(1, "User ID is required"),
   rejected_date: z.string().nullable().optional(),
 });
@@ -98,7 +172,36 @@ const ClientSchema = z.object({
   document_type: DocumentTypeSchema,
   document_number: z.string().min(1, "Document number is required"),
   IBAN: z.string().min(1, "IBAN is required"),
-  coordinates: z.tuple([z.number(), z.number()]).nullable(),
+  coordinates: z
+    .union([
+      z.tuple([z.number(), z.number()]),
+      z.string().transform((str, ctx) => {
+        if (str === "" || str === "null") return null;
+        try {
+          const parsed = JSON.parse(str);
+          if (
+            Array.isArray(parsed) &&
+            parsed.length === 2 &&
+            typeof parsed[0] === "number" &&
+            typeof parsed[1] === "number"
+          ) {
+            return parsed as [number, number];
+          }
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid coordinates format",
+          });
+          return z.NEVER;
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid JSON in coordinates",
+          });
+          return z.NEVER;
+        }
+      }),
+    ])
+    .nullable(),
 });
 
 const ContractSchema = z.object({
@@ -132,7 +235,27 @@ const SignerSchema = z
     phone: z.string().min(1, "Phone is required"),
     document_number: z.string().min(1, "Document number is required"),
     cargo: z.string().nullable(),
-    client_id: z.string().min(1, "Client ID is required"),
+    client_id: z
+      .string()
+      .optional()
+      .default("")
+      .transform((val, ctx) => {
+        // Allow empty string temporarily - will be fixed after client validation
+        if (!val || val.trim() === "") {
+          return "";
+        }
+        if (val.length < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.too_small,
+            minimum: 1,
+            type: "string",
+            inclusive: true,
+            message: "Client ID is required",
+          });
+          return z.NEVER;
+        }
+        return val;
+      }),
   })
   .nullable();
 
@@ -624,13 +747,47 @@ export async function POST(
 
     try {
       tramite = TramiteSchema.parse(JSON.parse(tramiteString)) as TramiteDB;
-      client = ClientSchema.parse(JSON.parse(clientString));
+
+      // Parse client data and handle coordinates properly
+      const clientData = JSON.parse(clientString);
+      client = ClientSchema.parse(clientData);
+
+      // Ensure tramite.client_id is set to client.id if missing or empty
+      if (!tramite.client_id || tramite.client_id.trim() === "") {
+        tramite.client_id = client.id;
+        console.log(
+          `[VALIDATION] Auto-assigned client_id: ${client.id} to tramite: ${tramite.id}`
+        );
+      }
+
+      // Validate that tramite.client_id matches client.id
+      if (tramite.client_id !== client.id) {
+        console.warn(
+          `[VALIDATION] Mismatch between tramite.client_id (${tramite.client_id}) and client.id (${client.id}). Using client.id.`
+        );
+        tramite.client_id = client.id;
+      }
+
       contracts = contractsString
         ? z.array(ContractSchema).parse(JSON.parse(contractsString))
         : [];
       signer = signerString
         ? SignerSchema.parse(JSON.parse(signerString))
         : null;
+
+      // Ensure signer.client_id matches client.id if signer exists
+      if (signer && (!signer.client_id || signer.client_id.trim() === "")) {
+        signer.client_id = client.id;
+        console.log(
+          `[VALIDATION] Auto-assigned client_id: ${client.id} to signer: ${signer.id}`
+        );
+      } else if (signer && signer.client_id !== client.id) {
+        console.warn(
+          `[VALIDATION] Mismatch between signer.client_id (${signer.client_id}) and client.id (${client.id}). Using client.id.`
+        );
+        signer.client_id = client.id;
+      }
+
       tramiteFiles = documents
         ? z.array(TramiteFileSchema).parse(JSON.parse(documents))
         : [];
