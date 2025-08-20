@@ -33,17 +33,20 @@ interface QueryMetrics {
  * Maintains EXACT compatibility with original endpoint validation logic
  * and adds safe coercion from string inputs (e.g. "75" or "75,5") to numbers.
  */
-const optionalCommissionNumber = z.preprocess((val) => {
-  // Treat empty values as undefined (field not provided)
-  if (val === undefined || val === null || val === "") return undefined;
-  // Normalize strings, allowing comma decimal separators
-  if (typeof val === "string") {
-    const normalized = val.replace(",", ".");
-    const num = Number(normalized);
-    return Number.isFinite(num) ? num : NaN; // NaN will fail .finite()
-  }
-  return val;
-}, z.number().finite().optional());
+const optionalCommissionNumber = z.preprocess(
+  (val) => {
+    // Treat empty values as undefined (field not provided)
+    if (val === undefined || val === null || val === "") return undefined;
+    // Normalize strings, allowing comma decimal separators
+    if (typeof val === "string") {
+      const normalized = val.replace(",", ".");
+      const num = Number(normalized);
+      return Number.isFinite(num) ? num : NaN; // NaN will fail .finite()
+    }
+    return val;
+  },
+  z.union([z.number().finite(), z.null()]).optional()
+);
 
 const ComparisonCommissionsUpdateSchema = z.object({
   comissions: z
@@ -57,6 +60,7 @@ const ComparisonCommissionsUpdateSchema = z.object({
       (data) => {
         // BACKWARD COMPATIBILITY: Match original validation logic exactly
         // Original validation: requires at least one commission field to be provided
+        // Only fail if ALL fields are undefined (not provided at all)
         const hasAtLeastOneField = Object.values(data).some(
           (value) => value !== undefined
         );
@@ -138,10 +142,10 @@ async function executeQuery(
  */
 function buildUpdateQuery(
   commissions: {
-    comision_fijo?: number;
-    comision_indexado?: number;
-    comision_sales_person_fijo?: number;
-    comision_sales_person_indexado?: number;
+    comision_fijo?: number | null;
+    comision_indexado?: number | null;
+    comision_sales_person_fijo?: number | null;
+    comision_sales_person_indexado?: number | null;
   },
   comparisonId: string
 ): { sql: string; args: (string | number)[]; updatedFields: string[] } {
@@ -152,25 +156,25 @@ function buildUpdateQuery(
   // Conditional field updates for performance optimization
   if (commissions.comision_fijo !== undefined) {
     updateFields.push("comision_fijo = ?");
-    queryArgs.push(commissions.comision_fijo);
+    queryArgs.push(commissions.comision_fijo ?? 0); // Convert null to 0
     updatedFieldNames.push("comision_fijo");
   }
 
   if (commissions.comision_indexado !== undefined) {
     updateFields.push("comision_indexado = ?");
-    queryArgs.push(commissions.comision_indexado);
+    queryArgs.push(commissions.comision_indexado ?? 0); // Convert null to 0
     updatedFieldNames.push("comision_indexado");
   }
 
   if (commissions.comision_sales_person_fijo !== undefined) {
     updateFields.push("comision_sales_person_fijo = ?");
-    queryArgs.push(commissions.comision_sales_person_fijo);
+    queryArgs.push(commissions.comision_sales_person_fijo ?? 0); // Convert null to 0
     updatedFieldNames.push("comision_sales_person_fijo");
   }
 
   if (commissions.comision_sales_person_indexado !== undefined) {
     updateFields.push("comision_sales_person_indexado = ?");
-    queryArgs.push(commissions.comision_sales_person_indexado);
+    queryArgs.push(commissions.comision_sales_person_indexado ?? 0); // Convert null to 0
     updatedFieldNames.push("comision_sales_person_indexado");
   }
 

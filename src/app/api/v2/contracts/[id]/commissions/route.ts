@@ -5,10 +5,10 @@ import { Client } from "@libsql/client";
 
 /**
  * REFACTORED CONTRACT COMMISSIONS UPDATE ENDPOINT
- * 
+ *
  * Original: /api/tramites/update/[id]/comissions
  * Refactored: /new_api/contracts/[id]/commissions
- * 
+ *
  * This endpoint updates commission information for a contract (tramite)
  * with enhanced performance, type safety, and comprehensive error handling.
  */
@@ -32,24 +32,25 @@ interface QueryMetrics {
  * Zod schema for contract commissions update request body
  * Maintains EXACT compatibility with original endpoint validation logic
  */
-const ContractCommissionsUpdateSchema = z.object({
-  comision: z.number().optional(),
-  comision_sales_person: z.number().optional(),
-}).refine(
-  (data) => {
-    // BACKWARD COMPATIBILITY: Match original validation logic exactly
-    // Original: (!comision && !comision_sales_person) = fail
-    // This means: validation fails when BOTH are falsy
-    // In JS: !0 is true, !undefined is true, etc.
-    const comisionFalsy = !data.comision;
-    const salesPersonFalsy = !data.comision_sales_person;
-    return !(comisionFalsy && salesPersonFalsy);
-  },
-  {
-    message: "Missing parameters",
-    path: ["comision", "comision_sales_person"],
-  }
-);
+const ContractCommissionsUpdateSchema = z
+  .object({
+    comision: z.union([z.number(), z.null()]).optional(),
+    comision_sales_person: z.union([z.number(), z.null()]).optional(),
+  })
+  .refine(
+    (data) => {
+      // BACKWARD COMPATIBILITY: Match original validation logic exactly
+      // Original: (!comision && !comision_sales_person) = fail
+      // But we need to allow 0 values - only fail if BOTH fields are completely missing (undefined)
+      const comisionMissing = data.comision === undefined;
+      const salesPersonMissing = data.comision_sales_person === undefined;
+      return !(comisionMissing && salesPersonMissing);
+    },
+    {
+      message: "Missing parameters",
+      path: ["comision", "comision_sales_person"],
+    }
+  );
 
 /**
  * Schema for URL parameters
@@ -97,7 +98,10 @@ async function executeQuery(
     };
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -120,13 +124,13 @@ function buildUpdateQuery(
   // Conditional field updates for performance optimization
   if (requestData.comision !== undefined) {
     updateFields.push("comision = ?");
-    queryArgs.push(requestData.comision);
+    queryArgs.push(requestData.comision ?? 0); // Convert null to 0
     updatedFieldNames.push("comision");
   }
 
   if (requestData.comision_sales_person !== undefined) {
     updateFields.push("comision_sales_person = ?");
-    queryArgs.push(requestData.comision_sales_person);
+    queryArgs.push(requestData.comision_sales_person ?? 0); // Convert null to 0
     updatedFieldNames.push("comision_sales_person");
   }
 
@@ -142,9 +146,9 @@ function buildUpdateQuery(
 
 /**
  * PATCH /new_api/contracts/[id]/commissions
- * 
+ *
  * Updates commission information for a contract (tramite).
- * 
+ *
  * @param request - Next.js request object
  * @param params - URL parameters containing contract ID
  * @returns Promise<NextResponse<ContractCommissionsUpdateResponse>>
@@ -157,15 +161,18 @@ export async function PATCH(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id: contractId } = await params;
-    
+
     // Validate URL parameters
     const paramsValidation = ParamsSchema.safeParse({ id: contractId });
     if (!paramsValidation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`, paramsValidation.error.errors);
-      
+      console.error(
+        `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
+        paramsValidation.error.errors
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -176,14 +183,17 @@ export async function PATCH(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     const requestBody = await request.json();
     const validation = ContractCommissionsUpdateSchema.safeParse(requestBody);
-    
+
     if (!validation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, validation.error.errors);
-      
+      console.error(
+        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        validation.error.errors
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -196,13 +206,15 @@ export async function PATCH(
     const validatedData = validation.data;
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
-    
+
     if (!tursoClient) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -213,25 +225,28 @@ export async function PATCH(
     }
 
     // ==================== QUERY BUILDING AND EXECUTION ====================
-    
-    const { sql, args, updatedFields } = buildUpdateQuery(validatedData, contractId);
-    
+
+    const { sql, args, updatedFields } = buildUpdateQuery(
+      validatedData,
+      contractId
+    );
+
     console.log(
       `[INFO] Executing commissions update for contract ${contractId}. ` +
-      `Fields to update: [${updatedFields.join(", ")}]`
+        `Fields to update: [${updatedFields.join(", ")}]`
     );
 
     const { result, metrics } = await executeQuery(tursoClient, sql, args);
 
     // ==================== RESULT VALIDATION ====================
-    
+
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;
       console.warn(
         `[WARNING] Contract ${contractId} not found after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms`
+          `Query time: ${metrics.queryTime.toFixed(2)}ms`
       );
-      
+
       return NextResponse.json(
         {
           success: false,
@@ -242,28 +257,30 @@ export async function PATCH(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] Contract ${contractId} commissions updated successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Query time: ${metrics.queryTime.toFixed(2)}ms, Fields updated: ${metrics.fieldsUpdated}, ` +
-      `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
+        `Query time: ${metrics.queryTime.toFixed(2)}ms, Fields updated: ${metrics.fieldsUpdated}, ` +
+        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
     );
 
     // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     // ==================== ERROR HANDLING ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, error.errors);
+      console.error(
+        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        error.errors
+      );
       return NextResponse.json(
         {
           success: false,
@@ -274,8 +291,11 @@ export async function PATCH(
     }
 
     // Handle general errors
-    console.error(`[ERROR] Contract commissions update failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[ERROR] Contract commissions update failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,

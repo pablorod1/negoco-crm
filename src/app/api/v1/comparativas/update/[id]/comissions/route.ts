@@ -42,10 +42,12 @@ export async function PATCH(
     const response = await updateComparativaComissions(
       tursoClient,
       id,
-      comision_fijo ? comision_fijo : undefined,
-      comision_indexado ? comision_indexado : undefined,
-      comision_sales_person_fijo ? comision_sales_person_fijo : undefined,
-      comision_sales_person_indexado
+      comision_fijo !== undefined ? comision_fijo : undefined,
+      comision_indexado !== undefined ? comision_indexado : undefined,
+      comision_sales_person_fijo !== undefined
+        ? comision_sales_person_fijo
+        : undefined,
+      comision_sales_person_indexado !== undefined
         ? comision_sales_person_indexado
         : undefined
     );

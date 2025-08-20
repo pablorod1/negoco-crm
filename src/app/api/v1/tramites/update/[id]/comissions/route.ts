@@ -9,7 +9,10 @@ export async function PATCH(
     const { id: tramite_id } = await params;
     const { comision, comision_sales_person } = await req.json();
 
-    if (!tramite_id || (!comision && !comision_sales_person)) {
+    if (
+      !tramite_id ||
+      (comision === undefined && comision_sales_person === undefined)
+    ) {
       return NextResponse.json(
         {
           success: false,
