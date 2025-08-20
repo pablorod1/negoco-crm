@@ -221,9 +221,10 @@ export async function POST(
     const consumptionUserFilter = createUserFilter(role, id, subcomerciales);
     const consumptionQuery = `
       SELECT 
-          SUM(consumption) AS total
-      FROM contracts
-      WHERE 1=1 ${consumptionUserFilter.filter}
+          SUM(c.consumption) AS total
+      FROM contracts c
+      INNER JOIN tramites t ON c.tramite_id = t.id
+      WHERE 1=1 ${consumptionUserFilter.filter.replace("AND", "AND t.")}
     `;
 
     // Execute all queries in parallel for optimal performance
