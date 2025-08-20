@@ -176,7 +176,7 @@ const ClientSchema = z.object({
     .union([
       z.tuple([z.number(), z.number()]),
       z.string().transform((str, ctx) => {
-        if (str === "" || str === "null") return null;
+        if (str === "" || str === "null" || str === "undefined") return null;
         try {
           const parsed = JSON.parse(str);
           if (
@@ -200,8 +200,12 @@ const ClientSchema = z.object({
           return z.NEVER;
         }
       }),
+      z.undefined(),
+      z.null(),
     ])
-    .nullable(),
+    .nullable()
+    .optional()
+    .default(null),
 });
 
 const ContractSchema = z.object({

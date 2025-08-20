@@ -112,7 +112,7 @@ export interface ClientDB {
   document_type: string;
   document_number: string;
   IBAN: string;
-  coordinates: [number, number] | null;
+  coordinates: [number, number] | null | undefined;
 }
 
 export interface SignerDB {
