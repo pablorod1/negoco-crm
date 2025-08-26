@@ -14,18 +14,46 @@ const DocumentTypeSchema = z.enum(["DNI", "NIE", "CIF", "Otro", ""]);
 const ClientSchema = z.object({
   id: z.string().min(1, "Client ID is required"),
   name: z.string().min(1, "Name is required"),
-  last_name: z.string().min(1, "Last name is required"),
+  last_name: z.string().optional().default(""),
   email: z.string().email("Valid email is required"),
   type: z.string().min(1, "Client type is required"),
   phone: z.string().min(1, "Phone is required"),
   address: z.string().min(1, "Address is required"),
-  postal_code: z.string().min(1, "Postal code is required"),
-  province: z.string().min(1, "Province is required"),
-  city: z.string().min(1, "City is required"),
+  postal_code: z.string().optional().default(""),
+  province: z.string().optional().default(""),
+  city: z.string().optional().default(""),
   document_type: DocumentTypeSchema,
   document_number: z.string().min(1, "Document number is required"),
   IBAN: z.string().min(1, "IBAN is required"),
-  coordinates: z.tuple([z.number(), z.number()]).nullable().optional(),
+  coordinates: z
+    .union([
+      z.tuple([z.number(), z.number()]),
+      z.string(),
+      z.null(),
+      z.undefined(),
+    ])
+    .optional()
+    .transform((val): [number, number] | null => {
+      if (typeof val === "string" && val) {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) &&
+            parsed.length === 2 &&
+            typeof parsed[0] === "number" &&
+            typeof parsed[1] === "number"
+            ? [parsed[0], parsed[1]]
+            : null;
+        } catch {
+          return null;
+        }
+      }
+      return Array.isArray(val) &&
+        val.length === 2 &&
+        typeof val[0] === "number" &&
+        typeof val[1] === "number"
+        ? [val[0], val[1]]
+        : null;
+    }),
 });
 
 const SignerSchema = z

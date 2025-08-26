@@ -10,6 +10,7 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import { CircleX } from "lucide-react";
 import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import { ClientDB, SignerDB } from "@/tramites/types";
+import ClientUpdateConfirmationDialog from "../ClientUpdateConfirmationDialog";
 
 interface Props {
   tramite_id: string;
@@ -28,6 +29,7 @@ export default function EditClientForm({
 }: Props) {
   const [formData, setFormData] = useState<ClientDB>(client);
   const [loading, setLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -49,29 +51,32 @@ export default function EditClientForm({
   };
 
   const handleSubmit = async () => {
+    if (!checkChanges()) {
+      showCustomToast({
+        title: "No se han realizado cambios",
+        message: "No se han realizado cambios en el formulario",
+        iconColor: "var(--warning-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      onCancel();
+      return;
+    }
+
+    // Show confirmation dialog before proceeding
+    setShowConfirmDialog(true);
+  };
+
+  const updateExistingClient = async () => {
     setLoading(true);
     try {
-      if (!checkChanges()) {
-        showCustomToast({
-          title: "No se han realizado cambios",
-          message: "No se han realizado cambios en el formulario",
-          iconColor: "var(--warning-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        onCancel();
-        return;
-      }
-      const res = await fetch(`/api/v2/contracts/${tramite_id}`, {
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/client`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          client: {
-            ...formData,
-            id: `CLI-${crypto.randomUUID()}`,
-          },
+          client: formData,
           signer,
         }),
       });
@@ -108,6 +113,68 @@ export default function EditClientForm({
       });
     } finally {
       setLoading(false);
+      setShowConfirmDialog(false);
+    }
+  };
+
+  const createNewClient = async () => {
+    setLoading(true);
+    try {
+      // Create new client with updated information
+      const newClientData = {
+        ...formData,
+        id: `CLI-${crypto.randomUUID()}`,
+      };
+
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/client`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client: newClientData,
+          signer: signer
+            ? {
+                ...signer,
+                client_id: newClientData.id,
+              }
+            : undefined,
+        }),
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
+        showCustomToast({
+          title: "Error al crear el nuevo cliente",
+          message: error as string,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+
+      showCustomToast({
+        title: "Nuevo cliente creado",
+        message: "Se ha creado un nuevo cliente con la información actualizada",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      onClientUpdated();
+    } catch (error) {
+      console.error(error);
+      showCustomToast({
+        title: "Error al crear el nuevo cliente",
+        message: error as string,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+    } finally {
+      setLoading(false);
+      setShowConfirmDialog(false);
     }
   };
   return (
@@ -222,6 +289,15 @@ export default function EditClientForm({
           loading={loading}
         />
       </div>
+
+      <ClientUpdateConfirmationDialog
+        isOpen={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        onConfirmUpdate={updateExistingClient}
+        onCreateNew={createNewClient}
+        clientId={client.id}
+        isLoading={loading}
+      />
     </div>
   );
 }
