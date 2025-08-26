@@ -101,28 +101,30 @@ export async function GET(
       args: [],
     });
 
-    const mappedData = response.rows.map((row): User => ({
-      id: String(row.id),
-      email: String(row.email),
-      email_verified: Boolean(row.email_verified),
-      name: String(row.name),
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
-      image: row.image ? String(row.image) : null,
-      role: String(row.role),
-      banned: Boolean(row.banned),
-      ban_reason: row.ban_reason ? String(row.ban_reason) : null,
-      ban_expires: row.ban_expires as string | null,
-      super_id: row.super_id ? String(row.super_id) : null,
-      should_reset_password: Boolean(row.should_reset_password),
-      company: row.company ? String(row.company) : null,
-      last_login: row.last_login as string | null,
-      organization: {
-        id: row.org_id ? String(row.org_id) : "",
-        name: row.org_name ? String(row.org_name) : "",
-        logo: row.org_logo ? String(row.org_logo) : null,
-      },
-    }));
+    const mappedData = response.rows.map(
+      (row): User => ({
+        id: String(row.id),
+        email: String(row.email),
+        email_verified: Boolean(row.email_verified),
+        name: String(row.name),
+        created_at: row.created_at as string,
+        updated_at: row.updated_at as string,
+        image: row.image ? String(row.image) : null,
+        role: String(row.role),
+        banned: Boolean(row.banned),
+        ban_reason: row.ban_reason ? String(row.ban_reason) : null,
+        ban_expires: row.ban_expires as string | null,
+        super_id: row.super_id ? String(row.super_id) : null,
+        should_reset_password: Boolean(row.should_reset_password),
+        company: row.company ? String(row.company) : null,
+        last_login: row.last_login as string | null,
+        organization: {
+          id: row.org_id ? String(row.org_id) : "",
+          name: row.org_name ? String(row.org_name) : "",
+          logo: row.org_logo ? String(row.org_logo) : null,
+        },
+      })
+    );
 
     return NextResponse.json({ success: true, data: mappedData });
   } catch (error) {
@@ -149,14 +151,18 @@ export async function POST(
   try {
     const body = await request.json();
     const { role, id: bodyId } = body;
-    
+
     // Extract user ID from URL path or request body for backward compatibility
     const url = new URL(request.url);
-    const pathSegments = url.pathname.split('/');
+    const pathSegments = url.pathname.split("/");
     const pathId = pathSegments.find((segment, index) => {
-      return index > 0 && pathSegments[index - 1] === 'users' && segment !== 'new_api';
+      return (
+        index > 0 &&
+        pathSegments[index - 1] === "users" &&
+        segment !== "new_api"
+      );
     });
-    
+
     const id = pathId || bodyId;
 
     const validation = GetAllUsersBodySchema.safeParse({ role });
@@ -170,7 +176,7 @@ export async function POST(
       );
     }
 
-    // CRITICAL FIX: For backward compatibility, if no ID is provided but role is "2", 
+    // CRITICAL FIX: For backward compatibility, if no ID is provided but role is "2",
     // we need to handle this gracefully instead of erroring
     if (!id && role !== "2") {
       return NextResponse.json(
@@ -226,28 +232,30 @@ export async function POST(
       args: queryParams,
     });
 
-    const mappedData = response.rows.map((row): User => ({
-      id: String(row.id),
-      email: String(row.email),
-      email_verified: Boolean(row.email_verified),
-      name: String(row.name),
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
-      image: row.image ? String(row.image) : null,
-      role: String(row.role),
-      banned: Boolean(row.banned),
-      ban_reason: row.ban_reason ? String(row.ban_reason) : null,
-      ban_expires: row.ban_expires as string | null,
-      super_id: row.super_id ? String(row.super_id) : null,
-      should_reset_password: Boolean(row.should_reset_password),
-      company: row.company ? String(row.company) : null,
-      last_login: row.last_login as string | null,
-      organization: {
-        id: row.org_id ? String(row.org_id) : "",
-        name: row.org_name ? String(row.org_name) : "",
-        logo: row.org_logo ? String(row.org_logo) : null,
-      },
-    }));
+    const mappedData = response.rows.map(
+      (row): User => ({
+        id: String(row.id),
+        email: String(row.email),
+        email_verified: Boolean(row.email_verified),
+        name: String(row.name),
+        created_at: row.created_at as string,
+        updated_at: row.updated_at as string,
+        image: row.image ? String(row.image) : null,
+        role: String(row.role),
+        banned: Boolean(row.banned),
+        ban_reason: row.ban_reason ? String(row.ban_reason) : null,
+        ban_expires: row.ban_expires as string | null,
+        super_id: row.super_id ? String(row.super_id) : null,
+        should_reset_password: Boolean(row.should_reset_password),
+        company: row.company ? String(row.company) : null,
+        last_login: row.last_login as string | null,
+        organization: {
+          id: row.org_id ? String(row.org_id) : "",
+          name: row.org_name ? String(row.org_name) : "",
+          logo: row.org_logo ? String(row.org_logo) : null,
+        },
+      })
+    );
 
     return NextResponse.json({ success: true, data: mappedData });
   } catch (error) {

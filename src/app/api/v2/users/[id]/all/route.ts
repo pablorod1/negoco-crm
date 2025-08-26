@@ -83,7 +83,7 @@ export async function GET(
 
     // Query logic (unchanged)
     let query = `
-      SELECT u.*, o.id as org_id, o.name as org_name, o.logo as org_logo
+      SELECT u.*, o.id as org_id, o.name as org_name, o.logo as org_logo, s.created_at as last_login
       FROM user u 
       INNER JOIN member m ON u.id = m.user_id
       INNER JOIN organization o ON m.organization_id = o.id
@@ -136,7 +136,6 @@ export async function GET(
         },
       })
     );
-
     return NextResponse.json({ success: true, data: mappedData });
   } catch (error) {
     console.error("Error fetching users:", error);
