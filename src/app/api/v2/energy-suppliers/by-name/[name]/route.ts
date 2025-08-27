@@ -25,20 +25,20 @@ interface QueryMetrics {
 
 /**
  * Retrieves detailed information about a specific energy supplier by name
- * 
+ *
  * This endpoint provides comprehensive information about an energy supplier including:
  * - Basic supplier information (id, name, logo, active status)
  * - All associated rates with their pricing and type information
  * - Total number of tramites (contracts) associated with this supplier
  * - Total number of documentation files associated with this supplier
  * - Complete list of associated documentation files with metadata
- * 
+ *
  * Performance optimizations:
  * - Single optimized query with JSON aggregation for rates and files
  * - Efficient LEFT JOINs to avoid N+1 query patterns
  * - Proper indexing on comercializadoras.name for fast lookups
  * - JSON parsing with null filtering for clean data structures
- * 
+ *
  * @param request - Next.js request object
  * @param params - Route parameters containing the energy supplier name
  * @returns Promise<NextResponse<EnergySupplierByNameResponse>>
@@ -48,30 +48,35 @@ export async function POST(
   { params }: { params: Promise<{ name: string }> }
 ): Promise<NextResponse<EnergySupplierByNameResponse>> {
   const startTime = Date.now();
-  const optimizations: string[] = ["single-query-aggregation", "json-group-array"];
+  const optimizations: string[] = [
+    "single-query-aggregation",
+    "json-group-array",
+  ];
 
   try {
     // Parse and validate path parameters - maintaining exact compatibility with legacy endpoint
     const { name } = await params;
-    
+
     // Legacy-compatible validation: check for falsy values exactly like original
     if (!name) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Missing Parameters"
+        {
+          success: false,
+          error: "Missing Parameters",
         },
         { status: 400 }
       );
     }
 
     // Additional validation using Zod for enhanced type safety (non-breaking)
-    const validationResult = EnergySupplierByNameParamsSchema.safeParse({ name });
+    const validationResult = EnergySupplierByNameParamsSchema.safeParse({
+      name,
+    });
     if (!validationResult.success) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Missing Parameters"
+        {
+          success: false,
+          error: "Missing Parameters",
         },
         { status: 400 }
       );
@@ -81,9 +86,9 @@ export async function POST(
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Database not initialized" 
+        {
+          success: false,
+          error: "Database not initialized",
         },
         { status: 500 }
       );
@@ -99,6 +104,7 @@ export async function POST(
         c.active,
         COUNT(DISTINCT con.tramite_id) as num_tramites,
         (SELECT COUNT(*) FROM documentacion_files WHERE folder_name LIKE '%' || c.name || '%') as num_files,
+        COALESCE(SUM(con.consumption), 0) as total_consumption,
         (SELECT json_group_array(
           json_object(
             'id', cr.id,
@@ -133,9 +139,9 @@ export async function POST(
     // Validate query results
     if (!response || response.rows.length === 0) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "No comercializadora found" 
+        {
+          success: false,
+          error: "No comercializadora found",
         },
         { status: 404 }
       );
@@ -150,7 +156,7 @@ export async function POST(
       if (ratesJson) {
         const parsedRates = JSON.parse(ratesJson);
         // Filter out null entries that can occur with json_group_array
-        rates = Array.isArray(parsedRates) 
+        rates = Array.isArray(parsedRates)
           ? parsedRates.filter((rate: Rate) => rate.id !== null)
           : [];
       }
@@ -191,6 +197,7 @@ export async function POST(
       rates: rates,
       num_tramites: Number(comercializadora.num_tramites) || 0,
       num_files: Number(comercializadora.num_files) || 0,
+      total_consumption: Number(comercializadora.total_consumption) || 0,
       files: files,
     };
 
@@ -208,16 +215,15 @@ export async function POST(
     });
 
     return NextResponse.json(
-      { 
-        success: true, 
-        data: responseData 
+      {
+        success: true,
+        data: responseData,
       },
       { status: 200 }
     );
-
   } catch (error) {
     const queryTime = Date.now() - startTime;
-    
+
     console.error("Error fetching energy supplier by name:", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
@@ -225,9 +231,9 @@ export async function POST(
     });
 
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "Internal Server Error" 
+      {
+        success: false,
+        error: "Internal Server Error",
       },
       { status: 500 }
     );

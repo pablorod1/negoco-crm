@@ -1,8 +1,9 @@
 ﻿import { memo } from "react";
-import { Building2, ClipboardList, FileText } from "lucide-react";
+import { Building2, ClipboardList, FileText, Zap } from "lucide-react";
 
 import { Card, CardContent } from "@/core/components/ui/card";
 import { ComercializadoraVM } from "../types";
+import { formatConsumption } from "@/core/utils/format";
 
 interface ComercializadorasStatsProps {
   comercializadoras: ComercializadoraVM[];
@@ -16,9 +17,13 @@ export const ComercializadorasStats = memo(function ComercializadorasStats({
     0
   );
   const totalFiles = comercializadoras.reduce((sum, c) => sum + c.num_files, 0);
+  const totalConsumption = comercializadoras.reduce(
+    (sum, c) => sum + c.total_consumption,
+    0
+  );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center space-x-2">
@@ -52,6 +57,20 @@ export const ComercializadorasStats = memo(function ComercializadorasStats({
             <div>
               <p className="text-sm text-muted-foreground">Total Documentos</p>
               <p className="text-2xl font-bold">{totalFiles}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center space-x-2">
+            <Zap className="h-5 w-5 text-orange-600" />
+            <div>
+              <p className="text-sm text-muted-foreground">Consumo Total</p>
+              <p className="text-2xl font-bold">
+                {formatConsumption(totalConsumption)}
+              </p>
             </div>
           </div>
         </CardContent>

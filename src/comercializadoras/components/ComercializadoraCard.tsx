@@ -1,5 +1,11 @@
 ﻿import { memo, useState } from "react";
-import { Building2, ClipboardList, CloudAlert, FileText } from "lucide-react";
+import {
+  Building2,
+  ClipboardList,
+  CloudAlert,
+  FileText,
+  Zap,
+} from "lucide-react";
 import Image from "next/image";
 
 import { Card, CardContent, CardHeader } from "@/core/components/ui/card";
@@ -10,6 +16,7 @@ import { useTransitionRouter } from "next-view-transitions";
 import { Switch } from "@/core/components/ui/switch";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { Badge } from "@/core/components/ui/badge";
+import { formatConsumption } from "@/core/utils/format";
 
 interface ComercializadoraCardProps {
   comercializadora: ComercializadoraVM;
@@ -170,6 +177,20 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
             </div>
             <span className="font-bold text-lg text-green-600">
               {comercializadora.num_files || 0}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50/50 border border-orange-100 group-hover:bg-orange-50/90">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Zap className="h-4 w-4 text-orange-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">
+                Consumo Total
+              </span>
+            </div>
+            <span className="font-bold text-lg text-orange-600">
+              {formatConsumption(comercializadora.total_consumption)}
             </span>
           </div>
         </div>

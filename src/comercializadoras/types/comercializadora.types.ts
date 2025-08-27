@@ -7,6 +7,7 @@ export interface ComercializadoraVM {
   logo: string | null;
   num_tramites: number;
   num_files: number;
+  total_consumption: number;
 }
 
 export interface ComercializadoraDetails extends ComercializadoraVM {

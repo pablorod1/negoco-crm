@@ -27,16 +27,16 @@ interface QueryMetrics {
 
 /**
  * Retrieves all energy suppliers (comercializadoras) with associated statistics
- * 
+ *
  * This endpoint provides complete information about energy suppliers including:
  * - Basic supplier information (id, name, logo, active status)
  * - Total number of tramites associated with each supplier
  * - Total number of documentation files associated with each supplier
- * 
+ *
  * For role-based access:
  * - Role "2" (supervisors): Returns data filtered by user and their subordinates
  * - Other roles: Returns all data without user filtering
- * 
+ *
  * @param request - Next.js request object containing user_id and user_role
  * @returns Promise<NextResponse<EnergySupplierResponse>>
  */
@@ -53,9 +53,9 @@ export async function POST(
 
     if (!validation.success) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Missing Parameters" 
+        {
+          success: false,
+          error: "Missing Parameters",
         },
         { status: 400 }
       );
@@ -70,9 +70,9 @@ export async function POST(
     } catch (error) {
       console.error("Database initialization error:", error);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Database not initialized" 
+        {
+          success: false,
+          error: "Database not initialized",
         },
         { status: 500 }
       );
@@ -80,9 +80,9 @@ export async function POST(
 
     if (!tursoClient) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Database not initialized" 
+        {
+          success: false,
+          error: "Database not initialized",
         },
         { status: 500 }
       );
@@ -95,8 +95,9 @@ export async function POST(
     if (user_role === "2") {
       // Fetch subordinates for supervisor role
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
-      const subIds = subcomerciales.success && subcomerciales.ids ? subcomerciales.ids : [];
-      
+      const subIds =
+        subcomerciales.success && subcomerciales.ids ? subcomerciales.ids : [];
+
       optimizations.push("role-based-filtering");
       optimizations.push("subordinate-user-lookup");
 
@@ -112,7 +113,13 @@ export async function POST(
             WHEN con.tramite_id IS NOT NULL AND (
               t.user_id = ? ${subIds.length > 0 ? `OR t.user_id IN (${subIds.map(() => "?").join(", ")})` : ""}
             ) THEN con.tramite_id 
-          END) AS total_tramites
+          END) AS total_tramites,
+          COALESCE(SUM(CASE 
+            WHEN con.tramite_id IS NOT NULL AND (
+              t.user_id = ? ${subIds.length > 0 ? `OR t.user_id IN (${subIds.map(() => "?").join(", ")})` : ""}
+            ) THEN con.consumption 
+            ELSE 0 
+          END), 0) AS total_consumption
         FROM 
           comercializadoras c
         LEFT JOIN 
@@ -127,8 +134,8 @@ export async function POST(
           c.name ASC
       `;
 
-      // Match original parameter order: user_id, then subIds
-      params.push(user_id, ...subIds);
+      // Match original parameter order: user_id, then subIds (duplicated for consumption calculation)
+      params.push(user_id, ...subIds, user_id, ...subIds);
       optimizations.push("optimized-join-conditions");
     } else {
       // Match original query structure exactly for non-supervisory roles
@@ -141,7 +148,8 @@ export async function POST(
           COUNT(DISTINCT df.id) AS files_count,
           COUNT(DISTINCT CASE 
             WHEN con.tramite_id IS NOT NULL THEN con.tramite_id 
-          END) AS total_tramites
+          END) AS total_tramites,
+          COALESCE(SUM(con.consumption), 0) AS total_consumption
         FROM 
           comercializadoras c
         LEFT JOIN 
@@ -155,7 +163,7 @@ export async function POST(
         ORDER BY 
           c.name ASC
       `;
-      
+
       optimizations.push("exact-original-query-structure");
     }
 
@@ -172,9 +180,9 @@ export async function POST(
     // Handle empty results
     if (response.rows.length === 0) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "No commercializadoras found" 
+        {
+          success: false,
+          error: "No commercializadoras found",
         },
         { status: 404 }
       );
@@ -189,6 +197,7 @@ export async function POST(
         active: Boolean(row.active),
         num_tramites: Number(row.total_tramites) || 0,
         num_files: Number(row.files_count) || 0,
+        total_consumption: Number(row.total_consumption) || 0,
       })
     );
 
@@ -216,11 +225,11 @@ export async function POST(
 
     // Return successful response with exact original structure
     return NextResponse.json(
-      { 
-        success: true, 
-        data: comercializadoras 
+      {
+        success: true,
+        data: comercializadoras,
       },
-      { 
+      {
         status: 200,
         headers: {
           // Add performance headers for monitoring
@@ -230,7 +239,6 @@ export async function POST(
         },
       }
     );
-
   } catch (error) {
     // Enhanced error logging with context
     console.error("Error fetching energy suppliers:", {
@@ -241,8 +249,8 @@ export async function POST(
 
     // Return consistent error response matching original format
     return NextResponse.json(
-      { 
-        error: "Internal Server Error" 
+      {
+        error: "Internal Server Error",
       },
       { status: 500 }
     );

@@ -2,8 +2,9 @@
 
 import { ComercializadoraDetails } from "@/comercializadoras/types";
 import { Badge } from "@/core/components/ui/badge";
-import { Building2, FileText, ClipboardList } from "lucide-react";
+import { Building2, FileText, ClipboardList, Zap } from "lucide-react";
 import Image from "next/image";
+import { formatConsumption } from "@/core/utils/format";
 
 interface ComercializadoraMainCardProps {
   comercializadora: ComercializadoraDetails;
@@ -43,7 +44,7 @@ export function ComercializadoraMainCard({
       </div>
 
       <div className="p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
           {/* Logo Section */}
           <div className="flex justify-center lg:justify-start">
             <div className="relative">
@@ -61,12 +62,12 @@ export function ComercializadoraMainCard({
           </div>
 
           {/* Stats Section */}
-          <div className="space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Estadísticas Generales
             </h3>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-4 border border-primary-200">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
@@ -94,6 +95,22 @@ export function ComercializadoraMainCard({
                     </div>
                     <div className="text-sm text-green-600 font-medium">
                       Documentos
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                    <Zap className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-orange-700">
+                      {formatConsumption(comercializadora.total_consumption)}
+                    </div>
+                    <div className="text-sm text-orange-600 font-medium">
+                      Consumo Total
                     </div>
                   </div>
                 </div>
