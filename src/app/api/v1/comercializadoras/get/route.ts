@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
         active: Boolean(row.active),
         num_tramites: Number(row.total_tramites) || 0,
         num_files: Number(row.files_count) || 0,
+        total_consumption: Number(row.total_consumption) || 0,
       })
     );
 
