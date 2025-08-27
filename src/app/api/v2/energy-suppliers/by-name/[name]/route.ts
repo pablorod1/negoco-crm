@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { ComercializadoraDetails, Rate } from "@/comercializadoras/types";
 import { DocumentacionFile } from "@/core/types";
 
 // Request validation schema for path parameter
 const EnergySupplierByNameParamsSchema = z.object({
   name: z.string().min(1, "Energy supplier name is required"),
+});
+
+// Request validation schema for POST body
+const EnergySupplierByNameRequestSchema = z.object({
+  user_id: z.string().min(1, "User ID is required"),
+  user_role: z.string().min(1, "User role is required"),
 });
 
 // Response types for full compatibility
@@ -51,6 +58,7 @@ export async function POST(
   const optimizations: string[] = [
     "single-query-aggregation",
     "json-group-array",
+    "user-role-filtering",
   ];
 
   try {
@@ -67,6 +75,35 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Parse and validate request body for user security parameters
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid request body",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate request body parameters
+    const bodyValidationResult =
+      EnergySupplierByNameRequestSchema.safeParse(requestBody);
+    if (!bodyValidationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing user authentication parameters",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { user_id, user_role } = bodyValidationResult.data;
 
     // Additional validation using Zod for enhanced type safety (non-breaking)
     const validationResult = EnergySupplierByNameParamsSchema.safeParse({
@@ -94,17 +131,39 @@ export async function POST(
       );
     }
 
-    // Single optimized query with subqueries for efficient data retrieval
-    // This approach eliminates N+1 queries and reduces database round trips
+    // Build user role-based filtering for tramites (exactly like contracts endpoint)
+    let userFilterClause = "";
+    const userFilterParams: string[] = [];
+
+    if (user_role === "2") {
+      // Commercial users (role 2): only see their own tramites and their subcomerciales' non-draft tramites
+      const subcomerciales = await getSubcomerciales(tursoClient, user_id);
+      if (subcomerciales.success && subcomerciales.ids) {
+        userFilterClause = `AND (t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})))`;
+        userFilterParams.push(user_id, ...subcomerciales.ids);
+      } else {
+        userFilterClause = `AND t.user_id = ?`;
+        userFilterParams.push(user_id);
+      }
+    } else {
+      // For other roles: show all non-draft tramites or user's own tramites (including drafts)
+      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`;
+      userFilterParams.push(user_id, user_id);
+    }
+
+    // Single optimized query with subqueries for efficient data retrieval and proper user filtering
+    // This approach eliminates N+1 queries and reduces database round trips while applying security
     const query = `
       SELECT 
         c.id,
         c.name,
         c.logo,
         c.active,
-        COUNT(DISTINCT con.tramite_id) as num_tramites,
+        COUNT(DISTINCT filtered_contracts.tramite_id) as num_tramites,
         (SELECT COUNT(*) FROM documentacion_files WHERE folder_name LIKE '%' || c.name || '%') as num_files,
-        COALESCE(SUM(con.consumption), 0) as total_consumption,
+        COALESCE(SUM(filtered_contracts.consumption), 0) as total_consumption,
         (SELECT json_group_array(
           json_object(
             'id', cr.id,
@@ -126,13 +185,19 @@ export async function POST(
           )
         ) FROM documentacion_files df WHERE df.folder_name LIKE '%' || c.name || '%') as files
       FROM comercializadoras c
-      LEFT JOIN contracts con ON con.new_company = c.name
+      LEFT JOIN (
+        SELECT con.tramite_id, con.new_company, con.consumption
+        FROM contracts con
+        JOIN tramites t ON t.id = con.tramite_id
+        WHERE con.new_company = ? ${userFilterClause}
+      ) filtered_contracts ON filtered_contracts.new_company = c.name
       WHERE c.name = ?
       GROUP BY c.id, c.name, c.logo, c.active
     `;
 
+    const queryParams = [name, ...userFilterParams, name];
     optimizations.push("prepared-statement");
-    const response = await tursoClient.execute(query, [name]);
+    const response = await tursoClient.execute(query, queryParams);
 
     const queryTime = Date.now() - startTime;
 
@@ -189,6 +254,7 @@ export async function POST(
     }
 
     // Build the response data maintaining exact compatibility with legacy endpoint
+    // BUT with filtered data based on user role and permissions
     const responseData: ComercializadoraDetails = {
       id: comercializadora.id as string,
       name: comercializadora.name as string,
@@ -211,6 +277,8 @@ export async function POST(
 
     console.log(`Energy supplier by name query completed in ${queryTime}ms`, {
       supplier: name,
+      user_id,
+      user_role,
       metrics,
     });
 

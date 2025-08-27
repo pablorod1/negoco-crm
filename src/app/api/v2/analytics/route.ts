@@ -132,20 +132,20 @@ export async function POST(
         FROM tramites t
         WHERE t.status != 'Borrador' 
         AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', datetime('now'))
-        ${clientsUserFilter.filter.replace("AND", "AND t.")}
+        ${clientsUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
       ),
       previous_month AS (
         SELECT COUNT(DISTINCT t.client_id) AS total
         FROM tramites t
         WHERE t.status != 'Borrador'
         AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', datetime('now', '-1 month'))
-        ${clientsUserFilter.filter.replace("AND", "AND t.")}
+        ${clientsUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
       ),
       all_time AS (
         SELECT COUNT(DISTINCT t.client_id) AS total
         FROM tramites t
         WHERE t.status != 'Borrador'
-        ${clientsUserFilter.filter.replace("AND", "AND t.")}
+        ${clientsUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
       )
       SELECT 
         a.total AS total,
@@ -224,8 +224,17 @@ export async function POST(
           SUM(c.consumption) AS total
       FROM contracts c
       INNER JOIN tramites t ON c.tramite_id = t.id
-      WHERE 1=1 ${consumptionUserFilter.filter.replace("AND", "AND t.")}
+      WHERE 1=1 ${consumptionUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
     `;
+
+    // Debug the query generation with more detail
+    console.log("Original filter:", clientsUserFilter.filter);
+    console.log(
+      "Filter replacement test:",
+      clientsUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")
+    );
+    console.log("Complete clientsQuery:");
+    console.log(clientsQuery);
 
     // Execute all queries in parallel for optimal performance
     const [

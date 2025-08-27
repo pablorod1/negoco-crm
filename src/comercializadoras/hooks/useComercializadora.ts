@@ -2,8 +2,12 @@
 import { CloudAlert } from "lucide-react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { ComercializadoraDetails } from "../types";
+import { User } from "@/core/types";
 
-export function useComercializadora(name: string | string[] | undefined) {
+export function useComercializadora(
+  name: string | string[] | undefined,
+  userData?: User
+) {
   const [comercializadora, setComercializadora] =
     useState<ComercializadoraDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,17 +29,35 @@ export function useComercializadora(name: string | string[] | undefined) {
       return;
     }
 
+    if (!userData) {
+      const errorMsg = "No se ha proporcionado la información del usuario";
+      setError(errorMsg);
+      showCustomToast({
+        title: "Error",
+        message: errorMsg,
+        icon: CloudAlert,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      // Updated to use the new refactored endpoint
+      // Updated to use the new refactored endpoint with user security filters
       // New endpoint: /api/v2/energy-suppliers/by-name/[name]
       const response = await fetch(`/api/v2/energy-suppliers/by-name/${name}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          user_id: userData.id,
+          user_role: userData.role,
+        }),
       });
 
       const { success, error, data } = await response.json();
@@ -67,7 +89,7 @@ export function useComercializadora(name: string | string[] | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [name]);
+  }, [name, userData]);
 
   useEffect(() => {
     fetchComercializadora();

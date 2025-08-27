@@ -38,7 +38,10 @@ export default function ComercializadoraDetails() {
   const { userData } = useUser();
   const params = useParams();
   const { id } = params;
-  const { comercializadora, loading, error, refetch } = useComercializadora(id);
+  const { comercializadora, loading, error, refetch } = useComercializadora(
+    id,
+    userData as User
+  );
 
   if (loading) {
     return <FullScreenLoaderComponent />;
