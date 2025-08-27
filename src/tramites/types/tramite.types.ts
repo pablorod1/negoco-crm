@@ -46,6 +46,7 @@ export interface TramiteDB {
   client_id: string;
   user_id: string;
   rejected_date?: string | null;
+  provider?: string | null;
 }
 
 export interface TramiteVM extends TramiteDB {
@@ -96,6 +97,7 @@ export interface TramiteRow {
   comision: number;
   status: string;
   liquidez_status: string;
+  provider: string | null;
 }
 
 export interface ClientDB {

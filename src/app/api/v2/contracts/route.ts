@@ -62,6 +62,7 @@ const PaginatedContractsRequestSchema = z.object({
   paymentDateRange: DateRangeSchema,
   userFilter: z.array(z.string()).optional(),
   clientFilter: z.string().optional(),
+  providerFilter: z.array(z.string()).optional(),
 });
 
 const TramiteSchema = z.object({
@@ -156,6 +157,7 @@ const TramiteSchema = z.object({
     }),
   user_id: z.string().min(1, "User ID is required"),
   rejected_date: z.string().nullable().optional(),
+  provider: z.string().nullable().optional(),
 });
 
 const ClientSchema = z.object({
@@ -326,6 +328,7 @@ interface ContractData {
   comision: number;
   status: string;
   liquidez_status: string;
+  provider: string | null;
 }
 
 interface PaginatedContractsResponse {
@@ -542,8 +545,8 @@ const addTramiteOptimized = async (
         INSERT INTO tramites (
           id, creation_date, tramitation_date, activation_date, renovation_date,
           sales_name, comision, comision_sales_person, status, liquidez_status,
-          notes, internal_notes, client_id, user_id, collection_date, payment_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          notes, internal_notes, client_id, user_id, collection_date, payment_date, provider
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         tramite.id,
@@ -562,6 +565,7 @@ const addTramiteOptimized = async (
         tramite.user_id,
         tramite.collection_date || null,
         tramite.payment_date || null,
+        tramite.provider || null,
       ],
     });
 
@@ -1001,6 +1005,7 @@ export async function GET(
       paymentDateRange: parseJsonParam(searchParams.get("paymentDateRange")),
       userFilter: parseArrayParam(searchParams.get("userFilter")),
       clientFilter: searchParams.get("clientFilter") || undefined,
+      providerFilter: parseArrayParam(searchParams.get("providerFilter")),
     };
 
     // Validate input parameters
@@ -1023,6 +1028,7 @@ export async function GET(
       paymentDateRange,
       userFilter,
       clientFilter,
+      providerFilter,
     } = validatedData;
 
     // Initialize database connection
@@ -1108,6 +1114,18 @@ export async function GET(
       }
     };
 
+    // Provider filter helper (case-insensitive)
+    const addProviderFilter = (filterArray?: string[]) => {
+      if (filterArray && filterArray.length > 0) {
+        const providerConditions = filterArray
+          .map(() => "LOWER(t.provider) LIKE LOWER(?)")
+          .join(" OR ");
+        filters.push(`(${providerConditions})`);
+        // Add wildcards for partial matching
+        params.push(...filterArray.map((provider) => `%${provider}%`));
+      }
+    };
+
     // Apply array-based filters
     addArrayFilter("con.new_company", companyFilter);
     addArrayFilter("t.status", statusFilter);
@@ -1115,6 +1133,10 @@ export async function GET(
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
     if (clientFilter) {
       addArrayFilter("c.id", [clientFilter]);
+    }
+
+    if (providerFilter) {
+      addProviderFilter(providerFilter);
     }
 
     // Date range filter helper (preserved exact logic)
@@ -1181,6 +1203,7 @@ export async function GET(
           t.comision AS comision,
           t.status AS status,
           t.liquidez_status AS liquidez_status,
+          t.provider AS provider,
           c.name AS client_name,
           c.last_name AS client_last_name,
           c.email AS client_email,
@@ -1259,6 +1282,7 @@ export async function GET(
         comision: row.comision as number,
         status: row.status as string,
         liquidez_status: row.liquidez_status as string,
+        provider: row.provider as string | null,
       };
     });
 

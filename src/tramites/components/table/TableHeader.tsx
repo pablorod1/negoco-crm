@@ -33,6 +33,7 @@ import UserFilter from "@/core/components/table/UserFilter";
 import { format } from "date-fns";
 import { InputComponent } from "../createTramite/InputComponent";
 import TooltipComponent from "@/core/components/TooltipComponent";
+import { Input } from "@/core/components/ui/input";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -63,6 +64,8 @@ interface TableHeaderProps<TData> {
   saveFiltersToStorage: () => void;
   userFilter: string[] | undefined;
   setUserFilter: (value: string[] | undefined) => void;
+  providerFilter: string[] | undefined;
+  setProviderFilter: (value: string[] | undefined) => void;
 }
 
 export default function TramitesHeader<TData>({
@@ -94,9 +97,12 @@ export default function TramitesHeader<TData>({
   saveFiltersToStorage,
   userFilter,
   setUserFilter,
+  providerFilter,
+  setProviderFilter,
 }: TableHeaderProps<TData>) {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [providerInputValue, setProviderInputValue] = useState("");
 
   const isComercial = userData?.role === "2";
 
@@ -136,6 +142,8 @@ export default function TramitesHeader<TData>({
     if (userFilter && userFilter.length > 0 && !isComercial)
       filters.push("Comercial");
 
+    if (providerFilter && providerFilter.length > 0) filters.push("Proveedor");
+
     setActiveFilters(filters);
   }, [
     companyFilter,
@@ -149,6 +157,7 @@ export default function TramitesHeader<TData>({
     paymentDateRange,
     userFilter,
     isComercial,
+    providerFilter,
   ]);
 
   // Save filters to localStorage when they change
@@ -167,11 +176,46 @@ export default function TramitesHeader<TData>({
     saveFiltersToStorage,
     activeFilters.length,
     userFilter,
+    providerFilter,
   ]);
 
   // Clear search filter
   const handleClearSearch = () => {
     setFilterValue("");
+  };
+
+  // Handle provider input
+  const handleProviderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && providerInputValue.trim()) {
+      e.preventDefault();
+      const trimmedValue = providerInputValue.trim();
+      const normalizedValue = trimmedValue
+        .toLowerCase()
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .trim();
+
+      const currentProviders = providerFilter || [];
+
+      // Check if provider already exists (case-insensitive)
+      const alreadyExists = currentProviders.some(
+        (provider) =>
+          provider.toLowerCase().replace(/\s+/g, " ").trim() === normalizedValue
+      );
+
+      if (!alreadyExists) {
+        // Store the original cased version but trimmed and with normalized spaces
+        const cleanedValue = trimmedValue.replace(/\s+/g, " ").trim();
+        setProviderFilter([...currentProviders, cleanedValue]);
+      }
+      setProviderInputValue("");
+    }
+  };
+
+  const removeProvider = (providerToRemove: string) => {
+    const currentProviders = providerFilter || [];
+    setProviderFilter(
+      currentProviders.filter((provider) => provider !== providerToRemove)
+    );
   };
 
   const getFilterLabel = (
@@ -448,6 +492,26 @@ export default function TramitesHeader<TData>({
                     Comerciales: {userFilter.length} seleccionado(s)
                   </Badge>
                 )}
+
+                {providerFilter && providerFilter.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {providerFilter.map((provider) => (
+                      <Badge
+                        key={provider}
+                        variant="secondary"
+                        className="bg-gray-100 text-gray-700 gap-1.5 flex items-center"
+                      >
+                        Proveedor: {provider}
+                        <button
+                          onClick={() => removeProvider(provider)}
+                          className="ml-1 hover:text-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -471,7 +535,7 @@ export default function TramitesHeader<TData>({
             className="mt-4 pt-4 border-t border-gray-100"
           >
             <div
-              className={`grid ${isTramitesTable ? "grid-cols-4" : isLiquidezTable ? "grid-cols-3" : ""} gap-4`}
+              className={`grid ${isTramitesTable ? "grid-cols-5" : isLiquidezTable ? "grid-cols-4" : ""} gap-4`}
             >
               <div className="space-y-2">
                 <Label>Estado</Label>
@@ -535,6 +599,40 @@ export default function TramitesHeader<TData>({
                   maxCount={3}
                 />
               </div>
+
+              {isLiquidezTable ? (
+                <div className="space-y-2">
+                  <Label>Proveedor</Label>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Escribir nombre del proveedor y presionar Enter..."
+                      value={providerInputValue}
+                      onChange={(e) => setProviderInputValue(e.target.value)}
+                      onKeyDown={handleProviderKeyDown}
+                      className="h-10"
+                    />
+                    {providerFilter && providerFilter.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {providerFilter.map((provider) => (
+                          <Badge
+                            key={provider}
+                            variant="secondary"
+                            className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1"
+                          >
+                            {provider}
+                            <button
+                              onClick={() => removeProvider(provider)}
+                              className="hover:text-red-600 ml-1"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
               {isTramitesTable && (
                 <div className="space-y-2">
                   <Label>Fecha de Creación</Label>

@@ -213,6 +213,20 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     },
   },
   {
+    id: "Proveedor",
+    accessorKey: "provider",
+    header: ({}) => {
+      return <span className="flex justify-end text-end">Proveedor</span>;
+    },
+    cell: ({ row }) => {
+      return (
+        <div className="flex justify-end me-2">
+          <span>{row.original.provider ? row.original.provider : "---"}</span>
+        </div>
+      );
+    },
+  },
+  {
     id: "Comisión",
     accessorKey: "comision",
     header: ({}) => {

@@ -45,6 +45,17 @@ export default function ThirdStepForm({
     null
   );
 
+  const handleProviderChange = (
+    value: string | React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const providerValue =
+      typeof value === "string" ? value : value.target.value;
+    setTramite((prevState) => ({
+      ...prevState,
+      provider: providerValue,
+    }));
+  };
+
   const handleComisionChange = (
     value: number | React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -176,6 +187,14 @@ export default function ThirdStepForm({
                     onChange={handleComisionSalesChange}
                     isRequired={tramite.status === "Activo"}
                     endContent={<Euro size={16} />}
+                  />
+                  <InputComponent
+                    type="text"
+                    label="Proveedor"
+                    name="provider"
+                    value={tramite.provider || ""}
+                    onChange={handleProviderChange}
+                    isRequired={false}
                   />
                 </>
               )}

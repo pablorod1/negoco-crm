@@ -65,6 +65,8 @@ export function DataTable<TData, TValue>({
     saveFiltersToStorage,
     userFilter,
     setUserFilter,
+    providerFilter,
+    setProviderFilter,
   } = useTableFilters(isLiquidezTable ? "liquidez" : "tramites");
 
   const { setRefreshTramites } = useTramites();
@@ -139,6 +141,10 @@ export function DataTable<TData, TValue>({
           params.append("userFilter", JSON.stringify(userFilter));
         }
 
+        if (isLiquidezTable && providerFilter && providerFilter.length > 0) {
+          params.append("providerFilter", JSON.stringify(providerFilter));
+        }
+
         const res = await fetch(`/api/v2/contracts?${params.toString()}`, {
           method: "GET",
           headers: {
@@ -183,6 +189,7 @@ export function DataTable<TData, TValue>({
       collectionDateRange,
       paymentDateRange,
       userFilter,
+      providerFilter,
     ]
   );
 
@@ -259,6 +266,8 @@ export function DataTable<TData, TValue>({
       saveFiltersToStorage,
       userFilter,
       setUserFilter,
+      providerFilter,
+      setProviderFilter,
     }),
     [
       filterValue,
@@ -288,6 +297,8 @@ export function DataTable<TData, TValue>({
       saveFiltersToStorage,
       userFilter,
       setUserFilter,
+      providerFilter,
+      setProviderFilter,
     ]
   );
 
