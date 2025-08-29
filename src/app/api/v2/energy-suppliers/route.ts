@@ -97,7 +97,7 @@ export async function POST(
       // Commercial users (role 2): only see their own tramites and their subcomerciales' non-draft tramites
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
-        userFilterClause = `AND (t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
+        userFilterClause = `AND (t.user_id = ? OR (t.user_id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")})))`;
         userFilterParams.push(user_id, ...subcomerciales.ids);
@@ -110,7 +110,7 @@ export async function POST(
       }
     } else {
       // For other roles: show all non-draft tramites or user's own tramites (including drafts)
-      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`;
+      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ?))`;
       userFilterParams.push(user_id, user_id);
     }
 
@@ -127,18 +127,19 @@ export async function POST(
           SELECT COUNT(DISTINCT con.tramite_id)
           FROM contracts con
           JOIN tramites t ON t.id = con.tramite_id
-          WHERE con.new_company = c.name ${userFilterClause}
+          WHERE t.status = 'Activo' AND con.new_company = c.name ${userFilterClause}
         ) as total_tramites,
         (
-          SELECT COALESCE(SUM(con.consumption), 0)
-          FROM contracts con
-          JOIN tramites t ON t.id = con.tramite_id
-          WHERE con.new_company = c.name ${userFilterClause}
+          SELECT 
+          SUM(con.consumption) AS total
+      FROM contracts con
+      INNER JOIN tramites t ON con.tramite_id = t.id
+          WHERE t.status = 'Activo' AND con.new_company = c.name ${userFilterClause}
         ) as total_consumption
       FROM comercializadoras c
       ORDER BY c.name ASC
     `;
-
+    console.log("Energy Suppliers Query:", query);
     const params = [...userFilterParams, ...userFilterParams];
     optimizations.push("exact-by-name-logic-per-comercializadora");
 
