@@ -115,7 +115,7 @@ export async function POST(
             ) THEN con.tramite_id 
           END) AS total_tramites,
           COALESCE(SUM(CASE 
-            WHEN con.tramite_id IS NOT NULL AND (
+            WHEN con.tramite_id IS NOT NULL AND con.new_company = c.name THEN (
               t.user_id = ? ${subIds.length > 0 ? `OR t.user_id IN (${subIds.map(() => "?").join(", ")})` : ""}
             ) THEN con.consumption 
             ELSE 0 
