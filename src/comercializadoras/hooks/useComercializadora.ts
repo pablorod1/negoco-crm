@@ -73,7 +73,6 @@ export function useComercializadora(
         });
         return;
       }
-
       setComercializadora(data);
     } catch (err) {
       console.error("Error fetching comercializadora:", err);

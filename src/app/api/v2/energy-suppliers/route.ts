@@ -89,83 +89,58 @@ export async function POST(
     }
 
     // Query optimization: Build optimized query based on user role
-    let query: string;
-    const params: (string | number)[] = [];
+    let userFilterClause = "";
+    const userFilterParams: string[] = [];
 
+    // Build user role-based filtering for tramites (exactly like by-name endpoint)
     if (user_role === "2") {
-      // Fetch subordinates for supervisor role
+      // Commercial users (role 2): only see their own tramites and their subcomerciales' non-draft tramites
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
-      const subIds =
-        subcomerciales.success && subcomerciales.ids ? subcomerciales.ids : [];
-
-      optimizations.push("role-based-filtering");
-      optimizations.push("subordinate-user-lookup");
-
-      // Optimized query for role "2" with exact original logic
-      query = `
-        SELECT 
-          c.id,
-          c.name,
-          c.logo,
-          c.active,
-          COUNT(DISTINCT df.id) AS files_count,
-          COUNT(DISTINCT CASE 
-            WHEN con.tramite_id IS NOT NULL AND (
-              t.user_id = ? ${subIds.length > 0 ? `OR t.user_id IN (${subIds.map(() => "?").join(", ")})` : ""}
-            ) THEN con.tramite_id 
-          END) AS total_tramites,
-          COALESCE(SUM(CASE 
-            WHEN con.tramite_id IS NOT NULL AND con.new_company = c.name AND (
-              t.user_id = ? ${subIds.length > 0 ? `OR t.user_id IN (${subIds.map(() => "?").join(", ")})` : ""}
-            ) THEN con.consumption 
-            ELSE 0 
-          END), 0) AS total_consumption
-        FROM 
-          comercializadoras c
-        LEFT JOIN 
-          contracts con ON con.new_company = c.name
-        LEFT JOIN 
-          tramites t ON t.id = con.tramite_id
-        LEFT JOIN 
-          documentacion_files df ON df.folder_name LIKE '%' || c.name || '%'
-        GROUP BY 
-          c.id, c.name, c.logo, c.active
-        ORDER BY 
-          c.name ASC
-      `;
-
-      // Match original parameter order: user_id, then subIds (duplicated for consumption calculation)
-      params.push(user_id, ...subIds, user_id, ...subIds);
-      optimizations.push("optimized-join-conditions");
+      if (subcomerciales.success && subcomerciales.ids) {
+        userFilterClause = `AND (t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})))`;
+        userFilterParams.push(user_id, ...subcomerciales.ids);
+        optimizations.push("role-based-filtering");
+        optimizations.push("subordinate-user-lookup");
+      } else {
+        userFilterClause = `AND t.user_id = ?`;
+        userFilterParams.push(user_id);
+        optimizations.push("role-based-filtering");
+      }
     } else {
-      // Match original query structure exactly for non-supervisory roles
-      query = `
-        SELECT 
-          c.id,
-          c.name,
-          c.logo,
-          c.active,
-          COUNT(DISTINCT df.id) AS files_count,
-          COUNT(DISTINCT CASE 
-            WHEN con.tramite_id IS NOT NULL THEN con.tramite_id 
-          END) AS total_tramites,
-          COALESCE(SUM(con.consumption), 0) AS total_consumption
-        FROM 
-          comercializadoras c
-        LEFT JOIN 
-          contracts con ON con.new_company = c.name
-        LEFT JOIN 
-          tramites t ON t.id = con.tramite_id
-        LEFT JOIN 
-          documentacion_files df ON df.folder_name LIKE '%' || c.name || '%'
-        GROUP BY 
-          c.id, c.name, c.logo, c.active
-        ORDER BY 
-          c.name ASC
-      `;
-
-      optimizations.push("exact-original-query-structure");
+      // For other roles: show all non-draft tramites or user's own tramites (including drafts)
+      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`;
+      userFilterParams.push(user_id, user_id);
     }
+
+    // Single optimized query with subqueries for efficient data retrieval and proper user filtering
+    // This approach matches exactly the by-name endpoint logic but for multiple comercializadoras
+    const query = `
+      SELECT 
+        c.id,
+        c.name,
+        c.logo,
+        c.active,
+        (SELECT COUNT(*) FROM documentacion_files WHERE folder_name LIKE '%' || c.name || '%') as num_files,
+        (
+          SELECT COUNT(DISTINCT con.tramite_id)
+          FROM contracts con
+          JOIN tramites t ON t.id = con.tramite_id
+          WHERE con.new_company = c.name ${userFilterClause}
+        ) as total_tramites,
+        (
+          SELECT COALESCE(SUM(con.consumption), 0)
+          FROM contracts con
+          JOIN tramites t ON t.id = con.tramite_id
+          WHERE con.new_company = c.name ${userFilterClause}
+        ) as total_consumption
+      FROM comercializadoras c
+      ORDER BY c.name ASC
+    `;
+
+    const params = [...userFilterParams, ...userFilterParams];
+    optimizations.push("exact-by-name-logic-per-comercializadora");
 
     // Execute query with performance tracking
     const queryStartTime = Date.now();
