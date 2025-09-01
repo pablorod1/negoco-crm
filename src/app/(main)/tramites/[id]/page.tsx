@@ -29,6 +29,7 @@ import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderCompone
 import { useTransitionRouter } from "next-view-transitions";
 import { slideOut } from "@/core/view-transitions/view-transitions";
 import { formatUUID } from "@/core/utils/format";
+import ProviderSection from "@/tramites/components/editTramite/ProviderSection";
 
 export default function TramiteDetails() {
   const { userData } = useUser();
@@ -226,13 +227,21 @@ export default function TramiteDetails() {
 
                 <Separator />
 
-                <LiquidezStatusSection
-                  tramite={tramite}
-                  isComercial={isComercial as boolean}
-                  userData={userData as User}
-                  onUpdate={fetchTramite}
-                  client={client}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  {!isComercial ? (
+                    <ProviderSection
+                      tramite={tramite}
+                      onUpdate={fetchTramite}
+                    />
+                  ) : null}
+                  <LiquidezStatusSection
+                    tramite={tramite}
+                    isComercial={isComercial as boolean}
+                    userData={userData as User}
+                    onUpdate={fetchTramite}
+                    client={client}
+                  />
+                </div>
               </>
             )}
           </CardContent>

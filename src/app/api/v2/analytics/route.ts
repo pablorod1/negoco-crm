@@ -224,18 +224,10 @@ export async function POST(
           SUM(c.consumption) AS total
       FROM contracts c
       INNER JOIN tramites t ON c.tramite_id = t.id
-      WHERE 1=1 ${consumptionUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
+      WHERE t.status = 'Activo'
+        AND c.new_company IN (SELECT name FROM comercializadoras)
+        ${consumptionUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
     `;
-
-    // Debug the query generation with more detail
-    console.log("Original filter:", clientsUserFilter.filter);
-    console.log(
-      "Filter replacement test:",
-      clientsUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")
-    );
-    console.log("Complete clientsQuery:");
-    console.log(clientsQuery);
-
     // Execute all queries in parallel for optimal performance
     const [
       clientsResult,
