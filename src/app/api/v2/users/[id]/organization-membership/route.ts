@@ -53,7 +53,7 @@ export async function POST(
         {
           success: false,
           error:
-            paramsValidation.error.errors[0]?.message || "Invalid parameters",
+            paramsValidation.error.issues[0]?.message || "Invalid parameters",
         },
         { status: 400 }
       );
@@ -66,7 +66,7 @@ export async function POST(
         {
           success: false,
           error:
-            bodyValidation.error.errors[0]?.message || "Invalid request body",
+            bodyValidation.error.issues[0]?.message || "Invalid request body",
         },
         { status: 400 }
       );
@@ -135,7 +135,7 @@ export async function PATCH(
         {
           success: false,
           error:
-            paramsValidation.error.errors[0]?.message || "Invalid parameters",
+            paramsValidation.error.issues[0]?.message || "Invalid parameters",
         },
         { status: 400 }
       );
@@ -178,7 +178,7 @@ export async function PATCH(
           {
             success: false,
             error:
-              companyValidation.error.errors[0]?.message ||
+              companyValidation.error.issues[0]?.message ||
               "Invalid company data",
           },
           { status: 400 }
@@ -199,7 +199,7 @@ export async function PATCH(
           {
             success: false,
             error:
-              superValidation.error.errors[0]?.message ||
+              superValidation.error.issues[0]?.message ||
               "Invalid super role data",
           },
           { status: 400 }

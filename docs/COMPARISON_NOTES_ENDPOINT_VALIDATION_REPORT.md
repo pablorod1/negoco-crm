@@ -158,7 +158,7 @@ if (!comparisonId || !notes || !note) {
 // ✅ ENHANCEMENT: Additional type safety (non-breaking)
 const validation = ComparisonNotesAddSchema.safeParse(requestBody);
 if (!validation.success) {
-  console.warn(`[ENHANCED VALIDATION] Warning:`, validation.error.errors);
+  console.warn(`[ENHANCED VALIDATION] Warning:`, validation.error.issues);
   // Continue with original logic - no breaking changes
 }
 ```

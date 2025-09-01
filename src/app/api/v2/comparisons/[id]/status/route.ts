@@ -267,7 +267,7 @@ export async function PATCH(
     if (!validation.success) {
       console.warn(
         "[Validation Warning] Invalid request parameters:",
-        validation.error.errors
+        validation.error.issues
       );
       return NextResponse.json(
         {

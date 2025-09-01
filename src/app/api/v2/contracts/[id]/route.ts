@@ -57,18 +57,23 @@ async function executeQuery<T>(
   tursoClient: Client
 ): Promise<T[]> {
   const startTime = performance.now();
-  
+
   try {
     const result = await tursoClient.execute({ sql: query, args });
     const queryTime = performance.now() - startTime;
-    
+
     // Log performance for monitoring (same as original)
-    console.log(`[PERFORMANCE] Query executed in ${queryTime.toFixed(2)}ms, returned ${result.rows.length} rows`);
+    console.log(
+      `[PERFORMANCE] Query executed in ${queryTime.toFixed(2)}ms, returned ${result.rows.length} rows`
+    );
 
     return result.rows as T[];
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -264,10 +269,10 @@ function transformTramiteData(
 
 /**
  * Retrieves a specific contract (tramite) by ID with all related data
- * 
+ *
  * Maintains 100% compatibility with legacy /api/tramites/get/[id] endpoint
  * while implementing performance optimizations and modern patterns.
- * 
+ *
  * @param request - Next.js request object
  * @param params - Route parameters containing contract ID
  * @returns Promise<NextResponse<ContractByIdResponse>>
@@ -277,20 +282,20 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ContractByIdResponse>> {
   const requestStartTime = performance.now();
-  
+
   try {
     // Extract route parameters
     const { id: routeId } = await params;
-    
+
     // Parse and validate request body
     const body = await request.json();
     const validatedBody = RequestBodySchema.parse(body);
-    
+
     const { id: bodyId, role, user_id } = validatedBody;
-    
+
     // Use ID from body (maintaining legacy compatibility) or fallback to route param
     const contractId = bodyId || routeId;
-    
+
     if (!contractId) {
       return NextResponse.json(
         {
@@ -315,12 +320,8 @@ export async function POST(
     }
 
     // Build optimized query with role-based access control
-    const { query: tramiteQuery, params: tramiteParams } = await buildTramiteQuery(
-      contractId,
-      role,
-      user_id,
-      tursoClient
-    );
+    const { query: tramiteQuery, params: tramiteParams } =
+      await buildTramiteQuery(contractId, role, user_id, tursoClient);
 
     // Execute all queries in parallel for performance
     const queryResults = await executeParallelQueries(
@@ -352,23 +353,29 @@ export async function POST(
 
     // Calculate total request time
     const totalRequestTime = performance.now() - requestStartTime;
-    
+
     // Log performance metrics
-    console.log(`[PERFORMANCE] Contract by ID request completed in ${totalRequestTime.toFixed(2)}ms`);
-    console.log(`[METRICS] Results: tramite=${queryResults.tramite.length}, contracts=${queryResults.contracts.length}, files=${queryResults.files.length}`);
+    console.log(
+      `[PERFORMANCE] Contract by ID request completed in ${totalRequestTime.toFixed(2)}ms`
+    );
+    console.log(
+      `[METRICS] Results: tramite=${queryResults.tramite.length}, contracts=${queryResults.contracts.length}, files=${queryResults.files.length}`
+    );
 
     // Return successful response
     return NextResponse.json({
       success: true,
       data: responseData,
     });
-
   } catch (error) {
     const totalRequestTime = performance.now() - requestStartTime;
-    
+
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, error.errors);
+      console.error(
+        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        error.issues
+      );
       return NextResponse.json(
         {
           success: false,
@@ -379,7 +386,10 @@ export async function POST(
     }
 
     // Handle general errors
-    console.error(`[ERROR] Contract by ID request failed after ${totalRequestTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Contract by ID request failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
     return NextResponse.json(
       {
         success: false,
@@ -402,26 +412,26 @@ const DeleteContractRequestSchema = z.object({
 
 /**
  * Deletes a contract (tramite) by ID along with all associated files from Firebase Storage
- * 
+ *
  * Maintains 100% compatibility with legacy /api/tramites/delete/[id] endpoint.
  * This is a destructive operation that:
  * 1. Deletes all files from Firebase Storage associated with the contract
  * 2. Deletes the contract record from the database
- * 
+ *
  * The operation is atomic - if file deletion fails, the database deletion is aborted.
- * 
+ *
  * @param request - Next.js request object containing organization_id in body
  * @param params - Route parameters containing contract ID
  * @returns Promise<NextResponse<DeleteContractResponse>>
- * 
+ *
  * @example
  * DELETE /new_api/contracts/[id]
  * Content-Type: application/json
- * 
+ *
  * {
  *   "organization_id": "org123"
  * }
- * 
+ *
  * Response:
  * {
  *   "success": true
@@ -432,19 +442,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<DeleteContractResponse>> {
   const requestStartTime = performance.now();
-  
+
   try {
     // Import Firebase Storage dependencies
     const { storage } = await import("@/core/firebase/firebaseConfig");
     const { deleteObject, listAll, ref } = await import("firebase/storage");
-    
+
     // Extract route parameters
     const { id: tramite_id } = await params;
-    
+
     // Parse and validate request body
     const body = await request.json();
     const validationResult = DeleteContractRequestSchema.safeParse(body);
-    
+
     if (!validationResult.success) {
       return NextResponse.json(
         {
@@ -454,7 +464,7 @@ export async function DELETE(
         { status: 400 }
       );
     }
-    
+
     const { organization_id } = validationResult.data;
 
     if (!tramite_id || !organization_id) {
@@ -495,9 +505,11 @@ export async function DELETE(
         deleteObject(fileRef)
       );
       await Promise.all(deletePromises);
-      
+
       // Log successful file deletion for monitoring
-      console.log(`[FIREBASE] Successfully deleted ${fileList.items.length} files for contract ${tramite_id}`);
+      console.log(
+        `[FIREBASE] Successfully deleted ${fileList.items.length} files for contract ${tramite_id}`
+      );
     } catch (storageError) {
       console.error("Error al eliminar archivos:", storageError);
       // Critical: If file deletion fails, abort the entire operation
@@ -531,22 +543,28 @@ export async function DELETE(
 
     // Calculate total request time
     const totalRequestTime = performance.now() - requestStartTime;
-    
+
     // Log successful deletion with performance metrics
-    console.log(`[PERFORMANCE] Contract deletion completed in ${totalRequestTime.toFixed(2)}ms (DB: ${deleteTime.toFixed(2)}ms)`);
-    console.log(`[SUCCESS] Contract ${tramite_id} deleted successfully with all associated files`);
+    console.log(
+      `[PERFORMANCE] Contract deletion completed in ${totalRequestTime.toFixed(2)}ms (DB: ${deleteTime.toFixed(2)}ms)`
+    );
+    console.log(
+      `[SUCCESS] Contract ${tramite_id} deleted successfully with all associated files`
+    );
 
     // Return successful response
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     const totalRequestTime = performance.now() - requestStartTime;
-    
+
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      console.error(`[VALIDATION ERROR] Delete request failed after ${totalRequestTime.toFixed(2)}ms:`, error.errors);
+      console.error(
+        `[VALIDATION ERROR] Delete request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        error.issues
+      );
       return NextResponse.json(
         {
           success: false,
@@ -557,11 +575,14 @@ export async function DELETE(
     }
 
     // Handle general errors with original error message format
-    console.error(`[ERROR] Contract deletion failed after ${totalRequestTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Contract deletion failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: "Internal Server Error" 
+        error: "Internal Server Error",
       },
       { status: 500 }
     );

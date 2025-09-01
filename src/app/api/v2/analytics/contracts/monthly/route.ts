@@ -51,7 +51,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: `Validation error: ${validation.error.errors.map((e) => e.message).join(", ")}`,
+          error: `Validation error: ${validation.error.issues.map((e) => e.message).join(", ")}`,
         },
         { status: 400 }
       );

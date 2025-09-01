@@ -133,7 +133,7 @@ if (!comparisonId || !notes || !note) {
 // Enhanced validation (warning only)
 const validation = ComparisonNotesAddSchema.safeParse(requestBody);
 if (!validation.success) {
-  console.warn(`[ENHANCED VALIDATION] Zod validation warning:`, validation.error.errors);
+  console.warn(`[ENHANCED VALIDATION] Zod validation warning:`, validation.error.issues);
   // Continue with original validation for backward compatibility
 }
 ```

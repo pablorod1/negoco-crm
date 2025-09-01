@@ -43,7 +43,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          error: validation.error.errors[0]?.message || "Invalid parameters",
+          error: validation.error.issues[0]?.message || "Invalid parameters",
         },
         { status: 400 }
       );
@@ -138,7 +138,7 @@ export async function DELETE(
       return NextResponse.json(
         {
           success: false,
-          error: validation.error.errors[0]?.message || "Invalid parameters",
+          error: validation.error.issues[0]?.message || "Invalid parameters",
         },
         { status: 400 }
       );
@@ -150,7 +150,8 @@ export async function DELETE(
       return NextResponse.json(
         {
           success: false,
-          error: bodyValidation.error.errors[0]?.message || "Invalid request body",
+          error:
+            bodyValidation.error.issues[0]?.message || "Invalid request body",
         },
         { status: 400 }
       );
@@ -174,9 +175,7 @@ export async function DELETE(
 
     try {
       const files = await listAll(folderRef);
-      await Promise.all(
-        files.items.map((fileRef) => deleteObject(fileRef))
-      );
+      await Promise.all(files.items.map((fileRef) => deleteObject(fileRef)));
     } catch (storageError) {
       console.warn("Error deleting avatar files from storage:", storageError);
       // Continue with database update even if storage deletion fails

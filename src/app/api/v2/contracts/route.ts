@@ -145,10 +145,11 @@ const TramiteSchema = z.object({
       }
       if (val.length < 1) {
         ctx.addIssue({
-          code: z.ZodIssueCode.too_small,
+          code: "too_small",
           minimum: 1,
           type: "string",
           inclusive: true,
+          origin: "string",
           message: "Client ID is required",
         });
         return z.NEVER;
@@ -252,10 +253,11 @@ const SignerSchema = z
         }
         if (val.length < 1) {
           ctx.addIssue({
-            code: z.ZodIssueCode.too_small,
+            code: "too_small",
             minimum: 1,
             type: "string",
             inclusive: true,
+            origin: "string",
             message: "Client ID is required",
           });
           return z.NEVER;

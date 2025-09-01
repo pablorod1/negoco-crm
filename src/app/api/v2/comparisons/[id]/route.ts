@@ -4,9 +4,7 @@ import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { ComparativaPlan } from "@/comparativas/types";
 import { Client } from "@libsql/client";
-import {
-  updateComparativaGeneral,
-} from "@/comparativas/utils/updateComparativaHelpers";
+import { updateComparativaGeneral } from "@/comparativas/utils/updateComparativaHelpers";
 import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
 
 /**
@@ -60,12 +58,14 @@ const ComparisonPatchSchema = z.object({
   plan: z.array(z.enum(["fijo", "indexado"])).optional(),
   status: z.string().optional(),
   tramite_id: z.string().nullable().optional(),
-  comisions: z.object({
-    comision_fijo: z.number().optional(),
-    comision_indexado: z.number().optional(),
-    comision_sales_person_fijo: z.number().optional(),
-    comision_sales_person_indexado: z.number().optional(),
-  }).optional(),
+  comisions: z
+    .object({
+      comision_fijo: z.number().optional(),
+      comision_indexado: z.number().optional(),
+      comision_sales_person_fijo: z.number().optional(),
+      comision_sales_person_indexado: z.number().optional(),
+    })
+    .optional(),
   notes: z.array(z.string()).optional(),
   user_id: z.string().optional(), // Allow reassignment
 });
@@ -114,31 +114,38 @@ interface ComparisonByIdResponse {
 /**
  * Database query execution with error handling and performance monitoring
  */
-async function executeQuery<T extends Record<string, unknown> = Record<string, unknown>>(
+async function executeQuery<
+  T extends Record<string, unknown> = Record<string, unknown>,
+>(
   client: Client,
   sql: string,
   args: (string | number)[],
   queryName: string
 ): Promise<{ success: boolean; data?: T[]; error?: string }> {
   const startTime = performance.now();
-  
+
   try {
     const result = await client.execute({ sql, args });
     const endTime = performance.now();
-    
-    console.log(`[DB Query] ${queryName} executed in ${(endTime - startTime).toFixed(2)}ms`);
-    
+
+    console.log(
+      `[DB Query] ${queryName} executed in ${(endTime - startTime).toFixed(2)}ms`
+    );
+
     return {
       success: true,
-      data: result.rows as unknown as T[]
+      data: result.rows as unknown as T[],
     };
   } catch (error) {
     const endTime = performance.now();
-    console.error(`[DB Query Error] ${queryName} failed after ${(endTime - startTime).toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DB Query Error] ${queryName} failed after ${(endTime - startTime).toFixed(2)}ms:`,
+      error
+    );
+
     return {
       success: false,
-      error: `Database query failed: ${queryName}`
+      error: `Database query failed: ${queryName}`,
     };
   }
 }
@@ -153,7 +160,7 @@ async function fetchComparisonData(
   user_role: string
 ): Promise<{ success: boolean; data?: ComparativaRow[]; error?: string }> {
   const queryParams: (string | number)[] = [id];
-  
+
   let comparativaQuery = `
     SELECT 
       c.id,
@@ -191,7 +198,12 @@ async function fetchComparisonData(
     queryParams.push(...idsToInclude);
   }
 
-  return executeQuery<ComparativaRow>(client, comparativaQuery, queryParams, "fetch-comparison-data");
+  return executeQuery<ComparativaRow>(
+    client,
+    comparativaQuery,
+    queryParams,
+    "fetch-comparison-data"
+  );
 }
 
 /**
@@ -200,15 +212,19 @@ async function fetchComparisonData(
 async function fetchComparisonFiles(
   client: Client,
   comparativaId: string
-): Promise<{ success: boolean; data?: Array<{
-  id: string;
-  filename: string;
-  size: number;
-  extension: string;
-  upload_date: string;
-  download_url: string;
-  preview_url: string | null;
-}>; error?: string }> {
+): Promise<{
+  success: boolean;
+  data?: Array<{
+    id: string;
+    filename: string;
+    size: number;
+    extension: string;
+    upload_date: string;
+    download_url: string;
+    preview_url: string | null;
+  }>;
+  error?: string;
+}> {
   const filesQuery = `
     SELECT 
       id,
@@ -224,8 +240,13 @@ async function fetchComparisonFiles(
     ORDER BY upload_date DESC
   `;
 
-  const result = await executeQuery<ComparativaFileRow>(client, filesQuery, [comparativaId], "fetch-comparison-files");
-  
+  const result = await executeQuery<ComparativaFileRow>(
+    client,
+    filesQuery,
+    [comparativaId],
+    "fetch-comparison-files"
+  );
+
   if (!result.success) {
     return result;
   }
@@ -242,7 +263,7 @@ async function fetchComparisonFiles(
 
   return {
     success: true,
-    data: files
+    data: files,
   };
 }
 
@@ -250,7 +271,7 @@ async function fetchComparisonFiles(
  * Transform raw database data to response format
  */
 function transformComparisonData(
-  comparativa: ComparativaRow, 
+  comparativa: ComparativaRow,
   files: Array<{
     id: string;
     filename: string;
@@ -290,9 +311,9 @@ function transformComparisonData(
 
 /**
  * PATCH /new_api/comparisons/[id]
- * 
+ *
  * COMPREHENSIVE GENERAL UPDATE ROUTE for comparisons
- * 
+ *
  * This endpoint handles complete comparison updates including:
  * - Client name changes
  * - Service type updates (Luz/Gas)
@@ -302,11 +323,11 @@ function transformComparisonData(
  * - Notes management
  * - User reassignment
  * - Contract linking (tramite_id)
- * 
+ *
  * @param req - Next.js request object containing update data
  * @param params - URL parameters containing comparison ID
  * @returns Promise<NextResponse<ComparisonByIdResponse>>
- * 
+ *
  * @example
  * PATCH /new_api/comparisons/comp123
  * Body: {
@@ -323,7 +344,7 @@ function transformComparisonData(
  *   "notes": ["Updated note 1", "New note 2"],
  *   "tramite_id": "tramite789"
  * }
- * 
+ *
  * Response: {
  *   "success": true,
  *   "data": { ...updated comparison object... }
@@ -334,7 +355,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ComparisonByIdResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // Await params resolution
     const resolvedParams = await params;
@@ -352,11 +373,16 @@ export async function PATCH(
     const validation = ComparisonPatchSchema.safeParse(body);
 
     if (!validation.success) {
-      console.warn("[Validation Warning] Invalid update parameters:", validation.error.errors);
+      console.warn(
+        "[Validation Warning] Invalid update parameters:",
+        validation.error.issues
+      );
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid parameters: " + validation.error.errors.map(e => e.message).join(", ")
+        {
+          success: false,
+          error:
+            "Invalid parameters: " +
+            validation.error.issues.map((e) => e.message).join(", "),
         },
         { status: 400 }
       );
@@ -375,8 +401,17 @@ export async function PATCH(
     }
 
     // Check if comparison exists before updating
-    const existingComparison = await fetchComparisonData(tursoClient, id, "admin", "admin");
-    if (!existingComparison.success || !existingComparison.data || existingComparison.data.length === 0) {
+    const existingComparison = await fetchComparisonData(
+      tursoClient,
+      id,
+      "admin",
+      "admin"
+    );
+    if (
+      !existingComparison.success ||
+      !existingComparison.data ||
+      existingComparison.data.length === 0
+    ) {
       return NextResponse.json(
         { success: false, error: "Comparativa not found" },
         { status: 404 }
@@ -401,10 +436,13 @@ export async function PATCH(
     // Map request data to database format
     if (updates.client !== undefined) updateData.client = updates.client;
     if (updates.service !== undefined) updateData.service = updates.service;
-    if (updates.plan !== undefined) updateData.plan = JSON.stringify(updates.plan);
+    if (updates.plan !== undefined)
+      updateData.plan = JSON.stringify(updates.plan);
     if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.tramite_id !== undefined) updateData.tramite_id = updates.tramite_id;
-    if (updates.notes !== undefined) updateData.notes = JSON.stringify(updates.notes);
+    if (updates.tramite_id !== undefined)
+      updateData.tramite_id = updates.tramite_id;
+    if (updates.notes !== undefined)
+      updateData.notes = JSON.stringify(updates.notes);
     if (updates.user_id !== undefined) updateData.user_id = updates.user_id;
 
     // Handle commission updates
@@ -416,18 +454,27 @@ export async function PATCH(
         updateData.comision_indexado = updates.comisions.comision_indexado;
       }
       if (updates.comisions.comision_sales_person_fijo !== undefined) {
-        updateData.comision_sales_person_fijo = updates.comisions.comision_sales_person_fijo;
+        updateData.comision_sales_person_fijo =
+          updates.comisions.comision_sales_person_fijo;
       }
       if (updates.comisions.comision_sales_person_indexado !== undefined) {
-        updateData.comision_sales_person_indexado = updates.comisions.comision_sales_person_indexado;
+        updateData.comision_sales_person_indexado =
+          updates.comisions.comision_sales_person_indexado;
       }
     }
 
     // Execute the general update
-    const updateResult = await updateComparativaGeneral(tursoClient, id, updateData);
-    
+    const updateResult = await updateComparativaGeneral(
+      tursoClient,
+      id,
+      updateData
+    );
+
     if (!updateResult.success) {
-      console.error("[Database Error] Failed to update comparison:", updateResult.error);
+      console.error(
+        "[Database Error] Failed to update comparison:",
+        updateResult.error
+      );
       return NextResponse.json(
         { success: false, error: updateResult.error },
         { status: 400 }
@@ -435,8 +482,17 @@ export async function PATCH(
     }
 
     // Fetch the updated comparison data to return
-    const updatedComparison = await fetchComparisonData(tursoClient, id, "admin", "admin");
-    if (!updatedComparison.success || !updatedComparison.data || updatedComparison.data.length === 0) {
+    const updatedComparison = await fetchComparisonData(
+      tursoClient,
+      id,
+      "admin",
+      "admin"
+    );
+    if (
+      !updatedComparison.success ||
+      !updatedComparison.data ||
+      updatedComparison.data.length === 0
+    ) {
       console.error("[Database Error] Failed to fetch updated comparison data");
       return NextResponse.json(
         { success: false, error: "Failed to retrieve updated comparison" },
@@ -447,7 +503,10 @@ export async function PATCH(
     // Fetch associated files
     const filesResult = await fetchComparisonFiles(tursoClient, id);
     if (!filesResult.success) {
-      console.error("[Database Error] Failed to fetch comparison files:", filesResult.error);
+      console.error(
+        "[Database Error] Failed to fetch comparison files:",
+        filesResult.error
+      );
       return NextResponse.json(
         { success: false, error: filesResult.error },
         { status: 500 }
@@ -455,20 +514,27 @@ export async function PATCH(
     }
 
     const files = filesResult.data || [];
-    const responseData = transformComparisonData(updatedComparison.data[0], files);
+    const responseData = transformComparisonData(
+      updatedComparison.data[0],
+      files
+    );
     const endTime = performance.now();
 
-    console.log(`[API Success] Comparison ${id} updated successfully in ${(endTime - startTime).toFixed(2)}ms`);
+    console.log(
+      `[API Success] Comparison ${id} updated successfully in ${(endTime - startTime).toFixed(2)}ms`
+    );
 
     return NextResponse.json({
       success: true,
       data: responseData,
     });
-
   } catch (error) {
     const endTime = performance.now();
-    console.error(`[API Error] Failed to update comparison after ${(endTime - startTime).toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[API Error] Failed to update comparison after ${(endTime - startTime).toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error updating comparativa" },
       { status: 500 }
@@ -480,25 +546,28 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ComparisonByIdResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // Await params resolution
     const resolvedParams = await params;
     const paramId = resolvedParams.id;
-    
+
     // Parse and validate request body
     const body = await request.json();
     const validation = ComparisonByIdSchema.safeParse({
       ...body,
-      id: paramId
+      id: paramId,
     });
 
     if (!validation.success) {
-      console.warn("[Validation Warning] Invalid request parameters:", validation.error.errors);
+      console.warn(
+        "[Validation Warning] Invalid request parameters:",
+        validation.error.issues
+      );
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Missing parameters" 
+        {
+          success: false,
+          error: "Missing parameters",
         },
         { status: 400 }
       );
@@ -511,34 +580,44 @@ export async function POST(
     if (!tursoClient) {
       console.error("[Database Error] Failed to initialize Turso client");
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Database client not initialized" 
+        {
+          success: false,
+          error: "Database client not initialized",
         },
         { status: 500 }
       );
     }
 
     // Fetch comparison data with authorization
-    const comparisonResult = await fetchComparisonData(tursoClient, id, user_id, user_role);
-    
+    const comparisonResult = await fetchComparisonData(
+      tursoClient,
+      id,
+      user_id,
+      user_role
+    );
+
     if (!comparisonResult.success) {
-      console.error("[Database Error] Failed to fetch comparison:", comparisonResult.error);
+      console.error(
+        "[Database Error] Failed to fetch comparison:",
+        comparisonResult.error
+      );
       return NextResponse.json(
-        { 
-          success: false, 
-          error: comparisonResult.error 
+        {
+          success: false,
+          error: comparisonResult.error,
         },
         { status: 500 }
       );
     }
 
     if (!comparisonResult.data || comparisonResult.data.length === 0) {
-      console.warn(`[Authorization] Comparison not found or access denied: ${id} for user: ${user_id}`);
+      console.warn(
+        `[Authorization] Comparison not found or access denied: ${id} for user: ${user_id}`
+      );
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Comparativa not found" 
+        {
+          success: false,
+          error: "Comparativa not found",
         },
         { status: 404 }
       );
@@ -548,13 +627,16 @@ export async function POST(
 
     // Fetch associated files
     const filesResult = await fetchComparisonFiles(tursoClient, id);
-    
+
     if (!filesResult.success) {
-      console.error("[Database Error] Failed to fetch comparison files:", filesResult.error);
+      console.error(
+        "[Database Error] Failed to fetch comparison files:",
+        filesResult.error
+      );
       return NextResponse.json(
-        { 
-          success: false, 
-          error: filesResult.error 
+        {
+          success: false,
+          error: filesResult.error,
         },
         { status: 500 }
       );
@@ -566,21 +648,25 @@ export async function POST(
     const responseData = transformComparisonData(comparativa, files);
     const endTime = performance.now();
 
-    console.log(`[API Success] Comparison ${id} retrieved successfully in ${(endTime - startTime).toFixed(2)}ms`);
+    console.log(
+      `[API Success] Comparison ${id} retrieved successfully in ${(endTime - startTime).toFixed(2)}ms`
+    );
 
     return NextResponse.json({
       success: true,
       data: responseData,
     });
-
   } catch (error) {
     const endTime = performance.now();
-    console.error(`[API Error] Failed to retrieve comparison after ${(endTime - startTime).toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[API Error] Failed to retrieve comparison after ${(endTime - startTime).toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "Error getting comparativa" 
+      {
+        success: false,
+        error: "Error getting comparativa",
       },
       { status: 500 }
     );
@@ -618,7 +704,7 @@ interface DeleteMetrics {
 /**
  * Executes database query with performance monitoring and error handling
  * @param tursoClient - Database client instance
- * @param query - SQL query string  
+ * @param query - SQL query string
  * @param params - Query parameters
  * @param operation - Operation name for logging
  * @returns Promise with query result and metrics
@@ -628,19 +714,24 @@ async function executeDeleteQuery(
   query: string,
   params: (string | number)[],
   operation: string
-): Promise<{ result: { rows: Record<string, unknown>[]; rowsAffected: number }; metrics: Partial<DeleteMetrics> }> {
+): Promise<{
+  result: { rows: Record<string, unknown>[]; rowsAffected: number };
+  metrics: Partial<DeleteMetrics>;
+}> {
   const startTime = performance.now();
-  
+
   try {
     const result = await tursoClient.execute({
       sql: query,
       args: params,
     });
-    
+
     const queryTime = performance.now() - startTime;
-    
-    console.log(`[INFO] ${operation} completed in ${queryTime.toFixed(2)}ms. Rows affected: ${result.rowsAffected}`);
-    
+
+    console.log(
+      `[INFO] ${operation} completed in ${queryTime.toFixed(2)}ms. Rows affected: ${result.rowsAffected}`
+    );
+
     return {
       result,
       metrics: {
@@ -651,7 +742,10 @@ async function executeDeleteQuery(
     };
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -674,11 +768,11 @@ async function validateComparisonExists(
     [comparisonId, comparisonId],
     "validate_comparison_existence"
   );
-  
+
   const row = result.rows[0] as Record<string, unknown>;
   const exists = Number(row.comparison_exists) > 0;
   const fileCount = Number(row.file_count) || 0;
-  
+
   return { exists, fileCount };
 }
 
@@ -691,9 +785,13 @@ async function validateComparisonExists(
 async function deleteComparisonOptimized(
   tursoClient: Client,
   comparisonId: string
-): Promise<{ success: boolean; error?: string; metrics: Partial<DeleteMetrics> }> {
+): Promise<{
+  success: boolean;
+  error?: string;
+  metrics: Partial<DeleteMetrics>;
+}> {
   const startTime = performance.now();
-  
+
   try {
     // Execute deletion with CASCADE to automatically handle related records
     const { result } = await executeDeleteQuery(
@@ -722,12 +820,19 @@ async function deleteComparisonOptimized(
       metrics: {
         operationTime: totalTime,
         recordsDeleted: result.rowsAffected,
-        optimizationApplied: ["CASCADE_DELETE", "PERFORMANCE_MONITORING", "PREPARED_STATEMENT"],
+        optimizationApplied: [
+          "CASCADE_DELETE",
+          "PERFORMANCE_MONITORING",
+          "PREPARED_STATEMENT",
+        ],
       },
     };
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[ERROR] Delete comparison failed after ${totalTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Delete comparison failed after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
     return {
       success: false,
       error: "Internal Server Error",
@@ -742,15 +847,15 @@ async function deleteComparisonOptimized(
 
 /**
  * Deletes a comparison and all associated files
- * 
+ *
  * Refactored from: /api/comparativas/delete/[id]
  * New endpoint: /new_api/comparisons/[id] (DELETE method)
- * 
+ *
  * This endpoint handles the complete deletion of a comparison including:
  * - Database record deletion (with CASCADE for related files)
  * - Firebase Storage folder deletion
  * - Performance monitoring and optimization
- * 
+ *
  * @param request - Next.js request object containing organization_id
  * @param params - Route parameters containing comparison ID
  * @returns Promise<NextResponse<DeleteComparisonResponse>>
@@ -760,12 +865,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<DeleteComparisonResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id: comparisonId } = await params;
-    
+
     if (!comparisonId) {
       return NextResponse.json(
         { error: "Missing parameters" },
@@ -774,7 +879,7 @@ export async function DELETE(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     let requestBody;
     try {
       requestBody = await request.json();
@@ -797,7 +902,7 @@ export async function DELETE(
     const { organization_id } = validation.data;
 
     // ==================== DATABASE CONNECTION ====================
-    
+
     const tursoClient = getTursoClient(request);
 
     if (!tursoClient) {
@@ -808,19 +913,17 @@ export async function DELETE(
     }
 
     // ==================== BUSINESS LOGIC VALIDATION ====================
-    
+
     // Validate that the comparison exists and get file count for optimization
-    const { exists: comparisonExists, fileCount } = await validateComparisonExists(
-      tursoClient,
-      comparisonId
-    );
+    const { exists: comparisonExists, fileCount } =
+      await validateComparisonExists(tursoClient, comparisonId);
 
     if (!comparisonExists) {
       const totalRequestTime = performance.now() - startTime;
       console.log(
         `[INFO] Comparison ${comparisonId} not found after ${totalRequestTime.toFixed(2)}ms`
       );
-      
+
       // Return consistent error format (backward compatibility)
       return NextResponse.json(
         { error: "Comparativa not found" },
@@ -829,10 +932,10 @@ export async function DELETE(
     }
 
     // ==================== CORE DELETION OPERATION ====================
-    
+
     console.log(
       `[INFO] Starting deletion for comparison ${comparisonId}. ` +
-      `Files to delete: ${fileCount}`
+        `Files to delete: ${fileCount}`
     );
 
     // Step 1: Delete from database (CASCADE will handle related files table)
@@ -846,7 +949,7 @@ export async function DELETE(
       console.error(
         `[ERROR] Database deletion failed for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms: ${dbDeletionResult.error}`
       );
-      
+
       return NextResponse.json(
         { error: dbDeletionResult.error },
         { status: 500 }
@@ -867,7 +970,7 @@ export async function DELETE(
       console.error(
         `[ERROR] Storage deletion failed for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms: ${storageDeleteResult.errors}`
       );
-      
+
       // Note: Database deletion already succeeded, so we have partial failure
       // Return exact error format for backward compatibility
       return NextResponse.json(
@@ -877,28 +980,27 @@ export async function DELETE(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] Comparison ${comparisonId} deleted successfully ` +
-      `after ${totalRequestTime.toFixed(2)}ms. DB: ${dbDeletionResult.metrics?.operationTime?.toFixed(2)}ms, ` +
-      `Storage: ${storageTime.toFixed(2)}ms, Files processed: ${fileCount}`
+        `after ${totalRequestTime.toFixed(2)}ms. DB: ${dbDeletionResult.metrics?.operationTime?.toFixed(2)}ms, ` +
+        `Storage: ${storageTime.toFixed(2)}ms, Files processed: ${fileCount}`
     );
 
     // Return exact response format for backward compatibility
     return NextResponse.json({ success: true });
-
   } catch (error) {
     // ==================== ERROR HANDLING ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.error(
-      `[ERROR] Deletion operation failed after ${totalRequestTime.toFixed(2)}ms:`, 
+      `[ERROR] Deletion operation failed after ${totalRequestTime.toFixed(2)}ms:`,
       error
     );
-    
+
     // Return exact error format for backward compatibility
     return NextResponse.json(
       { error: "Internal Server Error" },

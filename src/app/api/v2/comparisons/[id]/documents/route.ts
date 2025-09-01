@@ -12,11 +12,11 @@ import { deleteFileFromStorage } from "@/core/firebase/data/deleteFile";
 
 /**
  * REFACTORED COMPARISON DOCUMENTS ENDPOINT
- * 
+ *
  * Original Add: /api/comparativas/add/[id]/files (POST)
  * Original Delete: /api/comparativas/delete/[id]/file (POST)
  * Refactored: /new_api/comparisons/[id]/documents (POST for add, DELETE for remove)
- * 
+ *
  * This endpoint manages comparison documents/files with enhanced performance,
  * type safety, and comprehensive error handling while maintaining 100% functional compatibility.
  */
@@ -88,7 +88,7 @@ async function executeQuery(
   try {
     // Add prepared statement optimization
     optimizations.push("prepared_statement");
-    
+
     const result = await client.execute({
       sql,
       args,
@@ -124,7 +124,10 @@ async function executeQuery(
   } catch (error) {
     const endTime = performance.now();
     const queryTime = endTime - startTime;
-    console.error(`[Database Error] ${operation} failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[Database Error] ${operation} failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -133,14 +136,14 @@ async function executeQuery(
 
 /**
  * POST /new_api/comparisons/[id]/documents
- * 
+ *
  * Adds documents to a comparison with enhanced performance and type safety.
  * Maintains 100% compatibility with the original /api/comparativas/add/[id]/files endpoint behavior.
- * 
+ *
  * @param request - Next.js request object
  * @param params - URL parameters containing comparison ID
  * @returns Promise<NextResponse<ComparisonDocumentsResponse>>
- * 
+ *
  * @example
  * POST /new_api/comparisons/[id]/documents
  * Content-Type: multipart/form-data
@@ -149,7 +152,7 @@ async function executeQuery(
  * - files: string (JSON array of ComparativaFile objects)
  * - estudio_realizado: string ("true" or "false")
  * - comissions: string (optional JSON object with commission data)
- * 
+ *
  * Response: {
  *   "success": true
  * }
@@ -162,15 +165,18 @@ export async function POST(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id } = await params;
-    
+
     // Validate URL parameters
     const paramsValidation = ParamsSchema.safeParse({ id });
     if (!paramsValidation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`, paramsValidation.error.errors);
-      
+      console.error(
+        `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
+        paramsValidation.error.issues
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -181,9 +187,9 @@ export async function POST(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     const formData = await request.formData();
-    
+
     const organization_id = formData.get("organization_id") as string;
     const documents = formData.get("files") as string;
     const estudio_realizado = formData.get("estudio_realizado") as string;
@@ -192,8 +198,10 @@ export async function POST(
     // BACKWARD COMPATIBILITY: Match original validation exactly
     if (!id || !organization_id) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -204,12 +212,14 @@ export async function POST(
     }
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -220,12 +230,12 @@ export async function POST(
     }
 
     // ==================== BUSINESS LOGIC EXECUTION ====================
-    
+
     // Parse documents JSON
     let comparativaFiles: ComparativaFile[];
     try {
       comparativaFiles = documents ? JSON.parse(documents) : [];
-      
+
       // Enhanced validation with Zod (optional, maintains backward compatibility)
       if (comparativaFiles.length > 0) {
         z.array(ComparativaFileSchema).parse(comparativaFiles);
@@ -241,14 +251,17 @@ export async function POST(
       try {
         comissions = JSON.parse(comissionsString);
       } catch (parseError) {
-        console.warn("[PARSE WARNING] Commissions data parsing issue:", parseError);
+        console.warn(
+          "[PARSE WARNING] Commissions data parsing issue:",
+          parseError
+        );
         // Continue without commissions data for backward compatibility
       }
     }
 
     console.log(
       `[INFO] Adding ${comparativaFiles.length} documents to comparison ${id}. ` +
-      `Study status: ${estudio_realizado}`
+        `Study status: ${estudio_realizado}`
     );
 
     // 1. Add files to database (if any)
@@ -263,7 +276,7 @@ export async function POST(
         console.error(
           `[ERROR] File insertion failed after ${totalRequestTime.toFixed(2)}ms: ${insertFilesResult.error}`
         );
-        
+
         return NextResponse.json(
           {
             success: false,
@@ -275,7 +288,7 @@ export async function POST(
 
       console.log(
         `[SUCCESS] ${comparativaFiles.length} files inserted successfully. ` +
-        `Performance enhanced with batch processing optimization`
+          `Performance enhanced with batch processing optimization`
       );
     }
 
@@ -291,7 +304,7 @@ export async function POST(
       console.error(
         `[ERROR] Status update failed after ${totalRequestTime.toFixed(2)}ms: ${updateStatusResult.error}`
       );
-      
+
       return NextResponse.json(
         {
           success: false,
@@ -332,7 +345,7 @@ export async function POST(
         console.error(
           `[ERROR] Commission update failed after ${totalRequestTime.toFixed(2)}ms: ${comissionsResponse.error}`
         );
-        
+
         return NextResponse.json(
           {
             success: false,
@@ -346,22 +359,24 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] Documents operation completed for comparison ${id} after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Files added: ${comparativaFiles.length}, Status: ${estudio_realizado === "true" ? "completed" : "pending"}`
+        `Files added: ${comparativaFiles.length}, Status: ${estudio_realizado === "true" ? "completed" : "pending"}`
     );
 
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     const totalRequestTime = performance.now() - startTime;
-    console.error(`[API ERROR] Document addition failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[API ERROR] Document addition failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,
@@ -374,21 +389,21 @@ export async function POST(
 
 /**
  * DELETE /new_api/comparisons/[id]/documents
- * 
+ *
  * Removes a document from a comparison with enhanced performance and type safety.
  * Maintains 100% compatibility with the original /api/comparativas/delete/[id]/file endpoint behavior.
- * 
+ *
  * @param request - Next.js request object
  * @param params - URL parameters containing comparison ID
  * @returns Promise<NextResponse<ComparisonDocumentsResponse>>
- * 
+ *
  * @example
  * DELETE /new_api/comparisons/[id]/documents
  * Body: {
  *   "file_name": "document.pdf",
  *   "organization_id": "org_123"
  * }
- * 
+ *
  * Response: {
  *   "success": true
  * }
@@ -401,15 +416,18 @@ export async function DELETE(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id } = await params;
-    
+
     // Validate URL parameters
     const paramsValidation = ParamsSchema.safeParse({ id });
     if (!paramsValidation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`, paramsValidation.error.errors);
-      
+      console.error(
+        `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
+        paramsValidation.error.issues
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -420,15 +438,17 @@ export async function DELETE(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     const requestBody = await request.json();
     const { file_name, organization_id } = requestBody;
 
     // BACKWARD COMPATIBILITY: Match original validation exactly
     if (!file_name || !id || !organization_id) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -442,17 +462,22 @@ export async function DELETE(
     const validation = ComparisonDocumentsDeleteSchema.safeParse(requestBody);
     if (!validation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.warn(`[ENHANCED VALIDATION] Zod validation warning after ${totalRequestTime.toFixed(2)}ms:`, validation.error.errors);
+      console.warn(
+        `[ENHANCED VALIDATION] Zod validation warning after ${totalRequestTime.toFixed(2)}ms:`,
+        validation.error.issues
+      );
       // Continue with original validation for backward compatibility
     }
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -463,25 +488,26 @@ export async function DELETE(
     }
 
     // ==================== BUSINESS LOGIC EXECUTION ====================
-    
+
     console.log(
       `[INFO] Deleting file '${file_name}' from comparison ${id} in organization ${organization_id}`
     );
 
     // 1. Delete file from Firebase Storage
-    const { success: storageSuccess, error: storageError } = await deleteFileFromStorage(
-      `comparativas`,
-      id,
-      file_name,
-      organization_id
-    );
+    const { success: storageSuccess, error: storageError } =
+      await deleteFileFromStorage(
+        `comparativas`,
+        id,
+        file_name,
+        organization_id
+      );
 
     if (!storageSuccess) {
       const totalRequestTime = performance.now() - startTime;
       console.error(
         `[STORAGE ERROR] File deletion from storage failed after ${totalRequestTime.toFixed(2)}ms: ${storageError}`
       );
-      
+
       return NextResponse.json(
         {
           success: false,
@@ -491,21 +517,28 @@ export async function DELETE(
       );
     }
 
-    console.log(`[SUCCESS] File '${file_name}' deleted from storage successfully`);
+    console.log(
+      `[SUCCESS] File '${file_name}' deleted from storage successfully`
+    );
 
     // 2. Delete file record from database
     const query = `DELETE FROM comparativa_files WHERE filename = ? AND comparativa_id = ?`;
-    const { result, metrics } = await executeQuery(tursoClient, query, [file_name, id], "delete_file");
+    const { result, metrics } = await executeQuery(
+      tursoClient,
+      query,
+      [file_name, id],
+      "delete_file"
+    );
 
     // ==================== RESULT VALIDATION ====================
-    
+
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;
       console.warn(
         `[WARNING] File record not found in database after ${totalRequestTime.toFixed(2)}ms. ` +
-        `File: '${file_name}', Comparison: ${id}`
+          `File: '${file_name}', Comparison: ${id}`
       );
-      
+
       return NextResponse.json(
         {
           success: false,
@@ -516,23 +549,25 @@ export async function DELETE(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] File '${file_name}' deleted from comparison ${id} successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
-      `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
+        `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
+        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
     );
 
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     const totalRequestTime = performance.now() - startTime;
-    console.error(`[API ERROR] Document deletion failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[API ERROR] Document deletion failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,

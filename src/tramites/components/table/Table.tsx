@@ -303,7 +303,7 @@ export function DataTable<TData, TValue>({
   );
 
   return (
-    <div className="flex flex-col gap-4 bg-gray-50 w-full h-full">
+    <div className="flex flex-col gap-4 w-full h-full">
       <TramitesHeader table={table} {...toolbarProps} />
       <TableLayout>
         <TableContent

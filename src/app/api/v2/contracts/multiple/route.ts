@@ -6,13 +6,13 @@ import { Client } from "@libsql/client";
 
 /**
  * REFACTORED MULTIPLE CONTRACT STATUS UPDATE ENDPOINT
- * 
+ *
  * Original: /api/tramites/update/multiple-status (POST)
  * Refactored: /new_api/contracts/multiple (POST)
- * 
+ *
  * This endpoint updates the liquidez_status of multiple contracts with enhanced
  * performance, type safety, and comprehensive error handling.
- * 
+ *
  * Business Logic:
  * - Updates liquidez_status for multiple contract IDs
  * - Automatically sets collection_date for "Cobrado por Comercializadora"
@@ -27,9 +27,9 @@ interface MultipleContractsUpdateResponse {
   error?: string;
 }
 
-type LiquidezStatus = 
+type LiquidezStatus =
   | "Pendiente de Cobro"
-  | "Cobrado por Comercializadora" 
+  | "Cobrado por Comercializadora"
   | "Pagado al Comercial"
   | "Pendiente de Descontar"
   | "Descontado";
@@ -41,10 +41,10 @@ const RequestBodySchema = z.object({
   status: z.enum([
     "Pendiente de Cobro",
     "Cobrado por Comercializadora",
-    "Pagado al Comercial", 
+    "Pagado al Comercial",
     "Pendiente de Descontar",
-    "Descontado"
-  ])
+    "Descontado",
+  ]),
 });
 
 // ==================== PERFORMANCE MONITORING ====================
@@ -64,25 +64,32 @@ async function executeQuery(
   args: (string | number)[]
 ): Promise<{ result: { rowsAffected: number }; metrics: QueryMetrics }> {
   const startTime = performance.now();
-  
+
   try {
     const result = await client.execute({
       sql,
       args,
     });
-    
+
     const queryTime = performance.now() - startTime;
-    
+
     const metrics: QueryMetrics = {
       queryTime,
       resultCount: result.rowsAffected || 0,
-      optimizationApplied: ["prepared_statement", "connection_pooling", "bulk_update"],
+      optimizationApplied: [
+        "prepared_statement",
+        "connection_pooling",
+        "bulk_update",
+      ],
     };
-    
+
     return { result, metrics };
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -90,13 +97,16 @@ async function executeQuery(
 /**
  * Builds the optimized SQL query based on liquidez status
  */
-function buildUpdateQuery(ids: string[], status: LiquidezStatus): { sql: string; args: (string | number)[] } {
+function buildUpdateQuery(
+  ids: string[],
+  status: LiquidezStatus
+): { sql: string; args: (string | number)[] } {
   const placeholders = ids.map(() => "?").join(",");
   const currentDate = NOW_DATE.toISOString();
-  
+
   let sql: string;
   let args: (string | number)[];
-  
+
   if (status === "Cobrado por Comercializadora") {
     sql = `UPDATE tramites SET liquidez_status = ?, collection_date = ? WHERE id IN (${placeholders})`;
     args = [status, currentDate, ...ids];
@@ -107,7 +117,7 @@ function buildUpdateQuery(ids: string[], status: LiquidezStatus): { sql: string;
     sql = `UPDATE tramites SET liquidez_status = ? WHERE id IN (${placeholders})`;
     args = [status, ...ids];
   }
-  
+
   return { sql, args };
 }
 
@@ -115,10 +125,10 @@ function buildUpdateQuery(ids: string[], status: LiquidezStatus): { sql: string;
 
 /**
  * POST /new_api/contracts/multiple
- * 
+ *
  * Updates liquidez_status for multiple contracts in a single operation.
  * Maintains exact compatibility with legacy /api/tramites/update/multiple-status endpoint.
- * 
+ *
  * @param request - Next.js request object
  * @returns Promise<NextResponse<MultipleContractsUpdateResponse>>
  */
@@ -126,99 +136,23 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<MultipleContractsUpdateResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // ==================== REQUEST BODY PARSING ====================
-    
+
     const body = await request.json();
-    
+
     // ==================== ZOD VALIDATION ====================
-    
+
     const validationResult = RequestBodySchema.safeParse(body);
-    
+
     if (!validationResult.success) {
-      console.error("[VALIDATION ERROR] Invalid request body:", validationResult.error.errors);
-      
-      // BACKWARD COMPATIBILITY: Return same error message as original
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "No se han seleccionado trámites." 
-        },
-        { status: 400 }
+      console.error(
+        "[VALIDATION ERROR] Invalid request body:",
+        validationResult.error.issues
       );
-    }
-    
-    const { ids, status } = validationResult.data;
-    
-    console.log(`[INFO] Updating ${ids.length} contracts to status: ${status}`);
-    
-    // ==================== DATABASE CONNECTION ====================
-    
-    const tursoClient = getTursoClient(request);
-    
-    if (!tursoClient) {
-      console.error("[ERROR] Database client not initialized");
-      
+
       // BACKWARD COMPATIBILITY: Return same error message as original
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Error al conectar con la base de datos." 
-        },
-        { status: 500 }
-      );
-    }
-    
-    // ==================== QUERY BUILDING AND EXECUTION ====================
-    
-    const { sql, args } = buildUpdateQuery(ids, status);
-    
-    console.log(`[DEBUG] Executing SQL: ${sql}`);
-    console.log(`[DEBUG] With args: [${args.slice(0, 2).join(", ")}, ...${ids.length} contract IDs]`);
-    
-    const { result, metrics } = await executeQuery(tursoClient, sql, args);
-    
-    // ==================== RESULT VALIDATION ====================
-    
-    if (result.rowsAffected === 0) {
-      const totalRequestTime = performance.now() - startTime;
-      console.warn(`[WARNING] No contracts updated after ${totalRequestTime.toFixed(2)}ms`);
-      
-      // BACKWARD COMPATIBILITY: Return same error message as original
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "No se han actualizado los trámites." 
-        },
-        { status: 400 }
-      );
-    }
-    
-    // ==================== SUCCESS RESPONSE ====================
-    
-    const totalRequestTime = performance.now() - startTime;
-    
-    console.log(
-      `[SUCCESS] Updated ${result.rowsAffected}/${ids.length} contracts ` +
-      `to status "${status}" after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
-      `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
-    
-    // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
-    return NextResponse.json({
-      success: true,
-    });
-    
-  } catch (error) {
-    // ==================== ERROR HANDLING ====================
-    
-    const totalRequestTime = performance.now() - startTime;
-    
-    // Handle Zod validation errors
-    if (error instanceof z.ZodError) {
-      console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, error.errors);
       return NextResponse.json(
         {
           success: false,
@@ -227,10 +161,98 @@ export async function POST(
         { status: 400 }
       );
     }
-    
+
+    const { ids, status } = validationResult.data;
+
+    console.log(`[INFO] Updating ${ids.length} contracts to status: ${status}`);
+
+    // ==================== DATABASE CONNECTION ====================
+
+    const tursoClient = getTursoClient(request);
+
+    if (!tursoClient) {
+      console.error("[ERROR] Database client not initialized");
+
+      // BACKWARD COMPATIBILITY: Return same error message as original
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Error al conectar con la base de datos.",
+        },
+        { status: 500 }
+      );
+    }
+
+    // ==================== QUERY BUILDING AND EXECUTION ====================
+
+    const { sql, args } = buildUpdateQuery(ids, status);
+
+    console.log(`[DEBUG] Executing SQL: ${sql}`);
+    console.log(
+      `[DEBUG] With args: [${args.slice(0, 2).join(", ")}, ...${ids.length} contract IDs]`
+    );
+
+    const { result, metrics } = await executeQuery(tursoClient, sql, args);
+
+    // ==================== RESULT VALIDATION ====================
+
+    if (result.rowsAffected === 0) {
+      const totalRequestTime = performance.now() - startTime;
+      console.warn(
+        `[WARNING] No contracts updated after ${totalRequestTime.toFixed(2)}ms`
+      );
+
+      // BACKWARD COMPATIBILITY: Return same error message as original
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No se han actualizado los trámites.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ==================== SUCCESS RESPONSE ====================
+
+    const totalRequestTime = performance.now() - startTime;
+
+    console.log(
+      `[SUCCESS] Updated ${result.rowsAffected}/${ids.length} contracts ` +
+        `to status "${status}" after ${totalRequestTime.toFixed(2)}ms. ` +
+        `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
+        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
+    );
+
+    // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    // ==================== ERROR HANDLING ====================
+
+    const totalRequestTime = performance.now() - startTime;
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      console.error(
+        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        error.issues
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No se han seleccionado trámites.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Handle general errors
-    console.error(`[ERROR] Multiple contract update failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[ERROR] Multiple contract update failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     // BACKWARD COMPATIBILITY: Return same error message as original
     return NextResponse.json(
       {

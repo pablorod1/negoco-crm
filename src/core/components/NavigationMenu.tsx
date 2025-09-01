@@ -27,8 +27,9 @@ import {
   Sun,
 } from "lucide-react";
 import Image from "next/image";
-import { Link } from "next-view-transitions";
+import { Link, useTransitionRouter } from "next-view-transitions";
 import UpgradePlanDialog from "./UpgradePlanDialog";
+import { slideInOut } from "../view-transitions/view-transitions";
 
 // Types
 type PlanType = "starter" | "pro" | "elite";
@@ -108,15 +109,19 @@ const MenuItemComponent: React.FC<{
 }> = ({ item, userPlan }) => {
   const isPlanAvailable = !item.plans || item.plans.includes(userPlan);
   const isDisabled = item.comingSoon || !isPlanAvailable;
+  const router = useTransitionRouter();
 
   const handleClick = (e: React.MouseEvent) => {
-    if (isDisabled) e.preventDefault();
+    e.preventDefault();
+    router.push(item.href, {
+      onTransitionReady: slideInOut,
+    });
   };
 
   return (
     <li>
       <NavigationMenuLink asChild>
-        <Link
+        <a
           href={item.href}
           onClick={handleClick}
           className={cn(
@@ -149,7 +154,7 @@ const MenuItemComponent: React.FC<{
               {item.description}
             </p>
           </div>
-        </Link>
+        </a>
       </NavigationMenuLink>
     </li>
   );

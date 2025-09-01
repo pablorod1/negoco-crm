@@ -170,7 +170,7 @@ export async function PATCH(
       const totalRequestTime = performance.now() - startTime;
       console.error(
         `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
-        paramsValidation.error.errors
+        paramsValidation.error.issues
       );
 
       return NextResponse.json(
@@ -191,7 +191,7 @@ export async function PATCH(
       const totalRequestTime = performance.now() - startTime;
       console.error(
         `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
-        validation.error.errors
+        validation.error.issues
       );
 
       return NextResponse.json(
@@ -279,7 +279,7 @@ export async function PATCH(
     if (error instanceof z.ZodError) {
       console.error(
         `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
-        error.errors
+        error.issues
       );
       return NextResponse.json(
         {

@@ -2,20 +2,20 @@ import { z } from "zod";
 
 // Enums aligned with current app usage
 export const FotovoltaicaTypeEnum = z.enum(["PPA", "renting", "cubierta", ""], {
-  required_error: "El tipo es obligatorio",
+  message: "El tipo es obligatorio",
 });
 
 export const FotovoltaicaClientTypeEnum = z.enum(
   ["company", "public_org", "community"],
   {
-    required_error: "El tipo de cliente es obligatorio",
+    message: "El tipo de cliente es obligatorio",
   }
 );
 
 export const FotovoltaicaStatusEnum = z.enum(
   ["pending", "processing", "completed", "rejected"],
   {
-    required_error: "El estado es obligatorio",
+    message: "El estado es obligatorio",
   }
 );
 

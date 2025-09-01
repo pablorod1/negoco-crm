@@ -6,10 +6,10 @@ import { Client } from "@libsql/client";
 
 /**
  * REFACTORED CONTRACT STATUS UPDATE ENDPOINT
- * 
+ *
  * Original: /api/tramites/update/[id]/status
  * Refactored: /new_api/contracts/[id]/status
- * 
+ *
  * This endpoint updates the status of a contract (tramite) and related fields
  * with enhanced performance, type safety, and comprehensive error handling.
  */
@@ -94,7 +94,10 @@ async function executeQuery(
     };
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -148,7 +151,11 @@ function buildUpdateQuery(
   }
 
   // Status-specific date updates
-  if (requestData.status === "Activo" && requestData.activation_date && requestData.renovation_date) {
+  if (
+    requestData.status === "Activo" &&
+    requestData.activation_date &&
+    requestData.renovation_date
+  ) {
     updateFields.push("activation_date = ?", "renovation_date = ?");
     queryArgs.push(requestData.activation_date, requestData.renovation_date);
     updatedFieldNames.push("activation_date", "renovation_date");
@@ -167,13 +174,19 @@ function buildUpdateQuery(
   }
 
   // Liquidez status-specific date updates
-  if (requestData.liquidez_status === "Cobrado por Comercializadora" && requestData.collection_date) {
+  if (
+    requestData.liquidez_status === "Cobrado por Comercializadora" &&
+    requestData.collection_date
+  ) {
     updateFields.push("collection_date = ?");
     queryArgs.push(requestData.collection_date);
     updatedFieldNames.push("collection_date");
   }
 
-  if (requestData.liquidez_status === "Pagado al Comercial" && requestData.payment_date) {
+  if (
+    requestData.liquidez_status === "Pagado al Comercial" &&
+    requestData.payment_date
+  ) {
     updateFields.push("payment_date = ?");
     queryArgs.push(requestData.payment_date);
     updatedFieldNames.push("payment_date");
@@ -196,14 +209,14 @@ function buildUpdateQuery(
 
 /**
  * PATCH /new_api/contracts/[id]/status
- * 
+ *
  * Updates the status of a contract (tramite) and related fields.
  * Maintains 100% compatibility with the original endpoint while adding:
  * - Enhanced type safety with Zod validation
  * - Performance monitoring and optimization
  * - Comprehensive error handling
  * - Better logging and debugging information
- * 
+ *
  * @param request - Next.js request object
  * @param context - Route context with contract ID parameter
  * @returns Promise<NextResponse<ContractStatusUpdateResponse>>
@@ -216,9 +229,9 @@ export async function PATCH(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id: contractId } = await params;
-    
+
     // Validate URL parameters
     const paramValidation = ParamsSchema.safeParse({ id: contractId });
     if (!paramValidation.success) {
@@ -233,14 +246,17 @@ export async function PATCH(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     const requestBody = await request.json();
     const validation = ContractStatusUpdateSchema.safeParse(requestBody);
-    
+
     if (!validation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, validation.error.errors);
-      
+      console.error(
+        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        validation.error.issues
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -253,13 +269,15 @@ export async function PATCH(
     const validatedData = validation.data;
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
-    
+
     if (!tursoClient) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -270,19 +288,26 @@ export async function PATCH(
     }
 
     // ==================== QUERY BUILDING AND EXECUTION ====================
-    
-    const { sql, args, updatedFields } = buildUpdateQuery(validatedData, contractId);
-    
-    console.log(`[INFO] Updating contract ${contractId} with fields: ${updatedFields.join(", ")}`);
-    
+
+    const { sql, args, updatedFields } = buildUpdateQuery(
+      validatedData,
+      contractId
+    );
+
+    console.log(
+      `[INFO] Updating contract ${contractId} with fields: ${updatedFields.join(", ")}`
+    );
+
     const { result, metrics } = await executeQuery(tursoClient, sql, args);
 
     // ==================== RESULT VALIDATION ====================
-    
+
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;
-      console.warn(`[WARNING] Contract not found: ${contractId} after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.warn(
+        `[WARNING] Contract not found: ${contractId} after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -293,28 +318,30 @@ export async function PATCH(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] Contract ${contractId} updated successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Query time: ${metrics.queryTime.toFixed(2)}ms, Fields updated: ${metrics.fieldsUpdated}, ` +
-      `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
+        `Query time: ${metrics.queryTime.toFixed(2)}ms, Fields updated: ${metrics.fieldsUpdated}, ` +
+        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
     );
 
     // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     // ==================== ERROR HANDLING ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, error.errors);
+      console.error(
+        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        error.issues
+      );
       return NextResponse.json(
         {
           success: false,
@@ -325,8 +352,11 @@ export async function PATCH(
     }
 
     // Handle general errors
-    console.error(`[ERROR] Contract status update failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[ERROR] Contract status update failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,

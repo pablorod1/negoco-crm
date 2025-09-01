@@ -45,9 +45,9 @@ export async function POST(
     // Validate that the plan is actually changing
     if (plan.old === plan.new) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "New plan must be different from current plan" 
+        {
+          success: false,
+          error: "New plan must be different from current plan",
         },
         { status: 400 }
       );
@@ -67,28 +67,27 @@ export async function POST(
     });
 
     return NextResponse.json(
-      { 
-        success: true, 
-        info: info as unknown as Record<string, unknown>
+      {
+        success: true,
+        info: info as unknown as Record<string, unknown>,
       },
-      { 
+      {
         status: 200,
         headers: {
-          'Cache-Control': 'no-cache',
-        }
+          "Cache-Control": "no-cache",
+        },
       }
     );
-
   } catch (error) {
     console.error("Error sending upgrade plan email:", error);
-    
+
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
           success: false,
           error: "Validation failed",
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       );
@@ -97,16 +96,19 @@ export async function POST(
     // Handle email sending errors
     if (error instanceof Error) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: error.message || "Failed to send upgrade plan email" 
+        {
+          success: false,
+          error: error.message || "Failed to send upgrade plan email",
         },
         { status: 500 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: "Internal server error while sending upgrade plan email" },
+      {
+        success: false,
+        error: "Internal server error while sending upgrade plan email",
+      },
       { status: 500 }
     );
   }

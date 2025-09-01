@@ -8,6 +8,9 @@ import { Separator } from "@/core/components/ui/separator";
 import { useUser } from "@/core/contexts/UserContext";
 import ShortcutsMenu from "./ShortcutsMenu";
 import NavigationMenuComponent from "./NavigationMenu";
+import { SidebarTrigger } from "./ui/sidebar";
+import { Button } from "./ui/button";
+import { MenuIcon } from "lucide-react";
 
 export default function Header({
   activeOrganization,
@@ -17,8 +20,14 @@ export default function Header({
   const { getPlan, userData } = useUser();
   const isComercial = userData?.role === "2";
   return (
-    <header className="sticky top-0 z-50 bg-white backdrop-blur-lg border-b border-border/40 shadow-sm">
+    <header className="header-static sticky top-0 z-50 bg-white backdrop-blur-lg border-b border-border/40 shadow-sm">
       <div className="container mx-auto flex items-center justify-between px-4 ">
+        <SidebarTrigger>
+          <Button>
+            <span className="sr-only">Open sidebar</span>
+            <MenuIcon />
+          </Button>
+        </SidebarTrigger>
         <div className="flex items-center gap-6">
           <Link href="/">
             <Image

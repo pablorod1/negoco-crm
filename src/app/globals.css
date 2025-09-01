@@ -350,3 +350,75 @@
     height 0.5s ease-in-out,
     width 0.5s ease-in-out;
 }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
+}
+
+::view-transition-group(root) {
+  z-index: auto !important;
+}
+
+::view-transition-image-pair(root) {
+  isolation: isolate;
+  will-change: transform, opacity, clip-path;
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 1000;
+  animation: none !important;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+  animation: none !important;
+}
+
+/* Header estático - no se anima */
+.header-static {
+  view-transition-name: header-static;
+}
+
+::view-transition-old(header-static),
+::view-transition-new(header-static) {
+  animation: none !important;
+  transform: none !important;
+}
+
+/* Contenido principal - se anima */
+.main-content {
+  view-transition-name: main-content;
+}
+
+/* Animaciones específicas para el contenido principal */
+::view-transition-old(main-content) {
+  animation: slide-out-left 0.4s ease-in-out forwards;
+}
+
+::view-transition-new(main-content) {
+  animation: slide-in-right 0.4s ease-in-out forwards;
+}
+
+@keyframes slide-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
