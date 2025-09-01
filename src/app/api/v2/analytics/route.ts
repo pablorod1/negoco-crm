@@ -228,7 +228,6 @@ export async function POST(
         AND c.new_company IN (SELECT name FROM comercializadoras)
         ${consumptionUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
     `;
-    console.log("Consumption Query:", consumptionQuery);
     // Execute all queries in parallel for optimal performance
     const [
       clientsResult,
