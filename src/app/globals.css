@@ -12,7 +12,6 @@
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
@@ -277,6 +276,28 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  :root {
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+  }
+
+  .dark {
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.439 0 0);
+  }
 }
 
 /* Estilo para navegadores webkit (Chrome, Safari, Edge) */
@@ -351,29 +372,56 @@
     width 0.5s ease-in-out;
 }
 
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none !important;
+/* Contenido principal - se anima */
+.main-content {
+  view-transition-name: main-content;
+  contain: layout style paint;
 }
 
-::view-transition-group(root) {
+/* Estilos base para view transitions - Optimizado para Genie Effect */
+::view-transition-old(main-content),
+::view-transition-new(main-content) {
+  /* Desactivar animaciones por defecto para permitir el control manual */
+  animation: none !important;
+  transform-style: preserve-3d;
+  perspective: 1200px;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  isolation: isolate;
+  image-rendering: auto;
+  /* Optimización para animaciones complejas */
+  filter: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(main-content) {
+  /* Desactivar animaciones del grupo para control total */
+  animation-duration: 0s !important;
+  animation: none !important;
+  transform-style: preserve-3d;
   z-index: auto !important;
 }
 
-::view-transition-image-pair(root) {
+::view-transition-image-pair(main-content) {
   isolation: isolate;
-  will-change: transform, opacity, clip-path;
+  will-change: transform, opacity;
   z-index: 1;
+  /* Suavizado para transiciones fluidas */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
 }
 
-::view-transition-new(root) {
-  z-index: 1000;
-  animation: none !important;
+/* Configuración específica para cada pseudo-elemento */
+::view-transition-new(main-content) {
+  z-index: 900;
+  /* Inicialmente invisible hasta que empiece su animación */
+  opacity: 0;
 }
 
-::view-transition-old(root) {
+::view-transition-old(main-content) {
   z-index: 1;
-  animation: none !important;
+  /* Visible desde el inicio */
+  opacity: 1;
 }
 
 /* Header estático - no se anima */
@@ -385,40 +433,66 @@
 ::view-transition-new(header-static) {
   animation: none !important;
   transform: none !important;
+  z-index: 1000 !important;
 }
 
-/* Contenido principal - se anima */
-.main-content {
-  view-transition-name: main-content;
+/* Optimizaciones específicas para elementos del sidebar durante genie effect */
+[data-sidebar-item] {
+  transition: all 0.2s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+  /* Mejorar la detección de posición durante animaciones */
+  position: relative;
 }
 
-/* Animaciones específicas para el contenido principal */
-::view-transition-old(main-content) {
-  animation: slide-out-left 0.4s ease-in-out forwards;
+[data-sidebar-item]:hover {
+  transform: scale(1.02) translateZ(2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-::view-transition-new(main-content) {
-  animation: slide-in-right 0.4s ease-in-out forwards;
+/* Clase para debugging del efecto genie */
+.debug-genie-effect {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: rgba(255, 0, 0, 0.8);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px rgba(255, 0, 0, 0.3);
 }
 
-@keyframes slide-out-left {
-  from {
-    opacity: 1;
-    transform: translateX(0);
+/* Media queries para optimización responsive */
+@media (max-width: 768px) {
+  ::view-transition-old(main-content),
+  ::view-transition-new(main-content) {
+    /* Simplificar en móviles para mejor performance */
+    perspective: 800px;
   }
-  to {
-    opacity: 0;
-    transform: translateX(-100px);
+
+  [data-sidebar-item]:hover {
+    transform: scale(1.01) translateZ(1px);
   }
 }
 
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(100px);
+/* Optimización para dispositivos de alta densidad */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  ::view-transition-old(main-content),
+  ::view-transition-new(main-content) {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
+    /* Menor filtrado para transiciones más suaves en retina */
+    filter: contrast(1.02);
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+}
+
+/* Prevenir parpadeo durante transiciones */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(main-content),
+  ::view-transition-new(main-content) {
+    /* Habilitar aceleración hardware completa */
+    transform: translateZ(0);
   }
 }

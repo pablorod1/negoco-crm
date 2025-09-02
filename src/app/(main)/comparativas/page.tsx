@@ -9,7 +9,6 @@ import ComparativasTable from "@/comparativas/components/table/ComparativasTable
 import { showCustomToast } from "@/core/components/CustomToast";
 import { useUser } from "@/core/contexts/UserContext";
 import { ComparativaRow } from "@/comparativas/types";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 import {
   createComercialComparativasColumns,
   createComparativasColumns,
@@ -42,7 +41,7 @@ export default function ComparativasPage() {
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
-      router.push("/", { onTransitionReady: slideOut });
+      router.push("/");
       return;
     }
 

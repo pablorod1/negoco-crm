@@ -1,74 +1,70 @@
 ﻿"use client";
-import Link from "next/link";
-import Image from "next/image";
-import NotificationsMenu from "./NotificationsMenu";
-import NavUser from "./sidebar/NavUser";
-import { cn } from "@/core/utils";
+
+import { SidebarTrigger } from "@/core/components/ui/sidebar";
 import { Separator } from "@/core/components/ui/separator";
-import { useUser } from "@/core/contexts/UserContext";
-import ShortcutsMenu from "./ShortcutsMenu";
-import NavigationMenuComponent from "./NavigationMenu";
-import { SidebarTrigger } from "./ui/sidebar";
-import { Button } from "./ui/button";
-import { MenuIcon } from "lucide-react";
+import { Skeleton } from "@/core/components/ui/skeleton";
+import Image from "next/image";
+import { cn } from "@/core/utils/utils";
+import SmartBreadcrumb from "./SmartBreadcrumbFixed";
+import { useUser } from "../contexts/UserContext";
 
-export default function Header({
-  activeOrganization,
-}: {
-  activeOrganization: string;
-}) {
-  const { getPlan, userData } = useUser();
-  const isComercial = userData?.role === "2";
+interface ImprovedHeaderProps {
+  className?: string;
+}
+
+export default function Header({ className }: ImprovedHeaderProps) {
+  const { userData, loading } = useUser();
+
+  const organization = userData && userData.organization;
+  const { logo, name } = organization
+    ? organization
+    : { logo: null, name: null };
+
   return (
-    <header className="header-static sticky top-0 z-50 bg-white backdrop-blur-lg border-b border-border/40 shadow-sm">
-      <div className="container mx-auto flex items-center justify-between px-4 ">
-        <SidebarTrigger>
-          <Button>
-            <span className="sr-only">Open sidebar</span>
-            <MenuIcon />
-          </Button>
-        </SidebarTrigger>
-        <div className="flex items-center gap-6">
-          <Link href="/">
-            <Image
-              src={
-                activeOrganization === "beenergy"
-                  ? "/beenergy.png"
-                  : "/logo_inline.png"
-              }
-              alt="Logo"
-              width={200}
-              height={200}
-              className={cn("transition-all duration-300", "w-44 h-auto")}
-            />
-          </Link>
-
-          <NavigationMenuComponent activeOrganization={activeOrganization} />
-        </div>
-
-        <div className="flex items-center gap-4">
-          {/* Status indicator - only on desktop */}
-          {!isComercial && (
-            <div className="hidden xl:flex items-center">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-50 text-xs font-medium text-primary capitalize">
-                <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                {getPlan()}
-              </div>
-            </div>
-          )}
-          <ShortcutsMenu />
-
-          {/* Notifications with separator */}
-          <div className="flex items-center">
-            <NotificationsMenu />
+    <header
+      className={cn(
+        "sticky top-0 !z-[1000] w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "px-6 py-1 transition-all duration-200 ease-in-out",
+        "group-has-data-[collapsible=icon]/sidebar-wrapper:px-4",
+        className
+      )}
+    >
+      <div className="flex h-12 items-center justify-between gap-4">
+        {/* Left section - Navigation */}
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground transition-colors" />
             <Separator
               orientation="vertical"
-              className="mx-4 h-6 hidden sm:block"
+              className="h-6 w-px bg-border opacity-60"
             />
-            <div className="hidden sm:block">
-              <NavUser />
-            </div>
           </div>
+
+          <div className="min-w-0 flex-1">
+            <SmartBreadcrumb
+              variant="minimal"
+              showBackButton={true}
+              maxItems={4}
+            />
+          </div>
+        </div>
+
+        {/* Right section - Logo */}
+        <div className="flex items-center">
+          {!loading && userData ? (
+            <div className="relative">
+              <Image
+                src={logo || "/favicon.ico"}
+                alt={name || "Negoco Cloud"}
+                className="h-8 w-auto max-w-32 object-contain transition-opacity hover:opacity-80"
+                width={128}
+                height={32}
+                priority
+              />
+            </div>
+          ) : (
+            <Skeleton className="h-8 w-8 rounded-full" />
+          )}
         </div>
       </div>
     </header>

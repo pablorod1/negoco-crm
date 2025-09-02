@@ -9,7 +9,6 @@ import {
 import FotovoltaicasTable from "@/fotovoltaica/components/table/FotovoltaicasTable";
 import { useUser } from "@/core/contexts/UserContext";
 import { FotovoltaicaVM } from "@/fotovoltaica/types";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 import { ColumnDef } from "@tanstack/react-table";
 import { ShieldAlert } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
@@ -37,7 +36,7 @@ export default function FotovoltaicaPage() {
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
-      router.push("/", { onTransitionReady: slideOut });
+      router.push("/");
       return;
     }
 

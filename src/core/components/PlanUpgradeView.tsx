@@ -1,13 +1,12 @@
 ﻿import { Rocket } from "lucide-react";
 import { Button } from "./ui/button";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 
 export default function PlanUpgradeView() {
   const router = useTransitionRouter();
   // Handle navigation
   const handleBack = () => {
-    router.push("/", { onTransitionReady: slideOut });
+    router.push("/");
   };
   return (
     <div className="flex items-center justify-center h-[60vh]">

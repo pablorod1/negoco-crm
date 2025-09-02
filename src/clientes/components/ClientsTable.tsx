@@ -12,7 +12,6 @@ import { Badge } from "@/core/components/ui/badge";
 import { ChevronRight, FileText, Inbox, Mail, Phone } from "lucide-react";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideIn } from "@/core/view-transitions/view-transitions";
 
 interface ClientsTableProps {
   clients: ClientListItem[];
@@ -106,11 +105,7 @@ export function ClientsTable({
                 className={`cursor-pointer group hover:bg-primary/10 transition-colors border-b last:border-b-0 ${
                   idx % 2 === 0 ? "bg-muted/10" : "bg-background"
                 }`}
-                onClick={() =>
-                  router.push(`/clientes/${client.id}`, {
-                    onTransitionReady: slideIn,
-                  })
-                }
+                onClick={() => router.push(`/clientes/${client.id}`)}
               >
                 <TableCell className="font-semibold">
                   <div className="flex flex-col">
@@ -204,4 +199,3 @@ export function ClientsTable({
     </div>
   );
 }
-

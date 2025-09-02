@@ -27,7 +27,6 @@ import TramiteStatusSection from "@/tramites/components/editTramite/TramiteStatu
 import LiquidezStatusSection from "@/tramites/components/editTramite/liquidez/LiquidezStatusSection";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 import { formatUUID } from "@/core/utils/format";
 import ProviderSection from "@/tramites/components/editTramite/ProviderSection";
 
@@ -66,9 +65,7 @@ export default function TramiteDetails() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/tramites", {
-          onTransitionReady: slideOut,
-        });
+        router.push("/tramites");
         return;
       }
 
@@ -81,9 +78,7 @@ export default function TramiteDetails() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/tramites", {
-          onTransitionReady: slideOut,
-        });
+        router.push("/tramites");
         return;
       }
 
@@ -103,9 +98,7 @@ export default function TramiteDetails() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/tramites", {
-          onTransitionReady: slideOut,
-        });
+        router.push("/tramites");
         return;
       }
     } catch (error) {
@@ -117,9 +110,7 @@ export default function TramiteDetails() {
         iconSize: 24,
         iconColor: "var(--danger-color)",
       });
-      router.push("/tramites", {
-        onTransitionReady: slideOut,
-      });
+      router.push("/tramites");
       return;
     } finally {
       setLoading(false);

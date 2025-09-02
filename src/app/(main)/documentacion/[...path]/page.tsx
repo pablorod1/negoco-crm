@@ -12,7 +12,6 @@ import { CircleX } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -88,9 +87,7 @@ export default function FolderPage() {
 
   const handleBack = useCallback(() => {
     const parentPath = getParentPath(folderPath);
-    router.push(parentPath, {
-      onTransitionReady: slideOut,
-    });
+    router.push(parentPath);
   }, [folderPath, router]);
 
   return (

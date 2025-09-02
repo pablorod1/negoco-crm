@@ -29,7 +29,6 @@ import {
 import Image from "next/image";
 import { Link, useTransitionRouter } from "next-view-transitions";
 import UpgradePlanDialog from "./UpgradePlanDialog";
-import { slideInOut } from "../view-transitions/view-transitions";
 
 // Types
 type PlanType = "starter" | "pro" | "elite";
@@ -113,9 +112,7 @@ const MenuItemComponent: React.FC<{
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.push(item.href, {
-      onTransitionReady: slideInOut,
-    });
+    router.push(item.href);
   };
 
   return (

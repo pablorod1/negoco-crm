@@ -44,7 +44,6 @@ import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();
@@ -82,9 +81,7 @@ export default function EditComparativaPage() {
           icon: ShieldAlert,
           iconSize: 24,
         });
-        router.push("/comparativas", {
-          onTransitionReady: slideOut,
-        });
+        router.push("/comparativas");
         return;
       }
 
@@ -97,9 +94,7 @@ export default function EditComparativaPage() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/comparativas", {
-          onTransitionReady: slideOut,
-        });
+        router.push("/comparativas");
         return;
       }
 
@@ -114,9 +109,7 @@ export default function EditComparativaPage() {
           iconSize: 24,
           iconColor: "var(--danger-color)",
         });
-        router.push("/comparativas", {
-          onTransitionReady: slideOut,
-        });
+        router.push("/comparativas");
         return;
       }
     } catch (error) {
@@ -128,9 +121,7 @@ export default function EditComparativaPage() {
         iconSize: 24,
         iconColor: "var(--danger-color)",
       });
-      router.push("/comparativas", {
-        onTransitionReady: slideOut,
-      });
+      router.push("/comparativas");
       return;
     } finally {
       setLoading(false);

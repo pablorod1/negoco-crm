@@ -28,7 +28,6 @@ import { useEffect, useState } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { ClientListItem } from "@/clientes/components/ClientsList";
 import { Link, useTransitionRouter } from "next-view-transitions";
-import { slideIn } from "@/core/view-transitions/view-transitions";
 import { useUser } from "@/core/contexts/UserContext";
 import { useParams } from "next/navigation";
 import LoadingStateCard from "@/dashboard/components/LoadingStateCard";
@@ -89,7 +88,7 @@ export default function ClientDetailsPage() {
               iconSize: 24,
               iconColor: "var(--danger-color)",
             });
-            router.push("/clientes", { onTransitionReady: slideIn });
+            router.push("/clientes");
             return;
           }
 

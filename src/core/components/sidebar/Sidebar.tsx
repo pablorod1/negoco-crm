@@ -1,35 +1,55 @@
 "use client";
 
+import React from "react";
+
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from "@/core/components/ui/sidebar";
-import Image from "next/image";
-import { Link } from "next-view-transitions";
 import NavUser from "./NavUser";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/core/contexts/UserContext";
 import TooltipComponent from "../TooltipComponent";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Badge } from "@/core/components/ui/badge";
+import {
+  LayoutDashboard,
+  BarChart3,
+  FileText,
+  Sun,
+  DollarSign,
+  Users,
+  Building2,
+  FolderOpen,
+  UserCheck,
+  Megaphone,
+  Zap,
+  BadgeCheck,
+  Settings,
+  HelpCircle,
+  X,
+} from "lucide-react";
+import { cn } from "@/core/utils";
+import ShortcutsMenu from "../ShortcutsMenu";
+import { Separator } from "../ui/separator";
+import UpgradePlanDialog from "../UpgradePlanDialog";
+import { useSidebarGenieNavigation } from "@/core/view-transitions/useGenieEffect";
 
 // Types
 type PlanType = "starter" | "pro" | "elite";
 
-interface SidebarMenuItem {
+interface SidebarItem {
   title: string;
   url: string;
-  icon?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   description?: string;
   requiresAdmin?: boolean;
   comingSoon?: boolean;
@@ -38,11 +58,8 @@ interface SidebarMenuItem {
 
 interface SidebarSection {
   title: string;
-  items: SidebarMenuItem[];
+  items: SidebarItem[];
 }
-
-const DEFAULT_LOGO_COLLAPSED = "/logo_inline.png";
-const DEFAULT_LOGO = "/logo_inline.png";
 
 // Custom hooks
 const useNavigationAccess = () => {
@@ -52,12 +69,59 @@ const useNavigationAccess = () => {
     const userPlan = getPlan() as PlanType;
     const isAdmin = userData?.role === "admin" || userData?.role === "1";
     const isElite = userPlan === "elite";
+    const isPro = userPlan === "pro";
+    const isStarter = userPlan === "starter";
 
-    return { userPlan, isAdmin, isElite };
+    return { userPlan, isAdmin, isElite, isPro, isStarter };
   }, [userData?.role, getPlan]);
 };
 
-// Menu configuration
+// Helper para manejar el localStorage del mensaje del plan
+const usePlanMessageVisibility = (userPlan: PlanType) => {
+  const [isMessageVisible, setIsMessageVisible] = useState(true);
+
+  useEffect(() => {
+    const storageKey = `plan-message-hidden-${userPlan}`;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        const { hiddenUntil } = JSON.parse(stored);
+        const now = new Date();
+        const expirationDate = new Date(hiddenUntil);
+
+        // Si la fecha de expiración no ha pasado, ocultar el mensaje
+        if (now < expirationDate) {
+          setIsMessageVisible(false);
+        } else {
+          // Si la fecha ha pasado, limpiar el localStorage
+          localStorage.removeItem(storageKey);
+        }
+      } catch {
+        // Si hay error parseando, limpiar el localStorage
+        localStorage.removeItem(storageKey);
+      }
+    }
+  }, [userPlan]);
+
+  const hideMessage = () => {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const storageKey = `plan-message-hidden-${userPlan}`;
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        hiddenUntil: nextMonth.toISOString(),
+      })
+    );
+
+    setIsMessageVisible(false);
+  };
+
+  return { isMessageVisible, hideMessage };
+};
+
 const getMenuSections = (): SidebarSection[] => [
   {
     title: "Principal",
@@ -65,7 +129,7 @@ const getMenuSections = (): SidebarSection[] => [
       {
         title: "Dashboard",
         url: "/",
-        icon: "/icons/dashboard.webp",
+        icon: LayoutDashboard,
         plans: ["starter", "pro", "elite"],
       },
     ],
@@ -76,28 +140,28 @@ const getMenuSections = (): SidebarSection[] => [
       {
         title: "Comparativas",
         url: "/comparativas",
-        icon: "/icons/comparativas2.webp",
+        icon: BarChart3,
         description: "Solicita tu comparativa energética",
         plans: ["pro", "elite"],
       },
       {
         title: "Trámites",
         url: "/tramites",
-        icon: "/icons/tramite.webp",
+        icon: FileText,
         description: "Gestión de trámites y seguimiento",
         plans: ["starter", "pro", "elite"],
       },
       {
         title: "Fotovoltaica",
         url: "/fotovoltaica",
-        icon: "/icons/liquidez.webp",
+        icon: Sun,
         description: "Solicita tu estudio fotovoltaico",
         plans: ["pro", "elite"],
       },
       {
         title: "Liquidaciones",
         url: "/liquidez",
-        icon: "/icons/liquidez.webp",
+        icon: DollarSign,
         description: "Registro y control de liquidaciones",
         requiresAdmin: true,
         plans: ["starter", "pro", "elite"],
@@ -110,35 +174,35 @@ const getMenuSections = (): SidebarSection[] => [
       {
         title: "Clientes",
         url: "/clientes",
-        icon: "/icons/equipo.webp",
+        icon: Users,
         description: "Gestión y seguimiento de clientes",
         plans: ["starter", "pro", "elite"],
       },
       {
         title: "Comercializadoras",
         url: "/comercializadoras",
-        icon: "/icons/equipo.webp",
+        icon: Building2,
         description: "Gestión de proveedores energéticos",
         plans: ["starter", "pro", "elite"],
       },
       {
         title: "Documentación",
         url: "/documentacion",
-        icon: "/file-icons/folder.png",
+        icon: FolderOpen,
         description: "Archivos y documentos asociados",
         plans: ["starter", "pro", "elite"],
       },
       {
         title: "Colaboradores",
         url: "/colaboradores",
-        icon: "/icons/equipo.webp",
+        icon: UserCheck,
         description: "Control de usuarios y colaboradores",
         plans: ["starter", "pro", "elite"],
       },
       {
         title: "Difusiones",
         url: "/difusiones",
-        icon: "/icons/equipo.webp",
+        icon: Megaphone,
         description: "Comunicaciones y campañas informativas",
         requiresAdmin: true,
         comingSoon: true,
@@ -148,9 +212,8 @@ const getMenuSections = (): SidebarSection[] => [
   },
 ];
 
-// Menu Item Component
-const SidebarMenuItemComponent: React.FC<{
-  item: SidebarMenuItem;
+const SidebarItemComponent: React.FC<{
+  item: SidebarItem;
   userPlan: PlanType;
   isCollapsed: boolean;
 }> = ({ item, userPlan, isCollapsed }) => {
@@ -158,56 +221,63 @@ const SidebarMenuItemComponent: React.FC<{
   const isPlanAvailable = !item.plans || item.plans.includes(userPlan);
   const isDisabled = item.comingSoon || !isPlanAvailable;
   const isActive = pathname === item.url;
+  const IconComponent = item.icon;
+  const handleSidebarClick = useSidebarGenieNavigation();
 
   const menuButton = (
     <SidebarMenuButton
       asChild
       isActive={isActive}
-      className={`
-        group relative h-11 justify-start transition-all duration-200
-        ${
-          isActive
-            ? "bg-primary text-primary-foreground shadow-sm"
-            : "hover:bg-accent hover:text-accent-foreground"
-        }
-        ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}
-      `}
+      className={cn(
+        "group relative h-10 justify-start transition-all duration-200",
+        "border border-transparent rounded-lg",
+        isActive
+          ? "!bg-primary-900 !text-white shadow-sm"
+          : "hover:bg-slate-100 text-slate-700 hover:text-slate-900",
+        isDisabled ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""
+      )}
       disabled={isDisabled}
     >
-      <Link
+      <a
         href={isDisabled ? "#" : item.url}
-        className="flex items-center gap-3 w-full"
-        onClick={(e) => isDisabled && e.preventDefault()}
+        className="flex items-center gap-3 w-full px-3"
+        onClick={isDisabled ? undefined : handleSidebarClick}
+        data-sidebar-item={item.url}
       >
-        {/* Icon placeholder */}
-        <div className="flex items-center justify-center w-5 h-5 rounded-sm bg-current/10">
-          <div className="w-3 h-3 rounded-sm bg-current/60" />
+        {/* Simple icon */}
+        <div className="flex items-center justify-center w-5 h-5">
+          {IconComponent && <IconComponent className="w-4 h-4" />}
         </div>
 
-        <div className="flex flex-col items-start flex-1 min-w-0">
-          <div className="flex items-center gap-2 w-full">
+        {!isCollapsed && (
+          <div className="flex items-center justify-between flex-1 min-w-0">
             <span className="text-sm font-medium truncate">{item.title}</span>
-            {item.comingSoon && !isCollapsed && (
-              <Badge
-                variant="secondary"
-                className="text-xs px-1.5 py-0.5 h-auto"
-              >
-                Próximamente
-              </Badge>
-            )}
-            {!isPlanAvailable && !item.comingSoon && !isCollapsed && (
-              <Badge variant="outline" className="text-xs px-1.5 py-0.5 h-auto">
-                Plan superior
-              </Badge>
-            )}
+
+            {/* Compact badges */}
+            <div className="flex items-center gap-1 ml-2">
+              {item.comingSoon && (
+                <Badge
+                  variant="secondary"
+                  className="text-xs px-1.5 py-0 h-5 bg-amber-100 text-amber-700 border-amber-200"
+                >
+                  Próximo
+                </Badge>
+              )}
+              {!isPlanAvailable && !item.comingSoon && (
+                <Badge
+                  variant="outline"
+                  className="text-xs px-1.5 py-0 h-5 bg-blue-50 text-blue-600 border-blue-200"
+                >
+                  Pro
+                </Badge>
+              )}
+            </div>
           </div>
-          {item.description && !isCollapsed && (
-            <span className="text-xs text-muted-foreground truncate w-full">
-              {item.description}
-            </span>
-          )}
-        </div>
-      </Link>
+        )}
+        {isActive && !isCollapsed ? (
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-white rounded-full" />
+        ) : null}
+      </a>
     </SidebarMenuButton>
   );
 
@@ -224,7 +294,6 @@ const SidebarMenuItemComponent: React.FC<{
   return <SidebarMenuItem>{menuButton}</SidebarMenuItem>;
 };
 
-// Section Component
 const SidebarSectionComponent: React.FC<{
   section: SidebarSection;
   isAdmin: boolean;
@@ -238,17 +307,12 @@ const SidebarSectionComponent: React.FC<{
   if (visibleItems.length === 0) return null;
 
   return (
-    <SidebarGroup>
-      {!isCollapsed && (
-        <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">
-          {section.title}
-        </SidebarGroupLabel>
-      )}
+    <SidebarGroup className="px-2">
       <SidebarGroupContent>
         <SidebarMenu className="gap-1">
-          {visibleItems.map((item) => (
-            <SidebarMenuItemComponent
-              key={item.url}
+          {visibleItems.map((item, index) => (
+            <SidebarItemComponent
+              key={index}
               item={item}
               userPlan={userPlan}
               isCollapsed={isCollapsed}
@@ -261,105 +325,123 @@ const SidebarSectionComponent: React.FC<{
 };
 
 export function SidebarComponent() {
-  const { userData } = useUser();
   const { open } = useSidebar();
-  const { userPlan, isAdmin } = useNavigationAccess();
+  const { userPlan, isAdmin, isElite, isStarter, isPro } =
+    useNavigationAccess();
+  const { isMessageVisible, hideMessage } = usePlanMessageVisibility(userPlan);
 
-  // Obtener el logo de forma segura
-  const organizationLogo = userData?.organization?.logo;
   const menuSections = useMemo(() => getMenuSections(), []);
 
   return (
-    <Sidebar variant="floating" collapsible="icon">
-      <SidebarHeader className="border-b px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3 transition-all">
-            {organizationLogo ? (
-              <>
-                <div className="flex-shrink-0">
-                  <Image
-                    src={organizationLogo}
-                    alt="Logo"
-                    width={32}
-                    height={32}
-                    priority
-                    className="w-8 h-8 rounded-md"
-                  />
-                </div>
-                {open && (
-                  <div className="flex flex-col min-w-0">
-                    <h2 className="text-lg font-bold text-primary truncate">
-                      {userData?.organization?.name}
-                    </h2>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="flex-shrink-0">
-                  <Image
-                    src={DEFAULT_LOGO_COLLAPSED}
-                    alt="Logo"
-                    width={32}
-                    height={32}
-                    priority
-                    className="w-8 h-8"
-                  />
-                </div>
-                {open && (
-                  <Image
-                    src={DEFAULT_LOGO}
-                    alt="Logo"
-                    width={140}
-                    height={32}
-                    priority
-                    className="h-8 w-auto"
-                  />
-                )}
-              </>
-            )}
-          </Link>
-        </div>
-
-        <div className="flex justify-end mt-2">
-          <SidebarTrigger className="h-8 w-8" />
-        </div>
+    <Sidebar collapsible="icon">
+      <SidebarHeader
+        className={cn(
+          "space-y-6 mt-2",
+          open ? "p-2" : "p-1.5",
+          "transition-all duration-300"
+        )}
+      >
+        <NavUser />
+        <ShortcutsMenu open={open} />
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
-        <div className="space-y-6">
+      <Separator className="max-w-60 mx-auto  rounded-full " />
+
+      <SidebarContent className="py-2 flex flex-col justify-between h-full">
+        <div className="space-y-2">
           {menuSections.map((section, index) => (
-            <SidebarSectionComponent
-              key={index}
-              section={section}
-              isAdmin={isAdmin}
-              userPlan={userPlan}
-              isCollapsed={!open}
-            />
+            <React.Fragment key={`fragment-${index}`}>
+              <SidebarSectionComponent
+                key={index}
+                section={section}
+                isAdmin={isAdmin}
+                userPlan={userPlan}
+                isCollapsed={!open}
+              />
+              <Separator className="max-w-60 mx-auto rounded-full" />
+            </React.Fragment>
           ))}
         </div>
       </SidebarContent>
 
-      <SidebarFooter className="border-t px-3 py-4">
-        {/* Plan indicator */}
-        {!open ? (
-          <TooltipComponent placement="right" content={`Plan ${userPlan}`}>
-            <div className="flex justify-center">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
+      <SidebarFooter className="border-t border-slate-200/60 bg-slate-50/50">
+        {!isElite && isAdmin && isMessageVisible ? (
+          <div className="relative rounded-xl bg-gradient-to-b from-white to-primary-50 p-4 flex flex-col justify-between gap-4 shadow-sm">
+            {/* Botón de cerrar */}
+            <button
+              onClick={hideMessage}
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-200/50 transition-colors"
+              aria-label="Cerrar mensaje"
+            >
+              <X className="w-3 h-3 text-slate-400 hover:text-slate-600" />
+            </button>
+
+            {/* Texto personalizado según el plan */}
+            <div className="flex flex-col gap-3 pr-6">
+              {isStarter ? (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Zap className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-slate-700">
+                      Plan Starter
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Mejora a <strong>Pro</strong> para acceder a comparativas
+                    energéticas y fotovoltaica, además de soporte por WhatsApp y
+                    más usuarios.
+                  </p>
+                </div>
+              ) : isPro ? (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <BadgeCheck className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-semibold text-slate-700">
+                      Plan Pro
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Actualiza a <strong>Élite</strong> para personalización
+                    completa con tu logo, colores corporativos, soporte
+                    prioritario y usuarios ilimitados.
+                  </p>
+                </div>
+              ) : null}
             </div>
-          </TooltipComponent>
-        ) : (
-          <div className="px-3 py-2 rounded-lg bg-muted/50 mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-xs font-medium capitalize text-muted-foreground">
-                Plan {userPlan}
-              </span>
+
+            {/* Botón de upgrade solo para admins no-Elite */}
+            <div className="flex flex-col items-start">
+              <UpgradePlanDialog />
             </div>
           </div>
-        )}
+        ) : null}
 
-        <NavUser />
+        <SidebarGroup className="p-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              <SidebarItemComponent
+                item={{
+                  title: "Ajustes",
+                  icon: Settings,
+                  url: "/ajustes",
+                  plans: ["starter", "pro", "elite"],
+                }}
+                userPlan={userPlan}
+                isCollapsed={!open}
+              />
+              <SidebarItemComponent
+                item={{
+                  title: "Soporte",
+                  icon: HelpCircle,
+                  url: "/soporte",
+                  plans: ["starter", "pro", "elite"],
+                }}
+                userPlan={userPlan}
+                isCollapsed={!open}
+              />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarFooter>
     </Sidebar>
   );

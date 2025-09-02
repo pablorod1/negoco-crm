@@ -1,5 +1,5 @@
 ﻿"use client";
-import { SidebarProvider } from "@/core/components/ui/sidebar";
+
 import { TooltipProvider } from "@/core/components/ui/tooltip";
 import { ComparativasProvider } from "@/core/contexts/ComparativasContext";
 import { FotovoltaicasProvider } from "@/core/contexts/FotovoltaicasContext";
@@ -14,9 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <UsersProvider>
           <TramitesProvider>
             <ComparativasProvider>
-              <FotovoltaicasProvider>
-                <SidebarProvider>{children}</SidebarProvider>
-              </FotovoltaicasProvider>
+              <FotovoltaicasProvider>{children}</FotovoltaicasProvider>
             </ComparativasProvider>
           </TramitesProvider>
         </UsersProvider>
