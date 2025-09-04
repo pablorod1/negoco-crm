@@ -20,7 +20,7 @@ import FotovoltaicaDateDetails from "./FotovoltaicaDateDetails";
 import FotovoltaicaComisionsDetailsTab from "./comisionDetails/FotovoltaicaComisionsDetailsTab";
 import FotovoltaicaSalesPersonDetailsTab from "./salesPersonDetails/FotovoltaicaSalesPersonDetailsTab";
 import FotovoltaicaLocationTab from "./FotovoltaicaLocationTab";
-import FotovoltaicaNotesTab from "./notes/FotovoltaicaNotesTab";
+import TicketTabContent from "@/tickets/components/TicketTabContent";
 import FotovoltaicaFilesTab from "./files/FotovoltaicaFilesTab";
 import UpdateFotovoltaicaStatusDialog from "./UpdateFotovoltaicaStatusDialog";
 import { formatUUID } from "@/core/utils/format";
@@ -242,10 +242,12 @@ export function FotovoltaicaDetailView({ id }: { id: string }) {
         </TabsContent>
 
         <TabsContent value="notas" className="space-y-6">
-          <FotovoltaicaNotesTab
-            fotovoltaica={fotovoltaica}
-            onSubmit={fetchFotovoltaica}
-            isComercial={isComercial as boolean}
+          <TicketTabContent
+            context="fotovoltaica"
+            refId={fotovoltaica.id}
+            assignedTo={fotovoltaica.user_id}
+            userData={userData as User}
+            onRefresh={fetchFotovoltaica}
           />
         </TabsContent>
 

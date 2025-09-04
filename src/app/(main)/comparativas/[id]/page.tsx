@@ -4,7 +4,6 @@ import { User } from "@/core/types";
 import { ComparativaFile, ComparativaVM } from "@/comparativas/types";
 import {
   Calendar,
-  CheckCircle,
   ClipboardList,
   CloudAlert,
   LucideUser,
@@ -32,9 +31,8 @@ import { Separator } from "@/core/components/ui/separator";
 import { formatDateTime, formatUUID } from "@/core/utils/format";
 import { showCustomToast } from "@/core/components/CustomToast";
 import UploadComparativaFilesModal from "@/comparativas/components/editComparativa/UploadComparativaFilesModal";
-import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
 import UpdateComissionsModal from "@/comparativas/components/editComparativa/UpdateComissionsModal";
-import { ComparativaNotesSection } from "@/comparativas/components/editComparativa/NotesTabContent";
+import TicketTabContent from "@/tickets/components/TicketTabContent";
 import { ServiceInfo } from "@/comparativas/components/editComparativa/ServiceInfo";
 import { FilesList } from "@/comparativas/components/editComparativa/FilesList";
 import { CommissionsTabContent } from "@/comparativas/components/editComparativa/ComissionsTabContent";
@@ -136,80 +134,6 @@ export default function EditComparativaPage() {
       setLoading(false);
     }
   }, [id, userData?.id, userData?.role, router]);
-
-  const handleAddNewNote = async (note: string) => {
-    if (!comparativa) return;
-
-    try {
-      const rs = await fetch(`/api/v2/comparisons/${id}/notes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          notes: comparativa.notes,
-          note,
-        }),
-      });
-
-      const { success, error } = await rs.json();
-
-      if (!success) {
-        showCustomToast({
-          title: "Error al añadir la nota",
-          message: error,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CloudAlert,
-        });
-        return;
-      }
-
-      const notification = generateComparativaUpdatedNotification({
-        comparativa_id: comparativa.id,
-        client: comparativa.client,
-        user_id: comparativa.user.id as string,
-        notes: true,
-      });
-
-      const response = await fetch(`/api/v2/notifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notification }),
-      });
-
-      const { success: notifySuccess, error: notifyError } =
-        await response.json();
-
-      if (!notifySuccess && notifyError) {
-        showCustomToast({
-          title: "Error al notificar cambios",
-          message: notifyError,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CloudAlert,
-        });
-        return;
-      }
-
-      showCustomToast({
-        title: "Nota añadida",
-        message: `La nota se ha añadido correctamente.\n\nSe ha notificado a ${comparativa.user.name}.`,
-        iconColor: "var(--success-color)",
-        iconSize: 24,
-        icon: CheckCircle,
-      });
-
-      fetchComparativa();
-    } catch (error) {
-      console.error(error);
-      showCustomToast({
-        title: "Error al añadir la nota",
-        message: "Inténtalo de nuevo más tarde.",
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-        icon: CloudAlert,
-      });
-    }
-  };
 
   useEffect(() => {
     fetchComparativa();
@@ -318,11 +242,12 @@ export default function EditComparativaPage() {
               </TabsContent>
 
               <TabsContent value="notes">
-                <ComparativaNotesSection
-                  notes={comparativa.notes}
-                  comparativaId={comparativa.id}
-                  onDeletedNote={fetchComparativa}
-                  onAddNote={handleAddNewNote}
+                <TicketTabContent
+                  context="comparativa"
+                  refId={comparativa.id}
+                  assignedTo={comparativa.user.id as string}
+                  userData={userData as User}
+                  onRefresh={fetchComparativa}
                 />
               </TabsContent>
             </Tabs>

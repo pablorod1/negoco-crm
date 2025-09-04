@@ -15,7 +15,7 @@ import { SignerDB, TramiteFile } from "@/tramites/types/tramite.types";
 import { User } from "@/core/types";
 import { useUser } from "@/core/contexts/UserContext";
 import { useParams } from "next/navigation";
-import { TramiteNotesSection } from "@/tramites/components/editTramite/notes/NotesTabContent";
+import TicketTabContent from "@/tickets/components/TicketTabContent";
 import ContractSection from "@/tramites/components/editTramite/contract/ContractSection";
 import { showCustomToast } from "@/core/components/CustomToast";
 import TramiteFilesSection from "@/tramites/components/editTramite/files/TramitesFilesSection";
@@ -161,7 +161,7 @@ export default function TramiteDetails() {
   }
 
   return (
-    <div className=" mx-12 py-6 ">
+    <div className="space-y-6 mx-12 py-6 ">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary-800">
@@ -257,16 +257,14 @@ export default function TramiteDetails() {
         isEditable={isEditable}
       />
 
-      {/* Notes Section */}
+      {/* Ticket System Section */}
 
-      <TramiteNotesSection
-        notes={tramite.notes}
-        onDeletedNote={fetchTramite}
-        onAddNote={fetchTramite}
-        tramite_id={tramite.id}
+      <TicketTabContent
+        context="tramite"
+        refId={tramite.id}
+        assignedTo={tramite.user_id}
         userData={userData as User}
-        client={client}
-        internalNotes={tramite.internal_notes}
+        onRefresh={fetchTramite}
       />
 
       {/* Files Section */}

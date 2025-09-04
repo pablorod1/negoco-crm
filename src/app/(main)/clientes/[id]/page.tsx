@@ -24,7 +24,7 @@ import {
   TabsTrigger,
 } from "@/core/components/ui/tabs";
 import { ClientFilesGrid } from "@/clientes/components/details/ClientFilesGrid";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { ClientListItem } from "@/clientes/components/ClientsList";
 import { Link, useTransitionRouter } from "next-view-transitions";
@@ -36,7 +36,8 @@ import ClientError from "@/clientes/components/details/ClientError";
 import ClientContactDetails from "@/clientes/components/details/ClientContactDetails";
 import { ClientTramitesTable } from "@/clientes/components/details/ClientTramitesTable";
 import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
-import ClientRecentlyActivity from "@/clientes/components/details/ClientRecentlyActivity";
+import TicketTabContent from "@/tickets/components/TicketTabContent";
+import { User } from "@/core/types";
 
 // Helper function to format phone number for WhatsApp
 const formatWhatsAppNumber = (phone: string | null | undefined): string => {
@@ -59,73 +60,70 @@ export default function ClientDetailsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchClient = async () => {
-      if (!userData?.id || !id) return;
+  const fetchClient = useCallback(async () => {
+    if (!userData?.id || !id) return;
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const response = await fetch(`/api/v2/clients/${id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userData.id,
-            user_role: userData.role,
-          }),
-        });
+    try {
+      const response = await fetch(`/api/v2/clients/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userData.id,
+          user_role: userData.role,
+        }),
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (!response.ok) {
-          // Handle 403 Forbidden errors
-          if (response.status === 403) {
-            showCustomToast({
-              title: "Acceso denegado",
-              message:
-                data.error || "No tienes permisos para ver este cliente.",
-              icon: ShieldAlertIcon,
-              iconSize: 24,
-              iconColor: "var(--danger-color)",
-            });
-            router.push("/clientes", { onTransitionReady: slideIn });
-            return;
-          }
-
-          throw new Error(
-            data.error || `Error ${response.status}: ${response.statusText}`
-          );
+      if (!response.ok) {
+        // Handle 403 Forbidden errors
+        if (response.status === 403) {
+          showCustomToast({
+            title: "Acceso denegado",
+            message: data.error || "No tienes permisos para ver este cliente.",
+            icon: ShieldAlertIcon,
+            iconSize: 24,
+            iconColor: "var(--danger-color)",
+          });
+          router.push("/clientes", { onTransitionReady: slideIn });
+          return;
         }
 
-        // Validate response data
-        if (!data.success || !data.data) {
-          throw new Error("Los datos del cliente no están disponibles");
-        }
-
-        setClient(data.data);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Error al obtener el cliente.";
-        console.error("Error fetching client:", error);
-        setError(errorMessage);
-
-        showCustomToast({
-          title: "Error",
-          message: errorMessage,
-          icon: ShieldAlertIcon,
-          iconSize: 24,
-          iconColor: "var(--danger-color)",
-        });
-      } finally {
-        setLoading(false);
+        throw new Error(
+          data.error || `Error ${response.status}: ${response.statusText}`
+        );
       }
-    };
 
+      // Validate response data
+      if (!data.success || !data.data) {
+        throw new Error("Los datos del cliente no están disponibles");
+      }
+
+      setClient(data.data);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error al obtener el cliente.";
+      console.error("Error fetching client:", error);
+      setError(errorMessage);
+
+      showCustomToast({
+        title: "Error",
+        message: errorMessage,
+        icon: ShieldAlertIcon,
+        iconSize: 24,
+        iconColor: "var(--danger-color)",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [id, userData, router]);
+
+  useEffect(() => {
     fetchClient();
-  }, [id, router, userData]);
+  }, [fetchClient]);
 
   // Contact handling functions
   const handleWhatsAppClick = () => {
@@ -241,11 +239,17 @@ export default function ClientDetailsPage() {
 
       <main className="flex-1 p-4 md:p-6 bg-slate-50">
         <div className="space-y-6 max-w-[1800px] mx-auto">
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="col-span-2">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
               <ClientContactDetails client={client} />
             </div>
-            <ClientRecentlyActivity client_id={client.id} />
+            <TicketTabContent
+              context="cliente"
+              refId={client.id}
+              assignedTo={userData.id}
+              userData={userData as User}
+              onRefresh={fetchClient}
+            />
           </div>
 
           <Tabs
