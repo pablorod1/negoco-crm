@@ -136,6 +136,7 @@ export default function NotificationsMenu() {
         );
         const data = await res.json();
         if (data) {
+          console.log(data);
           setNotifications(data.data || []);
         }
 

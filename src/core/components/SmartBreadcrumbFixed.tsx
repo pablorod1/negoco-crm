@@ -69,8 +69,8 @@ export default function SmartBreadcrumb({
   }, [items, maxItems]);
 
   // Componente para renderizar elementos ocultos en el dropdown
-  const EllipsisDropdown = useMemo(() => {
-    const Component = ({ hiddenItems }: { hiddenItems: BreadcrumbItem[] }) => (
+  const EllipsisDropdown = useCallback(
+    ({ hiddenItems }: { hiddenItems: BreadcrumbItem[] }) => (
       <DropdownMenu>
         <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center">
           <BreadcrumbEnhancedEllipsis />
@@ -93,10 +93,9 @@ export default function SmartBreadcrumb({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-    );
-    Component.displayName = "EllipsisDropdown";
-    return Component;
-  }, []);
+    ),
+    []
+  );
 
   // Componente para renderizar un elemento de breadcrumb individual
   const BreadcrumbItemComponent = useCallback(

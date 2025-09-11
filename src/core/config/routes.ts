@@ -14,6 +14,7 @@ import {
   UserCircle,
   LucideIcon,
 } from "lucide-react";
+import { formatUUID } from "../utils/format";
 
 export interface RouteConfig {
   path: string;
@@ -52,9 +53,9 @@ export const routeConfig: Record<string, RouteConfig> = {
     parent: "/comparativas",
     category: "operaciones",
     dynamicSegments: {
-      id: async (id: string) => {
+      id: (id: string) => {
         // Aquí podrías hacer una llamada a la API para obtener el nombre real
-        return `Comparativa #${id}`;
+        return `Comparativa #${formatUUID(id)}`;
       },
     },
   },
@@ -72,7 +73,7 @@ export const routeConfig: Record<string, RouteConfig> = {
     parent: "/tramites",
     category: "operaciones",
     dynamicSegments: {
-      id: async (id: string) => `Trámite #${id}`,
+      id: (id: string) => `Trámite #${formatUUID(id)}`,
     },
   },
   "/liquidez": {
@@ -97,7 +98,7 @@ export const routeConfig: Record<string, RouteConfig> = {
     parent: "/fotovoltaica",
     category: "operaciones",
     dynamicSegments: {
-      id: async (id: string) => `Instalación #${id}`,
+      id: (id: string) => `Instalación #${formatUUID(id)}`,
     },
   },
 
@@ -116,9 +117,9 @@ export const routeConfig: Record<string, RouteConfig> = {
     parent: "/clientes",
     category: "gestion",
     dynamicSegments: {
-      id: async (id: string) => {
+      id: (id: string) => {
         // Aquí podrías obtener el nombre real del cliente
-        return `Cliente #${id}`;
+        return `Cliente #${formatUUID(id)}`;
       },
     },
   },
@@ -136,7 +137,7 @@ export const routeConfig: Record<string, RouteConfig> = {
     parent: "/comercializadoras",
     category: "gestion",
     dynamicSegments: {
-      id: async (id: string) => `Comercializadora #${id}`,
+      id: (id: string) => `Comercializadora #${id}`,
     },
   },
   "/documentacion": {

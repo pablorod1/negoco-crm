@@ -12,7 +12,7 @@ export default function AvatarComponent({
   textSize?: string;
 }) {
   return (
-    <Avatar className={`${className} rounded-lg`}>
+    <Avatar className={`${className} rounded-full`}>
       {userData.image ? (
         <AvatarImage
           src={userData.image as string}
@@ -20,7 +20,7 @@ export default function AvatarComponent({
           className="w-full h-full object-cover object-center"
         />
       ) : (
-        <AvatarFallback className={`rounded-lg ${textSize}`}>
+        <AvatarFallback className={`rounded-full ${textSize}`}>
           {(userData.name as string).charAt(0).toUpperCase()}
         </AvatarFallback>
       )}

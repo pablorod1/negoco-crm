@@ -23,7 +23,7 @@ export default function Header({ className }: ImprovedHeaderProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 !z-[1000] w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
         "px-6 py-1 transition-all duration-200 ease-in-out",
         "group-has-data-[collapsible=icon]/sidebar-wrapper:px-4",
         className
