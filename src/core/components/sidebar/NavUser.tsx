@@ -32,7 +32,19 @@ export default function NavUser() {
     });
   };
 
-  return userData && !loading ? (
+  if (loading || !userData) {
+    return (
+      <div className="flex items-center gap-3 w-full p-2">
+        <Skeleton className="w-8 h-8 rounded-full" />
+        <div className="flex-1 space-y-1">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-2 w-32" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200">
@@ -91,13 +103,5 @@ export default function NavUser() {
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
-  ) : (
-    <div className="flex items-center gap-3 w-full p-2">
-      <Skeleton className="w-8 h-8 rounded-full" />
-      <div className="flex-1 space-y-1">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-2 w-32" />
-      </div>
-    </div>
   );
 }

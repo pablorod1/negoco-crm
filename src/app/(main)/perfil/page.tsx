@@ -8,9 +8,10 @@ import { User } from "@/core/types";
 import { authClient } from "@/core/auth/auth-client";
 import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
+import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 
 export default function AccountSettings() {
-  const { userData, refreshUserData } = useUser();
+  const { userData, refreshUserData, loading } = useUser();
 
   const handleSignOut = async () => {
     await authClient.signOut({
@@ -21,6 +22,10 @@ export default function AccountSettings() {
       },
     });
   };
+
+  if (loading || !userData) {
+    return <FullScreenLoaderComponent />;
+  }
 
   return (
     <section className="min-h-screen bg-white">

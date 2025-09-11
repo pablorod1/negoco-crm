@@ -3,14 +3,15 @@
 import { cn } from "@/core/utils";
 import { AnimatedList } from "@/core/components/magicui/animated-list";
 import { formatDateTime } from "@/core/utils/format";
-import { Link } from "next-view-transitions";
 import { User } from "@/core/types";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import { useEffect } from "react";
 import { ComparativaVM } from "@/comparativas/types";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 const ComparativaItem = (comparativa: ComparativaVM) => {
+  const handleSidebarClick = useSidebarSlideNavigation();
   return (
     <figure
       className={cn(
@@ -22,8 +23,9 @@ const ComparativaItem = (comparativa: ComparativaVM) => {
         "hover:shadow"
       )}
     >
-      <Link
+      <a
         href={`/comparativas/${comparativa.id}`}
+        onClick={handleSidebarClick}
         className="group flex flex-row items-center gap-4 relative"
       >
         <div className="relative">
@@ -58,7 +60,7 @@ const ComparativaItem = (comparativa: ComparativaVM) => {
             </div>
           </div>
         </div>
-      </Link>
+      </a>
     </figure>
   );
 };

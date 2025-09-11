@@ -204,7 +204,7 @@ export default function FotovoltaicasTable<TData, TValue>({
   return (
     <div className="flex flex-col gap-2 w-full h-full">
       <FotovoltaicasHeader table={table} {...toolbarProps} />
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
         <TableContent
           setPageIndex={setPageIndex}
           table={table}

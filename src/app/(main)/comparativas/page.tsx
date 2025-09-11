@@ -61,7 +61,7 @@ export default function ComparativasPage() {
 
   // Render appropriate UI based on plan
   return (
-    <section className="pb-12 px-4">
+    <section className="pb-12 px-4 min-h-screen">
       {isStarter ? (
         <PlanUpgradeView />
       ) : (

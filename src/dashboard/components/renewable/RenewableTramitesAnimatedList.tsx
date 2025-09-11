@@ -3,9 +3,9 @@
 import { cn } from "@/core/utils";
 import { AnimatedList } from "@/core/components/magicui/animated-list";
 import { formatDateTime } from "@/core/utils/format";
-import { Link } from "next-view-transitions";
 import { useEffect } from "react";
 import Image from "next/image";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 interface RenewableTramite {
   id: string;
@@ -18,6 +18,7 @@ const RenewableTramite = ({
   renovationDate,
   sales_name,
 }: RenewableTramite) => {
+  const handleSidebarClick = useSidebarSlideNavigation();
   return (
     <figure
       className={cn(
@@ -29,7 +30,8 @@ const RenewableTramite = ({
         "shadow-sm hover:shadow-lg hover:shadow-primary-500/10"
       )}
     >
-      <Link
+      <a
+        onClick={handleSidebarClick}
         href={`/tramites/${id}`}
         className="group flex flex-row items-center gap-4 relative"
       >
@@ -65,7 +67,7 @@ const RenewableTramite = ({
             </div>
           </div>
         </div>
-      </Link>
+      </a>
     </figure>
   );
 };

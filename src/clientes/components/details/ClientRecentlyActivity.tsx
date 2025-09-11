@@ -18,6 +18,7 @@ import { useEffect, useState, useCallback, memo } from "react";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import Link from "next/link";
 import ClientDetailCard from "./ClientDetailCard";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 interface Props {
   client_id: string;
@@ -96,94 +97,110 @@ function useLastTramite(clientId: string) {
 }
 
 // Memo-ized component for activity details
-const TramiteDetails = memo(({ tramite }: { tramite: TramiteVM }) => (
-  <div className="flex flex-col gap-4">
-    {/* ID y Estado */}
-    <div className="flex justify-between items-center pb-2 border-b">
-      <div>
-        <p className="text-xs font-medium text-muted-foreground">Trámite ID</p>
-        <p className="text-base font-semibold">{formatUUID(tramite.id)}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        {getStatusBadge(tramite.status as Status, "general")}
-        {tramite.liquidez_status &&
-          getStatusBadge(tramite.liquidez_status as LiquidezStatus, "liquidez")}
-      </div>
-    </div>
-
-    {/* Fechas */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div className="flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-primary" />
+const TramiteDetails = memo(
+  ({
+    tramite,
+    handleSidebarClick,
+  }: {
+    tramite: TramiteVM;
+    handleSidebarClick: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  }) => (
+    <div className="flex flex-col gap-4">
+      {/* ID y Estado */}
+      <div className="flex justify-between items-center pb-2 border-b">
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Creado</p>
-          <p className="text-sm font-medium">
-            {formatDateTime(tramite.creation_date)}
+          <p className="text-xs font-medium text-muted-foreground">
+            Trámite ID
           </p>
+          <p className="text-base font-semibold">{formatUUID(tramite.id)}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {getStatusBadge(tramite.status as Status, "general")}
+          {tramite.liquidez_status &&
+            getStatusBadge(
+              tramite.liquidez_status as LiquidezStatus,
+              "liquidez"
+            )}
         </div>
       </div>
+
+      {/* Fechas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Creado</p>
+            <p className="text-sm font-medium">
+              {formatDateTime(tramite.creation_date)}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">
+              Activado
+            </p>
+            <p className="text-sm font-medium">
+              {tramite.activation_date ? (
+                formatDateTime(tramite.activation_date)
+              ) : (
+                <span className="italic text-muted-foreground">Pendiente</span>
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Comercial asignado */}
       <div className="flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-primary" />
+        <User className="h-4 w-4 text-primary" />
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Activado</p>
+          <p className="text-xs font-medium text-muted-foreground">Comercial</p>
           <p className="text-sm font-medium">
-            {tramite.activation_date ? (
-              formatDateTime(tramite.activation_date)
-            ) : (
-              <span className="italic text-muted-foreground">Pendiente</span>
+            {tramite.sales_name || (
+              <span className="italic text-muted-foreground">No asignado</span>
             )}
           </p>
         </div>
       </div>
-    </div>
 
-    {/* Comercial asignado */}
-    <div className="flex items-center gap-2">
-      <User className="h-4 w-4 text-primary" />
-      <div>
-        <p className="text-xs font-medium text-muted-foreground">Comercial</p>
-        <p className="text-sm font-medium">
-          {tramite.sales_name || (
-            <span className="italic text-muted-foreground">No asignado</span>
+      {/* Última actualización */}
+      <div className="flex items-center gap-2">
+        <RefreshCcw className="h-4 w-4 text-primary" />
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">
+            Última actualización
+          </p>
+          {tramite.updated_at && tramite.updated_by ? (
+            <p className="text-sm font-medium">
+              {formatDateTime(tramite.updated_at)} por{" "}
+              <span className="font-medium text-primary/80">
+                {tramite.updated_by.name || tramite.updated_by.email}
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm italic text-muted-foreground">
+              Sin actualizaciones
+            </p>
           )}
-        </p>
+        </div>
+      </div>
+
+      {/* Botón */}
+      <div className="flex justify-end mt-2">
+        <Link
+          onClick={handleSidebarClick}
+          href={`/tramites/${tramite.id}`}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+        >
+          Ver trámite
+          <ArrowRight className="w-4 h-4 ml-1" />
+        </Link>
       </div>
     </div>
-
-    {/* Última actualización */}
-    <div className="flex items-center gap-2">
-      <RefreshCcw className="h-4 w-4 text-primary" />
-      <div>
-        <p className="text-xs font-medium text-muted-foreground">
-          Última actualización
-        </p>
-        {tramite.updated_at && tramite.updated_by ? (
-          <p className="text-sm font-medium">
-            {formatDateTime(tramite.updated_at)} por{" "}
-            <span className="font-medium text-primary/80">
-              {tramite.updated_by.name || tramite.updated_by.email}
-            </span>
-          </p>
-        ) : (
-          <p className="text-sm italic text-muted-foreground">
-            Sin actualizaciones
-          </p>
-        )}
-      </div>
-    </div>
-
-    {/* Botón */}
-    <div className="flex justify-end mt-2">
-      <Link
-        href={`/tramites/${tramite.id}`}
-        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary-700 transition-colors"
-      >
-        Ver trámite
-        <ArrowRight className="w-4 h-4 ml-1" />
-      </Link>
-    </div>
-  </div>
-));
+  )
+);
 
 TramiteDetails.displayName = "TramiteDetails";
 
@@ -210,7 +227,7 @@ const ErrorState = ({
 
 export default function ClientRecentlyActivity({ client_id }: Props) {
   const { lastTramite, loading, error, refetch } = useLastTramite(client_id);
-
+  const handleSidebarClick = useSidebarSlideNavigation();
   return (
     <ClientDetailCard title="Actividad Reciente" icon={ActivityIcon}>
       {loading ? (
@@ -220,7 +237,10 @@ export default function ClientRecentlyActivity({ client_id }: Props) {
       ) : (
         <div className="space-y-4">
           {lastTramite ? (
-            <TramiteDetails tramite={lastTramite} />
+            <TramiteDetails
+              handleSidebarClick={handleSidebarClick}
+              tramite={lastTramite}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center py-6 space-y-2">
               <RefreshCcw className="h-10 w-10 text-muted-foreground/30" />

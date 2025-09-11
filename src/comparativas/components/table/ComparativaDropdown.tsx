@@ -8,8 +8,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/core/components/ui/popover";
-import { Link } from "next-view-transitions";
 import { ComparativaVM } from "@/comparativas/types";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -128,6 +128,7 @@ export default function ComparativaDropdown({
 }: {
   comparativa: ComparativaVM;
 }) {
+  const handleSidebarClick = useSidebarSlideNavigation();
   const { userData } = useUser();
   const isAdmin = userData && userData.role === "admin";
   const hasProcessedTramite =
@@ -148,13 +149,14 @@ export default function ComparativaDropdown({
             className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
             asChild
           >
-            <Link
+            <a
+              onClick={handleSidebarClick}
               className="inline-flex items-center justify-start gap-2"
               href={`/comparativas/${comparativa.id}`}
             >
               <PencilLine size={16} />
               Visualizar Comparativa
-            </Link>
+            </a>
           </Button>
 
           {hasProcessedTramite && (
@@ -164,13 +166,15 @@ export default function ComparativaDropdown({
               className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
               asChild
             >
-              <Link
+              <a
+                onClick={handleSidebarClick}
                 href={`/tramites/${comparativa.tramite_id}`}
+                data-sidebar-item={`/tramites/${comparativa.tramite_id}`}
                 className="inline-flex items-center justify-start gap-2"
               >
                 <ReceiptEuro size={16} />
                 Visualizar Trámite
-              </Link>
+              </a>
             </Button>
           )}
 

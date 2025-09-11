@@ -7,9 +7,9 @@ import {
 import { Button } from "@/core/components/ui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
-import { Link } from "next-view-transitions";
 import DeleteFotovoltaicaConfirmationModal from "../DeleteFotovoltaicaConfirmationModal";
 import { FotovoltaicaVM } from "@/fotovoltaica/types";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -102,6 +102,8 @@ export default function FotovoltaicaDropdown({
   const isRejected = fotovoltaica.status === "rejected";
   const canDelete = isAdmin || isRejected;
 
+  const handleSidebarClick = useSidebarSlideNavigation();
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -117,13 +119,14 @@ export default function FotovoltaicaDropdown({
             className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
             asChild
           >
-            <Link
+            <a
+              onClick={handleSidebarClick}
               className="inline-flex items-center justify-start gap-2"
               href={`/fotovoltaica/${fotovoltaica.id}`}
             >
               <PencilLine size={16} />
               Visualizar Solicitud
-            </Link>
+            </a>
           </Button>
 
           {canDelete && (

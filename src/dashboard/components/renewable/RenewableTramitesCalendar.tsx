@@ -30,9 +30,9 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import Link from "next/link";
 import { cn } from "@/core/utils";
 import { Button } from "@/core/components/ui/button";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 interface RenewableTramite {
   id: string;
@@ -67,6 +67,8 @@ export default function RenewableTramitesCalendar({
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [popoverOpen, setPopoverOpen] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  const handleSidebarClick = useSidebarSlideNavigation();
 
   const fetchTramites = React.useCallback(async () => {
     setIsRefreshing(true);
@@ -379,7 +381,8 @@ export default function RenewableTramitesCalendar({
                           );
 
                           return (
-                            <Link
+                            <a
+                              onClick={handleSidebarClick}
                               key={tramite.id}
                               href={`/tramites/${tramite.id}`}
                               className="block p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
@@ -417,7 +420,7 @@ export default function RenewableTramitesCalendar({
                                 </div>
                                 <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-primary-600 flex-shrink-0 ml-2" />
                               </div>
-                            </Link>
+                            </a>
                           );
                         })}
                       </div>

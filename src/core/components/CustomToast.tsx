@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
-import { Link } from "next-view-transitions";
+import { useSidebarSlideNavigation } from "../view-transitions/useGenieEffect";
 
 // Definición de tipos para las props del componente
 interface CustomToastProps {
@@ -51,6 +51,8 @@ const CustomToast: React.FC<CustomToastProps> = ({
   const hasIcon = Icon !== undefined;
   const hasImage = imageUrl;
 
+  const handleSidebarClick = useSidebarSlideNavigation();
+
   return (
     <div className="w-full bg-white shadow-lg rounded-3xl pointer-events-auto flex border border-gray-200 ">
       <div className="flex-1 w-0 p-4">
@@ -85,7 +87,9 @@ const CustomToast: React.FC<CustomToastProps> = ({
       <div className="flex flex-col justify-center items-center gap-2 border-l border-gray-200 px-4">
         {buttonLink && buttonLinkText && (
           <Button variant="link" onClick={onClose}>
-            <Link href={buttonLink}>{buttonLinkText}</Link>
+            <a onClick={handleSidebarClick} href={buttonLink}>
+              {buttonLinkText}
+            </a>
           </Button>
         )}
         <Button variant="destructive" onClick={onClose}>

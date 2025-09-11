@@ -2,89 +2,68 @@
 
 import { useCallback } from "react";
 import { useTransitionRouter } from "next-view-transitions";
-import { genieEffectAuthentic } from "./view-transitions";
+import { elegantSlideEffect } from "./view-transitions";
 
-// Interface para opciones del genie effect
-interface GenieEffectOptions {
-  /** Elemento HTML del icono origen (detectado automáticamente si no se proporciona) */
-  sourceElement?: HTMLElement;
+// Interface para opciones del slide effect
+interface SlideEffectOptions {
   /** Callback ejecutado antes de la animación */
   onBeforeTransition?: () => void;
   /** Callback ejecutado después de la animación */
   onAfterTransition?: () => void;
-  /** Habilitar debugging (mostrar posición del icono) */
+  /** Habilitar debugging */
   debug?: boolean;
 }
 
 // Interface del valor de retorno del hook
-interface UseGenieEffectReturn {
-  /** Navegar a una ruta con efecto genie */
-  navigateWithGenie: (route: string, options?: GenieEffectOptions) => void;
-  /** Activar efecto genie manualmente (sin navegación) */
-  triggerGenieEffect: (options?: GenieEffectOptions) => void;
+interface UseSlideEffectReturn {
+  /** Navegar a una ruta con efecto slide */
+  navigateWithSlide: (route: string, options?: SlideEffectOptions) => void;
+  /** Activar efecto slide manualmente (sin navegación) */
+  triggerSlideEffect: (options?: SlideEffectOptions) => void;
 }
 
 /**
- * Hook personalizado para usar el efecto genie de macOS en navegación
+ * Hook personalizado para usar el efecto slide elegante en navegación
  *
  * @example
  * ```tsx
- * const { navigateWithGenie } = useGenieEffect();
+ * const { navigateWithSlide } = useSlideEffect();
  *
  * const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
  *   e.preventDefault();
- *   navigateWithGenie('/dashboard', {
- *     sourceElement: e.currentTarget,
+ *   navigateWithSlide('/dashboard', {
  *     debug: true
  *   });
  * };
  * ```
  */
-export function useGenieEffect(): UseGenieEffectReturn {
+export function useSlideEffect(): UseSlideEffectReturn {
   const router = useTransitionRouter();
 
-  const triggerGenieEffect = useCallback((options: GenieEffectOptions = {}) => {
-    const { sourceElement, onBeforeTransition, onAfterTransition } = options;
+  const triggerSlideEffect = useCallback((options: SlideEffectOptions = {}) => {
+    const { onBeforeTransition, onAfterTransition } = options;
 
     if (onBeforeTransition) {
       onBeforeTransition();
     }
 
-    // Ejecutar efecto genie
-    genieEffectAuthentic(sourceElement);
+    // Ejecutar efecto slide
+    elegantSlideEffect();
 
     if (onAfterTransition) {
       // Ejecutar callback después de que termine la animación
-      const totalDuration = 550 + 400; // CONTRACTION_DURATION + EXPANSION_DURATION (950ms total - auténtico macOS)
-      setTimeout(onAfterTransition, totalDuration);
+      const SLIDE_DURATION = 800; // Actualizado para coincidir con la nueva duración
+      setTimeout(onAfterTransition, SLIDE_DURATION);
     }
   }, []);
 
-  const navigateWithGenie = useCallback(
-    (route: string, options: GenieEffectOptions = {}) => {
-      const { sourceElement, onBeforeTransition, onAfterTransition, debug } =
-        options;
-
-      // Auto-detectar sourceElement si no se proporciona
-      let targetElement = sourceElement;
-      if (!targetElement) {
-        // Buscar el elemento del sidebar que corresponde a la ruta
-        const sidebarItems = document.querySelectorAll("[data-sidebar-item]");
-        for (const item of sidebarItems) {
-          const href = (item as HTMLAnchorElement).getAttribute(
-            "data-sidebar-item"
-          );
-          if (href === route) {
-            targetElement = item as HTMLElement;
-            break;
-          }
-        }
-      }
+  const navigateWithSlide = useCallback(
+    (route: string, options: SlideEffectOptions = {}) => {
+      const { onBeforeTransition, onAfterTransition, debug } = options;
 
       router.push(route, {
         onTransitionReady: () => {
-          triggerGenieEffect({
-            sourceElement: targetElement,
+          triggerSlideEffect({
             onBeforeTransition,
             onAfterTransition,
             debug,
@@ -92,30 +71,30 @@ export function useGenieEffect(): UseGenieEffectReturn {
         },
       });
     },
-    [router, triggerGenieEffect]
+    [router, triggerSlideEffect]
   );
 
   return {
-    navigateWithGenie,
-    triggerGenieEffect,
+    navigateWithSlide,
+    triggerSlideEffect,
   };
 }
 
 /**
  * Hook simplificado para elementos del sidebar
- * Detecta automáticamente el elemento clickeado y la ruta
+ * Detecta automáticamente la ruta del elemento clickeado
  *
  * @example
  * ```tsx
- * const handleSidebarClick = useSidebarGenieNavigation();
+ * const handleSidebarClick = useSidebarSlideNavigation();
  *
  * <a href="/dashboard" onClick={handleSidebarClick} data-sidebar-item="/dashboard">
  *   Dashboard
  * </a>
  * ```
  */
-export function useSidebarGenieNavigation() {
-  const { navigateWithGenie } = useGenieEffect();
+export function useSidebarSlideNavigation() {
+  const { navigateWithSlide } = useSlideEffect();
 
   return useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -127,18 +106,17 @@ export function useSidebarGenieNavigation() {
 
       if (!route) {
         console.warn(
-          "🚨 Genie Effect: No route found in data-sidebar-item or href"
+          "🚨 Slide Effect: No route found in data-sidebar-item or href"
         );
         return;
       }
 
-      navigateWithGenie(route, {
-        sourceElement: target,
+      navigateWithSlide(route, {
         debug: process.env.NODE_ENV === "development",
       });
     },
-    [navigateWithGenie]
+    [navigateWithSlide]
   );
 }
 
-export default useGenieEffect;
+export default useSlideEffect;

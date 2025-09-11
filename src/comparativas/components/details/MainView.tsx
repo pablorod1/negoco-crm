@@ -29,6 +29,7 @@ import UploadComparativaFilesModal from "@/comparativas/components/editComparati
 import ComparativaComissionsSection from "@/comparativas/components/editComparativa/ComparativaComissionsSection";
 import { cn } from "@/core/utils";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 interface MainViewProps {
   comparativa: ComparativaVM;
@@ -59,6 +60,8 @@ export default function MainView({
   const { supplier, loading: isLoadingSupplier } = useEnergySupplierById(
     comparativa.company_id
   );
+
+  const handleSidebarClick = useSidebarSlideNavigation();
 
   return (
     <div className="space-y-6">
@@ -103,6 +106,7 @@ export default function MainView({
                   comparativa.tramite_id && (
                     <TooltipComponent content="Ver el trámite generado desde esta comparativa">
                       <Link
+                        onClick={handleSidebarClick}
                         href={`/tramites/${comparativa.tramite_id}`}
                         className="flex items-center gap-3 p-3 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors group"
                       >

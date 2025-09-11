@@ -258,7 +258,7 @@ function UsersGridTable({
           ) : isGridView ? (
             <GridView users={filteredUsers} isAdmin={isAdmin} />
           ) : (
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="border border-gray-200 rounded-4xl overflow-hidden">
               <table className="min-w-full bg-white">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -322,7 +322,7 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
       {users.map((user) => (
         <div
           key={user.id}
-          className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
+          className="bg-white border border-gray-200 rounded-4xl p-4 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
         >
           {/* Header con acciones */}
           <div className="flex items-start justify-between mb-3">

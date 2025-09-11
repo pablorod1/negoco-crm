@@ -11,6 +11,9 @@ export default function AvatarComponent({
   className?: string;
   textSize?: string;
 }) {
+  if (!userData) {
+    return null;
+  }
   return (
     <Avatar className={`${className} rounded-full`}>
       {userData.image ? (

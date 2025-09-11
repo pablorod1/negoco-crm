@@ -30,14 +30,13 @@ import {
   FolderOpen,
   UserCheck,
   Megaphone,
-  Settings,
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/core/utils";
 import ShortcutsMenu from "../ShortcutsMenu";
 import { Separator } from "../ui/separator";
 import UpgradePlanDialog from "../UpgradePlanDialog";
-import { useSidebarGenieNavigation } from "@/core/view-transitions/useGenieEffect";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 // Types
 type PlanType = "starter" | "pro" | "elite";
@@ -175,7 +174,7 @@ const SidebarItemComponent: React.FC<{
       ? pathname === item.url
       : pathname.includes(item.url) && item.url !== "/";
   const IconComponent = item.icon;
-  const handleSidebarClick = useSidebarGenieNavigation();
+  const handleSidebarClick = useSidebarSlideNavigation();
 
   const menuButton = (
     <SidebarMenuButton
@@ -288,7 +287,7 @@ export function SidebarComponent() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className={cn("space-y-4", open ? "p-4" : "p-2")}>
+      <SidebarHeader className={cn("", open ? "p-4" : "px-0 items-center")}>
         <NavUser />
         <ShortcutsMenu open={open} />
       </SidebarHeader>
@@ -332,7 +331,7 @@ export function SidebarComponent() {
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              <SidebarItemComponent
+              {/* <SidebarItemComponent
                 item={{
                   title: "Ajustes",
                   icon: Settings,
@@ -341,7 +340,7 @@ export function SidebarComponent() {
                 }}
                 userPlan={userPlan}
                 isCollapsed={!open}
-              />
+              /> */}
               <SidebarItemComponent
                 item={{
                   title: "Soporte",

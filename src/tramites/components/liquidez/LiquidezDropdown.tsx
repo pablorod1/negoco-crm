@@ -6,7 +6,7 @@ import {
 } from "@/core/components/ui/popover";
 import { Button } from "@/core/components/ui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
-import { Link } from "next-view-transitions";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -121,6 +121,7 @@ export const DeleteDocumentIcon = (props: IconProps) => {
 };
 
 export default function LiquidezDropdown({ tramite }: { tramite: TramiteRow }) {
+  const handleSidebarClick = useSidebarSlideNavigation();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -136,13 +137,14 @@ export default function LiquidezDropdown({ tramite }: { tramite: TramiteRow }) {
             className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
             asChild
           >
-            <Link
+            <a
+              onClick={handleSidebarClick}
               className="inline-flex items-center justify-start gap-2"
               href={`/tramites/${tramite.id}`}
             >
               <PencilLine size={16} />
               Visualizar Trámite
-            </Link>
+            </a>
           </Button>
         </div>
       </PopoverContent>

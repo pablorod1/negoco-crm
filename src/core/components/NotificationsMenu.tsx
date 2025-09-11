@@ -15,7 +15,6 @@ import { Badge } from "@/core/components/ui/badge";
 import React, { useCallback, useEffect, useState } from "react";
 import { useUser } from "@/core/contexts/UserContext";
 import { formatDateTime } from "@/core/utils/format";
-import { Link } from "next-view-transitions";
 import { Notification } from "@/core/types";
 import {
   getColorPriority,
@@ -23,10 +22,13 @@ import {
 } from "@/core/utils/notifications.helpers";
 import { showCustomToast } from "./CustomToast";
 import { Separator } from "./ui/separator";
+import { useSidebarSlideNavigation } from "../view-transitions/useGenieEffect";
 
 export default function NotificationsMenu() {
   const { userData, refreshUserData } = useUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const handleSidebarClick = useSidebarSlideNavigation();
 
   const handleDeleteNotification = async (
     e: React.MouseEvent<HTMLButtonElement>,
@@ -213,7 +215,8 @@ export default function NotificationsMenu() {
               {notifications.length > 0 ? (
                 notifications.map((notification, index) => (
                   <React.Fragment key={notification.id}>
-                    <Link
+                    <a
+                      onClick={handleSidebarClick}
                       href={getLinkContext(
                         notification.context,
                         notification.link
@@ -258,7 +261,7 @@ export default function NotificationsMenu() {
                           <Trash size={14} />
                         </Button>
                       </div>
-                    </Link>
+                    </a>
                     <>
                       {index !== notifications.length - 1 && (
                         <Separator
