@@ -148,6 +148,28 @@ export function useTableFilters(id?: string) {
     providerFilter,
   ]);
 
+  // Auto-save filters to localStorage whenever they change
+  useEffect(() => {
+    // Only save after initial load is complete to avoid overwriting with empty values
+    if (initialLoadComplete.current) {
+      saveFiltersToStorage();
+    }
+  }, [
+    companyFilter,
+    statusFilter,
+    contractTypeFilter,
+    liquidezStatusFilter,
+    activationDateRange,
+    creationDateRange,
+    renovationDateRange,
+    collectionDateRange,
+    paymentDateRange,
+    userFilter,
+    typeFilter,
+    providerFilter,
+    saveFiltersToStorage,
+  ]);
+
   // Only reset the filters in state and clear localStorage
   const resetFilters = useCallback(() => {
     setCompanyFilter(undefined);

@@ -424,9 +424,9 @@ export async function GET(
     }
 
     // Apply status and user filters
-    addArrayFilter("c.status", statusFilter);
-    addArrayFilter("c.user_id", userFilter);
-    addArrayFilter("c.company_id", companyFilter);
+    if (statusFilter) addArrayFilter("c.status", statusFilter);
+    if (userFilter) addArrayFilter("c.user_id", userFilter);
+    if (companyFilter) addArrayFilter("c.company_id", companyFilter);
 
     // Build count query for pagination
     let countQuery = `
