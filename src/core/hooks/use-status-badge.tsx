@@ -29,12 +29,10 @@ const LIQUIDEZ_STATUS_BADGES = {
 };
 
 const TABLE_LIQUIDEZ_STATUS_BADGES = {
-  "Pendiente de Cobro": <Badge variant="warning">Pendiente de Cobro</Badge>,
+  "Pendiente de Cobro": <Badge variant="warning">Pendiente</Badge>,
   "Cobrado por Comercializadora": <Badge variant="pending">Cobrado</Badge>,
   "Pagado al Comercial": <Badge variant="success">Pagado</Badge>,
-  "Pendiente de Descontar": (
-    <Badge variant="warning">Pendiente de Descontar</Badge>
-  ),
+  "Pendiente de Descontar": <Badge variant="warning">Pendiente</Badge>,
   Descontado: <Badge variant="success">Descontado</Badge>,
   default: <Badge>Sin Asignar</Badge>,
 };

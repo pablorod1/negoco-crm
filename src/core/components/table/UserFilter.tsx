@@ -1,9 +1,10 @@
 ﻿import { showCustomToast } from "@/core/components/CustomToast";
 import { Label } from "@/core/components/ui/label";
-import { MultiSelect } from "@/core/components/ui/multi-select";
+import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
 import { User } from "@/core/types";
 import { CircleX } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Skeleton } from "../ui/skeleton";
 
 interface Props {
   userFilter: string[] | undefined;
@@ -11,6 +12,33 @@ interface Props {
   isComercial: boolean;
   userData: User;
 }
+
+// Helper functions for converting between formats
+const convertToOptions = (users: UserOption[]): Option[] => {
+  return users.map((user) => ({
+    value: user.value,
+    label: user.label,
+    icon: user.icon,
+  }));
+};
+
+const convertFromOptions = (options: Option[]): string[] => {
+  return options.map((option) => option.value);
+};
+
+const getSelectedOptions = (
+  selectedValues: string[] | undefined,
+  allUsers: UserOption[]
+): Option[] => {
+  if (!selectedValues) return [];
+  return allUsers
+    .filter((user) => selectedValues.includes(user.value))
+    .map((user) => ({
+      value: user.value,
+      label: user.label,
+      icon: user.icon,
+    }));
+};
 
 interface UserOption {
   value: string;
@@ -25,8 +53,9 @@ export default function UserFilter({
   userData,
 }: Props) {
   const [comerciales, setComerciales] = useState<UserOption[]>([]);
-
+  const [loading, setLoading] = useState<boolean>(false);
   const fetchComerciales = useCallback(async () => {
+    setLoading(true);
     if (isComercial || !userData) {
       return;
     }
@@ -37,7 +66,7 @@ export default function UserFilter({
       const res = await fetch(url, { method: "GET" });
 
       const { success, error, data } = await res.json();
-
+      console.log(data);
       if (!success) {
         showCustomToast({
           title: "Error",
@@ -64,6 +93,8 @@ export default function UserFilter({
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
+    } finally {
+      setLoading(false);
     }
   }, [isComercial, userData]);
 
@@ -71,18 +102,25 @@ export default function UserFilter({
   useEffect(() => {
     fetchComerciales();
   }, [fetchComerciales]);
+
+  if (loading) {
+    return <Skeleton className="h-10 w-full rounded-4xl" />;
+  }
   return (
     <div className="space-y-2">
-      <Label>Comercial</Label>
+      <Label className="text-sm font-medium text-gray-700">Comercial</Label>
 
-      <MultiSelect
-        options={comerciales}
-        onValueChange={setUserFilter}
+      <MultipleSelector
+        value={getSelectedOptions(userFilter, comerciales)}
+        defaultOptions={convertToOptions(comerciales)}
+        onChange={(options) => setUserFilter(convertFromOptions(options))}
         placeholder="Seleccionar comercial"
-        value={userFilter}
-        maxCount={2}
-        variant="primary"
-        defaultValue={userFilter}
+        hidePlaceholderWhenSelected
+        emptyIndicator={
+          <p className="text-center text-sm text-gray-500">
+            No se encontraron comerciales
+          </p>
+        }
       />
     </div>
   );
