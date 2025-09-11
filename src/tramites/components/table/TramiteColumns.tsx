@@ -15,6 +15,7 @@ import TramiteDropdown from "./TramiteDropdown";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import { LiquidezStatus, Status, TramiteRow } from "@/tramites/types";
+import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 
 const isRenewable = (
   renovation_date: string
@@ -128,18 +129,24 @@ const CupsCell = ({ row }: { row: { original: TramiteRow } }) => (
 );
 
 // Company cell component
-const CompanyCell = ({ row }: { row: { original: TramiteRow } }) => (
-  <div className="flex flex-col space-y-1">
-    {row.original.new_company.map((company: string, index: number) => (
-      <span
-        key={index}
-        className="text-gray-700 text-sm text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"
-      >
-        {company}
-      </span>
-    ))}
-  </div>
-);
+const CompanyCell = ({ row }: { row: { original: TramiteRow } }) => {
+  const { supplier } = useEnergySupplierById(row.original.new_company[0]);
+  const company = row.original.new_company[0].includes("COM")
+    ? supplier?.name
+    : row.original.new_company[0];
+  return (
+    <div className="flex flex-col space-y-1">
+      {row.original.new_company.map((_, index: number) => (
+        <span
+          key={index}
+          className="text-gray-700 text-sm text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"
+        >
+          {company}
+        </span>
+      ))}
+    </div>
+  );
+};
 
 // Contract type cell component
 const ContractCell = ({ row }: { row: { original: TramiteRow } }) => (

@@ -1,12 +1,12 @@
 "use client";
 
+import React from "react";
 import { Label } from "@/core/components/ui/label";
 import MultipleSelector from "@/core/components/ui/multiselect";
 import { DateRangePicker } from "@/dashboard/components/DateRangePicker";
 import UserFilter from "@/core/components/table/UserFilter";
 import { ProviderFilter } from "./ProviderFilter";
 import {
-  COMPANIES,
   CONTRACT_TYPES,
   LIQUIDEZ_STATUS,
   STATUS_TYPES,
@@ -14,6 +14,8 @@ import {
 import { DateRange } from "react-day-picker";
 import type { User } from "@/core/types";
 import { useMultipleSelector } from "@/core/hooks/use-multiple-selector";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { Skeleton } from "@/core/components/ui/skeleton";
 
 interface FilterContentProps {
   statusFilter: string[] | undefined;
@@ -74,6 +76,20 @@ export function FilterContent({
 
   const { convertToOptions, convertFromOptions, getSelectedOptions } =
     useMultipleSelector();
+
+  // Load active energy suppliers for company filter
+  const { activeSuppliers, loading: suppliersLoading } =
+    useActiveEnergySuppliers();
+
+  // Convert suppliers to dropdown format (using IDs as values)
+  const supplierOptions = React.useMemo(
+    () =>
+      activeSuppliers.map((supplier) => ({
+        label: supplier.name,
+        value: supplier.id, // Use ID as value instead of name
+      })),
+    [activeSuppliers]
+  );
 
   return (
     <div className="py-6 space-y-8">
@@ -166,20 +182,24 @@ export function FilterContent({
             <Label className="text-sm font-medium text-gray-700">
               Compañía
             </Label>
-            <MultipleSelector
-              value={getSelectedOptions(companyFilter, COMPANIES)}
-              defaultOptions={convertToOptions(COMPANIES)}
-              onChange={(options) =>
-                setCompanyFilter(convertFromOptions(options))
-              }
-              placeholder="Seleccionar compañías"
-              hidePlaceholderWhenSelected
-              emptyIndicator={
-                <p className="text-center text-sm text-gray-500">
-                  No se encontraron resultados
-                </p>
-              }
-            />
+            {suppliersLoading ? (
+              <Skeleton className="h-10 w-full rounded-md" />
+            ) : (
+              <MultipleSelector
+                value={getSelectedOptions(companyFilter, supplierOptions)}
+                defaultOptions={convertToOptions(supplierOptions)}
+                onChange={(options) =>
+                  setCompanyFilter(convertFromOptions(options))
+                }
+                placeholder="Seleccionar compañías"
+                hidePlaceholderWhenSelected
+                emptyIndicator={
+                  <p className="text-center text-sm text-gray-500">
+                    No se encontraron resultados
+                  </p>
+                }
+              />
+            )}
           </div>
         </div>
       </div>

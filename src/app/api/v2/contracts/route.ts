@@ -1124,6 +1124,22 @@ export async function GET(
       }
     };
 
+    // Company filter helper (handles both ID and name for backward compatibility)
+    const addCompanyFilter = (filterArray?: string[]) => {
+      if (filterArray && filterArray.length > 0) {
+        // For each company filter, we need to check both the ID and name
+        // This handles the transition from name-based to ID-based storage
+        const companyConditions = filterArray
+          .map(() => "(con.new_company = ? OR com.name = ?)")
+          .join(" OR ");
+        filters.push(`(${companyConditions})`);
+        // Add each filter value twice: once for ID match, once for name match
+        filterArray.forEach((company) => {
+          params.push(company, company);
+        });
+      }
+    };
+
     // Provider filter helper (case-insensitive)
     const addProviderFilter = (filterArray?: string[]) => {
       if (filterArray && filterArray.length > 0) {
@@ -1137,7 +1153,7 @@ export async function GET(
     };
 
     // Apply array-based filters
-    addArrayFilter("con.new_company", companyFilter);
+    addCompanyFilter(companyFilter); // Use the new hybrid company filter
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
@@ -1184,6 +1200,8 @@ export async function GET(
           clients c ON t.client_id = c.id
       LEFT JOIN 
           contracts con ON t.id = con.tramite_id
+      LEFT JOIN 
+          comercializadoras com ON con.new_company = com.id
     `;
 
     // Add WHERE clause if filters exist
