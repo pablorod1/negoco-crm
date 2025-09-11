@@ -142,80 +142,96 @@ export default function DeleteFileConfirmationModal({
   return (
     <Dialog open={isOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" onClick={onOpen}>
-          <DeleteDocumentIcon />
-          Eliminar Archivo
+        <Button
+          variant="ghost"
+          onClick={onOpen}
+          className="w-full justify-start h-9 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <DeleteDocumentIcon className="h-4 w-4 mr-3" />
+          Eliminar
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg border-0 shadow-xl">
         {loading && (
           <LoadingStateModal
             title={getLoadingMessage().title}
             description={getLoadingMessage().description}
           />
         )}
-        <DialogHeader>
-          <div className="flex items-start gap-4">
-            <AlertTriangle className="size-12 text-danger" />
-            <div className="flex flex-col">
-              <DialogTitle className="text-lg font-semibold text-danger">
+        <DialogHeader className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <div className="space-y-2">
+              <DialogTitle className="text-lg font-semibold text-gray-900">
                 {files.length > 1
-                  ? `¿Estás seguro de que deseas eliminar ${files.length} archivos?`
-                  : "¿Estás seguro de que deseas eliminar el archivo?"}
+                  ? `Eliminar ${files.length} archivos`
+                  : "Eliminar archivo"}
               </DialogTitle>
-              <DialogDescription className="text-gray-600 text-sm">
+              <DialogDescription className="text-gray-600 text-sm leading-relaxed">
                 {files.length > 1
-                  ? "Se eliminarán los archivos de forma permanente."
-                  : "Se eliminará el archivo de forma permanente."}
-                Si alguna carpeta queda vacía, también se eliminará.
+                  ? "Esta acción eliminará permanentemente los archivos seleccionados."
+                  : "Esta acción eliminará permanentemente el archivo seleccionado."}{" "}
+                No se puede deshacer.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
-        <div className="flex flex-col gap-4 mt-2">
+
+        <div className="py-4">
           {files.length > 1 ? (
-            <div className="max-h-60 overflow-y-auto border rounded-md p-2">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">
-                      Nombre
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">
-                      Carpeta
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {files.map((file, index) => (
-                    <tr
-                      key={file.id}
-                      className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                    >
-                      <td className="px-3 py-2">{file.name}</td>
-                      <td className="px-3 py-2">{file.folder_name}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="max-h-48 overflow-y-auto bg-gray-50 rounded-lg p-3 space-y-2">
+              {files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between py-2 px-3 bg-white rounded border"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {file.folder_name || "Raíz"}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold">Nombre:</h3>
-                <p className="text-gray-600">{files[0]?.name}</p>
+                <span className="text-sm font-medium text-gray-700">
+                  Archivo:
+                </span>
+                <span className="text-sm text-gray-900">{files[0]?.name}</span>
               </div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold">Carpeta:</h3>
-                <p className="text-gray-600">{files[0]?.folder_name}</p>
+                <span className="text-sm font-medium text-gray-700">
+                  Ubicación:
+                </span>
+                <span className="text-sm text-gray-900">
+                  {files[0]?.folder_name || "Raíz"}
+                </span>
               </div>
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            {files.length > 1 ? "Eliminar Archivos" : "Eliminar Archivo"}
+
+        <DialogFooter className="gap-3">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {files.length > 1 ? "Eliminar archivos" : "Eliminar archivo"}
           </Button>
         </DialogFooter>
       </DialogContent>

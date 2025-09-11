@@ -81,24 +81,22 @@ export default function DocumentacionPage() {
   }, [fetchFolders]);
 
   return (
-    <>
+    <div className="space-y-6">
       {isLoading ? (
         <FullScreenLoaderComponent />
       ) : files.length > 0 || folders.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          <FileGrid
-            recentlyFiles={recentlyFiles}
-            folders={folders}
-            currentPath=""
-            folderPath={[]}
-            userData={userData as User}
-          />
-        </div>
+        <FileGrid
+          recentlyFiles={recentlyFiles}
+          folders={folders}
+          currentPath=""
+          folderPath={[]}
+          userData={userData as User}
+        />
       ) : (
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center justify-center min-h-[60vh]">
           <EmptyDocumentacion userData={userData as User} />
         </div>
       )}
-    </>
+    </div>
   );
 }
