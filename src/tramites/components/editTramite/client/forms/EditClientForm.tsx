@@ -279,6 +279,14 @@ export default function EditClientForm({
             type="text"
           />
         </div>
+        <InputComponent
+          name="IBAN"
+          label="IBAN"
+          value={formData.IBAN}
+          isRequired
+          onChange={handleFieldChange}
+          type="text"
+        />
       </div>
 
       <div className="absolute bottom-4 left-0 w-full px-4">
