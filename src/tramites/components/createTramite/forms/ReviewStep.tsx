@@ -108,11 +108,17 @@ export default function ReviewStep({
                 {getStatusBadge(tramite.status as Status, "general")}
               </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-4">
+            <CardContent className="grid grid-cols-4 gap-4">
               <div>
                 <p className="text-sm font-medium">Comercial</p>
                 <p className="text-sm text-muted-foreground">
                   {tramite.sales_name}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Plan</p>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {tramite.plan}
                 </p>
               </div>
               {!isComercial && (

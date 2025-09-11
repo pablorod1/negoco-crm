@@ -47,6 +47,7 @@ export interface TramiteDB {
   user_id: string;
   rejected_date?: string | null;
   provider?: string | null;
+  plan?: "fijo" | "indexado" | null;
 }
 
 export interface TramiteVM extends TramiteDB {

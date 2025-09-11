@@ -82,6 +82,7 @@ export const createEmptyTramiteDB = (
     : userData
       ? userData.id
       : "",
+  plan: plan ? plan : null,
 });
 
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({

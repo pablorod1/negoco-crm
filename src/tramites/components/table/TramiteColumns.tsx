@@ -131,9 +131,7 @@ const CupsCell = ({ row }: { row: { original: TramiteRow } }) => (
 // Company cell component
 const CompanyCell = ({ row }: { row: { original: TramiteRow } }) => {
   const { supplier } = useEnergySupplierById(row.original.new_company[0]);
-  const company = row.original.new_company[0].includes("COM")
-    ? supplier?.name
-    : row.original.new_company[0];
+  const company = supplier ? supplier.name : row.original.new_company[0];
   return (
     <div className="flex flex-col space-y-1">
       {row.original.new_company.map((_, index: number) => (

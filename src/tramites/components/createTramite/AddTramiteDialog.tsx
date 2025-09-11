@@ -88,13 +88,7 @@ export default function AddTramiteDialog({
       setIsOpen(true);
       setActiveTab(comparativa ? 0 : savedClient ? 2 : 1);
       // Reset form state
-      setTramite(
-        createEmptyTramiteDB(
-          userData as User,
-          plan ? (plan as "fijo" | "indexado") : undefined,
-          comparativa ? comparativa : undefined
-        )
-      );
+
       setClient(
         savedClient
           ? savedClient
@@ -105,7 +99,7 @@ export default function AddTramiteDialog({
       setDocuments([]);
       setSelectedExistingFiles(null);
     },
-    [userData, plan, comparativa, savedClient]
+    [comparativa, savedClient]
   );
 
   const handleClose = useCallback(async () => {
@@ -138,8 +132,17 @@ export default function AddTramiteDialog({
   }, []);
 
   const handleNext = useCallback(() => {
+    if (comparativa && activeTab === 0) {
+      setTramite(
+        createEmptyTramiteDB(
+          userData as User,
+          plan ? (plan as "fijo" | "indexado") : undefined,
+          comparativa ? comparativa : undefined
+        )
+      );
+    }
     setActiveTab((prev) => prev + 1);
-  }, []);
+  }, [userData, plan, comparativa, activeTab]);
 
   // Process comparativa update
   const processComparativaUpdate = useCallback(async () => {
@@ -298,7 +301,7 @@ export default function AddTramiteDialog({
       formData.append("userData", JSON.stringify(userData));
       formData.append("client", JSON.stringify(client));
       formData.append("tramite", JSON.stringify(tramite));
-
+      console.log(tramite);
       // Optional fields
       if (signer) {
         formData.append("signer", JSON.stringify(signer));

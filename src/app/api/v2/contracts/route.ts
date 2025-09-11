@@ -159,6 +159,7 @@ const TramiteSchema = z.object({
   user_id: z.string().min(1, "User ID is required"),
   rejected_date: z.string().nullable().optional(),
   provider: z.string().nullable().optional(),
+  plan: z.enum(["fijo", "indexado"]).nullable().optional(),
 });
 
 const ClientSchema = z.object({
@@ -547,8 +548,8 @@ const addTramiteOptimized = async (
         INSERT INTO tramites (
           id, creation_date, tramitation_date, activation_date, renovation_date,
           sales_name, comision, comision_sales_person, status, liquidez_status,
-          notes, internal_notes, client_id, user_id, collection_date, payment_date, provider
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          notes, internal_notes, client_id, user_id, collection_date, payment_date, provider, plan
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         tramite.id,
@@ -568,6 +569,7 @@ const addTramiteOptimized = async (
         tramite.collection_date || null,
         tramite.payment_date || null,
         tramite.provider || null,
+        tramite.plan || null,
       ],
     });
 
@@ -1152,8 +1154,9 @@ export async function GET(
       }
     };
 
-    // Apply array-based filters
-    addCompanyFilter(companyFilter); // Use the new hybrid company filter
+    if (companyFilter) {
+      addCompanyFilter(companyFilter);
+    }
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
