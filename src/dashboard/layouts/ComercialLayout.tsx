@@ -6,6 +6,7 @@ import { ComparativasRatio } from "@/dashboard/components/charts/ComparativasRat
 import { ComparativasResume } from "@/dashboard/components/comparativas/ComparativasResume";
 import { ObjetivosCard } from "@/dashboard/components/objectives/ObjectivesSection";
 import { TeamTramitesBarChart } from "@/dashboard/components/charts/TeamTramitesBarChar";
+import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 
 interface ComercialLayoutProps {
   userData: User;
@@ -66,6 +67,25 @@ export const ComercialLayout = ({
               <ComparativasResume loading={loading} userData={userData} />
             </motion.div>
           </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  // Incidencias view
+  if (view === "incidencias") {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="incidencias"
+          initial="initial"
+          animate="in"
+          exit="out"
+          variants={pageVariants}
+          transition={pageTransition}
+          className="space-y-6"
+        >
+          <IncidenciasView userData={userData} loading={loading} />
         </motion.div>
       </AnimatePresence>
     );

@@ -5,6 +5,7 @@ import { ObjetivosCard } from "@/dashboard/components/objectives/ObjectivesSecti
 import { AnimatePresence, motion } from "framer-motion";
 import { ComparativasRatio } from "../components/charts/ComparativasRatio";
 import { ComparativasResume } from "../components/comparativas/ComparativasResume";
+import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 
 interface SubcomercialLayoutProps {
   userData: User;
@@ -66,6 +67,25 @@ export const SubcomercialLayout = ({
       </AnimatePresence>
     );
   }
+
+  if (view === "incidencias") {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="incidencias"
+          initial="initial"
+          animate="in"
+          exit="out"
+          variants={pageVariants}
+          transition={pageTransition}
+          className="space-y-6"
+        >
+          <IncidenciasView userData={userData} loading={loading} />
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Primary Section - Personal Goals */}

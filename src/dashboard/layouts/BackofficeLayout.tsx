@@ -5,6 +5,7 @@ import RenewableTramitesCalendar from "@/dashboard/components/renewable/Renewabl
 import { AnimatePresence, motion } from "framer-motion";
 import { ComparativasRatio } from "../components/charts/ComparativasRatio";
 import { ComparativasResume } from "../components/comparativas/ComparativasResume";
+import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 
 interface BackofficeLayoutProps {
   userData: User;
@@ -65,6 +66,25 @@ export const BackofficeLayout = ({
       </AnimatePresence>
     );
   }
+
+  if (view === "incidencias") {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="incidencias"
+          initial="initial"
+          animate="in"
+          exit="out"
+          variants={pageVariants}
+          transition={pageTransition}
+          className="space-y-6"
+        >
+          <IncidenciasView userData={userData} loading={loading} />
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Responsive Grid Layout */}

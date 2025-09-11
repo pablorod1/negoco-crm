@@ -12,7 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Avatar } from "@/core/components/ui/avatar";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { User } from "@/core/types";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import { DashboardCardValue } from "./DashboardBentoGrid";
@@ -21,6 +21,8 @@ import TooltipComponent from "@/core/components/TooltipComponent";
 import { Badge } from "@/core/components/ui/badge";
 import { cn } from "@/core/utils";
 import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
+import { TicketsData } from "../hooks/useTicketsData";
+import { DashboardView as ViewType } from "./ViewToggle";
 
 interface HeroDashboardProps {
   userData: User;
@@ -30,7 +32,9 @@ interface HeroDashboardProps {
   comparativas: DashboardCardValue;
   totalConsumption: number;
   refreshData: () => void;
-  getPlan: () => string | null; // Optional function to get organization plan
+  getPlan: () => string | null;
+  currentView?: ViewType;
+  ticketsData?: TicketsData;
 }
 
 const MotionAvatar = motion.create(Avatar);
@@ -44,10 +48,16 @@ export default function HeroDashboard({
   totalConsumption,
   refreshData,
   getPlan,
+  currentView = "main",
+  ticketsData,
 }: HeroDashboardProps) {
   const isPlanStarter = getPlan() === "starter";
   const isSubcomercial =
     userData && userData.role === "2" && userData.super_id !== null;
+
+  // Determine which data to show based on view
+  const isIncidenciasView = currentView === "incidencias";
+
   return (
     <div className="hero rounded-4xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -115,101 +125,159 @@ export default function HeroDashboard({
         </div>
       </div>
 
-      <div
-        className={cn(
-          "grid grid-cols-1 gap-6 mt-6",
-          isPlanStarter
-            ? isSubcomercial
-              ? "lg:grid-cols-3"
-              : "lg:grid-cols-4"
-            : !isSubcomercial
-              ? "lg:grid-cols-3 2xl:grid-cols-5"
-              : "lg:grid-cols-4"
-        )}
-      >
-        <StatCard
-          title="Clientes"
-          value={clients.value}
-          total={clients.total}
-          prev_value={clients.prev_value}
-          description="Total registrados"
-          trend={
-            clients.difference > 0
-              ? "up"
-              : clients.difference === 0
-                ? "normal"
-                : "down"
-          }
-          trendValue={clients.difference}
-          delay={0.5}
-        />
-        <StatCard
-          title="Trámites Activos"
-          total={activeTramites.total}
-          value={activeTramites.value}
-          prev_value={activeTramites.prev_value}
-          description="En proceso"
-          trend={
-            activeTramites.difference > 0
-              ? "up"
-              : activeTramites.difference === 0
-                ? "normal"
-                : "down"
-          }
-          trendValue={activeTramites.difference}
-          delay={0.6}
-        />
-        {!isPlanStarter ? (
-          <StatCard
-            title="Comparativas"
-            total={comparativas.total}
-            value={comparativas.value}
-            prev_value={comparativas.prev_value}
-            trend={
-              comparativas.difference > 0
-                ? "up"
-                : comparativas.difference === 0
-                  ? "normal"
-                  : "down"
-            }
-            trendValue={comparativas.difference}
-            description="Completadas 2025"
-            delay={0.7}
-          />
-        ) : null}
-
-        <div
-          className={cn(
-            "grid grid-cols-1 gap-6",
-            isPlanStarter
-              ? isSubcomercial
-                ? "lg:grid-cols-1 lg:col-span-1"
-                : "lg:grid-cols-2 lg:col-span-2 "
-              : isSubcomercial
-                ? "lg:col-span-1"
-                : "lg:grid-cols-2 lg:col-span-3 2xl:col-span-2"
-          )}
-        >
-          <StatCard
-            title="Consumo Total"
-            total={totalConsumption}
-            value={totalConsumption}
-            description="Todos los contratos"
-            delay={0.8}
-            type="consumption"
-          />
-          {!isSubcomercial ? (
+      <AnimatePresence mode="wait">
+        {isIncidenciasView ? (
+          // Incidencias Stats Cards
+          <motion.div
+            key="incidencias-stats"
+            className={cn("grid grid-cols-1 gap-6 mt-6 lg:grid-cols-4")}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+          >
             <StatCard
-              title="Balance"
-              total={totalBalance}
-              value={totalBalance}
-              description="Comisiones 2025"
-              type="chart"
-              delay={0.9}
+              title="Total Tickets"
+              total={ticketsData?.stats.total || 0}
+              value={ticketsData?.stats.total || 0}
+              description="Todos los tickets"
+              delay={0.1}
+              key="total-tickets"
             />
-          ) : null}
-        </div>
-      </div>
+            <StatCard
+              title="Abiertos"
+              total={ticketsData?.stats.open || 0}
+              value={ticketsData?.stats.open || 0}
+              description="En estado abierto"
+              delay={0.2}
+              key="open-tickets"
+            />
+            <StatCard
+              title="En Proceso"
+              total={ticketsData?.stats.inProgress || 0}
+              value={ticketsData?.stats.inProgress || 0}
+              description="Siendo procesados"
+              delay={0.3}
+              key="progress-tickets"
+            />
+            <StatCard
+              title="Resueltos"
+              total={ticketsData?.stats.resolved || 0}
+              value={ticketsData?.stats.resolved || 0}
+              description="Completados"
+              delay={0.4}
+              key="resolved-tickets"
+            />
+          </motion.div>
+        ) : (
+          // Default Dashboard Stats Cards
+          <motion.div
+            key="dashboard-stats"
+            className={cn(
+              "grid grid-cols-1 gap-6 mt-6",
+              isPlanStarter
+                ? isSubcomercial
+                  ? "lg:grid-cols-3"
+                  : "lg:grid-cols-4"
+                : !isSubcomercial
+                  ? "lg:grid-cols-3 2xl:grid-cols-5"
+                  : "lg:grid-cols-4"
+            )}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+          >
+            <StatCard
+              title="Clientes"
+              value={clients.value}
+              total={clients.total}
+              prev_value={clients.prev_value}
+              description="Total registrados"
+              trend={
+                clients.difference > 0
+                  ? "up"
+                  : clients.difference === 0
+                    ? "normal"
+                    : "down"
+              }
+              trendValue={clients.difference}
+              delay={0.1}
+              key="dashboard-clients"
+            />
+            <StatCard
+              title="Trámites Activos"
+              total={activeTramites.total}
+              value={activeTramites.value}
+              prev_value={activeTramites.prev_value}
+              description="En proceso"
+              trend={
+                activeTramites.difference > 0
+                  ? "up"
+                  : activeTramites.difference === 0
+                    ? "normal"
+                    : "down"
+              }
+              trendValue={activeTramites.difference}
+              delay={0.2}
+              key="dashboard-tramites"
+            />
+            {!isPlanStarter ? (
+              <StatCard
+                title="Comparativas"
+                total={comparativas.total}
+                value={comparativas.value}
+                prev_value={comparativas.prev_value}
+                trend={
+                  comparativas.difference > 0
+                    ? "up"
+                    : comparativas.difference === 0
+                      ? "normal"
+                      : "down"
+                }
+                trendValue={comparativas.difference}
+                description="Completadas 2025"
+                delay={0.3}
+                key="dashboard-comparativas"
+              />
+            ) : null}
+
+            <div
+              className={cn(
+                "grid grid-cols-1 gap-6",
+                isPlanStarter
+                  ? isSubcomercial
+                    ? "lg:grid-cols-1 lg:col-span-1"
+                    : "lg:grid-cols-2 lg:col-span-2 "
+                  : isSubcomercial
+                    ? "lg:col-span-1"
+                    : "lg:grid-cols-2 lg:col-span-3 2xl:col-span-2"
+              )}
+            >
+              <StatCard
+                title="Consumo Total"
+                total={totalConsumption}
+                value={totalConsumption}
+                description="Todos los contratos"
+                delay={0.4}
+                type="consumption"
+                key="dashboard-consumption"
+              />
+              {!isSubcomercial ? (
+                <StatCard
+                  title="Balance"
+                  total={totalBalance}
+                  value={totalBalance}
+                  description="Comisiones 2025"
+                  type="chart"
+                  delay={0.5}
+                  key="dashboard-balance"
+                />
+              ) : null}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -240,9 +308,21 @@ function StatCard({
   return (
     <motion.div
       className="bg-white/30 hero-card rounded-4xl shadow-2xs p-6 relative overflow-hidden"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3 }}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+      transition={{
+        delay,
+        duration: 0.4,
+        ease: "easeOut",
+        scale: { type: "spring", stiffness: 300, damping: 25 },
+      }}
+      layout
+      whileHover={{
+        scale: 1.02,
+        y: -2,
+        transition: { duration: 0.2 },
+      }}
     >
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">

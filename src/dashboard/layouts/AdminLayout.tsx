@@ -8,6 +8,7 @@ import { ComparativasRatio } from "@/dashboard/components/charts/ComparativasRat
 import { ComparativasResume } from "@/dashboard/components/comparativas/ComparativasResume";
 import RenewableTramitesCalendar from "@/dashboard/components/renewable/RenewableTramitesCalendar";
 import { ObjetivosCard } from "@/dashboard/components/objectives/ObjectivesSection";
+import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 
 interface AdminLayoutProps {
   userData: User;
@@ -65,6 +66,24 @@ export const AdminLayout = ({
               <ComparativasResume loading={loading} userData={userData} />
             </motion.div>
           </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  if (view === "incidencias") {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="incidencias"
+          initial="initial"
+          animate="in"
+          exit="out"
+          variants={pageVariants}
+          transition={pageTransition}
+          className="space-y-6"
+        >
+          <IncidenciasView userData={userData} loading={loading} />
         </motion.div>
       </AnimatePresence>
     );

@@ -73,6 +73,7 @@ const GetTicketsQuerySchema = z.object({
   status_id: z.number().optional(),
   assigned_to: z.string().optional(),
   created_by: z.string().optional(),
+  type_id: z.number().optional(),
   include_internal: z.boolean().default(false),
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(100).default(20),
@@ -219,6 +220,7 @@ export async function GET(
       page: queryParams.page ? parseInt(queryParams.page) : 1,
       limit: queryParams.limit ? parseInt(queryParams.limit) : 20,
       include_internal: queryParams.include_internal === "true",
+      type_id: queryParams.type_id ? parseInt(queryParams.type_id) : undefined,
     };
 
     const validation = GetTicketsQuerySchema.safeParse(parsedQuery);
@@ -275,6 +277,11 @@ export async function GET(
     if (query.created_by) {
       whereConditions.push("t.created_by = ?");
       params.push(query.created_by);
+    }
+
+    if (query.type_id) {
+      whereConditions.push("t.type_id = ?");
+      params.push(query.type_id);
     }
 
     // Apply include_internal filter
