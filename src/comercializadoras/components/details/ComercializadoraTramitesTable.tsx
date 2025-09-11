@@ -15,6 +15,7 @@ import {
   SubComercialTramitesColumns,
   TramiteColumns,
 } from "@/tramites/components/table/TramiteColumns";
+import { useTablePagination } from "@/core/hooks/use-table-pagination";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import { showCustomToast } from "@/core/components/CustomToast";
@@ -141,8 +142,9 @@ const ErrorState = ({
 );
 
 export function ComercializadoraTramitesTable({ name, userData }: Props) {
-  const [pageSize, setPageSize] = useState<number | string>(15);
-  const [pageIndex, setPageIndex] = useState(1);
+  const { pageIndex, pageSize, setPageIndex, setPageSize } = useTablePagination(
+    `comercializadora-tramites-${name}`
+  );
 
   // Get columns based on user role
   const columns = useMemo(() => {
@@ -182,19 +184,21 @@ export function ComercializadoraTramitesTable({ name, userData }: Props) {
   const table = useReactTable(tableConfig);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Trámites Asociados
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900">Trámites</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Listado de todos los trámites de la comercializadora
-            {totalTramites > 0 && (
-              <span className="font-medium text-primary-600 ml-1">
-                ({totalTramites} total
-                {totalTramites !== 1 ? "es" : ""})
-              </span>
+            {totalTramites > 0 ? (
+              <>
+                <span className="font-medium text-gray-700">
+                  {totalTramites}
+                </span>{" "}
+                trámite{totalTramites !== 1 ? "s" : ""} asociado
+                {totalTramites !== 1 ? "s" : ""}
+              </>
+            ) : (
+              "Sin trámites asociados"
             )}
           </p>
         </div>

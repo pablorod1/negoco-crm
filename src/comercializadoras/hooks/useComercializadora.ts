@@ -14,32 +14,8 @@ export function useComercializadora(
   const [error, setError] = useState<string | null>(null);
 
   const fetchComercializadora = useCallback(async () => {
-    if (!name) {
-      const errorMsg =
-        "No se ha proporcionado el nombre de la comercializadora";
-      setError(errorMsg);
-      showCustomToast({
-        title: "Error",
-        message: errorMsg,
-        icon: CloudAlert,
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-      });
-      setLoading(false);
-      return;
-    }
-
-    if (!userData) {
-      const errorMsg = "No se ha proporcionado la información del usuario";
-      setError(errorMsg);
-      showCustomToast({
-        title: "Error",
-        message: errorMsg,
-        icon: CloudAlert,
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-      });
-      setLoading(false);
+    // Don't fetch if we don't have the required parameters
+    if (!name || !userData) {
       return;
     }
 

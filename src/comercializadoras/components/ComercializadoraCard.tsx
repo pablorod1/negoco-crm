@@ -4,18 +4,15 @@ import {
   ClipboardList,
   CloudAlert,
   FileText,
-  Zap,
+  ChevronRight,
 } from "lucide-react";
 import Image from "next/image";
 
-import { Card, CardContent, CardHeader } from "@/core/components/ui/card";
-import { Button } from "@/core/components/ui/button";
 import { ComercializadoraVM } from "@/comercializadoras/types/comercializadora.types";
 import { User } from "@/core/types";
 import { useTransitionRouter } from "next-view-transitions";
 import { Switch } from "@/core/components/ui/switch";
 import { showCustomToast } from "@/core/components/CustomToast";
-import { Badge } from "@/core/components/ui/badge";
 import { formatConsumption } from "@/core/utils/format";
 
 interface ComercializadoraCardProps {
@@ -63,7 +60,7 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
           iconColor: "var(--danger-color)",
           iconSize: 24,
         });
-        setIsActive(previousValue); // Revert to previous value on error
+        setIsActive(previousValue);
         return;
       }
 
@@ -74,7 +71,7 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
         iconColor: checked ? "var(--success-color)" : "var(--warning-color)",
         iconSize: 24,
       });
-      refetch(); // Refetch to update the list
+      refetch();
     } catch (error) {
       console.error("Error updating status:", error);
       showCustomToast({
@@ -85,124 +82,88 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
         iconColor: "var(--danger-color)",
         iconSize: 24,
       });
-      setIsActive(previousValue); // Revert to previous value on error
+      setIsActive(previousValue);
     }
   };
+
   return (
-    <Card className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden bg-white border border-gray-200">
-      {/* Background logo */}
-      {comercializadora.logo && (
-        <div className="absolute inset-0 opacity-5 group-hover:opacity-15 transition-opacity duration-300">
-          <Image
-            src={`/companies/${comercializadora.logo}`}
-            alt={`Logo de ${comercializadora.name}`}
-            width={300}
-            height={300}
-            className="w-full h-full object-contain scale-150"
-            loading="lazy"
-          />
-        </div>
-      )}
-
-      <CardHeader className="pb-3 relative z-10">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3 flex-1">
-            {/* Logo circle */}
-            <div className="relative">
-              {comercializadora.logo ? (
-                <div className="w-12 h-12 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center overflow-hidden">
-                  <Image
-                    src={`/companies/${comercializadora.logo}`}
-                    alt={`Logo de ${comercializadora.name}`}
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 object-contain"
-                    loading="lazy"
-                  />
-                </div>
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-primary" />
-                </div>
-              )}
+    <div
+      onClick={handleClick}
+      className="group bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-sm transition-all duration-200 cursor-pointer"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          {comercializadora.logo ? (
+            <div className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <Image
+                src={`/companies/${comercializadora.logo}`}
+                alt={`Logo de ${comercializadora.name}`}
+                width={24}
+                height={24}
+                className="w-6 h-6 object-contain"
+                loading="lazy"
+              />
             </div>
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-5 h-5 text-gray-600" />
+            </div>
+          )}
 
-            <div className="flex items-center justify-between w-full min-w-0">
-              <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-primary transition-colors duration-200 truncate">
-                {comercializadora.name}
-              </h3>
-              {!isComercial ? (
-                <Switch
-                  checked={isActive}
-                  onCheckedChange={handleCheckChange}
-                />
-              ) : (
-                <Badge
-                  variant={comercializadora.active ? "success" : "warning"}
-                  className="text-xs"
-                >
-                  {comercializadora.active ? "Activo" : "Inactivo"}
-                </Badge>
-              )}
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-gray-900 truncate text-sm">
+              {comercializadora.name}
+            </h3>
+            <div className="flex items-center space-x-2 mt-1">
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  isActive
+                    ? "bg-green-50 text-green-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {isActive ? "Activa" : "Inactiva"}
+              </span>
             </div>
           </div>
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4 relative z-10">
-        {/* Métricas */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-primary-50/50 border border-primary-100 group-hover:bg-primary-50/90">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-primary-100 rounded-lg">
-                <ClipboardList className="h-4 w-4 text-primary-600" />
-              </div>
-              <span className="text-sm font-medium text-gray-700">
-                Trámites
-              </span>
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          {!isComercial && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Switch checked={isActive} onCheckedChange={handleCheckChange} />
             </div>
-            <span className="font-bold text-lg text-primary-600">
-              {comercializadora.num_tramites}
-            </span>
-          </div>
+          )}
+          <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+        </div>
+      </div>
 
-          <div className="flex items-center justify-between p-3 rounded-lg bg-green-50/50 border border-green-100 group-hover:bg-green-50/90">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <FileText className="h-4 w-4 text-green-600" />
-              </div>
-              <span className="text-sm font-medium text-gray-700">
-                Documentos
-              </span>
-            </div>
-            <span className="font-bold text-lg text-green-600">
+      {/* Main Metric */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500 font-medium">Trámites</span>
+          <span className="text-lg font-bold text-gray-900">
+            {comercializadora.num_tramites}
+          </span>
+        </div>
+
+        {/* Secondary Metrics */}
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">Documentos</p>
+            <p className="text-sm font-semibold text-gray-700">
               {comercializadora.num_files || 0}
-            </span>
+            </p>
           </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50/50 border border-orange-100 group-hover:bg-orange-50/90">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Zap className="h-4 w-4 text-orange-600" />
-              </div>
-              <span className="text-sm font-medium text-gray-700">
-                Consumo Total
-              </span>
-            </div>
-            <span className="font-bold text-lg text-orange-600">
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">Consumo</p>
+            <p className="text-sm font-semibold text-gray-700">
               {formatConsumption(comercializadora.total_consumption)}
-            </span>
+            </p>
           </div>
         </div>
-
-        <Button
-          variant="primaryOutline"
-          className="w-full mt-6"
-          onClick={handleClick}
-        >
-          Ver Detalles
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 });
