@@ -94,21 +94,49 @@ export default function ColaboradoresPage() {
   // Si no hay userData y no hemos inicializado, mostramos loading
   if (!userData && !state.initialized) {
     return (
-      <div className="container mx-auto py-8">
-        <UsersGridTable users={[]} loading={true} />
+      <div className="w-full">
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container mx-auto px-6 py-6">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold text-gray-900">
+                Colaboradores
+              </h1>
+              <p className="text-sm text-gray-500">
+                Gestiona los usuarios y permisos del sistema
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-6 py-6">
+          <UsersGridTable users={[]} loading={true} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center gap-4 mb-8 w-full">
-        <h1 className="text-4xl font-bold text-primary-500 drop-shadow-sm">
-          Gestión de Colaboradores
-        </h1>
-        {isAdmin && <CreateUserModal onUserCreated={handleUserCreated} />}
+    <div className="w-full">
+      {/* Header minimalista con jerarquía clara */}
+      <div className="border-b border-gray-100 bg-white">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold text-gray-900">
+                Colaboradores
+              </h1>
+              <p className="text-sm text-gray-500">
+                Gestiona los usuarios y permisos del sistema
+              </p>
+            </div>
+            {isAdmin && <CreateUserModal onUserCreated={handleUserCreated} />}
+          </div>
+        </div>
       </div>
-      <UsersGridTable users={state.users} loading={state.loading} />
+
+      {/* Contenido principal */}
+      <div className="container mx-auto px-6 py-6">
+        <UsersGridTable users={state.users} loading={state.loading} />
+      </div>
     </div>
   );
 }

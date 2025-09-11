@@ -29,20 +29,30 @@ export default function CreateUserModal({
   };
 
   return (
-    <Dialog open={isOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button onClick={() => setIsOpen(true)}>
-          <Plus size={20} />
-          <span>Crear usuario</span>
+        <Button
+          size="sm"
+          className="bg-gray-900 hover:bg-gray-800 text-white border-0"
+        >
+          <Plus size={16} />
+          <span>Nuevo usuario</span>
         </Button>
       </DialogTrigger>
-      <DialogContent aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>Crear usuario</DialogTitle>
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-w-md border-gray-200"
+      >
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-lg font-semibold text-gray-900">
+            Crear usuario
+          </DialogTitle>
+          <p className="text-sm text-gray-500">
+            Completa la información para crear un nuevo colaborador
+          </p>
         </DialogHeader>
         <CreateUserForm onUserCreated={handleUserCreated} onClose={onClose} />
       </DialogContent>
     </Dialog>
   );
 }
-

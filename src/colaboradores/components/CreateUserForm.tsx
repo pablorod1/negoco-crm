@@ -178,97 +178,107 @@ export default function CreateUserForm({
           description={loadingMessage || "Por favor, espera..."}
         />
       )}
-      <form className="space-y-6 w-full py-2">
-        <InputComponent
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          isRequired
-          label="Nombre"
-        />
-
-        <InputComponent
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          isRequired
-          label="Correo Electrónico"
-        />
-
-        <div className="flex flex-col gap-2">
+      <form className="space-y-4 w-full">
+        {/* Información básica */}
+        <div className="space-y-4">
           <InputComponent
-            label="Empresa"
-            name="company"
             type="text"
-            value={formData.company || ""}
+            name="name"
+            value={formData.name}
             onChange={handleChange}
+            isRequired
+            label="Nombre completo"
           />
-          <div className="flex items-start gap-1 text-xs text-muted-foreground">
-            <Info size={12} className="mt-0.5" />
-            <p>
-              Dejar en blanco si el usuario no pertenece a ninguna empresa
-              externa
-            </p>
+
+          <InputComponent
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            isRequired
+            label="Correo electrónico"
+          />
+
+          <InputComponent
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            isRequired
+            label="Contraseña"
+          />
+        </div>
+
+        {/* Configuración de rol */}
+        <div className="space-y-4 pt-4 border-t border-gray-100">
+          <SelectComponent
+            name="role"
+            isRequired
+            selectedKey={
+              formData.role === "admin"
+                ? "Dirección"
+                : ROLES[parseInt(formData.role)]
+            }
+            onChange={(value, e) =>
+              handleSelectChange(
+                ROLES.indexOf(value as (typeof ROLES)[number]).toString(),
+                e as React.ChangeEvent<HTMLSelectElement>,
+                "role"
+              )
+            }
+            label="Rol del usuario"
+            items={[...ROLES]}
+          />
+
+          {!isStarterPlan && formData.role === "2" && (
+            <SelectComponent
+              name="super_id"
+              label="Jefe de equipo"
+              onChange={(value, e) =>
+                handleSelectChange(
+                  value,
+                  e as React.ChangeEvent<HTMLSelectElement>,
+                  "super_id"
+                )
+              }
+              selectedKey={selectedSubcomercial}
+              items={comerciales}
+            />
+          )}
+
+          <div className="space-y-2">
+            <InputComponent
+              label="Empresa externa"
+              name="company"
+              type="text"
+              value={formData.company || ""}
+              onChange={handleChange}
+            />
+            <div className="flex items-start gap-2 text-xs text-gray-500">
+              <Info size={12} className="mt-0.5 text-gray-400" />
+              <p>
+                Opcional: Solo si el usuario pertenece a una empresa externa
+              </p>
+            </div>
           </div>
         </div>
 
-        <InputComponent
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-          isRequired
-          label="Contraseña"
-        />
-
-        <SelectComponent
-          name="role"
-          isRequired
-          selectedKey={
-            formData.role === "admin"
-              ? "Dirección"
-              : ROLES[parseInt(formData.role)]
-          }
-          onChange={(value, e) =>
-            handleSelectChange(
-              ROLES.indexOf(value as (typeof ROLES)[number]).toString(),
-              e as React.ChangeEvent<HTMLSelectElement>,
-              "role"
-            )
-          }
-          label="Rol"
-          items={[...ROLES]}
-        />
-
-        {!isStarterPlan && formData.role === "2" && (
-          <SelectComponent
-            name="super_id"
-            label="Jefe de Equipo"
-            onChange={(value, e) =>
-              handleSelectChange(
-                value,
-                e as React.ChangeEvent<HTMLSelectElement>,
-                "super_id"
-              )
-            }
-            selectedKey={selectedSubcomercial}
-            items={comerciales}
-          />
-        )}
-
-        <div className="flex justify-between items-center gap-2">
+        {/* Acciones */}
+        <div className="flex gap-3 pt-4">
           <Button
-            variant="destructive"
-            className="w-full"
+            variant="outline"
+            className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50"
             onClick={handleClose}
             disabled={loading}
           >
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} className="w-full" disabled={loading}>
-            {loading ? "Creando usuario..." : "Crear Usuario"}
+          <Button
+            onClick={handleSubmit}
+            className="flex-1 bg-gray-900 hover:bg-gray-800"
+            disabled={loading}
+          >
+            {loading ? "Creando..." : "Crear usuario"}
           </Button>
         </div>
       </form>

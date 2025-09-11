@@ -72,50 +72,63 @@ export default function BanUserConfirmationModal({ user_id, userName }: Props) {
   };
 
   return (
-    <>
-      <Dialog open={isOpen}>
-        <DialogTrigger asChild>
-          <TooltipComponent color="bg-danger" content="Deshabilitar usuario">
-            <Button
-              variant="destructive"
-              size="icon"
-              onClick={() => setIsOpen(true)}
-            >
-              <Ban size={16} />
-            </Button>
-          </TooltipComponent>
-        </DialogTrigger>
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-danger">
-              <AlertTriangle className="text-danger" size={30} />
-              <DialogTitle className="text-xl">
-                Confirmar desactivación
-              </DialogTitle>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <TooltipComponent color="bg-danger" content="Desactivar usuario">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+            onClick={() => setIsOpen(true)}
+          >
+            <Ban size={14} />
+          </Button>
+        </TooltipComponent>
+      </DialogTrigger>
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-w-md border-gray-200"
+      >
+        <DialogHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+              <AlertTriangle className="text-red-600" size={20} />
             </div>
-          </DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              Desactivar usuario
+            </DialogTitle>
+          </div>
+        </DialogHeader>
 
-          <div className="flex flex-col">
-            <p className="text-gray-700">
-              ¿Estás seguro que deseas deshabilitar
-              {userName ? ` a ${userName}` : " este usuario"}?
-            </p>
-            <p className="text-sm text-gray-500 mt-2">
-              Para deshacer esta acción, deberás contactar al equipo de soporte.
+        <div className="space-y-3">
+          <p className="text-gray-700">
+            ¿Estás seguro que deseas desactivar
+            {userName ? ` a ${userName}` : " este usuario"}?
+          </p>
+          <div className="bg-red-50 p-3 rounded-lg">
+            <p className="text-sm text-red-700">
+              El usuario no podrá acceder al sistema hasta que sea reactivado.
             </p>
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button variant="destructive" onClick={onClose} className="mr-2">
-              Cancelar
-            </Button>
-            <Button color="danger" onClick={handleBan}>
-              <Ban size={16} />
-              Deshabilitar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        <DialogFooter className="gap-3">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleBan}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Ban size={16} />
+            Desactivar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
