@@ -143,7 +143,6 @@ export async function POST(
       FROM comercializadoras c
       ORDER BY c.name ASC
     `;
-    console.log("Energy Suppliers Query:", query);
     const params = [...userFilterParams, ...userFilterParams];
     optimizations.push("exact-by-name-logic-per-comercializadora");
 
@@ -176,7 +175,7 @@ export async function POST(
         logo: row.logo as string,
         active: Boolean(row.active),
         num_tramites: Number(row.total_tramites) || 0,
-        num_files: Number(row.files_count) || 0,
+        num_files: Number(row.num_files) || 0,
         total_consumption: Number(row.total_consumption) || 0,
       })
     );

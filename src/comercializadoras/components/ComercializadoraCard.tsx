@@ -89,7 +89,7 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
   return (
     <div
       onClick={handleClick}
-      className="group bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-sm transition-all duration-200 cursor-pointer"
+      className="group bg-white border border-gray-200 rounded-4xl p-4 shadow-xs hover:border-gray-300 hover:shadow-sm transition-all duration-200 cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">

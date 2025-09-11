@@ -52,12 +52,6 @@ export default function EditContractForm({
     [activeSuppliers]
   );
 
-  // Add "Otra" option for old company
-  const oldCompanyOptions = React.useMemo(
-    () => [...supplierOptions, { label: "Otra", value: "Otra" }],
-    [supplierOptions]
-  );
-
   const handleFieldChange = (
     e:
       | React.ChangeEvent<HTMLInputElement>
@@ -200,7 +194,7 @@ export default function EditContractForm({
             <SelectComponent
               name="old_company"
               label="Compañía Antigua"
-              items={oldCompanyOptions}
+              items={supplierOptions}
               onChange={(value) => handleSelectChange(value, "old_company")}
               isRequired
               selectedKey={formData.old_company || ""}

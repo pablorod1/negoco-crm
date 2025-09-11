@@ -49,7 +49,7 @@ export const ComercializadorasStats = memo(function ComercializadorasStats({
       {stats.map((stat, index) => (
         <div
           key={index}
-          className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+          className="bg-white border border-gray-200 rounded-4xl p-4 hover:border-gray-300 transition-colors shadow-2xs"
         >
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-gray-50 rounded-lg">

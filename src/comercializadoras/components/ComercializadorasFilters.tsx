@@ -42,7 +42,7 @@ export function ComercializadorasFilters({
             onClick={() => onStatusFilterChange("all")}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               statusFilter === "all"
-                ? "bg-gray-900 text-white"
+                ? "bg-primary-900 text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -54,7 +54,7 @@ export function ComercializadorasFilters({
           onClick={() => onStatusFilterChange("active")}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             statusFilter === "active"
-              ? "bg-gray-900 text-white"
+              ? "bg-primary-900 text-white"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
@@ -66,7 +66,7 @@ export function ComercializadorasFilters({
             onClick={() => onStatusFilterChange("inactive")}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               statusFilter === "inactive"
-                ? "bg-gray-900 text-white"
+                ? "bg-primary-900 text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >

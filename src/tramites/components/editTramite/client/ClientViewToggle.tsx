@@ -51,7 +51,7 @@ export const ClientViewToggle = ({
 
   return (
     <div className={`flex justify-start ${className}`}>
-      <div className="relative flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+      <div className="relative flex items-center gap-1 p-1 bg-gray-100 rounded-4xl">
         {/* Pills */}
         {visibleOptions.map((option) => {
           const Icon = option.icon;
@@ -62,9 +62,9 @@ export const ClientViewToggle = ({
               key={option.value}
               onClick={() => onViewChange(option.value)}
               className={cn(
-                "relative z-10 flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md min-w-0",
+                "relative z-10 flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200 rounded-4xl min-w-0",
                 isActive
-                  ? "bg-white text-gray-900 shadow-sm"
+                  ? "bg-primary-900 text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               )}
               whileHover={{ scale: isActive ? 1 : 1.02 }}
