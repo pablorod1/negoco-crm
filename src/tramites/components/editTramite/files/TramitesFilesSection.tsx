@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
-import { FileIcon } from "lucide-react";
 import { User } from "@/core/types";
 import UploadTramiteFilesModal from "./UploadTramiteFilesModal";
 import { TramiteFile, TramiteDB, ClientDB } from "@/tramites/types";
@@ -30,20 +29,20 @@ export default function TramiteFilesSection({
   client,
 }: Props) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-primary-800">
-          <FileIcon className="h-5 w-5" />
+    <Card className="border-gray-200 shadow-sm">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
+          <div className="h-2 w-2 bg-gray-600 rounded-full"></div>
           Archivos Adjuntos
         </CardTitle>
         {files && (
-          <CardDescription className="text-primary-400">
+          <CardDescription className="text-sm text-gray-500 mt-1">
             {files.length} archivo{files.length !== 1 ? "s" : ""} adjunto
             {files.length !== 1 ? "s" : ""}
           </CardDescription>
         )}
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {files && files.length > 0 ? (
           <TramiteFilesList
             files={files}
@@ -53,11 +52,13 @@ export default function TramiteFilesSection({
             isEditable={isEditable as boolean}
           />
         ) : (
-          <p className="text-muted-foreground">No hay archivos adjuntos.</p>
+          <div className="flex items-center justify-center h-16 text-gray-400 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-sm">No hay archivos adjuntos</p>
+          </div>
         )}
       </CardContent>
-      <CardFooter>
-        {isEditable && (
+      {isEditable && (
+        <CardFooter className="pt-4 border-t border-gray-200">
           <UploadTramiteFilesModal
             onUpload={onUpload}
             tramite_id={tramite.id}
@@ -66,8 +67,8 @@ export default function TramiteFilesSection({
             userData={userData}
             client={client}
           />
-        )}
-      </CardFooter>
+        </CardFooter>
+      )}
     </Card>
   );
 }

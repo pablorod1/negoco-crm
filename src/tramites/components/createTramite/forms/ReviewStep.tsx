@@ -25,6 +25,8 @@ import {
 } from "@/core/utils/format";
 import { IdCardIcon, Mail, Phone } from "lucide-react";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
+import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
+import FormTicketsSection from "@/core/components/FormTicketsSection";
 
 interface Props {
   tramite: TramiteDB;
@@ -68,6 +70,13 @@ export default function ReviewStep({
       contract.pot6 === 0
     );
   };
+  const { supplier: newSupplier } = useEnergySupplierById(
+    contracts.length > 0 ? contracts[0].new_company : ""
+  );
+
+  const { supplier: oldSupplier } = useEnergySupplierById(
+    contracts.length > 0 ? contracts[0].old_company || "" : ""
+  );
 
   const totalDocuments =
     documents.length + (selectedExistingFiles || []).length;
@@ -279,7 +288,8 @@ export default function ReviewStep({
                         <div>
                           <p className="text-sm font-medium">Compañía</p>
                           <p className="text-sm text-muted-foreground">
-                            {contract.old_company} ? {contract.new_company}
+                            {oldSupplier?.name ?? contract.old_company} --&gt;{" "}
+                            {newSupplier?.name}
                           </p>
                         </div>
 
@@ -414,57 +424,24 @@ export default function ReviewStep({
             </CardContent>
           </Card>
 
-          {/* Notes */}
+          {/* Tickets/Observaciones */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-primary-800">Notas</CardTitle>
+              <CardTitle className="text-lg text-primary-800">
+                Observaciones
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              {tramite.notes.length > 0 ? (
-                <div className="space-y-2">
-                  {tramite.notes.map((note, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 border rounded-lg"
-                    >
-                      <span className="text-sm">{note}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-gray-400 text-sm italic">
-                  No hay notas asociadas.
-                </div>
-              )}
+              <FormTicketsSection
+                context="tramite"
+                refId={tramite.id}
+                assignedTo={tramite.user_id || ""}
+                userData={userData}
+                maxHeight="300px"
+                isReadOnly
+              />
             </CardContent>
           </Card>
-          {!isComercial && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-primary-800">
-                  Notas Internas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {tramite.internal_notes.length > 0 ? (
-                  <div className="space-y-2">
-                    {tramite.internal_notes.map((note, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 border rounded-lg"
-                      >
-                        <span className="text-sm">{note}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-gray-400 text-sm italic">
-                    No hay notas asociadas.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </ScrollArea>
       <ButtonGroupComponent

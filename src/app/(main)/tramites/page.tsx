@@ -25,9 +25,10 @@ export default function TramitesPage() {
       }
     }
   }, [userData]);
+
   return (
-    <section className="pb-12 px-4 bg-white rounded-2xl shadow-2xl">
+    <main className="min-h-screen p-4">
       <DataTable title="Trámites" columns={columns} />
-    </section>
+    </main>
   );
 }

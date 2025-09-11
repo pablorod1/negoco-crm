@@ -17,54 +17,98 @@ export default function ClientTabContent({
   signer?: SignerDB | undefined;
 }) {
   return (
-    <div className="space-y-12">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Personal Information */}
         <div className="space-y-4">
-          <div>
-            <p className="text-sm font-medium text-primary-400">
-              Nombre Completo
-            </p>
-            <p className="font-medium ">
-              {client.name} {client.last_name}
-            </p>
+          <div className="pb-3 border-b border-gray-200">
+            <h3 className="text-sm font-medium text-gray-700">
+              Información Personal
+            </h3>
           </div>
-          <div className="flex items-start gap-2">
-            <Mail className="h-4 w-4 text-primary-400 mt-1" />
-            <p className=" font-medium">{client.email}</p>
-          </div>
-          <div className="flex items-start gap-2">
-            <Phone className="h-4 w-4 text-primary-400 mt-1" />
-            <p className=" font-medium">{client.phone}</p>
-          </div>
-          <div className="flex items-start gap-2">
-            <Home className="h-4 w-4 text-primary-400 mt-1" />
-            <p className=" font-medium">
-              {client.address}, {client.postal_code}, {client.province},{" "}
-              {client.city}
-            </p>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Nombre Completo</p>
+              <p className="text-sm font-medium text-gray-800">
+                {client.name} {client.last_name}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Tipo de Cliente</p>
+              <p className="text-sm font-medium text-gray-800">{client.type}</p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Documento</p>
+              <p className="text-sm font-medium text-gray-800">
+                {client.document_type}: {client.document_number}
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* Contact Information */}
         <div className="space-y-4">
-          <div>
-            <p className="text-sm font-medium text-primary-400">
-              Tipo de Cliente
-            </p>
-            <p className="font-medium ">{client.type}</p>
+          <div className="pb-3 border-b border-gray-200">
+            <h3 className="text-sm font-medium text-gray-700">
+              Información de Contacto
+            </h3>
           </div>
-          <div>
-            <p className="text-sm font-medium text-primary-400">Documento</p>
-            <p className="font-medium ">
-              {client.document_type}: {client.document_number}
-            </p>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-2">
+              <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">
+                  {client.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">
+                  {client.phone}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <Home className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">
+                  {client.address}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {client.postal_code}, {client.city}, {client.province}
+                </p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-primary-400">IBAN</p>
-            <p className="font-medium ">{client.IBAN}</p>
+
+          {/* Financial Information */}
+          <div className="pt-4">
+            <div className="pb-3 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-700">
+                Información Financiera
+              </h3>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs text-gray-500 mb-1">IBAN</p>
+              <p className="text-sm font-medium text-gray-800 font-mono">
+                {client.IBAN}
+              </p>
+            </div>
           </div>
         </div>
       </div>
+
       {isEditable && (
-        <div className="absolute bottom-4 left-0 w-full px-4">
+        <div className="pt-4 border-t border-gray-200">
           <EditClientDrawer
             tramite_id={tramite_id}
             client={client}

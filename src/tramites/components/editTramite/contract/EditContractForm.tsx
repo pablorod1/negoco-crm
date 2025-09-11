@@ -1,11 +1,6 @@
 ﻿"use client";
 import { Zap } from "lucide-react";
-import {
-  PLAIN_COMPANIES,
-  PLAIN_CONTRACT_TYPES,
-  PLANS,
-  POTS,
-} from "@/tramites/constants";
+import { PLAIN_CONTRACT_TYPES, PLANS, POTS } from "@/tramites/constants";
 import { ContractDB } from "@/tramites/types";
 import { validateField } from "@/tramites/utils/validation/create-contract/field-validation";
 import { validateContract } from "@/tramites/utils/validation/create-contract/form-validation";
@@ -22,6 +17,7 @@ import {
   SelectComponent,
 } from "../../createTramite/InputComponent";
 import { Label } from "@/core/components/ui/label";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 
 interface Props {
   onSavingContract: (contract: ContractDB) => void;
@@ -42,6 +38,25 @@ export default function EditContractForm({
     createEmptyContractError
   );
   const [formData, setFormData] = React.useState<ContractDB>(contract);
+
+  // Load active energy suppliers
+  const { activeSuppliers } = useActiveEnergySuppliers();
+
+  // Convert suppliers to dropdown format
+  const supplierOptions = React.useMemo(
+    () =>
+      activeSuppliers.map((supplier) => ({
+        label: supplier.name,
+        value: supplier.name,
+      })),
+    [activeSuppliers]
+  );
+
+  // Add "Otra" option for old company
+  const oldCompanyOptions = React.useMemo(
+    () => [...supplierOptions, { label: "Otra", value: "Otra" }],
+    [supplierOptions]
+  );
 
   const handleFieldChange = (
     e:
@@ -185,7 +200,7 @@ export default function EditContractForm({
             <SelectComponent
               name="old_company"
               label="Compañía Antigua"
-              items={[...PLAIN_COMPANIES, "Otra"]}
+              items={oldCompanyOptions}
               onChange={(value) => handleSelectChange(value, "old_company")}
               isRequired
               selectedKey={formData.old_company || ""}
@@ -193,7 +208,7 @@ export default function EditContractForm({
             <SelectComponent
               name="new_company"
               label="Compañía Nueva"
-              items={PLAIN_COMPANIES}
+              items={supplierOptions}
               onChange={(value) => handleSelectChange(value, "new_company")}
               errors={errors.new_company}
               isRequired

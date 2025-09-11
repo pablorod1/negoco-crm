@@ -16,6 +16,7 @@ import {
   formatUUID,
 } from "@/core/utils/format";
 import { ComparativaVM, ComparativaStatus } from "@/comparativas/types";
+import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -36,6 +37,8 @@ export default function ComparativaToTramiteStep({
   plan,
   userData,
 }: Props) {
+  const { supplier } = useEnergySupplierById(comparativa.company_id);
+  const company_name = supplier?.name;
   const isComercial = userData.role === "2";
   const handleChange = (value: string) => {
     setPlan(value as "fijo" | "indexado");
@@ -116,11 +119,19 @@ export default function ComparativaToTramiteStep({
                     </p>
                   </div>
                 )}
-                <div>
-                  <p className="text-sm font-medium">Servicio</p>
-                  <p className="text-sm text-muted-foreground">
-                    {comparativa.service}
-                  </p>
+                <div className="flex items-center gap-6">
+                  <div>
+                    <p className="text-sm font-medium">Servicio</p>
+                    <p className="text-sm text-muted-foreground">
+                      {comparativa.service}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Compañía</p>
+                    <p className="text-sm text-muted-foreground">
+                      {company_name}
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm font-medium">

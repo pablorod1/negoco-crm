@@ -108,12 +108,29 @@ export default function AddTramiteDialog({
     [userData, plan, comparativa, savedClient]
   );
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
+    // Clean up any tickets created with this comparativa ID if cancelling
+    if (tramite.id && activeTab > 0) {
+      try {
+        await fetch(`/api/v2/tickets/cleanup`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            context: "tramite",
+            ref_id: tramite.id,
+          }),
+        });
+      } catch (error) {
+        console.error("Error cleaning up tickets:", error);
+      }
+    }
     setIsOpen(false);
     setLoading(false);
     setLoadingStep(0);
     setLoadingMessage("");
-  }, []);
+  }, [tramite.id, activeTab]);
 
   // Navigation handlers
   const handleBack = useCallback(() => {
@@ -137,6 +154,7 @@ export default function AddTramiteDialog({
           body: JSON.stringify({
             status: "processed",
             tramite_id: tramite.id,
+            user_id: userData.id,
           }),
           headers: {
             "Content-Type": "application/json",
@@ -166,6 +184,7 @@ export default function AddTramiteDialog({
           body: JSON.stringify({
             organization_id: userData.organization.id,
             tramite_id: tramite.id,
+            user_id: userData.id,
           }),
           headers: {
             "Content-Type": "application/json",
@@ -444,13 +463,13 @@ export default function AddTramiteDialog({
         contracts={contracts}
         setContracts={setContracts}
         userData={userData as User}
+        comparativa={comparativa as ComparativaVM}
       />,
       <FourthStepForm
         key={4}
         onBack={handleBack}
         onFinish={handleNext}
         tramite={tramite}
-        setTramite={setTramite}
         onCancel={handleClose}
         documents={documents}
         setDocuments={setDocuments}
@@ -517,7 +536,6 @@ export default function AddTramiteDialog({
         onBack={handleBack}
         onFinish={handleNext}
         tramite={tramite}
-        setTramite={setTramite}
         onCancel={handleClose}
         documents={documents}
         setDocuments={setDocuments}
@@ -583,13 +601,22 @@ export default function AddTramiteDialog({
       return <span>Completar Comparativa</span>;
     }
 
+    if (savedClient) {
+      return (
+        <>
+          <PlusCircle size={20} />
+          <span>Añadir Contrato</span>
+        </>
+      );
+    }
+
     return (
       <>
         <PlusCircle size={20} />
         <span>Nuevo Trámite</span>
       </>
     );
-  }, [comparativa]);
+  }, [comparativa, savedClient]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

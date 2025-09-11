@@ -12,7 +12,6 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/core/components/ui/dialog";
-import { Textarea } from "@/core/components/ui/textarea";
 
 interface Props {
   onCreateNote: (note: string) => void;
@@ -21,10 +20,6 @@ interface Props {
 export default function CreateNoteDialog({ onCreateNote }: Props) {
   const [note, setNote] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-
-  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNote(e.target.value);
-  };
 
   const onOpen = () => {
     setIsOpen(true);
@@ -54,34 +49,26 @@ export default function CreateNoteDialog({ onCreateNote }: Props) {
           <DialogHeader className="px-4 pt-4 pb-0">
             <div>
               <DialogTitle className="text-primary-800 text-xl">
-                Crear nueva nota
+                Este sistema de notas no está disponible
               </DialogTitle>
               <DialogDescription className="text-gray-500 text-sm">
-                Escribe una nota para el trámite.
+                Este sistema de notas ha sido sustituido por un sistema de
+                tickets. Por favor, utiliza el sistema de tickets para crear y
+                gestionar notas.
               </DialogDescription>
             </div>
           </DialogHeader>
-
-          <Textarea
-            aria-label="Escribe una nota"
-            maxLength={500}
-            rows={4}
-            placeholder="Escribe una nota... (máx. 500 caracteres)"
-            spellCheck={false}
-            value={note}
-            onChange={handleNoteChange}
-            className="relative border-0 rounded-none shadow-none w-full resize-none bg-primary-50 p-4"
-          />
 
           <DialogFooter className="!justify-between p-4">
             <Button onClick={onClose} variant="destructive">
               Cancelar
             </Button>
-            <Button onClick={handleCreateNote}>Guardar</Button>
+            <Button disabled onClick={handleCreateNote}>
+              Guardar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
   );
 }
-

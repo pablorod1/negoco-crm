@@ -6,7 +6,6 @@ import { TramiteVM } from "@/tramites/types";
 import { CircleCheck, CircleX, Pencil } from "lucide-react";
 import { useState } from "react";
 import { InputComponent } from "../createTramite/InputComponent";
-import { cn } from "@/core/utils";
 import { showCustomToast } from "@/core/components/CustomToast";
 
 interface Props {
@@ -104,52 +103,86 @@ export default function ProviderSection({ tramite, onUpdate }: Props) {
     }
   };
   return (
-    <div className="space-y-2 group w-full">
-      <p className="text-sm font-medium text-primary-400">Proveedor</p>
-      <div className="flex items-center gap-2">
-        {!isEditing ? (
-          <>
+    <div className="space-y-2">
+      {/* Section Header */}
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-gray-700">Proveedor</h4>
+        <Button
+          size="sm"
+          variant={isEditing ? "outline" : "ghost"}
+          onClick={handleEdit}
+          className="h-7 px-2 text-gray-600 hover:text-gray-900"
+        >
+          {!isEditing ? (
+            <>
+              <Pencil className="h-3 w-3 mr-1" />
+              Editar
+            </>
+          ) : (
+            <>
+              <CircleX className="h-3 w-3 mr-1" />
+              Cancelar
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Content Area */}
+      {!isEditing ? (
+        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+          <div className="flex items-center justify-center">
             {tramite.provider ? (
-              <Badge variant={"default"}>{tramite.provider}</Badge>
+              <div className="flex flex-col items-center space-y-2">
+                <Badge
+                  variant="secondary"
+                  className="bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1"
+                >
+                  {tramite.provider}
+                </Badge>
+                <p className="text-xs text-gray-500">Proveedor asignado</p>
+              </div>
             ) : (
-              <Badge>Sin Asignar</Badge>
+              <div className="flex flex-col items-center space-y-2">
+                <Badge
+                  variant="outline"
+                  className="border-gray-300 text-gray-600 px-3 py-1"
+                >
+                  Sin Asignar
+                </Badge>
+                <p className="text-xs text-gray-500">
+                  No hay proveedor asignado
+                </p>
+              </div>
             )}
-          </>
-        ) : (
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
           <InputComponent
             name="provider"
             value={newProvider}
             onChange={handleChange}
             type="text"
+            label="Nombre del proveedor"
             placeholder="Introduce el proveedor (dejar vacío para eliminar)"
           />
-        )}
-        <Button
-          size={"icon"}
-          variant={"ghost"}
-          className={cn(
-            "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
-            isEditing && "opacity-100"
-          )}
-          onClick={handleEdit}
-        >
-          {!isEditing ? (
-            <Pencil className="w-4 h-4 text-primary-500" />
-          ) : (
-            <CircleX className="w-4 h-4 text-danger-500" />
-          )}
-        </Button>
-        {isEditing ? (
-          <Button
-            size={"icon"}
-            variant={"ghost"}
-            onClick={handleSubmit}
-            disabled={isLoading}
-          >
-            <CircleCheck className="w-4 h-4 text-success-500" />
-          </Button>
-        ) : null}
-      </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSubmit} disabled={isLoading}>
+              <CircleCheck className="h-4 w-4 mr-2" />
+              {isLoading ? "Guardando..." : "Guardar"}
+            </Button>
+            <Button
+              size="sm"
+              variant="dangerGhost"
+              onClick={handleEdit}
+              disabled={isLoading}
+            >
+              <CircleX className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

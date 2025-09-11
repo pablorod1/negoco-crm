@@ -1,146 +1,59 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/core/components/ui/card";
-import { Separator } from "@/core/components/ui/separator";
-import { CloudAlert, ShieldAlert } from "lucide-react";
-import { EditTramiteFormData } from "@/tramites/types/tramite.types";
-import { createEmptyTramiteForm } from "@/tramites/utils/tramite.factories";
-import { SignerDB, TramiteFile } from "@/tramites/types/tramite.types";
+import { useState } from "react";
+import { TramiteFile } from "@/tramites/types/tramite.types";
 import { User } from "@/core/types";
 import { useUser } from "@/core/contexts/UserContext";
-import { useParams } from "next/navigation";
-import { TramiteNotesSection } from "@/tramites/components/editTramite/notes/NotesTabContent";
-import ContractSection from "@/tramites/components/editTramite/contract/ContractSection";
-import { showCustomToast } from "@/core/components/CustomToast";
+import TicketTabContent from "@/tickets/components/TicketTabContent";
 import TramiteFilesSection from "@/tramites/components/editTramite/files/TramitesFilesSection";
-import TramiteTimeLineSection from "@/tramites/components/editTramite/TramiteTimeLineSection";
+import TramiteHistorialSection from "@/tramites/components/editTramite/historial/TramiteHistorialSection";
 import TramiteClientSection from "@/tramites/components/editTramite/client/TramiteClientSection";
-import TramiteComercialSection from "@/tramites/components/editTramite/comercial/TramiteComercialSection";
-import TramiteComissionsSection from "@/tramites/components/editTramite/comissions/TramiteComissionsSection";
-import TramiteStatusSection from "@/tramites/components/editTramite/TramiteStatusSection";
-import LiquidezStatusSection from "@/tramites/components/editTramite/liquidez/LiquidezStatusSection";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
-import { useTransitionRouter } from "next-view-transitions";
-import { formatUUID } from "@/core/utils/format";
-import ProviderSection from "@/tramites/components/editTramite/ProviderSection";
+import { TramiteNotesSection } from "@/tramites/components/editTramite/notes/NotesTabContent";
+import { Button } from "@/core/components/ui/button";
+
+import { cn } from "@/core/utils";
+
+// Nuevos imports de nuestros hooks y componentes
+import { useTramiteDetails } from "@/tramites/hooks/useTramiteDetails";
+import { useViewNavigation } from "@/tramites/hooks/useViewNavigation";
+import {
+  isEditableTramite,
+  isComercialEditableTramite,
+  isRenewableTramite,
+  isActiveTramite,
+  hasNotes,
+  isAdminUser,
+} from "@/tramites/utils/permissions";
+import TramiteNavigation from "@/tramites/components/details/TramiteNavigation";
+import MainView from "@/tramites/components/details/MainView";
 
 export default function TramiteDetails() {
   const { userData } = useUser();
-  const { id } = useParams();
-  const router = useTransitionRouter();
-  const [formData, setFormData] = useState<EditTramiteFormData>(
-    createEmptyTramiteForm()
-  );
   const isSubcomercial = userData && userData.role === "2" && userData.super_id;
-  const isComercial = userData && userData.role === "2";
-  const [loading, setLoading] = useState(true);
-  const [loadedData, setLoadedData] = useState(false);
 
-  const fetchTramite = useCallback(async () => {
-    if (!userData?.id || !userData?.role) return;
+  // Usando nuestros hooks personalizados
+  const { formData, loading, loadedData, fetchTramite } = useTramiteDetails({
+    userData,
+  });
+  const { currentView, setCurrentView } = useViewNavigation();
 
-    try {
-      const rs = await fetch(`/api/v2/contracts/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id,
-          user_id: userData.id,
-          role: userData.role,
-        }),
-      });
-
-      // Comprobar primero el estado HTTP de la respuesta
-      if (rs.status === 403) {
-        showCustomToast({
-          title: "Acceso denegado",
-          message: "No tienes permiso para acceder a este trámite",
-          icon: ShieldAlert,
-          iconSize: 24,
-          iconColor: "var(--danger-color)",
-        });
-        router.push("/tramites");
-        return;
-      }
-
-      if (!rs.ok) {
-        const errorData = await rs.json();
-        showCustomToast({
-          title: "Error",
-          message: errorData.error || "Error al cargar el trámite",
-          icon: CloudAlert,
-          iconSize: 24,
-          iconColor: "var(--danger-color)",
-        });
-        router.push("/tramites");
-        return;
-      }
-
-      const { success, data } = await rs.json();
-      if (success && data) {
-        setFormData({
-          ...data,
-          signer: data.signer || ({} as SignerDB),
-        });
-        setLoadedData(true);
-      } else {
-        // Si no hay datos pero la respuesta fue exitosa (caso extraño), redirigir de todas formas
-        showCustomToast({
-          title: "Error",
-          message: "No se encontraron datos del trámite",
-          icon: CloudAlert,
-          iconSize: 24,
-          iconColor: "var(--danger-color)",
-        });
-        router.push("/tramites");
-        return;
-      }
-    } catch (error) {
-      console.error("Error en la solicitud:", error);
-      showCustomToast({
-        title: "Error",
-        message: "Error de conexión",
-        icon: CloudAlert,
-        iconSize: 24,
-        iconColor: "var(--danger-color)",
-      });
-      router.push("/tramites");
-      return;
-    } finally {
-      setLoading(false);
-    }
-  }, [id, userData?.id, userData?.role, router]);
-
-  useEffect(() => {
-    fetchTramite();
-  }, [fetchTramite]);
+  const [ticketsViewState, setTicketsViewState] = useState<"tickets" | "notes">(
+    "tickets"
+  );
 
   const { tramite, client, contracts, files, signer } = formData;
 
-  const isEditable =
-    userData &&
-    (userData.role === "admin" ||
-      userData.role === "1" ||
-      (userData.role === "2" && tramite.status === "Borrador")) &&
-    tramite.status !== "Baja";
-
-  const isComercialEditable =
-    userData &&
-    (userData.role === "admin" ||
-      userData.role === "1" ||
-      (userData.role === "2" && tramite.status === "Borrador"));
-
-  const isRenewable =
-    new Date(tramite.renovation_date) <=
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-  const isActive = tramite.status === "Activo";
+  // Calculando permisos y estados usando nuestras utilidades
+  const isEditable = isEditableTramite(formData, userData?.role);
+  const isComercialEditable = isComercialEditableTramite(
+    formData,
+    userData?.role
+  );
+  const isRenewable = isRenewableTramite(formData);
+  const isActive = isActiveTramite(formData);
+  const userIsAdmin = isAdminUser(userData?.role);
+  const isComercial = userData && userData.role === "2";
 
   if (loading || !loadedData) {
     return (
@@ -152,123 +65,123 @@ export default function TramiteDetails() {
   }
 
   return (
-    <div className=" mx-12 py-6 ">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary-800">
-            Detalles del Trámite
-          </h1>
-          <p className="text-primary-400">ID: {formatUUID(tramite.id)}</p>
-        </div>
-        <TramiteStatusSection
-          tramite={tramite}
-          userData={userData as User}
-          onUpdate={fetchTramite}
-          isEditable={isEditable}
-          isRenewable={isRenewable}
-          onRenew={fetchTramite}
-          client={client}
-          isActive={isActive}
-        />
-      </div>
-
-      {/* Timeline Card */}
-      <TramiteTimeLineSection
-        tramite={tramite}
-        isComercial={isComercial as boolean}
-        onUpdate={fetchTramite}
-      />
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        {/* Client Info Card */}
-        <TramiteClientSection
-          client={client}
-          signer={signer}
-          onUpdated={fetchTramite}
-          isEditable={isEditable as boolean}
-          tramite_id={tramite.id}
+    <div className="min-h-screen bg-gray-50">
+      {/* Main Content Container */}
+      <div className="px-6 py-8 space-y-8">
+        {/* Navigation */}
+        <TramiteNavigation
+          currentView={currentView}
+          onViewChange={setCurrentView}
         />
 
-        {/* Commission Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-primary-800">
-              Información Adicional
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <TramiteComercialSection
-              user={tramite.user as User}
-              isEditable={isComercialEditable}
-              userData={userData as User}
+        {/* Content based on current view */}
+        {currentView === "main" && (
+          <MainView
+            tramite={tramite}
+            client={client}
+            contracts={contracts}
+            userData={userData as User}
+            onUpdate={fetchTramite}
+            isEditable={isEditable}
+            isComercialEditable={isComercialEditable}
+            isRenewable={isRenewable}
+            isActive={isActive}
+            isSubcomercial={!!isSubcomercial}
+          />
+        )}
+
+        {currentView === "cliente" && (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <TramiteClientSection
+              client={client}
+              signer={signer}
+              onUpdated={fetchTramite}
+              isEditable={isEditable as boolean}
               tramite_id={tramite.id}
-              onUpdate={fetchTramite}
             />
+          </div>
+        )}
 
-            {!isSubcomercial && (
-              <>
-                <Separator />
+        {currentView === "documentos" && (
+          <TramiteFilesSection
+            files={files as TramiteFile[]}
+            userData={userData as User}
+            tramite={tramite}
+            onUpload={fetchTramite}
+            isEditable={isEditable}
+            client={client}
+          />
+        )}
 
-                <TramiteComissionsSection
-                  tramite={tramite}
-                  userData={userData as User}
-                  onUpdate={fetchTramite}
-                  isEditable={isEditable}
-                />
-
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-4">
-                  {!isComercial ? (
-                    <ProviderSection
-                      tramite={tramite}
-                      onUpdate={fetchTramite}
-                    />
-                  ) : null}
-                  <LiquidezStatusSection
-                    tramite={tramite}
-                    isComercial={isComercial as boolean}
-                    userData={userData as User}
-                    onUpdate={fetchTramite}
-                    client={client}
-                  />
-                </div>
-              </>
+        {currentView === "tickets" && (
+          <div className="space-y-6">
+            {hasNotes(formData) && (
+              <div className="flex items-center gap-2 max-w-60 w-full">
+                <Button
+                  key={"tickets"}
+                  onClick={() => setTicketsViewState("tickets")}
+                  variant={
+                    ticketsViewState === "tickets" ? "default" : "outline"
+                  }
+                  size="sm"
+                  className={cn(
+                    "flex-1",
+                    ticketsViewState === "tickets"
+                      ? "bg-gray-900 text-white shadow-sm"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  )}
+                >
+                  Tickets
+                </Button>
+                <Button
+                  key={"notes"}
+                  onClick={() => setTicketsViewState("notes")}
+                  variant={ticketsViewState === "notes" ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "flex-1",
+                    ticketsViewState === "notes"
+                      ? "bg-gray-900 text-white shadow-sm"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  )}
+                >
+                  Notas
+                </Button>
+              </div>
             )}
-          </CardContent>
-        </Card>
+
+            {ticketsViewState === "tickets" ? (
+              <TicketTabContent
+                context="tramite"
+                refId={tramite.id}
+                assignedTo={tramite.user_id}
+                userData={userData as User}
+                onRefresh={fetchTramite}
+              />
+            ) : (
+              <TramiteNotesSection
+                notes={tramite.notes}
+                onDeletedNote={fetchTramite}
+                onAddNote={fetchTramite}
+                userData={userData as User}
+                tramite_id={tramite.id}
+                client={client}
+                internalNotes={tramite.internal_notes}
+              />
+            )}
+          </div>
+        )}
+
+        {currentView === "historial" && (
+          <TramiteHistorialSection
+            tramite={tramite}
+            userData={userData as User}
+            isComercial={isComercial as boolean}
+            onUpdate={fetchTramite}
+            userIsAdmin={userIsAdmin}
+          />
+        )}
       </div>
-
-      {/* Contracts Section */}
-      <ContractSection
-        contracts={contracts}
-        tramite_id={tramite.id}
-        onContractAdded={fetchTramite}
-        onContractUpdated={fetchTramite}
-        isEditable={isEditable}
-      />
-
-      {/* Notes Section */}
-
-      <TramiteNotesSection
-        notes={tramite.notes}
-        onDeletedNote={fetchTramite}
-        onAddNote={fetchTramite}
-        tramite_id={tramite.id}
-        userData={userData as User}
-        client={client}
-        internalNotes={tramite.internal_notes}
-      />
-
-      {/* Files Section */}
-      <TramiteFilesSection
-        files={files as TramiteFile[]}
-        userData={userData as User}
-        tramite={tramite}
-        onUpload={fetchTramite}
-        isEditable={isEditable}
-        client={client}
-      />
     </div>
   );
 }

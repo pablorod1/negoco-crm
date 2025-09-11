@@ -112,7 +112,9 @@ export const createEmptySignerDB = (): SignerDB => ({
   client_id: "",
 });
 
-export const createEmptyContractDB = (): ContractDB => ({
+export const createEmptyContractDB = (
+  comparativa?: ComparativaVM | undefined
+): ContractDB => ({
   id: `CTR-${crypto.randomUUID()}`,
   type: "",
   province: "",
@@ -120,7 +122,7 @@ export const createEmptyContractDB = (): ContractDB => ({
   address: "",
   postal_code: "",
   old_company: "",
-  new_company: "",
+  new_company: comparativa ? comparativa.company_id || "" : "",
   plan: "",
   consumption: 0,
   CUPS: "",

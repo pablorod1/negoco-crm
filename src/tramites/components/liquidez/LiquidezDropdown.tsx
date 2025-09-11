@@ -1,11 +1,9 @@
 ﻿import { TramiteRow } from "@/tramites/types";
 import {
-  DropdownMenuTrigger,
-  DropdownMenu,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuContent,
-} from "@/core/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/core/components/ui/popover";
 import { Button } from "@/core/components/ui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
 import { Link } from "next-view-transitions";
@@ -124,34 +122,30 @@ export const DeleteDocumentIcon = (props: IconProps) => {
 
 export default function LiquidezDropdown({ tramite }: { tramite: TramiteRow }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <Button size="icon" variant="ghost">
           <MoreVertical className="size-4" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        aria-label="Dropdown menu with description"
-      >
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            key="edit"
-            textValue="Visualizar Comparativa"
-            className="p-0"
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-2" align="end">
+        <div className="space-y-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
+            asChild
           >
-            <Button variant={"link"}>
-              <Link
-                className="inline-flex items-center justify-start gap-2"
-                href={`/tramites/${tramite.id}`}
-              >
-                <PencilLine size={16} />
-                Visualizar Trámite
-              </Link>
-            </Button>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <Link
+              className="inline-flex items-center justify-start gap-2"
+              href={`/tramites/${tramite.id}`}
+            >
+              <PencilLine size={16} />
+              Visualizar Trámite
+            </Link>
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
