@@ -2,7 +2,6 @@
 import DocumentsForm from "@/tramites/components/DocumentsForm";
 import FormWrapper from "@/tramites/components/createTramite/FormWrapper";
 import { Button } from "@/core/components/ui/button";
-import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { CircleX } from "lucide-react";
 
 interface Props {
@@ -24,8 +23,8 @@ export default function SecondStepForm({
     e.preventDefault();
     if (documents.length === 0) {
       showCustomToast({
-        title: "Error",
-        message: "Debes subir al menos un documento",
+        title: "Error de validación",
+        message: "Debes subir al menos un documento para continuar",
         icon: CircleX,
         iconColor: "var(--danger-color)",
         iconSize: 24,
@@ -34,33 +33,51 @@ export default function SecondStepForm({
       onNext();
     }
   };
+
   return (
     <FormWrapper>
-      <form onSubmit={handleSubmit} className="relative">
-        <ScrollArea className="max-h-[calc(100vh-200px)] h-full w-full p-2">
-          <div className="flex flex-col gap-4 w-full">
-            <h2 className="text-xl text-primary-500 font-semibold">
-              Documentos
-            </h2>
-            <DocumentsForm
-              uploadedFiles={documents}
-              setUploadedFiles={setDocuments}
-            />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Document upload section */}
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-gray-900">
+              Documentos requeridos
+            </h3>
+            <p className="text-xs text-gray-500">
+              Sube al menos un documento para continuar con el proceso
+            </p>
           </div>
-          <div className="w-full justify-between flex items-center mt-4">
-            <Button variant="destructive" onClick={onCancel}>
-              Cancelar
+          <DocumentsForm
+            uploadedFiles={documents}
+            setUploadedFiles={setDocuments}
+          />
+        </div>
+
+        {/* Navigation Controls */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            type="button"
+            className="px-4"
+          >
+            Cancelar
+          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={onBack}
+              type="button"
+              className="px-4"
+            >
+              Atrás
             </Button>
-            <div className="flex items-center gap-4">
-              <Button variant={"destructive"} onClick={onBack}>
-                Atrás
-              </Button>
-              <Button type="submit">Siguiente</Button>
-            </div>
+            <Button type="submit" className="px-4">
+              Siguiente
+            </Button>
           </div>
-        </ScrollArea>
+        </div>
       </form>
     </FormWrapper>
   );
 }
-

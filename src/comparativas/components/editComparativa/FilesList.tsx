@@ -1,12 +1,14 @@
-﻿import { showCustomToast } from "@/core/components/CustomToast";
-import { formatDateTime, formatFileSize } from "@/core/utils/format";
+﻿"use client";
+import React, { useCallback, useMemo } from "react";
 import { ComparativaFile } from "@/comparativas/types/comparativa.types";
-import { downloadFile } from "@/core/firebase/data/downloadFile";
 import { Button } from "@/core/components/ui/button";
-import { CloudAlert, Download, FileIcon, FileX } from "lucide-react";
-import Image from "next/image";
-import { useCallback, useMemo } from "react";
+import { Download, FileX, FileIcon } from "lucide-react";
+import { formatDateTime, formatFileSize } from "@/core/utils/format";
 import DeleteComparativaFileConfirmationModal from "./DeleteComparativaFileConfirmationModal";
+import { showCustomToast } from "@/core/components/CustomToast";
+import { downloadFile } from "@/core/firebase/data/downloadFile";
+import { CloudAlert } from "lucide-react";
+import Image from "next/image";
 
 interface FilesListProps {
   files: ComparativaFile[];

@@ -1,0 +1,647 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTrigger,
+  DialogTitle,
+  DialogDescription,
+} from "@/core/components/ui/dialog";
+import { Button } from "@/core/components/ui/button";
+import { User, Notification } from "@/core/types";
+import { ComparativaVM, ComparativaFile } from "@/comparativas/types";
+import { showCustomToast } from "@/core/components/CustomToast";
+import { CheckCircle, CircleX, XCircle } from "lucide-react";
+import LoadingStateModal from "@/core/components/LoadingStateModal";
+import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
+import { Separator } from "@/core/components/ui/separator";
+import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
+import { uploadFile } from "@/core/firebase/data/uploadFiles";
+import DocumentsForm from "@/tramites/components/DocumentsForm";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { Label } from "@/core/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/core/components/ui/select";
+
+interface Props {
+  comparativa: ComparativaVM;
+  onUpdate: () => void;
+  userData: User;
+}
+
+type ActionType = "complete" | "reject" | null;
+
+export default function CompletarEstudioModal({
+  comparativa,
+  onUpdate,
+  userData,
+}: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [actionType, setActionType] = useState<ActionType>(null);
+  const [loading, setLoading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
+
+  // Load active energy suppliers
+  const { activeSuppliers } = useActiveEnergySuppliers();
+
+  // Comisiones state
+  const [formDataComissions, setFormDataComissions] = useState<
+    Partial<ComissionFormValues>
+  >(
+    comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
+      ? {
+          comision_fijo: comparativa.comision.fijo,
+          comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          comision_sales_person_indexado:
+            comparativa.comision_sales_person.indexado,
+        }
+      : comparativa.plan.includes("fijo")
+        ? {
+            comision_fijo: comparativa.comision.fijo,
+            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          }
+        : {
+            comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_indexado:
+              comparativa.comision_sales_person.indexado,
+          }
+  );
+
+  const onClose = () => {
+    setIsOpen(false);
+    setActionType(null);
+    setUploadedFiles([]);
+    setSelectedSupplierId("");
+    setFormDataComissions(
+      comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
+        ? {
+            comision_fijo: comparativa.comision.fijo,
+            comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+            comision_sales_person_indexado:
+              comparativa.comision_sales_person.indexado,
+          }
+        : comparativa.plan.includes("fijo")
+          ? {
+              comision_fijo: comparativa.comision.fijo,
+              comision_sales_person_fijo:
+                comparativa.comision_sales_person.fijo,
+            }
+          : {
+              comision_indexado: comparativa.comision.indexado,
+              comision_sales_person_indexado:
+                comparativa.comision_sales_person.indexado,
+            }
+    );
+  };
+
+  const handleOpen = (action: ActionType) => {
+    setIsOpen(true);
+    setActionType(action);
+  };
+
+  const checkEmptyComissions = () => {
+    return Object.values(formDataComissions).some((value) => !value);
+  };
+
+  const checkComissionsChanged = () => {
+    const changes = {
+      comision_fijo:
+        formDataComissions.comision_fijo !== comparativa.comision.fijo
+          ? formDataComissions.comision_fijo
+          : undefined,
+      comision_indexado:
+        formDataComissions.comision_indexado !== comparativa.comision.indexado
+          ? formDataComissions.comision_indexado
+          : undefined,
+      comision_sales_person_fijo:
+        formDataComissions.comision_sales_person_fijo !==
+        comparativa.comision_sales_person.fijo
+          ? formDataComissions.comision_sales_person_fijo
+          : undefined,
+      comision_sales_person_indexado:
+        formDataComissions.comision_sales_person_indexado !==
+        comparativa.comision_sales_person.indexado
+          ? formDataComissions.comision_sales_person_indexado
+          : undefined,
+    };
+
+    return Object.values(changes).some((value) => value !== undefined)
+      ? changes
+      : null;
+  };
+
+  const handleRejectComparativa = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v2/comparisons/${comparativa.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "rejected",
+          user_id: userData.id,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
+        showCustomToast({
+          title: "Error al rechazar comparativa",
+          message: error,
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        return;
+      }
+
+      // Enviar notificación
+      const notification: Notification = generateComparativaUpdatedNotification(
+        {
+          comparativa_id: comparativa.id,
+          client: comparativa.client,
+          user_id: comparativa.user.id as string,
+          status: "rejected",
+        }
+      );
+
+      const notificationResponse = await fetch(`/api/v2/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notification }),
+      });
+
+      const { success: notificationSuccess, error: notificationError } =
+        await notificationResponse.json();
+
+      if (!notificationSuccess && notificationError) {
+        console.warn("Error al enviar notificación:", notificationError);
+      }
+
+      // Enviar email de notificación
+      const emailRes = await fetch(
+        "/api/v2/communications/emails/status-updates",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            type: "comparativa",
+            user_to: {
+              email: comparativa.user.email,
+              name: comparativa.user.name,
+              org_logo: userData.organization.logo,
+            },
+            comparativa_id: comparativa.id,
+            status: { old: comparativa.status, new: "rejected" },
+            comparativa_name: comparativa.client,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const { success: emailSuccess, error: emailError } =
+        await emailRes.json();
+
+      if (!emailSuccess) {
+        console.warn("Error al enviar email:", emailError);
+      }
+
+      showCustomToast({
+        title: "Comparativa Rechazada",
+        message: "La comparativa ha sido rechazada correctamente",
+        icon: CheckCircle,
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+      });
+
+      onUpdate();
+      onClose();
+    } catch (error) {
+      showCustomToast({
+        title: "Error al rechazar comparativa",
+        message: "Ocurrió un error al rechazar la comparativa",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      console.error("Error rejecting comparativa:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompleteEstudio = async () => {
+    if (uploadedFiles.length === 0) {
+      showCustomToast({
+        title: "Archivo requerido",
+        message: "Debes subir al menos un archivo para completar el estudio",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
+
+    if (!selectedSupplierId) {
+      showCustomToast({
+        title: "Comercializadora requerida",
+        message: "Por favor, selecciona la comercializadora ganadora",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
+
+    if (checkEmptyComissions()) {
+      showCustomToast({
+        title: "Comisiones requeridas",
+        message: "Por favor, asigna todas las comisiones",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Subir archivos
+      const comparativaFiles: ComparativaFile[] = [];
+
+      for (const file of uploadedFiles) {
+        try {
+          const { downloadURL, previewURL } = await uploadFile(
+            file,
+            `${userData.organization.id}/comparativas`,
+            comparativa.id
+          );
+
+          comparativaFiles.push({
+            id: crypto.randomUUID(),
+            comparativa_id: comparativa.id,
+            filename: file.name,
+            size: file.size,
+            extension: file.name.split(".").pop() || "",
+            upload_date: new Date().toISOString(),
+            download_url: downloadURL,
+            preview_url: previewURL || null,
+          });
+        } catch (error) {
+          showCustomToast({
+            title: "Error al subir archivo",
+            message: "Inténtalo de nuevo más tarde",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          console.error("Error uploading file:", error);
+          return;
+        }
+      }
+
+      // 2. Actualizar estado y comisiones
+      const changes = checkComissionsChanged();
+
+      const res = await fetch(`/api/v2/comparisons/${comparativa.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "completed",
+          comissions: changes ? changes : undefined,
+          user_id: userData.id,
+          company_id: selectedSupplierId,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
+        showCustomToast({
+          title: "Error al completar estudio",
+          message: error,
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        return;
+      }
+
+      // 3. Agregar archivos
+      const formData = new FormData();
+      formData.append("organization_id", userData.organization.id);
+      formData.append("files", JSON.stringify(comparativaFiles));
+      formData.append("estudio_realizado", "true");
+
+      const uploadResponse = await fetch(
+        `/api/v2/comparisons/${comparativa.id}/documents`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const { success: uploadSuccess, error: uploadError } =
+        await uploadResponse.json();
+
+      if (!uploadSuccess) {
+        showCustomToast({
+          title: "Error al subir archivos",
+          message: uploadError,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+
+      // 4. Enviar notificación
+      const notification: Notification = generateComparativaUpdatedNotification(
+        {
+          comparativa_id: comparativa.id,
+          client: comparativa.client,
+          user_id: comparativa.user.id as string,
+          status: "completed",
+          files: true,
+          comissions: changes ? true : undefined,
+        }
+      );
+
+      const notificationResponse = await fetch(`/api/v2/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notification }),
+      });
+
+      const { success: notificationSuccess, error: notificationError } =
+        await notificationResponse.json();
+
+      if (!notificationSuccess && notificationError) {
+        console.warn("Error al enviar notificación:", notificationError);
+      }
+
+      // 5. Enviar email
+      const emailRes = await fetch(
+        "/api/v2/communications/emails/status-updates",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            type: "comparativa",
+            user_to: {
+              email: comparativa.user.email,
+              name: comparativa.user.name,
+              org_logo: userData.organization.logo,
+            },
+            comparativa_id: comparativa.id,
+            status: { old: comparativa.status, new: "completed" },
+            comparativa_name: comparativa.client,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const { success: emailSuccess, error: emailError } =
+        await emailRes.json();
+
+      if (!emailSuccess) {
+        console.warn("Error al enviar email:", emailError);
+      }
+
+      showCustomToast({
+        title: "Estudio Completado",
+        message: "El estudio ha sido completado correctamente",
+        icon: CheckCircle,
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+      });
+
+      onUpdate();
+      onClose();
+    } catch (error) {
+      showCustomToast({
+        title: "Error al completar estudio",
+        message: "Ocurrió un error al completar el estudio",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      console.error("Error completing study:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatUUID = (uuid: string) => {
+    return uuid.slice(-8).toUpperCase();
+  };
+
+  // Si no es pending, no mostrar nada
+  if (comparativa.status !== "pending") {
+    return null;
+  }
+
+  // Solo mostrar para usuarios backoffice y admin
+  const isAdmin = userData.role === "admin";
+  const isBackoffice = userData.role === "1";
+
+  if (!isAdmin && !isBackoffice) {
+    return null;
+  }
+
+  return (
+    <>
+      {/* Botón para rechazar */}
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => handleOpen("reject")}
+      >
+        <XCircle className="h-4 w-4" />
+        Rechazar
+      </Button>
+
+      {/* Modal para confirmar rechazo */}
+      <Dialog open={isOpen && actionType === "reject"} onOpenChange={setIsOpen}>
+        <DialogContent className="w-full max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Rechazar comparativa?</DialogTitle>
+            <DialogDescription>
+              Esta acción cambiará el estado de la comparativa a
+              &quot;Rechazada&quot;. El usuario comercial será notificado de
+              este cambio.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={onClose} variant="outline">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleRejectComparativa}
+              variant="destructive"
+              disabled={loading}
+            >
+              {loading ? "Rechazando..." : "Rechazar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Botón para completar estudio */}
+      <Dialog
+        open={isOpen && actionType === "complete"}
+        onOpenChange={setIsOpen}
+      >
+        <DialogTrigger asChild>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => handleOpen("complete")}
+          >
+            <CheckCircle className="h-4 w-4" />
+            Completar Estudio
+          </Button>
+        </DialogTrigger>
+        <DialogContent
+          aria-describedby={undefined}
+          className="w-full max-w-3xl"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-primary-800">
+              Completar Estudio - {formatUUID(comparativa.id)} ·{" "}
+              {comparativa.client}
+            </DialogTitle>
+            <DialogDescription>
+              Sube los archivos del estudio y asigna las comisiones
+              correspondientes
+            </DialogDescription>
+          </DialogHeader>
+
+          {loading && (
+            <LoadingStateModal
+              title="Completando estudio..."
+              description="Espere unos segundos mientras procesamos el estudio."
+            />
+          )}
+
+          <div className="space-y-6">
+            {/* Subir archivos */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                Archivos del Estudio{" "}
+                <span className="text-red-500 text-xs">*</span>
+              </h3>
+              <DocumentsForm
+                uploadedFiles={uploadedFiles}
+                setUploadedFiles={setUploadedFiles}
+              />
+              {uploadedFiles.length === 0 && (
+                <p className="text-xs text-red-500">
+                  Debes subir al menos un archivo para completar el estudio
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Seleccionar Comercializadora */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                Comercializadora Ganadora{" "}
+                <span className="text-red-500 text-xs">*</span>
+              </h3>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="supplier-select"
+                  className="text-sm text-gray-600"
+                >
+                  Selecciona la comercializadora que ganó la comparativa
+                </Label>
+                <Select
+                  value={selectedSupplierId}
+                  onValueChange={setSelectedSupplierId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar comercializadora..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeSuppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!selectedSupplierId && (
+                  <p className="text-xs text-red-500">
+                    Debes seleccionar una comercializadora para completar el
+                    estudio
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Comisiones */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                Asignar Comisiones{" "}
+                <span className="text-red-500 text-xs">*</span>
+              </h3>
+              <ComissionsForm
+                comparativa={comparativa}
+                formDataComissions={formDataComissions}
+                setFormDataComissions={setFormDataComissions}
+              />
+              <div className="flex items-start gap-1">
+                <small className="text-gray-500">*</small>
+                <p className="text-sm text-gray-500">
+                  Para completar el estudio, es necesario asignar todas las
+                  comisiones.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={onClose} variant="outline">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCompleteEstudio}
+              disabled={
+                uploadedFiles.length === 0 ||
+                checkEmptyComissions() ||
+                !selectedSupplierId
+              }
+            >
+              {loading ? "Completando..." : "Completar Estudio"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

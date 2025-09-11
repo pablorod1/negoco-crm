@@ -1,5 +1,4 @@
 ﻿"use client";
-import { TableLayout } from "@/core/components/table/TableLayout";
 import { User } from "@/core/types";
 import {
   ColumnDef,
@@ -13,6 +12,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ComparativasHeader from "./ComparativasHeader";
 import { useTableFilters } from "@/core/hooks/use-table-filters";
+import { useTablePagination } from "@/core/hooks/use-table-pagination";
 import { TableContent } from "@/core/components/table/TableContent";
 import { useUser } from "@/core/contexts/UserContext";
 import { useComparativas } from "@/core/contexts/ComparativasContext";
@@ -32,8 +32,9 @@ export default function ComparativasTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [loading, setLoading] = useState(false);
-  const [pageIndex, setPageIndex] = useState(1);
-  const [pageSize, setPageSize] = useState<string | number>(15);
+
+  const { pageIndex, pageSize, setPageIndex, setPageSize } =
+    useTablePagination("comparativas");
 
   const {
     filterValue,
@@ -43,7 +44,7 @@ export default function ComparativasTable<TData, TValue>({
     resetFilters,
     creationDateRange,
     setCreationDateRange,
-    saveFiltersToStorage, // Extract this from the hook
+    saveFiltersToStorage,
     userFilter,
     setUserFilter,
   } = useTableFilters("comparativas");
@@ -163,7 +164,7 @@ export default function ComparativasTable<TData, TValue>({
       setFilterValue,
       setStatusFilter,
       resetFilters: handleResetFilters,
-      saveFiltersToStorage, // Pass this to the header component
+      saveFiltersToStorage,
       totalComparativas,
       userData: userData as User,
       dateRange: creationDateRange,
@@ -177,7 +178,7 @@ export default function ComparativasTable<TData, TValue>({
       setFilterValue,
       setStatusFilter,
       handleResetFilters,
-      saveFiltersToStorage, // Add this to dependencies
+      saveFiltersToStorage,
       userData,
       creationDateRange,
       setCreationDateRange,
@@ -188,10 +189,11 @@ export default function ComparativasTable<TData, TValue>({
   );
 
   const table = useReactTable(tableConfig);
+
   return (
-    <div className="flex flex-col gap-4 bg-gray-50 w-full h-full">
+    <div className="flex flex-col gap-2 w-full h-full">
       <ComparativasHeader table={table} {...toolbarProps} />
-      <TableLayout>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <TableContent
           setPageIndex={setPageIndex}
           table={table}
@@ -202,7 +204,7 @@ export default function ComparativasTable<TData, TValue>({
           total={totalComparativas}
           setPageSize={setPageSize}
         />
-      </TableLayout>
+      </div>
     </div>
   );
 }

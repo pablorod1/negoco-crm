@@ -1,29 +1,16 @@
 ﻿"use client";
 
-import { ColumnSelector } from "@/tramites/components/table/ColumnSelector";
-import { User } from "@/core/types";
-import { Table } from "@tanstack/react-table";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Download, Filter, Search, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import AddComparativaDialog from "../createComparativa/AddComparativaDialog";
-import ExportTableModal from "@/core/components/ExportTableModal";
-import { MultiSelect } from "@/core/components/ui/multi-select";
-import { Label } from "@/core/components/ui/label";
-import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
-import { cn } from "@/core/utils";
 import { Badge } from "@/core/components/ui/badge";
-import { Button } from "@/core/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/core/components/ui/popover";
-import { DateRangePicker } from "@/dashboard/components/DateRangePicker";
+import type { Table } from "@tanstack/react-table";
+import type { User } from "@/core/types";
 import { DateRange } from "react-day-picker";
-import UserFilter from "@/core/components/table/UserFilter";
-import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
-import TooltipComponent from "@/core/components/TooltipComponent";
+import { SearchBox } from "./components/SearchBox";
+import { FilterSheet } from "./components/FilterSheet";
+import { ActionButtons } from "./components/ActionButtons";
+import { ActiveFilters } from "./components/ActiveFilters";
+import { useActiveFilters } from "@/comparativas/hooks/useActiveFilters";
 
 interface Props<TData> {
   filterValue: string;
@@ -31,7 +18,7 @@ interface Props<TData> {
   setFilterValue: (value: string) => void;
   setStatusFilter: (value: string[]) => void;
   resetFilters: () => void;
-  saveFiltersToStorage: () => void; // Add this optional prop
+  saveFiltersToStorage: () => void;
   table: Table<TData>;
   totalComparativas: number;
   userData: User;
@@ -47,7 +34,7 @@ const ComparativasHeader = <TData,>({
   setFilterValue,
   setStatusFilter,
   resetFilters,
-  saveFiltersToStorage, // Add this prop
+  saveFiltersToStorage,
   table,
   totalComparativas,
   userData,
@@ -56,27 +43,14 @@ const ComparativasHeader = <TData,>({
   userFilter,
   setUserFilter,
 }: Props<TData>) => {
-  const [scrolled, setScrolled] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
-
   const isComercial = userData?.role === "2";
 
-  useEffect(() => {
-    const filters = [];
-    if (statusFilter) filters.push("Estado");
-    if (dateRange) filters.push("Fecha de Creación");
-    if (userFilter && !isComercial) filters.push("Comercial");
-    setActiveFilters(filters);
-  }, [statusFilter, dateRange, userFilter, isComercial]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const activeFilters = useActiveFilters({
+    statusFilter,
+    dateRange,
+    userFilter,
+    isComercial,
+  });
 
   // Save filters to localStorage when they change
   useEffect(() => {
@@ -84,189 +58,65 @@ const ComparativasHeader = <TData,>({
   }, [
     statusFilter,
     dateRange,
-    saveFiltersToStorage,
-    activeFilters,
     userFilter,
+    saveFiltersToStorage,
+    activeFilters.length,
   ]);
 
-  const handleClearSearch = () => {
-    setFilterValue("");
-  };
-
   return (
-    <div className="w-full px-6 pt-6 pb-2">
+    <div className="w-full">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className={cn(
-          "bg-white rounded-xl border border-gray-100 shadow-sm transition-all duration-300",
-          scrolled ? "py-3 px-5" : "py-5 px-6"
-        )}
+        className="py-6 pb-2 px-6"
       >
         {/* Header Top Row */}
-        <div className="flex items-center justify-between gap-4  ">
-          <div className="flex items-center gap-3">
-            <h1
-              className={cn(
-                "font-bold text-3xl bg-gradient-to-r from-primary-700 to-primary-500 text-transparent bg-clip-text",
-                scrolled ? "text-2xl" : "text-3xl"
-              )}
-            >
-              Comparativas
-            </h1>
-
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="font-bold text-2xl text-gray-900">Comparativas</h1>
             <Badge
               variant="outline"
-              className="bg-primary-50 text-primary-700 border-primary-200 px-2.5 py-0.5"
+              className="bg-gray-50 text-gray-700 border-gray-200 px-3 py-1.5 text-sm font-medium"
             >
-              {totalComparativas} Total
+              {totalComparativas} registros
             </Badge>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Search */}
-            <div className="relative w-80">
-              <InputComponent
-                type="text"
-                value={filterValue}
-                onChange={(e) => setFilterValue(e.target.value)}
-                startContent={<Search className="h-4 w-4" />}
-                endContent={
-                  filterValue && (
-                    <button
-                      onClick={handleClearSearch}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )
-                }
-                name="search"
-                placeholder="Buscar por cliente, comercial..."
-              />
-            </div>
+            <SearchBox
+              value={filterValue}
+              onChange={setFilterValue}
+              placeholder="Buscar por cliente, comercial..."
+            />
 
-            {/* Filter Button */}
+            {/* Filter Sheet */}
+            <FilterSheet
+              activeFiltersCount={activeFilters.length}
+              statusFilter={statusFilter}
+              dateRange={dateRange}
+              userFilter={userFilter}
+              setStatusFilter={setStatusFilter}
+              setDateRange={setDateRange}
+              setUserFilter={setUserFilter}
+              resetFilters={resetFilters}
+              userData={userData}
+            />
 
-            <TooltipComponent content="Filtros avanzados">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                  "h-10 w-10 bg-gray-50 border-gray-200",
-                  showFilters &&
-                    "bg-primary-50 border-primary-200 text-primary-700",
-                  activeFilters.length > 0 && "bg-primary-50 border-primary-200"
-                )}
-              >
-                <div className="relative">
-                  <Filter className="h-4 w-4" />
-                  {activeFilters.length > 0 && (
-                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
-                  )}
-                </div>
-              </Button>
-            </TooltipComponent>
-
-            {/* Column Selector */}
-
-            <ColumnSelector table={table} tableId="comparativas" />
-
-            {/* Export Button */}
-
-            {!isComercial && (
-              <Popover>
-                <TooltipComponent content="Exportar datos">
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-10 w-10 bg-gray-50 border-gray-200"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipComponent>
-                <PopoverContent className="p-0 w-fit">
-                  <ExportTableModal table={table} name={"Comparativas"} />
-                </PopoverContent>
-              </Popover>
-            )}
-
-            <AddComparativaDialog />
+            {/* Action Buttons */}
+            <ActionButtons table={table} userData={userData} />
           </div>
         </div>
 
-        {/* Status Tabs */}
-
-        <div className="flex items-center justify-between">
-          {activeFilters.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Filtros activos:</span>
-              <div className="flex gap-1.5">
-                {activeFilters.map((filter, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="bg-gray-100 text-gray-700 gap-1.5"
-                  >
-                    {filter}
-                  </Badge>
-                ))}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetFilters}
-                className="h-7 px-2 text-sm text-gray-500 hover:text-gray-700"
-              >
-                Limpiar
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Filter Panel */}
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="mt-4 pt-4 border-t border-gray-100"
-          >
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label>Estado</Label>
-
-                <MultiSelect
-                  options={COMPARATIVA_STATUS_TYPES}
-                  onValueChange={setStatusFilter}
-                  value={statusFilter}
-                  defaultValue={statusFilter}
-                  placeholder="Seleccionar estado"
-                  maxCount={2}
-                  variant="primary"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha de Creación</Label>
-
-                <DateRangePicker date={dateRange} setDateRange={setDateRange} />
-              </div>
-              {!isComercial && (
-                <UserFilter
-                  isComercial={isComercial}
-                  userData={userData}
-                  userFilter={userFilter}
-                  setUserFilter={setUserFilter}
-                />
-              )}
-            </div>
-          </motion.div>
-        )}
+        {/* Active Filters */}
+        <ActiveFilters
+          statusFilter={statusFilter}
+          dateRange={dateRange}
+          userFilter={userFilter}
+          isComercial={isComercial}
+          onResetFilters={resetFilters}
+        />
       </motion.div>
     </div>
   );
