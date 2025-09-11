@@ -9,10 +9,12 @@ import { cn } from "@/core/utils";
 import { Button } from "@/core/components/ui/button";
 import { Calendar } from "@/core/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/core/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/core/components/ui/dialog";
 import { es } from "date-fns/locale";
 
 interface Props {
@@ -22,14 +24,63 @@ interface Props {
 }
 
 export function DateRangePicker({ className, date, setDateRange }: Props) {
+  const [open, setOpen] = React.useState(false);
+  const [hasInitialSelection, setHasInitialSelection] = React.useState(false);
+
+  const handleSelect = (dateRange: DateRange | undefined) => {
+    setDateRange?.(dateRange);
+
+    // If we don't have a dateRange, reset and keep open
+    if (!dateRange?.from) {
+      setHasInitialSelection(false);
+      return;
+    }
+
+    // If we only have 'from' (first click), mark as initial selection and keep open
+    if (dateRange.from && !dateRange.to) {
+      setHasInitialSelection(true);
+      return;
+    }
+
+    // If we have both from and to
+    if (dateRange.from && dateRange.to) {
+      // Case 1: Different dates (range selection) - close immediately
+      if (dateRange.from.getTime() !== dateRange.to.getTime()) {
+        setOpen(false);
+        setHasInitialSelection(false);
+        return;
+      }
+
+      // Case 2: Same date
+      if (dateRange.from.getTime() === dateRange.to.getTime()) {
+        // If this is the second click on the same date, close
+        if (hasInitialSelection) {
+          setOpen(false);
+          setHasInitialSelection(false);
+        } else {
+          // First click on a date, keep open for potential second click
+          setHasInitialSelection(true);
+        }
+      }
+    }
+  };
+
+  // Reset initial selection state when dialog opens/closes
+  React.useEffect(() => {
+    if (!open) {
+      setHasInitialSelection(false);
+    }
+  }, [open]);
+
   return (
     <div className={cn("grid gap-2", className)}>
-      <Popover>
-        <PopoverTrigger asChild>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
           <Button
             id="date"
+            variant="outline"
             className={cn(
-              "text-black flex w-full py-1 ps-4 rounded-md border min-h-10 h-auto items-center justify-start bg-inherit hover:bg-inherit [&_svg]:pointer-events-auto",
+              "justify-start text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >
@@ -47,24 +98,25 @@ export function DateRangePicker({ className, date, setDateRange }: Props) {
               <span>Selecciona una fecha</span>
             )}
           </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-auto flex justify-center items-center px-0"
-          align="start"
-        >
-          <Calendar
-            mode="range"
-            defaultMonth={new Date()}
-            selected={date}
-            onSelect={setDateRange}
-            numberOfMonths={2}
-            locale={es}
-            className="capitalize"
-            required={false}
-          />
-        </PopoverContent>
-      </Popover>
+        </DialogTrigger>
+        <DialogContent className="w-auto p-0">
+          <DialogHeader className="sr-only" aria-describedby={undefined}>
+            <DialogTitle>Seleccionar rango de fechas</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center items-center p-3">
+            <Calendar
+              mode="range"
+              defaultMonth={new Date()}
+              selected={date}
+              onSelect={handleSelect}
+              numberOfMonths={2}
+              locale={es}
+              className="capitalize"
+              required={false}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

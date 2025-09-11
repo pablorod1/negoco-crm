@@ -1,11 +1,12 @@
 ﻿"use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "@/core/contexts/UserContext";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { useDashboardData } from "@/dashboard/hooks/useDashboardData";
 import { getUserRolePermissions } from "@/core/utils/userRoles";
 import { DashboardView } from "./DashboardView";
+import { ViewToggle, DashboardView as ViewType } from "./ViewToggle";
 import Hero from "./Hero";
 
 // Re-export types for backward compatibility
@@ -16,6 +17,7 @@ export default function DashboardBentoGrid() {
   const { dashboardData, loading, fetchData, refreshData } =
     useDashboardData(userData);
   const permissions = getUserRolePermissions(userData);
+  const [currentView, setCurrentView] = useState<ViewType>("main");
 
   useEffect(() => {
     fetchData();
@@ -31,23 +33,33 @@ export default function DashboardBentoGrid() {
     totalConsumption: dashboardData.totalConsumption,
     refreshData,
     getPlan,
+    currentView,
   };
 
   if (!userData) {
     return (
       <section className="flex flex-col gap-4 px-8 py-8">
-        <Skeleton className="w-full h-72 rounded-xl bg-primary-500" />
+        <Skeleton className="w-full h-72 rounded-xl  border border-gray-200" />
       </section>
     );
   }
 
   return (
-    <section className="flex flex-col gap-4 px-8 py-8">
+    <section className="flex flex-col gap-6 px-8 py-8">
       {loading ? (
-        <Skeleton className="w-full h-72 rounded-xl bg-primary-500" />
+        <Skeleton className="w-full h-72 rounded-3xl border border-gray-200" />
       ) : (
         <Hero {...commonProps} />
       )}
+
+      {/* View Toggle */}
+      <ViewToggle
+        getPlan={getPlan}
+        currentView={currentView}
+        onViewChange={setCurrentView}
+      />
+
+      {/* Dashboard View */}
       <DashboardView
         userData={userData}
         loading={loading}
@@ -55,6 +67,7 @@ export default function DashboardBentoGrid() {
         refreshData={refreshData}
         getPlan={getPlan}
         permissions={permissions}
+        currentView={currentView}
       />
     </section>
   );

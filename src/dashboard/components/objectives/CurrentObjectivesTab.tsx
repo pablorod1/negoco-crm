@@ -1,6 +1,6 @@
 ﻿import { Objective } from "@/dashboard/types";
 import { ObjetivosAnimatedList } from "./ObjetivosAnimatedList";
-import Image from "next/image";
+import { Target } from "lucide-react";
 
 interface Props {
   objetivos: Objective[];
@@ -20,24 +20,20 @@ export default function CurrentObjectivesTab({
     setNewObjetivo(objetivo);
     setOpen(true);
   };
+
   return (
     <>
       {objetivos.length === 0 ? (
-        <div className="flex flex-col justify-center items-center w-full py-8 gap-4 h-72">
-          <Image
-            src="/icons/objetivo2.webp"
-            alt="Objetivos"
-            width={64}
-            height={64}
-            className="w-auto h-auto aspect-[512/512]"
-          />
-          <div className="flex flex-col gap-1 items-center justify-center">
-            <h2 className="text-xl font-bold text-gray-600">
-              No tienes objetivos establecidos
-            </h2>
-            <p className="text-center text-gray-500 text-sm italic">
-              No tienes objetivos establecidos. Crea tu primer objetivo para
-              comenzar a hacer seguimiento.
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+            <Target className="h-8 w-8 text-gray-400" />
+          </div>
+          <div className="text-center space-y-1">
+            <h3 className="text-lg font-medium text-gray-900">
+              No hay objetivos establecidos
+            </h3>
+            <p className="text-sm text-gray-500">
+              Crea tu primer objetivo para comenzar el seguimiento
             </p>
           </div>
         </div>

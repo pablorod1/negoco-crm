@@ -1,81 +1,43 @@
 "use client";
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
-import {
-  type ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/core/components/ui/chart";
 import React from "react";
-import {
-  Building,
-  CalendarOff,
-  ChevronDown,
-  ChevronUp,
-  Coins,
-  Filter,
-  ReceiptEuro,
-  RefreshCw,
-  TrendingDown,
-  TrendingUp,
-  UserIcon,
-  XIcon,
-} from "lucide-react";
+import { Coins, Filter, FilterX, ReceiptEuro, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/core/components/ui/button";
-import Image from "next/image";
 import { TimeRange, User } from "@/core/types";
 import { formatComission } from "@/core/utils/format";
 import { Label } from "@/core/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/core/components/ui/select";
-import { DateRangePicker } from "../DateRangePicker";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/core/components/ui/popover";
+import { Calendar } from "@/core/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/core/utils";
-import {
-  NameType,
-  Payload,
-  ValueType,
-} from "recharts/types/component/DefaultTooltipContent";
 
-// Chart configurations
-const CHART_CONFIG: ChartConfig = {
-  tramites: { label: "Trámites" },
-  active: { label: "Activos", color: "var(--primary-color-700)" },
-  baja: { label: "Bajas", color: "var(--danger-color)" },
-  comision: {
-    label: "Comisión",
-    color: "var(--primary-color-500)",
-  },
-  comision_sales_person: {
-    label: "Comisión Comercial",
-    color: "var(--danger-color)",
-  },
-};
-
-const COMERCIAL_CHART_CONFIG: ChartConfig = {
-  tramites: { label: "Trámites" },
-  active: { label: "Activos", color: "var(--primary-color-700)" },
-  baja: { label: "Bajas", color: "var(--danger-color)" },
-  comision_sales_person: {
-    label: "Comisión",
-    color: "var(--primary-color-500)",
-  },
+// Chart color configuration using primary palette
+const CHART_COLORS = {
+  active: "var(--primary-color-500)", // Primary blue for active contracts
+  baja: "var(--primary-color-100)", // Muted primary for inactive/cancelled
+  comision: "var(--primary-color-400)", // Deeper primary blue for main commission
+  comision_sales_person: "var(--primary-color-200)", // Lighter primary for sales commission
 };
 
 // Types
@@ -118,6 +80,18 @@ const useChartData = (
   const fetchTramites = React.useCallback(async () => {
     setIsRefreshing(true);
     try {
+      // Convert DateRange to the format expected by the endpoint
+      let formattedDateRange = undefined;
+
+      if (dateRange?.from) {
+        const fromDate = dateRange.from.toISOString().split("T")[0];
+        const toDate = dateRange.to
+          ? dateRange.to.toISOString().split("T")[0]
+          : fromDate; // If only from date is selected, use it as both from and to
+
+        formattedDateRange = { from: fromDate, to: toDate };
+      }
+
       const res = await fetch("/api/v2/analytics/contracts/monthly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,7 +99,7 @@ const useChartData = (
           id: userData.id,
           role: userData.role,
           time_range: timeRange,
-          date_range: dateRange,
+          date_range: formattedDateRange,
         }),
       });
 
@@ -149,6 +123,33 @@ const useChartData = (
   return { chartData, isRefreshing, refetch: fetchTramites };
 };
 
+// Hook para obtener dimensiones del contenedor
+const useContainerDimensions = (
+  ref: React.RefObject<HTMLDivElement | null>
+) => {
+  const [dimensions, setDimensions] = React.useState({
+    width: 780,
+    height: 360,
+  });
+
+  React.useEffect(() => {
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        const { width, height } = entries[0].contentRect;
+        setDimensions({ width: width || 780, height: height || 360 });
+      }
+    });
+
+    if (ref.current) {
+      resizeObserver.observe(ref.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [ref]);
+
+  return dimensions;
+};
+
 // Utility functions for calculations
 const calculateTotals = (data: ChartData[]) => ({
   tramites: data.reduce(
@@ -165,57 +166,125 @@ const calculateTotals = (data: ChartData[]) => ({
   ),
 });
 
-const getActiveTramitesPercentageChange = (data: ChartData[]) => {
-  const currentMonthIndex = new Date().getMonth();
-  const previousMonthIndex =
-    currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
-  const currentMonthData = data.find((item) =>
-    item.field
-      .toLowerCase()
-      .startsWith(
-        new Date(2025, currentMonthIndex)
-          .toLocaleString("es-ES", { month: "long" })
-          .toLowerCase()
-      )
-  );
+// Helper function to check if all data values are zero
+const areAllValuesZero = (data: ChartData[], chartView: ChartView): boolean => {
+  if (data.length === 0) return false;
 
-  const previousMonthData = data.find((item) =>
-    item.field
-      .toLowerCase()
-      .startsWith(
-        new Date(2025, previousMonthIndex)
-          .toLocaleString("es-ES", { month: "long" })
-          .toLowerCase()
-      )
-  );
-
-  const currentActive = currentMonthData?.active ?? 0;
-  const previousActive = previousMonthData?.active ?? 0;
-
-  if (previousActive === 0) return currentActive > 0 ? currentActive * 100 : 0;
-  return Math.round(((currentActive - previousActive) / previousActive) * 100);
+  if (chartView === "tramites") {
+    return data.every((item) => item.active === 0 && item.baja === 0);
+  } else {
+    return data.every(
+      (item) => item.comision === 0 && item.comision_sales_person === 0
+    );
+  }
 };
 
-const formatDifferenceText = (percentageChange: number) => {
-  if (percentageChange === 0) {
-    return "📊 No hubo cambios en los trámites respecto al mes anterior. ¡Sigamos optimizando la gestión!";
-  } else if (percentageChange > 0) {
-    if (percentageChange < 10) {
-      return `📊 Los trámites aumentaron un ${percentageChange}% en comparación con el mes pasado. Un ligero crecimiento, ¡sigamos organizando el flujo de trabajo!`;
-    } else if (percentageChange < 25) {
-      return `📊 ¡Los trámites crecieron un ${percentageChange}% respecto al mes anterior! Un buen indicador de actividad, mantengamos el ritmo.`;
-    } else {
-      return `📊 ¡Gran incremento del ${percentageChange}% en trámites este mes! Asegurémonos de gestionar eficazmente esta carga de trabajo.`;
+// Helper function to get time range display text
+const getTimeRangeText = (
+  timeRange?: TimeRange,
+  dateRange?: DateRange
+): string => {
+  if (dateRange?.from) {
+    const fromDate = dateRange.from.toLocaleDateString("es-ES");
+    const toDate = dateRange.to
+      ? dateRange.to.toLocaleDateString("es-ES")
+      : fromDate;
+
+    if (fromDate === toDate) {
+      return `el ${fromDate}`;
     }
-  } else {
-    const absChange = Math.abs(percentageChange);
-    if (absChange < 10) {
-      return `📊 Los trámites bajaron un ${absChange}% en comparación con el mes anterior. Puede ser algo puntual, ¡sigamos atentos!`;
-    } else if (absChange < 25) {
-      return `📊 Se registró una caída del ${absChange}% en los trámites este mes. Revisemos si hay factores que la expliquen.`;
-    } else {
-      return `📊 Los trámites disminuyeron un ${absChange}% respecto al mes pasado. Es importante analizar si hay cambios en la demanda o en la gestión.`;
+    return `del ${fromDate} al ${toDate}`;
+  }
+
+  switch (timeRange) {
+    case "year":
+      return "este año";
+    case "90d":
+      return "los últimos 90 días";
+    case "current_month":
+      return "este mes";
+    case "current_week":
+      return "esta semana";
+    case "last_week":
+      return "la semana pasada";
+    default:
+      return "este período";
+  }
+};
+
+// Function to generate filter description message
+const getFilterDescription = (
+  timeRange?: TimeRange,
+  dateRange?: DateRange
+): string => {
+  if (dateRange?.from) {
+    const fromDate = dateRange.from.toLocaleDateString("es-ES");
+    const toDate = dateRange.to
+      ? dateRange.to.toLocaleDateString("es-ES")
+      : fromDate;
+
+    if (fromDate === toDate) {
+      return `Mostrando resultados del ${fromDate}`;
     }
+    return `Mostrando resultados del ${fromDate} al ${toDate}`;
+  }
+
+  switch (timeRange) {
+    case "year":
+      return "Mostrando resultados de este año";
+    case "90d":
+      return "Mostrando resultados de los últimos 90 días";
+    case "current_month":
+      return "Mostrando resultados de este mes";
+    case "current_week":
+      return "Mostrando resultados de esta semana";
+    case "last_week":
+      return "Mostrando resultados de la semana pasada";
+    default:
+      return "Mostrando resultados de este año";
+  }
+};
+
+// Helper function to format X-axis labels based on time range
+const formatXAxisLabel = (value: string, timeRange?: TimeRange): string => {
+  // For individual comercial view, format based on time range
+  switch (timeRange) {
+    case "90d":
+    case "current_month":
+      // For 90 days, extract weekday and day number
+      // Input: "Domingo 8 Septiembre" -> Output: "Dom 8"
+      const parts = value.split(" ");
+      if (parts.length >= 2) {
+        const weekday = parts[0].substring(0, 3); // First 3 letters of weekday
+        const dayNumber = parts[1];
+        return `${weekday} ${dayNumber}`;
+      }
+      // Fallback to just day number if format is unexpected
+      const dayMatch = value.match(/\d+/);
+      return dayMatch ? dayMatch[0] : value;
+
+    case "current_week":
+    case "last_week":
+      // For weeks, extract just the weekday name
+      // Input: "Lunes 2 Septiembre" -> Output: "Lun"
+      const weekdayMatch = value.split(",")[0];
+      return weekdayMatch ? weekdayMatch : value;
+
+    case "year":
+      // For year, show month names (usually already formatted)
+      return value;
+
+    default:
+      // For custom date ranges, show weekday and day numbers
+      const customParts = value.split(" ");
+      if (customParts.length >= 2) {
+        const weekday = customParts[0].substring(0, 3);
+        const dayNumber = customParts[1];
+        return `${weekday} ${dayNumber}`;
+      }
+      // Fallback to just day number
+      const customDayMatch = value.match(/\d+/);
+      return customDayMatch ? customDayMatch[0] : value;
   }
 };
 
@@ -227,42 +296,42 @@ interface ChartViewToggleProps {
   isComercial: boolean;
 }
 
-const ChartViewToggle: React.FC<ChartViewToggleProps> = ({
-  chartView,
-  onViewChange,
-  totals,
-  isComercial,
-}) => (
-  <div className="relative flex items-center p-1 bg-gray-100/50 backdrop-blur-md rounded-xl shadow-inner">
-    <div
-      className="absolute transition-all duration-300 ease-spring rounded-lg shadow-lg bg-gradient-to-br from-primary-600 to-primary-800 z-0"
-      style={{
-        left: chartView === "tramites" ? "4px" : "calc(50% + 2px)",
-        width: "calc(50% - 6px)",
-        height: "calc(100% - 8px)",
-      }}
-    />
+const ChartViewToggle: React.FC<ChartViewToggleProps> = React.memo(
+  ({ chartView, onViewChange, totals, isComercial }) => (
+    <div className="relative flex items-center p-0.5 pe-4 bg-gray-50 rounded-full shadow-sm border border-gray-100">
+      <div
+        className="absolute  bg-white rounded-full shadow-sm border border-gray-200 transition-all duration-200 ease-out"
+        style={{
+          left: chartView === "tramites" ? "4px" : "50%",
+          width:
+            chartView === "tramites" ? "calc(50% - 4px)" : "calc(50% - 1px)",
+          height: "calc(100% - 4px)",
+        }}
+      />
 
-    <ViewToggleButton
-      isActive={chartView === "tramites"}
-      onClick={() => onViewChange("tramites")}
-      icon={<ReceiptEuro size={16} />}
-      label="Trámites"
-      value={totals.tramites}
-      unit="Total"
-    />
+      <ViewToggleButton
+        isActive={chartView === "tramites"}
+        onClick={() => onViewChange("tramites")}
+        icon={<ReceiptEuro size={12} />}
+        label="Trámites"
+        value={totals.tramites}
+        unit="Total"
+      />
 
-    <ViewToggleButton
-      isActive={chartView === "comision"}
-      onClick={() => onViewChange("comision")}
-      icon={<Coins size={16} />}
-      label="Margen"
-      value={isComercial ? totals.comisionSalesPerson : totals.comision}
-      unit=""
-      isMonetary
-    />
-  </div>
+      <ViewToggleButton
+        isActive={chartView === "comision"}
+        onClick={() => onViewChange("comision")}
+        icon={<Coins size={12} />}
+        label="Margen"
+        value={isComercial ? totals.comisionSalesPerson : totals.comision}
+        unit=""
+        isMonetary
+      />
+    </div>
+  )
 );
+
+ChartViewToggle.displayName = "ChartViewToggle";
 
 interface ViewToggleButtonProps {
   isActive: boolean;
@@ -286,30 +355,35 @@ const ViewToggleButton: React.FC<ViewToggleButtonProps> = ({
   <button
     onClick={onClick}
     className={cn(
-      "relative z-10 flex items-center justify-between w-1/2 px-6 py-3 rounded-lg transition-all duration-300",
-      isActive ? "text-white" : "text-gray-700 hover:text-gray-900"
+      "relative z-10 flex items-center justify-between gap-4 w-1/2 px-3 py-2 rounded-full transition-all duration-200",
+      isActive ? "text-gray-900" : "text-gray-600 hover:text-gray-800"
     )}
   >
-    <div className="flex flex-col items-start">
-      <div className="flex items-center gap-2 mb-1">
-        <span className={cn(isActive ? "text-white/80" : "text-gray-500")}>
-          {icon}
-        </span>
-        <span className="font-medium">{label}</span>
-      </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-lg font-bold">
-          {isMonetary ? formatComission(value) : value}
-        </span>
+    <div className="flex items-center gap-1.5 ">
+      <span
+        className={cn(
+          "transition-colors duration-200",
+          isActive ? "text-gray-700" : "text-gray-500"
+        )}
+      >
+        {icon}
+      </span>
+      <span className="font-medium text-xs">{label}</span>
+    </div>
+    <div className="flex items-baseline gap-1">
+      <span className="text-sm font-semibold">
+        {isMonetary ? formatComission(value) : value}
+      </span>
+      {unit && (
         <span
           className={cn(
             "text-xs",
-            isActive ? "text-white/70" : "text-gray-500"
+            isActive ? "text-gray-600" : "text-gray-500"
           )}
         >
           {unit}
         </span>
-      </div>
+      )}
     </div>
   </button>
 );
@@ -322,6 +396,7 @@ interface ChartFiltersProps {
   onDateRangeChange: (range: DateRange | undefined) => void;
   onResetDateRange: () => void;
   onClose: () => void;
+  onOpen: () => void;
 }
 
 const ChartFilters: React.FC<ChartFiltersProps> = ({
@@ -332,86 +407,123 @@ const ChartFilters: React.FC<ChartFiltersProps> = ({
   onDateRangeChange,
   onResetDateRange,
   onClose,
+  onOpen,
 }) => {
-  if (!showFilters) return null;
+  const [isSmallScreen, setIsSmallScreen] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkScreenSize = () => {
+      setIsSmallScreen(window.innerWidth <= 768);
+    };
+
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
+
+  const timeRangeOptions = [
+    { value: "year", label: "Este año" },
+    { value: "90d", label: "Últimos 90 días" },
+    { value: "current_month", label: "Este mes" },
+    { value: "current_week", label: "Esta semana" },
+    { value: "last_week", label: "La semana pasada" },
+  ];
+
+  const formatDateRange = (range: DateRange | undefined) => {
+    if (!range?.from) return "Seleccionar fechas";
+    if (!range.to) return range.from.toLocaleDateString("es-ES");
+    return `${range.from.toLocaleDateString("es-ES")} - ${range.to.toLocaleDateString("es-ES")}`;
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -100 }}
-      className="px-6 pb-2 border-b absolute top-0 left-0 w-full bg-white z-10"
+    <Popover
+      open={showFilters}
+      onOpenChange={(open) => {
+        if (open) {
+          onOpen();
+        } else {
+          onClose();
+        }
+      }}
     >
-      <div className="flex flex-wrap justify-between items-start gap-3 py-3">
-        <div className="flex items-center gap-3 mt-2">
-          <div className="flex flex-col">
-            <Label className="text-xs font-medium text-gray-500">
-              Periodo:
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Mostrar filtros">
+          <Filter className="h-3 w-3" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-full p-2"
+        align="start"
+        side="right"
+        sideOffset={8}
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label className="block text-xs font-medium text-gray-700">
+              Período predefinido
             </Label>
-            <Select
-              disabled={dateRange !== undefined}
-              value={timeRange}
-              onValueChange={onTimeRangeChange}
-            >
-              <SelectTrigger
-                className="w-[160px] text-sm rounded-md min-h-10 h-auto shadow"
-                aria-label="Seleccionar período"
-              >
-                <SelectValue placeholder="Este mes" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="year" className="rounded-lg">
-                  Este año
-                </SelectItem>
-                <SelectItem value="90d" className="rounded-lg">
-                  Últimos 90 días
-                </SelectItem>
-                <SelectItem value="current_month" className="rounded-lg">
-                  Este mes
-                </SelectItem>
-                <SelectItem value="current_week" className="rounded-lg">
-                  Esta semana
-                </SelectItem>
-                <SelectItem value="last_week" className="rounded-lg">
-                  La semana pasada
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col">
-            <Label className="text-xs font-medium text-gray-500">
-              Rango personalizado:
-            </Label>
-            <div className="flex items-center gap-2">
-              {dateRange && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {timeRangeOptions.map((option) => (
                 <Button
-                  onClick={onResetDateRange}
-                  className="bg-transparent h-7 w-7"
+                  key={option.value}
+                  variant={timeRange === option.value ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "h-8 text-xs justify-start",
+                    timeRange === option.value
+                      ? "bg-gray-900 text-white"
+                      : "border-gray-200 hover:bg-gray-50"
+                  )}
+                  onClick={() => {
+                    onTimeRangeChange(option.value);
+                    onDateRangeChange(undefined);
+                  }}
+                  disabled={dateRange !== undefined}
                 >
-                  <CalendarOff
-                    width={16}
-                    height={16}
-                    stroke="var(--danger-color)"
-                  />
+                  {option.label}
                 </Button>
-              )}
-              <DateRangePicker
-                date={dateRange}
-                setDateRange={onDateRangeChange}
-              />
+              ))}
             </div>
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-gray-700">
+                Rango personalizado
+              </Label>
+              {dateRange && (
+                <Button
+                  onClick={() => {
+                    onResetDateRange();
+                    onTimeRangeChange("year");
+                  }}
+                  variant="ghost"
+                  size="icon"
+                  className={cn("text-red-500 hover:text-red-400")}
+                >
+                  <FilterX className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            <div className="border rounded-lg p-3 bg-gray-50 relative">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={onDateRangeChange}
+                numberOfMonths={isSmallScreen ? 1 : 2}
+                className="w-full"
+              />
+            </div>
+            {dateRange && (
+              <p className="text-xs text-gray-600">
+                Seleccionado: {formatDateRange(dateRange)}
+              </p>
+            )}
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          aria-label="Cerrar filtros"
-        >
-          <XIcon className="h-4 w-4" />
-        </Button>
-      </div>
-    </motion.div>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -419,23 +531,32 @@ interface ChartContentProps {
   chartData: ChartData[];
   chartView: ChartView;
   isComercial: boolean;
+  timeRange?: TimeRange;
+  dateRange?: DateRange;
 }
 
 const ChartContent: React.FC<ChartContentProps> = ({
   chartData,
   chartView,
   isComercial,
+  timeRange,
+  dateRange,
 }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const { width, height } = useContainerDimensions(containerRef);
+
+  const allValuesZero = areAllValuesZero(chartData, chartView);
+
   if (chartData.length === 0) {
     return (
       <motion.div
         key="no-data"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex items-center justify-center w-full h-[200px] text-muted-foreground"
+        className="flex items-center justify-center w-full h-[360px] text-gray-500"
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
             <svg
               width="32"
               height="32"
@@ -445,13 +566,64 @@ const ChartContent: React.FC<ChartContentProps> = ({
             >
               <path
                 d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z"
-                fill="var(--primary-color-300)"
+                fill="currentColor"
+                opacity="0.4"
               />
             </svg>
           </div>
-          <span className="font-medium text-primary-600 text-center">
-            No hay datos para mostrar
-          </span>
+          <div className="flex flex-col items-center space-y-1 text-center">
+            <p className="text-lg font-semibold text-gray-900">
+              No hay datos disponibles
+            </p>
+            <p className="text-sm text-gray-600 leading-relaxed max-w-sm">
+              No se encontraron datos para el período seleccionado. Verifica tu
+              conexión o intenta con otro rango de tiempo.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (allValuesZero) {
+    const chartViewText =
+      chartView === "tramites"
+        ? "trámites registrados"
+        : "comisiones registradas";
+    const timeText = getTimeRangeText(timeRange, dateRange);
+
+    return (
+      <motion.div
+        key="zero-data"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex items-center justify-center w-full h-[360px]"
+      >
+        <div className="flex flex-col gap-4 items-center justify-center text-center max-w-md">
+          <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100">
+            {chartView === "tramites" ? (
+              <ReceiptEuro className="h-8 w-8 text-amber-500" />
+            ) : (
+              <Coins className="h-8 w-8 text-amber-500" />
+            )}
+          </div>
+          <div className="space-y-3">
+            <div>
+              <p className="text-lg font-semibold text-gray-900 mb-1">
+                No hay {chartViewText} en {timeText}
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {chartView === "tramites"
+                  ? "No se han registrado trámites activos ni bajas en el período seleccionado."
+                  : "No se han generado comisiones en el período seleccionado."}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 text-xs text-gray-500">
+              <div className="bg-gray-50 px-3 py-2 rounded-lg border">
+                💡 Prueba a cambiar el rango de tiempo o seleccionar otra vista
+              </div>
+            </div>
+          </div>
         </div>
       </motion.div>
     );
@@ -463,156 +635,213 @@ const ChartContent: React.FC<ChartContentProps> = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
-      <ChartContainer
-        className="max-h-[300px] h-full w-full"
-        config={isComercial ? COMERCIAL_CHART_CONFIG : CHART_CONFIG}
-      >
-        <BarChart data={chartData}>
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey="field"
-            tickLine={true}
-            tickSize={5}
-            tickMargin={15}
-            axisLine={false}
-            tickFormatter={(value) => value.slice(0, 3)}
-            className="capitalize"
-          />
-          <ChartLegend
-            content={<ChartLegendContent className="text-sm mt-4" />}
-          />
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                className="w-52"
-                indicator="line"
-                formatter={(
-                  value: ValueType,
-                  name: NameType,
-                  item: Payload<ValueType, NameType>,
-                  index: number
-                ) => {
-                  const getIcon = (label: string) => {
-                    switch (label) {
-                      case "Comisión":
-                        return isComercial ? (
-                          <UserIcon size={14} />
-                        ) : (
-                          <Building size={14} />
-                        );
-                      case "Comisión Comercial":
-                        return <UserIcon size={14} />;
-                      case "Activos":
-                        return (
-                          <TrendingUp size={14} className="text-success-400" />
-                        );
-                      case "Bajas":
-                        return (
-                          <TrendingDown size={14} className="text-danger-400" />
-                        );
-                      default:
-                        return (
-                          <div className="w-4 h-4 rounded-full bg-gray-300" />
-                        );
-                    }
-                  };
-
-                  const config = isComercial
-                    ? COMERCIAL_CHART_CONFIG
-                    : CHART_CONFIG;
-                  const label =
-                    config[name as keyof typeof config]?.label || name;
-                  const icon = getIcon(String(label));
-
-                  return (
-                    <>
-                      <div>{icon}</div>
-                      {label}
-                      <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                        {value}
-                        <span className="font-normal text-muted-foreground">
-                          {chartView === "tramites" ? "" : "€"}
-                        </span>
-                      </div>
-                      {chartView === "comision" &&
-                        index === 1 &&
-                        item?.payload && (
-                          <div className="mt-1.5 flex basis-full items-center border-t pt-1.5 text-xs font-medium text-foreground">
-                            Total
-                            <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                              {item.payload.comision -
-                                item.payload.comision_sales_person}
-                              <span className="font-normal text-muted-foreground">
-                                €
-                              </span>
-                            </div>
+      <div className="h-[360px] w-full">
+        <div ref={containerRef} className="w-full h-full">
+          <ResponsiveContainer width={"100%"} height={360}>
+            <AreaChart
+              width={width}
+              height={height}
+              data={chartData}
+              margin={{
+                top: 10,
+                right: width > 768 ? 30 : 16,
+                bottom: 8,
+                left: width > 768 ? 30 : 16,
+              }}
+              className="w-full h-full"
+            >
+              <CartesianGrid
+                horizontal={false}
+                vertical={false}
+                strokeDasharray="4 4"
+                stroke="var(--primary-color-100)"
+                opacity={1}
+              />
+              <XAxis
+                dataKey="field"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                tickFormatter={(value) => formatXAxisLabel(value, timeRange)}
+                className="text-xs text-gray-500 capitalize"
+                angle={-45}
+                textAnchor="end"
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={12}
+                width={30}
+                className="text-[11px] text-gray-500"
+              />
+              <Legend
+                content={() => (
+                  <div className="flex justify-center gap-6 mt-8 text-xs text-gray-600">
+                    {chartView === "tramites" ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: CHART_COLORS.active }}
+                          />
+                          <span>Activos</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: CHART_COLORS.baja }}
+                          />
+                          <span>Bajas</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: CHART_COLORS.comision }}
+                          />
+                          <span>
+                            {isComercial ? "Comisión" : "Comisión Total"}
+                          </span>
+                        </div>
+                        {!isComercial && (
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  CHART_COLORS.comision_sales_person,
+                              }}
+                            />
+                            <span>Comisión Comercial</span>
                           </div>
                         )}
-                    </>
+                      </>
+                    )}
+                  </div>
+                )}
+              />
+              <Tooltip
+                content={(props) => {
+                  if (!props.active || !props.payload) return null;
+
+                  return (
+                    <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-3 text-xs">
+                      <p className="font-medium text-gray-900 mb-2 capitalize">
+                        {props.label}
+                      </p>
+                      {props.payload.map(
+                        (
+                          entry: {
+                            dataKey: string;
+                            value: number;
+                            color: string;
+                          },
+                          index: number
+                        ) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between gap-4 mb-1"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <span className="text-gray-600">
+                                {entry.dataKey === "active"
+                                  ? "Activos"
+                                  : entry.dataKey === "baja"
+                                    ? "Bajas"
+                                    : entry.dataKey === "comision"
+                                      ? "Comisión"
+                                      : entry.dataKey ===
+                                          "comision_sales_person"
+                                        ? "Comisión Comercial"
+                                        : entry.dataKey}
+                              </span>
+                            </div>
+                            <span className="font-medium text-gray-900">
+                              {entry.value}
+                              {chartView === "comision" ? "€" : ""}
+                            </span>
+                          </div>
+                        )
+                      )}
+                    </div>
                   );
                 }}
               />
-            }
-          />
-          {!isComercial ? (
-            <Bar
-              dataKey={chartView === "tramites" ? "active" : "comision"}
-              fill="var(--primary-color-800)"
-              radius={4}
-            />
-          ) : isComercial && chartView === "tramites" ? (
-            <Bar dataKey="active" fill="var(--primary-color-800)" radius={4} />
-          ) : null}
-          <Bar
-            dataKey={
-              chartView === "tramites" ? "baja" : "comision_sales_person"
-            }
-            fill={
-              chartView === "tramites"
-                ? "var(--danger-color)"
-                : "var(--primary-color-500)"
-            }
-            radius={4}
-          />
-        </BarChart>
-      </ChartContainer>
-    </motion.div>
-  );
-};
 
-interface PercentageChangeIndicatorProps {
-  percentageChange: number;
-}
+              {/* Primary Area - Main data */}
+              {!isComercial ? (
+                <Area
+                  type="monotone"
+                  dataKey={chartView === "tramites" ? "active" : "comision"}
+                  stroke={
+                    chartView === "tramites"
+                      ? "var(--primary-color-500)"
+                      : "var(--primary-color-500)"
+                  }
+                  fill={
+                    chartView === "tramites"
+                      ? "var(--primary-color-500)"
+                      : "var(--primary-color-500)"
+                  }
+                  fillOpacity={0.12}
+                  strokeWidth={1}
+                />
+              ) : isComercial && chartView === "tramites" ? (
+                <Area
+                  type="monotone"
+                  dataKey="active"
+                  stroke="var(--primary-color-500)"
+                  fill="var(--primary-color-500)"
+                  fillOpacity={0.12}
+                  strokeWidth={1}
+                  dot={{ r: 1, fill: "var(--primary-color-500)" }}
+                  activeDot={{
+                    r: 1,
+                    fill: "var(--primary-color-500)",
+                  }}
+                />
+              ) : isComercial && chartView === "comision" ? (
+                <Area
+                  type="monotone"
+                  dataKey="comision_sales_person"
+                  stroke="var(--primary-color-500)"
+                  fill="var(--primary-color-500)"
+                  fillOpacity={0.12}
+                  strokeWidth={1}
+                />
+              ) : null}
 
-const PercentageChangeIndicator: React.FC<PercentageChangeIndicatorProps> = ({
-  percentageChange,
-}) => {
-  const isPositive = percentageChange >= 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.3 }}
-      className="flex items-center gap-3 font-medium leading-none p-3 rounded-xl bg-gray-50/80 backdrop-blur-sm w-full"
-    >
-      <div
-        className={cn(
-          "size-6 rounded-full flex items-center justify-center",
-          isPositive ? "bg-green-100" : "bg-red-100"
-        )}
-      >
-        {isPositive ? (
-          <TrendingUp className="size-4 text-green-600" />
-        ) : (
-          <TrendingDown className="size-4 text-red-600" />
-        )}
+              {/* Secondary Area - Comparison data */}
+              <Area
+                type="monotone"
+                dataKey={
+                  chartView === "tramites" ? "baja" : "comision_sales_person"
+                }
+                stroke={
+                  chartView === "tramites"
+                    ? "var(--primary-color-400)" // Muted primary for bajas
+                    : "var(--primary-color-400)" // Light primary for sales commission
+                }
+                fill={
+                  chartView === "tramites"
+                    ? "var(--primary-color-400)"
+                    : "var(--primary-color-400)"
+                }
+                fillOpacity={0.1}
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-      <span className="text-xs text-gray-600">
-        {formatDifferenceText(percentageChange)}
-      </span>
     </motion.div>
   );
 };
@@ -635,21 +864,8 @@ export default function YearlyTramitesBarChart({
   );
 
   const isComercial = userData?.role === "2";
-  const isBeenergy = userData?.organization?.name === "Beenergy";
 
   const totals = React.useMemo(() => calculateTotals(chartData), [chartData]);
-  const percentageChange = React.useMemo(
-    () => getActiveTramitesPercentageChange(chartData),
-    [chartData]
-  );
-
-  // Set up spring animation
-  React.useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--ease-spring",
-      "cubic-bezier(0.25, 0.1, 0.25, 1.5)"
-    );
-  }, []);
 
   const handleTimeRangeChange = React.useCallback((value: string) => {
     setDateRange(undefined);
@@ -658,7 +874,11 @@ export default function YearlyTramitesBarChart({
 
   const handleDateRangeChange = React.useCallback(
     (range: DateRange | undefined) => {
-      setTimeRange(undefined);
+      // Solo resetear timeRange si realmente se está seleccionando un rango de fecha
+      // No lo resetees si range es undefined (viene del reseteo automático)
+      if (range && range.from) {
+        setTimeRange(undefined);
+      }
       setDateRange(range);
     },
     []
@@ -671,110 +891,71 @@ export default function YearlyTramitesBarChart({
 
   return (
     <Card
-      className={cn(
-        "flex flex-col justify-between relative h-full backdrop-blur-lg transition-colors duration-300 overflow-hidden",
-        loading ? "bg-gray-200" : "bg-white",
-        className
-      )}
+      variant={"dashboard"}
+      className={cn(loading ? "opacity-60" : "", className)}
     >
-      {/* Decorative background elements */}
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl" />
-      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl" />
-
-      {/* Background logo */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-92 opacity-15 pointer-events-none">
-        <Image
-          src={isBeenergy ? "/beenergy.png" : "/logo_inline.png"}
-          alt="Negoco Cloud"
-          width={256}
-          height={256}
-          priority
-          className="w-auto h-auto"
-        />
-      </div>
-
       {/* Loading overlay */}
-      <div
-        className={cn(
-          "absolute inset-0 h-full flex items-center justify-center rounded-lg transition-opacity duration-300",
-          loading ? "opacity-100" : "opacity-0 pointer-events-none -z-50"
-        )}
-      >
-        <div className="animate-pulse h-full w-full bg-gray-200 rounded-lg" />
-      </div>
+      {loading && (
+        <div className="absolute inset-0 bg-gray-50/50 rounded-lg z-10" />
+      )}
 
       {/* Header */}
       <CardHeader
         className={cn(
-          "flex justify-between flex-row transition-opacity duration-300 relative z-10",
+          "flex justify-between flex-row items-start pb-4 transition-opacity duration-200 relative z-10",
           loading ? "opacity-0" : "opacity-100"
         )}
       >
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-xl text-primary-800 flex items-center gap-2">
-              Resumen Global de Ventas
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 rounded-full"
-                onClick={refetch}
-                disabled={loading || isRefreshing}
-                aria-label="Actualizar datos"
-              >
-                <RefreshCw
-                  className={cn(
-                    "h-3.5 w-3.5 text-primary-600",
-                    isRefreshing && "animate-spin"
-                  )}
-                />
-              </Button>
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 text-xs rounded-full bg-gray-50 border-gray-200"
-              onClick={() => setShowFilters(!showFilters)}
-              aria-label="Mostrar filtros"
-            >
-              <Filter className="h-3 w-3" />
-              Filtros
-              {showFilters ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </Button>
-          </div>
-          <CardDescription className="text-xs text-primary-400">
-            Resumen de las ventas de{" "}
-            <strong>{userData.organization.name}</strong> en 2025
+        <div className="flex flex-col gap-1">
+          <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            Resumen Global de Ventas
+          </CardTitle>
+          <CardDescription className="text-xs text-gray-500 font-extralight">
+            {getFilterDescription(timeRange, dateRange)}
           </CardDescription>
         </div>
 
-        <ChartViewToggle
-          chartView={chartView}
-          onViewChange={setChartView}
-          totals={totals}
-          isComercial={isComercial}
-        />
+        <div className="flex items-center gap-4 max-w-xl w-full justify-end">
+          <ChartViewToggle
+            chartView={chartView}
+            onViewChange={setChartView}
+            totals={totals}
+            isComercial={isComercial}
+          />
+          <div className="flex items-center justify-center ">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              onClick={refetch}
+              disabled={loading || isRefreshing}
+              aria-label="Actualizar datos"
+            >
+              <RefreshCw
+                className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
+              />
+            </Button>
+            {/* Filters */}
+            <AnimatePresence>
+              <ChartFilters
+                showFilters={showFilters}
+                timeRange={timeRange}
+                dateRange={dateRange}
+                onTimeRangeChange={handleTimeRangeChange}
+                onDateRangeChange={handleDateRangeChange}
+                onResetDateRange={resetDateRange}
+                onClose={() => setShowFilters(false)}
+                onOpen={() => setShowFilters(true)}
+              />
+            </AnimatePresence>
+          </div>
+        </div>
       </CardHeader>
-
-      {/* Filters */}
-      <ChartFilters
-        showFilters={showFilters}
-        timeRange={timeRange}
-        dateRange={dateRange}
-        onTimeRangeChange={handleTimeRangeChange}
-        onDateRangeChange={handleDateRangeChange}
-        onResetDateRange={resetDateRange}
-        onClose={() => setShowFilters(false)}
-      />
 
       {/* Content */}
       <CardContent
         className={cn(
-          "transition-opacity duration-300 relative z-10",
+          "flex-1 pt-0 transition-opacity duration-200 relative z-10 h-full",
           loading ? "opacity-0" : "opacity-100"
         )}
       >
@@ -783,19 +964,11 @@ export default function YearlyTramitesBarChart({
             chartData={chartData}
             chartView={chartView}
             isComercial={isComercial}
+            timeRange={timeRange}
+            dateRange={dateRange}
           />
         </AnimatePresence>
       </CardContent>
-
-      {/* Footer */}
-      <CardFooter
-        className={cn(
-          "flex-col items-start gap-2 text-sm transition-opacity duration-300 relative z-10",
-          loading ? "opacity-0" : "opacity-100"
-        )}
-      >
-        <PercentageChangeIndicator percentageChange={percentageChange} />
-      </CardFooter>
     </Card>
   );
 }
