@@ -6,9 +6,11 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogTitle,
 } from "@/core/components/ui/dialog";
 import { Button } from "@/core/components/ui/button";
 import LoaderComponent from "@/core/components/LoaderComponent";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface SearchBarProps {
   recentlyFiles?: DocumentacionFile[];
@@ -104,6 +106,9 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
         onEscapeKeyDown={onClose}
         onInteractOutside={onClose}
       >
+        <VisuallyHidden asChild>
+          <DialogTitle>Buscar en Documentación</DialogTitle>
+        </VisuallyHidden>
         {/* Spotlight Header */}
         <div className="relative border-b border-gray-100">
           <div className="flex items-center px-6 py-4">

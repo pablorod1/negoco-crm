@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { cn } from "@/core/utils";
-import { Sheet, SheetContent, SheetHeader } from "@/core/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/core/components/ui/sheet";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { Button } from "@/core/components/ui/button";
 import { Textarea } from "@/core/components/ui/textarea";
@@ -241,9 +246,9 @@ export const TicketRepliesSheet: React.FC<TicketRepliesSheetProps> = ({
           <div className="flex items-center gap-3">
             <MessageSquare className="h-5 w-5 text-blue-600" />
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-gray-900 truncate">
+              <SheetTitle className="font-semibold text-gray-900 truncate">
                 {ticket.subject}
-              </h3>
+              </SheetTitle>
               <div className="flex items-center gap-2 mt-1">
                 <StatusBadge status={statusForBadge} />
                 <PriorityBadge priority={ticket.priority} />
