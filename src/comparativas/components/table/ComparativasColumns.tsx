@@ -19,6 +19,20 @@ import {
   SelectTrigger,
 } from "@/core/components/ui/select";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
+import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
+
+const CompanyCell = ({ row }: { row: { original: ComparativaRow } }) => {
+  const company = row.original.company_id;
+  const { supplier } = useEnergySupplierById(company);
+
+  return (
+    <div className="flex flex-col space-y-1">
+      <span className="text-gray-700 text-sm text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full">
+        {supplier?.name ?? "---"}
+      </span>
+    </div>
+  );
+};
 
 export const createSubcomercialComparativasColumns = (
   handlePlanChange: (rowId: string, plan: ComparativaPlan) => void,
@@ -118,6 +132,12 @@ export const createSubcomercialComparativasColumns = (
         />
       );
     },
+  },
+  {
+    id: "Compañía",
+    accessorKey: "company_id",
+    header: "Compañía",
+    cell: CompanyCell,
   },
   {
     id: "Estado",
@@ -335,6 +355,12 @@ export const createComercialComparativasColumns = (
     },
   },
   {
+    id: "Compañía",
+    accessorKey: "company_id",
+    header: "Compañía",
+    cell: CompanyCell,
+  },
+  {
     id: "Comisión",
     accessorKey: "comision_sales_person",
     header: "Comisión",
@@ -473,6 +499,12 @@ export const createComparativasColumns = (
         />
       );
     },
+  },
+  {
+    id: "Compañía",
+    accessorKey: "company_id",
+    header: "Compañía",
+    cell: CompanyCell,
   },
   {
     id: "Comisión",

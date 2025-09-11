@@ -47,6 +47,8 @@ export default function ComparativasTable<TData, TValue>({
     saveFiltersToStorage,
     userFilter,
     setUserFilter,
+    companyFilter,
+    setCompanyFilter,
   } = useTableFilters("comparativas");
 
   const fetchComparativas = useCallback(
@@ -80,6 +82,10 @@ export default function ComparativasTable<TData, TValue>({
             params.set("userFilter", JSON.stringify(userFilter));
           }
 
+          if (companyFilter && companyFilter.length > 0) {
+            params.set("companyFilter", JSON.stringify(companyFilter));
+          }
+
           const url = `/api/v2/comparisons?${params.toString()}`;
           const res = await fetch(url, { method: "GET" });
 
@@ -92,7 +98,7 @@ export default function ComparativasTable<TData, TValue>({
             console.error("Error al obtener comparativas:", error);
             return;
           }
-
+          console.log("Fetched comparativas:", data);
           if (isMounted) {
             setComparativas(data || []);
             setTotalComparativas(total || 0);
@@ -114,6 +120,7 @@ export default function ComparativasTable<TData, TValue>({
       userData,
       creationDateRange,
       userFilter,
+      companyFilter,
     ]
   );
 
@@ -171,6 +178,8 @@ export default function ComparativasTable<TData, TValue>({
       setDateRange: setCreationDateRange,
       userFilter,
       setUserFilter,
+      companyFilter,
+      setCompanyFilter,
     }),
     [
       filterValue,
@@ -185,6 +194,8 @@ export default function ComparativasTable<TData, TValue>({
       totalComparativas,
       userFilter,
       setUserFilter,
+      companyFilter,
+      setCompanyFilter,
     ]
   );
 

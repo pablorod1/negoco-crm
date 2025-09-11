@@ -6,6 +6,7 @@ interface UseActiveFiltersProps {
   dateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   isComercial: boolean;
+  companyFilter: string[] | undefined;
 }
 
 export function useActiveFilters({
@@ -13,6 +14,7 @@ export function useActiveFilters({
   dateRange,
   userFilter,
   isComercial,
+  companyFilter,
 }: UseActiveFiltersProps) {
   return useMemo(() => {
     const filters: string[] = [];
@@ -29,6 +31,10 @@ export function useActiveFilters({
       filters.push("Comercial");
     }
 
+    if (companyFilter && companyFilter.length > 0) {
+      filters.push("Compañía");
+    }
+
     return filters;
-  }, [statusFilter, dateRange, userFilter, isComercial]);
+  }, [statusFilter, dateRange, userFilter, isComercial, companyFilter]);
 }

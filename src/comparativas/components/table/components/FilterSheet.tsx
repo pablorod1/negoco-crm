@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Filter } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import {
@@ -21,6 +21,8 @@ import type { User } from "@/core/types";
 import type { DateRange } from "react-day-picker";
 import MultipleSelector from "@/core/components/ui/multiselect";
 import { useMultipleSelector } from "@/core/hooks/use-multiple-selector";
+import { Skeleton } from "@/core/components/ui/skeleton";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 
 interface FilterSheetProps {
   activeFiltersCount: number;
@@ -32,6 +34,8 @@ interface FilterSheetProps {
   setUserFilter: (value: string[] | undefined) => void;
   resetFilters: () => void;
   userData: User;
+  companyFilter: string[] | undefined;
+  setCompanyFilter: (value: string[] | undefined) => void;
 }
 
 export function FilterSheet({
@@ -44,12 +48,27 @@ export function FilterSheet({
   setUserFilter,
   resetFilters,
   userData,
+  companyFilter,
+  setCompanyFilter,
 }: FilterSheetProps) {
   const [open, setOpen] = useState(false);
   const isComercial = userData?.role === "2";
 
   const { convertToOptions, convertFromOptions, getSelectedOptions } =
     useMultipleSelector();
+
+  const { activeSuppliers, loading: suppliersLoading } =
+    useActiveEnergySuppliers();
+
+  // Convert suppliers to dropdown format (using IDs as values)
+  const supplierOptions = useMemo(
+    () =>
+      activeSuppliers.map((supplier) => ({
+        label: supplier.name,
+        value: supplier.id, // Use ID as value instead of name
+      })),
+    [activeSuppliers]
+  );
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -103,6 +122,30 @@ export function FilterSheet({
                 </p>
               }
             />
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-medium text-gray-700">
+              Compañía
+            </Label>
+            {suppliersLoading ? (
+              <Skeleton className="h-10 w-full rounded-md" />
+            ) : (
+              <MultipleSelector
+                value={getSelectedOptions(companyFilter, supplierOptions)}
+                defaultOptions={convertToOptions(supplierOptions)}
+                onChange={(options) =>
+                  setCompanyFilter(convertFromOptions(options))
+                }
+                placeholder="Seleccionar compañías"
+                hidePlaceholderWhenSelected
+                emptyIndicator={
+                  <p className="text-center text-sm text-gray-500">
+                    No se encontraron resultados
+                  </p>
+                }
+              />
+            )}
           </div>
 
           {/* Date Range Filter */}

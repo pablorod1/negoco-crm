@@ -74,6 +74,7 @@ export interface ComparativaRow {
   user: User;
   creation_date: string;
   status: ComparativaStatus;
+  company_id?: string; // Resolved name for display purposes
 }
 
 export interface ComparativaFile {

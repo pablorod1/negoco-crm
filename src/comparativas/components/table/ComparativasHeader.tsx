@@ -26,6 +26,8 @@ interface Props<TData> {
   setDateRange: (dateRange: DateRange | undefined) => void;
   userFilter: string[] | undefined;
   setUserFilter: (value: string[] | undefined) => void;
+  companyFilter: string[] | undefined;
+  setCompanyFilter: (value: string[] | undefined) => void;
 }
 
 const ComparativasHeader = <TData,>({
@@ -42,6 +44,8 @@ const ComparativasHeader = <TData,>({
   setDateRange,
   userFilter,
   setUserFilter,
+  companyFilter,
+  setCompanyFilter,
 }: Props<TData>) => {
   const isComercial = userData?.role === "2";
 
@@ -50,6 +54,7 @@ const ComparativasHeader = <TData,>({
     dateRange,
     userFilter,
     isComercial,
+    companyFilter,
   });
 
   // Save filters to localStorage when they change
@@ -102,6 +107,8 @@ const ComparativasHeader = <TData,>({
               setUserFilter={setUserFilter}
               resetFilters={resetFilters}
               userData={userData}
+              companyFilter={companyFilter}
+              setCompanyFilter={setCompanyFilter}
             />
 
             {/* Action Buttons */}
