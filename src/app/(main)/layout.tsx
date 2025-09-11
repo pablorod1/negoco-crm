@@ -1,6 +1,6 @@
 ﻿"use client";
 import "../globals.css";
-import { Toaster } from "react-hot-toast";
+import { ToastBar, Toaster } from "react-hot-toast";
 import { Providers } from "../providers";
 import React, { useEffect, useState } from "react";
 import { SidebarComponent } from "@/core/components/sidebar/Sidebar";
@@ -30,7 +30,9 @@ export default function MainLayout({
             <main className="main-content" data-client={activeOrganization}>
               {children}
             </main>
-            <Toaster position="bottom-right" />
+            <Toaster position="bottom-center">
+              {(t) => <ToastBar toast={t} />}
+            </Toaster>
           </div>
         </SidebarInset>
       </SidebarProvider>
