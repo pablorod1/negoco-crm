@@ -16,6 +16,7 @@ import {
   TramiteColumns,
 } from "@/tramites/components/table/TramiteColumns";
 import { useUser } from "@/core/contexts/UserContext";
+import { useTablePagination } from "@/core/hooks/use-table-pagination";
 import {
   Card,
   CardContent,
@@ -156,11 +157,11 @@ function useTramites(
 const SearchInput = ({ onSearch }: { onSearch: (term: string) => void }) => {
   return (
     <div className="relative">
-      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
       <Input
         type="search"
         placeholder="Buscar trámites..."
-        className="w-full pl-8 md:w-[300px]"
+        className="w-full pl-9 pr-4 py-2 text-sm border-gray-200 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 rounded-lg"
         onChange={(e) => onSearch(e.target.value)}
       />
     </div>
@@ -189,8 +190,9 @@ const ErrorState = ({
 
 export function ClientTramitesTable({ client_id }: Props) {
   const { userData } = useUser();
-  const [pageSize, setPageSize] = useState<number | string>(15);
-  const [pageIndex, setPageIndex] = useState(1);
+  const { pageIndex, pageSize, setPageIndex, setPageSize } = useTablePagination(
+    `client-tramites-${client_id}`
+  );
 
   // Get columns based on user role
   const columns = useMemo(() => {
@@ -236,40 +238,45 @@ export function ClientTramitesTable({ client_id }: Props) {
   const table = useReactTable(tableConfig);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center">
-        <div>
-          <CardTitle>Trámites Asociados</CardTitle>
-          <CardDescription>
-            Listado de todos los trámites del cliente.
-            {totalTramites > 0 && (
-              <span className="font-medium text-primary">
-                {" "}
-                ({totalTramites})
-              </span>
-            )}
-          </CardDescription>
-        </div>
-        <div className="ml-auto flex flex-col sm:flex-row items-center gap-2">
-          <SearchInput onSearch={setSearchTerm} />
+    <Card className="border-gray-200 shadow-sm">
+      <CardHeader className="pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Trámites Asociados
+            </CardTitle>
+            <CardDescription className="text-sm text-gray-500">
+              Historial completo de trámites del cliente
+              {totalTramites > 0 && (
+                <span className="font-medium text-gray-700 ml-1">
+                  • {totalTramites} registros
+                </span>
+              )}
+            </CardDescription>
+          </div>
+          <div className="w-full sm:w-auto">
+            <SearchInput onSearch={setSearchTerm} />
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {error ? (
           <ErrorState message={error} onRetry={refetch} />
         ) : (
-          <TableLayout>
-            <TableContent
-              table={table}
-              columns={columns}
-              rowsPerPage={pageSize}
-              setPageSize={setPageSize}
-              setPageIndex={setPageIndex}
-              pageIndex={pageIndex}
-              total={totalTramites}
-              loading={loading}
-            />
-          </TableLayout>
+          <div className="rounded-lg border border-gray-200 bg-white">
+            <TableLayout>
+              <TableContent
+                table={table}
+                columns={columns}
+                rowsPerPage={pageSize}
+                setPageSize={setPageSize}
+                setPageIndex={setPageIndex}
+                pageIndex={pageIndex}
+                total={totalTramites}
+                loading={loading}
+              />
+            </TableLayout>
+          </div>
         )}
       </CardContent>
     </Card>

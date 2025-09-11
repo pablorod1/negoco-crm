@@ -27,11 +27,11 @@ const FilesSearch = ({
   onChange: (value: string) => void;
 }) => (
   <div className="relative">
-    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
     <Input
       type="search"
       placeholder="Buscar archivos..."
-      className="w-full pl-8 md:w-[300px]"
+      className="w-full pl-9 pr-4 py-2 text-sm border-gray-200 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 rounded-lg"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     />
@@ -40,10 +40,14 @@ const FilesSearch = ({
 
 // Empty state component
 const EmptyFilesState = ({ isFiltered }: { isFiltered: boolean }) => (
-  <div className="flex flex-col items-center justify-center py-10 text-center">
-    <FileX className="h-12 w-12 text-muted-foreground mb-3" />
-    <h3 className="text-lg font-semibold">No hay archivos disponibles</h3>
-    <p className="text-muted-foreground mt-1">
+  <div className="flex flex-col items-center justify-center py-12 text-center">
+    <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 mb-4">
+      <FileX className="h-8 w-8 text-gray-400" />
+    </div>
+    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+      No hay archivos disponibles
+    </h3>
+    <p className="text-sm text-gray-500 max-w-sm">
       {isFiltered
         ? "No se encontraron archivos que coincidan con tu búsqueda"
         : "Aún no se han subido archivos para este cliente"}
@@ -109,28 +113,41 @@ export function ClientFilesGrid({ client_id }: Props) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center w-full h-44">
-        <LoadingStateCard />
-      </div>
+      <Card className="border-gray-200 shadow-sm">
+        <CardContent className="pt-6">
+          <div className="flex justify-center items-center w-full h-32">
+            <LoadingStateCard />
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center">
-        <div>
-          <CardTitle>Archivos Subidos</CardTitle>
-          <CardDescription>
-            Documentos subidos por los comerciales.
-          </CardDescription>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <FilesSearch value={filterValue} onChange={setFilterValue} />
+    <Card className="border-gray-200 shadow-sm">
+      <CardHeader className="pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Archivos del Cliente
+            </CardTitle>
+            <CardDescription className="text-sm text-gray-500">
+              Documentos y archivos asociados al cliente
+              {filteredFiles.length > 0 && (
+                <span className="font-medium text-gray-700 ml-1">
+                  • {filteredFiles.length} archivos
+                </span>
+              )}
+            </CardDescription>
+          </div>
+          <div className="w-full sm:w-auto">
+            <FilesSearch value={filterValue} onChange={setFilterValue} />
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {filteredFiles.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredFiles.map((file) => (
               <ClientFileCard file={file} view="grid" key={file.id} />
             ))}

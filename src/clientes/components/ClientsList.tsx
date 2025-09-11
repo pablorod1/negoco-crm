@@ -59,7 +59,7 @@ export default function ClientsList() {
   };
 
   return (
-    <>
+    <div className="space-y-6">
       <ClientsHeader totalCount={totalCount} />
 
       <ClientsFilters
@@ -74,27 +74,25 @@ export default function ClientsList() {
         resultsCount={resultsCount}
       />
 
-      <div className="px-2 md:px-0">
-        {loading ? (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(4)].map((_, index) => (
-              <LoadingStateCard key={index} />
-            ))}
-          </div>
-        ) : clients.length > 0 ? (
-          viewMode === "card" ? (
-            <ClientsGrid clients={clients} />
-          ) : (
-            <ClientsTable clients={clients} />
-          )
+      {loading ? (
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {[...Array(8)].map((_, index) => (
+            <LoadingStateCard key={index} />
+          ))}
+        </div>
+      ) : clients.length > 0 ? (
+        viewMode === "card" ? (
+          <ClientsGrid clients={clients} />
         ) : (
-          <ClientEmptyState
-            searchTerm={searchTerm}
-            totalCount={totalCount}
-            handleClearSearch={handleClearSearch}
-          />
-        )}
-      </div>
-    </>
+          <ClientsTable clients={clients} />
+        )
+      ) : (
+        <ClientEmptyState
+          searchTerm={searchTerm}
+          totalCount={totalCount}
+          handleClearSearch={handleClearSearch}
+        />
+      )}
+    </div>
   );
 }

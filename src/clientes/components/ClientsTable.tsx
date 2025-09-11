@@ -8,10 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/core/components/ui/table";
-import { Badge } from "@/core/components/ui/badge";
-import { ChevronRight, FileText, Inbox, Mail, Phone } from "lucide-react";
-import { ScrollArea } from "@/core/components/ui/scroll-area";
+import { ChevronRight, Mail, Phone, FileText, Calendar } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
+import { Avatar, AvatarFallback } from "@/core/components/ui/avatar";
 
 interface ClientsTableProps {
   clients: ClientListItem[];
@@ -24,21 +23,37 @@ export function ClientsTable({
 }: ClientsTableProps) {
   const router = useTransitionRouter();
 
+  const getInitials = (name: string, lastName: string) => {
+    return `${name.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  const getAvatarColor = (id: string) => {
+    const colors = [
+      "bg-blue-50 text-blue-700",
+      "bg-green-50 text-green-700",
+      "bg-purple-50 text-purple-700",
+      "bg-orange-50 text-orange-700",
+      "bg-pink-50 text-pink-700",
+      "bg-indigo-50 text-indigo-700",
+    ];
+    const index = Number.parseInt(id, 16) % colors.length;
+    return colors[index];
+  };
+
   if (isLoading) {
     return (
-      <div className="rounded-xl border shadow-sm bg-background">
+      <div className="border border-gray-200 rounded-lg bg-white">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/60">
-              <TableHead>Nombre</TableHead>
-              <TableHead>Documento</TableHead>
-              <TableHead className="hidden md:table-cell">Email</TableHead>
-              <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-              <TableHead className="text-center hidden sm:table-cell">
-                Trámites
+            <TableRow className="border-b border-gray-100">
+              <TableHead className="text-gray-600 font-medium">
+                Cliente
               </TableHead>
-              <TableHead className="text-center hidden sm:table-cell">
-                Archivos
+              <TableHead className="text-gray-600 font-medium hidden md:table-cell">
+                Contacto
+              </TableHead>
+              <TableHead className="text-gray-600 font-medium text-center hidden sm:table-cell">
+                Actividad
               </TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -47,9 +62,9 @@ export function ClientsTable({
             {Array(5)
               .fill(0)
               .map((_, index) => (
-                <TableRow key={index} className="border-b last:border-b-0">
-                  <TableCell colSpan={7}>
-                    <div className="h-12 bg-muted/30 animate-pulse rounded-md"></div>
+                <TableRow key={index}>
+                  <TableCell colSpan={4}>
+                    <div className="h-16 bg-gray-50 animate-pulse rounded-md"></div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -59,143 +74,87 @@ export function ClientsTable({
     );
   }
 
-  if (clients.length === 0) {
-    return (
-      <div className="rounded-xl border shadow-sm flex flex-col items-center justify-center p-8 text-center bg-background">
-        <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold">No hay clientes</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          No se encontraron clientes en el sistema.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-xl border shadow-sm bg-background overflow-hidden">
-      <ScrollArea className="h-[calc(100vh-250px)] md:h-auto">
-        <Table>
-          <TableHeader className="bg-muted/60 sticky top-0 z-10">
-            <TableRow>
-              <TableHead className="font-semibold text-muted-foreground">
-                Nombre
-              </TableHead>
-              <TableHead className="font-semibold text-muted-foreground">
-                Documento
-              </TableHead>
-              <TableHead className="hidden md:table-cell font-semibold text-muted-foreground">
-                Email
-              </TableHead>
-              <TableHead className="hidden md:table-cell font-semibold text-muted-foreground">
-                Teléfono
-              </TableHead>
-              <TableHead className="text-center hidden sm:table-cell font-semibold text-muted-foreground">
-                Trámites
-              </TableHead>
-              <TableHead className="text-center hidden sm:table-cell font-semibold text-muted-foreground">
-                Archivos
-              </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {clients.map((client, idx) => (
-              <TableRow
-                key={client.id}
-                className={`cursor-pointer group hover:bg-primary/10 transition-colors border-b last:border-b-0 ${
-                  idx % 2 === 0 ? "bg-muted/10" : "bg-background"
-                }`}
-                onClick={() => router.push(`/clientes/${client.id}`)}
-              >
-                <TableCell className="font-semibold">
-                  <div className="flex flex-col">
-                    <span>
+    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-b border-gray-100">
+            <TableHead className="text-gray-600 font-medium py-4">
+              Cliente
+            </TableHead>
+            <TableHead className="text-gray-600 font-medium hidden md:table-cell">
+              Contacto
+            </TableHead>
+            <TableHead className="text-gray-600 font-medium text-center hidden sm:table-cell">
+              Actividad
+            </TableHead>
+            <TableHead className="w-[50px]"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {clients.map((client) => (
+            <TableRow
+              key={client.id}
+              className="group cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-b-0"
+              onClick={() => router.push(`/clientes/${client.id}`)}
+            >
+              <TableCell className="py-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className={`h-8 w-8 ${getAvatarColor(client.id)}`}>
+                    <AvatarFallback className="text-xs font-medium">
+                      {getInitials(client.name, client.last_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium text-gray-900">
                       {client.name} {client.last_name}
-                    </span>
-                    <div className="md:hidden flex items-center gap-2 mt-1">
-                      {client.email && (
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      {client.phone && (
-                        <Phone className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      {(client.tramites_count > 0 ||
-                        client.files_count > 0) && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs h-5 px-2 border-primary/40"
-                        >
-                          {client.tramites_count > 0 &&
-                            `${client.tramites_count} trám.`}
-                          {client.tramites_count > 0 &&
-                            client.files_count > 0 &&
-                            ", "}
-                          {client.files_count > 0 &&
-                            `${client.files_count} arch.`}
-                        </Badge>
-                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {client.document_type} {client.document_number}
                     </div>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className="font-normal px-2 py-1 rounded-md bg-muted/30 border-muted-foreground/10">
-                    {client.document_type} {client.document_number}
-                  </Badge>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {client.email ? (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="truncate max-w-[150px]">
+                </div>
+              </TableCell>
+
+              <TableCell className="hidden md:table-cell">
+                <div className="space-y-1">
+                  {client.email && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Mail className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="truncate max-w-[200px]">
                         {client.email}
                       </span>
                     </div>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {client.phone ? (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
+                  {client.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="h-3.5 w-3.5 text-gray-400" />
                       <span>{client.phone}</span>
                     </div>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell className="text-center hidden sm:table-cell">
-                  {client.tramites_count > 0 ? (
-                    <Badge variant="outline" className="border-primary/40">
-                      {client.tramites_count}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-center hidden sm:table-cell">
-                  {client.files_count > 0 ? (
-                    <div className="flex items-center justify-center">
-                      <Badge
-                        variant="outline"
-                        className="flex items-center gap-1 border-primary/40"
-                      >
-                        <FileText className="h-3 w-3" />
-                        {client.files_count}
-                      </Badge>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </ScrollArea>
+                </div>
+              </TableCell>
+
+              <TableCell className="hidden sm:table-cell">
+                <div className="flex items-center justify-center gap-4">
+                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                    <span>{client.tramites_count || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <FileText className="h-3.5 w-3.5 text-gray-400" />
+                    <span>{client.files_count || 0}</span>
+                  </div>
+                </div>
+              </TableCell>
+
+              <TableCell>
+                <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

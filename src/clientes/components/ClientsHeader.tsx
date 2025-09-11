@@ -6,14 +6,16 @@ interface ClientsHeaderProps {
 
 export function ClientsHeader({ totalCount }: ClientsHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-4">
-      <h1 className="text-4xl font-extrabold text-primary-600 drop-shadow-sm tracking-tight">
-        Gestión de Clientes
-      </h1>
-      <div className="text-sm text-muted-foreground">
-        Total: <span className="font-medium">{totalCount} clientes</span>
+    <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+          Clientes
+        </h1>
+        <p className="text-sm text-gray-500">
+          {totalCount}{" "}
+          {totalCount === 1 ? "cliente registrado" : "clientes registrados"}
+        </p>
       </div>
     </div>
   );
 }
-

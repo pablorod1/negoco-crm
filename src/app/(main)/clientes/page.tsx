@@ -2,9 +2,8 @@
 
 export default function ClientsPage() {
   return (
-    <div className="px-8 py-12 space-y-6">
+    <div className="p-6 ">
       <ClientsList />
     </div>
   );
 }
-
