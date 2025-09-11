@@ -42,11 +42,10 @@ interface ComparisonAnalyticsResponse {
 const ComparisonAnalyticsSchema = z.object({
   id: z.string().min(1, "User ID is required"),
   role: z.string().min(1, "User role is required"),
-  metric: z.enum([
-    "completed-count", 
-    "converted-ratio", 
-    "by-status"
-  ]).optional().default("completed-count"),
+  metric: z
+    .enum(["completed-count", "converted-ratio", "by-status"])
+    .optional()
+    .default("completed-count"),
   month: z.string().optional(), // Required for converted-ratio
   status: z.string().optional(), // Required for by-status
 });
@@ -109,9 +108,9 @@ const getCompletedCountMetrics = async (
     WHERE 1=1 ${whereClause}
   `;
 
-  const result = await tursoClient.execute({ 
-    sql: query, 
-    args: userFilter.params 
+  const result = await tursoClient.execute({
+    sql: query,
+    args: userFilter.params,
   });
 
   const data = result.rows[0] || {
@@ -159,9 +158,9 @@ const getConversionRatio = async (
 
   const params = [month, ...userFilter.params];
 
-  const result = await tursoClient.execute({ 
-    sql: query, 
-    args: params 
+  const result = await tursoClient.execute({
+    sql: query,
+    args: params,
   });
 
   return result.rows.map((row: Record<string, unknown>) => ({
@@ -180,7 +179,7 @@ const getComparisonsByStatus = async (
   status: string,
   subcomerciales?: { success: boolean; ids?: string[] }
 ): Promise<ComparisonsByStatus[]> => {
-  const params: (string | number)[] = [status];
+  const params: (string | number)[] = [];
 
   let query = `
     SELECT 
@@ -195,10 +194,13 @@ const getComparisonsByStatus = async (
   `;
 
   // Apply status filtering
-  if (status === "completed") {
-    query += `WHERE c.status = ? AND strftime(c.creation_date) = strftime('now')`;
-  } else {
-    query += `WHERE c.status = ?`;
+  if (status !== "all") {
+    params.push(status);
+    if (status === "completed") {
+      query += `WHERE c.status = ? AND strftime(c.creation_date) = strftime('now')`;
+    } else {
+      query += `WHERE c.status = ?`;
+    }
   }
 
   // Apply user filtering
@@ -300,7 +302,9 @@ export async function GET(
     }
 
     // Get subcomerciales for role "2"
-    let subcomerciales: { success: boolean; ids?: string[] } = { success: false };
+    let subcomerciales: { success: boolean; ids?: string[] } = {
+      success: false,
+    };
     if (role === "2") {
       subcomerciales = await getSubcomerciales(tursoClient, id);
     }
@@ -310,11 +314,22 @@ export async function GET(
     // Route to appropriate analytics function based on metric
     switch (metric) {
       case "completed-count":
-        data = await getCompletedCountMetrics(tursoClient, role, id, subcomerciales);
+        data = await getCompletedCountMetrics(
+          tursoClient,
+          role,
+          id,
+          subcomerciales
+        );
         break;
       case "converted-ratio":
         if (month) {
-          data = await getConversionRatio(tursoClient, role, id, month, subcomerciales);
+          data = await getConversionRatio(
+            tursoClient,
+            role,
+            id,
+            month,
+            subcomerciales
+          );
         } else {
           return NextResponse.json(
             {
@@ -327,7 +342,13 @@ export async function GET(
         break;
       case "by-status":
         if (status) {
-          data = await getComparisonsByStatus(tursoClient, role, id, status, subcomerciales);
+          data = await getComparisonsByStatus(
+            tursoClient,
+            role,
+            id,
+            status,
+            subcomerciales
+          );
         } else {
           return NextResponse.json(
             {
@@ -372,14 +393,14 @@ export async function POST(
 ): Promise<NextResponse<ComparisonAnalyticsResponse>> {
   try {
     const body = await request.json();
-    
+
     // Determine which legacy endpoint is being called based on request body
     if (body.month !== undefined) {
       // Legacy: /api/comparativas/get/converted-ratio
       const validationResult = ComparisonAnalyticsSchema.omit({ metric: true })
         .extend({ month: z.string().min(1, "Month is required") })
         .safeParse(body);
-      
+
       if (!validationResult.success) {
         return NextResponse.json(
           {
@@ -392,7 +413,7 @@ export async function POST(
 
       const { id, role, month } = validationResult.data;
       const tursoClient = getTursoClient(request);
-      
+
       if (!tursoClient) {
         return NextResponse.json(
           {
@@ -403,20 +424,27 @@ export async function POST(
         );
       }
 
-      let subcomerciales: { success: boolean; ids?: string[] } = { success: false };
+      let subcomerciales: { success: boolean; ids?: string[] } = {
+        success: false,
+      };
       if (role === "2") {
         subcomerciales = await getSubcomerciales(tursoClient, id);
       }
 
-      const data = await getConversionRatio(tursoClient, role, id, month, subcomerciales);
+      const data = await getConversionRatio(
+        tursoClient,
+        role,
+        id,
+        month,
+        subcomerciales
+      );
       return NextResponse.json({ success: true, data });
-
     } else if (body.status !== undefined) {
       // Legacy: /api/comparativas/get/by-status
       const validationResult = ComparisonAnalyticsSchema.omit({ metric: true })
         .extend({ status: z.string().min(1, "Status is required") })
         .safeParse(body);
-      
+
       if (!validationResult.success) {
         return NextResponse.json(
           { success: false, error: "Missing parameters" },
@@ -426,7 +454,7 @@ export async function POST(
 
       const { id, role, status } = validationResult.data;
       const tursoClient = getTursoClient(request);
-      
+
       if (!tursoClient) {
         return NextResponse.json(
           { success: false, error: "Database client not initialized" },
@@ -434,19 +462,29 @@ export async function POST(
         );
       }
 
-      let subcomerciales: { success: boolean; ids?: string[] } = { success: false };
+      let subcomerciales: { success: boolean; ids?: string[] } = {
+        success: false,
+      };
       if (role === "2") {
         subcomerciales = await getSubcomerciales(tursoClient, id);
       }
 
-      const data = await getComparisonsByStatus(tursoClient, role, id, status, subcomerciales);
+      const data = await getComparisonsByStatus(
+        tursoClient,
+        role,
+        id,
+        status,
+        subcomerciales
+      );
       return NextResponse.json({ success: true, data });
-
     } else {
       // Legacy: /api/comparativas/get/completed-count
-      const validationResult = ComparisonAnalyticsSchema.omit({ metric: true, month: true, status: true })
-        .safeParse(body);
-      
+      const validationResult = ComparisonAnalyticsSchema.omit({
+        metric: true,
+        month: true,
+        status: true,
+      }).safeParse(body);
+
       if (!validationResult.success) {
         return NextResponse.json(
           {
@@ -459,7 +497,7 @@ export async function POST(
 
       const { id, role } = validationResult.data;
       const tursoClient = getTursoClient(request);
-      
+
       if (!tursoClient) {
         return NextResponse.json(
           {
@@ -470,12 +508,19 @@ export async function POST(
         );
       }
 
-      let subcomerciales: { success: boolean; ids?: string[] } = { success: false };
+      let subcomerciales: { success: boolean; ids?: string[] } = {
+        success: false,
+      };
       if (role === "2") {
         subcomerciales = await getSubcomerciales(tursoClient, id);
       }
 
-      const data = await getCompletedCountMetrics(tursoClient, role, id, subcomerciales);
+      const data = await getCompletedCountMetrics(
+        tursoClient,
+        role,
+        id,
+        subcomerciales
+      );
       return NextResponse.json({ success: true, data });
     }
   } catch (error) {

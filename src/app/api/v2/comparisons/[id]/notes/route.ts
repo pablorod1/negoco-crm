@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * REFACTORED COMPARISON NOTES ENDPOINT
@@ -37,6 +38,7 @@ const ComparisonNotesAddSchema = z
   .object({
     notes: z.array(z.string()).min(0, "Notes array is required"),
     note: z.string().min(1, "Note content cannot be empty"),
+    user_id: z.string().min(1, "User ID is required for tracking changes"),
   })
   .refine(
     (data) => {
@@ -62,6 +64,7 @@ const ComparisonNotesDeleteSchema = z
   .object({
     notes: z.array(z.string()).min(0, "Notes array is required"),
     note: z.string().min(1, "Note content to delete cannot be empty"),
+    user_id: z.string().min(1, "User ID is required for tracking changes"),
   })
   .refine(
     (data) => {
@@ -198,10 +201,10 @@ export async function POST(
     // ==================== REQUEST BODY VALIDATION ====================
 
     const requestBody = await request.json();
-    const { notes, note } = requestBody;
+    const { notes, note, user_id } = requestBody;
 
     // BACKWARD COMPATIBILITY: Match original validation exactly
-    if (!comparisonId || !notes || !note) {
+    if (!comparisonId || !notes || !note || !user_id) {
       const totalRequestTime = performance.now() - startTime;
       console.error(
         `[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`
@@ -289,6 +292,17 @@ export async function POST(
 
     // ==================== SUCCESS RESPONSE ====================
 
+    // Track note addition
+    await createComparativaChange(tursoClient, {
+      comparativa_id: comparisonId,
+      user_id: user_id,
+      change_type: "note_added",
+      field_name: "note",
+      old_value: null,
+      new_value: note,
+      description: `Nota agregada: "${note.length > 50 ? note.substring(0, 50) + "..." : note}"`,
+    });
+
     const totalRequestTime = performance.now() - startTime;
 
     console.log(
@@ -370,10 +384,10 @@ export async function DELETE(
     // ==================== REQUEST BODY VALIDATION ====================
 
     const requestBody = await request.json();
-    const { notes, note } = requestBody;
+    const { notes, note, user_id } = requestBody;
 
     // BACKWARD COMPATIBILITY: Match original validation exactly
-    if (!comparisonId || !note || !notes) {
+    if (!comparisonId || !note || !notes || !user_id) {
       const totalRequestTime = performance.now() - startTime;
       console.error(
         `[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`
@@ -460,6 +474,17 @@ export async function DELETE(
     }
 
     // ==================== SUCCESS RESPONSE ====================
+
+    // Track note deletion
+    await createComparativaChange(tursoClient, {
+      comparativa_id: comparisonId,
+      user_id: user_id,
+      change_type: "note_deleted",
+      field_name: "note",
+      old_value: note,
+      new_value: null,
+      description: `Nota eliminada: "${note.length > 50 ? note.substring(0, 50) + "..." : note}"`,
+    });
 
     const totalRequestTime = performance.now() - startTime;
 

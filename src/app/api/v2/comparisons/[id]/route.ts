@@ -6,6 +6,7 @@ import { ComparativaPlan } from "@/comparativas/types";
 import { Client } from "@libsql/client";
 import { updateComparativaGeneral } from "@/comparativas/utils/updateComparativaHelpers";
 import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * Database row interfaces for type safety
@@ -27,6 +28,7 @@ interface ComparativaRow extends Record<string, unknown> {
   email: string;
   name: string;
   image: string | null;
+  company_id?: string; // ID reference to comercializadoras table
 }
 
 interface ComparativaFileRow extends Record<string, unknown> {
@@ -98,6 +100,7 @@ interface ComparisonByIdResponse {
     };
     creation_date: string;
     tramite_id: string | null;
+    company_id?: string; // ID reference to comercializadoras table
     files: Array<{
       id: string;
       filename: string;
@@ -175,6 +178,7 @@ async function fetchComparisonData(
       c.notes,
       c.creation_date,
       c.tramite_id,
+      c.company_id,
       u.id as user_id,
       u.email,
       u.name,
@@ -305,6 +309,9 @@ function transformComparisonData(
     },
     creation_date: comparativa.creation_date as string,
     tramite_id: comparativa.tramite_id ? String(comparativa.tramite_id) : null,
+    company_id: comparativa.company_id
+      ? String(comparativa.company_id)
+      : undefined,
     files,
   };
 }
@@ -389,6 +396,9 @@ export async function PATCH(
     }
 
     const updates = validation.data;
+
+    // Extract user_id from body for tracking changes
+    const { user_id: requestUserId } = body;
 
     // Initialize database client
     const tursoClient = getTursoClient(req);
@@ -479,6 +489,201 @@ export async function PATCH(
         { success: false, error: updateResult.error },
         { status: 400 }
       );
+    }
+
+    // Track changes made to the comparativa
+    if (requestUserId) {
+      const previousData = existingComparison.data[0];
+
+      // Track client update
+      if (
+        updates.client !== undefined &&
+        updates.client !== previousData.client
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: id,
+          user_id: requestUserId,
+          change_type: "client_update",
+          field_name: "client",
+          old_value: previousData.client,
+          new_value: updates.client,
+          description: `Cliente actualizado de "${previousData.client}" a "${updates.client}"`,
+        });
+      }
+
+      // Track service update
+      if (
+        updates.service !== undefined &&
+        updates.service !== previousData.service
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: id,
+          user_id: requestUserId,
+          change_type: "service_update",
+          field_name: "service",
+          old_value: previousData.service,
+          new_value: updates.service,
+          description: `Servicio actualizado de "${previousData.service}" a "${updates.service}"`,
+        });
+      }
+
+      // Track plan update
+      if (updates.plan !== undefined) {
+        const previousPlan = JSON.parse(previousData.plan as string);
+        if (JSON.stringify(previousPlan) !== JSON.stringify(updates.plan)) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "plan_update",
+            field_name: "plan",
+            old_value: JSON.stringify(previousPlan),
+            new_value: JSON.stringify(updates.plan),
+            description: `Plan actualizado de [${previousPlan.join(", ")}] a [${updates.plan.join(", ")}]`,
+          });
+        }
+      }
+
+      // Track status update
+      if (
+        updates.status !== undefined &&
+        updates.status !== previousData.status
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: id,
+          user_id: requestUserId,
+          change_type: "status_change",
+          field_name: "status",
+          old_value: previousData.status,
+          new_value: updates.status,
+          description: `Estado actualizado de "${previousData.status}" a "${updates.status}"`,
+        });
+      }
+
+      // Track commission updates
+      if (updates.comisions) {
+        if (
+          updates.comisions.comision_fijo !== undefined &&
+          updates.comisions.comision_fijo !== previousData.comision_fijo
+        ) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "commission_update",
+            field_name: "comision_fijo",
+            old_value: previousData.comision_fijo.toString(),
+            new_value: updates.comisions.comision_fijo.toString(),
+            description: `Comisión fija actualizada de ${previousData.comision_fijo}€ a ${updates.comisions.comision_fijo}€`,
+          });
+        }
+
+        if (
+          updates.comisions.comision_indexado !== undefined &&
+          updates.comisions.comision_indexado !== previousData.comision_indexado
+        ) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "commission_update",
+            field_name: "comision_indexado",
+            old_value: previousData.comision_indexado.toString(),
+            new_value: updates.comisions.comision_indexado.toString(),
+            description: `Comisión indexada actualizada de ${previousData.comision_indexado}€ a ${updates.comisions.comision_indexado}€`,
+          });
+        }
+
+        if (
+          updates.comisions.comision_sales_person_fijo !== undefined &&
+          updates.comisions.comision_sales_person_fijo !==
+            previousData.comision_sales_person_fijo
+        ) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "commission_update",
+            field_name: "comision_sales_person_fijo",
+            old_value: previousData.comision_sales_person_fijo.toString(),
+            new_value: updates.comisions.comision_sales_person_fijo.toString(),
+            description: `Comisión comercial fija actualizada de ${previousData.comision_sales_person_fijo}€ a ${updates.comisions.comision_sales_person_fijo}€`,
+          });
+        }
+
+        if (
+          updates.comisions.comision_sales_person_indexado !== undefined &&
+          updates.comisions.comision_sales_person_indexado !==
+            previousData.comision_sales_person_indexado
+        ) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "commission_update",
+            field_name: "comision_sales_person_indexado",
+            old_value: previousData.comision_sales_person_indexado.toString(),
+            new_value:
+              updates.comisions.comision_sales_person_indexado.toString(),
+            description: `Comisión comercial indexada actualizada de ${previousData.comision_sales_person_indexado}€ a ${updates.comisions.comision_sales_person_indexado}€`,
+          });
+        }
+      }
+
+      // Track user assignment change
+      if (
+        updates.user_id !== undefined &&
+        updates.user_id !== previousData.user_id
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: id,
+          user_id: requestUserId,
+          change_type: "assignment_change",
+          field_name: "user_id",
+          old_value: previousData.user_id,
+          new_value: updates.user_id,
+          description: `Comparativa reasignada a otro usuario`,
+        });
+      }
+
+      // Track notes update
+      if (updates.notes !== undefined) {
+        const previousNotes = JSON.parse(previousData.notes as string);
+        if (JSON.stringify(previousNotes) !== JSON.stringify(updates.notes)) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "general_update",
+            field_name: "notes",
+            old_value: JSON.stringify(previousNotes),
+            new_value: JSON.stringify(updates.notes),
+            description: `Notas actualizadas`,
+          });
+        }
+      }
+
+      // Track contract/tramite link
+      if (
+        updates.tramite_id !== undefined &&
+        updates.tramite_id !== previousData.tramite_id
+      ) {
+        if (updates.tramite_id === null) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "general_update",
+            field_name: "tramite_id",
+            old_value: previousData.tramite_id,
+            new_value: null,
+            description: `Enlace con trámite eliminado`,
+          });
+        } else {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: requestUserId,
+            change_type: "converted_to_contract",
+            field_name: "tramite_id",
+            old_value: previousData.tramite_id,
+            new_value: updates.tramite_id,
+            description: `Comparativa convertida a trámite: ${updates.tramite_id}`,
+          });
+        }
+      }
     }
 
     // Fetch the updated comparison data to return

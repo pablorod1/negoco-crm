@@ -10,6 +10,7 @@ import {
   TramiteFile,
 } from "@/tramites/types/tramite.types";
 import { Client } from "@libsql/client";
+import { recordTramiteCreation } from "@/tramites/utils/tramiteChangesHelpers";
 
 // Zod Validation Schemas
 const StatusSchema = z.enum([
@@ -149,7 +150,6 @@ const TramiteSchema = z.object({
           minimum: 1,
           type: "string",
           inclusive: true,
-          origin: "string",
           message: "Client ID is required",
         });
         return z.NEVER;
@@ -218,6 +218,7 @@ const ContractSchema = z.object({
   city: z.string().min(1, "City is required"),
   address: z.string().min(1, "Address is required"),
   postal_code: z.string().min(1, "Postal code is required"),
+  // Support both legacy string fields and new ID-based fields
   old_company: z.string().optional(),
   new_company: z.string().min(1, "New company is required"),
   plan: z.string().min(1, "Plan is required"),
@@ -257,7 +258,6 @@ const SignerSchema = z
             minimum: 1,
             type: "string",
             inclusive: true,
-            origin: "string",
             message: "Client ID is required",
           });
           return z.NEVER;
@@ -595,7 +595,7 @@ const addContractsOptimized = async (
 
     const startTime = performance.now();
 
-    // Use batch insert for better performance
+    // Use batch insert for better performance - include both legacy and ID fields
     const placeholders = contracts
       .map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .join(", ");
@@ -608,7 +608,7 @@ const addContractsOptimized = async (
       contract.address,
       contract.postal_code,
       contract.old_company || "",
-      contract.new_company,
+      contract.new_company || "", // Legacy field - use empty string if not provided
       contract.plan,
       contract.consumption || 0,
       contract.CUPS,
@@ -872,6 +872,14 @@ export async function POST(
         );
         if (!existingFilesRes.success) throw new Error(existingFilesRes.error);
       }
+
+      // Record tramite creation in changes history
+      await recordTramiteCreation(
+        tx,
+        tramite.id,
+        userData.id,
+        `Trámite creado por ${userData.name}`
+      );
 
       // Commit transaction
       await tx.commit();

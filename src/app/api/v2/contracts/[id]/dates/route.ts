@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { recordDateChange } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT DATES UPDATE ENDPOINT
@@ -55,6 +56,7 @@ const ContractDatesUpdateSchema = z.object({
     message: "Invalid date field",
   }),
   date: z.string().min(1, "Date is required"),
+  user_id: z.string().min(1, "User ID is required"), // Add for tracking
 });
 
 /**
@@ -223,7 +225,7 @@ export async function POST(
       );
     }
 
-    const { field, date } = bodyValidation.data;
+    const { field, date, user_id } = bodyValidation.data;
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
 
@@ -232,6 +234,26 @@ export async function POST(
     if (clientValidationError) {
       return clientValidationError;
     }
+
+    // ==================== GET CURRENT VALUE FOR TRACKING ====================
+
+    const currentValues = await tursoClient!.execute({
+      sql: `SELECT ${field} FROM tramites WHERE id = ?`,
+      args: [id],
+    });
+
+    if (currentValues.rows.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Tramite not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    const currentData = currentValues.rows[0];
+    const oldValue = currentData[field] as string | null;
 
     // ==================== QUERY BUILDING & EXECUTION ====================
 
@@ -252,6 +274,12 @@ export async function POST(
       date,
       id,
     ]);
+
+    // ==================== TRACK CHANGES ====================
+
+    if (oldValue !== date) {
+      await recordDateChange(tursoClient!, id, user_id, field, oldValue, date);
+    }
 
     // ==================== RESPONSE HANDLING ====================
 

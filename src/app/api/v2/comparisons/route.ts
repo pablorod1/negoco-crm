@@ -9,6 +9,7 @@ import {
 } from "@/comparativas/types";
 import { Client } from "@libsql/client";
 import { DateRange } from "react-day-picker";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * Types for Paginated Comparisons (GET endpoint)
@@ -152,6 +153,17 @@ const addComparativaOptimized = async (
         comparativa.status,
         comparativa.tramite_id || null,
       ],
+    });
+
+    // Track creation of comparativa
+    await createComparativaChange(tursoClient, {
+      comparativa_id: comparativa.id,
+      user_id: comparativa.user_id,
+      change_type: "created",
+      field_name: null,
+      old_value: null,
+      new_value: null,
+      description: `Comparativa creada para el cliente ${comparativa.client}`,
     });
 
     const queryTime = performance.now() - startTime;

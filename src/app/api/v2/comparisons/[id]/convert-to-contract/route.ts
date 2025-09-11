@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { moveFolderFromComparativasToTramites } from "@/core/firebase/data/moveFolder";
 import { Client } from "@libsql/client";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -12,6 +13,7 @@ import { Client } from "@libsql/client";
 const ConvertToContractSchema = z.object({
   organization_id: z.string().min(1, "Organization ID is required"),
   tramite_id: z.string().min(1, "Tramite ID is required"),
+  user_id: z.string().min(1, "User ID is required for tracking changes"),
 });
 
 /**
@@ -39,7 +41,7 @@ interface QueryMetrics {
 /**
  * Executes database query with performance monitoring and error handling
  * @param tursoClient - Database client instance
- * @param query - SQL query string  
+ * @param query - SQL query string
  * @param params - Query parameters
  * @param operation - Operation name for logging
  * @returns Promise with query result and metrics
@@ -49,17 +51,20 @@ async function executeQuery(
   query: string,
   params: (string | number)[],
   operation: string
-): Promise<{ result: { rows: Record<string, unknown>[]; rowsAffected: number }; metrics: Partial<QueryMetrics> }> {
+): Promise<{
+  result: { rows: Record<string, unknown>[]; rowsAffected: number };
+  metrics: Partial<QueryMetrics>;
+}> {
   const startTime = performance.now();
-  
+
   try {
     const result = await tursoClient.execute({
       sql: query,
       args: params,
     });
-    
+
     const queryTime = performance.now() - startTime;
-    
+
     return {
       result,
       metrics: {
@@ -70,7 +75,10 @@ async function executeQuery(
     };
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -91,7 +99,7 @@ async function validateComparison(
     [comparisonId],
     "validate_comparison"
   );
-  
+
   const fileCount = Number(result.rows[0]?.file_count) || 0;
   return {
     exists: fileCount > 0,
@@ -103,14 +111,14 @@ async function validateComparison(
 
 /**
  * Converts a comparison to contract by moving associated files
- * 
+ *
  * Refactored from: /api/comparativas/move-files/[id]
  * New endpoint: /new_api/comparisons/[id]/convert-to-contract
- * 
+ *
  * This endpoint handles the conversion of a comparison (comparativa) to a contract (tramite)
  * by moving all associated files from the comparison storage to the contract storage,
  * both in Firebase Storage and in the database tables.
- * 
+ *
  * @param request - Next.js request object containing organization_id and tramite_id
  * @param params - Route parameters containing comparison ID
  * @returns Promise<NextResponse<ConvertToContractResponse>>
@@ -120,12 +128,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ConvertToContractResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id: comparisonId } = await params;
-    
+
     if (!comparisonId) {
       return NextResponse.json(
         {
@@ -137,7 +145,7 @@ export async function POST(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     let requestBody;
     try {
       requestBody = await request.json();
@@ -166,7 +174,7 @@ export async function POST(
     const { organization_id, tramite_id } = validation.data;
 
     // ==================== DATABASE CONNECTION ====================
-    
+
     const tursoClient = getTursoClient(request);
 
     if (!tursoClient) {
@@ -180,7 +188,7 @@ export async function POST(
     }
 
     // ==================== BUSINESS LOGIC VALIDATION ====================
-    
+
     // Validate that the comparison exists and has files to move
     const { exists: comparisonExists, fileCount } = await validateComparison(
       tursoClient,
@@ -192,7 +200,7 @@ export async function POST(
       console.log(
         `[INFO] No files to move for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms`
       );
-      
+
       // Return success if no files to move (maintains compatibility)
       return NextResponse.json({
         success: true,
@@ -207,10 +215,10 @@ export async function POST(
     }
 
     // ==================== CORE CONVERSION OPERATION ====================
-    
+
     console.log(
       `[INFO] Starting conversion for comparison ${comparisonId} -> contract ${tramite_id}. ` +
-      `Files to process: ${fileCount}`
+        `Files to process: ${fileCount}`
     );
 
     // Execute the file conversion using the existing helper function
@@ -224,14 +232,14 @@ export async function POST(
       );
 
     // ==================== RESPONSE HANDLING ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
 
     if (!moveFilesSuccess) {
       console.error(
         `[ERROR] Conversion failed for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms: ${moveFileError}`
       );
-      
+
       return NextResponse.json(
         {
           success: false,
@@ -242,10 +250,22 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
+    // Track the conversion to contract
+    const { user_id } = validation.data;
+    await createComparativaChange(tursoClient, {
+      comparativa_id: comparisonId,
+      user_id: user_id,
+      change_type: "converted_to_contract",
+      field_name: "tramite_id",
+      old_value: null,
+      new_value: tramite_id,
+      description: `Comparativa convertida a trámite: ${tramite_id}`,
+    });
+
     console.log(
       `[SUCCESS] Conversion completed for comparison ${comparisonId} -> contract ${tramite_id} ` +
-      `after ${totalRequestTime.toFixed(2)}ms. Files processed: ${fileCount}`
+        `after ${totalRequestTime.toFixed(2)}ms. Files processed: ${fileCount}`
     );
 
     return NextResponse.json({
@@ -256,23 +276,22 @@ export async function POST(
         filesProcessed: fileCount,
         optimizationApplied: [
           "INPUT_VALIDATION",
-          "EARLY_VALIDATION", 
+          "EARLY_VALIDATION",
           "PERFORMANCE_MONITORING",
           "ERROR_CONTEXT_LOGGING",
         ],
       },
     });
-
   } catch (error) {
     // ==================== ERROR HANDLING ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.error(
-      `[ERROR] Conversion operation failed after ${totalRequestTime.toFixed(2)}ms:`, 
+      `[ERROR] Conversion operation failed after ${totalRequestTime.toFixed(2)}ms:`,
       error
     );
-    
+
     return NextResponse.json(
       {
         success: false,

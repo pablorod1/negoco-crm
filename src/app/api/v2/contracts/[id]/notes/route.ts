@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import {
+  recordNoteChange,
+  createTramiteChange,
+} from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT NOTES ENDPOINT
- * 
+ *
  * Original Add: /api/tramites/add/[id]/notes (PATCH)
  * Original Delete: /api/tramites/delete/[id]/note (PATCH)
  * Refactored: /new_api/contracts/[id]/notes (PATCH for add, DELETE for remove)
- * 
+ *
  * This endpoint manages contract notes with enhanced performance,
  * type safety, and comprehensive error handling while maintaining 100% functional compatibility.
  */
@@ -27,26 +31,29 @@ interface ContractNotesResponse {
  * Maintains compatibility with original endpoint while adding type safety
  * NOTE: 'note' is required when not providing arrays (matches original behavior)
  */
-const ContractNotesSchema = z.object({
-  note: z.string().min(1, "Note content is required"),
-  is_internal: z.boolean(),
-  internal_notes: z.array(z.string()).optional(),
-  notes: z.array(z.string()).optional(),
-}).refine(
-  (data) => {
-    // Match original validation: require note and is_internal
-    return data.note && typeof data.is_internal === 'boolean';
-  },
-  {
-    message: "Missing parameters: note and is_internal are required",
-  }
-);
+const ContractNotesSchema = z
+  .object({
+    note: z.string().min(1, "Note content is required"),
+    is_internal: z.boolean(),
+    internal_notes: z.array(z.string()).optional(),
+    notes: z.array(z.string()).optional(),
+    user_id: z.string().optional(), // For change tracking
+  })
+  .refine(
+    (data) => {
+      // Match original validation: require note and is_internal
+      return data.note && typeof data.is_internal === "boolean";
+    },
+    {
+      message: "Missing parameters: note and is_internal are required",
+    }
+  );
 
 // ==================== MAIN HANDLER ====================
 
 /**
  * PATCH /new_api/contracts/[id]/notes
- * 
+ *
  * Adds notes to a contract with enhanced performance and type safety.
  * Maintains 100% compatibility with the original endpoint behavior.
  * METHOD CHANGED TO PATCH FOR BACKWARD COMPATIBILITY
@@ -57,7 +64,7 @@ export async function PATCH(
 ): Promise<NextResponse<ContractNotesResponse>> {
   try {
     // ==================== INPUT VALIDATION ====================
-    
+
     const { id } = await params;
     const contractId = id;
     if (!contractId) {
@@ -95,12 +102,15 @@ export async function PATCH(
     // Additional Zod validation for enhanced type safety (optional enhancement)
     const validationResult = ContractNotesSchema.safeParse(requestBody);
     if (!validationResult.success) {
-      console.warn("[VALIDATION] Enhanced validation failed:", validationResult.error);
+      console.warn(
+        "[VALIDATION] Enhanced validation failed:",
+        validationResult.error
+      );
       // Continue with original validation for backward compatibility
     }
 
     // ==================== DATABASE CONNECTION ====================
-    
+
     const client = getTursoClient(request);
 
     if (!client) {
@@ -114,10 +124,10 @@ export async function PATCH(
     }
 
     // ==================== BUSINESS LOGIC ====================
-    
+
     // Match original logic exactly: determine column and prepare data
     const currentNotes = is_internal ? internal_notes : notes;
-    
+
     // Ensure currentNotes is an array, fallback to empty array if null/undefined (original behavior)
     const notesArray = Array.isArray(currentNotes) ? currentNotes : [];
     const updatedNotes = [...notesArray, note];
@@ -145,10 +155,23 @@ export async function PATCH(
       );
     }
 
+    // ==================== TRACK NOTE ADDITION ====================
+
+    // Track note addition
+    const trackingValidation = ContractNotesSchema.safeParse(requestBody);
+    if (trackingValidation.success && trackingValidation.data.user_id) {
+      await recordNoteChange(
+        client,
+        contractId,
+        trackingValidation.data.user_id,
+        note as string,
+        (is_internal as boolean) ? "internal" : "public"
+      );
+    }
+
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     console.error("Error al actualizar notas del trámite :", error);
     return NextResponse.json(
@@ -179,10 +202,10 @@ export async function PUT(): Promise<NextResponse> {
 
 /**
  * DELETE /new_api/contracts/[id]/notes
- * 
+ *
  * Removes a note from a contract with enhanced performance and type safety.
  * Maintains 100% compatibility with the original /api/tramites/delete/[id]/note endpoint behavior.
- * 
+ *
  * REFACTORED FROM: /api/tramites/delete/[id]/note (PATCH)
  * REFACTORED TO: /new_api/contracts/[id]/notes (DELETE)
  */
@@ -192,7 +215,8 @@ export async function DELETE(
 ): Promise<NextResponse<ContractNotesResponse>> {
   try {
     const { id } = await params;
-    const { note, notes, internal_notes } = await request.json();
+    const requestBody = await request.json();
+    const { note, notes, internal_notes, user_id } = requestBody;
 
     if (!id || !note) {
       return NextResponse.json(
@@ -242,6 +266,20 @@ export async function DELETE(
       );
     }
 
+    // ==================== TRACK NOTE DELETION ====================
+
+    // Track note deletion
+    if (user_id) {
+      await createTramiteChange(client, {
+        tramite_id: id,
+        user_id: user_id,
+        change_type: "note_added", // We use note_added but with deletion description
+        field_name: internal_notes ? "internal_notes" : "notes",
+        old_value: note,
+        new_value: null,
+        description: `Nota ${internal_notes ? "interna" : "pública"} eliminada`,
+      });
+    }
     return NextResponse.json({
       success: true,
     });

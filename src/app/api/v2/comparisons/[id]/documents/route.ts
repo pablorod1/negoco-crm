@@ -4,11 +4,8 @@ import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
 import { ComparativaFile } from "@/comparativas/types";
 import { addComparativaFiles } from "@/comparativas/utils/addComparativaHelpers";
-import {
-  updateComparativaComissions,
-  updateComparativaStatus,
-} from "@/comparativas/utils/updateComparativaHelpers";
 import { deleteFileFromStorage } from "@/core/firebase/data/deleteFile";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * REFACTORED COMPARISON DOCUMENTS ENDPOINT
@@ -43,6 +40,7 @@ interface QueryMetrics {
 const ComparisonDocumentsDeleteSchema = z.object({
   file_name: z.string().min(1, "File name is required"),
   organization_id: z.string().min(1, "Organization ID is required"),
+  user_id: z.string().min(1, "User ID is required for tracking changes"),
 });
 
 /**
@@ -192,8 +190,7 @@ export async function POST(
 
     const organization_id = formData.get("organization_id") as string;
     const documents = formData.get("files") as string;
-    const estudio_realizado = formData.get("estudio_realizado") as string;
-    const comissionsString = formData.get("comissions") as string;
+    const user_id = formData.get("user_id") as string;
 
     // BACKWARD COMPATIBILITY: Match original validation exactly
     if (!id || !organization_id) {
@@ -245,25 +242,6 @@ export async function POST(
       comparativaFiles = []; // Continue with empty array for backward compatibility
     }
 
-    // Parse commissions data
-    let comissions;
-    if (comissionsString) {
-      try {
-        comissions = JSON.parse(comissionsString);
-      } catch (parseError) {
-        console.warn(
-          "[PARSE WARNING] Commissions data parsing issue:",
-          parseError
-        );
-        // Continue without commissions data for backward compatibility
-      }
-    }
-
-    console.log(
-      `[INFO] Adding ${comparativaFiles.length} documents to comparison ${id}. ` +
-        `Study status: ${estudio_realizado}`
-    );
-
     // 1. Add files to database (if any)
     if (comparativaFiles.length > 0) {
       const insertFilesResult = await addComparativaFiles(
@@ -290,72 +268,21 @@ export async function POST(
         `[SUCCESS] ${comparativaFiles.length} files inserted successfully. ` +
           `Performance enhanced with batch processing optimization`
       );
-    }
 
-    // 2. Update comparison status based on study completion
-    const updateStatusResult = await updateComparativaStatus(
-      tursoClient,
-      id,
-      estudio_realizado === "true" ? "completed" : "pending"
-    );
-
-    if (!updateStatusResult.success) {
-      const totalRequestTime = performance.now() - startTime;
-      console.error(
-        `[ERROR] Status update failed after ${totalRequestTime.toFixed(2)}ms: ${updateStatusResult.error}`
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: updateStatusResult.error,
-        },
-        { status: 400 }
-      );
-    }
-
-    // 3. Update commissions (if provided)
-    if (
-      comissions &&
-      (comissions.comision_fijo ||
-        comissions.comision_indexado ||
-        comissions.comision_sales_person_fijo ||
-        comissions.comision_sales_person_indexado)
-    ) {
-      const {
-        comision_fijo,
-        comision_indexado,
-        comision_sales_person_fijo,
-        comision_sales_person_indexado,
-      } = comissions;
-
-      const comissionsResponse = await updateComparativaComissions(
-        tursoClient,
-        id,
-        comision_fijo ? comision_fijo : undefined,
-        comision_indexado ? comision_indexado : undefined,
-        comision_sales_person_fijo ? comision_sales_person_fijo : undefined,
-        comision_sales_person_indexado
-          ? comision_sales_person_indexado
-          : undefined
-      );
-
-      if (!comissionsResponse.success) {
-        const totalRequestTime = performance.now() - startTime;
-        console.error(
-          `[ERROR] Commission update failed after ${totalRequestTime.toFixed(2)}ms: ${comissionsResponse.error}`
-        );
-
-        return NextResponse.json(
-          {
-            success: false,
-            error: comissionsResponse.error,
-          },
-          { status: 400 }
-        );
+      // Track file uploads
+      if (user_id) {
+        for (const file of comparativaFiles) {
+          await createComparativaChange(tursoClient, {
+            comparativa_id: id,
+            user_id: user_id,
+            change_type: "document_upload",
+            field_name: "filename",
+            old_value: null,
+            new_value: file.filename,
+            description: `Documento subido: ${file.filename}`,
+          });
+        }
       }
-
-      console.log(`[SUCCESS] Commissions updated for comparison ${id}`);
     }
 
     // ==================== SUCCESS RESPONSE ====================
@@ -364,7 +291,7 @@ export async function POST(
 
     console.log(
       `[SUCCESS] Documents operation completed for comparison ${id} after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Files added: ${comparativaFiles.length}, Status: ${estudio_realizado === "true" ? "completed" : "pending"}`
+        `Files added: ${comparativaFiles.length}`
     );
 
     return NextResponse.json({
@@ -549,6 +476,20 @@ export async function DELETE(
     }
 
     // ==================== SUCCESS RESPONSE ====================
+
+    // Track file deletion
+    const { user_id } = requestBody;
+    if (user_id) {
+      await createComparativaChange(tursoClient, {
+        comparativa_id: id,
+        user_id: user_id,
+        change_type: "document_delete",
+        field_name: "filename",
+        old_value: file_name,
+        new_value: null,
+        description: `Documento eliminado: ${file_name}`,
+      });
+    }
 
     const totalRequestTime = performance.now() - startTime;
 

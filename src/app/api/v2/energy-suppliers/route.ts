@@ -127,14 +127,18 @@ export async function POST(
           SELECT COUNT(DISTINCT con.tramite_id)
           FROM contracts con
           JOIN tramites t ON t.id = con.tramite_id
-          WHERE t.status = 'Activo' AND con.new_company = c.name ${userFilterClause}
+          WHERE 
+            con.new_company = c.id OR con.new_company = c.name 
+           ${userFilterClause}
         ) as total_tramites,
         (
           SELECT 
           SUM(con.consumption) AS total
       FROM contracts con
       INNER JOIN tramites t ON con.tramite_id = t.id
-          WHERE t.status = 'Activo' AND con.new_company = c.name ${userFilterClause}
+          WHERE t.status = 'Activo' AND (
+            con.new_company = c.id OR con.new_company = c.name
+          ) ${userFilterClause}
         ) as total_consumption
       FROM comercializadoras c
       ORDER BY c.name ASC

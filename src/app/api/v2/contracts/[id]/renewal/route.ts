@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { NOW_DATE, RENOVATION_DATE } from "@/dashboard/constants";
 import { Client } from "@libsql/client";
+import { recordFieldChanges } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT RENEWAL ENDPOINT
@@ -155,6 +156,24 @@ export async function POST(
       );
     }
 
+    // ==================== REQUEST BODY PARSING ====================
+
+    let requestBody: { user_id?: string } = {};
+    let user_id: string | undefined;
+
+    try {
+      const bodyText = await request.text();
+      if (bodyText.trim()) {
+        requestBody = JSON.parse(bodyText);
+        user_id = requestBody.user_id;
+      }
+    } catch {
+      // No body or invalid JSON - this is fine for renewal endpoint
+      console.log(
+        `[INFO] No request body provided for renewal of contract ${contractId}`
+      );
+    }
+
     // ==================== DATABASE CLIENT INITIALIZATION ====================
 
     const tursoClient = getTursoClient(request);
@@ -193,6 +212,32 @@ export async function POST(
         },
         { status: 404 }
       );
+    }
+
+    // ==================== GET CURRENT VALUES FOR TRACKING ====================
+
+    let currentActivationDate: string | null = null;
+    let currentRenovationDate: string | null = null;
+
+    if (user_id) {
+      try {
+        const currentResult = await tursoClient.execute({
+          sql: "SELECT activation_date, renovation_date FROM tramites WHERE id = ?",
+          args: [contractId],
+        });
+
+        if (currentResult.rows.length > 0) {
+          currentActivationDate = currentResult.rows[0].activation_date as
+            | string
+            | null;
+          currentRenovationDate = currentResult.rows[0].renovation_date as
+            | string
+            | null;
+        }
+      } catch (error) {
+        console.error("Error fetching current renewal dates:", error);
+        // Continue without tracking if we can't get current values
+      }
     }
 
     // ==================== RENEWAL DATE CALCULATION ====================
@@ -237,6 +282,35 @@ export async function POST(
         `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
         `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
     );
+
+    // ==================== TRACK RENEWAL CHANGES ====================
+
+    // Track renewal changes if user_id is provided
+    if (user_id) {
+      const changes = [];
+
+      if (currentActivationDate !== activationDate) {
+        changes.push({
+          field_name: "activation_date",
+          old_value: currentActivationDate,
+          new_value: activationDate,
+          description: "Fecha de activación actualizada en renovación",
+        });
+      }
+
+      if (currentRenovationDate !== renovationDate) {
+        changes.push({
+          field_name: "renovation_date",
+          old_value: currentRenovationDate,
+          new_value: renovationDate,
+          description: "Fecha de renovación actualizada",
+        });
+      }
+
+      if (changes.length > 0) {
+        await recordFieldChanges(tursoClient, contractId, user_id, changes);
+      }
+    }
 
     // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
     return NextResponse.json({

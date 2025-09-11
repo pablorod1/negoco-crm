@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { updateSigner } from "@/tramites/utils/updateTramiteHelpers";
+import { recordSignerChange } from "@/tramites/utils/tramiteChangesHelpers";
 
 // Zod validation schemas
 const SignerSchema = z.object({
@@ -17,6 +18,7 @@ const SignerSchema = z.object({
 
 const UpdateSignerRequestSchema = z.object({
   signer: SignerSchema,
+  user_id: z.string().min(1, "User ID is required"), // Add user_id for tracking
 });
 
 // Response interfaces
@@ -31,9 +33,12 @@ interface SignerResponse {
  * Replaces: PATCH /api/v1/tramites/update/signer
  */
 export async function PATCH(
-  request: NextRequest
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<SignerResponse>> {
   try {
+    const { id: tramite_id } = await params;
+
     // Parse and validate request body
     const body = await request.json();
     const validationResult = UpdateSignerRequestSchema.safeParse(body);
@@ -48,7 +53,7 @@ export async function PATCH(
       );
     }
 
-    const { signer } = validationResult.data;
+    const { signer, user_id } = validationResult.data;
 
     const tursoClient = getTursoClient(request);
 
@@ -62,6 +67,12 @@ export async function PATCH(
       );
     }
 
+    // Get current signer data to track changes
+    const currentSignerResult = await tursoClient.execute({
+      sql: `SELECT * FROM signers WHERE id = ?`,
+      args: [signer.id],
+    });
+
     // Update signer information
     const updateResult = await updateSigner(signer, signer.id, tursoClient);
 
@@ -73,6 +84,43 @@ export async function PATCH(
         },
         { status: 500 }
       );
+    }
+
+    // Track signer changes
+    if (currentSignerResult.rows.length > 0) {
+      const currentSigner = currentSignerResult.rows[0];
+      const changes: Array<{
+        field: string;
+        oldValue: string | null;
+        newValue: string | null;
+      }> = [];
+
+      // Check each field for changes
+      const signerFields = [
+        "name",
+        "last_name",
+        "email",
+        "phone",
+        "document_number",
+        "cargo",
+      ];
+
+      for (const field of signerFields) {
+        const oldValue = currentSigner[field] as string | null;
+        const newValue = signer[field as keyof typeof signer] as string | null;
+
+        if (oldValue !== newValue) {
+          changes.push({
+            field,
+            oldValue,
+            newValue,
+          });
+        }
+      }
+
+      if (changes.length > 0) {
+        await recordSignerChange(tursoClient, tramite_id, user_id, changes);
+      }
     }
 
     return NextResponse.json({ success: true });

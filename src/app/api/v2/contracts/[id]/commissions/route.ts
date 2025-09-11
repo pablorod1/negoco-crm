@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { recordCommissionChange } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT COMMISSIONS UPDATE ENDPOINT
@@ -36,6 +37,7 @@ const ContractCommissionsUpdateSchema = z
   .object({
     comision: z.union([z.number(), z.null()]).optional(),
     comision_sales_person: z.union([z.number(), z.null()]).optional(),
+    user_id: z.string().min(1, "User ID is required"), // Add user_id for tracking
   })
   .refine(
     (data) => {
@@ -226,6 +228,29 @@ export async function PATCH(
 
     // ==================== QUERY BUILDING AND EXECUTION ====================
 
+    // First, get current values to track changes
+    const currentValues = await tursoClient.execute({
+      sql: `SELECT comision, comision_sales_person FROM tramites WHERE id = ?`,
+      args: [contractId],
+    });
+
+    if (currentValues.rows.length === 0) {
+      const totalRequestTime = performance.now() - startTime;
+      console.warn(
+        `[WARNING] Contract ${contractId} not found after ${totalRequestTime.toFixed(2)}ms`
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Tramite not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    const currentData = currentValues.rows[0];
+
     const { sql, args, updatedFields } = buildUpdateQuery(
       validatedData,
       contractId
@@ -238,7 +263,36 @@ export async function PATCH(
 
     const { result, metrics } = await executeQuery(tursoClient, sql, args);
 
-    // ==================== RESULT VALIDATION ====================
+    // ==================== TRACK CHANGES ====================
+
+    // Track commission changes
+    if (
+      validatedData.comision !== undefined &&
+      currentData.comision !== validatedData.comision
+    ) {
+      await recordCommissionChange(
+        tursoClient,
+        contractId,
+        validatedData.user_id,
+        "comision",
+        currentData.comision as number | null,
+        validatedData.comision
+      );
+    }
+
+    if (
+      validatedData.comision_sales_person !== undefined &&
+      currentData.comision_sales_person !== validatedData.comision_sales_person
+    ) {
+      await recordCommissionChange(
+        tursoClient,
+        contractId,
+        validatedData.user_id,
+        "comision_sales_person",
+        currentData.comision_sales_person as number | null,
+        validatedData.comision_sales_person
+      );
+    } // ==================== RESULT VALIDATION ====================
 
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;

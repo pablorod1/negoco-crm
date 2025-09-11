@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
 import { TramiteFile } from "@/tramites/types/tramite.types";
+import { recordDocumentChange } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT DOCUMENTS ENDPOINT
@@ -59,7 +60,12 @@ const BulkFileUploadSchema = z.object({
   files: z
     .array(ContractDocumentFileSchema)
     .min(1, "At least one file is required"),
-  userData: z.record(z.string(), z.unknown()).optional(),
+  userData: z
+    .object({
+      id: z.string().min(1, "User ID is required"), // Extract user ID from userData
+    })
+    .and(z.record(z.string(), z.unknown()))
+    .optional(),
 });
 
 /**
@@ -68,6 +74,7 @@ const BulkFileUploadSchema = z.object({
 const FileDeleteSchema = z.object({
   file_name: z.string().min(1, "File name is required"),
   organization_id: z.string().min(1, "Organization ID is required"),
+  user_id: z.string().min(1, "User ID is required"), // Add for tracking
 });
 
 // ==================== DATABASE OPERATIONS ====================
@@ -141,8 +148,7 @@ export async function POST(
   try {
     // ==================== INPUT VALIDATION ====================
 
-    // Note: Original endpoint doesn't validate contract ID from params
-    await params; // Consume params but don't use contractId to match original behavior
+    const { id: contractId } = await params; // Extract contract ID for tracking
 
     // Parse form data exactly like the original endpoint
     let formData: FormData;
@@ -235,6 +241,29 @@ export async function POST(
         console.log(
           `[PERFORMANCE] Bulk inserted ${insertResult.metrics.filesProcessed} files in ${insertResult.metrics.queryTime.toFixed(2)}ms`
         );
+      }
+
+      // ==================== TRACK DOCUMENT UPLOADS ====================
+
+      // Track each file upload
+      if (
+        userData &&
+        typeof userData === "object" &&
+        "id" in userData &&
+        typeof userData.id === "string"
+      ) {
+        const userId = userData.id;
+
+        for (const file of tramiteFiles) {
+          await recordDocumentChange(
+            tursoClient,
+            contractId,
+            userId,
+            "upload",
+            file.filename,
+            file.extension
+          );
+        }
       }
     }
 
@@ -385,6 +414,19 @@ export async function DELETE(
           error: "Error al eliminar el archivo de la base de datos",
         },
         { status: 500 }
+      );
+    }
+
+    // ==================== TRACK DOCUMENT DELETION ====================
+
+    // Track file deletion
+    if (validation.data.user_id) {
+      await recordDocumentChange(
+        tursoClient,
+        tramite_id,
+        validation.data.user_id,
+        "delete",
+        file_name
       );
     }
 

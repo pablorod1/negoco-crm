@@ -28,8 +28,14 @@ const MonthlyContractsRequestSchema = z.object({
     .optional(),
   date_range: z
     .object({
-      from: z.string().optional(),
-      to: z.string().optional(),
+      from: z
+        .string()
+        .refine((date) => !isNaN(Date.parse(date)), "Invalid from date format")
+        .optional(),
+      to: z
+        .string()
+        .refine((date) => !isNaN(Date.parse(date)), "Invalid to date format")
+        .optional(),
     })
     .optional(),
 });
@@ -120,6 +126,20 @@ export async function POST(
 
     // Add custom date range conditions
     if (date_range?.from && date_range?.to) {
+      // Validate that from date is not after to date
+      const fromDate = new Date(date_range.from);
+      const toDate = new Date(date_range.to);
+
+      if (fromDate > toDate) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "From date cannot be after to date",
+          },
+          { status: 400 }
+        );
+      }
+
       conditions.push(`date(activation_date) BETWEEN date(?) AND date(?)`);
       params.push(date_range.from, date_range.to);
       groupBy = `date(activation_date)`;
@@ -204,7 +224,11 @@ function initializeResultsStructure(
     for (let i = 0; i < 7; i++) {
       const day = new Date(weekStart);
       day.setDate(weekStart.getDate() + i);
-      const dayStr = day.toLocaleDateString("es-ES", { weekday: "long" });
+      const dayStr = day.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
       results.set(dayStr, { ...defaultData });
     }
   } else if (timeRange === "current_month") {
@@ -215,7 +239,17 @@ function initializeResultsStructure(
     ).getDate();
 
     for (let i = 1; i <= daysInMonth; i++) {
-      results.set(`${i}`, { ...defaultData });
+      const currentDate = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        i
+      );
+      const dayStr = currentDate.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+      results.set(dayStr, { ...defaultData });
     }
   } else if (timeRange === "year") {
     const months = [
@@ -240,6 +274,7 @@ function initializeResultsStructure(
       const dayStr = date.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
+        month: "long",
       });
       results.set(dayStr, { ...defaultData });
     }
@@ -255,6 +290,7 @@ function initializeResultsStructure(
       const dateStr = date.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
+        month: "long",
       });
       results.set(dateStr, { ...defaultData });
     }
@@ -275,9 +311,17 @@ function populateResults(
     let key: string;
 
     if (timeRange === "current_week" || timeRange === "last_week") {
-      key = date.toLocaleDateString("es-ES", { weekday: "long" });
+      key = date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
     } else if (timeRange === "current_month") {
-      key = `${date.getDate()}`;
+      key = date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
     } else if (timeRange === "year") {
       const months = [
         "Enero",
@@ -298,6 +342,7 @@ function populateResults(
       key = date.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
+        month: "long",
       });
     } else {
       key = row.date as string;
