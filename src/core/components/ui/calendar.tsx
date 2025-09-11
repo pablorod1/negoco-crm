@@ -22,11 +22,12 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+        months:
+          "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 ",
         month: "space-y-4",
         month_caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
-        nav: "flex justify-between items-center w-full absolute top-6 left-0 px-8",
+        nav: "flex justify-between items-center w-full absolute top-2 left-0 px-2",
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 z-50"
@@ -70,4 +71,3 @@ function Calendar({
 Calendar.displayName = "Calendar";
 
 export { Calendar };
-

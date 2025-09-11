@@ -17,11 +17,10 @@ const Label = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <LabelPrimitive.Root
     ref={ref}
-    className={cn(labelVariants(), className)}
+    className={cn(labelVariants(), className, "block text-sm")}
     {...props}
   />
 ));
 Label.displayName = LabelPrimitive.Root.displayName;
 
 export { Label };
-
