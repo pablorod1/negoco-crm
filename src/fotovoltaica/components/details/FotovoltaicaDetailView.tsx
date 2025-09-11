@@ -1,75 +1,19 @@
 ﻿"use client";
 
-import { Badge } from "@/core/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/core/components/ui/tabs";
-
-import { Clock, CheckCircle, XCircle, AlertCircle, Loader } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
-import { FotovoltaicaStatus, FotovoltaicaVM } from "@/fotovoltaica/types";
+import { useState } from "react";
+import { useEffect, useCallback } from "react";
 import { User } from "@/core/types";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { useUser } from "@/core/contexts/UserContext";
-import FotovoltaicaClientTab from "./clientDetails/FotovoltaicaClientTab";
-import FotovoltaicaDateDetails from "./FotovoltaicaDateDetails";
-import FotovoltaicaComisionsDetailsTab from "./comisionDetails/FotovoltaicaComisionsDetailsTab";
-import FotovoltaicaSalesPersonDetailsTab from "./salesPersonDetails/FotovoltaicaSalesPersonDetailsTab";
-import FotovoltaicaLocationTab from "./FotovoltaicaLocationTab";
-import FotovoltaicaNotesTab from "./notes/FotovoltaicaNotesTab";
+import { AlertCircle } from "lucide-react";
+import { FotovoltaicaVM } from "@/fotovoltaica/types";
+
+// Componentes rediseñados siguiendo el patrón de comparativas
+import FotovoltaicaNavigation from "./navigation/FotovoltaicaNavigation";
+import FotovoltaicaMainView from "./main/FotovoltaicaMainView";
+import TicketTabContent from "@/tickets/components/TicketTabContent";
 import FotovoltaicaFilesTab from "./files/FotovoltaicaFilesTab";
-import UpdateFotovoltaicaStatusDialog from "./UpdateFotovoltaicaStatusDialog";
-import { formatUUID } from "@/core/utils/format";
-
-const getStatusIcon = (status: FotovoltaicaStatus) => {
-  switch (status) {
-    case "pending":
-      return <Clock className="h-4 w-4" />;
-
-    case "processing":
-      return <Loader className="h-4 w-4" />;
-    case "completed":
-      return <CheckCircle className="h-4 w-4" />;
-    case "rejected":
-      return <XCircle className="h-4 w-4" />;
-    default:
-      return <AlertCircle className="h-4 w-4" />;
-  }
-};
-
-const getStatusColor = (status: FotovoltaicaStatus) => {
-  switch (status) {
-    case "pending":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200";
-    case "processing":
-      return "bg-blue-100 text-blue-800 border-blue-200";
-    case "completed":
-      return "bg-green-100 text-green-800 border-green-200";
-    case "rejected":
-      return "bg-red-100 text-red-800 border-red-200";
-    default:
-      return "bg-gray-100 text-gray-800 border-gray-200";
-  }
-};
-
-const getStatusLabel = (status: FotovoltaicaStatus) => {
-  switch (status) {
-    case "pending":
-      return "Pendiente";
-    case "processing":
-      return "En Proceso";
-    case "completed":
-      return "Completado";
-    case "rejected":
-      return "Rechazado";
-    default:
-      return "Desconocido";
-  }
-};
 
 type LoadingState = {
   loading: boolean;
@@ -95,11 +39,14 @@ export function FotovoltaicaDetailView({ id }: { id: string }) {
     notFound: false,
   });
 
-  const isComercial: boolean = userData?.role === "2";
+  // Usando el patrón de comparativas para navegación
+  const [currentView, setCurrentView] = useState<
+    "main" | "tickets" | "files" | "history"
+  >("main");
+
+  const isAdmin = userData?.role === "admin" || userData?.role === "1";
   const isSubcomercial: boolean =
     userData?.role === "2" && userData?.super_id !== null;
-  const isCompleted = fotovoltaica?.status === "completed";
-  const isRejected = fotovoltaica?.status === "rejected";
 
   const handleFetchError = (error: string) => {
     showCustomToast({
@@ -174,89 +121,61 @@ export function FotovoltaicaDetailView({ id }: { id: string }) {
   }
 
   return (
-    <>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary-800">
-            Solicitud Placas Solares
-          </h1>
-          <p className="text-primary-400">#{formatUUID(fotovoltaica.id)}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Badge
-            variant="outline"
-            className={`${getStatusColor(fotovoltaica.status)} flex items-center gap-1`}
-          >
-            {getStatusIcon(fotovoltaica.status)}
-            {getStatusLabel(fotovoltaica.status)}
-          </Badge>
-          {!isComercial && !isCompleted && !isRejected ? (
-            <UpdateFotovoltaicaStatusDialog
-              fotovoltaica={fotovoltaica}
-              onSubmit={fetchFotovoltaica}
-              userData={userData as User}
-            />
-          ) : null}
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Main Content Container */}
+      <div className="px-6 py-8 space-y-8">
+        {/* Navigation */}
+        <FotovoltaicaNavigation
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          isAdmin={isAdmin}
+        />
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
-          <TabsTrigger value="notas">Notas</TabsTrigger>
-          <TabsTrigger value="archivos">Archivos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Información del Cliente */}
-            <FotovoltaicaClientTab
-              fotovoltaica={fotovoltaica}
-              onSubmit={fetchFotovoltaica}
-              isComercial={isComercial}
-              userData={userData as User}
-            />
-
-            {/* Fechas Importantes */}
-            <FotovoltaicaDateDetails fotovoltaica={fotovoltaica} />
-
-            {/* Información Financiera */}
-            {!isSubcomercial ? (
-              <FotovoltaicaComisionsDetailsTab
-                fotovoltaica={fotovoltaica}
-                isComercial={isComercial as boolean}
-                onSubmit={fetchFotovoltaica}
-                userData={userData as User}
-              />
-            ) : null}
-
-            {/* Usuario Asignado */}
-            <FotovoltaicaSalesPersonDetailsTab fotovoltaica={fotovoltaica} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="ubicacion" className="space-y-6">
-          <FotovoltaicaLocationTab fotovoltaica={fotovoltaica} />
-        </TabsContent>
-
-        <TabsContent value="notas" className="space-y-6">
-          <FotovoltaicaNotesTab
-            fotovoltaica={fotovoltaica}
-            onSubmit={fetchFotovoltaica}
-            isComercial={isComercial as boolean}
-          />
-        </TabsContent>
-
-        <TabsContent value="archivos" className="space-y-6">
-          <FotovoltaicaFilesTab
+        {/* Content based on current view */}
+        {currentView === "main" && (
+          <FotovoltaicaMainView
             fotovoltaica={fotovoltaica}
             userData={userData as User}
-            onSubmit={fetchFotovoltaica}
+            onUpdate={fetchFotovoltaica}
+            isSubcomercial={isSubcomercial}
           />
-        </TabsContent>
-      </Tabs>
-    </>
+        )}
+
+        {currentView === "tickets" && (
+          <div className="space-y-6">
+            <TicketTabContent
+              context="fotovoltaica"
+              refId={fotovoltaica.id}
+              assignedTo={fotovoltaica.user_id}
+              userData={userData as User}
+              onRefresh={fetchFotovoltaica}
+            />
+          </div>
+        )}
+
+        {currentView === "files" && (
+          <div className="space-y-6">
+            <FotovoltaicaFilesTab
+              fotovoltaica={fotovoltaica}
+              userData={userData as User}
+              onSubmit={fetchFotovoltaica}
+            />
+          </div>
+        )}
+
+        {currentView === "history" && isAdmin && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Historial de Cambios
+              </h3>
+              <p className="text-gray-600">
+                Funcionalidad de historial próximamente disponible.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

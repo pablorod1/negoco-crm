@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { Download, Filter, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ExportTableModal from "@/core/components/ExportTableModal";
-import { MultiSelect } from "@/core/components/ui/multi-select";
+import MultipleSelector from "@/core/components/ui/multiselect";
 import { Label } from "@/core/components/ui/label";
 import {
   FOTOVOLTAICA_STATUS_TYPES,
@@ -27,6 +27,15 @@ import UserFilter from "@/core/components/table/UserFilter";
 import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import AddFotovoltaicaDialog from "../createFotovoltaica/AddFotovoltaicaDialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/core/components/ui/sheet";
+import { useMultipleSelector } from "@/core/hooks/use-multiple-selector";
 
 interface Props<TData> {
   filterValue: string;
@@ -54,7 +63,7 @@ const FotovoltaicasHeader = <TData,>({
   setFilterValue,
   setStatusFilter,
   resetFilters,
-  saveFiltersToStorage, // Add this prop
+  saveFiltersToStorage,
   table,
   totalFotovoltaicas,
   userData,
@@ -67,19 +76,22 @@ const FotovoltaicasHeader = <TData,>({
   typeFilter,
   setTypeFilter,
 }: Props<TData>) => {
-  const [scrolled, setScrolled] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   const isComercial = userData?.role === "2";
 
+  const { convertToOptions, convertFromOptions, getSelectedOptions } =
+    useMultipleSelector();
+
   useEffect(() => {
     const filters = [];
-    if (statusFilter) filters.push("Estado");
+    if (statusFilter && statusFilter.length > 0) filters.push("Estado");
     if (creationDateRange) filters.push("Fecha de Creación");
     if (activationDateRange) filters.push("Fecha de Activación");
     if (typeFilter && typeFilter.length > 0) filters.push("Tipo");
-    if (userFilter && !isComercial) filters.push("Comercial");
+    if (userFilter && userFilter.length > 0 && !isComercial)
+      filters.push("Comercial");
     setActiveFilters(filters);
   }, [
     statusFilter,
@@ -90,14 +102,6 @@ const FotovoltaicasHeader = <TData,>({
     isComercial,
   ]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   // Save filters to localStorage when they change
   useEffect(() => {
     if (activeFilters.length > 0) saveFiltersToStorage();
@@ -107,7 +111,7 @@ const FotovoltaicasHeader = <TData,>({
     activationDateRange,
     typeFilter,
     saveFiltersToStorage,
-    activeFilters,
+    activeFilters.length,
     userFilter,
   ]);
 
@@ -116,33 +120,22 @@ const FotovoltaicasHeader = <TData,>({
   };
 
   return (
-    <div className="w-full px-6 pt-6 pb-2">
+    <div className="w-full">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className={cn(
-          "bg-white rounded-xl border border-gray-100 shadow-sm transition-all duration-300",
-          scrolled ? "py-3 px-5" : "py-5 px-6"
-        )}
+        className="py-6 pb-2 px-6"
       >
         {/* Header Top Row */}
-        <div className="flex items-center justify-between gap-4  ">
-          <div className="flex items-center gap-3">
-            <h1
-              className={cn(
-                "font-bold text-3xl bg-gradient-to-r from-primary-700 to-primary-500 text-transparent bg-clip-text",
-                scrolled ? "text-2xl" : "text-3xl"
-              )}
-            >
-              Fotovoltáicas
-            </h1>
-
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="font-bold text-2xl text-gray-900">Fotovoltáicas</h1>
             <Badge
               variant="outline"
-              className="bg-primary-50 text-primary-700 border-primary-200 px-2.5 py-0.5"
+              className="bg-gray-50 text-gray-700 border-gray-200 px-3 py-1.5 text-sm font-medium"
             >
-              {totalFotovoltaicas} Total
+              {totalFotovoltaicas} registros
             </Badge>
           </div>
 
@@ -169,35 +162,109 @@ const FotovoltaicasHeader = <TData,>({
               />
             </div>
 
-            {/* Filter Button */}
-
-            <TooltipComponent content="Filtros avanzados">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                  "h-10 w-10 bg-gray-50 border-gray-200",
-                  showFilters &&
-                    "bg-primary-50 border-primary-200 text-primary-700",
-                  activeFilters.length > 0 && "bg-primary-50 border-primary-200"
-                )}
-              >
-                <div className="relative">
-                  <Filter className="h-4 w-4" />
+            {/* Filter Sheet */}
+            <Sheet open={showFilters} onOpenChange={setShowFilters}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={cn(
+                    "h-10 w-10 bg-gray-50 border-gray-200 hover:bg-gray-100",
+                    activeFilters.length > 0 &&
+                      "bg-primary-50 border-primary-200 text-primary-700"
+                  )}
+                >
+                  <div className="relative">
+                    <Filter className="h-4 w-4" />
+                    {activeFilters.length > 0 && (
+                      <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary-600" />
+                    )}
+                  </div>
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full max-w-2xl">
+                <SheetHeader>
+                  <SheetTitle>Filtros</SheetTitle>
+                  <SheetDescription>
+                    Filtra los registros de fotovoltáicas según tus criterios.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="space-y-6 mt-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>Estado</Label>
+                      <MultipleSelector
+                        defaultOptions={convertToOptions(
+                          FOTOVOLTAICA_STATUS_TYPES
+                        )}
+                        value={getSelectedOptions(
+                          statusFilter,
+                          FOTOVOLTAICA_STATUS_TYPES
+                        )}
+                        onChange={(selected) =>
+                          setStatusFilter(convertFromOptions(selected))
+                        }
+                        placeholder="Seleccionar estado"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <MultipleSelector
+                        defaultOptions={convertToOptions(FOTOVOLTAICA_TYPES)}
+                        value={getSelectedOptions(
+                          typeFilter,
+                          FOTOVOLTAICA_TYPES
+                        )}
+                        onChange={(selected) =>
+                          setTypeFilter(convertFromOptions(selected))
+                        }
+                        placeholder="Seleccionar tipo"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>Fecha de Creación</Label>
+                      <DateRangePicker
+                        date={creationDateRange}
+                        setDateRange={setCreationDateRange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fecha de Activación</Label>
+                      <DateRangePicker
+                        date={activationDateRange}
+                        setDateRange={setActivationDateRange}
+                      />
+                    </div>
+                  </div>
+                  {!isComercial && (
+                    <UserFilter
+                      isComercial={isComercial}
+                      userData={userData}
+                      userFilter={userFilter}
+                      setUserFilter={setUserFilter}
+                    />
+                  )}
                   {activeFilters.length > 0 && (
-                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
+                    <Button
+                      variant="outline"
+                      onClick={resetFilters}
+                      className="w-full"
+                    >
+                      Limpiar filtros
+                    </Button>
                   )}
                 </div>
-              </Button>
-            </TooltipComponent>
+              </SheetContent>
+            </Sheet>
 
             {/* Column Selector */}
-
             <ColumnSelector table={table} tableId="fotovoltaicas" />
 
             {/* Export Button */}
-
             {!isComercial && (
               <Popover>
                 <TooltipComponent content="Exportar datos">
@@ -205,7 +272,7 @@ const FotovoltaicasHeader = <TData,>({
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-10 w-10 bg-gray-50 border-gray-200"
+                      className="h-10 w-10 bg-gray-50 border-gray-200 hover:bg-gray-100"
                     >
                       <Download className="h-4 w-4" />
                     </Button>
@@ -221,97 +288,30 @@ const FotovoltaicasHeader = <TData,>({
           </div>
         </div>
 
-        {/* Status Tabs */}
-
-        <div className="flex items-center justify-between">
-          {activeFilters.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Filtros activos:</span>
-              <div className="flex gap-1.5">
-                {activeFilters.map((filter, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="bg-gray-100 text-gray-700 gap-1.5"
-                  >
-                    {filter}
-                  </Badge>
-                ))}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetFilters}
-                className="h-7 px-2 text-sm text-gray-500 hover:text-gray-700"
-              >
-                Limpiar
-              </Button>
+        {/* Active Filters */}
+        {activeFilters.length > 0 && (
+          <div className="flex items-center gap-2 mt-4">
+            <span className="text-sm text-gray-500">Filtros activos:</span>
+            <div className="flex gap-1.5">
+              {activeFilters.map((filter, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="bg-gray-100 text-gray-700 gap-1.5"
+                >
+                  {filter}
+                </Badge>
+              ))}
             </div>
-          )}
-        </div>
-
-        {/* Filter Panel */}
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="mt-4 pt-4 border-t border-gray-100"
-          >
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label>Estado</Label>
-
-                <MultiSelect
-                  options={FOTOVOLTAICA_STATUS_TYPES}
-                  onValueChange={setStatusFilter}
-                  value={statusFilter}
-                  defaultValue={statusFilter}
-                  placeholder="Seleccionar estado"
-                  maxCount={2}
-                  variant="primary"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-
-                <MultiSelect
-                  options={FOTOVOLTAICA_TYPES}
-                  onValueChange={setTypeFilter}
-                  value={typeFilter}
-                  defaultValue={typeFilter}
-                  placeholder="Seleccionar tipo"
-                  maxCount={2}
-                  variant="primary"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha de Creación</Label>
-
-                <DateRangePicker
-                  date={creationDateRange}
-                  setDateRange={setCreationDateRange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha de Activación</Label>
-
-                <DateRangePicker
-                  date={activationDateRange}
-                  setDateRange={setActivationDateRange}
-                />
-              </div>
-              {!isComercial && (
-                <UserFilter
-                  isComercial={isComercial}
-                  userData={userData}
-                  userFilter={userFilter}
-                  setUserFilter={setUserFilter}
-                />
-              )}
-            </div>
-          </motion.div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              className="h-7 px-2 text-sm text-gray-500 hover:text-gray-700"
+            >
+              Limpiar todo
+            </Button>
+          </div>
         )}
       </motion.div>
     </div>
