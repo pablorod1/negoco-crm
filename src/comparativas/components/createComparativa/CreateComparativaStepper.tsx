@@ -23,9 +23,9 @@ export const CreateComparativaStepper: React.FC<StepperProps> = ({
                 w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-300
                 ${
                   i < currentStep
-                    ? "bg-gray-900 border-gray-900 text-white"
+                    ? "bg-primary-900 border-primary-900 text-white"
                     : i === currentStep
-                      ? "border-gray-900 text-gray-900 bg-white ring-2 ring-gray-100"
+                      ? "border-primary-900 text-primary-900 bg-white ring-2 ring-primary-100"
                       : "border-gray-300 text-gray-400 bg-white"
                 }
               `}
@@ -54,7 +54,7 @@ export const CreateComparativaStepper: React.FC<StepperProps> = ({
             <div
               className={`
                 text-xs mt-2 font-medium transition-colors duration-300 text-center
-                ${i <= currentStep ? "text-gray-900" : "text-gray-400"}
+                ${i <= currentStep ? "text-primary-900" : "text-gray-400"}
               `}
             >
               {stepsTexts[i]}
@@ -66,7 +66,7 @@ export const CreateComparativaStepper: React.FC<StepperProps> = ({
       {/* Progress line */}
       <div className="absolute top-4 left-0 right-0 h-px bg-gray-200 rounded-full z-0">
         <div
-          className="h-full bg-gray-900 rounded-full transition-all duration-500 ease-out"
+          className="h-full bg-primary-900 rounded-full transition-all duration-500 ease-out"
           style={{
             width: `${(currentStep / (steps - 1)) * 100}%`,
             transformOrigin: "left center",

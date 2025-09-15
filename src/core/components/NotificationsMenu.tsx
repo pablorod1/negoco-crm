@@ -1,32 +1,26 @@
 ﻿import { Bell, CheckCircle, CircleX, Trash } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/core/components/ui/card";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/core/components/ui/popover";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/core/components/ui/sheet";
 import { Badge } from "@/core/components/ui/badge";
 import React, { useCallback, useEffect, useState } from "react";
 import { useUser } from "@/core/contexts/UserContext";
 import { formatDateTime } from "@/core/utils/format";
 import { Notification } from "@/core/types";
-import {
-  getColorPriority,
-  getLinkContext,
-} from "@/core/utils/notifications.helpers";
+import { getLinkContext } from "@/core/utils/notifications.helpers";
 import { showCustomToast } from "./CustomToast";
-import { Separator } from "./ui/separator";
 import { useSidebarSlideNavigation } from "../view-transitions/useGenieEffect";
+import { ScrollArea } from "./ui/scroll-area";
 
 export default function NotificationsMenu() {
   const { userData, refreshUserData } = useUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSidebarClick = useSidebarSlideNavigation();
 
@@ -36,6 +30,7 @@ export default function NotificationsMenu() {
   ) => {
     e.preventDefault();
     e.stopPropagation();
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/v2/notifications/${id}`, {
         method: "DELETE",
@@ -74,6 +69,8 @@ export default function NotificationsMenu() {
         icon: CircleX,
       });
       console.error("Error deleting notification", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -82,6 +79,7 @@ export default function NotificationsMenu() {
     ids: string[]
   ) => {
     e.preventDefault();
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/v2/notifications`, {
         method: "DELETE",
@@ -121,6 +119,8 @@ export default function NotificationsMenu() {
         icon: CircleX,
       });
       console.error("Error deleting notifications", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -138,7 +138,6 @@ export default function NotificationsMenu() {
         );
         const data = await res.json();
         if (data) {
-          console.log(data);
           setNotifications(data.data || []);
         }
 
@@ -168,32 +167,33 @@ export default function NotificationsMenu() {
     fetchNotifications();
   }, [fetchNotifications]);
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Sheet>
+      <SheetTrigger asChild>
         <div className="relative">
           {notifications.length > 0 && (
             <Badge
               variant="danger"
-              className="cursor-pointer absolute -top-1 -right-0 rounded-full w-4 h-4 p-2"
+              className="absolute -top-1 -right-0 rounded-full w-5 h-5 p-0 flex items-center justify-center text-xs font-medium"
             >
-              {notifications.length}
+              {notifications.length > 9 ? "9+" : notifications.length}
             </Badge>
           )}
-          <Button variant="ghost" size="icon">
-            <Bell size={44} />
+          <Button variant="ghost" size="icon" className="hover:bg-gray-100">
+            <Bell size={20} className="text-gray-600" />
           </Button>
         </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-[600px] p-0" align="end">
-        <Card className="border-0 shadow-none">
-          <CardHeader>
-            <div className=" flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2 text-xl font-medium text-primary-800">
-                <Bell size={20} />
-                Notificaciones
-              </CardTitle>
+      </SheetTrigger>
+      <SheetContent className="w-full sm:w-[480px] bg-white" side="right">
+        <SheetHeader className="pb-6">
+          <div className="flex justify-between items-center">
+            {/* NIVEL 1: Título principal - gray-900, font-bold */}
+            <SheetTitle className="text-2xl font-bold text-gray-900">
+              Notificaciones
+            </SheetTitle>
+            {/* NIVEL 2: Acción secundaria cuando hay contenido */}
+            {notifications.length > 0 && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={(e) => {
                   e.preventDefault();
@@ -202,88 +202,116 @@ export default function NotificationsMenu() {
                     notifications.map((n) => n.id)
                   );
                 }}
-                className="text-sm"
-                disabled={notifications.length === 0}
+                disabled={isDeleting}
+                className="text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100"
               >
-                Eliminar todas
+                {isDeleting ? "Eliminando..." : "Limpiar todo"}
               </Button>
-            </div>
-          </CardHeader>
-          <Separator />
-          <CardContent className="px-4 py-3">
-            <div className="space-y-4">
-              {notifications.length > 0 ? (
-                notifications.map((notification, index) => (
-                  <React.Fragment key={notification.id}>
-                    <a
-                      onClick={handleSidebarClick}
-                      href={getLinkContext(
-                        notification.context,
-                        notification.link
-                      )}
-                      className="group flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex-shrink-0">
-                        <Badge
-                          className="w-3 h-3 p-1 rounded-full"
-                          variant={getColorPriority(notification.priority)}
-                        >
-                          <span />
-                        </Badge>
+            )}
+          </div>
+          {notifications.length > 0 && (
+            <p className="text-sm text-gray-500 mt-2">
+              {notifications.length}{" "}
+              {notifications.length === 1 ? "notificación" : "notificaciones"}
+            </p>
+          )}
+        </SheetHeader>
+        <ScrollArea className=" max-h-[88dvh] pr-2 overflow-y-auto">
+          <div className="space-y-4">
+            {notifications.length > 0 ? (
+              notifications.map((notification, index) => (
+                <React.Fragment key={notification.id}>
+                  <a
+                    onClick={handleSidebarClick}
+                    href={getLinkContext(
+                      notification.context,
+                      notification.link
+                    )}
+                    className="group block p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all duration-150 ease-out"
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* NIVEL 4: Priority indicator - minimal visual weight */}
+                      <div className="flex-shrink-0 mt-1">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            notification.priority === 1
+                              ? "bg-red-400"
+                              : notification.priority === 2
+                                ? "bg-orange-400"
+                                : "bg-gray-300"
+                          }`}
+                        />
                       </div>
-                      <div className="flex-grow space-y-2">
-                        <div>
-                          <p className="text-base font-semibold text-primary-900">
-                            {notification.title}
-                          </p>
-                          {notification.client && (
-                            <p className="text-sm text-primary-500">
-                              Cliente: {notification.client}
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600">
+
+                      <div className="flex-1 min-w-0">
+                        {/* NIVEL 2: Notification title - semibold, gray-800 */}
+                        <h3 className="text-base font-semibold text-gray-800 leading-tight">
+                          {notification.title}
+                        </h3>
+
+                        {/* NIVEL 4: Client context - minimal */}
+                        {notification.client && (
+                          <span className="text-xs text-gray-600 mt-1">
+                            Cliente:{" "}
+                            <span className="text-gray-400">
+                              {notification.client}
+                            </span>
+                          </span>
+                        )}
+
+                        {/* NIVEL 3: Message content - gray-600 */}
+                        <p className="text-sm text-gray-600 mt-2 leading-relaxed">
                           {notification.message}
                         </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-6">
-                        <p className="text-xs text-muted-foreground">
+
+                        {/* NIVEL 4: Timestamp - discrete */}
+                        <p className="text-xs text-gray-400 mt-3">
                           {formatDateTime(notification.created_at)}
                         </p>
+                      </div>
+
+                      {/* Delete action - appears on hover */}
+                      <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                         <Button
                           onClick={(e) =>
                             handleDeleteNotification(e, notification.id)
                           }
                           size="icon"
                           variant="ghost"
-                          className="text-red-500 hover:bg-red-100"
+                          disabled={isDeleting}
+                          className="w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                         >
-                          <Trash size={14} />
+                          <Trash size={12} />
                         </Button>
                       </div>
-                    </a>
-                    <>
-                      {index !== notifications.length - 1 && (
-                        <Separator
-                          className="my-2"
-                          key={`separator-${index}`}
-                        />
-                      )}
-                    </>
-                  </React.Fragment>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4 p-4">
-                  <Bell size={48} className="text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    No hay notificaciones
+                    </div>
+                  </a>
+                  {index !== notifications.length - 1 && (
+                    <div
+                      className="h-px bg-gray-100"
+                      key={`separator-${index}`}
+                    />
+                  )}
+                </React.Fragment>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-6 py-16 px-4">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
+                  <Bell size={24} className="text-gray-300" />
+                </div>
+                <div className="text-center space-y-2">
+                  <p className="text-base font-medium text-gray-600">
+                    Todo al día
+                  </p>
+                  <p className="text-sm text-gray-400 max-w-xs">
+                    No tienes notificaciones pendientes en este momento
                   </p>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </PopoverContent>
-    </Popover>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -54,14 +54,14 @@ export default function FirstStepForm({
 
   return (
     <FormWrapper>
-      <form>
+      <div className="space-y-6">
         <SelectSalesPerson
           userData={userData as User}
           formData={formData}
           setFormData={setFormData}
           errors={errors}
         />
-      </form>
+      </div>
       <ButtonGroupComponent
         onBack={onBack}
         onCancel={onCancel}

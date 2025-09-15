@@ -1,5 +1,6 @@
 ﻿import { UpdatedFields } from "@/tramites/hooks/track-tramite-changes";
 import { Notification } from "@/core/types";
+import { formatUUID } from "./format";
 
 export const getColorPriority = (priority: number) => {
   switch (priority) {
@@ -124,7 +125,7 @@ export const generateTramiteUpdatedNotification = ({
   client,
 }: TramiteNotification): Notification => ({
   id: tramite_id,
-  title: `Trámite ${tramite_id} actualizado`,
+  title: `Trámite ${formatUUID(tramite_id)} actualizado`,
   message: generateTramitesNotificationMessage(changes, uploadedFiles),
   client,
   created_at: new Date().toISOString(),
@@ -200,7 +201,7 @@ export const generateComparativaUpdatedNotification = ({
 }: ComparativaNotification): Notification => {
   return {
     id: comparativa_id,
-    title: `Comparativa ${comparativa_id} actualizada`,
+    title: `Comparativa ${formatUUID(comparativa_id)} actualizada`,
     message: generateComparativaNotificationMessage(
       notes,
       status,
@@ -264,7 +265,7 @@ export const generateFotovoltaicaUpdatedNotification = ({
 }: FotovoltaicaNotification): Notification => {
   return {
     id: fotovoltaica_id,
-    title: `Solicitud fotovoltaica ${fotovoltaica_id} actualizada`,
+    title: `Solicitud fotovoltaica ${formatUUID(fotovoltaica_id)} actualizada`,
     message: generateFotovoltaicaNotificationMessage(notes, status, files),
     client,
     created_at: new Date().toISOString(),

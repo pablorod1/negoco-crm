@@ -219,6 +219,16 @@ export default function SelectClient({
     setFormData,
     setSignerData,
   ]);
+  // Wrapper function for client selection that matches the expected signature
+  const handleClientClick = useCallback(
+    (client: ClientDB) => {
+      const mockEvent = {
+        preventDefault: () => {},
+      } as React.MouseEvent<HTMLButtonElement>;
+      handleSelectClient(mockEvent, client.id);
+    },
+    [handleSelectClient]
+  );
 
   // If loading, show loading state
   if (loading) {
@@ -231,111 +241,201 @@ export default function SelectClient({
   }
 
   return (
-    <>
-      <div className="flex justify-between items-center w-full gap-4">
-        <div className="flex flex-col w-full mt-4">
-          <h2 className="text-xl font-semibold text-primary-500">
-            Selecciona un cliente
-          </h2>
-          <span className="text-xs text-gray-500">
-            (Si no aparece el cliente, puedes crear uno nuevo)
-          </span>
-        </div>
-
-        <div className="relative max-w-md w-full">
-          <Input
-            name="search"
-            placeholder="Busca por nombre, apellidos, email..."
-            value={filterValue}
-            onChange={(e) => setFilterValue(e.target.value)}
-            className="pr-10"
-          />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
+    <div className="space-y-6">
+      {loading ? (
+        <LoadingStateModal
+          title="Cargando clientes..."
+          description="Espere unos segundos mientras cargamos sus clientes."
+        />
+      ) : (
+        <>
+          {/* Header with Create Button */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="text-lg font-medium text-gray-900">
+                Clientes disponibles
+              </h3>
+              <p className="text-sm text-gray-600">
+                {clients.length} clientes encontrados
+              </p>
+            </div>
+            <Button
+              onClick={handleNewClient}
+              className="flex items-center gap-2"
+              variant="outline"
+            >
+              <UserPlus className="h-4 w-4" />
+              Crear nuevo cliente
+            </Button>
           </div>
-        </div>
-      </div>
 
-      <ScrollArea className="h-full w-full max-h-[300px] px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-center w-full pt-2 pb-4">
-          {/* New Client Button */}
-          <Button
-            size={"card"}
-            variant={"outline"}
-            onClick={handleNewClient}
-            className="w-full justify-start gap-2 border border-primary-700 bg-primary-500 shadow-md hover:bg-primary-600 transition-colors duration-200"
-          >
-            <div className="flex items-center gap-4 w-full">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-50 shadow-md">
-                <UserPlus className="text-primary-700" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="text-base font-medium text-white">
-                  Nuevo Cliente
-                </span>
-                <span className="text-sm text-gray-50 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
-                  Crear un nuevo cliente
-                </span>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar por nombre, email o documento..."
+              value={filterValue}
+              onChange={(e) => setFilterValue(e.target.value)}
+              className="pl-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+            />
+          </div>
+
+          {/* Selected Client Preview */}
+          {selectedClient && (
+            <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <p className="font-medium text-gray-900">
+                      Cliente seleccionado
+                    </p>
+                  </div>
+                  {(() => {
+                    const client = clients.find((c) => c.id === selectedClient);
+                    return client ? (
+                      <div className="text-sm text-gray-600">
+                        <p>
+                          <strong>
+                            {client.name} {client.last_name}
+                          </strong>
+                        </p>
+                        <p>
+                          {client.email} • {client.document_number}
+                        </p>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+                <Badge variant="successShadow">Seleccionado</Badge>
               </div>
             </div>
-          </Button>
-
-          {/* Last Created Client Button */}
-          {cachedClient && (
-            <Button
-              size={"card"}
-              variant={"outline"}
-              onClick={handleSelectLastClient}
-              className="w-full !items-start justify-start gap-2 border-dashed border-gray-100 shadow-sm hover:border-primary-100 hover:bg-gray-50 transition-all duration-200"
-            >
-              <div className="flex flex-col items-start text-left">
-                <span className="text-sm font-semibold">
-                  Último cliente creado
-                </span>
-                <span className="text-xs text-gray-500 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
-                  {cachedClient.name} {cachedClient.last_name}
-                </span>
-                <span className="text-xs text-gray-500 text-ellipsis overflow-hidden whitespace-nowrap max-w-52 w-full">
-                  {cachedClient.document_type} - {cachedClient.document_number}
-                </span>
-              </div>
-            </Button>
           )}
 
           {/* Client List */}
-          {filteredClients.length > 0 ? (
-            filteredClients.map((client) => (
-              <Button
-                size={"card"}
-                variant={"outline"}
-                onClick={(e) => handleSelectClient(e, client.id)}
-                key={client.id}
-                className={`relative w-full justify-start gap-2 border shadow-sm transition-all duration-200 ease-in-out ${
-                  selectedClient === client.id
-                    ? "shadow-md shadow-primary-700/30 border-primary-100 bg-primary-50"
-                    : "border-gray-100 hover:bg-gray-50 hover:border-gray-200"
-                }`}
-              >
-                <div className="flex flex-col items-start w-full">
-                  <div className="flex justify-between items-center gap-4 w-full">
-                    <span className="text-sm font-semibold">
-                      {client.name} {client.last_name}
-                    </span>
-                    <Badge variant="info">{client.type}</Badge>
-                  </div>
-                  <span className="text-xs text-gray-500">
-                    {client.document_type} - {client.document_number}
-                  </span>
+          <div className="space-y-3">
+            {filteredClients.length > 0 ? (
+              <ScrollArea className="h-full w-full max-h-[350px] overflow-y-auto py-2">
+                <div className="grid grid-cols-2 gap-6 p-1">
+                  {filteredClients.map((client) => (
+                    <div
+                      key={client.id}
+                      className={`p-4 border rounded-4xl shadow-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
+                        selectedClient === client.id
+                          ? "ring-2 ring-primary-200 bg-primary-50 border-primary-200"
+                          : "hover:bg-gray-50 hover:border-gray-300"
+                      }`}
+                      onClick={() => handleClientClick(client)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">
+                              {client.name} {client.last_name}
+                            </p>
+                            <Badge variant="secondary" className="text-xs">
+                              {client.type}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span>{client.email}</span>
+                            <span>•</span>
+                            <span>{client.document_number}</span>
+                          </div>
+                          {client.phone && (
+                            <p className="text-sm text-gray-500">
+                              Tel: {client.phone}
+                            </p>
+                          )}
+                        </div>
+                        {selectedClient === client.id && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center">
+                              <svg
+                                className="w-3 h-3 text-white"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </Button>
-            ))
-          ) : (
-            <div className="flex items-center justify-center w-full h-full p-4 text-sm text-gray-500">
-              No se encontraron clientes que coincidan con la búsqueda.
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Search className="h-8 w-8 text-gray-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-900 mb-1">
+                  No se encontraron clientes
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  {filterValue
+                    ? "Intenta con un término diferente"
+                    : "No hay clientes disponibles"}
+                </p>
+                <Button
+                  onClick={handleNewClient}
+                  className="flex items-center gap-2"
+                  variant="outline"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Crear primer cliente
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Cached Data Notice */}
+          {(cachedClient || cachedSigner) && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <div className="w-4 h-4 bg-blue-500 rounded-full mt-0.5 flex-shrink-0">
+                  <svg
+                    className="w-3 h-3 text-white ml-0.5 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="text-sm">
+                  <p className="font-medium text-blue-900">
+                    Datos guardados detectados
+                  </p>
+                  <p className="text-blue-700">
+                    Se han detectado datos de cliente previamente guardados. Se
+                    restaurarán automáticamente.
+                  </p>
+                  {cachedClient && (
+                    <Button
+                      onClick={handleSelectLastClient}
+                      variant="ghost"
+                      className="mt-2 h-auto p-0 text-blue-700 hover:text-blue-900"
+                    >
+                      Usar último cliente creado: {cachedClient.name}{" "}
+                      {cachedClient.last_name}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
-        </div>
-      </ScrollArea>
-    </>
+        </>
+      )}
+    </div>
   );
 }

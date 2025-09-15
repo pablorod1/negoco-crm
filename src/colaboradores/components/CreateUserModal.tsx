@@ -14,8 +14,10 @@ import { useState } from "react";
 
 export default function CreateUserModal({
   onUserCreated,
+  disabled = false,
 }: {
   onUserCreated: () => void;
+  disabled?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -33,7 +35,8 @@ export default function CreateUserModal({
       <DialogTrigger asChild>
         <Button
           size="sm"
-          className="bg-gray-900 hover:bg-gray-800 text-white border-0"
+          className="bg-gray-900 hover:bg-gray-800 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={disabled}
         >
           <Plus size={16} />
           <span>Nuevo usuario</span>

@@ -23,7 +23,7 @@ import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import NewClientForm from "./NewClientForm";
 import SelectClient from "./SelectClient";
 import { showCustomToast } from "@/core/components/CustomToast";
-import { CircleX } from "lucide-react";
+import { CircleX, User as UserIcon } from "lucide-react";
 
 interface Props {
   client: ClientDB;
@@ -251,33 +251,50 @@ export default function SecondStepForm({
 
   return (
     <FormWrapper>
-      {newClientState ? (
-        <NewClientForm
-          formData={formData}
-          setFormData={setFormData}
-          errors={errors}
-          setErrors={setErrors}
-          signerData={signerData}
-          setSignerData={setSignerData}
-          signerErrors={signerErrors}
-          setSignerErrors={setSignerErrors}
-        />
-      ) : (
-        <SelectClient
-          setClient={setClient}
-          setSigner={setSigner}
-          setNewClientState={setNewClientState}
-          setTramite={setTramite}
-          clients={clients}
-          loading={loading}
-          cachedClient={cachedClientData}
-          cachedSigner={cachedSignerData}
-          selectedClient={selectedClient}
-          setSelectedClient={setSelectedClient}
-          setFormData={setFormData}
-          setSignerData={setSignerData}
-        />
-      )}
+      <div className="space-y-6">
+        {/* Step Header */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <UserIcon className="h-5 w-5 text-primary-600" />
+            <h2 className="text-xl font-semibold text-gray-900">
+              {newClientState ? "Crear nuevo cliente" : "Seleccionar cliente"}
+            </h2>
+          </div>
+          <p className="text-sm text-gray-600">
+            {newClientState
+              ? "Introduce la información del cliente y firmante si es necesario"
+              : "Elige un cliente existente o crea uno nuevo"}
+          </p>
+        </div>
+
+        {newClientState ? (
+          <NewClientForm
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            setErrors={setErrors}
+            signerData={signerData}
+            setSignerData={setSignerData}
+            signerErrors={signerErrors}
+            setSignerErrors={setSignerErrors}
+          />
+        ) : (
+          <SelectClient
+            setClient={setClient}
+            setSigner={setSigner}
+            setNewClientState={setNewClientState}
+            setTramite={setTramite}
+            clients={clients}
+            loading={loading}
+            cachedClient={cachedClientData}
+            cachedSigner={cachedSignerData}
+            selectedClient={selectedClient}
+            setSelectedClient={setSelectedClient}
+            setFormData={setFormData}
+            setSignerData={setSignerData}
+          />
+        )}
+      </div>
 
       <ButtonGroupComponent
         onCancel={onCancel}

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { Row } from "@libsql/client";
+import { v4 as uuidv4 } from "uuid";
+import { addClient } from "@/tramites/utils/addTramiteHelpers";
+import { ClientDB } from "@/tramites/types";
 
 // Response Types
 interface ClientsResponse {
@@ -10,10 +13,19 @@ interface ClientsResponse {
   data?: Row[]; // Using Row[] to match original behavior with clients.*
 }
 
+interface ClientCreateResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  data?: {
+    clientId: string;
+  };
+}
+
 /**
  * Retrieves all clients with aggregated tramites and files data
  * Supports role-based filtering for subcomerciales
- * 
+ *
  * @param request - Next.js request object
  * @returns Promise<NextResponse<ClientsResponse>>
  */
@@ -88,7 +100,9 @@ export async function POST(
     const queryTime = performance.now() - startTime;
 
     // Log performance metrics for monitoring
-    console.log(`[PERFORMANCE] Clients query executed in ${queryTime.toFixed(2)}ms, returned ${res.rows.length} rows`);
+    console.log(
+      `[PERFORMANCE] Clients query executed in ${queryTime.toFixed(2)}ms, returned ${res.rows.length} rows`
+    );
 
     // Handle empty results
     if (res.rows.length === 0) {
@@ -102,7 +116,6 @@ export async function POST(
       { success: true, data: res.rows },
       { status: 200 }
     );
-
   } catch (error) {
     console.error("Error fetching clients:", error);
     return NextResponse.json(
@@ -115,7 +128,7 @@ export async function POST(
 /**
  * Alternative GET endpoint for REST compliance
  * Accepts user ID and role as query parameters
- * 
+ *
  * @param request - Next.js request object
  * @returns Promise<NextResponse<ClientsResponse>>
  */
@@ -141,11 +154,128 @@ export async function GET(
     } as NextRequest;
 
     return await POST(mockRequest);
-
   } catch (error) {
     console.error("Error in GET /new_api/clients:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Creates a new client
+ *
+ * @param request - Next.js request object containing client data
+ * @returns Promise<NextResponse<ClientCreateResponse>>
+ */
+export async function PUT(
+  request: NextRequest
+): Promise<NextResponse<ClientCreateResponse>> {
+  try {
+    const tursoClient = getTursoClient(request);
+
+    if (!tursoClient) {
+      return NextResponse.json(
+        { success: false, error: "Database not initialized" },
+        { status: 500 }
+      );
+    }
+
+    // Parse request body
+    const body = await request.json();
+    const { client, signer } = body;
+
+    if (!client) {
+      return NextResponse.json(
+        { success: false, error: "Missing client data" },
+        { status: 400 }
+      );
+    }
+
+    // Generate client ID if not provided
+    const clientId = client.id;
+
+    // Create client object with all required fields
+    const clientDB: ClientDB = {
+      id: clientId,
+      name: client.name,
+      last_name: client.last_name || "",
+      email: client.email,
+      phone: client.phone,
+      address: client.address,
+      document_number: client.document_number,
+      document_type: client.document_type,
+      type: client.type,
+      IBAN: client.IBAN,
+      postal_code: client.postal_code,
+      province: client.province,
+      city: client.city,
+      coordinates: null, // Will be populated by addClient helper
+    };
+
+    // Add client to database
+    const clientResult = await addClient(clientDB, tursoClient);
+
+    if (!clientResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: clientResult.error || "Error creating client",
+        },
+        { status: 500 }
+      );
+    }
+
+    // If client type requires signer and signer data is provided
+    if (
+      signer &&
+      (client.type === "Empresa" || client.type === "Comunidad de Propietarios")
+    ) {
+      const signerDB = {
+        id: uuidv4(),
+        client_id: clientId,
+        name: signer.name,
+        last_name: signer.last_name,
+        email: signer.email,
+        phone: signer.phone,
+        document_number: signer.document_number,
+        document_type: "DNI",
+      };
+
+      // Add signer (using the same pattern as in contracts endpoint)
+      const signerQuery = `
+        INSERT INTO signers (id, client_id, name, last_name, email, phone, document_number, document_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      await tursoClient.execute({
+        sql: signerQuery,
+        args: [
+          signerDB.id,
+          signerDB.client_id,
+          signerDB.name,
+          signerDB.last_name,
+          signerDB.email,
+          signerDB.phone,
+          signerDB.document_number,
+          signerDB.document_type,
+        ],
+      });
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Client created successfully",
+        data: { clientId },
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Error creating client:", error);
+    return NextResponse.json(
+      { success: false, error: "Internal Server Error" },
       { status: 500 }
     );
   }

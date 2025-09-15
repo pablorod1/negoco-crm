@@ -7,6 +7,7 @@ import Image from "next/image";
 import { cn } from "@/core/utils/utils";
 import SmartBreadcrumb from "./SmartBreadcrumbFixed";
 import { useUser } from "../contexts/UserContext";
+import NotificationsMenu from "./NotificationsMenu";
 
 interface ImprovedHeaderProps {
   className?: string;
@@ -31,7 +32,7 @@ export default function Header({ className }: ImprovedHeaderProps) {
     >
       <div className="flex h-12 items-center justify-between gap-4">
         {/* Left section - Navigation */}
-        <div className="flex items-center gap-4 min-w-0 flex-1">
+        <div className="flex items-center gap-4 ">
           <div className="flex items-center gap-3">
             <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground transition-colors" />
             <Separator
@@ -40,7 +41,7 @@ export default function Header({ className }: ImprovedHeaderProps) {
             />
           </div>
 
-          <div className="min-w-0 flex-1">
+          <div className="">
             <SmartBreadcrumb
               variant="minimal"
               showBackButton={true}
@@ -65,6 +66,10 @@ export default function Header({ className }: ImprovedHeaderProps) {
           ) : (
             <Skeleton className="h-8 w-8 rounded-full" />
           )}
+        </div>
+
+        <div>
+          <NotificationsMenu />
         </div>
       </div>
     </header>

@@ -17,6 +17,16 @@ import {
 } from "@/core/utils/format";
 import { ComparativaVM, ComparativaStatus } from "@/comparativas/types";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
+import { Badge } from "@/core/components/ui/badge";
+import {
+  FileText,
+  User as UserIcon,
+  Building,
+  Calendar,
+  Euro,
+} from "lucide-react";
+import { Button } from "@/core/components/ui/button";
+import { useState } from "react";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -40,6 +50,8 @@ export default function ComparativaToTramiteStep({
   const { supplier } = useEnergySupplierById(comparativa.company_id);
   const company_name = supplier?.name;
   const isComercial = userData.role === "2";
+  const [showDetails, setShowDetails] = useState(false);
+
   const handleChange = (value: string) => {
     setPlan(value as "fijo" | "indexado");
   };
@@ -61,136 +73,195 @@ export default function ComparativaToTramiteStep({
   const handleSubmit = () => {
     onSubmit();
   };
+
   return (
     <FormWrapper>
-      <div>
-        <div className="flex items-center justify-between w-full">
-          <h2 className="text-xl font-semibold text-primary-800">
-            Comparativa {formatUUID(comparativa.id)} • {comparativa.client}
+      {/* Step Header - Clear and Focused */}
+      <div className="space-y-2 mb-6">
+        <div className="flex items-center gap-2">
+          <Building className="h-5 w-5 text-primary-600" />
+          <h2 className="text-xl font-semibold text-gray-900">
+            Crear trámite desde comparativa
           </h2>
         </div>
+        <p className="text-sm text-gray-600">
+          Selecciona el plan tarifario y revisa la información de la comparativa
+          antes de continuar
+        </p>
       </div>
-      <div className="space-y-4">
-        <div className="flex justify-center items-center max-w-44 w-full px-4">
-          <SelectComponent
-            name="plan"
-            isRequired
-            label="Plan"
-            selectedKey={plan as string}
-            onChange={handleChange}
-            items={
-              checkFijoEmpty()
-                ? ["indexado"]
-                : checkIndexadoEmpty()
-                  ? ["fijo"]
-                  : ["fijo", "indexado"]
-            }
-          />
-        </div>
-        <ScrollArea className="h-full w-full  max-h-[calc(100vh-500px)]">
-          <div className="space-y-6 pb-6 px-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-primary-800 text-lg">
-                    Información de la comparativa - #
-                    {formatUUID(comparativa.id)}
-                  </CardTitle>
-                  {getStatusBadge(
-                    comparativa.status as ComparativaStatus,
-                    "comparativa"
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium">Comercial</p>
-                  <p className="text-sm text-muted-foreground">
-                    {comparativa.user.name}
-                  </p>
-                </div>
-                {!isComercial && (
+
+      {/* Plan Selection - Primary Action */}
+      <div className="grid grid-cols-2 gap-6">
+        <Card className="bg-primary-50 border-primary-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Euro className="h-4 w-4 text-primary-600" />
+                <h3 className="text-sm font-medium text-gray-900">
+                  Plan Tarifario
+                </h3>
+                <Badge variant="secondary" className="text-xs">
+                  Requerido
+                </Badge>
+              </div>
+              <div className="w-full max-w-44">
+                <SelectComponent
+                  name="plan"
+                  label=""
+                  selectedKey={plan as string}
+                  onChange={handleChange}
+                  items={
+                    checkFijoEmpty()
+                      ? ["indexado"]
+                      : checkIndexadoEmpty()
+                        ? ["fijo"]
+                        : ["fijo", "indexado"]
+                  }
+                />
+              </div>
+            </div>
+            {plan && (
+              <div className="mt-4 p-3 bg-white rounded-lg border border-primary-100">
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-sm font-medium">Comision</p>
-                    <p className="text-sm text-muted-foreground">
-                      {plan && comparativa.comision[plan] > 0
-                        ? formatComission(comparativa.comision[plan])
-                        : "---"}
-                    </p>
+                    <span className="text-gray-600">Comisión:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {formatComission(comparativa.comision[plan])}
+                    </span>
                   </div>
-                )}
-                <div className="flex items-center gap-6">
-                  <div>
-                    <p className="text-sm font-medium">Servicio</p>
-                    <p className="text-sm text-muted-foreground">
-                      {comparativa.service}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Compañía</p>
-                    <p className="text-sm text-muted-foreground">
-                      {company_name}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">
-                    Comision {!isComercial ? "Comercial" : ""}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {plan && comparativa.comision_sales_person[plan] > 0
-                      ? formatComission(comparativa.comision_sales_person[plan])
-                      : "---"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-primary-800 text-lg">
-                  Documents ({comparativa.files.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {comparativa.files.map((doc, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 border rounded-lg"
-                    >
-                      <span className="text-sm">{doc.filename}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {formatFileSize(Number(doc.size))}
+                  {!isComercial && (
+                    <div>
+                      <span className="text-gray-600">Comisión Comercial:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        {formatComission(
+                          comparativa.comision_sales_person[plan]
+                        )}
                       </span>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-            {comparativa.notes.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg text-primary-800">
-                    Notas ({comparativa.notes.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {comparativa.notes.map((note, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 border rounded-lg"
-                      >
-                        <span className="text-sm">{note}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             )}
-          </div>
-        </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Comparativa Summary - Essential Info Only */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UserIcon className="h-4 w-4 text-gray-600" />
+                <CardTitle className="text-base text-gray-900">
+                  {comparativa.client} • #{formatUUID(comparativa.id)}
+                </CardTitle>
+              </div>
+              {getStatusBadge(
+                comparativa.status as ComparativaStatus,
+                "comparativa"
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Comercial:</span>
+                <p className="font-medium text-gray-900">
+                  {comparativa.user.name}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-600">Servicio:</span>
+                <p className="font-medium text-gray-900">
+                  {comparativa.service}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-600">Compañía:</span>
+                <p className="font-medium text-gray-900">{company_name}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Progressive Disclosure - Additional Details */}
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          onClick={() => setShowDetails(!showDetails)}
+          className="w-full justify-between text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+        >
+          <span className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Ver detalles adicionales ({
+              comparativa.files.length
+            } documentos, {comparativa.notes.length} notas)
+          </span>
+          <Calendar
+            className={`h-4 w-4 transition-transform ${showDetails ? "rotate-180" : ""}`}
+          />
+        </Button>
+
+        {showDetails && (
+          <div className="mt-4 space-y-4">
+            <ScrollArea className="h-full w-full max-h-[200px]">
+              <div className="space-y-4 px-2">
+                {/* Documents */}
+                {comparativa.files.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-gray-700">
+                        Documentos ({comparativa.files.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {comparativa.files.map((doc, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-md text-xs"
+                          >
+                            <span className="text-gray-900 truncate">
+                              {doc.filename}
+                            </span>
+                            <span className="text-gray-500 ml-2 flex-shrink-0">
+                              {formatFileSize(Number(doc.size))}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Notes */}
+                {comparativa.notes.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-gray-700">
+                        Notas ({comparativa.notes.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {comparativa.notes.map((note, index) => (
+                          <div
+                            key={index}
+                            className="p-2 bg-gray-50 rounded-md text-xs text-gray-900"
+                          >
+                            {note}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+      </div>
+
       <ButtonGroupComponent onSubmit={handleSubmit} onCancel={onCancel} />
     </FormWrapper>
   );

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import CreateUserModal from "@/colaboradores/components/CreateUserModal";
 import UsersGridTable from "@/colaboradores/components/UsersGrid";
+import UserLimitBar from "@/colaboradores/components/UserLimitBar";
 import { User } from "@/core/types";
 import { useUser } from "@/core/contexts/UserContext";
 import { useUsers } from "@/core/contexts/UsersContext"; // Importar el nuevo contexto
@@ -20,6 +21,7 @@ export default function ColaboradoresPage() {
     loading: true,
     initialized: false,
   });
+  const [canAddUsers, setCanAddUsers] = useState(true);
 
   const isAdmin = userData && userData.role === "admin";
 
@@ -91,6 +93,10 @@ export default function ColaboradoresPage() {
     fetchData();
   }, [fetchData]);
 
+  const handleLimitCheck = useCallback((canAdd: boolean) => {
+    setCanAddUsers(canAdd);
+  }, []);
+
   // Si no hay userData y no hemos inicializado, mostramos loading
   if (!userData && !state.initialized) {
     return (
@@ -128,13 +134,19 @@ export default function ColaboradoresPage() {
                 Gestiona los usuarios y permisos del sistema
               </p>
             </div>
-            {isAdmin && <CreateUserModal onUserCreated={handleUserCreated} />}
+            {isAdmin && (
+              <CreateUserModal
+                onUserCreated={handleUserCreated}
+                disabled={!canAddUsers}
+              />
+            )}
           </div>
         </div>
       </div>
 
       {/* Contenido principal */}
       <div className="container mx-auto px-6 py-6">
+        {isAdmin && <UserLimitBar onLimitReached={handleLimitCheck} />}
         <UsersGridTable users={state.users} loading={state.loading} />
       </div>
     </div>

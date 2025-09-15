@@ -299,7 +299,6 @@ export async function GET(
     const offset = (query.page - 1) * query.limit;
     baseQuery += " LIMIT ? OFFSET ?";
     params.push(query.limit, offset);
-    console.log("Final Query:", baseQuery, params);
     // Execute query
     const result = await tursoClient.execute({
       sql: baseQuery,

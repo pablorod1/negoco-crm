@@ -18,15 +18,18 @@ import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { Badge } from "@/core/components/ui/badge";
 import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
+import { formatComission } from "@/core/utils/format";
 import {
-  formatComission,
-  formatFileSize,
-  formatUUID,
-} from "@/core/utils/format";
-import { IdCardIcon, Mail, Phone } from "lucide-react";
+  CheckCircle,
+  UserCheck,
+  FileText,
+  FileIcon,
+  FileTextIcon,
+  FolderOpen,
+  FileX,
+} from "lucide-react";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
-import FormTicketsSection from "@/core/components/FormTicketsSection";
 
 interface Props {
   tramite: TramiteDB;
@@ -96,360 +99,394 @@ export default function ReviewStep({
           }
         />
       )}
-      <ScrollArea className="h-full w-full max-h-[calc(100vh-400px)]">
-        <div className="space-y-6 pb-6 px-4">
-          {/* Tramite Info */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-primary-800 text-lg">
-                  Información del trámite - #{formatUUID(tramite.id)}
-                </CardTitle>
-                {getStatusBadge(tramite.status as Status, "general")}
-              </div>
-            </CardHeader>
-            <CardContent className="grid grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm font-medium">Comercial</p>
-                <p className="text-sm text-muted-foreground">
-                  {tramite.sales_name}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium">Plan</p>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {tramite.plan}
-                </p>
-              </div>
-              {!isComercial && (
-                <div>
-                  <p className="text-sm font-medium">Comision</p>
-                  <p className="text-sm text-muted-foreground">
-                    {tramite.comision > 0
-                      ? formatComission(tramite.comision)
-                      : "---"}
-                  </p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm font-medium">
-                  Comision {!isComercial ? "Comercial" : ""}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {tramite.comision_sales_person > 0
-                    ? formatComission(tramite.comision_sales_person)
-                    : "---"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Client Information */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-primary-800">
-                  Cliente - #{formatUUID(client.id)}
-                </CardTitle>
-                <Badge variant="info">{client.type}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-6">
-              <div>
-                <p className="text-sm font-medium">Nombre Completo</p>
-                <p className="text-sm text-muted-foreground">
-                  {client.name} {client.last_name}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium">Documentación</p>
-                <p className="text-sm text-muted-foreground">
-                  {client.document_type}: {client.document_number}
-                </p>
-              </div>
 
-              <div>
-                <p className="text-sm font-medium">Dirección Completa</p>
-                <p className="text-sm text-muted-foreground">
-                  {client.address}, {client.postal_code} {client.city},{" "}
-                  {client.province}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium">Contacto</p>
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-2">
-                    <Mail size={16} stroke="#333" />
-                    <p className="text-sm text-muted-foreground">
-                      {client.email}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone size={16} stroke="#333" />
-                    <p className="text-sm text-muted-foreground">
-                      {client.phone}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium">IBAN</p>
-                <p className="text-sm text-muted-foreground">{client.IBAN}</p>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="space-y-6 pb-6">
+        {/* Step Header */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-primary-600" />
+            <h2 className="text-xl font-semibold text-gray-900">
+              Revisar y confirmar
+            </h2>
+          </div>
+          <p className="text-sm text-gray-600">
+            Revisa toda la información antes de crear el trámite
+          </p>
+        </div>
 
-          {/* Signer Information (if exists) */}
-          {signer && (
-            <Card>
-              <CardHeader>
+        <ScrollArea className="h-full w-full max-h-[calc(100vh-400px)]">
+          <div className="space-y-6 px-1">
+            {/* Tramite Summary */}
+            <Card className="bg-primary-50 border-primary-200">
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg text-primary-800">
-                    Persona Firmante - #{formatUUID(signer.id)}
-                  </CardTitle>
-                  {signer.cargo && (
-                    <Badge variant="pending">{signer.cargo}</Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary-600" />
+                    <CardTitle className="text-lg text-gray-900">
+                      Resumen del trámite
+                    </CardTitle>
+                  </div>
+                  {getStatusBadge(tramite.status as Status, "general")}
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm font-medium">Nombre Completo</p>
-                  <p className="text-sm text-muted-foreground">
-                    {signer.name} {signer.last_name}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Documentación</p>
-                  <div className="flex items-center gap-2">
-                    <IdCardIcon size={16} stroke="#333" />
-                    <p className="text-sm text-muted-foreground">
-                      {signer.document_number}
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Comercial
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {tramite.sales_name}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Plan
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 capitalize">
+                      {tramite.plan}
+                    </p>
+                  </div>
+                  {!isComercial && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        Comisión
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {tramite.comision > 0
+                          ? formatComission(tramite.comision)
+                          : "---"}
+                      </p>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Comisión {!isComercial ? "Comercial" : ""}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {tramite.comision_sales_person > 0
+                        ? formatComission(tramite.comision_sales_person)
+                        : "---"}
                     </p>
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-2">
-                  <p className="text-sm font-medium">Contacto</p>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-2">
-                      <Mail size={16} stroke="#333" />
-                      <p className="text-sm text-muted-foreground">
-                        {signer.email}
+              </CardContent>
+            </Card>
+            {/* Client Information */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="h-5 w-5 text-primary-600" />
+                    <CardTitle className="text-lg text-gray-900">
+                      Información del cliente
+                    </CardTitle>
+                  </div>
+                  <Badge variant="secondary" className="capitalize">
+                    {client.type}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                        Nombre completo
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {client.name} {client.last_name}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Phone size={16} stroke="#333" />
-                      <p className="text-sm text-muted-foreground">
-                        {signer.phone}
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                        Documentación
                       </p>
+                      <p className="text-sm text-gray-700">
+                        {client.document_type} • {client.document_number}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                        Contacto
+                      </p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-700">{client.email}</p>
+                        {client.phone && (
+                          <p className="text-sm text-gray-700">
+                            {client.phone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                        Dirección
+                      </p>
+                      <div className="space-y-1 text-sm text-gray-700">
+                        <p>{client.address}</p>
+                        <p>
+                          {client.postal_code} {client.city}
+                        </p>
+                        <p>{client.province}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Contracts Information */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg text-primary-800">
-                  Contrato{" "}
-                  {contracts.length > 0
-                    ? `- #${formatUUID(contracts[0].id)}`
-                    : ""}
-                </CardTitle>
-                {contracts.length > 0 && (
+            {/* Signer Information (if exists) */}
+            {signer && (
+              <Card>
+                <CardHeader className="pb-4">
                   <div className="flex items-center gap-2">
-                    <Badge>{contracts[0].type}</Badge>
-                    <Badge variant="outline">{contracts[0].plan}</Badge>
+                    <UserCheck className="h-5 w-5 text-primary-600" />
+                    <CardTitle className="text-lg text-gray-900">
+                      Firmante autorizado
+                    </CardTitle>
                   </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {contracts.length > 0 ? (
-                <>
-                  {contracts.map((contract) => (
-                    <div key={contract.id} className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <Badge>{contract.type}</Badge>
-                          <Badge variant="outline">{contract.plan}</Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                          Nombre completo
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {signer.name} {signer.last_name}
+                        </p>
+                      </div>
+                      {signer.cargo && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                            Cargo
+                          </p>
+                          <p className="text-sm text-gray-700">
+                            {signer.cargo}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                          Contacto
+                        </p>
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-700">
+                            {signer.email}
+                          </p>
+                          {signer.phone && (
+                            <p className="text-sm text-gray-700">
+                              {signer.phone}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm font-medium">CUPS</p>
-                          <p className="text-sm text-muted-foreground">
-                            {contract.CUPS}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Consumo</p>
-                          <p className="text-sm text-muted-foreground">
-                            {contract.consumption} kWh
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Compañía</p>
-                          <p className="text-sm text-muted-foreground">
-                            {oldSupplier?.name ?? contract.old_company} --&gt;{" "}
-                            {newSupplier?.name}
-                          </p>
-                        </div>
-
-                        {!checkEmptyPots(contract) ? (
-                          <div className="flex items-center gap-4">
-                            {contract.pot1 > 0 && (
-                              <div>
-                                <p className="text-sm font-medium ">
-                                  Potencia P1
-                                </p>
-                                <p className="font-medium text-muted-foreground">
-                                  {contract.pot1} kW
-                                </p>
-                              </div>
-                            )}
-                            {contract.pot2 > 0 && (
-                              <div>
-                                <p className="text-sm font-medium ">
-                                  Potencia P2
-                                </p>
-                                <p className="font-medium text-muted-foreground">
-                                  {contract.pot2} kW
-                                </p>
-                              </div>
-                            )}
-                            {contract.pot3 > 0 && (
-                              <div>
-                                <p className="text-sm font-medium ">
-                                  Potencia P3
-                                </p>
-                                <p className="font-medium text-muted-foreground">
-                                  {contract.pot3} kW
-                                </p>
-                              </div>
-                            )}
-                            {contract.pot4 > 0 && (
-                              <div>
-                                <p className="text-sm font-medium ">
-                                  Potencia P4
-                                </p>
-                                <p className="font-medium text-muted-foreground">
-                                  {contract.pot4} kW
-                                </p>
-                              </div>
-                            )}
-                            {contract.pot5 > 0 && (
-                              <div>
-                                <p className="text-sm font-medium ">
-                                  Potencia P5
-                                </p>
-                                <p className="font-medium text-muted-foreground">
-                                  {contract.pot5} kW
-                                </p>
-                              </div>
-                            )}
-                            {contract.pot6 > 0 && (
-                              <div>
-                                <p className="text-sm font-medium ">
-                                  Potencia P6
-                                </p>
-                                <p className="font-medium text-muted-foreground">
-                                  {contract.pot6} kW
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            No hay potencias asignadas
-                          </span>
-                        )}
-                        <div>
-                          <p className="text-sm font-medium">
-                            Dirección Completa
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {contract.address}, {contract.postal_code}{" "}
-                            {contract.city}, {contract.province}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
+                          Documento
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          {signer.document_number}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </>
-              ) : (
-                <div className="text-gray-400 text-sm italic">
-                  No hay contratos asociados.
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Contracts Information */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileTextIcon className="h-5 w-5 text-primary-600" />
+                    <CardTitle className="text-lg text-gray-900">
+                      Contratos
+                    </CardTitle>
+                  </div>
+                  <Badge variant="secondary">
+                    {contracts.length} contrato
+                    {contracts.length !== 1 ? "s" : ""}
+                  </Badge>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-primary-800 text-lg">
-                Documentos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {totalDocuments > 0 ? (
-                <div className="space-y-2">
-                  {documents.map((doc, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 border rounded-lg"
-                    >
-                      <span className="text-sm">{doc.name}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {formatFileSize(Number(doc.size))}
-                      </span>
-                    </div>
-                  ))}
-                  {selectedExistingFiles &&
-                    selectedExistingFiles.map((file, index) => (
+              </CardHeader>
+              <CardContent>
+                {contracts.length > 0 ? (
+                  <div className="space-y-4">
+                    {contracts.map((contract, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 border rounded-lg"
+                        className="p-4 bg-gray-50 rounded-lg border"
                       >
-                        <span className="text-sm">{file.filename}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatFileSize(Number(file.size))}
-                        </span>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-gray-900">
+                            Contrato {index + 1}
+                          </h4>
+                          <Badge variant="outline" className="capitalize">
+                            {contract.type}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-600 mb-1">CUPS</p>
+                            <p className="font-medium text-gray-900">
+                              {contract.CUPS}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600 mb-1">
+                              Compañía anterior
+                            </p>
+                            <p className="font-medium text-gray-900">
+                              {oldSupplier?.name || "No especificada"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600 mb-1">Nueva compañía</p>
+                            <p className="font-medium text-gray-900">
+                              {newSupplier?.name || "No especificada"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {contract.plan && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-gray-600 text-sm mb-1">
+                              Plan tarifario
+                            </p>
+                            <p className="font-medium text-gray-900 capitalize">
+                              {contract.plan}
+                            </p>
+                          </div>
+                        )}
+
+                        {!checkEmptyPots(contract) && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-gray-600 text-sm mb-2">
+                              Potencias (kW)
+                            </p>
+                            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+                              {[1, 2, 3, 4, 5, 6].map((period) => (
+                                <div key={period} className="text-center">
+                                  <p className="text-gray-500">P{period}</p>
+                                  <p className="font-medium">
+                                    {contract[
+                                      `pot${period}` as keyof ContractDB
+                                    ] || 0}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
-                </div>
-              ) : (
-                <div className="text-gray-400 text-sm italic">
-                  No hay documentos asociados.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileX className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No hay contratos definidos</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Tickets/Observaciones */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg text-primary-800">
-                Observaciones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FormTicketsSection
-                context="tramite"
-                refId={tramite.id}
-                assignedTo={tramite.user_id || ""}
-                userData={userData}
-                maxHeight="300px"
-                isReadOnly
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </ScrollArea>
+            {/* Documents Summary */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="h-5 w-5 text-primary-600" />
+                  <CardTitle className="text-lg text-gray-900">
+                    Documentos
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {totalDocuments > 0 ? (
+                  <div className="space-y-4">
+                    {documents.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          Nuevos archivos ({documents.length})
+                        </p>
+                        <div className="space-y-2">
+                          {documents.map((doc, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-3 p-2 bg-green-50 rounded-lg border border-green-200"
+                            >
+                              <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
+                                <FileIcon className="h-4 w-4 text-green-600" />
+                              </div>
+                              <span className="text-sm text-gray-900">
+                                {doc.name}
+                              </span>
+                              <Badge
+                                variant="secondary"
+                                className="ml-auto bg-green-100 text-green-700"
+                              >
+                                Nuevo
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedExistingFiles &&
+                      selectedExistingFiles.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            Archivos existentes ({selectedExistingFiles.length})
+                          </p>
+                          <div className="space-y-2">
+                            {selectedExistingFiles.map((file, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-200"
+                              >
+                                <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                                  <FileIcon className="h-4 w-4 text-blue-600" />
+                                </div>
+                                <span className="text-sm text-gray-900">
+                                  {file.filename}
+                                </span>
+                                <Badge
+                                  variant="secondary"
+                                  className="ml-auto bg-blue-100 text-blue-700"
+                                >
+                                  Existente
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <FolderOpen className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No hay documentos adjuntos</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </ScrollArea>
+      </div>
+
       <ButtonGroupComponent
         onSubmit={onSubmit}
         onBack={onBack}
