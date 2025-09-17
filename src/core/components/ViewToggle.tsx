@@ -35,7 +35,7 @@ export function ViewToggle<V extends string>({
       transition={{ duration: 0.3 }}
       className={cn("flex justify-start", className)}
     >
-      <div className="relative flex items-center gap-2 p-2 rounded-full bg-white shadow-minimal">
+      <div className="relative flex items-center gap-2 p-2 rounded-full ">
         {options.map((option) => {
           if (option.hidden) return null;
           const Icon = option.icon;

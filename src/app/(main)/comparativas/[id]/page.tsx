@@ -57,7 +57,7 @@ export default function EditComparativaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       {/* Main Content Container */}
       <div className="px-6 py-8 space-y-8">
         {/* Navigation */}

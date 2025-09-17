@@ -27,7 +27,7 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen w-full flex items-stretch">
       {/* Sección de marca (lado izquierdo) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-50 via-primary-400 to-primary-700 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-2/3 bg-gradient-to-br from-primary-50 via-primary-400 to-primary-700 p-12 flex-col justify-between relative overflow-hidden">
         {/* Animated background */}
         <AnimatedBackground />
 
@@ -92,4 +92,3 @@ export default function AuthLayout({
     </div>
   );
 }
-
