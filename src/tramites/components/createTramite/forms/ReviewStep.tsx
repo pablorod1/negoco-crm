@@ -83,6 +83,7 @@ export default function ReviewStep({
 
   const totalDocuments =
     documents.length + (selectedExistingFiles || []).length;
+
   return (
     <>
       {loading && (
@@ -139,14 +140,16 @@ export default function ReviewStep({
                       {tramite.sales_name}
                     </p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
-                      Plan
-                    </p>
-                    <p className="text-sm font-semibold text-gray-900 capitalize">
-                      {tramite.plan}
-                    </p>
-                  </div>
+                  {tramite.plan ? (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        Plan
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900 capitalize">
+                        {tramite.plan}
+                      </p>
+                    </div>
+                  ) : null}
                   {!isComercial && (
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
@@ -350,13 +353,17 @@ export default function ReviewStep({
                               Compañía anterior
                             </p>
                             <p className="font-medium text-gray-900">
-                              {oldSupplier?.name || "No especificada"}
+                              {oldSupplier?.name ||
+                                contract.old_company ||
+                                "No especificada"}
                             </p>
                           </div>
                           <div>
                             <p className="text-gray-600 mb-1">Nueva compañía</p>
                             <p className="font-medium text-gray-900">
-                              {newSupplier?.name || "No especificada"}
+                              {newSupplier?.name ||
+                                contract.new_company ||
+                                "No especificada"}
                             </p>
                           </div>
                         </div>

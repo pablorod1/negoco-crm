@@ -215,7 +215,7 @@ export default function ThirdStepForm({
         </div>
 
         {contracts.length > 0 ? (
-          <div className="flex items-start gap-4 w-full">
+          <div className="w-full">
             {contracts.map((contract, index) => (
               <div key={index} className="flex items-center flex-col gap-2 ">
                 <ContractPreview contract={contract} />

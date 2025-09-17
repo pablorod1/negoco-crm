@@ -23,11 +23,15 @@ import LoadingStateCard from "../LoadingStateCard";
 import { cn } from "@/core/utils";
 import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
-// Chart color configuration using primary palette (matching other components)
-const CHART_COLORS = {
-  completed: "var(--color-blue-500)", // Primary blue for completed
-  remaining: "var(--color-blue-100)", // Light primary for remaining
-  total: "var(--color-blue-400)", // Medium primary for total
+// Minimalist color configuration following design system
+const MINIMALIST_COLORS = {
+  primary: "#2563eb", // primary-600 - for progress indicator only
+  background: "#f3f4f6", // gray-100 - for remaining portion
+  text: {
+    primary: "#111827", // gray-900 - for main numbers
+    secondary: "#6b7280", // gray-500 - for labels
+    muted: "#9ca3af", // gray-400 - for subtle text
+  },
 };
 
 interface ComparativasData {
@@ -47,41 +51,32 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
   total,
   processed,
 }) => {
-  const getProgressColor = (percent: number) => {
-    if (percent >= 80) return "var(--color-blue-600)"; // primary-600 for excellent
-    if (percent >= 60) return "var(--color-warning-600)"; // warning-600 for good
-    return "var(--color-danger-600)"; // danger-600 for needs attention
-  };
+  // Simplified color logic - only primary for progress, gray for background
+  const progressColor = MINIMALIST_COLORS.primary;
 
-  const getProgressColorClass = (percent: number) => {
-    if (percent >= 80) return "text-blue-600";
-    if (percent >= 60) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  // Prepare data for gauge visualization
+  // Minimalist gauge data - only two segments
   const gaugeData = [
     {
       name: "completed",
       value: percentage,
-      color: getProgressColor(percentage),
+      color: progressColor,
     },
     {
       name: "remaining",
       value: 100 - percentage,
-      color: CHART_COLORS.remaining.replace("var(--color-blue-100)", "#dbeafe"),
+      color: MINIMALIST_COLORS.background,
     },
   ];
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center py-8"
+      className="flex flex-col items-center justify-center py-6"
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, delay: 0.2 }}
     >
-      {/* Recharts Gauge Implementation */}
-      <div className="relative w-40 h-40 mb-6">
+      {/* Larger Minimalist Recharts Gauge */}
+      <div className="relative w-48 h-48 mb-6">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -90,8 +85,8 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
               cy="50%"
               startAngle={180}
               endAngle={0}
-              innerRadius={50}
-              outerRadius={70}
+              innerRadius={60}
+              outerRadius={85}
               dataKey="value"
               stroke="none"
             >
@@ -102,25 +97,18 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
           </PieChart>
         </ResponsiveContainer>
 
-        {/* Center content overlaid */}
+        {/* Enhanced center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.div
-            className={cn(
-              "text-3xl font-bold",
-              getProgressColorClass(percentage)
-            )}
+            className="text-3xl font-bold text-gray-900 mb-1"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.8 }}
           >
-            <NumberTicker
-              value={percentage}
-              className={getProgressColorClass(percentage)}
-            />
-            %
+            <NumberTicker value={percentage} className="text-gray-900" />%
           </motion.div>
           <motion.span
-            className="text-xs text-gray-500 mt-1"
+            className="text-sm text-gray-500"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 1 }}
@@ -128,39 +116,27 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
             Completado
           </motion.span>
         </div>
-
-        {/* Progress indicator marks */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative w-32 h-16">
-            {/* 25% mark */}
-            <div className="absolute left-2 bottom-0 w-0.5 h-3 bg-gray-300"></div>
-            {/* 50% mark */}
-            <div className="absolute left-1/2 -translate-x-0.5 -bottom-1 w-0.5 h-4 bg-gray-300"></div>
-            {/* 75% mark */}
-            <div className="absolute right-2 bottom-0 w-0.5 h-3 bg-gray-300"></div>
-          </div>
-        </div>
       </div>
 
-      {/* Stats */}
+      {/* Enhanced stats layout */}
       <motion.div
-        className="flex justify-between w-full max-w-xs gap-6"
+        className="flex justify-between w-full max-w-md gap-8"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 1.2 }}
       >
         <div className="text-center">
-          <p className="text-lg font-semibold text-gray-900">
+          <p className="text-xl font-semibold text-gray-900 mb-1">
             <NumberTicker value={processed} />
           </p>
-          <p className="text-xs text-gray-500">Procesadas</p>
+          <p className="text-sm text-gray-500">Procesadas</p>
         </div>
-        <div className="w-px h-8 bg-gray-200"></div>
+        <div className="w-px h-10 bg-gray-200"></div>
         <div className="text-center">
-          <p className="text-lg font-semibold text-gray-900">
+          <p className="text-xl font-semibold text-gray-900 mb-1">
             <NumberTicker value={total} />
           </p>
-          <p className="text-xs text-gray-500">Total</p>
+          <p className="text-sm text-gray-500">Total</p>
         </div>
       </motion.div>
     </motion.div>
@@ -296,71 +272,67 @@ export function ComparativasRatio({
 
       <CardHeader
         className={cn(
-          "flex justify-between flex-row items-start pb-4 transition-opacity duration-200 relative z-10",
+          "flex justify-between flex-row items-start pb-6 transition-opacity duration-200 relative z-10",
           loading ? "opacity-0" : "opacity-100"
         )}
       >
-        <div className="flex flex-col gap-1">
-          <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
+        <div className="flex flex-col gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             Ratio de Comparativas
           </CardTitle>
-          <CardDescription className="text-xs text-gray-500 font-extralight">
+          <CardDescription className="text-sm text-gray-500">
             Progreso de procesamiento mensual
           </CardDescription>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex flex-col space-y-2">
-              <Select
-                disabled={loading || monthOptions.length === 0}
-                value={selectedMonth}
-                onValueChange={handleMonthChange}
-              >
-                <SelectTrigger className="w-[180px] h-9 rounded-lg border-gray-200 shadow-sm focus:ring-2 focus:ring-gray-900/10">
-                  <CalendarIcon className="h-3.5 w-3.5 text-gray-500" />
-                  <span className="truncate">
-                    {monthOptions.find((opt) => opt.value === selectedMonth)
-                      ?.label || "Seleccionar mes"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent className="rounded-lg">
-                  {monthOptions.map((month) => (
-                    <SelectItem key={month.value} value={month.value}>
-                      {month.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex items-center justify-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-              onClick={refreshData}
-              disabled={loading || isRefreshing}
-              aria-label="Actualizar datos"
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <Select
+              disabled={loading || monthOptions.length === 0}
+              value={selectedMonth}
+              onValueChange={handleMonthChange}
             >
-              <RefreshCw
-                className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
-              />
-            </Button>
+              <SelectTrigger className="w-[160px] h-9 rounded-lg border-gray-200 shadow-sm focus:ring-2 focus:ring-gray-900/10 text-sm">
+                <CalendarIcon className="h-4 w-4 text-gray-500" />
+                <span className="truncate">
+                  {monthOptions.find((opt) => opt.value === selectedMonth)
+                    ?.label || "Seleccionar mes"}
+                </span>
+              </SelectTrigger>
+              <SelectContent className="rounded-lg">
+                {monthOptions.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+            onClick={refreshData}
+            disabled={loading || isRefreshing}
+            aria-label="Actualizar datos"
+          >
+            <RefreshCw
+              className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+            />
+          </Button>
         </div>
       </CardHeader>
 
       <CardContent
         className={cn(
-          "flex-1 pt-0 transition-opacity duration-200 relative z-10 h-full",
+          "flex-1 pt-0 transition-opacity duration-200 relative z-10 h-full px-6 pb-6",
           loading ? "opacity-0" : "opacity-100"
         )}
       >
         <AnimatePresence mode="wait">
           {comparativasData && !loading ? (
             <div className="relative w-full h-full">
-              {/* Chart View */}
+              {/* Minimalist Chart View */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key="chart-view"
@@ -370,8 +342,8 @@ export function ComparativasRatio({
                   transition={{ duration: 0.4 }}
                   className="w-full h-full"
                 >
-                  <div className="relative w-full h-[360px] flex items-center justify-center">
-                    {/* Recharts Gauge Chart Implementation */}
+                  <div className="relative w-full h-[380px] flex items-center justify-center">
+                    {/* Enhanced Recharts Gauge Implementation */}
                     <GaugeChart
                       percentage={procesadoPercentage}
                       total={comparativasData?.total ?? 0}
@@ -386,22 +358,22 @@ export function ComparativasRatio({
               <LoadingStateCard />
             </div>
           ) : comparativasData === null && !loading && !loadingData ? (
-            /* Empty state */
-            <div className="flex flex-col gap-4 items-center justify-center h-80 w-full">
-              <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100">
-                <CalendarIcon className="h-8 w-8 text-amber-500" />
+            /* Minimalist empty state */
+            <div className="flex flex-col gap-6 items-center justify-center h-80 w-full">
+              <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center border border-gray-200">
+                <CalendarIcon className="h-6 w-6 text-gray-400" />
               </div>
-              <div className="flex flex-col items-center space-y-3 text-center max-w-lg">
+              <div className="flex flex-col items-center space-y-3 text-center max-w-sm">
                 <div>
-                  <p className="text-lg font-semibold text-gray-900 mb-1">
-                    Sin datos para este período
+                  <p className="text-lg font-semibold text-gray-900 mb-2">
+                    Sin datos disponibles
                   </p>
                   <p className="text-sm text-gray-500">
                     No se encontraron comparativas para el mes seleccionado
                   </p>
                 </div>
-                <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg border">
-                  💡 Intenta seleccionar otro mes con actividad registrada
+                <div className="text-xs text-gray-400 bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
+                  Intenta seleccionar otro mes con actividad registrada
                 </div>
               </div>
             </div>

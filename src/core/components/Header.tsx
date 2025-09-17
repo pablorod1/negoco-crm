@@ -41,7 +41,7 @@ export default function Header({ className }: ImprovedHeaderProps) {
             />
           </div>
 
-          <div className="">
+          <div>
             <SmartBreadcrumb
               variant="minimal"
               showBackButton={true}

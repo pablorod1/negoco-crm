@@ -238,7 +238,7 @@ export function ClientTramitesTable({ client_id }: Props) {
   const table = useReactTable(tableConfig);
 
   return (
-    <Card className="border-gray-200 shadow-sm">
+    <Card>
       <CardHeader className="pb-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>

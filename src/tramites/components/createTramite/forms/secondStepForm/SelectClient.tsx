@@ -250,14 +250,16 @@ export default function SelectClient({
       ) : (
         <>
           {/* Header with Create Button */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h3 className="text-lg font-medium text-gray-900">
-                Clientes disponibles
-              </h3>
-              <p className="text-sm text-gray-600">
-                {clients.length} clientes encontrados
-              </p>
+          <div className="flex items-center gap-4 w-full">
+            {/* Search */}
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por nombre, email o documento..."
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+                className="pl-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+              />
             </div>
             <Button
               onClick={handleNewClient}
@@ -269,37 +271,21 @@ export default function SelectClient({
             </Button>
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar por nombre, email o documento..."
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-              className="pl-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
-            />
-          </div>
-
           {/* Selected Client Preview */}
           {selectedClient && (
-            <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
+            <div className="p-4 bg-primary-50  rounded-4xl">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <p className="font-medium text-gray-900">
-                      Cliente seleccionado
-                    </p>
-                  </div>
+                <div className="flex items-center gap-4">
                   {(() => {
                     const client = clients.find((c) => c.id === selectedClient);
                     return client ? (
-                      <div className="text-sm text-gray-600">
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
                         <p>
                           <strong>
                             {client.name} {client.last_name}
                           </strong>
                         </p>
+                        <p>•</p>
                         <p>
                           {client.email} • {client.document_number}
                         </p>
@@ -315,7 +301,7 @@ export default function SelectClient({
           {/* Client List */}
           <div className="space-y-3">
             {filteredClients.length > 0 ? (
-              <ScrollArea className="h-full w-full max-h-[350px] overflow-y-auto py-2">
+              <ScrollArea className="h-full w-full max-h-[320px] overflow-y-auto py-2">
                 <div className="grid grid-cols-2 gap-6 p-1">
                   {filteredClients.map((client) => (
                     <div
@@ -397,7 +383,7 @@ export default function SelectClient({
 
           {/* Cached Data Notice */}
           {(cachedClient || cachedSigner) && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-4xl">
               <div className="flex items-start gap-2">
                 <div className="w-4 h-4 bg-blue-500 rounded-full mt-0.5 flex-shrink-0">
                   <svg
@@ -412,19 +398,20 @@ export default function SelectClient({
                     />
                   </svg>
                 </div>
-                <div className="text-sm">
-                  <p className="font-medium text-blue-900">
-                    Datos guardados detectados
-                  </p>
-                  <p className="text-blue-700">
-                    Se han detectado datos de cliente previamente guardados. Se
-                    restaurarán automáticamente.
-                  </p>
+                <div className="flex items-center justify-between text-sm w-full">
+                  <div>
+                    <p className="font-medium text-blue-900">
+                      Datos guardados detectados
+                    </p>
+                    <p className="text-blue-700">
+                      Se han detectado datos de cliente previamente guardados.
+                      Se restaurarán automáticamente.
+                    </p>
+                  </div>
                   {cachedClient && (
                     <Button
+                      variant={"outline"}
                       onClick={handleSelectLastClient}
-                      variant="ghost"
-                      className="mt-2 h-auto p-0 text-blue-700 hover:text-blue-900"
                     >
                       Usar último cliente creado: {cachedClient.name}{" "}
                       {cachedClient.last_name}

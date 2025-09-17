@@ -121,6 +121,20 @@ export default function TramiteComercialSection({
   };
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-gray-700">Proveedor</h4>
+        {isEditable && !isEditMode ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsEditMode(!isEditMode)}
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          >
+            <UserPen className="h-4 w-4 mr-2" />
+            Cambiar
+          </Button>
+        ) : null}
+      </div>
       {!isEditMode ? (
         <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-200">
           <AvatarComponent userData={user as User} className=" h-12 w-12" />
@@ -156,17 +170,6 @@ export default function TramiteComercialSection({
               </Button>
             </div>
           </div>
-          {isEditable && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsEditMode(!isEditMode)}
-              className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-            >
-              <UserPen className="h-4 w-4 mr-2" />
-              Cambiar
-            </Button>
-          )}
         </div>
       ) : (
         <div className="space-y-4">

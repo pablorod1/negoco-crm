@@ -83,12 +83,14 @@ const TicketTabContent: React.FC<TicketTabContentProps> = ({
       </div>
 
       <div className="flex items-center justify-between mb-6">
-        <TicketViewToggle
-          currentView={activeView}
-          onViewChange={setActiveView}
-          incidenciasCount={incidencias.length}
-          notasCount={notas.length}
-        />
+        <div className="w-full">
+          <TicketViewToggle
+            currentView={activeView}
+            onViewChange={setActiveView}
+            incidenciasCount={incidencias.length}
+            notasCount={notas.length}
+          />
+        </div>
 
         {/* Checkbox para tickets internos - solo para vista de notas y usuarios no comerciales */}
         {activeView === "notas" && !isComercial && (

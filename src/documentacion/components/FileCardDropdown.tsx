@@ -7,6 +7,7 @@ import {
   CheckCircle,
   CloudAlert,
   DownloadCloud,
+  Eye,
   MoreVertical,
 } from "lucide-react";
 import { showCustomToast } from "@/core/components/CustomToast";
@@ -101,9 +102,11 @@ export const EditDocumentIcon = (props: IconProps) => {
 export default function FileCardDropdown({
   userData,
   file,
+  handlePreviewFile,
 }: {
   userData: User;
   file: DocumentacionFile;
+  handlePreviewFile: (file: DocumentacionFile) => void;
 }) {
   const isComercial = userData.role === "2";
 
@@ -160,6 +163,14 @@ export default function FileCardDropdown({
         className="w-48 p-1 border-gray-200 shadow-lg"
       >
         <div className="space-y-1">
+          <Button
+            variant="ghost"
+            onClick={() => handlePreviewFile(file)}
+            className="w-full justify-start h-9 px-3 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+          >
+            <Eye className="h-4 w-4 mr-3" />
+            Previsualizar
+          </Button>
           <Button
             variant="ghost"
             onClick={handleDownload}

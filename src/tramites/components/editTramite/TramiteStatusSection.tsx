@@ -37,7 +37,7 @@ export default function TramiteStatusSection({
 
   return (
     <div className="space-y-6 ">
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid 2xl:grid-cols-2 gap-6">
         {/* Current Status Display */}
         <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl border border-gray-200">
           <div className="text-sm text-gray-600 mb-2">Estado Actual</div>
@@ -110,7 +110,7 @@ export default function TramiteStatusSection({
           <h4 className="text-sm font-medium text-gray-700">
             Acciones Disponibles
           </h4>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="flex items-center gap-3">
             {(isEditable || isBaja) && (
               <UpdateTramiteStatusModal
                 tramite={tramite}

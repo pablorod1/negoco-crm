@@ -88,7 +88,7 @@ export default function AddTramiteDialog({
       setIsOpen(true);
       setActiveTab(comparativa ? 0 : savedClient ? 2 : 1);
       // Reset form state
-
+      setTramite(createEmptyTramiteDB(userData as User));
       setClient(
         savedClient
           ? savedClient
@@ -99,7 +99,7 @@ export default function AddTramiteDialog({
       setDocuments([]);
       setSelectedExistingFiles(null);
     },
-    [comparativa, savedClient]
+    [comparativa, savedClient, userData]
   );
 
   const handleClose = useCallback(async () => {

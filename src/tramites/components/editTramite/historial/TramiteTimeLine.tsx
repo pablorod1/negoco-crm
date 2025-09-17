@@ -232,7 +232,7 @@ export default function TramiteTimeLine({
   };
 
   return (
-    <Card className="border-gray-200 shadow-sm">
+    <Card>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-3 text-gray-800 text-lg font-semibold">
           <Clock className="h-5 w-5 text-gray-600" />

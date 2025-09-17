@@ -1,145 +1,172 @@
 ﻿import { ContractDB } from "@/tramites/types";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/core/components/ui/card";
+import { Badge } from "@/core/components/ui/badge";
+import { MapPin, Building2, ArrowRight, Gauge, FileText } from "lucide-react";
+import { motion } from "framer-motion";
+import { formatConsumption } from "@/core/utils/format";
 
 interface ContractPreviewProps {
   contract: ContractDB;
 }
 
 export default function ContractPreview({ contract }: ContractPreviewProps) {
+  // Check if any power values are set
+  const hasPowerData = [
+    contract.pot1,
+    contract.pot2,
+    contract.pot3,
+    contract.pot4,
+    contract.pot5,
+    contract.pot6,
+  ].some((pot) => pot > 0);
+
+  // Filter out empty power values for display
+  const activePowers = [
+    { period: "P1", value: contract.pot1 },
+    { period: "P2", value: contract.pot2 },
+    { period: "P3", value: contract.pot3 },
+    { period: "P4", value: contract.pot4 },
+    { period: "P5", value: contract.pot5 },
+    { period: "P6", value: contract.pot6 },
+  ].filter((pot) => pot.value > 0);
+
   return (
-    <div className="relative w-fit h-auto group">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        xmlnsXlink="http://www.w3.org/1999/xlink"
-        viewBox="0 0 224 288"
-        width="224"
-        height="288"
-        className="bg-transparent"
-      >
-        <defs>
-          <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
-            <feOffset dx="0" dy="3" result="offsetblur" />
-            <feFlood floodColor="#000000" floodOpacity="0.2" />
-            <feComposite in2="offsetblur" operator="in" />
-            <feMerge>
-              <feMergeNode />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="w-full"
+    >
+      <Card>
+        {/* Header with CUPS and company info */}
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-xl font-bold text-gray-900 mb-1">
+                {contract.CUPS}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="secondary"
+                  className="text-xs bg-gray-100 text-gray-700 hover:bg-gray-100"
+                >
+                  {contract.type}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="text-xs border-gray-200 text-gray-600"
+                >
+                  {contract.plan}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
 
-          <linearGradient
-            id="contract-gradient"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="100%"
-          >
-            <stop offset="0%" stopColor="#F9F9F9" />
-            <stop offset="100%" stopColor="#FFFFFF" />
-          </linearGradient>
-          <pattern
-            id="watermark-pattern"
-            patternUnits="userSpaceOnUse"
-            width="100"
-            height="100"
-            patternTransform="rotate(45)"
-          >
-            <text
-              x="50"
-              y="50"
-              fill="var(--primary-color-100)"
-              fontSize="12"
-              textAnchor="middle"
-            >
-              {contract.new_company}
-            </text>
-          </pattern>
-        </defs>
+        {/* Content with all contract details */}
+        <CardContent className="pt-6 space-y-6">
+          {/* Company transition info */}
+          <div className="flex items-center gap-6 w-full">
+            <div className="space-y-3 w-full">
+              <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-gray-600" />
+                Cambio de Comercializadora
+              </h3>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Compañía Actual</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    {contract.old_company || "No especificada"}
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <div className="flex-1 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Nueva Compañía</p>
+                  <p className="text-sm font-bold text-primary-700">
+                    {contract.new_company}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {/* Address information */}
+            <div className="space-y-3 w-full">
+              <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-gray-600" />
+                Dirección del Suministro
+              </h3>
+              <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+                <p className="text-sm font-medium text-gray-800">
+                  {contract.address}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {contract.city}, {contract.province} • CP:{" "}
+                  {contract.postal_code}
+                </p>
+              </div>
+            </div>
+          </div>
 
-        <rect
-          x="8"
-          y="8"
-          width="208"
-          height="272"
-          fill="url(#contract-gradient)"
-          filter="url(#dropShadow)"
-        />
+          {/* Consumption and Power data */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Consumption */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-gray-600" />
+                Consumo Anual
+              </h4>
+              <div className="p-3 bg-blue-50 rounded-lg text-center">
+                <p className="text-lg font-bold text-blue-700">
+                  {formatConsumption(contract.consumption)}
+                </p>
+                <p className="text-xs text-blue-600">kWh/año</p>
+              </div>
+            </div>
 
-        <rect
-          x="8"
-          y="8"
-          width="208"
-          height="272"
-          fill="url(#watermark-pattern)"
-        />
+            {/* Power data */}
+            {hasPowerData && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-800">
+                  Potencias Contratadas
+                </h4>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    {activePowers.map((power, index) => (
+                      <div key={index} className="text-center">
+                        <p className="text-green-600 font-medium">
+                          {power.period}
+                        </p>
+                        <p className="text-green-800 font-bold">
+                          {power.value} kW
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
-        <text
-          x="16"
-          y="28"
-          fontFamily="Inter, sans-serif"
-          fontSize="14"
-          fontWeight="bold"
-          fill="#333333"
-        >
-          {contract.CUPS}
-        </text>
-
-        <text
-          x="16"
-          y="42"
-          fontFamily="Inter, sans-serif"
-          fontSize="10"
-          fill="#666666"
-        >
-          {contract.type}
-        </text>
-
-        <text
-          x="16"
-          y="56"
-          fontFamily="Inter, sans-serif"
-          fontSize="10"
-          fill="#666666"
-        >
-          {contract.plan}
-        </text>
-
-        <text
-          x="16"
-          y="72"
-          fontFamily="Inter, sans-serif"
-          fontSize="12"
-          fill="#666666"
-        >
-          {contract.address}
-        </text>
-        <text
-          x="16"
-          y="86"
-          fontFamily="Inter, sans-serif"
-          fontSize="12"
-          fill="#666666"
-        >
-          {contract.city}, {contract.province} {contract.postal_code}
-        </text>
-
-        <rect x="16" y="96" width="172" height="12" fill="#F0F0F0" rx="3" />
-        <rect x="16" y="112" width="180" height="12" fill="#F0F0F0" rx="3" />
-
-        <rect x="16" y="128" width="192" height="80" fill="#F0F0F0" rx="3" />
-
-        <line
-          x1="16"
-          y1="224"
-          x2="208"
-          y2="224"
-          stroke="#CFCFCF"
-          strokeWidth="1"
-        />
-
-        <rect x="16" y="240" width="88" height="32" fill="#F0F0F0" rx="3" />
-        <rect x="120" y="240" width="88" height="32" fill="#F0F0F0" rx="3" />
-      </svg>
-    </div>
+          {/* Description if available */}
+          {contract.description && contract.description.trim() && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-gray-600" />
+                Descripción
+              </h4>
+              <div className="p-3 bg-yellow-50 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {contract.description}
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

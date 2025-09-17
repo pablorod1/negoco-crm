@@ -7,7 +7,7 @@ import { useDashboardData } from "@/dashboard/hooks/useDashboardData";
 import { useTicketsData } from "@/dashboard/hooks/useTicketsData";
 import { getUserRolePermissions } from "@/core/utils/userRoles";
 import { DashboardView } from "./DashboardView";
-import { ViewToggle, DashboardView as ViewType } from "./ViewToggle";
+import { DashboardViewToggle, DashboardView as ViewType } from "./ViewToggle";
 import Hero from "./Hero";
 
 // Re-export types for backward compatibility
@@ -49,7 +49,22 @@ export default function DashboardBentoGrid() {
   if (!userData) {
     return (
       <section className="flex flex-col gap-4 px-8 py-8">
-        <Skeleton className="w-full h-72 rounded-xl  border border-gray-200" />
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="w-80 h-8 rounded-full border border-gray-200" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-20 h-8 rounded-full border border-gray-200" />
+              <Skeleton className="w-8 h-8 rounded-full border border-gray-200" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+          </div>
+        </>
       </section>
     );
   }
@@ -57,13 +72,28 @@ export default function DashboardBentoGrid() {
   return (
     <section className="flex flex-col gap-6 px-8 py-8">
       {loading ? (
-        <Skeleton className="w-full h-72 rounded-3xl border border-gray-200" />
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="w-80 h-8 rounded-full border border-gray-200" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-20 h-8 rounded-full border border-gray-200" />
+              <Skeleton className="w-8 h-8 rounded-full border border-gray-200" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+            <Skeleton className="w-full h-44 rounded-4xl border border-gray-200" />
+          </div>
+        </>
       ) : (
         <Hero {...commonProps} />
       )}
 
       {/* View Toggle */}
-      <ViewToggle
+      <DashboardViewToggle
         getPlan={getPlan}
         currentView={currentView}
         onViewChange={setCurrentView}

@@ -57,7 +57,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!success) {
         throw new Error(error || "Error fetching user data");
       }
-      console.log("Fetched user data:", data);
       setUserData(data || null);
     } catch (error) {
       console.error("Error fetching user data:", error);

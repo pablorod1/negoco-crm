@@ -225,15 +225,6 @@ export default function MainView({
             </CardTitle>
           </CardHeader>
           <CardContent className=" relative overflow-hidden">
-            {/* {supplier ? (
-              <Image
-                src={`/companies/${supplier.logo}`}
-                alt={supplier.name}
-                width={512}
-                height={512}
-                className="absolute inset-0 opacity-5 object-cover w-full h-full"
-              />
-            ) : null} */}
             <div className="grid grid-cols-2 gap-6 space-x-12 gap-x-16">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Servicio</p>
@@ -257,29 +248,35 @@ export default function MainView({
                     ) : null}
                   </div>
                 </div>
-              ) : null}
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Creado por</p>
-                <div className="flex items-center gap-2">
-                  <AvatarComponent
-                    userData={comparativa.user as User}
-                    className="!rounded-full w-6 h-6"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.user.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {comparativa.user.email}
-                    </p>
+              ) : (
+                <div></div>
+              )}
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Fecha de Creación
+                  </p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formatDateTime(comparativa.creation_date)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Creado por</p>
+                  <div className="flex items-center gap-2">
+                    <AvatarComponent
+                      userData={comparativa.user as User}
+                      className="!rounded-full w-6 h-6"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.user.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {comparativa.user.email}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Fecha de Creación</p>
-                <p className="text-sm font-medium text-gray-900">
-                  {formatDateTime(comparativa.creation_date)}
-                </p>
               </div>
             </div>
 

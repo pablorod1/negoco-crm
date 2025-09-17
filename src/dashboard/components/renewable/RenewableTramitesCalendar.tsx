@@ -323,12 +323,19 @@ export default function RenewableTramitesCalendar({
                 <PopoverTrigger asChild>
                   <button
                     onClick={() => handleDateClick(day)}
-                    className={`
-                      relative p-2 h-12 text-sm font-medium rounded-lg transition-all duration-200
-                      ${!day.isCurrentMonth ? "text-gray-300" : "text-gray-900"}
-                      ${day.tramites.length > 0 ? "cursor-pointer hover:bg-gray-50" : "cursor-default"}
-                      ${isSameDay(day.date, new Date()) ? "bg-blue-50 text-blue-900 font-semibold" : ""}
-                    `}
+                    className={cn(
+                      "relative p-2 h-12 text-sm font-medium rounded-lg transition-all duration-200",
+                      !day.isCurrentMonth ? "text-gray-300" : "text-gray-900",
+                      day.tramites.length > 0
+                        ? "cursor-pointer hover:bg-blue-100"
+                        : "cursor-default",
+                      isSameDay(day.date, new Date())
+                        ? "bg-blue-200 text-blue-900 font-semibold"
+                        : "",
+                      isSameDay(day.date, new Date()) && day.tramites.length > 0
+                        ? "animate-pulse"
+                        : ""
+                    )}
                   >
                     {/* Date Number */}
                     <span className="relative z-10">

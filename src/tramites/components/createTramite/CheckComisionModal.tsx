@@ -76,10 +76,10 @@ export default function CheckComisionModal({
             <tbody>
               <tr key={tramite.id} className="bg-white">
                 <td className="px-3 py-2">
-                  {formatComission(tramite.comision)}
+                  {formatComission(tramite.comision ?? 0)}
                 </td>
                 <td className="px-3 py-2">
-                  {formatComission(tramite.comision_sales_person)}
+                  {formatComission(tramite.comision_sales_person ?? 0)}
                 </td>
               </tr>
             </tbody>

@@ -24,7 +24,7 @@ export default function FinancialCard({
   isEditable,
 }: FinancialCardProps) {
   return (
-    <Card className="border-gray-200 shadow-sm">
+    <Card>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">

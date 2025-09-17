@@ -35,7 +35,7 @@ export default function CreateUserModal({
       <DialogTrigger asChild>
         <Button
           size="sm"
-          className="bg-gray-900 hover:bg-gray-800 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-primary-900 hover:bg-primary-800 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={disabled}
         >
           <Plus size={16} />

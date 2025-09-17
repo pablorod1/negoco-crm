@@ -32,7 +32,7 @@ export default function TramiteClientSection({
     client.type === "Empresa" || client.type === "Comunidad de Propietarios";
 
   return (
-    <Card className="xl:col-span-2 border-gray-200 shadow-sm">
+    <Card className="xl:col-span-2 ">
       <CardHeader className="pb-4">
         <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
           <div className="h-2 w-2 bg-gray-600 rounded-full"></div>

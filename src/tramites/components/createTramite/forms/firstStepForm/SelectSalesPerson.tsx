@@ -152,7 +152,7 @@ export default function SelectSalesPerson({
             {/* Selection Grid */}
             <div className="space-y-3">
               {selectedComercial && (
-                <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
+                <div className="p-4 bg-primary-50 rounded-4xl">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">

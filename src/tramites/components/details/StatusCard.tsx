@@ -28,7 +28,7 @@ export default function StatusCard({
   isActive,
 }: StatusCardProps) {
   return (
-    <Card className="border-gray-200 shadow-sm">
+    <Card>
       <CardHeader className="pb-4">
         <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
           <div className="h-2 w-2 bg-gray-600 rounded-full"></div>

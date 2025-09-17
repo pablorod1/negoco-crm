@@ -26,7 +26,7 @@ export default function ComercialCard({
   const isComercial = isComercialUser(userData.role);
 
   return (
-    <Card className="border-gray-200 shadow-sm lg:col-span-1 xl:col-span-1">
+    <Card className=" lg:col-span-1 xl:col-span-1">
       <CardHeader className="pb-4">
         <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
           <div className="h-2 w-2 bg-gray-600 rounded-full"></div>

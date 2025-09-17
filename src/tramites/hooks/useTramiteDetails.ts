@@ -62,7 +62,6 @@ export function useTramiteDetails({ userData }: UseTramiteDetailsParams) {
       }
 
       const { success, data } = await rs.json();
-      console.log("Datos del trámite recibidos:", data);
       if (success && data) {
         setFormData({
           ...data,

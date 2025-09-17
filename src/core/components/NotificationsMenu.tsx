@@ -173,7 +173,7 @@ export default function NotificationsMenu() {
           {notifications.length > 0 && (
             <Badge
               variant="danger"
-              className="absolute -top-1 -right-0 rounded-full w-5 h-5 p-0 flex items-center justify-center text-xs font-medium"
+              className="absolute top-0 right-0 rounded-full w-4 h-4 p-0 flex items-center justify-center text-[10px] font-medium"
             >
               {notifications.length > 9 ? "9+" : notifications.length}
             </Badge>
@@ -187,13 +187,13 @@ export default function NotificationsMenu() {
         <SheetHeader className="pb-6">
           <div className="flex justify-between items-center">
             {/* NIVEL 1: Título principal - gray-900, font-bold */}
-            <SheetTitle className="text-2xl font-bold text-gray-900">
+            <SheetTitle className="text-2xl font-semibold text-primary-900">
               Notificaciones
             </SheetTitle>
             {/* NIVEL 2: Acción secundaria cuando hay contenido */}
             {notifications.length > 0 && (
               <Button
-                variant="ghost"
+                variant="dangerGhost"
                 size="sm"
                 onClick={(e) => {
                   e.preventDefault();
@@ -203,14 +203,13 @@ export default function NotificationsMenu() {
                   );
                 }}
                 disabled={isDeleting}
-                className="text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100"
               >
                 {isDeleting ? "Eliminando..." : "Limpiar todo"}
               </Button>
             )}
           </div>
           {notifications.length > 0 && (
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-500">
               {notifications.length}{" "}
               {notifications.length === 1 ? "notificación" : "notificaciones"}
             </p>
@@ -231,7 +230,7 @@ export default function NotificationsMenu() {
                   >
                     <div className="flex items-start gap-3">
                       {/* NIVEL 4: Priority indicator - minimal visual weight */}
-                      <div className="flex-shrink-0 mt-1">
+                      <div className="flex-shrink-0 mt-1.5">
                         <div
                           className={`w-2 h-2 rounded-full ${
                             notification.priority === 1
@@ -245,7 +244,7 @@ export default function NotificationsMenu() {
 
                       <div className="flex-1 min-w-0">
                         {/* NIVEL 2: Notification title - semibold, gray-800 */}
-                        <h3 className="text-base font-semibold text-gray-800 leading-tight">
+                        <h3 className="text-base font-semibold text-primary-800 leading-tight">
                           {notification.title}
                         </h3>
 
@@ -277,9 +276,8 @@ export default function NotificationsMenu() {
                             handleDeleteNotification(e, notification.id)
                           }
                           size="icon"
-                          variant="ghost"
+                          variant="dangerGhost"
                           disabled={isDeleting}
-                          className="w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                         >
                           <Trash size={12} />
                         </Button>

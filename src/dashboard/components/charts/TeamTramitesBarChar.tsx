@@ -394,7 +394,7 @@ export function TeamTramitesBarChart({
                 >
                   <SelectValue placeholder="Vista General" />
                 </SelectTrigger>
-                <SelectContent className="">
+                <SelectContent>
                   <SelectItem value="all" key="all">
                     Vista General
                   </SelectItem>

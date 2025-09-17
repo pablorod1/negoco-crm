@@ -437,7 +437,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
 
   if (loading) {
     return (
-      <Card className="border-gray-200 shadow-sm">
+      <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="flex items-center gap-3 text-gray-500">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -450,7 +450,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
 
   if (error) {
     return (
-      <Card className="border-gray-200 shadow-sm">
+      <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="flex items-center gap-3 text-red-500">
             <AlertCircle className="h-5 w-5" />
@@ -468,7 +468,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
 
   if (groupedChanges.length === 0) {
     return (
-      <Card className="border-gray-200 shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-gray-800 text-lg font-semibold">
             <History className="h-5 w-5 text-gray-600" />
@@ -486,7 +486,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
   }
 
   return (
-    <Card className="border-gray-200 shadow-sm">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-3 text-gray-800 text-lg font-semibold">
           <History className="h-5 w-5 text-gray-600" />

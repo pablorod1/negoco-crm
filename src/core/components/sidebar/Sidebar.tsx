@@ -255,7 +255,7 @@ const SidebarSectionComponent: React.FC<{
   if (visibleItems.length === 0) return null;
 
   return (
-    <SidebarGroup className="">
+    <SidebarGroup>
       {!isCollapsed && (
         <div className="mb-2">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">

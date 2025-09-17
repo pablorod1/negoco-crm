@@ -6,6 +6,9 @@ import { downloadFile } from "@/core/firebase/data/downloadFile";
 import { CloudAlert, Download, Eye, FileIcon } from "lucide-react";
 import Image from "next/image";
 import DeleteTramiteFileConfirmationModal from "./DeleteTramiteFileConfirmationModal";
+import FilePreview from "@/core/components/FilePreview/FilePreview";
+import { FileData } from "@/types/files";
+import { useState } from "react";
 
 interface Props {
   files: TramiteFile[];
@@ -22,6 +25,9 @@ export default function TramiteFilesList({
   onDeleted,
   isEditable,
 }: Props) {
+  const [previewFile, setPreviewFile] = useState<FileData | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
   const handleDownloadFile = async (filename: string, download_url: string) => {
     try {
       const { success, errors } = await downloadFile(download_url, filename);
@@ -40,6 +46,27 @@ export default function TramiteFilesList({
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const handlePreviewFile = (file: TramiteFile) => {
+    // Convert TramiteFile to FileData format
+    const fileData: FileData = {
+      id: file.id,
+      filename: file.filename,
+      extension: file.extension, // No need to normalize here, detectFileType will handle it
+      size: file.size,
+      download_url: file.download_url,
+      preview_url: file.preview_url || undefined,
+      upload_date: file.upload_date,
+    };
+
+    setPreviewFile(fileData);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewFile(null);
   };
 
   return (
@@ -82,7 +109,7 @@ export default function TramiteFilesList({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(file.download_url, "_blank")}
+                  onClick={() => handlePreviewFile(file)}
                   className="text-gray-700 border-gray-300 hover:bg-gray-100"
                 >
                   <Eye className="h-4 w-4 mr-2" />
@@ -112,6 +139,15 @@ export default function TramiteFilesList({
           </div>
         </div>
       ))}
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <FilePreview
+          file={previewFile}
+          onClose={handleClosePreview}
+          isOpen={isPreviewOpen}
+        />
+      )}
     </div>
   );
 }
