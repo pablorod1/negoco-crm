@@ -9,6 +9,7 @@ import { ClientsTable } from "./ClientsTable";
 import { ClientsGrid } from "./ClientsGrid";
 import { ClientEmptyState } from "./ClientEmptyState";
 import { ClientDB } from "@/tramites/types";
+import { User } from "@/core/types";
 
 export interface ClientListItem extends ClientDB {
   tramites_count: number;
@@ -60,7 +61,7 @@ export default function ClientsList() {
 
   return (
     <div className="space-y-6">
-      <ClientsHeader totalCount={totalCount} />
+      <ClientsHeader totalCount={totalCount} userData={userData as User} />
 
       <ClientsFilters
         localSearchTerm={localSearchTerm}

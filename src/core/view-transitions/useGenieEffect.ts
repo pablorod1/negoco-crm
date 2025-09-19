@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useTransitionRouter } from "next-view-transitions";
-import { elegantSlideEffect } from "./view-transitions";
+import { pushSlideEffect } from "./view-transitions";
 
 // Interface para opciones del slide effect
 interface SlideEffectOptions {
@@ -48,7 +48,7 @@ export function useSlideEffect(): UseSlideEffectReturn {
     }
 
     // Ejecutar efecto slide
-    elegantSlideEffect();
+    pushSlideEffect();
 
     if (onAfterTransition) {
       // Ejecutar callback después de que termine la animación

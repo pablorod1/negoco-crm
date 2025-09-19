@@ -101,7 +101,7 @@ export async function GET(
         logo,
         active
       FROM comercializadoras 
-      WHERE id = ?
+      WHERE id = ? OR name = ?
       LIMIT 1
     `;
 
@@ -109,7 +109,7 @@ export async function GET(
     const queryStartTime = Date.now();
     const response = await tursoClient.execute({
       sql: query,
-      args: [id],
+      args: [id, id],
     });
     const queryTime = Date.now() - queryStartTime;
 

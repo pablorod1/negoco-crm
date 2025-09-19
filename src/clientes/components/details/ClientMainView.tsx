@@ -27,6 +27,7 @@ import {
 import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
 import { showCustomToast } from "@/core/components/CustomToast";
 import ClientMap from "./ClientMap";
+import EditDrawer from "@/tramites/components/editTramite/client/EditTramiteDrawer";
 
 // Helper function to format phone number for WhatsApp
 const formatWhatsAppNumber = (phone: string | null | undefined): string => {
@@ -44,7 +45,11 @@ interface ClientMainViewProps {
   onUpdate: () => void;
 }
 
-export default function ClientMainView({ client }: ClientMainViewProps) {
+export default function ClientMainView({
+  client,
+  onUpdate,
+  userData,
+}: ClientMainViewProps) {
   // Contact handling functions
   const handleWhatsAppClick = () => {
     if (!client?.phone) {
@@ -152,10 +157,19 @@ export default function ClientMainView({ client }: ClientMainViewProps) {
         {/* Card 2: Información de Contacto */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
-              <UserIcon className="h-4 w-4" />
-              Información del Cliente - {client.name} {client.last_name}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
+                <UserIcon className="h-4 w-4" />
+                Información del Cliente - {client.name} {client.last_name}
+              </CardTitle>
+              {client.tramites_count === 0 ? (
+                <EditDrawer
+                  userData={userData}
+                  client={client}
+                  onUpdate={onUpdate}
+                />
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4 grid grid-cols-2">
             {/* Email */}
@@ -246,8 +260,12 @@ export default function ClientMainView({ client }: ClientMainViewProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-full min-h-[320px] w-full">
-              <ClientMap coordinates={client.coordinates as [number, number]} />
+            <div className="h-full min-h-[320px] w-full rounded-4xl overflow-hidden">
+              <ClientMap
+                width="100%"
+                height={"520px"}
+                coordinates={client.coordinates as [number, number]}
+              />
             </div>
           </CardContent>
         </Card>

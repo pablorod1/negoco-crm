@@ -286,7 +286,7 @@ export function SidebarComponent() {
   const menuSections = useMemo(() => getMenuSections(), []);
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="header-static">
       <SidebarHeader className={cn("", open ? "p-4" : "px-0 items-center")}>
         <NavUser />
         <ShortcutsMenu open={open} />

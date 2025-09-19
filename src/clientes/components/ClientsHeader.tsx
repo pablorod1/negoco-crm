@@ -2,13 +2,17 @@
 import { Button } from "@/core/components/ui/button";
 import { UserPlus } from "lucide-react";
 import CreateClientDialog from "./CreateClientDialog";
+import { useClients } from "../hooks/use-clients";
+import { User } from "@/core/types";
 
 interface ClientsHeaderProps {
   totalCount: number;
+  userData: User;
 }
 
-export function ClientsHeader({ totalCount }: ClientsHeaderProps) {
+export function ClientsHeader({ totalCount, userData }: ClientsHeaderProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { fetchClients } = useClients(userData.id, userData.role);
 
   return (
     <>
@@ -36,6 +40,7 @@ export function ClientsHeader({ totalCount }: ClientsHeaderProps) {
       <CreateClientDialog
         isOpen={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
+        onClientCreated={fetchClients}
       />
     </>
   );

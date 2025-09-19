@@ -14,6 +14,8 @@ import EditSignerForm from "./forms/EditSignerForm";
 import ContractForm from "../../createTramite/forms/ContractForm";
 import EditContractForm from "../contract/EditContractForm";
 import { ClientDB, ContractDB, SignerDB } from "@/tramites/types";
+import { User } from "@/core/types";
+import { formatUUID } from "@/core/utils/format";
 
 interface Props {
   client?: ClientDB;
@@ -24,6 +26,7 @@ interface Props {
   onContract?: (contract: ContractDB) => void;
   tramite_id?: string;
   loading?: boolean;
+  userData?: User;
 }
 
 export default function EditDrawer({
@@ -35,6 +38,7 @@ export default function EditDrawer({
   onContract,
   tramite_id,
   loading,
+  userData,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -67,13 +71,13 @@ export default function EditDrawer({
         <SheetHeader className="mb-8">
           <SheetTitle className="text-xl font-semibold text-primary-800">
             {client
-              ? "Datos del cliente " + client.id
+              ? "Datos del cliente " + formatUUID(client.id)
               : signer
-                ? "Datos del Firmante " + signer.id
+                ? "Datos del Firmante " + formatUUID(signer.id)
                 : newContract
                   ? "Nuevo Contrato"
                   : contract
-                    ? "Datos del contrato " + contract.id
+                    ? "Datos del contrato " + formatUUID(contract.id)
                     : null}
           </SheetTitle>
         </SheetHeader>
@@ -84,6 +88,7 @@ export default function EditDrawer({
             onClientUpdated={handleUpdate}
             tramite_id={tramite_id as string}
             signer={signer}
+            userData={userData as User}
           />
         ) : signer ? (
           <EditSignerForm
