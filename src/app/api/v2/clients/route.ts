@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { Row } from "@libsql/client";
-import { v4 as uuidv4 } from "uuid";
 import { addClient } from "@/tramites/utils/addTramiteHelpers";
 import { ClientDB } from "@/tramites/types";
 
@@ -233,7 +232,7 @@ export async function PUT(
       (client.type === "Empresa" || client.type === "Comunidad de Propietarios")
     ) {
       const signerDB = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         client_id: clientId,
         name: signer.name,
         last_name: signer.last_name,
