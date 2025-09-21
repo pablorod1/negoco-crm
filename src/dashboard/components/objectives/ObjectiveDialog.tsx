@@ -83,7 +83,7 @@ export default function ObjectiveDialog({
 
       try {
         const res = await fetch(`/api/v2/objectives/${editingObjetivo.id}`, {
-          method: "POST",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
@@ -178,7 +178,7 @@ export default function ObjectiveDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" className="bg-primary-600 hover:bg-primary-700">
+        <Button size="icon" variant={"ghost"}>
           <Plus className="h-4 w-4 " />
         </Button>
       </DialogTrigger>

@@ -36,8 +36,10 @@ export default function ComercializadorasList() {
   if (loading) return <FullScreenLoaderComponent />;
 
   return (
-    <div className="px-8 py-12 space-y-6">
+    <div className="px-8 py-8 space-y-8">
       <ComercializadorasHeader />
+
+      <ComercializadorasStats comercializadoras={comercializadoras} />
 
       <ComercializadorasFilters
         searchTerm={searchTerm}
@@ -53,8 +55,6 @@ export default function ComercializadorasList() {
         userData={userData as User}
         refetch={refetch}
       />
-
-      <ComercializadorasStats comercializadoras={comercializadoras} />
     </div>
   );
 }

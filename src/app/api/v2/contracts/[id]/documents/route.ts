@@ -3,13 +3,14 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
 import { TramiteFile } from "@/tramites/types/tramite.types";
+import { recordDocumentChange } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT DOCUMENTS ENDPOINT
- * 
+ *
  * Original: /api/tramites/add/files (POST)
  * Refactored: /new_api/contracts/[id]/documents (POST for upload, GET for list, DELETE for remove)
- * 
+ *
  * This endpoint manages contract document uploads with enhanced performance,
  * type safety, and comprehensive error handling while maintaining 100% functional compatibility.
  */
@@ -56,8 +57,15 @@ const ContractDocumentFileSchema = z.object({
  * Zod schema for bulk file upload request
  */
 const BulkFileUploadSchema = z.object({
-  files: z.array(ContractDocumentFileSchema).min(1, "At least one file is required"),
-  userData: z.record(z.unknown()).optional(),
+  files: z
+    .array(ContractDocumentFileSchema)
+    .min(1, "At least one file is required"),
+  userData: z
+    .object({
+      id: z.string().min(1, "User ID is required"), // Extract user ID from userData
+    })
+    .and(z.record(z.string(), z.unknown()))
+    .optional(),
 });
 
 /**
@@ -66,6 +74,7 @@ const BulkFileUploadSchema = z.object({
 const FileDeleteSchema = z.object({
   file_name: z.string().min(1, "File name is required"),
   organization_id: z.string().min(1, "Organization ID is required"),
+  user_id: z.string().min(1, "User ID is required"), // Add for tracking
 });
 
 // ==================== DATABASE OPERATIONS ====================
@@ -79,7 +88,7 @@ async function bulkInsertTramiteFiles(
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string; metrics?: QueryMetrics }> {
   const startTime = performance.now();
-  
+
   try {
     // Use exact same query structure as original addTramiteFiles
     const query = `
@@ -104,14 +113,14 @@ async function bulkInsertTramiteFiles(
     });
 
     const queryTime = performance.now() - startTime;
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       metrics: {
         queryTime,
         filesProcessed: files.length,
         bulkInsertOptimized: true,
-      }
+      },
     };
   } catch (error) {
     console.error("Error bulk inserting tramite files:", error);
@@ -126,7 +135,7 @@ async function bulkInsertTramiteFiles(
 
 /**
  * POST /new_api/contracts/[id]/documents
- * 
+ *
  * Uploads multiple document files to a contract with enhanced performance and type safety.
  * Maintains 100% compatibility with the original /api/tramites/add/files endpoint.
  */
@@ -135,12 +144,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ContractDocumentsResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // ==================== INPUT VALIDATION ====================
-    
-    // Note: Original endpoint doesn't validate contract ID from params
-    await params; // Consume params but don't use contractId to match original behavior
+
+    const { id: contractId } = await params; // Extract contract ID for tracking
 
     // Parse form data exactly like the original endpoint
     let formData: FormData;
@@ -160,7 +168,7 @@ export async function POST(
     // Parse JSON data first for validation
     let tramiteFiles: ContractDocumentFile[];
     let userData: UserData | undefined;
-    
+
     try {
       userData = JSON.parse(userDataString);
       tramiteFiles = JSON.parse(filesString);
@@ -189,12 +197,15 @@ export async function POST(
     });
 
     if (!validationResult.success) {
-      console.warn("[VALIDATION] Enhanced validation failed:", validationResult.error);
+      console.warn(
+        "[VALIDATION] Enhanced validation failed:",
+        validationResult.error
+      );
       // Continue with original behavior for backward compatibility
     }
 
     // ==================== DATABASE OPERATIONS ====================
-    
+
     const tursoClient = getTursoClient(request);
 
     if (!tursoClient) {
@@ -210,7 +221,10 @@ export async function POST(
     // Validate that files exist - same logic as original
     if (tramiteFiles.length > 0) {
       // Perform the bulk insert with enhanced error handling
-      const insertResult = await bulkInsertTramiteFiles(tramiteFiles, tursoClient);
+      const insertResult = await bulkInsertTramiteFiles(
+        tramiteFiles,
+        tursoClient
+      );
 
       if (!insertResult.success) {
         return NextResponse.json(
@@ -224,21 +238,49 @@ export async function POST(
 
       // Log performance metrics for monitoring
       if (insertResult.metrics) {
-        console.log(`[PERFORMANCE] Bulk inserted ${insertResult.metrics.filesProcessed} files in ${insertResult.metrics.queryTime.toFixed(2)}ms`);
+        console.log(
+          `[PERFORMANCE] Bulk inserted ${insertResult.metrics.filesProcessed} files in ${insertResult.metrics.queryTime.toFixed(2)}ms`
+        );
+      }
+
+      // ==================== TRACK DOCUMENT UPLOADS ====================
+
+      // Track each file upload
+      if (
+        userData &&
+        typeof userData === "object" &&
+        "id" in userData &&
+        typeof userData.id === "string"
+      ) {
+        const userId = userData.id;
+
+        for (const file of tramiteFiles) {
+          await recordDocumentChange(
+            tursoClient,
+            contractId,
+            userId,
+            "upload",
+            file.filename,
+            file.extension
+          );
+        }
       }
     }
 
     const totalTime = performance.now() - startTime;
-    console.log(`[PERFORMANCE] Document upload completed in ${totalTime.toFixed(2)}ms`);
+    console.log(
+      `[PERFORMANCE] Document upload completed in ${totalTime.toFixed(2)}ms`
+    );
 
     // Return exact same response as original endpoint
     return NextResponse.json({ success: true });
-
   } catch (error) {
     const totalTime = performance.now() - startTime;
     console.error("Error al subir archivos:", error);
-    console.log(`[PERFORMANCE] Document upload failed after ${totalTime.toFixed(2)}ms`);
-    
+    console.log(
+      `[PERFORMANCE] Document upload failed after ${totalTime.toFixed(2)}ms`
+    );
+
     return NextResponse.json(
       {
         success: false,
@@ -251,17 +293,22 @@ export async function POST(
 
 /**
  * GET /new_api/contracts/[id]/documents
- * 
+ *
  * Retrieves all documents for a specific contract.
  * This is a new feature that extends the original functionality.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ContractDocumentsResponse | { success: boolean; documents: ContractDocumentFile[] }>> {
+): Promise<
+  NextResponse<
+    | ContractDocumentsResponse
+    | { success: boolean; documents: ContractDocumentFile[] }
+  >
+> {
   try {
     const { id: contractId } = await params;
-    
+
     if (!contractId) {
       return NextResponse.json(
         { success: false, error: "Contract ID is required" },
@@ -282,7 +329,7 @@ export async function GET(
       args: [contractId],
     });
 
-    const documents = result.rows.map(row => ({
+    const documents = result.rows.map((row) => ({
       id: row.id as string,
       tramite_id: row.tramite_id as string,
       filename: row.filename as string,
@@ -294,7 +341,6 @@ export async function GET(
     }));
 
     return NextResponse.json({ success: true, documents });
-
   } catch (error) {
     console.error("Error retrieving contract documents:", error);
     return NextResponse.json(
@@ -306,7 +352,7 @@ export async function GET(
 
 /**
  * DELETE /new_api/contracts/[id]/documents
- * 
+ *
  * Deletes a specific document by filename and organization.
  * Maintains 100% compatibility with the original /api/tramites/delete/[id]/file endpoint.
  */
@@ -317,7 +363,7 @@ export async function DELETE(
   try {
     const { id: tramite_id } = await params;
     const requestBody = await request.json();
-    
+
     // Validate request body with Zod for type safety
     const validation = FileDeleteSchema.safeParse(requestBody);
     if (!validation.success) {
@@ -371,6 +417,19 @@ export async function DELETE(
       );
     }
 
+    // ==================== TRACK DOCUMENT DELETION ====================
+
+    // Track file deletion
+    if (validation.data.user_id) {
+      await recordDocumentChange(
+        tursoClient,
+        tramite_id,
+        validation.data.user_id,
+        "delete",
+        file_name
+      );
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -395,14 +454,23 @@ export async function DELETE(
  */
 export async function PUT(): Promise<NextResponse<ContractDocumentsResponse>> {
   return NextResponse.json(
-    { success: false, error: "PUT method not allowed. Use POST to upload documents or PATCH to update." },
+    {
+      success: false,
+      error:
+        "PUT method not allowed. Use POST to upload documents or PATCH to update.",
+    },
     { status: 405 }
   );
 }
 
-export async function PATCH(): Promise<NextResponse<ContractDocumentsResponse>> {
+export async function PATCH(): Promise<
+  NextResponse<ContractDocumentsResponse>
+> {
   return NextResponse.json(
-    { success: false, error: "PATCH method not implemented. Use POST to upload new documents." },
+    {
+      success: false,
+      error: "PATCH method not implemented. Use POST to upload new documents.",
+    },
     { status: 405 }
   );
 }

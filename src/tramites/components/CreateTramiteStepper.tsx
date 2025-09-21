@@ -239,4 +239,3 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
     </div>
   );
 };
-

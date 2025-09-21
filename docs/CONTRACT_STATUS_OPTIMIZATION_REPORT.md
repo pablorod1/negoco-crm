@@ -121,7 +121,7 @@ catch (error) {
   const totalRequestTime = performance.now() - startTime;
   
   if (error instanceof z.ZodError) {
-    console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, error.errors);
+    console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, error.issues);
     return NextResponse.json({ success: false, error: "Invalid request parameters" }, { status: 400 });
   }
   

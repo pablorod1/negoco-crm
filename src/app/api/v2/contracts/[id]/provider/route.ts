@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { recordFieldChanges } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * PROVIDER UPDATE ENDPOINT
@@ -27,6 +28,7 @@ interface ProviderUpdateResponse {
  */
 const ProviderUpdateSchema = z.object({
   provider: z.string().optional().default(""),
+  user_id: z.string().optional(), // For change tracking
 });
 
 /**
@@ -100,7 +102,7 @@ export async function PATCH(
       );
     }
 
-    const { provider } = bodyValidation.data;
+    const { provider, user_id } = bodyValidation.data;
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
 
@@ -116,6 +118,25 @@ export async function PATCH(
         },
         { status: 500 }
       );
+    }
+
+    // ==================== GET CURRENT PROVIDER VALUE ====================
+
+    let currentProvider: string | null = null;
+    if (user_id) {
+      try {
+        const currentResult = await tursoClient.execute({
+          sql: "SELECT provider FROM tramites WHERE id = ?",
+          args: [contractId],
+        });
+
+        if (currentResult.rows.length > 0) {
+          currentProvider = currentResult.rows[0].provider as string | null;
+        }
+      } catch (error) {
+        console.error("Error fetching current provider:", error);
+        // Continue without tracking if we can't get current value
+      }
     }
 
     // ==================== DATABASE UPDATE OPERATION ====================
@@ -152,6 +173,20 @@ export async function PATCH(
         },
         { status: 404 }
       );
+    }
+
+    // ==================== TRACK PROVIDER CHANGE ====================
+
+    // Track provider change if user_id is provided
+    if (user_id && currentProvider !== providerValue) {
+      await recordFieldChanges(tursoClient, contractId, user_id, [
+        {
+          field_name: "provider",
+          old_value: currentProvider,
+          new_value: providerValue,
+          description: "Proveedor actualizado",
+        },
+      ]);
     }
 
     return NextResponse.json(

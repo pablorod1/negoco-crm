@@ -57,7 +57,7 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          error: validation.error.errors[0]?.message || "Invalid parameters",
+          error: validation.error.issues[0]?.message || "Invalid parameters",
         },
         { status: 400 }
       );
@@ -75,6 +75,7 @@ export async function GET(
     }
 
     // Optimized query with prepared statement - MAINTAINS ORIGINAL FUNCTIONALITY
+    // First try to get the user with all JOINs
     const response = await tursoClient.execute({
       sql: `SELECT 
         u.*,
@@ -82,13 +83,15 @@ export async function GET(
         o.name as org_name,
         o.logo as org_logo,
         o.plan as org_plan,
+        LOWER(p.name) as plan_name,
         COUNT(n.id) as notifications
       FROM user u
-      INNER JOIN member m ON u.id = m.user_id
-      INNER JOIN organization o ON m.organization_id = o.id
+      LEFT JOIN member m ON u.id = m.user_id
+      LEFT JOIN organization o ON m.organization_id = o.id
+      LEFT JOIN plans p ON o.plan = p.id
       LEFT JOIN notifications n ON u.id = n.user_id
       WHERE u.id = ?
-      GROUP BY u.id, o.id, o.name, o.logo, o.plan`,
+      GROUP BY u.id, o.id, o.name, o.logo, o.plan, p.name`,
       args: [id],
     });
 
@@ -124,7 +127,7 @@ export async function GET(
           id: row.org_id ? String(row.org_id) : "",
           name: row.org_name ? String(row.org_name) : "",
           logo: row.org_logo ? String(row.org_logo) : null,
-          plan: row.org_plan ? String(row.org_plan) : null,
+          plan: row.plan_name ? String(row.plan_name) : null,
         },
       },
     });

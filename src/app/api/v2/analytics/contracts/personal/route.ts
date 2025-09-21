@@ -52,7 +52,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: `Validation error: ${validation.error.errors.map((e) => e.message).join(", ")}`,
+          error: `Validation error: ${validation.error.issues.map((e) => e.message).join(", ")}`,
         },
         { status: 400 }
       );
@@ -206,7 +206,11 @@ function initializeResultsStructure(
     for (let i = 0; i < 7; i++) {
       const day = new Date(weekStart);
       day.setDate(weekStart.getDate() + i);
-      const dayStr = day.toLocaleDateString("es-ES", { weekday: "long" });
+      const dayStr = day.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
       results.set(dayStr, { ...defaultData });
     }
   } else if (timeRange === "current_month") {
@@ -217,7 +221,17 @@ function initializeResultsStructure(
     ).getDate();
 
     for (let i = 1; i <= daysInMonth; i++) {
-      results.set(`${i}`, { ...defaultData });
+      const currentDate = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        i
+      );
+      const dayStr = currentDate.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+      results.set(dayStr, { ...defaultData });
     }
   } else if (timeRange === "year") {
     const months = [
@@ -242,6 +256,7 @@ function initializeResultsStructure(
       const dayStr = date.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
+        month: "long",
       });
       results.set(dayStr, { ...defaultData });
     }
@@ -257,6 +272,7 @@ function initializeResultsStructure(
       const dateStr = date.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
+        month: "long",
       });
       results.set(dateStr, { ...defaultData });
     }
@@ -277,9 +293,17 @@ function populateResults(
     let key: string;
 
     if (timeRange === "current_week" || timeRange === "last_week") {
-      key = date.toLocaleDateString("es-ES", { weekday: "long" });
+      key = date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
     } else if (timeRange === "current_month") {
-      key = `${date.getDate()}`;
+      key = date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
     } else if (timeRange === "year") {
       const months = [
         "Enero",
@@ -300,6 +324,7 @@ function populateResults(
       key = date.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
+        month: "long",
       });
     } else {
       key = row.date as string;

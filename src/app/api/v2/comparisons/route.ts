@@ -9,6 +9,7 @@ import {
 } from "@/comparativas/types";
 import { Client } from "@libsql/client";
 import { DateRange } from "react-day-picker";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * Types for Paginated Comparisons (GET endpoint)
@@ -22,6 +23,7 @@ interface PaginatedComparisonsRequest {
   statusFilter?: string[];
   dateRange?: DateRange | undefined;
   userFilter?: string[];
+  companyFilter?: string[];
 }
 
 interface ComparisonResponseItem {
@@ -40,6 +42,7 @@ interface ComparisonResponseItem {
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   tramite_id: string;
+  company_id?: string;
   user: {
     name: string;
     email: string;
@@ -86,6 +89,7 @@ const ComparativaSchema = z.object({
   notes: z.array(z.string()).default([]),
   user_id: z.string().min(1, "User ID is required"),
   creation_date: z.string().min(1, "Creation date is required"),
+  company_id: z.string().nullable(),
   status: ComparativaStatusSchema,
   tramite_id: z.string().optional(),
 });
@@ -152,6 +156,17 @@ const addComparativaOptimized = async (
         comparativa.status,
         comparativa.tramite_id || null,
       ],
+    });
+
+    // Track creation of comparativa
+    await createComparativaChange(tursoClient, {
+      comparativa_id: comparativa.id,
+      user_id: comparativa.user_id,
+      change_type: "created",
+      field_name: null,
+      old_value: null,
+      new_value: null,
+      description: `Comparativa creada para el cliente ${comparativa.client}`,
     });
 
     const queryTime = performance.now() - startTime;
@@ -275,6 +290,9 @@ export async function GET(
       userFilter: searchParams.get("userFilter")
         ? JSON.parse(searchParams.get("userFilter")!)
         : undefined,
+      companyFilter: searchParams.get("companyFilter")
+        ? JSON.parse(searchParams.get("companyFilter")!)
+        : undefined,
     };
 
     // Validate request parameters (warn only for backward compatibility)
@@ -295,6 +313,7 @@ export async function GET(
       statusFilter,
       dateRange,
       userFilter,
+      companyFilter,
     } = requestData;
 
     // Validate required parameters (maintaining original validation logic)
@@ -335,6 +354,7 @@ export async function GET(
                   c.comision_indexado AS comision_indexado,
                   c.status AS status,
                   c.service AS service,
+                  c.company_id AS company_id,
                   c.tramite_id AS tramite_id,
                   CASE 
                     WHEN JSON_VALID(c.plan) THEN c.plan
@@ -404,8 +424,9 @@ export async function GET(
     }
 
     // Apply status and user filters
-    addArrayFilter("c.status", statusFilter);
-    addArrayFilter("c.user_id", userFilter);
+    if (statusFilter) addArrayFilter("c.status", statusFilter);
+    if (userFilter) addArrayFilter("c.user_id", userFilter);
+    if (companyFilter) addArrayFilter("c.company_id", companyFilter);
 
     // Build count query for pagination
     let countQuery = `
@@ -465,6 +486,7 @@ export async function GET(
       service: row.service as "Luz" | "Gas",
       plan: JSON.parse(row.plan as string) as ComparativaPlan[],
       tramite_id: row.tramite_id as string,
+      company_id: row.company_id as string | undefined,
       user: {
         name: row.user_name as string,
         email: row.user_email as string,

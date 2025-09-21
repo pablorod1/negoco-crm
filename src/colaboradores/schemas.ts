@@ -2,12 +2,12 @@ import { z } from "zod";
 
 // Role enum aligned with the app's role system
 export const UserRoleEnum = z.enum(["admin", "1", "2"], {
-  required_error: "El rol es obligatorio",
+  message: "El rol es obligatorio",
 });
 
 // Organization role enum for membership
 export const OrganizationRoleEnum = z.enum(["member", "admin", "owner"], {
-  required_error: "El rol de organización es obligatorio",
+  message: "El rol de organización es obligatorio",
 });
 
 // User creation schema

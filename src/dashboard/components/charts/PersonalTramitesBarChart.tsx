@@ -1,76 +1,79 @@
 "use client";
 
 import * as React from "react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
-import {
-  type ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/core/components/ui/chart";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/core/components/ui/button";
-import {
-  Building,
-  Coins,
-  ReceiptEuro,
-  RefreshCw,
-  TrendingDown,
-  TrendingUp,
-  UserIcon,
-  XIcon,
-} from "lucide-react";
+import { Coins, ReceiptEuro, RefreshCw } from "lucide-react";
 import type { TimeRange, User } from "@/core/types";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
-import { formatComission } from "@/core/utils/format";
-import { ChevronDown, ChevronUp, Filter } from "lucide-react";
-import { CalendarOff } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/core/components/ui/select";
-import { DateRangePicker } from "../DateRangePicker";
+import { Filter, FilterX } from "lucide-react";
 import { Label } from "@/core/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/core/components/ui/popover";
+import { Calendar } from "@/core/components/ui/calendar";
+import { cn } from "@/core/utils";
+import { formatComission } from "@/core/utils/format";
 
-const chartConfig: ChartConfig = {
-  tramites: { label: "" },
-  active: { label: "Activos", color: "var(--primary-color-700)" },
-  baja: { label: "Bajas", color: "var(--danger-color)" },
-  comision: {
-    label: "Comisión",
-    color: "var(--primary-color-500)",
-  },
-  comision_sales_person: {
-    label: "Comisión Comercial",
-    color: "var(--danger-color)",
-  },
+// 🎨 CHART COLORS CONFIGURATION - Consistent with other components
+const CHART_COLORS = {
+  active: "var(--primary-color-500)", // Primary blue for active contracts
+  baja: "var(--primary-color-100)", // Muted primary for inactive/cancelled
+  comision: "var(--primary-color-400)", // Deeper primary blue for main commission
+  comision_sales_person: "var(--primary-color-200)", // Lighter primary for sales commission
 };
 
-const comercialChartConfig: ChartConfig = {
-  tramites: { label: "" },
-  active: { label: "Activos", color: "var(--primary-color-700)" },
-  baja: { label: "Bajas", color: "var(--danger-color)" },
-  comision_sales_person: {
-    label: "Comisión",
-    color: "var(--primary-color-500)",
-  },
-};
+// Helper function to get time range display text
+const getFilterDescription = (
+  timeRange?: TimeRange,
+  dateRange?: DateRange
+): string => {
+  if (dateRange?.from) {
+    const fromDate = dateRange.from.toLocaleDateString("es-ES");
+    const toDate = dateRange.to
+      ? dateRange.to.toLocaleDateString("es-ES")
+      : fromDate;
 
-// Generar un array con los 12 meses en español, asegurando que siempre hay datos.
+    if (fromDate === toDate) {
+      return `Mostrando resultados del ${fromDate}`;
+    }
+    return `Mostrando resultados del ${fromDate} al ${toDate}`;
+  }
+
+  switch (timeRange) {
+    case "year":
+      return "Mostrando resultados de este año";
+    case "90d":
+      return "Mostrando resultados de los últimos 90 días";
+    case "current_month":
+      return "Mostrando resultados de este mes";
+    case "current_week":
+      return "Mostrando resultados de esta semana";
+    case "last_week":
+      return "Mostrando resultados de la semana pasada";
+    default:
+      return "Mostrando resultados de este año";
+  }
+};
 const createEmptyData = () =>
   Array.from({ length: 12 }, (_, i) => ({
     field: new Date(2025, i).toLocaleString("es-ES", { month: "long" }),
@@ -79,6 +82,90 @@ const createEmptyData = () =>
     comision: 0,
     comision_sales_person: 0,
   }));
+
+interface ViewToggleProps {
+  chartView: "tramites" | "comision";
+  onViewChange: (view: "tramites" | "comision") => void;
+  totalTramites: number;
+  totalComision: number;
+  totalComisionSalesPerson: number;
+  isComercial: boolean;
+  showComisionView: boolean; // Whether to show the comision toggle at all
+}
+
+export function ViewToggle({
+  chartView,
+  onViewChange,
+  totalTramites,
+  totalComision,
+  totalComisionSalesPerson,
+  isComercial,
+  showComisionView,
+}: ViewToggleProps) {
+  if (!showComisionView) {
+    // Only show tramites view if comision view is not available
+    return (
+      <div className="flex items-center justify-between gap-2 py-2 px-3 bg-gray-100 rounded-full border border-gray-200 min-w-[120px]">
+        <div className="flex items-center gap-2">
+          <ReceiptEuro size={12} className="text-gray-600" />
+          <span className="font-medium text-xs text-gray-700">Trámites</span>
+        </div>
+        <span className="text-xs font-semibold text-gray-900">
+          {totalTramites}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative grid grid-cols-2 bg-gray-50 rounded-full p-1 border border-gray-100">
+      {/* Sliding background indicator */}
+      <div
+        className="absolute top-1 bottom-1 bg-white rounded-full shadow-sm border border-gray-200 transition-all duration-200 ease-out"
+        style={{
+          left: chartView === "tramites" ? "4px" : "50%",
+          width: "calc(50%)",
+        }}
+      />
+
+      {/* Tramites button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onViewChange("tramites")}
+        className={`relative z-10  gap-1.5  transition-colors duration-200 justify-start ${
+          chartView === "tramites"
+            ? "text-gray-900 bg-transparent hover:bg-transparent"
+            : "text-gray-600 bg-transparent hover:bg-transparent hover:text-gray-800"
+        }`}
+      >
+        <ReceiptEuro size={12} />
+        <span className="font-medium text-xs">Trámites</span>
+        <span className="text-xs font-semibold ml-auto">{totalTramites}</span>
+      </Button>
+
+      {/* Comision button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onViewChange("comision")}
+        className={`relative z-10 gap-1.5 w-full transition-colors duration-200 justify-start ${
+          chartView === "comision"
+            ? "text-gray-900 bg-transparent hover:bg-transparent"
+            : "text-gray-600 bg-transparent hover:bg-transparent hover:text-gray-800"
+        }`}
+      >
+        <Coins size={12} />
+        <span className="font-medium text-xs">Margen</span>
+        <span className="text-xs font-semibold ml-auto">
+          {isComercial
+            ? formatComission(totalComisionSalesPerson)
+            : formatComission(totalComision)}
+        </span>
+      </Button>
+    </div>
+  );
+}
 
 interface ChartData {
   field: string;
@@ -105,15 +192,6 @@ export default function PersonalTramitesChart({
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
   const isComercial = userData && userData.role === "2";
   const [showFilters, setShowFilters] = React.useState(false);
-  const isBeenergy = userData.organization.name === "Beenergy";
-
-  React.useEffect(() => {
-    // Añadir la clase personalizada para la animación de resorte
-    document.documentElement.style.setProperty(
-      "--ease-spring",
-      "cubic-bezier(0.25, 0.1, 0.25, 1.5)"
-    );
-  }, []);
 
   const fetchData = React.useCallback(async () => {
     setIsRefreshing(true);
@@ -155,7 +233,11 @@ export default function PersonalTramitesChart({
   };
 
   const handleDateRangeChange = (dateRange: DateRange | undefined) => {
-    setTimeRange(undefined);
+    // Solo resetear timeRange si realmente se está seleccionando un rango de fecha
+    // No lo resetees si range es undefined (viene del reseteo automático)
+    if (dateRange && dateRange.from) {
+      setTimeRange(undefined);
+    }
     setDateRange(dateRange);
   };
 
@@ -167,70 +249,6 @@ export default function PersonalTramitesChart({
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const getActiveTramitesPercentageChange = (data: ChartData[]) => {
-    const currentMonthIndex = new Date().getMonth(); // Índice del mes actual (0 = Enero, 11 = Diciembre)
-    const previousMonthIndex =
-      currentMonthIndex === 0 ? 11 : currentMonthIndex - 1; // Mes anterior (manejo de diciembre a enero)
-
-    const currentMonthData = data.find((item) =>
-      item.field
-        .toLowerCase()
-        .startsWith(
-          new Date(2025, currentMonthIndex)
-            .toLocaleString("es-ES", { month: "long" })
-            .toLowerCase()
-        )
-    );
-
-    const previousMonthData = data.find((item) =>
-      item.field
-        .toLowerCase()
-        .startsWith(
-          new Date(2025, previousMonthIndex)
-            .toLocaleString("es-ES", { month: "long" })
-            .toLowerCase()
-        )
-    );
-
-    const currentActive = currentMonthData?.active ?? 0;
-    const previousActive = previousMonthData?.active ?? 0;
-
-    if (previousActive === 0)
-      return currentActive > 0 ? currentActive * 100 : 0; // Si no había antes, mostrar 100% si ahora hay más.
-
-    return Math.round(
-      ((currentActive - previousActive) / previousActive) * 100
-    );
-  };
-
-  const formatDifferenceText = (percentageChange: number) => {
-    if (percentageChange === 0) {
-      return "📊 No hubo cambios en los trámites respecto al mes anterior. ¡Sigamos optimizando la gestión!";
-    } else if (percentageChange > 0) {
-      if (percentageChange < 10) {
-        return `📊 Los trámites aumentaron un ${percentageChange}% en comparación con el mes pasado. Un ligero crecimiento, ¡sigamos organizando el flujo de trabajo!`;
-      } else if (percentageChange < 25) {
-        return `📊 ¡Los trámites crecieron un ${percentageChange}% respecto al mes anterior! Un buen indicador de actividad, mantengamos el ritmo.`;
-      } else {
-        return `📊 ¡Gran incremento del ${percentageChange}% en trámites este mes! Asegurémonos de gestionar eficazmente esta carga de trabajo.`;
-      }
-    } else {
-      if (percentageChange > -10) {
-        return `📊 Los trámites bajaron un ${Math.abs(
-          percentageChange
-        )}% en comparación con el mes anterior. Puede ser algo puntual, ¡sigamos atentos!`;
-      } else if (percentageChange > -25) {
-        return `📊 Se registró una caída del ${Math.abs(
-          percentageChange
-        )}% en los trámites este mes. Revisemos si hay factores que la expliquen.`;
-      } else {
-        return `📊 Los trámites disminuyeron un ${Math.abs(
-          percentageChange
-        )}% respecto al mes pasado. Es importante analizar si hay cambios en la demanda o en la gestión.`;
-      }
-    }
-  };
 
   const totalTramites = chartData.reduce(
     (acc, item) => acc + item.active + item.baja,
@@ -251,227 +269,157 @@ export default function PersonalTramitesChart({
     fetchData();
   };
 
-  const percentageChange = getActiveTramitesPercentageChange(chartData);
-  const isPositiveChange = percentageChange >= 0;
-
   return (
-    <Card
-      className={`flex flex-col justify-between relative h-full backdrop-blur-lg transition-colors duration-300 overflow-hidden `}
-    >
-      {/* Decorative background elements */}
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary-50 rounded-full opacity-30 blur-2xl"></div>
-      <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary-100 rounded-full opacity-40 blur-xl"></div>
-
-      {/* Decorative chart pattern */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-92 opacity-15 pointer-events-none">
-        <Image
-          src={isBeenergy ? "/beenergy.png" : "/logo_inline.png"}
-          alt="Negoco Cloud"
-          width={256}
-          height={256}
-          priority
-          className="w-auto h-auto"
-        />
-      </div>
+    <Card className={cn(loading ? "opacity-60" : "")} variant={"dashboard"}>
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 bg-gray-50/50 rounded-lg z-10" />
+      )}
 
       <CardHeader
-        className={`flex justify-between flex-row items-start transition-opacity duration-300 relative z-10 ${
+        className={`flex justify-between flex-row items-start pb-4 transition-opacity duration-200 relative z-10 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
         <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-xl text-primary-800 flex items-center gap-2">
-              Tu Resumen de Ventas
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 rounded-full"
-                onClick={refreshData}
-                disabled={loading || isRefreshing}
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 text-primary-600 ${
-                    isRefreshing ? "animate-spin" : ""
-                  }`}
-                />
-              </Button>
+          <div className="flex items-center gap-1">
+            <CardTitle className="text-base font-semibold text-gray-900">
+              Resumen Personal
             </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 text-xs rounded-full bg-gray-50 border-gray-200"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="h-3 w-3" />
-              Filtros
-              {showFilters ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </Button>
-          </div>
-          <CardDescription className="text-xs text-primary-400">
-            Resumen de ventas de <strong>{userData.name}</strong>
-          </CardDescription>
-        </div>
-        <div className="relative flex items-center p-1 bg-gray-100/50 backdrop-blur-md rounded-xl shadow-inner">
-          {/* Indicador deslizante */}
-          <div
-            className="absolute transition-all duration-300 ease-spring rounded-lg shadow-lg bg-gradient-to-br from-primary-600 to-primary-800 z-0"
-            style={{
-              left: chartView === "tramites" ? "4px" : "calc(50% + 2px)",
-              width: userData.super_id ? "calc(100% - 8px)" : "calc(50% - 8px)",
-              height: "calc(100% - 8px)",
-            }}
-          />
-
-          {/* Botón de trámites */}
-          <button
-            onClick={() => setChartView("tramites")}
-            className={`relative z-10 flex items-center justify-between ${
-              userData.super_id ? "w-full" : "w-1/2"
-            } px-6 py-3 rounded-lg transition-all duration-300 ${
-              chartView === "tramites"
-                ? "text-white"
-                : "text-gray-700 hover:text-gray-900"
-            }`}
-          >
-            <div className="flex flex-col items-start">
-              <div className="flex items-center gap-2 mb-1">
-                <ReceiptEuro
-                  size={16}
-                  className={
-                    chartView === "tramites" ? "text-white/80" : "text-gray-500"
-                  }
-                />
-                <span className="font-medium"></span>
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-lg font-bold">{totalTramites}</span>
-                <span
-                  className={`text-xs ${
-                    chartView === "tramites" ? "text-white/70" : "text-gray-500"
-                  }`}
-                >
-                  Total
-                </span>
-              </div>
-            </div>
-          </button>
-
-          {/* Botón de Comisión */}
-          {!userData.super_id && (
-            <button
-              onClick={() => setChartView("comision")}
-              className={`relative z-10 flex items-center justify-between w-1/2 px-6 py-3 rounded-lg transition-all duration-300 ${
-                chartView === "comision"
-                  ? "text-white"
-                  : "text-gray-700 hover:text-gray-900"
-              }`}
-            >
-              <div className="flex flex-col items-start">
-                <div className="flex items-center gap-2 mb-1">
-                  <Coins
-                    size={16}
-                    className={
-                      chartView === "comision"
-                        ? "text-white/80"
-                        : "text-gray-500"
-                    }
-                  />
-                  <span className="font-medium">Comisiones</span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold">
-                    {isComercial
-                      ? formatComission(totalComisionSalesPerson)
-                      : formatComission(totalComision)}
-                  </span>
-                </div>
-              </div>
-            </button>
-          )}
-        </div>
-      </CardHeader>
-      {showFilters && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="px-6 pb-2 border-b absolute top-0 left-0 w-full bg-white z-10"
-        >
-          <div className="flex flex-wrap justify-between items-start gap-3 py-3">
-            <div className="flex items-center gap-3 mt-2">
-              <div className="flex flex-col">
-                <Label className="text-xs font-medium text-gray-500">
-                  Periodo:
-                </Label>
-                <Select
-                  disabled={dateRange !== undefined}
-                  value={timeRange}
-                  onValueChange={handleTimeRangeChange}
-                >
-                  <SelectTrigger
-                    className="w-[160px] text-sm rounded-md min-h-10 h-auto shadow"
-                    aria-label="Select a value"
-                  >
-                    <SelectValue placeholder="Este mes" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="year" className="rounded-lg">
-                      Este año
-                    </SelectItem>
-                    <SelectItem value="90d" className="rounded-lg">
-                      Últimos 90 días
-                    </SelectItem>
-                    <SelectItem value="current_month" className="rounded-lg">
-                      Este mes
-                    </SelectItem>
-                    <SelectItem value="current_week" className="rounded-lg">
-                      Esta semana
-                    </SelectItem>
-                    <SelectItem value="last_week" className="rounded-lg">
-                      La semana pasada
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col">
-                <Label className="text-xs font-medium text-gray-500">
-                  Rango personalizado:
-                </Label>
-                <div className="flex items-center gap-2">
-                  {dateRange && (
-                    <Button
-                      onClick={resetDateRange}
-                      className="bg-transparent h-7 w-7"
-                    >
-                      <CalendarOff
-                        width={16}
-                        height={16}
-                        stroke="var(--danger-color)"
-                      />
-                    </Button>
-                  )}
-                  <DateRangePicker
-                    date={dateRange}
-                    setDateRange={handleDateRangeChange}
-                  />
-                </div>
-              </div>
-            </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setShowFilters(false)}
+              onClick={refreshData}
+              disabled={loading || isRefreshing}
+              aria-label="Actualizar datos"
             >
-              <XIcon className="h-4 w-4" />
+              <RefreshCw
+                className={`h-3 w-3 text-gray-600 ${isRefreshing ? "animate-spin" : ""}`}
+              />
             </Button>
           </div>
-        </motion.div>
-      )}
+          <CardDescription className="text-xs text-gray-500 font-extralight">
+            {getFilterDescription(timeRange, dateRange)}
+          </CardDescription>
+        </div>
+        <div className="flex items-center gap-4 ">
+          {/* Metrics toggle */}
+          <ViewToggle
+            chartView={chartView}
+            onViewChange={setChartView}
+            totalTramites={totalTramites}
+            totalComision={totalComision}
+            totalComisionSalesPerson={totalComisionSalesPerson}
+            isComercial={isComercial}
+            showComisionView={!userData.super_id}
+          />
+
+          {/* Filters */}
+          <AnimatePresence>
+            <Popover
+              open={showFilters}
+              onOpenChange={(open) => {
+                setShowFilters(open);
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Mostrar filtros"
+                >
+                  <Filter className="h-3 w-3" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-full"
+                align="start"
+                side="right"
+                sideOffset={8}
+              >
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="block text-xs font-medium text-gray-700">
+                      Período predefinido
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {[
+                        { value: "year", label: "Este año" },
+                        { value: "90d", label: "Últimos 90 días" },
+                        { value: "current_month", label: "Este mes" },
+                        { value: "current_week", label: "Esta semana" },
+                        { value: "last_week", label: "La semana pasada" },
+                      ].map((option) => (
+                        <Button
+                          key={option.value}
+                          variant={
+                            timeRange === option.value ? "default" : "outline"
+                          }
+                          size="sm"
+                          className={cn(
+                            "h-8 text-xs justify-start",
+                            timeRange === option.value
+                              ? "bg-primary-600 text-white"
+                              : "border-gray-200 hover:bg-primary-50"
+                          )}
+                          onClick={() => {
+                            handleTimeRangeChange(option.value);
+                            setDateRange(undefined);
+                          }}
+                          disabled={dateRange !== undefined}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium text-gray-700">
+                        Rango personalizado
+                      </Label>
+                      {dateRange && (
+                        <Button
+                          onClick={() => {
+                            resetDateRange();
+                            handleTimeRangeChange("year");
+                          }}
+                          variant="ghost"
+                          size="icon"
+                          className={cn("text-red-500 hover:text-red-400")}
+                        >
+                          <FilterX className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="w-full rounded-3xl relative">
+                      <Calendar
+                        mode="range"
+                        selected={dateRange}
+                        onSelect={handleDateRangeChange}
+                        numberOfMonths={2}
+                        className="w-full relative"
+                      />
+                    </div>
+                    {dateRange && (
+                      <p className="text-xs text-gray-600">
+                        Seleccionado:{" "}
+                        {dateRange.from
+                          ? dateRange.from.toLocaleDateString("es-ES")
+                          : ""}
+                        {dateRange.to
+                          ? ` - ${dateRange.to.toLocaleDateString("es-ES")}`
+                          : ""}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </AnimatePresence>
+        </div>
+      </CardHeader>
 
       <CardContent
         className={`transition-opacity duration-300 relative z-10 ${
@@ -485,207 +433,241 @@ export default function PersonalTramitesChart({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
             >
-              <ChartContainer
-                className="max-h-[300px] h-full w-full"
-                config={isComercial ? comercialChartConfig : chartConfig}
-              >
-                <AreaChart data={chartData}>
-                  <ChartLegend
-                    content={<ChartLegendContent className="text-sm mt-4" />}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        className="w-52"
-                        indicator="line"
-                        formatter={(value, name, item, index) => {
-                          if (isComercial) {
-                            return (
-                              <>
-                                <div>
-                                  {comercialChartConfig[
-                                    name as keyof typeof comercialChartConfig
-                                  ]?.label === "Comisión" ? (
-                                    <UserIcon size={14} />
-                                  ) : comercialChartConfig[
-                                      name as keyof typeof comercialChartConfig
-                                    ]?.label === "Activos" ? (
-                                    <TrendingUp
-                                      size={14}
-                                      className="text-success-400"
-                                    />
-                                  ) : comercialChartConfig[
-                                      name as keyof typeof comercialChartConfig
-                                    ]?.label === "Bajas" ? (
-                                    <TrendingDown
-                                      size={14}
-                                      className="text-danger-400"
-                                    />
-                                  ) : (
-                                    <div className="w-4 h-4 rounded-full bg-gray-300"></div>
-                                  )}
-                                </div>
-                                {comercialChartConfig[
-                                  name as keyof typeof comercialChartConfig
-                                ]?.label || name}
-                                <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                                  {value}
-                                  <span className="font-normal text-muted-foreground">
-                                    {chartView === "tramites" ? "" : "€"}
-                                  </span>
-                                </div>
-                              </>
-                            );
-                          }
-                          return (
+              <div className="h-[360px] w-full">
+                <ResponsiveContainer width={"100%"} height={360}>
+                  <AreaChart
+                    data={chartData}
+                    margin={{
+                      top: 10,
+                      right: 30,
+                      bottom: 8,
+                      left: 10,
+                    }}
+                    className="w-full h-full"
+                  >
+                    <CartesianGrid
+                      horizontal={false}
+                      vertical={false}
+                      strokeDasharray="4 4"
+                      stroke="var(--primary-color-100)"
+                      opacity={1}
+                    />
+                    <XAxis
+                      dataKey="field"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={6}
+                      tickFormatter={(value) => value.slice(0, 3)}
+                      className="text-xs text-gray-500 capitalize"
+                      angle={-45}
+                      textAnchor="end"
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={12}
+                      width={30}
+                      className="text-[11px] text-gray-500"
+                    />
+                    <Legend
+                      content={() => (
+                        <div className="flex justify-center gap-6 mt-8 text-xs text-gray-600">
+                          {chartView === "tramites" ? (
                             <>
-                              <div>
-                                {chartConfig[name as keyof typeof chartConfig]
-                                  ?.label === "Comisión" ? (
-                                  <Building size={14} />
-                                ) : chartConfig[
-                                    name as keyof typeof chartConfig
-                                  ]?.label === "Comisión Comercial" ? (
-                                  <UserIcon size={14} />
-                                ) : chartConfig[
-                                    name as keyof typeof chartConfig
-                                  ]?.label === "Activos" ? (
-                                  <TrendingUp
-                                    size={14}
-                                    className="text-success-400"
-                                  />
-                                ) : chartConfig[
-                                    name as keyof typeof chartConfig
-                                  ]?.label === "Bajas" ? (
-                                  <TrendingDown
-                                    size={14}
-                                    className="text-danger-400"
-                                  />
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full bg-gray-300"></div>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{
+                                    backgroundColor: CHART_COLORS.active,
+                                  }}
+                                />
+                                <span>Activos</span>
                               </div>
-                              {chartConfig[name as keyof typeof chartConfig]
-                                ?.label || name}
-                              <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                                {value}
-                                <span className="font-normal text-muted-foreground">
-                                  {chartView === "tramites" ? "" : "€"}
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: CHART_COLORS.baja }}
+                                />
+                                <span>Bajas</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{
+                                    backgroundColor: CHART_COLORS.comision,
+                                  }}
+                                />
+                                <span>
+                                  {isComercial ? "Comisión" : "Comisión Total"}
                                 </span>
                               </div>
-                              {/* Add this after the last item */}
-                              {chartView === "comision" && index === 1 && (
-                                <div className="mt-1.5 flex basis-full items-center border-t pt-1.5 text-xs font-medium text-foreground">
-                                  Total
-                                  <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                                    {item.payload.comision -
-                                      item.payload.comision_sales_person}
-                                    <span className="font-normal text-muted-foreground">
-                                      €
-                                    </span>
-                                  </div>
+                              {!isComercial && (
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{
+                                      backgroundColor:
+                                        CHART_COLORS.comision_sales_person,
+                                    }}
+                                  />
+                                  <span>Comisión Comercial</span>
                                 </div>
                               )}
                             </>
-                          );
+                          )}
+                        </div>
+                      )}
+                    />
+                    <Tooltip
+                      content={(props) => {
+                        if (!props.active || !props.payload) return null;
+
+                        return (
+                          <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-3 text-xs">
+                            <p className="font-medium text-gray-900 mb-2 capitalize">
+                              {props.label}
+                            </p>
+                            {props.payload.map(
+                              (
+                                entry: {
+                                  dataKey: string;
+                                  value: number;
+                                  color: string;
+                                },
+                                index: number
+                              ) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between gap-4 mb-1"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-3 h-3 rounded-full"
+                                      style={{ backgroundColor: entry.color }}
+                                    />
+                                    <span className="text-gray-600">
+                                      {entry.dataKey === "active"
+                                        ? "Activos"
+                                        : entry.dataKey === "baja"
+                                          ? "Bajas"
+                                          : entry.dataKey === "comision"
+                                            ? "Comisión"
+                                            : entry.dataKey ===
+                                                "comision_sales_person"
+                                              ? "Comisión Comercial"
+                                              : entry.dataKey}
+                                    </span>
+                                  </div>
+                                  <span className="font-medium text-gray-900">
+                                    {entry.value}
+                                    {chartView === "comision" ? "€" : ""}
+                                  </span>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        );
+                      }}
+                    />
+
+                    {/* Primary Area - Main data */}
+                    {!isComercial ? (
+                      <Area
+                        type="monotone"
+                        dataKey={
+                          chartView === "tramites" ? "active" : "comision"
+                        }
+                        stroke={
+                          chartView === "tramites"
+                            ? "var(--primary-color-500)"
+                            : "var(--primary-color-500)"
+                        }
+                        fill={
+                          chartView === "tramites"
+                            ? "var(--primary-color-500)"
+                            : "var(--primary-color-500)"
+                        }
+                        fillOpacity={0.12}
+                        strokeWidth={1}
+                      />
+                    ) : isComercial && chartView === "tramites" ? (
+                      <Area
+                        type="monotone"
+                        dataKey="active"
+                        stroke="var(--primary-color-500)"
+                        fill="var(--primary-color-500)"
+                        fillOpacity={0.12}
+                        strokeWidth={1}
+                        dot={{ r: 1, fill: "var(--primary-color-500)" }}
+                        activeDot={{
+                          r: 1,
+                          fill: "var(--primary-color-500)",
                         }}
                       />
-                    }
-                  />
-                  <defs>
-                    <linearGradient id="fillActive" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor="var(--primary-color-800)"
-                        stopOpacity={0.8}
+                    ) : isComercial && chartView === "comision" ? (
+                      <Area
+                        type="monotone"
+                        dataKey="comision_sales_person"
+                        stroke="var(--primary-color-500)"
+                        fill="var(--primary-color-500)"
+                        fillOpacity={0.12}
+                        strokeWidth={1}
                       />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--primary-color-700)"
-                        stopOpacity={0.1}
-                      />
-                    </linearGradient>
+                    ) : null}
 
-                    <linearGradient id="fillBaja" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor="var(--primary-color-500)"
-                        stopOpacity={0.8}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--primary-color-400)"
-                        stopOpacity={0.1}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="field"
-                    tickLine={false}
-                    tickMargin={24}
-                    minTickGap={3}
-                    axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                    className="capitalize overflow-visible"
-                  />
-
-                  {!isComercial ? (
+                    {/* Secondary Area - Comparison data */}
                     <Area
-                      dataKey={chartView === "tramites" ? "active" : "comision"}
                       type="monotone"
-                      fill="url(#fillActive)"
-                      fillOpacity={0.4}
-                      stroke="var(--primary-color-800)"
+                      dataKey={
+                        chartView === "tramites"
+                          ? "baja"
+                          : "comision_sales_person"
+                      }
+                      stroke={
+                        chartView === "tramites"
+                          ? "var(--primary-color-400)" // Muted primary for bajas
+                          : "var(--primary-color-400)" // Light primary for sales commission
+                      }
+                      fill={
+                        chartView === "tramites"
+                          ? "var(--primary-color-400)"
+                          : "var(--primary-color-400)"
+                      }
+                      fillOpacity={0.1}
+                      strokeWidth={2}
                     />
-                  ) : isComercial && chartView === "tramites" ? (
-                    <Area
-                      dataKey="active"
-                      type="monotone"
-                      fill="url(#fillActive)"
-                      fillOpacity={0.4}
-                      stroke="var(--primary-color-800)"
-                    />
-                  ) : null}
-                  <Area
-                    dataKey={
-                      chartView === "tramites"
-                        ? "baja"
-                        : "comision_sales_person"
-                    }
-                    type="monotone"
-                    fill="url(#fillBaja)"
-                    fillOpacity={0.4}
-                    stroke="var(--primary-color-500)"
-                  />
-                </AreaChart>
-              </ChartContainer>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </motion.div>
           ) : (
             <motion.div
               key="no-data"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex items-center justify-center w-full h-[200px] text-muted-foreground"
+              className="flex items-center justify-center w-full h-[200px] text-gray-500"
             >
               <div className="flex flex-col items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
                   <svg
-                    width="32"
-                    height="32"
+                    width="24"
+                    height="24"
                     viewBox="0 0 24 24"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
                       d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z"
-                      fill="var(--primary-color-300)"
+                      fill="hsl(220, 13%, 69%)"
                     />
                   </svg>
                 </div>
-                <span className="font-medium text-primary-600 text-center">
+                <span className="font-medium text-gray-600 text-center text-sm">
                   No hay datos para mostrar
                 </span>
               </div>
@@ -693,34 +675,6 @@ export default function PersonalTramitesChart({
           )}
         </AnimatePresence>
       </CardContent>
-
-      <CardFooter
-        className={`flex-col items-start gap-2 text-sm transition-opacity duration-300 relative z-10 ${
-          loading ? "opacity-0" : "opacity-100"
-        }`}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex items-center gap-3 font-medium leading-none p-3 rounded-xl bg-gray-50/80 backdrop-blur-sm w-full"
-        >
-          <div
-            className={`size-6 rounded-full flex items-center justify-center ${
-              isPositiveChange ? "bg-green-100" : "bg-red-100"
-            }`}
-          >
-            {isPositiveChange ? (
-              <TrendingUp className="size-4 text-green-600" />
-            ) : (
-              <TrendingDown className="size-4 text-red-600" />
-            )}
-          </div>
-          <span className="text-xs text-gray-600">
-            {formatDifferenceText(percentageChange)}
-          </span>
-        </motion.div>
-      </CardFooter>
     </Card>
   );
 }

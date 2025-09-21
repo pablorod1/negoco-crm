@@ -52,17 +52,21 @@ const GetObjectivesSchema = z.object({
  * @param request - Next.js request object containing objective data
  * @returns Promise<NextResponse<ObjectiveResponse>>
  */
-export async function POST(request: NextRequest): Promise<NextResponse<ObjectiveResponse>> {
+export async function POST(
+  request: NextRequest
+): Promise<NextResponse<ObjectiveResponse>> {
   try {
     const body = await request.json();
-    
+
     // Validate input using Zod
     const validation = CreateObjectiveSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid parameters: " + validation.error.errors.map(e => e.message).join(", "),
+          error:
+            "Invalid parameters: " +
+            validation.error.issues.map((e) => e.message).join(", "),
         },
         { status: 400 }
       );
@@ -140,12 +144,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<Objective
  * @param request - Next.js request object containing user id and role
  * @returns Promise<NextResponse<ObjectiveResponse>>
  */
-export async function GET(request: NextRequest): Promise<NextResponse<ObjectiveResponse>> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<ObjectiveResponse>> {
   try {
     // Extract query parameters from URL
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    const role = searchParams.get('role');
+    const id = searchParams.get("id");
+    const role = searchParams.get("role");
 
     // Validate query parameters
     const validation = GetObjectivesSchema.safeParse({ id, role });
@@ -153,7 +159,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<ObjectiveR
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid parameters: " + validation.error.errors.map(e => e.message).join(", "),
+          error:
+            "Invalid parameters: " +
+            validation.error.issues.map((e) => e.message).join(", "),
         },
         { status: 400 }
       );
@@ -237,7 +245,10 @@ export async function GET(request: NextRequest): Promise<NextResponse<ObjectiveR
             objective.current = ratioPercentage;
           }
         } catch (error) {
-          console.error(`Error calculating current value for objective ${objective.id}:`, error);
+          console.error(
+            `Error calculating current value for objective ${objective.id}:`,
+            error
+          );
           // Keep the stored current value if calculation fails
         }
 

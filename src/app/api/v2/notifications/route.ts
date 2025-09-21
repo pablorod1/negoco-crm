@@ -28,7 +28,9 @@ const CreateNotificationRequestSchema = z.object({
 // });
 
 const DeleteAllNotificationsRequestSchema = z.object({
-  ids: z.array(z.string().min(1, "ID is required")).min(1, "At least one ID is required"),
+  ids: z
+    .array(z.string().min(1, "ID is required"))
+    .min(1, "At least one ID is required"),
 });
 
 /**
@@ -50,17 +52,19 @@ interface SuccessResponse {
  * @param request - Next.js request object containing notification data
  * @returns Promise<NextResponse<SuccessResponse>>
  */
-export async function POST(request: NextRequest): Promise<NextResponse<SuccessResponse>> {
+export async function POST(
+  request: NextRequest
+): Promise<NextResponse<SuccessResponse>> {
   try {
     const body = await request.json();
-    
+
     // Validate request body using Zod
     const validationResult = CreateNotificationRequestSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `Validation failed: ${validationResult.error.errors.map(e => e.message).join(', ')}` 
+        {
+          success: false,
+          error: `Validation failed: ${validationResult.error.issues.map((e) => e.message).join(", ")}`,
         },
         { status: 400 }
       );
@@ -115,7 +119,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<SuccessRe
     }
 
     // Sanitize client field to handle null/undefined values
-    const sanitizedClient = client !== undefined && client !== null ? client : null;
+    const sanitizedClient =
+      client !== undefined && client !== null ? client : null;
 
     // Create new notification
     const insertResponse = await tursoClient.execute({
@@ -157,11 +162,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<SuccessRe
  * @param request - Next.js request object containing user ID
  * @returns Promise<NextResponse<NotificationResponse>>
  */
-export async function GET(request: NextRequest): Promise<NextResponse<NotificationResponse>> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<NotificationResponse>> {
   try {
     // Parse query parameters for GET request
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id');
+    const userId = searchParams.get("user_id");
 
     if (!userId) {
       return NextResponse.json(
@@ -232,17 +239,20 @@ export async function GET(request: NextRequest): Promise<NextResponse<Notificati
  * @param request - Next.js request object containing array of notification IDs
  * @returns Promise<NextResponse<SuccessResponse>>
  */
-export async function DELETE(request: NextRequest): Promise<NextResponse<SuccessResponse>> {
+export async function DELETE(
+  request: NextRequest
+): Promise<NextResponse<SuccessResponse>> {
   try {
     const body = await request.json();
-    
+
     // Validate request body using Zod
-    const validationResult = DeleteAllNotificationsRequestSchema.safeParse(body);
+    const validationResult =
+      DeleteAllNotificationsRequestSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `Validation failed: ${validationResult.error.errors.map(e => e.message).join(', ')}` 
+        {
+          success: false,
+          error: `Validation failed: ${validationResult.error.issues.map((e) => e.message).join(", ")}`,
         },
         { status: 400 }
       );

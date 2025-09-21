@@ -13,27 +13,36 @@ export function ClientEmptyState({
   totalCount,
   handleClearSearch,
 }: ClientEmptyStateProps) {
+  const isSearchEmpty = searchTerm && totalCount > 0;
+
   return (
-    <div className="mt-8 flex flex-col items-center justify-center rounded-lg p-12 text-center bg-white/80 shadow-inner">
-      <div className="rounded-full bg-gray-100 p-3">
-        {searchTerm ? (
-          <Search className="h-10 w-10 text-gray-400" />
+    <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-6">
+        {isSearchEmpty ? (
+          <Search className="h-8 w-8 text-gray-400" />
         ) : (
-          <Users className="h-10 w-10 text-gray-400" />
+          <Users className="h-8 w-8 text-gray-400" />
         )}
       </div>
-      <h3 className="mt-4 text-2xl font-semibold text-gray-700">
-        {totalCount > 0
-          ? "No se encontraron resultados"
+
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        {isSearchEmpty
+          ? "No se encontraron clientes"
           : "No hay clientes registrados"}
       </h3>
-      <p className="mt-2 text-base text-muted-foreground max-w-md">
-        {totalCount > 0
-          ? "Intente con otros términos de búsqueda o elimine los filtros."
-          : "No se encontraron clientes en el sistema. Contacte al administrador si necesita registrar un nuevo cliente."}
+
+      <p className="text-gray-500 mb-6 max-w-md leading-relaxed">
+        {isSearchEmpty
+          ? "Intenta con otros términos de búsqueda o revisa los filtros aplicados."
+          : "Cuando se registren clientes en el sistema, aparecerán aquí organizados y listos para gestionar."}
       </p>
-      {searchTerm && (
-        <Button variant="outline" className="mt-4" onClick={handleClearSearch}>
+
+      {isSearchEmpty && (
+        <Button
+          variant="outline"
+          onClick={handleClearSearch}
+          className="border-gray-200 text-gray-700 hover:bg-gray-50"
+        >
           Limpiar búsqueda
         </Button>
       )}

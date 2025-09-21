@@ -4,15 +4,12 @@ import { useUser } from "@/core/contexts/UserContext";
 import DeleteComparativaConfirmationModal from "../DeleteComparativaConfirmationModal";
 import { User } from "@/core/types";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/core/components/ui/dropdown-menu";
-import { Link } from "next-view-transitions";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/core/components/ui/popover";
 import { ComparativaVM } from "@/comparativas/types";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -131,72 +128,69 @@ export default function ComparativaDropdown({
 }: {
   comparativa: ComparativaVM;
 }) {
+  const handleSidebarClick = useSidebarSlideNavigation();
   const { userData } = useUser();
+  const isAdmin = userData && userData.role === "admin";
+  const hasProcessedTramite =
+    comparativa.status === "processed" && comparativa.tramite_id;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <Button size="icon" variant="ghost">
           <MoreVertical className="size-4" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        aria-label="Dropdown menu with description"
-      >
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            key="edit"
-            textValue="Visualizar Comparativa"
-            className="p-0"
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-2" align="end">
+        <div className="space-y-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
+            asChild
           >
-            <Button variant={"link"}>
-              <Link
-                className="inline-flex items-center justify-start gap-2"
-                href={`/comparativas/${comparativa.id}`}
-              >
-                <PencilLine size={16} />
-                Visualizar Comparativa
-              </Link>
-            </Button>
-          </DropdownMenuItem>
-          {comparativa.status === "processed" && comparativa.tramite_id ? (
-            <DropdownMenuItem
-              key="tramite"
-              textValue="Visualizar Trámite"
-              className="p-0"
+            <a
+              onClick={handleSidebarClick}
+              className="inline-flex items-center justify-start gap-2"
+              href={`/comparativas/${comparativa.id}`}
             >
-              <Button variant={"link"}>
-                <Link
-                  href={`/tramites/${comparativa.tramite_id}`}
-                  className="inline-flex items-center justify-start gap-2"
-                >
-                  <ReceiptEuro size={16} />
-                  Visualizar Trámite
-                </Link>
-              </Button>
-            </DropdownMenuItem>
-          ) : null}
-        </DropdownMenuGroup>
-        {userData && userData.role === "admin" ? (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                textValue="Eliminar Comparativa"
-                key="delete"
-                className="text-danger p-0"
-                onSelect={(e) => e.preventDefault()}
+              <PencilLine size={16} />
+              Visualizar Comparativa
+            </a>
+          </Button>
+
+          {hasProcessedTramite && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
+              asChild
+            >
+              <a
+                onClick={handleSidebarClick}
+                href={`/tramites/${comparativa.tramite_id}`}
+                data-sidebar-item={`/tramites/${comparativa.tramite_id}`}
+                className="inline-flex items-center justify-start gap-2"
               >
+                <ReceiptEuro size={16} />
+                Visualizar Trámite
+              </a>
+            </Button>
+          )}
+
+          {isAdmin && (
+            <>
+              <div className="border-t border-gray-100 my-1" />
+              <div className="p-0">
                 <DeleteComparativaConfirmationModal
                   comparativa={comparativa}
                   userData={userData as User}
                 />
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              </div>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

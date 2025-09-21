@@ -3,35 +3,33 @@
 import { cn } from "@/core/utils";
 import { AnimatedList } from "@/core/components/magicui/animated-list";
 import { formatDateTime } from "@/core/utils/format";
-import { Link } from "next-view-transitions";
 import { User } from "@/core/types";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import { useEffect } from "react";
 import { ComparativaVM } from "@/comparativas/types";
+import { getStatusBadge } from "@/core/hooks/use-status-badge";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 const ComparativaItem = (comparativa: ComparativaVM) => {
+  const handleSidebarClick = useSidebarSlideNavigation();
   return (
     <figure
       className={cn(
-        "relative mx-auto min-h-fit h-full max-w-[800px] w-full overflow-hidden rounded-xl p-3",
-        // animation styles
-        "transition-all duration-300 ease-in-out hover:scale-[102%] hover:-translate-y-1",
-        // light styles
-        "bg-gradient-to-br from-white to-gray-50/50 border border-gray-100/80",
-        "shadow-sm hover:shadow-lg hover:shadow-primary-500/10"
+        "relative mx-auto min-h-fit h-full max-w-[800px] w-full overflow-hidden rounded-lg p-4",
+        // Minimalist animation - subtle and purposeful
+        "transition-all duration-200 ease-out hover:bg-gray-50",
+        // Clean minimalist styling - white background, subtle border
+        "bg-white border border-gray-200",
+        "hover:shadow"
       )}
     >
-      <Link
+      <a
         href={`/comparativas/${comparativa.id}`}
+        onClick={handleSidebarClick}
         className="group flex flex-row items-center gap-4 relative"
       >
         <div className="relative">
-          <div
-            className="flex size-12 items-center justify-center rounded-xl shadow-sm ring-2 ring-white/50"
-            style={{
-              backgroundColor: "var(--primary-color-100)",
-            }}
-          >
+          <div className="flex size-12 items-center justify-center rounded-lg bg-gray-100 border border-gray-200">
             <AvatarComponent userData={comparativa.user as User} />
           </div>
         </div>
@@ -40,18 +38,19 @@ const ComparativaItem = (comparativa: ComparativaVM) => {
           <div className="flex justify-between items-start w-full mb-2">
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors duration-200">
+                <h3 className="text-base font-semibold text-gray-900 truncate group-hover:text-gray-700 transition-colors duration-200">
                   {comparativa.client}
                 </h3>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <div className="px-2 py-1 bg-primary-50 text-primary-600 text-xs font-medium rounded-md">
+                  {getStatusBadge(comparativa.status, "comparativa")}
+                  <div className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-md">
                     Ver detalles
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span className="font-medium">
-                  {comparativa.user.name || "Desconocido"}
+                  {comparativa.user.name ?? "Desconocido"}
                 </span>
                 <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
                 <span className="text-xs">
@@ -61,7 +60,7 @@ const ComparativaItem = (comparativa: ComparativaVM) => {
             </div>
           </div>
         </div>
-      </Link>
+      </a>
     </figure>
   );
 };
@@ -93,11 +92,15 @@ export function ComparativasAnimatedList({
       container.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, []);
+
   return (
     <div
       id="ComparativasAnimatedList"
       className={cn(
-        "relative flex max-h-[340px] h-full w-full flex-col overflow-y-auto p-2",
+        "relative flex max-h-[280px] h-full w-full flex-col overflow-y-auto gap-3 py-2",
+        // Clean scrollbar styling
+        "scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300",
+        "mask-t-from-95% mask-b-from-95%",
         className
       )}
     >
@@ -108,7 +111,7 @@ export function ComparativasAnimatedList({
           ))}
         </AnimatedList>
       ) : (
-        <ComparativaItem {...items[0]} />
+        items[0] && <ComparativaItem {...items[0]} />
       )}
     </div>
   );

@@ -41,15 +41,15 @@ export default function FotovoltaicaClientTab({
     )?.label || "No especificado";
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between w-full">
-          <CardTitle className="flex items-center gap-2">
-            <Building className="h-5 w-5" />
+    <Card className="h-fit">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <Building className="h-5 w-5 text-gray-600" />
             Información del Cliente
           </CardTitle>
-          {!isComercial && !isCompleted && !isRejected ? (
-            <TooltipComponent content="Editar Cliente">
+          {!isComercial && !isCompleted && !isRejected && (
+            <TooltipComponent content="Editar información del cliente">
               <EditFotovoltaicaDialog
                 fotovoltaica={fotovoltaica}
                 onSubmit={onSubmit}
@@ -57,33 +57,38 @@ export default function FotovoltaicaClientTab({
                 userData={userData}
               />
             </TooltipComponent>
-          ) : null}
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium text-muted-foreground">
+        {/* Cliente */}
+        <div className="space-y-2">
+          <Label className="text-xs text-gray-500 uppercase tracking-wide font-medium">
             Cliente
           </Label>
-          <p className="text-lg font-semibold">{fotovoltaica.client}</p>
+          <p className="text-sm font-medium text-gray-900">
+            {fotovoltaica.client}
+          </p>
         </div>
-        <div className="grid grid-cols-2">
-          <div className="flex flex-col items-start gap-2">
-            <Label className="text-sm font-medium text-muted-foreground">
-              Tipo de Cliente
-            </Label>
-            <Badge variant="secondary" className="mt-1">
-              {getClientTypeLabel}
-            </Badge>
-          </div>
-          <div className="flex flex-col items-start gap-2">
-            <Label className="text-sm font-medium text-muted-foreground">
-              Tipo de Instalación
-            </Label>
-            <Badge variant="outline" className="mt-1">
-              {getTypeLabel}
-            </Badge>
-          </div>
+
+        {/* Tipo de Cliente */}
+        <div className="space-y-2">
+          <Label className="text-xs text-gray-500 uppercase tracking-wide font-medium">
+            Tipo de Cliente
+          </Label>
+          <Badge variant="secondary" className="text-xs">
+            {getClientTypeLabel}
+          </Badge>
+        </div>
+
+        {/* Tipo de Instalación */}
+        <div className="space-y-2">
+          <Label className="text-xs text-gray-500 uppercase tracking-wide font-medium">
+            Tipo de Instalación
+          </Label>
+          <Badge variant="outline" className="text-xs">
+            {getTypeLabel}
+          </Badge>
         </div>
       </CardContent>
     </Card>

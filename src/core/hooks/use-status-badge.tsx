@@ -29,12 +29,10 @@ const LIQUIDEZ_STATUS_BADGES = {
 };
 
 const TABLE_LIQUIDEZ_STATUS_BADGES = {
-  "Pendiente de Cobro": <Badge variant="warning">Pendiente de Cobro</Badge>,
+  "Pendiente de Cobro": <Badge variant="warning">Pendiente</Badge>,
   "Cobrado por Comercializadora": <Badge variant="pending">Cobrado</Badge>,
   "Pagado al Comercial": <Badge variant="success">Pagado</Badge>,
-  "Pendiente de Descontar": (
-    <Badge variant="warning">Pendiente de Descontar</Badge>
-  ),
+  "Pendiente de Descontar": <Badge variant="warning">Pendiente</Badge>,
   Descontado: <Badge variant="success">Descontado</Badge>,
   default: <Badge>Sin Asignar</Badge>,
 };
@@ -62,9 +60,35 @@ const FOTOVOLTAICA_STATUS_BADGES = {
   default: <Badge>Sin Asignar</Badge>,
 };
 
+const TICKET_STATUS_BADGES = {
+  1: <Badge variant="pending">Abierto</Badge>,
+  2: <Badge variant="warning">En Proceso</Badge>,
+  3: <Badge variant="success">Resuelto</Badge>,
+  4: <Badge variant="danger">Cerrado</Badge>,
+};
+
+const TICKET_PRIORITY_BADGES = {
+  low: <Badge variant="success">Baja</Badge>,
+  medium: <Badge variant="pending">Media</Badge>,
+  high: <Badge variant="warning">Alta</Badge>,
+  urgent: <Badge variant="danger">Urgente</Badge>,
+  default: <Badge>Sin Asignar</Badge>,
+};
+
 export const getStatusBadge = (
-  status: ComparativaStatus | LiquidezStatus | Status | FotovoltaicaStatus,
-  statusType?: "comparativa" | "liquidez" | "fotovoltaica" | "general",
+  status:
+    | ComparativaStatus
+    | LiquidezStatus
+    | Status
+    | FotovoltaicaStatus
+    | number
+    | string,
+  statusType?:
+    | "comparativa"
+    | "liquidez"
+    | "fotovoltaica"
+    | "general"
+    | "ticket",
   isTable: boolean = false
 ) => {
   // If statusType is explicitly provided, use it directly
@@ -123,6 +147,23 @@ export const getStatusBadge = (
     return (
       COMPARATIVA_STATUS_BADGES[status as ComparativaStatus] ||
       COMPARATIVA_STATUS_BADGES.default
+    );
+  }
+
+  // Verificar si el status pertenece a Ticket Status
+  if ([1, 2, 3, 4].includes(status as number)) {
+    return (
+      TICKET_STATUS_BADGES[status as keyof typeof TICKET_STATUS_BADGES] || (
+        <Badge>Desconocido</Badge>
+      )
+    );
+  }
+
+  // Verificar si el status pertenece a Ticket Priority
+  if (["low", "medium", "high", "urgent"].includes(status as string)) {
+    return (
+      TICKET_PRIORITY_BADGES[status as keyof typeof TICKET_PRIORITY_BADGES] ||
+      TICKET_PRIORITY_BADGES.default
     );
   }
 

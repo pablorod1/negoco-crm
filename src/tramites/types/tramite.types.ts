@@ -47,6 +47,7 @@ export interface TramiteDB {
   user_id: string;
   rejected_date?: string | null;
   provider?: string | null;
+  plan?: "fijo" | "indexado" | null;
 }
 
 export interface TramiteVM extends TramiteDB {
@@ -148,6 +149,34 @@ export interface ContractDB {
   pot6: number;
   description: string;
   tramite_id: string;
+}
+
+// Enhanced contract interface supporting both string and ID-based companies
+export interface ContractWithSupplierDB
+  extends Omit<ContractDB, "old_company" | "new_company"> {
+  old_company_id?: string; // ID reference to comercializadoras table
+  new_company_id: string; // ID reference to comercializadoras table
+  old_company?: string; // Legacy string field for backward compatibility
+  new_company?: string; // Legacy string field for backward compatibility
+}
+
+// Form data interfaces with supplier selection
+export interface ContractFormData
+  extends Omit<ContractDB, "new_company" | "old_company"> {
+  new_company_id: string; // Always use ID in forms
+  old_company_id?: string; // Optional for change of supplier
+}
+
+// Validation interface for forms
+export interface ContractValidationData {
+  type: string;
+  postal_code: string;
+  province: string;
+  city: string;
+  address: string;
+  CUPS: string;
+  plan: string;
+  new_company_id: string; // Updated to use ID
 }
 
 export interface EditTramiteFormData {

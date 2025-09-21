@@ -14,31 +14,57 @@ import {
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
-import { Building2, CircleX, FilePen, FileText, MapPin } from "lucide-react";
-import { Separator } from "@/core/components/ui/separator";
+import { Building2, CircleX, FilePen, MapPin } from "lucide-react";
 import { useState } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import EditDrawer from "../client/EditTramiteDrawer";
 import { ContractDB } from "@/tramites/types";
+import { User } from "@/core/types";
+import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 
 interface Props {
   contracts: ContractDB[];
   tramite_id: string;
-  onContractAdded: () => void;
   onContractUpdated: () => void;
   isEditable: boolean | null;
+  userData: User;
 }
 export default function ContractSection({
   contracts,
   tramite_id,
-  onContractAdded,
   onContractUpdated,
   isEditable,
+  userData,
 }: Props) {
   const [selectedContract, setSelectedContract] = useState<ContractDB>(
     contracts[0]
   );
   const [loading, setLoading] = useState(false);
+  const userId = userData?.id;
+
+  // Hook to resolve supplier names from IDs when available
+  // Cast to ContractWithSupplierDB to access ID fields that might be present
+  const contractWithIds = selectedContract as ContractDB & {
+    old_company_id?: string;
+    new_company_id?: string;
+  };
+  const { supplier: oldSupplier } = useEnergySupplierById(
+    contractWithIds?.old_company_id
+  );
+  const { supplier: newSupplier } = useEnergySupplierById(
+    contractWithIds?.new_company_id
+  );
+
+  // Helper function to get the display name (prioritize resolved supplier name over legacy string)
+  const getOldCompanyDisplayName = () => {
+    if (oldSupplier) return oldSupplier.name;
+    return selectedContract?.old_company || "No especificada";
+  };
+
+  const getNewCompanyDisplayName = () => {
+    if (newSupplier) return newSupplier.name;
+    return selectedContract?.new_company || "No especificada";
+  };
 
   const checkChanges = (contract: ContractDB) => {
     return JSON.stringify(contract) !== JSON.stringify(selectedContract);
@@ -53,51 +79,6 @@ export default function ContractSection({
       contract.pot5 === 0 &&
       contract.pot6 === 0
     );
-  };
-
-  const handleCreateContract = async (contract: ContractDB) => {
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("contracts", JSON.stringify([contract]));
-      const res = await fetch(`/api/v2/contracts/${tramite_id}/contract`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const { success, error } = await res.json();
-
-      if (!success) {
-        showCustomToast({
-          title: "Error al añadir contrato",
-          message: error,
-          icon: CircleX,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-        });
-        return;
-      }
-
-      showCustomToast({
-        title: "Contrato añadido",
-        message: "El contrato ha sido añadido correctamente",
-        icon: FileText,
-        iconColor: "var(--success-color)",
-        iconSize: 24,
-      });
-      onContractAdded();
-    } catch (error) {
-      console.error(error);
-      showCustomToast({
-        title: "Error al añadir contrato",
-        message: "Ha ocurrido un error al añadir el contrato",
-        icon: CircleX,
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleUpdateContract = async (contract: ContractDB) => {
@@ -115,7 +96,7 @@ export default function ContractSection({
     try {
       const res = await fetch(`/api/v2/contracts/${tramite_id}/contract`, {
         method: "PATCH",
-        body: JSON.stringify({ contract }),
+        body: JSON.stringify({ contract, user_id: userId }),
         headers: {
           "Content-Type": "application/json",
         },
@@ -159,26 +140,27 @@ export default function ContractSection({
 
   return (
     <>
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2  text-primary-800">
-            <FileText className="h-5 w-5" />
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
+            <div className="h-2 w-2 bg-gray-600 rounded-full"></div>
             Contratos
           </CardTitle>
-          <CardDescription className="text-primary-400">
+          <CardDescription className="text-sm text-gray-500 mt-1">
             {contracts.length} contrato{contracts.length !== 1 ? "s" : ""}{" "}
             asociado{contracts.length !== 1 ? "s" : ""}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {contracts.length > 0 ? (
-            <Tabs defaultValue={contracts[0]?.id}>
-              <TabsList className="mb-4">
+            <Tabs defaultValue={contracts[0]?.id} className="space-y-4">
+              <TabsList className="bg-gray-100 p-1 rounded-lg">
                 {contracts.map((contract) => (
                   <TabsTrigger
                     key={contract.id}
                     value={contract.id}
                     onClick={() => setSelectedContract(contract)}
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 font-medium px-4 py-2"
                   >
                     {contract.type} - {contract.CUPS}
                   </TabsTrigger>
@@ -189,173 +171,198 @@ export default function ContractSection({
                 <TabsContent
                   key={contract.id}
                   value={contract.id}
-                  className="space-y-6"
+                  className="mt-0"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Supply Information */}
                     <div className="space-y-4">
-                      <div>
-                        <h3 className="text-lg font-medium text-primary-800">
+                      <div className="pb-3 border-b border-gray-200">
+                        <h3 className="text-sm font-medium text-gray-700">
                           Información del Suministro
                         </h3>
-                        <Separator className="my-2 bg-primary-200" />
                       </div>
 
-                      <div>
-                        <p className="text-sm font-medium text-primary-400">
-                          Tipo
-                        </p>
-                        <p className="font-medium ">{contract.type}</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-4">
                         <div>
-                          <p className="text-sm font-medium text-primary-400">
-                            Compañía Antigua
+                          <p className="text-xs text-gray-500 mb-1">Tipo</p>
+                          <p className="text-sm font-medium text-gray-800">
+                            {contract.type}
                           </p>
-                          <p className="font-medium ">{contract.old_company}</p>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-primary-400">
-                            Compañía Nueva
-                          </p>
-                          <p className="font-medium ">{contract.new_company}</p>
-                        </div>
-                      </div>
 
-                      <div>
-                        <p className="text-sm font-medium text-primary-400">
-                          Plan Contratado
-                        </p>
-                        <p className="font-medium ">{contract.plan}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-primary-400">
-                          CUPS
-                        </p>
-                        <p className="font-medium ">{contract.CUPS}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-primary-400">
-                          Consumo Estimado
-                        </p>
-                        <p className="font-medium ">
-                          {contract.consumption > 0
-                            ? `${contract.consumption} kWh`
-                            : "Sin Asignar"}
-                        </p>
-                      </div>
-                      {contract.description && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Compañía Antigua
+                            </p>
+                            <p className="text-sm font-medium text-gray-800">
+                              {getOldCompanyDisplayName()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Compañía Nueva
+                            </p>
+                            <p className="text-sm font-medium text-gray-800">
+                              {getNewCompanyDisplayName()}
+                            </p>
+                          </div>
+                        </div>
+
                         <div>
-                          <p className="text-sm font-medium text-primary-400">
-                            Descripción
+                          <p className="text-xs text-gray-500 mb-1">
+                            Plan Contratado
                           </p>
-                          <p className="text-muted-foreground">
-                            {contract.description}
+                          <p className="text-sm font-medium text-gray-800">
+                            {contract.plan}
                           </p>
                         </div>
-                      )}
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">CUPS</p>
+                          <p className="text-sm font-medium text-gray-800 font-mono">
+                            {contract.CUPS}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Consumo Estimado
+                          </p>
+                          <p className="text-sm font-medium text-gray-800">
+                            {contract.consumption > 0
+                              ? `${contract.consumption.toLocaleString()} kWh`
+                              : "Sin Asignar"}
+                          </p>
+                        </div>
+
+                        {contract.description && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Descripción
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {contract.description}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
+                    {/* Address Information */}
                     <div className="space-y-4">
-                      <div>
-                        <h3 className="text-lg font-medium text-primary-800">
+                      <div className="pb-3 border-b border-gray-200">
+                        <h3 className="text-sm font-medium text-gray-700">
                           Dirección del Suministro
                         </h3>
-                        <Separator className="my-2 bg-primary-200" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-primary-400" />
-                        <p className="font-medium ">
-                          {contract.address}, {contract.postal_code}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-primary-400" />
-                        <p className="font-medium ">
-                          {contract.city}, {contract.province}
-                        </p>
                       </div>
 
-                      <div className="mt-6">
-                        <h3 className="text-lg font-medium text-primary-800">
-                          Potencias Contratadas
-                        </h3>
-                        <Separator className="my-2" />
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">
+                              {contract.address}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {contract.postal_code}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">
+                              {contract.city}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {contract.province}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      {!checkEmptyPots(contract) ? (
-                        <div className="grid grid-cols-3 gap-4">
-                          {contract.pot1 > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-primary-400">
-                                Potencia P1
-                              </p>
-                              <p className="font-medium ">{contract.pot1} kW</p>
-                            </div>
-                          )}
-                          {contract.pot2 > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-primary-400">
-                                Potencia P2
-                              </p>
-                              <p className="font-medium ">{contract.pot2} kW</p>
-                            </div>
-                          )}
-                          {contract.pot3 > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-primary-400">
-                                Potencia P3
-                              </p>
-                              <p className="font-medium ">{contract.pot3} kW</p>
-                            </div>
-                          )}
-                          {contract.pot4 > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-primary-400">
-                                Potencia P4
-                              </p>
-                              <p className="font-medium ">{contract.pot4} kW</p>
-                            </div>
-                          )}
-                          {contract.pot5 > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-primary-400">
-                                Potencia P5
-                              </p>
-                              <p className="font-medium ">{contract.pot5} kW</p>
-                            </div>
-                          )}
-                          {contract.pot6 > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-primary-400">
-                                Potencia P6
-                              </p>
-                              <p className="font-medium ">{contract.pot6} kW</p>
-                            </div>
-                          )}
+
+                      {/* Power Information */}
+                      <div className="pt-4">
+                        <div className="pb-3 border-b border-gray-200">
+                          <h3 className="text-sm font-medium text-gray-700">
+                            Potencias Contratadas
+                          </h3>
                         </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-16 text-primary-400">
-                          No hay potencias asignadas
-                        </div>
-                      )}
+
+                        {!checkEmptyPots(contract) ? (
+                          <div className="grid grid-cols-2 gap-3 mt-4">
+                            {contract.pot1 > 0 && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">P1</p>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {contract.pot1} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot2 > 0 && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">P2</p>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {contract.pot2} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot3 > 0 && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">P3</p>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {contract.pot3} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot4 > 0 && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">P4</p>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {contract.pot4} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot5 > 0 && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">P5</p>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {contract.pot5} kW
+                                </p>
+                              </div>
+                            )}
+                            {contract.pot6 > 0 && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">P6</p>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {contract.pot6} kW
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-16 text-gray-400 bg-gray-50 rounded-lg border border-gray-200 mt-4">
+                            <p className="text-sm">
+                              No hay potencias asignadas
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
               ))}
             </Tabs>
           ) : (
-            <div className="flex items-center justify-center h-48 text-primary-400">
-              No hay contratos asociados
+            <div className="flex items-center justify-center h-16 text-gray-400 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-sm">No hay contratos asociados</p>
             </div>
           )}
         </CardContent>
         {isEditable && (
-          <CardFooter className="gap-4">
-            <EditDrawer
-              tramite_id={tramite_id}
-              newContract
-              onContract={handleCreateContract}
-              loading={loading}
-            />
+          <CardFooter className="pt-4 border-t border-gray-200">
             {contracts.length > 0 && (
               <EditDrawer
                 contract={selectedContract}

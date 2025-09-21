@@ -54,7 +54,7 @@ export async function GET(
           success: false,
           error:
             "Invalid parameters: " +
-            validation.error.errors.map((e) => e.message).join(", "),
+            validation.error.issues.map((e) => e.message).join(", "),
         },
         { status: 400 }
       );

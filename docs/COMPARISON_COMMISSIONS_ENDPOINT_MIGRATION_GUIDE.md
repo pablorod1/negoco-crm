@@ -201,7 +201,7 @@ Enhanced error categorization for better debugging:
 ```typescript
 // Validation errors
 if (!validation.success) {
-  console.error('[VALIDATION ERROR] Invalid request:', validation.error.errors);
+  console.error('[VALIDATION ERROR] Invalid request:', validation.error.issues);
 }
 
 // Database errors

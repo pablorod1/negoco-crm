@@ -7,6 +7,7 @@ import {
   CheckCircle,
   CloudAlert,
   DownloadCloud,
+  Eye,
   MoreVertical,
 } from "lucide-react";
 import { showCustomToast } from "@/core/components/CustomToast";
@@ -101,9 +102,11 @@ export const EditDocumentIcon = (props: IconProps) => {
 export default function FileCardDropdown({
   userData,
   file,
+  handlePreviewFile,
 }: {
   userData: User;
   file: DocumentacionFile;
+  handlePreviewFile: (file: DocumentacionFile) => void;
 }) {
   const isComercial = userData.role === "2";
 
@@ -147,18 +150,39 @@ export default function FileCardDropdown({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button size="icon" variant="ghost">
-          <MoreVertical className="size-4" />
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-gray-500 hover:text-gray-700"
+        >
+          <MoreVertical className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="bg-white rounded-md shadow-lg p-2 space-y-2 border border-gray-200 max-w-sm w-full">
-        <div className="flex flex-col space-y-2">
-          <Button className="justify-start w-full" onClick={handleDownload}>
-            <DownloadCloud />
+      <PopoverContent
+        align="end"
+        className="w-48 p-1 border-gray-200 shadow-lg"
+      >
+        <div className="space-y-1">
+          <Button
+            variant="ghost"
+            onClick={() => handlePreviewFile(file)}
+            className="w-full justify-start h-9 px-3 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+          >
+            <Eye className="h-4 w-4 mr-3" />
+            Previsualizar
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={handleDownload}
+            className="w-full justify-start h-9 px-3 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+          >
+            <DownloadCloud className="h-4 w-4 mr-3" />
             Descargar
           </Button>
           {!isComercial && (
-            <DeleteFileConfirmationModal files={[file]} userData={userData} />
+            <div className="border-t border-gray-100 pt-1">
+              <DeleteFileConfirmationModal files={[file]} userData={userData} />
+            </div>
           )}
         </div>
       </PopoverContent>

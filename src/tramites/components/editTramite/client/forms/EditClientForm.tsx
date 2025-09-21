@@ -11,6 +11,7 @@ import { CircleX } from "lucide-react";
 import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import { ClientDB, SignerDB } from "@/tramites/types";
 import ClientUpdateConfirmationDialog from "../ClientUpdateConfirmationDialog";
+import { User } from "@/core/types";
 
 interface Props {
   tramite_id: string;
@@ -18,6 +19,7 @@ interface Props {
   onCancel: () => void;
   onClientUpdated: () => void;
   signer?: SignerDB | undefined;
+  userData?: User;
 }
 
 export default function EditClientForm({
@@ -26,6 +28,7 @@ export default function EditClientForm({
   onCancel,
   tramite_id,
   signer,
+  userData,
 }: Props) {
   const [formData, setFormData] = useState<ClientDB>(client);
   const [loading, setLoading] = useState(false);
@@ -65,6 +68,56 @@ export default function EditClientForm({
 
     // Show confirmation dialog before proceeding
     setShowConfirmDialog(true);
+  };
+
+  const updateExistingClientWithoutTramite = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v2/clients/${client.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client: formData,
+          user_id: userData?.id,
+        }),
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
+        showCustomToast({
+          title: "Error al guardar los cambios",
+          message: error as string,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+
+      showCustomToast({
+        title: "Cambios guardados",
+        message: "Los cambios se han guardado correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      onClientUpdated();
+    } catch (error) {
+      console.error(error);
+      showCustomToast({
+        title: "Error al guardar los cambios",
+        message: error as string,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+    } finally {
+      setLoading(false);
+      setShowConfirmDialog(false);
+    }
   };
 
   const updateExistingClient = async () => {
@@ -177,6 +230,7 @@ export default function EditClientForm({
       setShowConfirmDialog(false);
     }
   };
+
   return (
     <div className="h-full">
       <div className="flex flex-col gap-4 w-full">
@@ -301,7 +355,9 @@ export default function EditClientForm({
       <ClientUpdateConfirmationDialog
         isOpen={showConfirmDialog}
         onClose={() => setShowConfirmDialog(false)}
-        onConfirmUpdate={updateExistingClient}
+        onConfirmUpdate={
+          tramite_id ? updateExistingClient : updateExistingClientWithoutTramite
+        }
         onCreateNew={createNewClient}
         clientId={client.id}
         isLoading={loading}

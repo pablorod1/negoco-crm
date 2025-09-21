@@ -1,18 +1,15 @@
 ﻿import { User } from "@/core/types";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-} from "@/core/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/core/components/ui/popover";
 import { Button } from "@/core/components/ui/button";
 import { MoreVertical, PencilLine } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
-import { Link } from "next-view-transitions";
 import DeleteFotovoltaicaConfirmationModal from "../DeleteFotovoltaicaConfirmationModal";
 import { FotovoltaicaVM } from "@/fotovoltaica/types";
+import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 
@@ -103,53 +100,48 @@ export default function FotovoltaicaDropdown({
   const { userData } = useUser();
   const isAdmin = userData && userData.role === "admin";
   const isRejected = fotovoltaica.status === "rejected";
+  const canDelete = isAdmin || isRejected;
+
+  const handleSidebarClick = useSidebarSlideNavigation();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <Button size="icon" variant="ghost">
           <MoreVertical className="size-4" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        aria-label="Dropdown menu with description"
-      >
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            key="edit"
-            textValue="Visualizar Solicitud"
-            className="p-0"
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-2" align="end">
+        <div className="space-y-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start h-9 text-gray-700 hover:bg-gray-50"
+            asChild
           >
-            <Button variant={"link"}>
-              <Link
-                className="inline-flex items-center justify-start gap-2"
-                href={`/fotovoltaica/${fotovoltaica.id}`}
-              >
-                <PencilLine size={16} />
-                Visualizar Solicitud
-              </Link>
-            </Button>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        {isAdmin || isRejected ? (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                key="delete"
-                className="p-0"
-                onSelect={(e) => e.preventDefault()}
-              >
+            <a
+              onClick={handleSidebarClick}
+              className="inline-flex items-center justify-start gap-2"
+              href={`/fotovoltaica/${fotovoltaica.id}`}
+            >
+              <PencilLine size={16} />
+              Visualizar Solicitud
+            </a>
+          </Button>
+
+          {canDelete && (
+            <>
+              <div className="border-t border-gray-100 my-1" />
+              <div className="p-0">
                 <DeleteFotovoltaicaConfirmationModal
                   fotovoltaica={fotovoltaica}
                   userData={userData as User}
                 />
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              </div>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

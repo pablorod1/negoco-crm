@@ -25,8 +25,9 @@ export default function TramitesPage() {
       }
     }
   }, [userData]);
+
   return (
-    <section className="pb-12 px-4">
+    <section className="pb-12 px-4 min-h-screen">
       <DataTable title="Trámites" columns={columns} />
     </section>
   );

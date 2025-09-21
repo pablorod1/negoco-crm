@@ -10,6 +10,7 @@ import {
   TramiteFile,
 } from "@/tramites/types/tramite.types";
 import { Client } from "@libsql/client";
+import { recordTramiteCreation } from "@/tramites/utils/tramiteChangesHelpers";
 
 // Zod Validation Schemas
 const StatusSchema = z.enum([
@@ -145,7 +146,7 @@ const TramiteSchema = z.object({
       }
       if (val.length < 1) {
         ctx.addIssue({
-          code: z.ZodIssueCode.too_small,
+          code: "too_small",
           minimum: 1,
           type: "string",
           inclusive: true,
@@ -158,6 +159,7 @@ const TramiteSchema = z.object({
   user_id: z.string().min(1, "User ID is required"),
   rejected_date: z.string().nullable().optional(),
   provider: z.string().nullable().optional(),
+  plan: z.enum(["fijo", "indexado"]).nullable().optional(),
 });
 
 const ClientSchema = z.object({
@@ -217,6 +219,7 @@ const ContractSchema = z.object({
   city: z.string().min(1, "City is required"),
   address: z.string().min(1, "Address is required"),
   postal_code: z.string().min(1, "Postal code is required"),
+  // Support both legacy string fields and new ID-based fields
   old_company: z.string().optional(),
   new_company: z.string().min(1, "New company is required"),
   plan: z.string().min(1, "Plan is required"),
@@ -252,7 +255,7 @@ const SignerSchema = z
         }
         if (val.length < 1) {
           ctx.addIssue({
-            code: z.ZodIssueCode.too_small,
+            code: "too_small",
             minimum: 1,
             type: "string",
             inclusive: true,
@@ -545,8 +548,8 @@ const addTramiteOptimized = async (
         INSERT INTO tramites (
           id, creation_date, tramitation_date, activation_date, renovation_date,
           sales_name, comision, comision_sales_person, status, liquidez_status,
-          notes, internal_notes, client_id, user_id, collection_date, payment_date, provider
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          notes, internal_notes, client_id, user_id, collection_date, payment_date, provider, plan
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         tramite.id,
@@ -566,6 +569,7 @@ const addTramiteOptimized = async (
         tramite.collection_date || null,
         tramite.payment_date || null,
         tramite.provider || null,
+        tramite.plan || null,
       ],
     });
 
@@ -593,7 +597,7 @@ const addContractsOptimized = async (
 
     const startTime = performance.now();
 
-    // Use batch insert for better performance
+    // Use batch insert for better performance - include both legacy and ID fields
     const placeholders = contracts
       .map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .join(", ");
@@ -606,7 +610,7 @@ const addContractsOptimized = async (
       contract.address,
       contract.postal_code,
       contract.old_company || "",
-      contract.new_company,
+      contract.new_company || "", // Legacy field - use empty string if not provided
       contract.plan,
       contract.consumption || 0,
       contract.CUPS,
@@ -871,6 +875,14 @@ export async function POST(
         if (!existingFilesRes.success) throw new Error(existingFilesRes.error);
       }
 
+      // Record tramite creation in changes history
+      await recordTramiteCreation(
+        tx,
+        tramite.id,
+        userData.id,
+        `Trámite creado por ${userData.name}`
+      );
+
       // Commit transaction
       await tx.commit();
 
@@ -1114,6 +1126,22 @@ export async function GET(
       }
     };
 
+    // Company filter helper (handles both ID and name for backward compatibility)
+    const addCompanyFilter = (filterArray?: string[]) => {
+      if (filterArray && filterArray.length > 0) {
+        // For each company filter, we need to check both the ID and name
+        // This handles the transition from name-based to ID-based storage
+        const companyConditions = filterArray
+          .map(() => "(con.new_company = ? OR com.name = ?)")
+          .join(" OR ");
+        filters.push(`(${companyConditions})`);
+        // Add each filter value twice: once for ID match, once for name match
+        filterArray.forEach((company) => {
+          params.push(company, company);
+        });
+      }
+    };
+
     // Provider filter helper (case-insensitive)
     const addProviderFilter = (filterArray?: string[]) => {
       if (filterArray && filterArray.length > 0) {
@@ -1126,8 +1154,9 @@ export async function GET(
       }
     };
 
-    // Apply array-based filters
-    addArrayFilter("con.new_company", companyFilter);
+    if (companyFilter) {
+      addCompanyFilter(companyFilter);
+    }
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
     addArrayFilter("t.liquidez_status", liquidezStatusFilter);
@@ -1174,6 +1203,8 @@ export async function GET(
           clients c ON t.client_id = c.id
       LEFT JOIN 
           contracts con ON t.id = con.tramite_id
+      LEFT JOIN 
+          comercializadoras com ON con.new_company = com.id
     `;
 
     // Add WHERE clause if filters exist

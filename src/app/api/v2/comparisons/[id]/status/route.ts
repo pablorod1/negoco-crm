@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import {
+  recordStatusChange,
+  recordCommissionChange,
+  recordConvertedToContract,
+} from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * Request validation schema for comparison status updates
@@ -21,6 +26,8 @@ const optionalCommissionNumber = z.preprocess((val) => {
 const ComparisonStatusUpdateSchema = z.object({
   status: z.string().min(1, "Status is required"),
   tramite_id: z.string().optional(),
+  user_id: z.string().optional(), // For change tracking
+  company_id: z.string().optional(), // For completed comparisons
   comissions: z
     .object({
       comision_fijo: optionalCommissionNumber,
@@ -49,18 +56,42 @@ interface QueryMetrics {
 }
 
 /**
- * Enhanced database operation with performance monitoring
+ * Enhanced database operation with performance monitoring and change tracking
  */
 async function executeStatusUpdate(
   client: Client,
   comparativaId: string,
   status: string,
-  tramiteId?: string
+  tramiteId?: string,
+  userId?: string,
+  companyId?: string
 ): Promise<{ success: boolean; error?: string; metrics: QueryMetrics }> {
   const startTime = performance.now();
   const optimizations: string[] = [];
 
   try {
+    // Get current status before update for change tracking
+    const currentResult = await client.execute({
+      sql: "SELECT status, tramite_id FROM comparativas WHERE id = ?",
+      args: [comparativaId],
+    });
+
+    if (currentResult.rows.length === 0) {
+      return {
+        success: false,
+        error: "Comparativa no encontrada",
+        metrics: {
+          queryTime: 0,
+          fieldsUpdated: 0,
+          optimizationApplied: optimizations,
+        },
+      };
+    }
+
+    const currentData = currentResult.rows[0];
+    const oldStatus = currentData.status as string;
+    const oldTramiteId = currentData.tramite_id as string | null;
+
     // Optimized query building with prepared statements
     let query = `UPDATE comparativas SET status = ?`;
     const args: (string | null)[] = [status];
@@ -72,6 +103,14 @@ async function executeStatusUpdate(
       args.push(tramiteId);
       fieldsUpdated++;
       optimizations.push("conditional_tramite_update");
+    }
+
+    // Conditional company_id update for completed comparisons
+    if (companyId !== undefined) {
+      query += `, company_id = ?`;
+      args.push(companyId);
+      fieldsUpdated++;
+      optimizations.push("conditional_company_update");
     }
 
     query += ` WHERE id = ?`;
@@ -102,6 +141,27 @@ async function executeStatusUpdate(
       };
     }
 
+    // Record status change
+    if (oldStatus !== status) {
+      await recordStatusChange(
+        client,
+        comparativaId,
+        userId || null,
+        oldStatus,
+        status
+      );
+    }
+
+    // Record conversion to contract if tramite_id was set
+    if (tramiteId && !oldTramiteId) {
+      await recordConvertedToContract(
+        client,
+        comparativaId,
+        userId || null,
+        tramiteId
+      );
+    }
+
     console.log(
       `[DB Performance] Status update executed in ${queryTime.toFixed(2)}ms with ${optimizations.length} optimizations`
     );
@@ -127,7 +187,7 @@ async function executeStatusUpdate(
 }
 
 /**
- * Enhanced commission update with performance monitoring
+ * Enhanced commission update with performance monitoring and change tracking
  */
 async function executeCommissionUpdate(
   client: Client,
@@ -137,21 +197,57 @@ async function executeCommissionUpdate(
     comision_indexado?: number;
     comision_sales_person_fijo?: number;
     comision_sales_person_indexado?: number;
-  }
+  },
+  userId?: string
 ): Promise<{ success: boolean; error?: string; metrics: QueryMetrics }> {
   const startTime = performance.now();
   const optimizations: string[] = [];
 
   try {
+    // Get current commissions before update for change tracking
+    const currentResult = await client.execute({
+      sql: "SELECT comision_fijo, comision_indexado, comision_sales_person_fijo, comision_sales_person_indexado FROM comparativas WHERE id = ?",
+      args: [comparativaId],
+    });
+
+    if (currentResult.rows.length === 0) {
+      return {
+        success: false,
+        error: "Comparativa no encontrada",
+        metrics: {
+          queryTime: 0,
+          fieldsUpdated: 0,
+          optimizationApplied: optimizations,
+        },
+      };
+    }
+
+    const currentData = currentResult.rows[0];
+
     // Dynamic query building for efficiency - only update provided fields
     const updates: string[] = [];
     const params: (number | string)[] = [];
+    const changeTracker: Array<{
+      field: string;
+      oldValue: number | null;
+      newValue: number;
+    }> = [];
 
     // Build query dynamically to avoid unnecessary field updates
     Object.entries(commissions).forEach(([field, value]) => {
       if (value !== undefined) {
+        const currentValue = currentData[field] as number | null;
         updates.push(`${field} = ?`);
         params.push(value);
+
+        // Track changes for history
+        if (currentValue !== value) {
+          changeTracker.push({
+            field,
+            oldValue: currentValue,
+            newValue: value,
+          });
+        }
       }
     });
 
@@ -193,6 +289,18 @@ async function executeCommissionUpdate(
           optimizationApplied: optimizations,
         },
       };
+    }
+
+    // Record commission changes
+    for (const change of changeTracker) {
+      await recordCommissionChange(
+        client,
+        comparativaId,
+        userId || null,
+        change.field,
+        change.oldValue,
+        change.newValue
+      );
     }
 
     console.log(
@@ -267,7 +375,7 @@ export async function PATCH(
     if (!validation.success) {
       console.warn(
         "[Validation Warning] Invalid request parameters:",
-        validation.error.errors
+        validation.error.issues
       );
       return NextResponse.json(
         {
@@ -278,10 +386,11 @@ export async function PATCH(
       );
     }
 
-    const { status, tramite_id, comissions } = validation.data;
+    const { status, tramite_id, comissions, user_id, company_id } =
+      validation.data;
 
     // Validate required parameters (maintaining original validation logic)
-    if (!id || !status) {
+    if (!id || !status || !user_id) {
       return NextResponse.json(
         {
           success: false,
@@ -309,7 +418,9 @@ export async function PATCH(
       tursoClient,
       id,
       status,
-      tramite_id
+      tramite_id,
+      user_id, // Pass user_id for change tracking
+      company_id // Pass company_id for completed comparisons
     );
 
     if (!statusResult.success) {
@@ -334,7 +445,8 @@ export async function PATCH(
       commissionResult = await executeCommissionUpdate(
         tursoClient,
         id,
-        comissions
+        comissions,
+        body.user_id // Pass user_id for change tracking
       );
 
       if (!commissionResult.success) {

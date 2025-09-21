@@ -199,12 +199,12 @@ export default function UpgradePlanDialog() {
     <Dialog open={open}>
       <DialogTrigger asChild>
         <Button
-          size="lg"
+          size="sm"
           onClick={onOpen}
-          className="inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
+          className="w-full justify-start text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
         >
-          <Rocket className="w-4 h-4 mr-1" />
-          <span>Mejora tu suscripción</span>
+          <Rocket className="w-3 h-3 mr-2" />
+          <span>Mejorar plan</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">

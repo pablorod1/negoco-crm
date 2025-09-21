@@ -7,7 +7,7 @@ interface ComparativasContextType {
 }
 
 const ComparativasContext = createContext<ComparativasContextType>({
-  refreshComparativas: async () => {},
+  refreshComparativas: () => Promise.resolve(),
   setRefreshComparativas: () => () => {},
 });
 
@@ -47,4 +47,3 @@ export function ComparativasProvider({
     </ComparativasContext.Provider>
   );
 }
-

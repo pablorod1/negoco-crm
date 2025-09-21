@@ -55,7 +55,9 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid parameters: " + validation.error.errors.map(e => e.message).join(", "),
+          error:
+            "Invalid parameters: " +
+            validation.error.issues.map((e) => e.message).join(", "),
         },
         { status: 400 }
       );

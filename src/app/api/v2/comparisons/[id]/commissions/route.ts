@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * REFACTORED COMPARISON COMMISSIONS UPDATE ENDPOINT
@@ -71,6 +72,7 @@ const ComparisonCommissionsUpdateSchema = z.object({
         path: ["comissions"],
       }
     ),
+  user_id: z.string().min(1, "User ID is required for tracking changes"),
 });
 
 /**
@@ -231,7 +233,7 @@ export async function PATCH(
       const totalRequestTime = performance.now() - startTime;
       console.error(
         `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
-        paramsValidation.error.errors
+        paramsValidation.error.issues
       );
 
       return NextResponse.json(
@@ -252,7 +254,7 @@ export async function PATCH(
       const totalRequestTime = performance.now() - startTime;
       console.error(
         `[VALIDATION ERROR] Invalid request body after ${totalRequestTime.toFixed(2)}ms:`,
-        validation.error.errors
+        validation.error.issues
       );
 
       return NextResponse.json(
@@ -286,6 +288,25 @@ export async function PATCH(
 
     // ==================== COMMISSION UPDATE EXECUTION ====================
 
+    // Get existing commission data for tracking changes
+    const existingDataResult = await tursoClient.execute({
+      sql: `SELECT comision_fijo, comision_indexado, comision_sales_person_fijo, comision_sales_person_indexado 
+            FROM comparativas WHERE id = ?`,
+      args: [comparisonId],
+    });
+
+    if (existingDataResult.rows.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Comparativa no encontrada",
+        },
+        { status: 404 }
+      );
+    }
+
+    const existingData = existingDataResult.rows[0] as Record<string, unknown>;
+
     const { sql, args, updatedFields } = buildUpdateQuery(
       comissions,
       comparisonId
@@ -314,6 +335,78 @@ export async function PATCH(
         },
         { status: 400 }
       );
+    }
+
+    // ==================== TRACK COMMISSION CHANGES ====================
+
+    // Extract user_id from request body for tracking
+    const { user_id } = requestBody;
+
+    if (user_id) {
+      // Track each commission field that was updated
+      if (
+        comissions.comision_fijo !== undefined &&
+        comissions.comision_fijo !== Number(existingData.comision_fijo)
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: comparisonId,
+          user_id: user_id,
+          change_type: "commission_update",
+          field_name: "comision_fijo",
+          old_value: existingData.comision_fijo?.toString() || "0",
+          new_value: comissions.comision_fijo?.toString() || "0",
+          description: `Comisión fija actualizada de ${existingData.comision_fijo || 0}€ a ${comissions.comision_fijo || 0}€`,
+        });
+      }
+
+      if (
+        comissions.comision_indexado !== undefined &&
+        comissions.comision_indexado !== Number(existingData.comision_indexado)
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: comparisonId,
+          user_id: user_id,
+          change_type: "commission_update",
+          field_name: "comision_indexado",
+          old_value: existingData.comision_indexado?.toString() || "0",
+          new_value: comissions.comision_indexado?.toString() || "0",
+          description: `Comisión indexada actualizada de ${existingData.comision_indexado || 0}€ a ${comissions.comision_indexado || 0}€`,
+        });
+      }
+
+      if (
+        comissions.comision_sales_person_fijo !== undefined &&
+        comissions.comision_sales_person_fijo !==
+          Number(existingData.comision_sales_person_fijo)
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: comparisonId,
+          user_id: user_id,
+          change_type: "commission_update",
+          field_name: "comision_sales_person_fijo",
+          old_value: existingData.comision_sales_person_fijo?.toString() || "0",
+          new_value: comissions.comision_sales_person_fijo?.toString() || "0",
+          description: `Comisión comercial fija actualizada de ${existingData.comision_sales_person_fijo || 0}€ a ${comissions.comision_sales_person_fijo || 0}€`,
+        });
+      }
+
+      if (
+        comissions.comision_sales_person_indexado !== undefined &&
+        comissions.comision_sales_person_indexado !==
+          Number(existingData.comision_sales_person_indexado)
+      ) {
+        await createComparativaChange(tursoClient, {
+          comparativa_id: comparisonId,
+          user_id: user_id,
+          change_type: "commission_update",
+          field_name: "comision_sales_person_indexado",
+          old_value:
+            existingData.comision_sales_person_indexado?.toString() || "0",
+          new_value:
+            comissions.comision_sales_person_indexado?.toString() || "0",
+          description: `Comisión comercial indexada actualizada de ${existingData.comision_sales_person_indexado || 0}€ a ${comissions.comision_sales_person_indexado || 0}€`,
+        });
+      }
     }
 
     // ==================== SUCCESS RESPONSE ====================

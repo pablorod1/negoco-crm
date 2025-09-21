@@ -19,10 +19,12 @@ import { Button } from "@/core/components/ui/button";
 import { User } from "@/core/types";
 import Image from "next/image";
 import UploadFotovoltaicaFilesDialog from "./UploadFotovoltaicaFilesDialog";
-import Link from "next/link";
 import { downloadFile } from "@/core/firebase/data/downloadFile";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { FotovoltaicaVM, FotovoltaicaFile } from "@/fotovoltaica/types";
+import { FileData } from "@/types/files";
+import { useState } from "react";
+import FilePreview from "@/core/components/FilePreview/FilePreview";
 
 interface Props {
   fotovoltaica: FotovoltaicaVM;
@@ -115,6 +117,9 @@ export default function FotovoltaicaFilesTab({
   const isPending = fotovoltaica.status === "pending";
   const isComercial = userData.role === "2";
 
+  const [previewFile, setPreviewFile] = useState<FileData | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
   const canUploadFiles =
     isPending || (!isCompleted && !isRejected && !isComercial);
   const handleDownloadFile = async (file: FotovoltaicaFile) => {
@@ -139,82 +144,115 @@ export default function FotovoltaicaFilesTab({
       console.error(error);
     }
   };
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Archivos Adjuntos
-          </span>
-          {canUploadFiles ? (
-            <UploadFotovoltaicaFilesDialog
-              fotovoltaica={fotovoltaica}
-              userData={userData}
-              onSubmit={onSubmit}
-            />
-          ) : null}
-        </CardTitle>
-        <CardDescription>
-          Documentos y archivos relacionados con la solicitud
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {fotovoltaica.files.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Tamaño</TableHead>
-                <TableHead>Fecha de Subida</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fotovoltaica.files.map((file) => (
-                <TableRow key={file.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {getFileIcon(file)}
-                      {file.filename}
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatFileSize(file.size)}</TableCell>
-                  <TableCell>{formatDate(file.upload_date)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleDownloadFile(file)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
 
-                      {file.preview_url && (
-                        <Link
-                          href={file.download_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Button variant="outline" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </TableCell>
+  const handlePreviewFile = (file: FotovoltaicaFile) => {
+    // Convert FotovoltaicaFile to FileData format
+    const fileData: FileData = {
+      id: file.id,
+      filename: file.filename,
+      extension: file.extension, // No need to normalize here, detectFileType will handle it
+      size: file.size,
+      download_url: file.download_url,
+      preview_url: file.preview_url || undefined,
+      upload_date: file.upload_date,
+    };
+
+    setPreviewFile(fileData);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewFile(null);
+  };
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Archivos Adjuntos
+            </span>
+            {canUploadFiles ? (
+              <UploadFotovoltaicaFilesDialog
+                fotovoltaica={fotovoltaica}
+                userData={userData}
+                onSubmit={onSubmit}
+              />
+            ) : null}
+          </CardTitle>
+          <CardDescription>
+            Documentos y archivos relacionados con la solicitud
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {fotovoltaica.files.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Tamaño</TableHead>
+                  <TableHead>Fecha de Subida</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="text-center py-8">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No hay archivos adjuntos</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {fotovoltaica.files.map((file) => (
+                  <TableRow key={file.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {getFileIcon(file)}
+                        {file.filename}
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatFileSize(file.size)}</TableCell>
+                    <TableCell>{formatDate(file.upload_date)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {file.download_url ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePreviewFile(file)}
+                              className="text-gray-700 border-gray-300 hover:bg-gray-100"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Previsualizar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleDownloadFile(file)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No hay archivos adjuntos</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <FilePreview
+          file={previewFile}
+          onClose={handleClosePreview}
+          isOpen={isPreviewOpen}
+        />
+      )}
+    </>
   );
 }

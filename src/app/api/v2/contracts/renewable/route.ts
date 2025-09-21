@@ -41,24 +41,24 @@ interface QueryMetrics {
 
 /**
  * Retrieves renewable contracts (tramites) based on user role and permissions
- * 
+ *
  * This endpoint returns contracts with status "Activo" that are eligible for renewal.
  * Role-based access control:
  * - Role "2" (Team Lead): Includes own contracts + subordinates' contracts
  * - Other roles: Only own contracts
- * 
+ *
  * @param request - Next.js request object containing user credentials
  * @returns Promise<NextResponse<RenewableContractsResponse>>
- * 
+ *
  * @example
  * POST /new_api/contracts/renewable
  * Content-Type: application/json
- * 
+ *
  * {
  *   "id": "user123",
  *   "role": "2"
  * }
- * 
+ *
  * Response:
  * {
  *   "success": true,
@@ -71,14 +71,16 @@ interface QueryMetrics {
  *   ]
  * }
  */
-export async function POST(req: NextRequest): Promise<NextResponse<RenewableContractsResponse>> {
+export async function POST(
+  req: NextRequest
+): Promise<NextResponse<RenewableContractsResponse>> {
   const startTime = Date.now();
-  
+
   try {
     // Parse and validate request body
     const rawBody = await req.json();
     const validationResult = RenewableContractsRequestSchema.safeParse(rawBody);
-    
+
     if (!validationResult.success) {
       return NextResponse.json(
         {
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<RenewableCont
         { status: 400 }
       );
     }
-    
+
     const { id, role } = validationResult.data;
 
     // Initialize database client with connection pooling
@@ -122,8 +124,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<RenewableCont
       // Team lead role - include subordinates with optimized subquery
       try {
         const subcomerciales = await getSubcomerciales(tursoClient, id);
-        
-        if (subcomerciales.success && subcomerciales.ids && subcomerciales.ids.length > 0) {
+
+        if (
+          subcomerciales.success &&
+          subcomerciales.ids &&
+          subcomerciales.ids.length > 0
+        ) {
           hasSubordinates = true;
           // Use optimized IN clause with parameterized query
           const placeholders = subcomerciales.ids.map(() => "?").join(", ");
@@ -135,23 +141,22 @@ export async function POST(req: NextRequest): Promise<NextResponse<RenewableCont
           params.push(id);
         }
       } catch (subordinateError) {
-        console.error("Error fetching subordinates, falling back to own contracts:", subordinateError);
+        console.error(
+          "Error fetching subordinates, falling back to own contracts:",
+          subordinateError
+        );
         query += ` AND user_id = ?`;
         params.push(id);
       }
-    } else {
-      // Standard role - own contracts only
-      query += ` AND user_id = ?`;
-      params.push(id);
     }
 
     // Add performance optimization: order by renovation_date for better UX
     query += ` ORDER BY renovation_date ASC`;
 
     // Execute query with proper error handling
-    const rs = await tursoClient.execute({ 
-      sql: query, 
-      args: params 
+    const rs = await tursoClient.execute({
+      sql: query,
+      args: params,
     });
 
     // Transform results with type safety
@@ -180,11 +185,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<RenewableCont
       success: true,
       data: renewableContracts,
     });
-
   } catch (error) {
     // Comprehensive error handling with structured logging
     const errorTime = Date.now() - startTime;
-    
+
     console.error("Error obtaining renewable contracts:", {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,

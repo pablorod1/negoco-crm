@@ -12,7 +12,6 @@ import { CircleX } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 
 const formatFolderPath = (rawPath: string): string[] => {
   return decodeURIComponent(rawPath).split(",").filter(Boolean);
@@ -88,29 +87,27 @@ export default function FolderPage() {
 
   const handleBack = useCallback(() => {
     const parentPath = getParentPath(folderPath);
-    router.push(parentPath, {
-      onTransitionReady: slideOut,
-    });
+    router.push(parentPath);
   }, [folderPath, router]);
 
   return (
-    <>
+    <div className="space-y-6">
       {isLoading ? (
         <FullScreenLoaderComponent />
       ) : files.length > 0 || folders.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          <FileGrid
-            folderPath={folderPath}
-            files={files}
-            folders={folders}
-            currentPath={currentPath}
-            handleBack={handleBack}
-            userData={userData as User}
-          />
-        </div>
+        <FileGrid
+          folderPath={folderPath}
+          files={files}
+          folders={folders}
+          currentPath={currentPath}
+          handleBack={handleBack}
+          userData={userData as User}
+        />
       ) : (
-        <EmptyDocumentacion userData={userData as User} />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <EmptyDocumentacion userData={userData as User} />
+        </div>
       )}
-    </>
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 import { Button } from "@/core/components/ui/button";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { authClient } from "@/core/auth/auth-client";
-import { AlertTriangle, Ban, Unlock, UserRoundX } from "lucide-react";
+import { Ban, Unlock, UserRoundX } from "lucide-react";
 import { useUsers } from "@/core/contexts/UsersContext";
 import {
   Dialog,
@@ -73,46 +73,63 @@ export default function UnbanUserConfirmationModal({
   };
 
   return (
-    <>
-      <Dialog open={isOpen}>
-        <DialogTrigger asChild>
-          <TooltipComponent content="Habilitar usuario">
-            <Button size="icon" onClick={onOpen}>
-              <Unlock size={16} />
-            </Button>
-          </TooltipComponent>
-        </DialogTrigger>
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-primary">
-              <AlertTriangle className="text-primary" size={30} />
-              <DialogTitle className="text-xl">
-                Confirmar activación
-              </DialogTitle>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <TooltipComponent content="Activar usuario">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-400 hover:text-green-600 hover:bg-green-50"
+            onClick={onOpen}
+          >
+            <Unlock size={14} />
+          </Button>
+        </TooltipComponent>
+      </DialogTrigger>
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-w-md border-gray-200"
+      >
+        <DialogHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+              <Unlock className="text-green-600" size={20} />
             </div>
-          </DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              Activar usuario
+            </DialogTitle>
+          </div>
+        </DialogHeader>
 
-          <div className="flex flex-col gap-2">
-            <p className="text-gray-700">
-              ¿Estás seguro que deseas volver a habilitar a{" "}
-              <strong>{userName}</strong>?
-            </p>
-            <p className="text-gray-500 text-sm">
-              Este usuario podrá iniciar sesión nuevamente.
+        <div className="space-y-3">
+          <p className="text-gray-700">
+            ¿Estás seguro que deseas activar a{" "}
+            <span className="font-medium">{userName}</span>?
+          </p>
+          <div className="bg-green-50 p-3 rounded-lg">
+            <p className="text-sm text-green-700">
+              El usuario podrá iniciar sesión y acceder al sistema nuevamente.
             </p>
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button variant="destructive" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button onClick={handleBan}>
-              <Unlock size={16} />
-              Habilitar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        <DialogFooter className="gap-3">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleBan}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Unlock size={16} />
+            Activar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

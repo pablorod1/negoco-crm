@@ -131,39 +131,57 @@ export async function POST(
       );
     }
 
-    // Build user role-based filtering for tramites (exactly like contracts endpoint)
+    // Build user role-based filtering for tramites (exactly like main endpoint)
     let userFilterClause = "";
     const userFilterParams: string[] = [];
 
     if (user_role === "2") {
-      // Commercial users (role 2): only see their own tramites and their subcomerciales' non-draft tramites
+      // Commercial users (role 2): only see their own tramites and their subcomerciales' tramites
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
-        userFilterClause = `AND (t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
+        userFilterClause = `AND (t.user_id = ? OR (t.user_id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")})))`;
         userFilterParams.push(user_id, ...subcomerciales.ids);
+        optimizations.push("role-based-filtering");
+        optimizations.push("subordinate-user-lookup");
       } else {
         userFilterClause = `AND t.user_id = ?`;
         userFilterParams.push(user_id);
+        optimizations.push("role-based-filtering");
       }
     } else {
       // For other roles: show all non-draft tramites or user's own tramites (including drafts)
-      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`;
+      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ?))`;
       userFilterParams.push(user_id, user_id);
     }
 
-    // Single optimized query with subqueries for efficient data retrieval and proper user filtering
-    // This approach eliminates N+1 queries and reduces database round trips while applying security
+    // Single optimized query with subqueries matching exactly the main endpoint logic
+    // This approach matches exactly the main endpoint logic but for a single comercializadora
     const query = `
       SELECT 
         c.id,
         c.name,
         c.logo,
         c.active,
-        COUNT(DISTINCT filtered_contracts.tramite_id) as num_tramites,
         (SELECT COUNT(*) FROM documentacion_files WHERE folder_name LIKE '%' || c.name || '%') as num_files,
-        COALESCE(SUM(filtered_contracts.consumption), 0) as total_consumption,
+        (
+          SELECT COUNT(DISTINCT con.tramite_id)
+          FROM contracts con
+          JOIN tramites t ON t.id = con.tramite_id
+          WHERE  
+            con.new_company = c.id OR con.new_company = c.name 
+          ${userFilterClause}
+        ) as num_tramites,
+        (
+          SELECT 
+          SUM(con.consumption) AS total
+      FROM contracts con
+      INNER JOIN tramites t ON con.tramite_id = t.id
+          WHERE t.status = 'Activo' AND (
+            con.new_company = c.id OR con.new_company = c.name
+          ) ${userFilterClause}
+        ) as total_consumption,
         (SELECT json_group_array(
           json_object(
             'id', cr.id,
@@ -185,18 +203,12 @@ export async function POST(
           )
         ) FROM documentacion_files df WHERE df.folder_name LIKE '%' || c.name || '%') as files
       FROM comercializadoras c
-      LEFT JOIN (
-        SELECT con.tramite_id, con.new_company, con.consumption
-        FROM contracts con
-        JOIN tramites t ON t.id = con.tramite_id
-        WHERE con.new_company = ? ${userFilterClause}
-      ) filtered_contracts ON filtered_contracts.new_company = c.name
       WHERE c.name = ?
-      GROUP BY c.id, c.name, c.logo, c.active
     `;
 
-    const queryParams = [name, ...userFilterParams, name];
-    optimizations.push("prepared-statement");
+    const queryParams = [...userFilterParams, ...userFilterParams, name];
+    optimizations.push("exact-main-endpoint-logic-single-comercializadora");
+    console.log("Energy Supplier By Name Query:", query);
     const response = await tursoClient.execute(query, queryParams);
 
     const queryTime = Date.now() - startTime;

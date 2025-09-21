@@ -7,7 +7,7 @@ interface TramitesContextType {
 }
 
 const TramitesContext = createContext<TramitesContextType>({
-  refreshTramites: async () => {},
+  refreshTramites: () => Promise.resolve(),
   setRefreshTramites: () => () => {},
 });
 
@@ -40,4 +40,3 @@ export function TramitesProvider({ children }: { children: React.ReactNode }) {
     </TramitesContext.Provider>
   );
 }
-

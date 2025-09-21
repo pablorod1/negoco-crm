@@ -1,5 +1,6 @@
 ﻿import { UpdatedFields } from "@/tramites/hooks/track-tramite-changes";
 import { Notification } from "@/core/types";
+import { formatUUID } from "./format";
 
 export const getColorPriority = (priority: number) => {
   switch (priority) {
@@ -22,6 +23,31 @@ export const getLinkContext = (context: string, link: string): string => {
       return `/comparativas/${link}`;
     case "Tramites":
       return `/tramites/${link}`;
+    case "Tickets-tramite":
+      return `/tramites/${link}`;
+    case "Tickets-comparativa":
+      return `/comparativas/${link}`;
+    case "Tickets-fotovoltaica":
+      return `/fotovoltaica/${link}`;
+    case "Tickets-cliente":
+      return `/clientes/${link}`;
+    case "Tickets":
+      // Fallback para compatibilidad con notificaciones existentes
+      // Intentamos detectar el tipo de objeto basado en el prefijo del link
+      if (link.startsWith("NEG-")) {
+        return `/tramites/${link}`;
+      } else if (link.startsWith("CMP-")) {
+        return `/comparativas/${link}`;
+      } else if (link.startsWith("FOT-")) {
+        return `/fotovoltaica/${link}`;
+      } else if (link.startsWith("CLI-")) {
+        return `/clientes/${link}`;
+      } else {
+        // Fallback genérico si no podemos detectar el tipo
+        return "/";
+      }
+    case "Fotovoltaicas":
+      return `/fotovoltaica/${link}`;
     default:
       return "/";
   }
@@ -99,7 +125,7 @@ export const generateTramiteUpdatedNotification = ({
   client,
 }: TramiteNotification): Notification => ({
   id: tramite_id,
-  title: `Trámite ${tramite_id} actualizado`,
+  title: `Trámite ${formatUUID(tramite_id)} actualizado`,
   message: generateTramitesNotificationMessage(changes, uploadedFiles),
   client,
   created_at: new Date().toISOString(),
@@ -175,7 +201,7 @@ export const generateComparativaUpdatedNotification = ({
 }: ComparativaNotification): Notification => {
   return {
     id: comparativa_id,
-    title: `Comparativa ${comparativa_id} actualizada`,
+    title: `Comparativa ${formatUUID(comparativa_id)} actualizada`,
     message: generateComparativaNotificationMessage(
       notes,
       status,
@@ -239,13 +265,113 @@ export const generateFotovoltaicaUpdatedNotification = ({
 }: FotovoltaicaNotification): Notification => {
   return {
     id: fotovoltaica_id,
-    title: `Solicitud fotovoltaica ${fotovoltaica_id} actualizada`,
+    title: `Solicitud fotovoltaica ${formatUUID(fotovoltaica_id)} actualizada`,
     message: generateFotovoltaicaNotificationMessage(notes, status, files),
     client,
     created_at: new Date().toISOString(),
     context: "Fotovoltaicas",
     link: fotovoltaica_id,
     priority: 3,
+    user_id: user_id,
+  };
+};
+
+// ==================== TICKET NOTIFICATIONS ====================
+
+interface TicketCreatedNotification {
+  subject: string;
+  context: "tramite" | "cliente" | "fotovoltaica" | "comparativa";
+  ref_id: string;
+  user_id: string;
+  client?: string;
+  created_by_name?: string;
+}
+
+interface TicketReplyNotification {
+  ticket_id: string;
+  subject: string;
+  context: string;
+  ref_id: string;
+  user_id: string;
+  client?: string;
+  author_name?: string;
+}
+
+export const generateTicketCreatedNotificationMessage = (
+  context: string,
+  subject: string,
+  created_by_name?: string
+): string => {
+  const contextName =
+    {
+      tramite: "trámite",
+      comparativa: "comparativa",
+      fotovoltaica: "solicitud fotovoltaica",
+      cliente: "cliente",
+    }[context] || "elemento";
+
+  const creatorInfo = created_by_name ? ` por ${created_by_name}` : "";
+
+  return `Se ha creado un nuevo ticket en tu ${contextName}${creatorInfo}: "${subject}"`;
+};
+
+export const generateTicketReplyNotificationMessage = (
+  subject: string,
+  author_name?: string
+): string => {
+  const authorInfo = author_name ? ` de ${author_name}` : "";
+  return `Hay una nueva respuesta${authorInfo} en el ticket: "${subject}"`;
+};
+
+export const generateTicketCreatedNotification = ({
+  subject,
+  context,
+  ref_id,
+  user_id,
+  client,
+  created_by_name,
+}: TicketCreatedNotification): Notification => {
+  // Crear contexto específico para tickets basado en el tipo de objeto
+  const ticketContext = `Tickets-${context.toLowerCase()}`;
+
+  return {
+    id: crypto.randomUUID(),
+    title: "Nuevo ticket asignado",
+    message: generateTicketCreatedNotificationMessage(
+      context,
+      subject,
+      created_by_name
+    ),
+    client,
+    created_at: new Date().toISOString(),
+    context: ticketContext,
+    link: ref_id, // Link directo al objeto (tramite/comparativa/etc.)
+    priority: 2,
+    user_id: user_id,
+  };
+};
+
+export const generateTicketReplyNotification = ({
+  ticket_id,
+  subject,
+  context,
+  ref_id,
+  user_id,
+  client,
+  author_name,
+}: TicketReplyNotification): Notification => {
+  // Crear contexto específico para tickets basado en el tipo de objeto
+  const ticketContext = `Tickets-${context.toLowerCase()}`;
+
+  return {
+    id: `TICKET-REPLY-${ticket_id}-${crypto.randomUUID()}`,
+    title: "Nueva respuesta en ticket",
+    message: generateTicketReplyNotificationMessage(subject, author_name),
+    client,
+    created_at: new Date().toISOString(),
+    context: ticketContext,
+    link: ref_id, // Link directo al objeto (tramite/comparativa/etc.)
+    priority: 2,
     user_id: user_id,
   };
 };

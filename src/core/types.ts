@@ -20,7 +20,7 @@ export interface Organization {
   id: string;
   name: string;
   logo: string | null;
-  plan: string;
+  plan: string | null;
 }
 
 export interface Notification {

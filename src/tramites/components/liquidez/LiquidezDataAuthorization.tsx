@@ -6,7 +6,6 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import { ShieldAlert } from "lucide-react";
 import { LiquidezColumns } from "./LiquidezColumns";
 import { useTransitionRouter } from "next-view-transitions";
-import { slideOut } from "@/core/view-transitions/view-transitions";
 
 export default function LiquidezDataAuthorization() {
   const { userData } = useUser();
@@ -34,9 +33,7 @@ export default function LiquidezDataAuthorization() {
       // Asegura que el router.push solo se ejecute si el componente sigue montado
       setTimeout(() => {
         if (isMounted.current && isActive) {
-          router.push("/", {
-            onTransitionReady: slideOut,
-          });
+          router.push("/");
         }
       }, 0);
     }
@@ -51,4 +48,3 @@ export default function LiquidezDataAuthorization() {
     </section>
   );
 }
-

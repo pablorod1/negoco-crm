@@ -7,6 +7,10 @@ import {
   updateTramite,
 } from "@/tramites/utils/updateTramiteHelpers";
 import { addClient } from "@/tramites/utils/addTramiteHelpers";
+import {
+  recordClientChange,
+  recordSignerChange,
+} from "@/tramites/utils/tramiteChangesHelpers";
 
 // Zod validation schemas
 const DocumentTypeSchema = z.enum(["DNI", "NIE", "CIF", "Otro", ""]);
@@ -72,6 +76,7 @@ const SignerSchema = z
 const UpdateClientRequestSchema = z.object({
   client: ClientSchema,
   signer: SignerSchema,
+  user_id: z.string().min(1, "User ID is required"), // Add user_id for tracking
 });
 
 const CreateClientRequestSchema = z.object({
@@ -105,7 +110,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: `Validation error: ${validationResult.error.errors.map((e) => e.message).join(", ")}`,
+          error: `Validation error: ${validationResult.error.issues.map((e) => e.message).join(", ")}`,
         },
         { status: 400 }
       );
@@ -211,9 +216,12 @@ export async function POST(
  * Replaces: PATCH /api/v1/tramites/update/client
  */
 export async function PATCH(
-  request: NextRequest
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ClientResponse>> {
   try {
+    const { id: tramite_id } = await params;
+
     // Parse and validate request body
     const body = await request.json();
     const validationResult = UpdateClientRequestSchema.safeParse(body);
@@ -222,13 +230,13 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          error: `Validation error: ${validationResult.error.errors.map((e) => e.message).join(", ")}`,
+          error: `Validation error: ${validationResult.error.issues.map((e) => e.message).join(", ")}`,
         },
         { status: 400 }
       );
     }
 
-    const { client, signer } = validationResult.data;
+    const { client, signer, user_id } = validationResult.data;
 
     const tursoClient = getTursoClient(request);
 
@@ -242,6 +250,19 @@ export async function PATCH(
       );
     }
 
+    // Get current client and signer data to track changes
+    const currentClientResult = await tursoClient.execute({
+      sql: `SELECT * FROM clients WHERE id = ?`,
+      args: [client.id],
+    });
+
+    const currentSignerResult = signer
+      ? await tursoClient.execute({
+          sql: `SELECT * FROM signers WHERE id = ?`,
+          args: [signer.id],
+        })
+      : null;
+
     // Update client information
     const updateClientRes = await updateClient(client, client.id, tursoClient);
 
@@ -253,6 +274,49 @@ export async function PATCH(
         },
         { status: 500 }
       );
+    }
+
+    // Track client changes
+    if (currentClientResult.rows.length > 0) {
+      const currentClient = currentClientResult.rows[0];
+      const changes: Array<{
+        field: string;
+        oldValue: string | null;
+        newValue: string | null;
+      }> = [];
+
+      // Check each field for changes
+      const clientFields = [
+        "name",
+        "last_name",
+        "email",
+        "phone",
+        "address",
+        "postal_code",
+        "province",
+        "city",
+        "document_number",
+        "document_type",
+        "IBAN",
+        "type",
+      ];
+
+      for (const field of clientFields) {
+        const oldValue = currentClient[field] as string | null;
+        const newValue = client[field as keyof typeof client] as string | null;
+
+        if (oldValue !== newValue) {
+          changes.push({
+            field,
+            oldValue,
+            newValue,
+          });
+        }
+      }
+
+      if (changes.length > 0) {
+        await recordClientChange(tursoClient, tramite_id, user_id, changes);
+      }
     }
 
     // Update signer if provided and client is business entity
@@ -274,6 +338,50 @@ export async function PATCH(
           },
           { status: 500 }
         );
+      }
+
+      // Track signer changes
+      if (currentSignerResult && currentSignerResult.rows.length > 0) {
+        const currentSigner = currentSignerResult.rows[0];
+        const signerChanges: Array<{
+          field: string;
+          oldValue: string | null;
+          newValue: string | null;
+        }> = [];
+
+        // Check each field for changes
+        const signerFields = [
+          "name",
+          "last_name",
+          "email",
+          "phone",
+          "document_number",
+          "document_type",
+        ];
+
+        for (const field of signerFields) {
+          const oldValue = currentSigner[field] as string | null;
+          const newValue = signer[field as keyof typeof signer] as
+            | string
+            | null;
+
+          if (oldValue !== newValue) {
+            signerChanges.push({
+              field,
+              oldValue,
+              newValue,
+            });
+          }
+        }
+
+        if (signerChanges.length > 0) {
+          await recordSignerChange(
+            tursoClient,
+            tramite_id,
+            user_id,
+            signerChanges
+          );
+        }
       }
     }
 

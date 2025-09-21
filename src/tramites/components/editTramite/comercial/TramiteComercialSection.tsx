@@ -30,15 +30,15 @@ export default function TramiteComercialSection({
   useEffect(() => {
     const fetchComerciales = async () => {
       try {
-        const res = await fetch(`/api/v2/users/${userData.id}/all`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            role: userData.role,
-          }),
-        });
+        const res = await fetch(
+          `/api/v2/users/${userData.id}/all?role=${userData.role}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
         const { success, data } = await res.json();
 
         if (!success) {
@@ -120,18 +120,27 @@ export default function TramiteComercialSection({
     }
   };
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-primary-400">Comercial</p>
-
-      <div className="flex justify-between items-end gap-4">
-        {!isEditMode ? (
-          <div className="flex items-center gap-3">
-            <AvatarComponent
-              userData={user as User}
-              className="!rounded-full"
-            />
-            <div>
-              <p className="font-medium">{user.name}</p>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-gray-700">Proveedor</h4>
+        {isEditable && !isEditMode ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsEditMode(!isEditMode)}
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          >
+            <UserPen className="h-4 w-4 mr-2" />
+            Cambiar
+          </Button>
+        ) : null}
+      </div>
+      {!isEditMode ? (
+        <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-200">
+          <AvatarComponent userData={user as User} className=" h-12 w-12" />
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-gray-900 truncate">{user.name}</h4>
+            <div className="flex items-center gap-2 mt-1">
               <TooltipComponent
                 content={
                   <div className="flex items-center gap-2">
@@ -140,41 +149,50 @@ export default function TramiteComercialSection({
                       size="icon"
                       variant="ghost"
                       onClick={() => copyLink(user.email as string)}
+                      className="h-6 w-6"
                     >
-                      <Copy size={16} />
+                      <Copy className="h-3 w-3" />
                     </Button>
                   </div>
                 }
               >
-                <p className="text-sm text-muted-foreground block xl:max-w-44 2xl:max-w-none overflow-hidden text-ellipsis whitespace-nowrap w-full">
+                <p className="text-sm text-gray-500 truncate max-w-64">
                   {user.email}
                 </p>
               </TooltipComponent>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => copyLink(user.email as string)}
+                className="h-6 w-6 text-gray-400 hover:text-gray-600"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
             </div>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <div className="space-y-4">
           <SelectComponent
             name="sales_person"
-            label="Comercial"
+            label="Seleccionar nuevo comercial"
             items={comerciales}
             selectedKey={user.id as string}
             textValue={user.name}
             onChange={handleChange}
           />
-        )}
-        {isEditable && (
-          <Button
-            variant={isEditMode ? "destructive" : "default"}
-            onClick={() => setIsEditMode(!isEditMode)}
-          >
-            {!isEditMode ? (
-              <UserPen size={16} />
-            ) : (
-              <CircleX size={16} className="text-danger-500" />
-            )}
-          </Button>
-        )}
-      </div>
+          <div className="flex gap-2">
+            <Button
+              variant={"dangerGhost"}
+              size="sm"
+              onClick={() => setIsEditMode(false)}
+            >
+              <CircleX className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

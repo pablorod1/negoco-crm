@@ -1,13 +1,5 @@
 ﻿import React from "react";
-import {
-  Search,
-  SortAsc,
-  SortDesc,
-  X,
-  ChevronDown,
-  LayoutGrid,
-  Table2,
-} from "lucide-react";
+import { Search, SortAsc, SortDesc, X, LayoutGrid, Table2 } from "lucide-react";
 import { Input } from "@/core/components/ui/input";
 import { Button } from "@/core/components/ui/button";
 import {
@@ -16,11 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/core/components/ui/dropdown-menu";
-import { Badge } from "@/core/components/ui/badge";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/core/components/ui/toggle-group";
 
 type SortOrder = "asc" | "desc" | null;
 
@@ -47,78 +34,89 @@ export function ClientsFilters({
   searchTerm,
   resultsCount,
 }: ClientsFiltersProps) {
-  // Toggle sort order
-  const handleSort = (order: SortOrder) => {
-    setSortOrder(order);
-  };
-
   return (
-    <>
-      <div className="mb-4 flex flex-col sm:flex-row items-center gap-4 px-4">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div className="space-y-4">
+      {/* Main filters row */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             type="search"
-            placeholder="Buscar por nombre, email, documento o teléfono..."
-            className="w-full bg-background pl-8 shadow-none rounded-lg border border-gray-200"
+            placeholder="Buscar clientes..."
+            className="pl-9 h-10 border-gray-200 focus:border-gray-300 focus:ring-0 bg-white"
             value={localSearchTerm}
             onChange={(e) => setLocalSearchTerm(e.target.value)}
           />
           {localSearchTerm && (
             <button
               onClick={handleClearSearch}
-              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2 self-end">
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            variant={"outline"}
-            onValueChange={(value: "card" | "table") =>
-              value && setViewMode(value)
-            }
-          >
-            <ToggleGroupItem value="card" aria-label="Card view">
+
+        <div className="flex gap-2">
+          {/* View toggle */}
+          <div className="flex border border-gray-200 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("card")}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === "card"
+                  ? "bg-gray-100 text-gray-900"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
               <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="table" aria-label="Table view">
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === "table"
+                  ? "bg-gray-100 text-gray-900"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
               <Table2 className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+            </button>
+          </div>
+
+          {/* Sort dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1 text-sm border-gray-200"
+                className="border-gray-200 text-gray-600 hover:bg-gray-50"
               >
-                Ordenar
-                <ChevronDown className="h-3.5 w-3.5" />
+                {sortOrder === "asc" ? (
+                  <SortAsc className="h-4 w-4" />
+                ) : sortOrder === "desc" ? (
+                  <SortDesc className="h-4 w-4" />
+                ) : (
+                  "Ordenar"
+                )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem
-                onClick={() => handleSort("asc")}
-                className={sortOrder === "asc" ? "bg-muted" : ""}
+                onClick={() => setSortOrder("asc")}
+                className={sortOrder === "asc" ? "bg-gray-50" : ""}
               >
                 <SortAsc className="h-4 w-4 mr-2" />
                 A-Z
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handleSort("desc")}
-                className={sortOrder === "desc" ? "bg-muted" : ""}
+                onClick={() => setSortOrder("desc")}
+                className={sortOrder === "desc" ? "bg-gray-50" : ""}
               >
                 <SortDesc className="h-4 w-4 mr-2" />
                 Z-A
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handleSort(null)}
-                className={sortOrder === null ? "bg-muted" : ""}
+                onClick={() => setSortOrder(null)}
+                className={sortOrder === null ? "bg-gray-50" : ""}
               >
                 Por defecto
               </DropdownMenuItem>
@@ -127,36 +125,23 @@ export function ClientsFilters({
         </div>
       </div>
 
-      {/* Search filters display */}
+      {/* Results counter */}
       {(searchTerm || sortOrder) && (
-        <div className="mb-4 px-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>Mostrando {resultsCount} resultados</span>
-          <div className="flex gap-2">
-            {searchTerm && (
-              <Badge variant="outline" className="gap-1 pl-2">
-                Búsqueda: {searchTerm}
-                <button
-                  onClick={handleClearSearch}
-                  className="ml-1 hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {sortOrder && (
-              <Badge variant="outline" className="gap-1 pl-2">
-                Orden: {sortOrder === "asc" ? "A-Z" : "Z-A"}
-                <button
-                  onClick={() => setSortOrder(null)}
-                  className="ml-1 hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-          </div>
+        <div className="text-sm text-gray-500">
+          {resultsCount} {resultsCount === 1 ? "resultado" : "resultados"}
+          {searchTerm && (
+            <span className="ml-2 px-2 py-1 bg-gray-100 rounded-md text-gray-700">
+              &ldquo;{searchTerm}&rdquo;
+              <button
+                onClick={handleClearSearch}
+                className="ml-1 text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-3 w-3 inline" />
+              </button>
+            </span>
+          )}
         </div>
       )}
-    </>
+    </div>
   );
 }

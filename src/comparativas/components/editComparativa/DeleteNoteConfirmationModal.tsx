@@ -12,6 +12,7 @@ import { Button } from "@/core/components/ui/button";
 import { AlertTriangle, CheckCircle, CircleX, Trash } from "lucide-react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { memo, useState } from "react";
+import { useUser } from "@/core/contexts/UserContext";
 
 interface DeleteNoteConfirmationModalProps {
   note: string;
@@ -28,6 +29,7 @@ const DeleteNoteConfirmationModal = memo(
     onDeleted,
   }: DeleteNoteConfirmationModalProps) => {
     const [isOpen, setIsOpen] = useState(false);
+    const { userData } = useUser();
 
     const onOpen = () => {
       setIsOpen(true);
@@ -43,7 +45,11 @@ const DeleteNoteConfirmationModal = memo(
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ note, notes }),
+          body: JSON.stringify({
+            note,
+            notes,
+            user_id: userData?.id,
+          }),
         });
 
         const { success, error } = await rs.json();

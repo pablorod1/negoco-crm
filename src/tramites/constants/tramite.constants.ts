@@ -103,6 +103,7 @@ export const COMPANIES = [
   { label: "VM", value: "VM" },
   { label: "YaLuz", value: "YaLuz" },
   { label: "Zima Energia", value: "Zima Energia" },
+  { label: "Otra", value: "Otra" },
 ];
 
 export const PLAIN_COMPANIES = [

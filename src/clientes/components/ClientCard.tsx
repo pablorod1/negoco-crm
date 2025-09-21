@@ -1,18 +1,10 @@
 ﻿"use client";
 
-import {
-  Calendar,
-  ChevronDown,
-  FileText,
-  Mail,
-  MessageCircle,
-} from "lucide-react";
-import { Badge } from "@/core/components/ui/badge";
+import { Mail, Phone, FileText, Calendar, ChevronRight } from "lucide-react";
 import { Card } from "@/core/components/ui/card";
 import { ClientListItem } from "./ClientsList";
 import { useTransitionRouter } from "next-view-transitions";
 import { Avatar, AvatarFallback } from "@/core/components/ui/avatar";
-import { Button } from "@/core/components/ui/button";
 
 export function ClientCard({ client }: { client: ClientListItem }) {
   const router = useTransitionRouter();
@@ -23,101 +15,73 @@ export function ClientCard({ client }: { client: ClientListItem }) {
 
   const getAvatarColor = (id: string) => {
     const colors = [
-      "bg-red-100 text-red-800",
-      "bg-blue-100 text-blue-800",
-      "bg-green-100 text-green-800",
-      "bg-yellow-100 text-yellow-800",
-      "bg-purple-100 text-purple-800",
-      "bg-pink-100 text-pink-800",
-      "bg-indigo-100 text-indigo-800",
-      "bg-teal-100 text-teal-800",
+      "bg-blue-50 text-blue-700",
+      "bg-green-50 text-green-700",
+      "bg-purple-50 text-purple-700",
+      "bg-orange-50 text-orange-700",
+      "bg-pink-50 text-pink-700",
+      "bg-indigo-50 text-indigo-700",
     ];
     const index = Number.parseInt(id, 16) % colors.length;
     return colors[index];
   };
 
   return (
-    <Card
-      key={client.id}
-      className="overflow-hidden transition-all duration-200 hover:shadow-md group"
-    >
+    <Card className="group cursor-pointer hover:shadow-md transition-all duration-200 border-gray-200 bg-white">
       <div
-        className="p-6 cursor-pointer"
+        className="p-6"
         onClick={() => router.push(`/clientes/${client.id}`)}
       >
-        <div className="flex items-start gap-4">
-          <Avatar
-            className={`h-12 w-12 ring-2 ring-background ${getAvatarColor(client.id)}`}
-          >
-            <AvatarFallback>
+        {/* Header with avatar and name */}
+        <div className="flex items-start gap-4 mb-4">
+          <Avatar className={`h-10 w-10 ${getAvatarColor(client.id)}`}>
+            <AvatarFallback className="font-medium">
               {getInitials(client.name, client.last_name)}
             </AvatarFallback>
           </Avatar>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-medium text-lg truncate group-hover:text-primary transition-colors">
-                {client.name} {client.last_name}
-              </h3>
-            </div>
-
-            <div className="mt-1 flex items-center">
-              <Badge variant="outline" className="font-normal text-xs">
-                {client.document_type} {client.document_number}
-              </Badge>
-            </div>
-
-            <div className="mt-3 space-y-2 text-sm">
-              {client.email && (
-                <div className="flex items-center text-muted-foreground">
-                  <Mail className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                  <span className="truncate">{client.email}</span>
-                </div>
-              )}
-
-              {client.phone && (
-                <div className="flex items-center text-muted-foreground">
-                  <MessageCircle className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                  <span>{client.phone}</span>
-                </div>
-              )}
-            </div>
+            <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
+              {client.name} {client.last_name}
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              {client.document_type} {client.document_number}
+            </p>
           </div>
+
+          <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
-        <div className="mt-4 pt-4 border-t flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-muted-foreground">Trámites</span>
-              <div className="flex items-center mt-1">
-                <Calendar className="h-3.5 w-3.5 mr-1 text-primary" />
-                <span className="font-medium">
-                  {client.tramites_count || 0}
-                </span>
-              </div>
+        {/* Contact info */}
+        <div className="space-y-2 mb-4">
+          {client.email && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{client.email}</span>
             </div>
+          )}
 
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-muted-foreground">Archivos</span>
-              <div className="flex items-center mt-1">
-                <FileText className="h-3.5 w-3.5 mr-1 text-primary" />
-                <span className="font-medium">{client.files_count || 0}</span>
-              </div>
+          {client.phone && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>{client.phone}</span>
             </div>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-1 text-sm text-gray-600">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>{client.tramites_count || 0}</span>
+            <span className="text-gray-400">trámites</span>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/clientes/${client.id}`);
-            }}
-          >
-            Ver detalles
-            <ChevronDown className="ml-1 h-4 w-4 rotate-[-90deg]" />
-          </Button>
+          <div className="flex items-center gap-1 text-sm text-gray-600">
+            <FileText className="h-3.5 w-3.5" />
+            <span>{client.files_count || 0}</span>
+            <span className="text-gray-400">archivos</span>
+          </div>
         </div>
       </div>
     </Card>

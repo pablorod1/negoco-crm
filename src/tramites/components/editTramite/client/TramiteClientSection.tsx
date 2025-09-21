@@ -2,20 +2,15 @@
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/core/components/ui/tabs";
-import { UserIcon } from "lucide-react";
+import { useState } from "react";
+import { ClientViewToggle, ClientView } from "./ClientViewToggle";
 import ClientTabContent from "./ClientTabContent";
 import SignerTabContent from "./SignerTabContent";
 import { ClientDB, SignerDB } from "@/tramites/types";
-import { formatUUID } from "@/core/utils/format";
 
 interface Props {
   client: ClientDB;
@@ -32,38 +27,37 @@ export default function TramiteClientSection({
   isEditable,
   tramite_id,
 }: Props) {
+  const [currentView, setCurrentView] = useState<ClientView>("client");
   const isEmpresaOrComunidad =
     client.type === "Empresa" || client.type === "Comunidad de Propietarios";
+
   return (
-    <Card className="xl:col-span-2 relative">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-primary-800">
-          <UserIcon className="h-5 w-5" />
+    <Card className="xl:col-span-2 ">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
+          <div className="h-2 w-2 bg-gray-600 rounded-full"></div>
           Información del Cliente
         </CardTitle>
+        <CardDescription className="text-sm text-gray-500 mt-1">
+          {isEmpresaOrComunidad
+            ? "Cliente empresarial con firmante"
+            : "Cliente individual"}
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="client">
-          <TabsList
-            className={`grid mb-4 ${
-              client.type === "Empresa" ||
-              client.type === "Comunidad de Propietarios"
-                ? "grid-cols-2"
-                : "grid-cols-1"
-            }`}
-          >
-            <TabsTrigger value="client">
-              Cliente - {formatUUID(client.id)}
-            </TabsTrigger>
-            {(client.type === "Empresa" ||
-              client.type === "Comunidad de Propietarios") && (
-              <TabsTrigger value="signer">
-                Firmante - {formatUUID(signer.id)}
-              </TabsTrigger>
-            )}
-          </TabsList>
+      <CardContent className="space-y-6">
+        {/* Client/Signer Toggle */}
+        {isEmpresaOrComunidad && (
+          <ClientViewToggle
+            currentView={currentView}
+            onViewChange={setCurrentView}
+            showSigner={isEmpresaOrComunidad}
+            className="space-y-4"
+          />
+        )}
 
-          <TabsContent value="client" className="space-y-4 h-full ">
+        {/* Content based on current view */}
+        {currentView === "client" && (
+          <div className={isEmpresaOrComunidad ? "mt-0" : ""}>
             <ClientTabContent
               client={client}
               onClientUpdated={onUpdated}
@@ -71,17 +65,18 @@ export default function TramiteClientSection({
               tramite_id={tramite_id}
               signer={isEmpresaOrComunidad ? signer : undefined}
             />
-          </TabsContent>
-          {isEmpresaOrComunidad && (
-            <TabsContent value="signer" className="space-y-4">
-              <SignerTabContent
-                signer={signer}
-                onSignerUpdated={onUpdated}
-                isEditable={false}
-              />
-            </TabsContent>
-          )}
-        </Tabs>
+          </div>
+        )}
+
+        {currentView === "signer" && isEmpresaOrComunidad && (
+          <div className="mt-0">
+            <SignerTabContent
+              signer={signer}
+              onSignerUpdated={onUpdated}
+              isEditable={false}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

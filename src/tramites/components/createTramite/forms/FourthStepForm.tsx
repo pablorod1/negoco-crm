@@ -7,17 +7,16 @@ import { ComparativaFile } from "@/comparativas/types";
 import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import DocumentsForm from "../../DocumentsForm";
-import NotesBoard from "@/core/components/NotesBoard";
 import { EyeIcon, FileIcon } from "lucide-react";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import FormTicketsSection from "@/core/components/FormTicketsSection";
 
 interface Props {
   onBack: () => void;
   onFinish: () => void;
   tramite: TramiteDB;
-  setTramite: React.Dispatch<React.SetStateAction<TramiteDB>>;
   onCancel: () => void;
   documents: File[];
   setDocuments: React.Dispatch<React.SetStateAction<File[]>>;
@@ -35,7 +34,6 @@ export default function FourthStepForm({
   onBack,
   onFinish,
   tramite,
-  setTramite,
   onCancel,
   documents,
   setDocuments,
@@ -51,22 +49,6 @@ export default function FourthStepForm({
   const [existingFiles, setExistingFiles] = useState<TramiteFile[] | null>(
     null
   );
-
-  const isComercial = userData.role === "2";
-
-  const handleNewNote = (note: string) => {
-    setTramite((prev) => ({
-      ...prev,
-      notes: [...prev.notes, note],
-    }));
-  };
-
-  const handleNewInternalNote = (note: string) => {
-    setTramite((prev) => ({
-      ...prev,
-      internal_notes: [...prev.internal_notes, note],
-    }));
-  };
 
   const handleAddTramite = () => {
     // Aquí puedes añadir la lógica para adjuntar los archivos seleccionados
@@ -124,7 +106,7 @@ export default function FourthStepForm({
           <div
             className={`grid grid-cols-2 gap-4 w-full ${loading && "blur-sm"} p-2`}
           >
-            <div className="flex-1 bg-white rounded-xl shadow-md border border-gray-100 p-6 col-span-2">
+            <div className="flex-1 bg-white rounded-xl shadow-md border border-gray-100 p-6">
               {/* Sección de archivos */}
               <h2 className="text-2xl font-bold text-primary-600 mb-2 flex items-center gap-2">
                 <FileIcon className="text-primary-500" /> Documentación del
@@ -254,41 +236,18 @@ export default function FourthStepForm({
             </div>
 
             {/* Sección de notas */}
-            <div className=" flex flex-col bg-gradient-to-b from-primary-50 to-white rounded-xl shadow-md border border-gray-100 p-6 min-h-[350px] w-full">
-              <ScrollArea className="w-full h-full max-h-[calc(100vh-350px)] px-2">
-                <h3 className="text-xl font-bold text-primary-600 mb-2">
-                  Notas
-                </h3>
-                <p className="text-gray-500 mb-4 text-xs">
-                  Añade comentarios para este trámite.
-                </p>
-                <div className="flex-1">
-                  <NotesBoard
-                    notes={tramite.notes as string[]}
-                    onCreateNote={handleNewNote}
-                  />
-                </div>
-              </ScrollArea>
-            </div>
-            {!isComercial && (
-              <div className=" flex flex-col bg-gradient-to-b from-primary-50 to-white rounded-xl shadow-md border border-gray-100 p-6 min-h-[350px] w-full">
-                <ScrollArea className="w-full h-full max-h-[calc(100vh-350px)] px-2">
-                  <h3 className="text-xl font-bold text-primary-600 mb-2">
-                    Notas Internas
-                  </h3>
-                  <p className="text-gray-500 mb-4 text-xs">
-                    Añade comentarios internos para este trámite. Estas notas no
-                    son visibles para el comercial y son solo para uso interno.
-                  </p>
-                  <div className="flex-1">
-                    <NotesBoard
-                      notes={tramite.internal_notes as string[]}
-                      onCreateNote={handleNewInternalNote}
-                    />
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
+            <FormTicketsSection
+              context="tramite"
+              refId={tramite.id}
+              assignedTo={tramite.user_id}
+              userData={userData}
+              title="Notas del trámite"
+              subtitle="Añade notas públicas o privadas para este trámite."
+              maxHeight="400px"
+            />
+          </div>
+          <div className="h-4">
+            {/* Espacio para evitar que el contenido quede oculto tras los botones */}
           </div>
         </ScrollArea>
       </form>

@@ -1,11 +1,6 @@
 ﻿"use client";
 import { CircleX, Zap } from "lucide-react";
-import {
-  PLAIN_COMPANIES,
-  PLAIN_CONTRACT_TYPES,
-  PLANS,
-  POTS,
-} from "@/tramites/constants";
+import { PLAIN_CONTRACT_TYPES, PLANS, POTS } from "@/tramites/constants";
 import { ContractDB } from "@/tramites/types";
 import { createEmptyContractDB } from "@/tramites/utils/tramite.factories";
 import { validateField } from "@/tramites/utils/validation/create-contract/field-validation";
@@ -21,6 +16,10 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import { Textarea } from "@/core/components/ui/textarea";
 import { Label } from "@/core/components/ui/label";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { Skeleton } from "@/core/components/ui/skeleton";
+import { ComparativaVM } from "@/comparativas/types";
+import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
@@ -29,6 +28,7 @@ interface Props {
   contract?: ContractDB | null;
   loading?: boolean;
   lastStep?: boolean;
+  comparativa?: ComparativaVM;
 }
 
 export default function ContractForm({
@@ -38,12 +38,28 @@ export default function ContractForm({
   contract,
   loading,
   lastStep,
+  comparativa,
 }: Props) {
   const [errors, setErrors] = React.useState<ContractError>(
     createEmptyContractError
   );
   const [formData, setFormData] = React.useState<ContractDB>(
-    contract ? contract : createEmptyContractDB
+    contract ? contract : createEmptyContractDB(comparativa)
+  );
+
+  // Load active energy suppliers
+  const { activeSuppliers, loading: suppliersLoading } =
+    useActiveEnergySuppliers();
+  const { supplier } = useEnergySupplierById(formData.new_company || "");
+
+  // Convert suppliers to dropdown format
+  const supplierOptions = React.useMemo(
+    () =>
+      activeSuppliers.map((supplier) => ({
+        label: supplier.name,
+        value: supplier.name,
+      })),
+    [activeSuppliers]
   );
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,22 +218,31 @@ export default function ContractForm({
                 type="text"
                 isRequired
               />
-              <SelectComponent
-                name="old_company"
-                label="Compañía Antigua"
-                items={PLAIN_COMPANIES}
-                onChange={(value) => handleSelectChange(value, "old_company")}
-                selectedKey={formData.old_company || ""}
-              />
-              <SelectComponent
-                name="new_company"
-                label="Compañía Nueva"
-                items={PLAIN_COMPANIES}
-                onChange={(value) => handleSelectChange(value, "new_company")}
-                errors={errors.new_company}
-                isRequired
-                selectedKey={formData.new_company || ""}
-              />
+              {suppliersLoading ? (
+                <Skeleton className="h-10 w-full rounded-md" />
+              ) : (
+                <SelectComponent
+                  name="old_company"
+                  label="Compañía Antigua"
+                  items={supplierOptions}
+                  onChange={(value) => handleSelectChange(value, "old_company")}
+                  selectedKey={formData.old_company || ""}
+                />
+              )}
+              {suppliersLoading ? (
+                <Skeleton className="h-10 w-full rounded-md" />
+              ) : (
+                <SelectComponent
+                  name="new_company"
+                  label="Compañía Nueva"
+                  items={supplierOptions}
+                  onChange={(value) => handleSelectChange(value, "new_company")}
+                  errors={errors.new_company}
+                  isRequired
+                  selectedKey={formData.new_company || ""}
+                  textValue={supplier ? supplier.name : ""}
+                />
+              )}
               <InputComponent
                 name="consumption"
                 label="Consumo"

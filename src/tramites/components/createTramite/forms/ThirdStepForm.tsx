@@ -17,6 +17,7 @@ import { Euro, FileX2, Pencil } from "lucide-react";
 import ContractForm from "./ContractForm";
 import { Button } from "@/core/components/ui/button";
 import { Separator } from "@/core/components/ui/separator";
+import { ComparativaVM } from "@/comparativas/types";
 
 interface Props {
   onBack: () => void;
@@ -27,6 +28,7 @@ interface Props {
   contracts: ContractDB[];
   setContracts: React.Dispatch<React.SetStateAction<ContractDB[]>>;
   userData: User;
+  comparativa?: ComparativaVM;
 }
 
 export default function ThirdStepForm({
@@ -38,6 +40,7 @@ export default function ThirdStepForm({
   contracts,
   setContracts,
   userData,
+  comparativa,
 }: Props) {
   const [showContractForm, setShowContractForm] = useState(false);
   const [isEditingContract, setIsEditingContract] = useState(false);
@@ -145,6 +148,7 @@ export default function ThirdStepForm({
           tramite_id={tramite.id}
           onCancel={() => setShowContractForm(false)}
           contract={isEditingContract ? selectedContract : null}
+          comparativa={comparativa}
         />
       </FormWrapper>
     );
@@ -211,7 +215,7 @@ export default function ThirdStepForm({
         </div>
 
         {contracts.length > 0 ? (
-          <div className="flex items-start gap-4 w-full">
+          <div className="w-full">
             {contracts.map((contract, index) => (
               <div key={index} className="flex items-center flex-col gap-2 ">
                 <ContractPreview contract={contract} />

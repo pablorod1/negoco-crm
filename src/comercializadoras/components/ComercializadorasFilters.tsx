@@ -1,6 +1,5 @@
 ﻿import { Search } from "lucide-react";
 import { Input } from "@/core/components/ui/input";
-import { Badge } from "@/core/components/ui/badge";
 import { ComercializadoraVM } from "@/comercializadoras/types";
 import { User } from "@/core/types";
 
@@ -26,42 +25,54 @@ export function ComercializadorasFilters({
   const isComercial = userData.role === "2";
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
           placeholder="Buscar comercializadora..."
-          className="pl-10"
+          className="pl-10 border-gray-200 focus:border-gray-300 focus:ring-0"
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
         />
       </div>
+
       <div className="flex gap-2">
-        {!isComercial ? (
-          <Badge
-            variant={statusFilter === "all" ? "shadow" : "outline"}
-            className="cursor-pointer"
+        {!isComercial && (
+          <button
             onClick={() => onStatusFilterChange("all")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              statusFilter === "all"
+                ? "bg-primary-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
           >
-            Todas ({comercializadoras.length})
-          </Badge>
-        ) : null}
-        <Badge
-          variant={statusFilter === "active" ? "shadow" : "outline"}
-          className="cursor-pointer"
+            Todas · {comercializadoras.length}
+          </button>
+        )}
+
+        <button
           onClick={() => onStatusFilterChange("active")}
+          className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+            statusFilter === "active"
+              ? "bg-primary-900 text-white"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
         >
-          Activas ({activeCount})
-        </Badge>
-        {!isComercial ? (
-          <Badge
-            variant={statusFilter === "inactive" ? "shadow" : "outline"}
-            className="cursor-pointer"
+          Activas · {activeCount}
+        </button>
+
+        {!isComercial && (
+          <button
             onClick={() => onStatusFilterChange("inactive")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              statusFilter === "inactive"
+                ? "bg-primary-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
           >
-            Inactivas ({inactiveCount})
-          </Badge>
-        ) : null}
+            Inactivas · {inactiveCount}
+          </button>
+        )}
       </div>
     </div>
   );

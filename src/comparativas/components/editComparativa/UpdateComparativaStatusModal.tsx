@@ -136,6 +136,8 @@ export default function UpdateComparativaStatusModal({
             body: JSON.stringify({
               status: newStatus,
               comissions: changes ? changes : undefined,
+              tramite_id: comparativa.tramite_id,
+              user_id: userData.id,
             }),
             headers: {
               "Content-Type": "application/json",

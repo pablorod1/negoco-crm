@@ -27,6 +27,12 @@ export interface ComparativaDB {
   creation_date: string;
   status: ComparativaStatus;
   tramite_id: string | undefined;
+  company_id?: string; // ID reference to comercializadoras table
+}
+
+// Enhanced comparativa with supplier information
+export interface ComparativaWithSupplierDB extends ComparativaDB {
+  company_id: string; // Required for completed comparativas
 }
 
 export interface ComparativaVM {
@@ -48,6 +54,8 @@ export interface ComparativaVM {
   status: ComparativaStatus;
   tramite_id: string | undefined;
   files: Partial<ComparativaFile>[];
+  company_id?: string; // ID reference to comercializadoras table
+  company_name?: string; // Resolved name for display purposes
 }
 
 export interface ComparativaRow {
@@ -66,6 +74,7 @@ export interface ComparativaRow {
   user: User;
   creation_date: string;
   status: ComparativaStatus;
+  company_id?: string; // Resolved name for display purposes
 }
 
 export interface ComparativaFile {

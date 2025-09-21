@@ -51,7 +51,7 @@ if (!id || !user_id || !user_role) {
 // After: Zod schema validation with detailed error reporting
 const validation = ComparisonByIdSchema.safeParse({ ...body, id: params.id });
 if (!validation.success) {
-  console.warn("[Validation Warning] Invalid request parameters:", validation.error.errors);
+  console.warn("[Validation Warning] Invalid request parameters:", validation.error.issues);
   // ... structured error response
 }
 ```

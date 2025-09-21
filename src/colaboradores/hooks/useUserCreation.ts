@@ -262,5 +262,6 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
     loadingStep,
     loadingMessage,
     submitUserCreation,
+    addToOrganization,
   };
 }

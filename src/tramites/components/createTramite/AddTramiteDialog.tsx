@@ -88,13 +88,7 @@ export default function AddTramiteDialog({
       setIsOpen(true);
       setActiveTab(comparativa ? 0 : savedClient ? 2 : 1);
       // Reset form state
-      setTramite(
-        createEmptyTramiteDB(
-          userData as User,
-          plan ? (plan as "fijo" | "indexado") : undefined,
-          comparativa ? comparativa : undefined
-        )
-      );
+      setTramite(createEmptyTramiteDB(userData as User));
       setClient(
         savedClient
           ? savedClient
@@ -105,15 +99,32 @@ export default function AddTramiteDialog({
       setDocuments([]);
       setSelectedExistingFiles(null);
     },
-    [userData, plan, comparativa, savedClient]
+    [comparativa, savedClient, userData]
   );
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
+    // Clean up any tickets created with this comparativa ID if cancelling
+    if (tramite.id && activeTab > 0) {
+      try {
+        await fetch(`/api/v2/tickets/cleanup`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            context: "tramite",
+            ref_id: tramite.id,
+          }),
+        });
+      } catch (error) {
+        console.error("Error cleaning up tickets:", error);
+      }
+    }
     setIsOpen(false);
     setLoading(false);
     setLoadingStep(0);
     setLoadingMessage("");
-  }, []);
+  }, [tramite.id, activeTab]);
 
   // Navigation handlers
   const handleBack = useCallback(() => {
@@ -121,8 +132,17 @@ export default function AddTramiteDialog({
   }, []);
 
   const handleNext = useCallback(() => {
+    if (comparativa && activeTab === 0) {
+      setTramite(
+        createEmptyTramiteDB(
+          userData as User,
+          plan ? (plan as "fijo" | "indexado") : undefined,
+          comparativa ? comparativa : undefined
+        )
+      );
+    }
     setActiveTab((prev) => prev + 1);
-  }, []);
+  }, [userData, plan, comparativa, activeTab]);
 
   // Process comparativa update
   const processComparativaUpdate = useCallback(async () => {
@@ -137,6 +157,7 @@ export default function AddTramiteDialog({
           body: JSON.stringify({
             status: "processed",
             tramite_id: tramite.id,
+            user_id: userData.id,
           }),
           headers: {
             "Content-Type": "application/json",
@@ -166,6 +187,7 @@ export default function AddTramiteDialog({
           body: JSON.stringify({
             organization_id: userData.organization.id,
             tramite_id: tramite.id,
+            user_id: userData.id,
           }),
           headers: {
             "Content-Type": "application/json",
@@ -279,7 +301,7 @@ export default function AddTramiteDialog({
       formData.append("userData", JSON.stringify(userData));
       formData.append("client", JSON.stringify(client));
       formData.append("tramite", JSON.stringify(tramite));
-
+      console.log(tramite);
       // Optional fields
       if (signer) {
         formData.append("signer", JSON.stringify(signer));
@@ -444,13 +466,13 @@ export default function AddTramiteDialog({
         contracts={contracts}
         setContracts={setContracts}
         userData={userData as User}
+        comparativa={comparativa as ComparativaVM}
       />,
       <FourthStepForm
         key={4}
         onBack={handleBack}
         onFinish={handleNext}
         tramite={tramite}
-        setTramite={setTramite}
         onCancel={handleClose}
         documents={documents}
         setDocuments={setDocuments}
@@ -517,7 +539,6 @@ export default function AddTramiteDialog({
         onBack={handleBack}
         onFinish={handleNext}
         tramite={tramite}
-        setTramite={setTramite}
         onCancel={handleClose}
         documents={documents}
         setDocuments={setDocuments}
@@ -583,13 +604,22 @@ export default function AddTramiteDialog({
       return <span>Completar Comparativa</span>;
     }
 
+    if (savedClient) {
+      return (
+        <>
+          <PlusCircle size={20} />
+          <span>Añadir Contrato</span>
+        </>
+      );
+    }
+
     return (
       <>
         <PlusCircle size={20} />
         <span>Nuevo Trámite</span>
       </>
     );
-  }, [comparativa]);
+  }, [comparativa, savedClient]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

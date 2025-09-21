@@ -16,7 +16,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
       <div className="flex items-center justify-center">
         <input
           type="checkbox"
-          className="w-4 h-4"
+          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 focus:ring-2 focus:ring-offset-1"
           onChange={table.getToggleAllRowsSelectedHandler()}
           checked={table.getIsAllRowsSelected()}
         />
@@ -26,7 +26,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
       <div className="flex items-center justify-center">
         <input
           type="checkbox"
-          className="w-4 h-4"
+          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 focus:ring-2 focus:ring-offset-1"
           onChange={row.getToggleSelectedHandler()}
           checked={row.getIsSelected()}
         />
@@ -36,9 +36,13 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "id",
     accessorKey: "id",
-    header: "ID",
+    header: () => <span className="text-gray-600 font-medium text-xs">ID</span>,
     cell: ({ row }) => {
-      return <span>{formatUUID(row.original.id)}</span>;
+      return (
+        <span className="text-gray-500 text-sm font-mono">
+          {formatUUID(row.original.id)}
+        </span>
+      );
     },
   },
   {
@@ -49,23 +53,28 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
         <Button
           variant="ghost"
           size="sm"
-          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          className="h-8 px-2 font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-0 justify-between w-full"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Activación
+          <span className="text-xs">Activación</span>
           {column.getIsSorted() === "asc" ? (
-            <ArrowUpIcon className="ml-2 h-4 w-4" />
+            <ArrowUpIcon className="ml-2 h-3 w-3" />
           ) : column.getIsSorted() === "desc" ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
+            <ArrowDown className="ml-2 h-3 w-3" />
           ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />
           )}
         </Button>
       );
     },
     cell: ({ row }) => {
-      if (!row.original.activation_date) return "---";
-      return <span>{formatDate(row.original.activation_date)}</span>;
+      if (!row.original.activation_date)
+        return <span className="text-gray-400 text-sm">---</span>;
+      return (
+        <span className="text-gray-700 text-sm">
+          {formatDate(row.original.activation_date)}
+        </span>
+      );
     },
     sortingFn: (rowA, rowB) => {
       const a = rowA.original.activation_date;
@@ -86,23 +95,28 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
         <Button
           variant="ghost"
           size="sm"
-          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          className="h-8 px-2 font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-0 justify-between w-full"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Cobrado
+          <span className="text-xs">Cobrado</span>
           {column.getIsSorted() === "asc" ? (
-            <ArrowUpIcon className="ml-2 h-4 w-4" />
+            <ArrowUpIcon className="ml-2 h-3 w-3" />
           ) : column.getIsSorted() === "desc" ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
+            <ArrowDown className="ml-2 h-3 w-3" />
           ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />
           )}
         </Button>
       );
     },
     cell: ({ row }) => {
-      if (!row.original.collection_date) return "---";
-      return <span>{formatDate(row.original.collection_date)}</span>;
+      if (!row.original.collection_date)
+        return <span className="text-gray-400 text-sm">---</span>;
+      return (
+        <span className="text-gray-700 text-sm">
+          {formatDate(row.original.collection_date)}
+        </span>
+      );
     },
     sortingFn: (rowA, rowB) => {
       const a = rowA.original.collection_date;
@@ -123,23 +137,28 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
         <Button
           variant="ghost"
           size="sm"
-          className="font-bold flex justify-between w-full m-0 border-0 bg-transparent text-[var(--primary-color-950)]"
+          className="h-8 px-2 font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-0 justify-between w-full"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Pago
+          <span className="text-xs">Pago</span>
           {column.getIsSorted() === "asc" ? (
-            <ArrowUpIcon className="ml-2 h-4 w-4" />
+            <ArrowUpIcon className="ml-2 h-3 w-3" />
           ) : column.getIsSorted() === "desc" ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
+            <ArrowDown className="ml-2 h-3 w-3" />
           ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />
           )}
         </Button>
       );
     },
     cell: ({ row }) => {
-      if (!row.original.payment_date) return "---";
-      return <span>{formatDate(row.original.payment_date)}</span>;
+      if (!row.original.payment_date)
+        return <span className="text-gray-400 text-sm">---</span>;
+      return (
+        <span className="text-gray-700 text-sm">
+          {formatDate(row.original.payment_date)}
+        </span>
+      );
     },
     sortingFn: (rowA, rowB) => {
       const a = rowA.original.payment_date;
@@ -155,17 +174,28 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "Comercial",
     accessorKey: "sales_name",
-    header: "Comercial",
+    header: () => (
+      <span className="text-gray-600 font-medium text-xs">Comercial</span>
+    ),
+    cell: ({ row }) => (
+      <span className="text-gray-800 text-sm font-medium">
+        {row.original.sales_name}
+      </span>
+    ),
   },
   {
     id: "Cliente",
     accessorKey: "client_name",
-    header: "Cliente",
+    header: () => (
+      <span className="text-gray-600 font-medium text-xs">Cliente</span>
+    ),
     cell: ({ row }) => {
       return (
-        <div className="flex flex-col">
-          <span>{row.original.client_name}</span>
-          <span className="text-xs text-gray-500">
+        <div className="flex flex-col space-y-1">
+          <span className="text-gray-900 text-sm font-medium">
+            {row.original.client_name}
+          </span>
+          <span className="text-gray-500 text-xs">
             {row.original.client_email}
           </span>
         </div>
@@ -175,18 +205,20 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "CUPS",
     accessorKey: "CUPS",
-    header: "CUPS",
+    header: () => (
+      <span className="text-gray-600 font-medium text-xs">CUPS</span>
+    ),
     cell: ({ row }) => {
       return (
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-1">
           {row.original.CUPS.map((CUPS, index) => (
             <div
               onClick={() => copyLink(CUPS)}
               key={index}
-              className="flex items-center gap-2 group cursor-pointer"
+              className="flex items-center gap-2 group cursor-pointer p-1 rounded hover:bg-gray-50 transition-colors"
             >
-              <span>{CUPS}</span>
-              <Copy className="w-4 h-4 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              <span className="text-gray-700 text-sm font-mono">{CUPS}</span>
+              <Copy className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
             </div>
           ))}
         </div>
@@ -196,14 +228,16 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "Compañía",
     accessorKey: "new_company",
-    header: "Compañía",
+    header: () => (
+      <span className="text-gray-600 font-medium text-xs">Compañía</span>
+    ),
     cell: ({ row }) => {
       return (
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-1">
           {row.original.new_company.map((company, index) => (
             <span
               key={index}
-              className="text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"
+              className="text-gray-700 text-sm text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"
             >
               {company}
             </span>
@@ -215,13 +249,19 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "Proveedor",
     accessorKey: "provider",
-    header: ({}) => {
-      return <span className="flex justify-end text-end">Proveedor</span>;
+    header: () => {
+      return (
+        <span className="text-gray-600 font-medium text-xs flex justify-end">
+          Proveedor
+        </span>
+      );
     },
     cell: ({ row }) => {
       return (
-        <div className="flex justify-end me-2">
-          <span>{row.original.provider ? row.original.provider : "---"}</span>
+        <div className="flex justify-end">
+          <span className="text-gray-700 text-sm">
+            {row.original.provider || "---"}
+          </span>
         </div>
       );
     },
@@ -229,14 +269,22 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "Comisión",
     accessorKey: "comision",
-    header: ({}) => {
-      return <span className="flex justify-end text-end">Comisión</span>;
+    header: () => {
+      return (
+        <span className="text-gray-600 font-medium text-xs flex justify-end">
+          Comisión
+        </span>
+      );
     },
     cell: ({ row }) => {
       return (
-        <div className="flex justify-end me-2">
-          <span>
-            {row.original.comision ? `${row.original.comision}€` : "---"}
+        <div className="flex justify-end">
+          <span className="text-gray-900 text-sm font-semibold">
+            {row.original.comision ? (
+              `${row.original.comision}€`
+            ) : (
+              <span className="text-gray-400">---</span>
+            )}
           </span>
         </div>
       );
@@ -245,18 +293,22 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "Comisión Comercial",
     accessorKey: "comision_sales_person",
-    header: ({}) => {
+    header: () => {
       return (
-        <span className="flex justify-end text-end">Comisión Comercial</span>
+        <span className="text-gray-600 font-medium text-xs flex justify-end">
+          Comisión Comercial
+        </span>
       );
     },
     cell: ({ row }) => {
       return (
-        <div className="flex justify-end me-2">
-          <span>
-            {row.original.comision_sales_person
-              ? `${row.original.comision_sales_person}€`
-              : "---"}
+        <div className="flex justify-end">
+          <span className="text-gray-900 text-sm font-semibold">
+            {row.original.comision_sales_person ? (
+              `${row.original.comision_sales_person}€`
+            ) : (
+              <span className="text-gray-400">---</span>
+            )}
           </span>
         </div>
       );
@@ -265,7 +317,9 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "Estado",
     accessorKey: "status",
-    header: "Estado",
+    header: () => (
+      <span className="text-gray-600 font-medium text-xs">Estado</span>
+    ),
     cell: ({ row }) => {
       return getStatusBadge(row.original.status as Status, "general");
     },
@@ -273,12 +327,20 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
   {
     id: "Liquidez",
     accessorKey: "liquidez_status",
-    header: ({}) => {
-      return <span className="flex justify-end text-end">Estado Liquidez</span>;
+    header: () => {
+      return (
+        <span className="text-gray-600 font-medium text-xs flex justify-end">
+          Estado Liquidez
+        </span>
+      );
     },
     cell: ({ row }) => {
       if (!row.original.liquidez_status)
-        return <div className="flex justify-end">---</div>;
+        return (
+          <div className="flex justify-end">
+            <span className="text-gray-400 text-sm">---</span>
+          </div>
+        );
       return (
         <div className="flex justify-end">
           {getStatusBadge(row.original.liquidez_status as Status, "liquidez")}

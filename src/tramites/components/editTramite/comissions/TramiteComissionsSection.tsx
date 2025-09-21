@@ -76,6 +76,7 @@ export default function TramiteComissionsSection({
             ? formData.comision_sales_person
             : undefined,
           comision: checkComissionChanges() ? formData.comision : undefined,
+          user_id: userData.id,
         }),
       });
 
@@ -115,110 +116,120 @@ export default function TramiteComissionsSection({
     }
   };
   return (
-    <>
-      <div className="space-y-2 group">
-        <p className="text-sm font-medium text-primary-400">
-          {isComercial ? "Comisión" : "Comisión Comercial"}
-        </p>
-        <div className="flex items-end gap-4">
-          {!isSalesComissionEditMode ? (
-            <p className="text-xl font-bold ">
+    <div className="space-y-6">
+      {/* Sales Commission Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-gray-700">
+            {isComercial ? "Comisión" : "Comisión Comercial"}
+          </h4>
+          {!isComercial && isEditable && !isSalesComissionEditMode ? (
+            <Button
+              size="sm"
+              variant={isSalesComissionEditMode ? "outline" : "ghost"}
+              onClick={() =>
+                setIsSalesComissionEditMode(!isSalesComissionEditMode)
+              }
+              className="h-7 px-2 text-gray-600 hover:text-gray-900"
+            >
+              <Pencil className="h-3 w-3 mr-1" />
+              Editar
+            </Button>
+          ) : null}
+        </div>
+
+        {!isSalesComissionEditMode ? (
+          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+            <div className="text-2xl font-bold text-gray-900">
               {formatComission(tramite.comision_sales_person)}
-            </p>
-          ) : (
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Comisión asignada al comercial
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
             <InputComponent
               type="number"
               name="comision_sales_person"
               value={formData.comision_sales_person.toString()}
-              label="Comisión Comercial"
+              label="Nueva comisión comercial"
               onChange={handleChange}
             />
-          )}
-          {!isComercial && isEditable && (
-            <>
-              {!isSalesComissionEditMode ? (
-                <Button
-                  size="icon"
-                  variant="primaryGhost"
-                  onClick={() =>
-                    setIsSalesComissionEditMode(!isSalesComissionEditMode)
-                  }
-                  className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                >
-                  <Pencil size={14} />
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button size="icon" variant="success" onClick={handleSubmit}>
-                    <CheckCircle size={16} />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="destructiveOutline"
-                    onClick={() => setIsSalesComissionEditMode(false)}
-                  >
-                    <CircleX size={16} />
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSubmit}>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Guardar
+              </Button>
+              <Button
+                size="sm"
+                variant="dangerGhost"
+                onClick={() => setIsSalesComissionEditMode(false)}
+              >
+                <CircleX className="h-4 w-4 mr-2" />
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Organization Commission Section */}
       {!isComercial && (
-        <div className="space-y-2 group">
-          <p className="text-sm font-medium text-primary-400">
-            Comisión {userData?.organization.name}
-          </p>
-          <div className="flex items-end gap-4">
-            {!isComissionEditMode ? (
-              <p className="text-xl font-bold ">
+        <div className="space-y-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-700">
+              Comisión {userData?.organization.name}
+            </h4>
+            {isEditable && !isComissionEditMode ? (
+              <Button
+                size="sm"
+                variant={isComissionEditMode ? "outline" : "ghost"}
+                onClick={() => setIsComissionEditMode(!isComissionEditMode)}
+                className="h-7 px-2 text-gray-600 hover:text-gray-900"
+              >
+                <Pencil className="h-3 w-3 mr-1" />
+                Editar
+              </Button>
+            ) : null}
+          </div>
+
+          {!isComissionEditMode ? (
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+              <div className="text-2xl font-bold text-gray-900">
                 {formatComission(tramite.comision)}
-              </p>
-            ) : (
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Comisión de la organización
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
               <InputComponent
                 type="number"
                 name="comision"
                 value={formData.comision.toString()}
-                label="Comisión"
+                label="Nueva comisión de organización"
                 onChange={handleChange}
               />
-            )}
-            {!isComercial && isEditable && (
-              <>
-                {!isComissionEditMode ? (
-                  <Button
-                    size="icon"
-                    variant="primaryGhost"
-                    onClick={() => setIsComissionEditMode(!isComissionEditMode)}
-                    className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                  >
-                    <Pencil size={16} />
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="success"
-                      onClick={handleSubmit}
-                    >
-                      <CheckCircle size={16} />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="destructiveOutline"
-                      onClick={() => setIsComissionEditMode(false)}
-                    >
-                      <CircleX size={16} />
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSubmit}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Guardar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="dangerGhost"
+                  onClick={() => setIsComissionEditMode(false)}
+                >
+                  <CircleX className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-    </>
+    </div>
   );
 }

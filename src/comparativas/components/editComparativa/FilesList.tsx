@@ -1,12 +1,16 @@
-﻿import { showCustomToast } from "@/core/components/CustomToast";
-import { formatDateTime, formatFileSize } from "@/core/utils/format";
+﻿"use client";
+import React, { useCallback, useMemo } from "react";
 import { ComparativaFile } from "@/comparativas/types/comparativa.types";
-import { downloadFile } from "@/core/firebase/data/downloadFile";
 import { Button } from "@/core/components/ui/button";
-import { CloudAlert, Download, FileIcon, FileX } from "lucide-react";
-import Image from "next/image";
-import { useCallback, useMemo } from "react";
+import { Download, FileX, FileIcon, Eye } from "lucide-react";
+import { formatDateTime, formatFileSize } from "@/core/utils/format";
 import DeleteComparativaFileConfirmationModal from "./DeleteComparativaFileConfirmationModal";
+import { showCustomToast } from "@/core/components/CustomToast";
+import { downloadFile } from "@/core/firebase/data/downloadFile";
+import { CloudAlert } from "lucide-react";
+import Image from "next/image";
+import FilePreview from "@/core/components/FilePreview/FilePreview";
+import { FileData } from "@/types/files";
 
 interface FilesListProps {
   files: ComparativaFile[];
@@ -25,6 +29,8 @@ export const FilesList = ({
   onDeleted,
   isProcessed,
 }: FilesListProps) => {
+  const [previewFile, setPreviewFile] = React.useState<FileData | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const handleDownloadFile = useCallback(
     async (filename: string, download_url: string) => {
       try {
@@ -47,6 +53,27 @@ export const FilesList = ({
     },
     []
   );
+
+  const handlePreviewFile = (file: ComparativaFile) => {
+    // Convert ComparativaFile to FileData format
+    const fileData: FileData = {
+      id: file.id,
+      filename: file.filename,
+      extension: file.extension, // No need to normalize here, detectFileType will handle it
+      size: file.size,
+      download_url: file.download_url,
+      preview_url: file.preview_url || undefined,
+      upload_date: file.upload_date,
+    };
+
+    setPreviewFile(fileData);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewFile(null);
+  };
 
   // Memoize the file list to prevent unnecessary re-renders
   const fileElements = useMemo(() => {
@@ -82,26 +109,46 @@ export const FilesList = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {file.download_url && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                handleDownloadFile(file.filename, file.download_url)
-              }
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          )}
-          {!isComercial && (
+          {file.download_url ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePreviewFile(file)}
+                className="text-gray-700 border-gray-300 hover:bg-gray-100"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Previsualizar
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleDownloadFile(file.filename, file.download_url)
+                }
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </>
+          ) : null}
+          {!isComercial ? (
             <DeleteComparativaFileConfirmationModal
               comparativa_id={comparativa_id}
               file={file}
               organization_id={organization_id}
               onDeleted={onDeleted}
             />
-          )}
+          ) : null}
         </div>
+
+        {/* File Preview Modal */}
+        {previewFile && (
+          <FilePreview
+            file={previewFile}
+            onClose={handleClosePreview}
+            isOpen={isPreviewOpen}
+          />
+        )}
       </div>
     ));
   }, [
@@ -111,6 +158,8 @@ export const FilesList = ({
     organization_id,
     isComercial,
     onDeleted,
+    isPreviewOpen,
+    previewFile,
   ]);
 
   if (files.length === 0) {

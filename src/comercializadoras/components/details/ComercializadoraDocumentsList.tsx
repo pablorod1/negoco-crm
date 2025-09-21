@@ -53,21 +53,21 @@ const getFileIcon = (file: DocumentacionFile) => {
 const getFileTypeColor = (extension: string) => {
   switch (extension.toLowerCase()) {
     case "pdf":
-      return "bg-red-100 text-red-700 border-red-200";
+      return "bg-gray-100 text-gray-700";
     case "doc":
     case "docx":
-      return "bg-primary-100 text-primary-700 border-primary-200";
+      return "bg-gray-100 text-gray-700";
     case "xls":
     case "xlsx":
-      return "bg-green-100 text-green-700 border-green-200";
+      return "bg-gray-100 text-gray-700";
     case "jpg":
     case "jpeg":
     case "png":
     case "gif":
     case "webp":
-      return "bg-purple-100 text-purple-700 border-purple-200";
+      return "bg-gray-100 text-gray-700";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-200";
+      return "bg-gray-100 text-gray-700";
   }
 };
 
@@ -176,127 +176,137 @@ export function ComercializadoraDocumentsList({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Documentos</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            {documents.length > 0 ? (
+              <>
+                <span className="font-medium text-gray-700">
+                  {documents.length}
+                </span>{" "}
+                documento{documents.length !== 1 ? "s" : ""} disponible
+                {documents.length !== 1 ? "s" : ""}
+              </>
+            ) : (
+              "Sin documentos disponibles"
+            )}
+          </p>
+        </div>
+        {!hasNoFiles && !isComercial && (
+          <UploadComercializadoraFilesDialog
+            uploadedFiles={uploadedFiles}
+            setUploadedFiles={setUploadedFiles}
+            onUpload={handleUploadFile}
+            loading={loading}
+            buttonText="Subir"
+          />
+        )}
+      </div>
+
       {!hasNoFiles && (
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar documentos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white border-gray-300 focus:border-primary-500 focus:ring-primary-500"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            {!isComercial ? (
-              <UploadComercializadoraFilesDialog
-                uploadedFiles={uploadedFiles}
-                setUploadedFiles={setUploadedFiles}
-                onUpload={handleUploadFile}
-                loading={loading}
-                buttonText="Subir documentos"
-              />
-            ) : null}
-          </div>
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Buscar documentos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-white border-gray-200 focus:border-gray-300 focus:ring-gray-100"
+          />
         </div>
       )}
 
       {hasNoFiles ? (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <FileText className="h-12 w-12 text-primary-500" />
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center mx-auto mb-4 shadow-sm border">
+            <FileText className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-3">
-            No hay documentos
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Sin documentos
           </h3>
-          <p className="text-gray-500 mb-8 max-w-md mx-auto">
-            Esta comercializadora aún no tiene documentos subidos. Comienza
-            subiendo el primer documento para gestionar la documentación.
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            Esta comercializadora no tiene documentos asociados.
           </p>
-          {!isComercial ? (
+          {!isComercial && (
             <UploadComercializadoraFilesDialog
               uploadedFiles={uploadedFiles}
               setUploadedFiles={setUploadedFiles}
               onUpload={handleUploadFile}
               loading={loading}
             />
-          ) : null}
+          )}
         </div>
       ) : hasNoFilteredResults ? (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Search className="h-10 w-10 text-gray-400" />
+        <div className="text-center py-8 bg-gray-50 rounded-lg">
+          <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center mx-auto mb-4 shadow-sm border">
+            <Search className="h-6 w-6 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No se encontraron documentos
+          <h3 className="text-base font-semibold text-gray-900 mb-2">
+            Sin resultados
           </h3>
-          <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
-            No hay documentos que coincidan con &quot;{searchTerm}&quot;.
-            Intenta con otros términos de búsqueda.
+          <p className="text-sm text-gray-500 mb-4">
+            No hay documentos que coincidan con &quot;{searchTerm}&quot;
           </p>
-          <Button variant="outline" onClick={() => setSearchTerm("")}>
+          <Button variant="outline" size="sm" onClick={() => setSearchTerm("")}>
             Limpiar búsqueda
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {filteredDocuments.map((document, index) => (
-            <div
-              key={index}
-              className="group bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-primary-300 transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4 flex-1 min-w-0">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gray-50 rounded-lg p-2 border border-gray-200 group-hover:border-primary-300 transition-colors">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {filteredDocuments.map((document, index) => (
+              <div
+                key={index}
+                className="group p-4 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 bg-gray-50 rounded-lg p-2 border border-gray-200 flex-shrink-0">
                       <Image
                         src={getFileIcon(document) || "/file-icons/file.png"}
                         alt={document.name}
                         className="w-full h-full object-contain"
-                        width={512}
-                        height={512}
+                        width={40}
+                        height={40}
                       />
                     </div>
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate group-hover:text-primary-700 transition-colors">
-                      {document.name}
-                    </h4>
-                    <div className="flex items-center gap-4 mt-2">
-                      <span className="text-sm text-gray-500">
-                        {formatFileSize(document.size)}
-                      </span>
-                      <span className="flex items-center gap-1 text-sm text-gray-500">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(document.upload_date)}
-                      </span>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-md border ${getFileTypeColor(
-                          document.extension
-                        )}`}
-                      >
-                        {document.extension.toUpperCase()}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 truncate">
+                        {document.name}
+                      </h4>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-sm text-gray-500">
+                          {formatFileSize(document.size)}
+                        </span>
+                        <span className="flex items-center gap-1 text-sm text-gray-500">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(document.upload_date)}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 text-xs font-medium rounded ${getFileTypeColor(
+                            document.extension
+                          )}`}
+                        >
+                          {document.extension.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 ml-4">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDownload(document)}
-                    className="opacity-70 group-hover:opacity-100 hover:bg-primary-50 hover:text-primary-700 transition-all"
+                    className="opacity-60 group-hover:opacity-100 hover:bg-gray-100 transition-all"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Descargar
+                    <Download className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { recordDateChange } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT DATES UPDATE ENDPOINT
- * 
+ *
  * Original: /api/tramites/update/[id]/date
  * Refactored: /new_api/contracts/[id]/dates
- * 
- * This endpoint updates date fields for a contract (tramite) with enhanced 
+ *
+ * This endpoint updates date fields for a contract (tramite) with enhanced
  * performance, type safety, and comprehensive error handling.
- * 
+ *
  * BACKWARD COMPATIBILITY: 100% maintained with original endpoint behavior
  */
 
@@ -35,16 +36,16 @@ interface QueryMetrics {
  */
 const VALID_DATE_FIELDS = [
   "creation_date",
-  "tramitation_date", 
+  "tramitation_date",
   "activation_date",
   "renovation_date",
   "collection_date",
   "payment_date",
   "rejected_date",
-  "updated_at"
+  "updated_at",
 ] as const;
 
-type ValidDateField = typeof VALID_DATE_FIELDS[number];
+type ValidDateField = (typeof VALID_DATE_FIELDS)[number];
 
 /**
  * Zod schema for contract dates update request body
@@ -52,9 +53,10 @@ type ValidDateField = typeof VALID_DATE_FIELDS[number];
  */
 const ContractDatesUpdateSchema = z.object({
   field: z.enum(VALID_DATE_FIELDS, {
-    errorMap: () => ({ message: "Invalid date field" })
+    message: "Invalid date field",
   }),
   date: z.string().min(1, "Date is required"),
+  user_id: z.string().min(1, "User ID is required"), // Add for tracking
 });
 
 /**
@@ -113,7 +115,9 @@ async function executeQuery(
  * @param client - Turso client instance or null
  * @returns NextResponse with error if client is invalid
  */
-function validateDatabaseClient(client: Client | null): NextResponse<ContractDatesUpdateResponse> | null {
+function validateDatabaseClient(
+  client: Client | null
+): NextResponse<ContractDatesUpdateResponse> | null {
   if (!client) {
     return NextResponse.json(
       {
@@ -132,7 +136,10 @@ function validateDatabaseClient(client: Client | null): NextResponse<ContractDat
  * @param field - The date field to update
  * @returns Object with SQL query and field validation
  */
-function buildUpdateQuery(field: ValidDateField): { sql: string; isValid: boolean } {
+function buildUpdateQuery(field: ValidDateField): {
+  sql: string;
+  isValid: boolean;
+} {
   // Security validation: Ensure field is in allowed list
   if (!VALID_DATE_FIELDS.includes(field)) {
     return { sql: "", isValid: false };
@@ -140,7 +147,7 @@ function buildUpdateQuery(field: ValidDateField): { sql: string; isValid: boolea
 
   // Build parameterized query - field name is validated above, value is parameterized
   const sql = `UPDATE tramites SET ${field} = ? WHERE id = ?`;
-  
+
   return { sql, isValid: true };
 }
 
@@ -148,20 +155,20 @@ function buildUpdateQuery(field: ValidDateField): { sql: string; isValid: boolea
 
 /**
  * POST handler for contract dates update
- * 
+ *
  * @param request - NextRequest object containing the date update data
  * @param context - Route context containing the contract ID parameter
  * @returns Promise<NextResponse<ContractDatesUpdateResponse>>
- * 
+ *
  * @example
  * POST /new_api/contracts/[id]/dates
  * Content-Type: application/json
- * 
+ *
  * {
  *   "field": "activation_date",
  *   "date": "2024-12-23T10:30:00Z"
  * }
- * 
+ *
  * Response: 200 OK
  * {
  *   "success": true
@@ -175,10 +182,10 @@ export async function POST(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const resolvedParams = await params;
     const paramsValidation = ParamsSchema.safeParse(resolvedParams);
-    
+
     if (!paramsValidation.success) {
       return NextResponse.json(
         {
@@ -192,7 +199,7 @@ export async function POST(
     const { id } = paramsValidation.data;
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     let requestBody: unknown;
     try {
       requestBody = await request.json();
@@ -207,7 +214,7 @@ export async function POST(
     }
 
     const bodyValidation = ContractDatesUpdateSchema.safeParse(requestBody);
-    
+
     if (!bodyValidation.success) {
       return NextResponse.json(
         {
@@ -218,20 +225,40 @@ export async function POST(
       );
     }
 
-    const { field, date } = bodyValidation.data;
+    const { field, date, user_id } = bodyValidation.data;
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
     const clientValidationError = validateDatabaseClient(tursoClient);
     if (clientValidationError) {
       return clientValidationError;
     }
 
+    // ==================== GET CURRENT VALUE FOR TRACKING ====================
+
+    const currentValues = await tursoClient!.execute({
+      sql: `SELECT ${field} FROM tramites WHERE id = ?`,
+      args: [id],
+    });
+
+    if (currentValues.rows.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Tramite not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    const currentData = currentValues.rows[0];
+    const oldValue = currentData[field] as string | null;
+
     // ==================== QUERY BUILDING & EXECUTION ====================
-    
+
     const { sql, isValid } = buildUpdateQuery(field);
-    
+
     if (!isValid) {
       return NextResponse.json(
         {
@@ -243,14 +270,19 @@ export async function POST(
     }
 
     // Execute the update query with performance monitoring
-    const { result, metrics } = await executeQuery(
-      tursoClient!,
-      sql,
-      [date, id]
-    );
+    const { result, metrics } = await executeQuery(tursoClient!, sql, [
+      date,
+      id,
+    ]);
+
+    // ==================== TRACK CHANGES ====================
+
+    if (oldValue !== date) {
+      await recordDateChange(tursoClient!, id, user_id, field, oldValue, date);
+    }
 
     // ==================== RESPONSE HANDLING ====================
-    
+
     // Handle case where contract doesn't exist
     if (result.rowsAffected === 0) {
       return NextResponse.json(
@@ -275,13 +307,15 @@ export async function POST(
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     // ==================== ERROR HANDLING ====================
-    
+
     const totalTime = performance.now() - requestStart;
-    console.error(`Error al actualizar el estado del trámite (${totalTime}ms):`, error);
-    
+    console.error(
+      `Error al actualizar el estado del trámite (${totalTime}ms):`,
+      error
+    );
+
     // BACKWARD COMPATIBILITY: Match original error response format exactly
     return NextResponse.json(
       {

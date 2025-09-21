@@ -5,29 +5,34 @@ interface StepperProps {
   currentStep: number;
 }
 
-const stepsTexts = ["Comparativa", "Documentos", "Observaciones"];
+const stepsTexts = ["Información", "Documentos", "Finalización"];
 
 export const CreateComparativaStepper: React.FC<StepperProps> = ({
   steps,
   currentStep,
 }) => {
   return (
-    <div className="w-full relative">
-      <div className="flex justify-between mb-2 ">
+    <div className="w-full relative mt-6">
+      {/* Step indicators */}
+      <div className="flex justify-between items-center mb-3">
         {Array.from({ length: steps }, (_, i) => (
-          <div key={i} className="flex flex-col items-center z-50">
+          <div key={i} className="flex flex-col items-center z-10 relative">
+            {/* Step circle */}
             <div
-              className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${
-                i < currentStep
-                  ? "bg-primary border-primary text-primary-foreground"
-                  : i === currentStep
-                    ? "border-primary text-primary bg-white"
-                    : "border-gray-300 text-gray-300 bg-white"
-              }`}
+              className={`
+                w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-300
+                ${
+                  i < currentStep
+                    ? "bg-primary-900 border-primary-900 text-white"
+                    : i === currentStep
+                      ? "border-primary-900 text-primary-900 bg-white ring-2 ring-primary-100"
+                      : "border-gray-300 text-gray-400 bg-white"
+                }
+              `}
             >
               {i < currentStep ? (
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -36,29 +41,38 @@ export const CreateComparativaStepper: React.FC<StepperProps> = ({
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     d="M5 13l4 4L19 7"
                   />
                 </svg>
               ) : (
-                i + 1
+                <span className="text-xs font-medium">{i + 1}</span>
               )}
             </div>
-            <div className="text-xs mt-1">{stepsTexts[i]}</div>
+
+            {/* Step label */}
+            <div
+              className={`
+                text-xs mt-2 font-medium transition-colors duration-300 text-center
+                ${i <= currentStep ? "text-primary-900" : "text-gray-400"}
+              `}
+            >
+              {stepsTexts[i]}
+            </div>
           </div>
         ))}
       </div>
-      <div className="w-[98%] ms-1 bg-gray-200 rounded-full h-2.5 absolute top-3 left-0 z-0">
+
+      {/* Progress line */}
+      <div className="absolute top-4 left-0 right-0 h-px bg-gray-200 rounded-full z-0">
         <div
-          className="bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"
-          style={{ width: `${(currentStep / (steps - 1)) * 100}%` }}
-          role="progressbar"
-          aria-valuenow={(currentStep / (steps - 1)) * 100}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        ></div>
+          className="h-full bg-primary-900 rounded-full transition-all duration-500 ease-out"
+          style={{
+            width: `${(currentStep / (steps - 1)) * 100}%`,
+            transformOrigin: "left center",
+          }}
+        />
       </div>
     </div>
   );
 };
-

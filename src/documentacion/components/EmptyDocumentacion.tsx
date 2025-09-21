@@ -1,64 +1,76 @@
 ﻿import { User } from "@/core/types";
 import { Card, CardContent } from "@/core/components/ui/card";
 import UploadFileModal from "./UploadFileModal";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Upload } from "lucide-react";
 
 export default function EmptyDocumentacion({ userData }: { userData: User }) {
   const isAdmin = userData && userData.role === "admin";
 
   return (
-    <div className="flex items-center justify-center min-h-[400px] w-full">
-      <Card className="w-full max-w-2xl shadow-sm">
-        <CardContent className="p-8">
-          <div className="text-center space-y-6">
-            <div className="flex justify-center mb-2">
-              <FolderOpen className="h-12 w-12 text-gray-400" />
-            </div>
+    <Card className="max-w-lg mx-auto border-0 shadow-none">
+      <CardContent className="text-center space-y-6 p-8">
+        {/* Icon */}
+        <div className="w-16 h-16 mx-auto bg-gray-50 rounded-full flex items-center justify-center">
+          <FolderOpen className="h-8 w-8 text-gray-400" />
+        </div>
 
-            <div className="space-y-2">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Esta carpeta está vacía
-              </h3>
-              <p className="text-gray-600">
-                {isAdmin
-                  ? "Aún no se ha agregado documentación a esta sección."
-                  : "El administrador aún no ha subido archivos en esta sección."}
-              </p>
-            </div>
+        {/* Main Content */}
+        <div className="space-y-3">
+          <h3 className="text-xl font-semibold text-gray-900">
+            No hay documentos disponibles
+          </h3>
+          <p className="text-gray-600 leading-relaxed">
+            {isAdmin
+              ? "Comienza subiendo el primer documento para compartir con tu equipo."
+              : "Los documentos aparecerán aquí cuando el administrador los comparta."}
+          </p>
+        </div>
 
-            {isAdmin && (
-              <div className="flex justify-center mt-4">
-                <UploadFileModal />
-              </div>
-            )}
-
-            {isAdmin ? (
-              <div className="bg-blue-50 rounded-lg p-5 mt-2">
-                <h4 className="font-medium text-blue-900 mb-3">
-                  ¿Qué puedes hacer?
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-3 text-left list-disc pl-5">
-                  <li>Subir documentos relevantes del proyecto</li>
-                  <li>Organizar la información en subcarpetas</li>
-                  <li>Compartir manuales y recursos con tu equipo</li>
-                  <li>Establecer guías de procedimientos para el equipo</li>
-                </ul>
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-lg p-5 mt-2">
-                <h4 className="font-medium text-gray-800 mb-2">
-                  Información sobre la documentación
-                </h4>
-                <p className="text-sm text-gray-600">
-                  En esta sección encontrarás documentos importantes cuando sean
-                  compartidos por el administrador. Vuelve a consultar más
-                  tarde.
-                </p>
-              </div>
-            )}
+        {/* Primary Action */}
+        {isAdmin && (
+          <div className="pt-2">
+            <UploadFileModal />
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+
+        {/* Contextual Information */}
+        <div className="bg-gray-50 rounded-lg p-5 space-y-3">
+          {isAdmin ? (
+            <>
+              <div className="flex items-center gap-2 justify-center">
+                <Upload className="h-4 w-4 text-gray-600" />
+                <h4 className="font-medium text-gray-800">
+                  Organiza tu documentación
+                </h4>
+              </div>
+              <ul className="text-sm text-gray-600 space-y-2 text-left max-w-sm mx-auto">
+                <li className="flex items-start gap-2">
+                  <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                  <span>Sube manuales, guías y recursos importantes</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                  <span>Organiza en carpetas por proyecto o área</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                  <span>Facilita el acceso a información clave del equipo</span>
+                </li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <h4 className="font-medium text-gray-800">
+                Documentación centralizada
+              </h4>
+              <p className="text-sm text-gray-600">
+                Aquí encontrarás manuales, guías y recursos importantes cuando
+                el administrador los comparta contigo.
+              </p>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

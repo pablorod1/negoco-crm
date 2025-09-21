@@ -1,18 +1,22 @@
 ﻿"use client";
 
-import { CheckCircle, CircleX, MoreVertical, Trash } from "lucide-react";
+import {
+  CheckCircle,
+  CircleX,
+  MoreVertical,
+  Trash,
+  Folder,
+} from "lucide-react";
 import { Link } from "next-view-transitions";
 
 import { Card, CardContent } from "@/core/components/ui/card";
 import { Button } from "@/core/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/core/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/core/components/ui/popover";
 import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
-import Image from "next/image";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { User } from "@/core/types";
 
@@ -25,6 +29,7 @@ interface FolderCardProps {
 export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
   const { refreshDocumentacion } = useDocumentacion();
   const isComercial = userData && userData.role === "2";
+
   const handleDelete = async () => {
     try {
       const res = await fetch("/api/v2/document-library/folders", {
@@ -70,45 +75,59 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
       });
     }
   };
+
   return (
-    <Card className="relative overflow-hidden h-full flex items-center w-full">
-      <CardContent className="p-4 w-full">
-        <div className="flex items-start justify-between">
-          <Link
-            href={`/documentacion/${currentPath}/${name}`}
-            className="flex items-center space-x-4 group"
-          >
-            <div className="w-14 h-14 relative">
-              <Image
-                src="/file-icons/folder.png"
-                alt="Folder icon"
-                width={512}
-                height={512}
-                className="max-w-14 w-full h-full"
-              />
+    <Card className="group hover:shadow-md transition-all duration-200 border-gray-200 hover:border-gray-300">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          {/* Folder Icon */}
+          <div className="flex-shrink-0">
+            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+              <Folder className="h-6 w-6 text-blue-600" />
             </div>
-            <div>
-              <h3 className="font-semibold text-lg group-hover:underline">
+          </div>
+
+          {/* Folder Content */}
+          <div className="flex-1 min-w-0">
+            <Link
+              href={`/documentacion/${currentPath}/${name}`}
+              className="block group/link"
+            >
+              <h3 className="font-semibold text-gray-900 truncate group-hover/link:text-blue-600 transition-colors">
                 {name}
               </h3>
-            </div>
-          </Link>
+              <p className="text-sm text-gray-500 mt-1">Carpeta</p>
+            </Link>
+          </div>
+
+          {/* Actions */}
           {!isComercial && (
-            <DropdownMenu modal>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Button variant="destructive" onClick={handleDelete}>
-                    <Trash />
-                    Eliminar carpeta
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-gray-500 hover:text-gray-700"
+                  >
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-40 p-1 border-gray-200 shadow-lg"
+                >
+                  <Button
+                    variant="ghost"
+                    onClick={handleDelete}
+                    className="w-full justify-start h-9 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash className="h-4 w-4 mr-3" />
+                    Eliminar
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            </div>
           )}
         </div>
       </CardContent>

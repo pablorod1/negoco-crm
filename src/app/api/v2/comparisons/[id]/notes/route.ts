@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 
 /**
  * REFACTORED COMPARISON NOTES ENDPOINT
- * 
+ *
  * Original Add: /api/comparativas/add/[id]/notes (PATCH)
  * Original Delete: /api/comparativas/delete/[id]/note (PATCH)
  * Refactored: /new_api/comparisons/[id]/notes (POST for add, DELETE for remove)
- * 
+ *
  * This endpoint manages comparison notes with enhanced performance,
  * type safety, and comprehensive error handling while maintaining 100% functional compatibility.
  */
@@ -33,39 +34,53 @@ interface QueryMetrics {
  * Zod schema for comparison notes request body (adding notes)
  * Maintains EXACT compatibility with original endpoint validation logic
  */
-const ComparisonNotesAddSchema = z.object({
-  notes: z.array(z.string()).min(0, "Notes array is required"),
-  note: z.string().min(1, "Note content cannot be empty"),
-}).refine(
-  (data) => {
-    // BACKWARD COMPATIBILITY: Match original validation logic exactly
-    // Original validation: requires both notes array and note content
-    return Array.isArray(data.notes) && typeof data.note === 'string' && data.note.length > 0;
-  },
-  {
-    message: "Missing parameters",
-    path: ["notes", "note"],
-  }
-);
+const ComparisonNotesAddSchema = z
+  .object({
+    notes: z.array(z.string()).min(0, "Notes array is required"),
+    note: z.string().min(1, "Note content cannot be empty"),
+    user_id: z.string().min(1, "User ID is required for tracking changes"),
+  })
+  .refine(
+    (data) => {
+      // BACKWARD COMPATIBILITY: Match original validation logic exactly
+      // Original validation: requires both notes array and note content
+      return (
+        Array.isArray(data.notes) &&
+        typeof data.note === "string" &&
+        data.note.length > 0
+      );
+    },
+    {
+      message: "Missing parameters",
+      path: ["notes", "note"],
+    }
+  );
 
 /**
  * Zod schema for comparison notes request body (deleting notes)
  * Maintains EXACT compatibility with original endpoint validation logic
  */
-const ComparisonNotesDeleteSchema = z.object({
-  notes: z.array(z.string()).min(0, "Notes array is required"),
-  note: z.string().min(1, "Note content to delete cannot be empty"),
-}).refine(
-  (data) => {
-    // BACKWARD COMPATIBILITY: Match original validation logic exactly
-    // Original validation: requires both notes array and note content to delete
-    return Array.isArray(data.notes) && typeof data.note === 'string' && data.note.length > 0;
-  },
-  {
-    message: "Missing parameters",
-    path: ["notes", "note"],
-  }
-);
+const ComparisonNotesDeleteSchema = z
+  .object({
+    notes: z.array(z.string()).min(0, "Notes array is required"),
+    note: z.string().min(1, "Note content to delete cannot be empty"),
+    user_id: z.string().min(1, "User ID is required for tracking changes"),
+  })
+  .refine(
+    (data) => {
+      // BACKWARD COMPATIBILITY: Match original validation logic exactly
+      // Original validation: requires both notes array and note content to delete
+      return (
+        Array.isArray(data.notes) &&
+        typeof data.note === "string" &&
+        data.note.length > 0
+      );
+    },
+    {
+      message: "Missing parameters",
+      path: ["notes", "note"],
+    }
+  );
 
 /**
  * Schema for URL parameters
@@ -94,7 +109,7 @@ async function executeQuery(
   try {
     // Add prepared statement optimization
     optimizations.push("prepared_statement");
-    
+
     const result = await client.execute({
       sql,
       args,
@@ -123,7 +138,10 @@ async function executeQuery(
   } catch (error) {
     const endTime = performance.now();
     const queryTime = endTime - startTime;
-    console.error(`[Database Error] Query execution failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[Database Error] Query execution failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -132,21 +150,21 @@ async function executeQuery(
 
 /**
  * POST /new_api/comparisons/[id]/notes
- * 
+ *
  * Adds a note to a comparison with enhanced performance and type safety.
  * Maintains 100% compatibility with the original /api/comparativas/add/[id]/notes endpoint behavior.
- * 
+ *
  * @param request - Next.js request object
  * @param params - URL parameters containing comparison ID
  * @returns Promise<NextResponse<ComparisonNotesResponse>>
- * 
+ *
  * @example
  * POST /new_api/comparisons/[id]/notes
  * Body: {
  *   "notes": ["existing note 1", "existing note 2"],
  *   "note": "new note to add"
  * }
- * 
+ *
  * Response: {
  *   "success": true
  * }
@@ -159,15 +177,18 @@ export async function POST(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id: comparisonId } = await params;
-    
+
     // Validate URL parameters
     const paramsValidation = ParamsSchema.safeParse({ id: comparisonId });
     if (!paramsValidation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`, paramsValidation.error.errors);
-      
+      console.error(
+        `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
+        paramsValidation.error.issues
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -178,15 +199,17 @@ export async function POST(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     const requestBody = await request.json();
-    const { notes, note } = requestBody;
+    const { notes, note, user_id } = requestBody;
 
     // BACKWARD COMPATIBILITY: Match original validation exactly
-    if (!comparisonId || !notes || !note) {
+    if (!comparisonId || !notes || !note || !user_id) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -200,17 +223,22 @@ export async function POST(
     const validation = ComparisonNotesAddSchema.safeParse(requestBody);
     if (!validation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.warn(`[ENHANCED VALIDATION] Zod validation warning after ${totalRequestTime.toFixed(2)}ms:`, validation.error.errors);
+      console.warn(
+        `[ENHANCED VALIDATION] Zod validation warning after ${totalRequestTime.toFixed(2)}ms:`,
+        validation.error.issues
+      );
       // Continue with original validation for backward compatibility
     }
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -221,7 +249,7 @@ export async function POST(
     }
 
     // ==================== BUSINESS LOGIC EXECUTION ====================
-    
+
     // BACKWARD COMPATIBILITY: Maintain exact original logic
     // Add the new note to the existing array
     const updatedNotes = [...notes, note];
@@ -230,7 +258,7 @@ export async function POST(
 
     console.log(
       `[INFO] Adding note to comparison ${comparisonId}. ` +
-      `Total notes after addition: ${updatedNotes.length}`
+        `Total notes after addition: ${updatedNotes.length}`
     );
 
     const query = `
@@ -239,17 +267,20 @@ export async function POST(
       WHERE id = ?
     `;
 
-    const { result, metrics } = await executeQuery(tursoClient, query, [notesJSON, comparisonId]);
+    const { result, metrics } = await executeQuery(tursoClient, query, [
+      notesJSON,
+      comparisonId,
+    ]);
 
     // ==================== RESULT VALIDATION ====================
-    
+
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;
       console.warn(
         `[WARNING] Comparison ${comparisonId} not found after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms`
+          `Query time: ${metrics.queryTime.toFixed(2)}ms`
       );
-      
+
       return NextResponse.json(
         {
           success: false,
@@ -260,23 +291,36 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
+    // Track note addition
+    await createComparativaChange(tursoClient, {
+      comparativa_id: comparisonId,
+      user_id: user_id,
+      change_type: "note_added",
+      field_name: "note",
+      old_value: null,
+      new_value: note,
+      description: `Nota agregada: "${note.length > 50 ? note.substring(0, 50) + "..." : note}"`,
+    });
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] Note added to comparison ${comparisonId} successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Query time: ${metrics.queryTime.toFixed(2)}ms, Total notes: ${metrics.notesCount}, ` +
-      `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
+        `Query time: ${metrics.queryTime.toFixed(2)}ms, Total notes: ${metrics.notesCount}, ` +
+        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
     );
 
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     const totalRequestTime = performance.now() - startTime;
-    console.error(`[API ERROR] Note addition failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[API ERROR] Note addition failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,
@@ -289,21 +333,21 @@ export async function POST(
 
 /**
  * DELETE /new_api/comparisons/[id]/notes
- * 
+ *
  * Removes a note from a comparison with enhanced performance and type safety.
  * Maintains 100% compatibility with the original /api/comparativas/delete/[id]/note endpoint behavior.
- * 
+ *
  * @param request - Next.js request object
  * @param params - URL parameters containing comparison ID
  * @returns Promise<NextResponse<ComparisonNotesResponse>>
- * 
+ *
  * @example
  * DELETE /new_api/comparisons/[id]/notes
  * Body: {
  *   "notes": ["existing note 1", "note to delete", "existing note 2"],
  *   "note": "note to delete"
  * }
- * 
+ *
  * Response: {
  *   "success": true
  * }
@@ -316,15 +360,18 @@ export async function DELETE(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id: comparisonId } = await params;
-    
+
     // Validate URL parameters
     const paramsValidation = ParamsSchema.safeParse({ id: comparisonId });
     if (!paramsValidation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`, paramsValidation.error.errors);
-      
+      console.error(
+        `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
+        paramsValidation.error.issues
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -335,15 +382,17 @@ export async function DELETE(
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
-    
+
     const requestBody = await request.json();
-    const { notes, note } = requestBody;
+    const { notes, note, user_id } = requestBody;
 
     // BACKWARD COMPATIBILITY: Match original validation exactly
-    if (!comparisonId || !note || !notes) {
+    if (!comparisonId || !note || !notes || !user_id) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[VALIDATION ERROR] Missing required parameters after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -357,17 +406,22 @@ export async function DELETE(
     const validation = ComparisonNotesDeleteSchema.safeParse(requestBody);
     if (!validation.success) {
       const totalRequestTime = performance.now() - startTime;
-      console.warn(`[ENHANCED VALIDATION] Zod validation warning after ${totalRequestTime.toFixed(2)}ms:`, validation.error.errors);
+      console.warn(
+        `[ENHANCED VALIDATION] Zod validation warning after ${totalRequestTime.toFixed(2)}ms:`,
+        validation.error.issues
+      );
       // Continue with original validation for backward compatibility
     }
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -378,7 +432,7 @@ export async function DELETE(
     }
 
     // ==================== BUSINESS LOGIC EXECUTION ====================
-    
+
     // BACKWARD COMPATIBILITY: Maintain exact original logic
     // Filter out the note to be deleted
     const updatedNotes = notes.filter((n: string) => n !== note);
@@ -387,7 +441,7 @@ export async function DELETE(
 
     console.log(
       `[INFO] Removing note from comparison ${comparisonId}. ` +
-      `Notes count: ${notes.length} -> ${updatedNotes.length}`
+        `Notes count: ${notes.length} -> ${updatedNotes.length}`
     );
 
     const query = `
@@ -396,17 +450,20 @@ export async function DELETE(
       WHERE id = ?
     `;
 
-    const { result, metrics } = await executeQuery(tursoClient, query, [notesJSON, comparisonId]);
+    const { result, metrics } = await executeQuery(tursoClient, query, [
+      notesJSON,
+      comparisonId,
+    ]);
 
     // ==================== RESULT VALIDATION ====================
-    
+
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;
       console.warn(
         `[WARNING] Comparison ${comparisonId} not found after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms`
+          `Query time: ${metrics.queryTime.toFixed(2)}ms`
       );
-      
+
       return NextResponse.json(
         {
           success: false,
@@ -417,23 +474,36 @@ export async function DELETE(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
+    // Track note deletion
+    await createComparativaChange(tursoClient, {
+      comparativa_id: comparisonId,
+      user_id: user_id,
+      change_type: "note_deleted",
+      field_name: "note",
+      old_value: note,
+      new_value: null,
+      description: `Nota eliminada: "${note.length > 50 ? note.substring(0, 50) + "..." : note}"`,
+    });
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] Note removed from comparison ${comparisonId} successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Query time: ${metrics.queryTime.toFixed(2)}ms, Remaining notes: ${metrics.notesCount}, ` +
-      `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
+        `Query time: ${metrics.queryTime.toFixed(2)}ms, Remaining notes: ${metrics.notesCount}, ` +
+        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
     );
 
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     const totalRequestTime = performance.now() - startTime;
-    console.error(`[API ERROR] Note deletion failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[API ERROR] Note deletion failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,
@@ -451,9 +521,10 @@ export async function DELETE(
  */
 export async function GET(): Promise<NextResponse> {
   return NextResponse.json(
-    { 
+    {
       success: false,
-      error: "Method not allowed. Use POST to add notes or DELETE to remove notes." 
+      error:
+        "Method not allowed. Use POST to add notes or DELETE to remove notes.",
     },
     { status: 405 }
   );
@@ -464,9 +535,10 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function PUT(): Promise<NextResponse> {
   return NextResponse.json(
-    { 
+    {
       success: false,
-      error: "Method not allowed. Use POST to add notes or DELETE to remove notes." 
+      error:
+        "Method not allowed. Use POST to add notes or DELETE to remove notes.",
     },
     { status: 405 }
   );
@@ -477,9 +549,10 @@ export async function PUT(): Promise<NextResponse> {
  */
 export async function PATCH(): Promise<NextResponse> {
   return NextResponse.json(
-    { 
+    {
       success: false,
-      error: "Method not allowed. Use POST to add notes or DELETE to remove notes." 
+      error:
+        "Method not allowed. Use POST to add notes or DELETE to remove notes.",
     },
     { status: 405 }
   );

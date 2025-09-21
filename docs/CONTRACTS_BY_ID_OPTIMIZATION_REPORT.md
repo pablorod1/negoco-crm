@@ -100,7 +100,7 @@ catch (error) {
 catch (error) {
   // Handle Zod validation errors
   if (error instanceof z.ZodError) {
-    console.error(`[VALIDATION ERROR] Request failed:`, error.errors);
+    console.error(`[VALIDATION ERROR] Request failed:`, error.issues);
     return NextResponse.json({
       success: false,
       error: "Invalid request parameters",

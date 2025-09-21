@@ -14,48 +14,83 @@ export default function SignerTabContent({
   isEditable,
 }: Props) {
   return (
-    <>
-      <div className="space-y-12">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Personal Information */}
         <div className="space-y-4">
-          <div>
-            <p className="text-sm font-medium text-primary-400">
-              Nombre Completo
-            </p>
-            <p className="font-medium">
-              {signer.name} {signer.last_name}
-            </p>
+          <div className="pb-3 border-b border-gray-200">
+            <h3 className="text-sm font-medium text-gray-700">
+              Información Personal
+            </h3>
           </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Mail className="size-4 text-primary-400" />
-              <p className="font-medium">{signer.email}</p>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Nombre Completo</p>
+              <p className="text-sm font-medium text-gray-800">
+                {signer.name} {signer.last_name}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Phone className="size-4 text-primary-400" />
-              <p className="font-medium">{signer.phone}</p>
+
+            <div className="flex items-start gap-2">
+              <IdCard className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Documento</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {signer.document_number}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <IdCard className="size-4 text-primary-400" />
-              <p className="font-medium">{signer.document_number}</p>
-            </div>
+
             {signer.cargo && (
-              <div className="flex items-center gap-2">
-                <BriefcaseBusiness className="size-4 text-primary-400" />
-                <p className="font-medium">{signer.cargo}</p>
+              <div className="flex items-start gap-2">
+                <BriefcaseBusiness className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-500">Cargo</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {signer.cargo}
+                  </p>
+                </div>
               </div>
             )}
           </div>
         </div>
-        {isEditable && (
-          <div className="absolute bottom-4 left-0 w-full px-4">
-            <EditDrawer signer={signer} onUpdate={onSignerUpdated} />
+
+        {/* Contact Information */}
+        <div className="space-y-4">
+          <div className="pb-3 border-b border-gray-200">
+            <h3 className="text-sm font-medium text-gray-700">
+              Información de Contacto
+            </h3>
           </div>
-        )}
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-2">
+              <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">
+                  {signer.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">
+                  {signer.phone}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </>
+
+      {isEditable && (
+        <div className="pt-4 border-t border-gray-200">
+          <EditDrawer signer={signer} onUpdate={onSignerUpdated} />
+        </div>
+      )}
+    </div>
   );
 }

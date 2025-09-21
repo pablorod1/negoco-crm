@@ -3,16 +3,17 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { NOW_DATE, RENOVATION_DATE } from "@/dashboard/constants";
 import { Client } from "@libsql/client";
+import { recordFieldChanges } from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
  * REFACTORED CONTRACT RENEWAL ENDPOINT
- * 
+ *
  * Original: /api/tramites/renew/[id] (PATCH)
  * Refactored: /new_api/contracts/[id]/renewal (POST)
- * 
+ *
  * This endpoint creates a contract renewal by updating the activation_date and renovation_date
  * with enhanced performance, type safety, and comprehensive error handling.
- * 
+ *
  * Business Logic:
  * - Sets activation_date to current date (NOW_DATE)
  * - Sets renovation_date to one year from current date (RENOVATION_DATE)
@@ -79,7 +80,10 @@ async function executeQuery(
     };
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`, error);
+    console.error(
+      `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
     throw error;
   }
 }
@@ -98,12 +102,15 @@ async function validateContractExists(
   try {
     const result = await client.execute({
       sql: "SELECT id FROM tramites WHERE id = ? LIMIT 1",
-      args: [contractId]
+      args: [contractId],
     });
-    
+
     return result.rows.length > 0;
   } catch (error) {
-    console.error(`[ERROR] Contract validation failed for ID ${contractId}:`, error);
+    console.error(
+      `[ERROR] Contract validation failed for ID ${contractId}:`,
+      error
+    );
     return false;
   }
 }
@@ -112,7 +119,7 @@ async function validateContractExists(
 
 /**
  * POST /new_api/contracts/[id]/renewal
- * 
+ *
  * Creates a contract renewal by updating activation and renovation dates.
  * Maintains 100% compatibility with the original endpoint while adding:
  * - Enhanced type safety with Zod validation
@@ -120,7 +127,7 @@ async function validateContractExists(
  * - Comprehensive error handling
  * - Better logging and debugging information
  * - Contract existence validation for improved error messages
- * 
+ *
  * @param request - Next.js request object
  * @param context - Route context with contract ID parameter
  * @returns Promise<NextResponse<ContractRenewalResponse>>
@@ -133,9 +140,9 @@ export async function POST(
 
   try {
     // ==================== PARAMETER VALIDATION ====================
-    
+
     const { id: contractId } = await params;
-    
+
     // Validate URL parameters
     const paramValidation = ParamsSchema.safeParse({ id: contractId });
     if (!paramValidation.success) {
@@ -149,14 +156,34 @@ export async function POST(
       );
     }
 
+    // ==================== REQUEST BODY PARSING ====================
+
+    let requestBody: { user_id?: string } = {};
+    let user_id: string | undefined;
+
+    try {
+      const bodyText = await request.text();
+      if (bodyText.trim()) {
+        requestBody = JSON.parse(bodyText);
+        user_id = requestBody.user_id;
+      }
+    } catch {
+      // No body or invalid JSON - this is fine for renewal endpoint
+      console.log(
+        `[INFO] No request body provided for renewal of contract ${contractId}`
+      );
+    }
+
     // ==================== DATABASE CLIENT INITIALIZATION ====================
-    
+
     const tursoClient = getTursoClient(request);
-    
+
     if (!tursoClient) {
       const totalRequestTime = performance.now() - startTime;
-      console.error(`[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.error(
+        `[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -167,12 +194,17 @@ export async function POST(
     }
 
     // ==================== CONTRACT EXISTENCE VALIDATION ====================
-    
-    const contractExists = await validateContractExists(tursoClient, contractId);
+
+    const contractExists = await validateContractExists(
+      tursoClient,
+      contractId
+    );
     if (!contractExists) {
       const totalRequestTime = performance.now() - startTime;
-      console.warn(`[WARNING] Contract not found: ${contractId} after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.warn(
+        `[WARNING] Contract not found: ${contractId} after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -182,26 +214,56 @@ export async function POST(
       );
     }
 
+    // ==================== GET CURRENT VALUES FOR TRACKING ====================
+
+    let currentActivationDate: string | null = null;
+    let currentRenovationDate: string | null = null;
+
+    if (user_id) {
+      try {
+        const currentResult = await tursoClient.execute({
+          sql: "SELECT activation_date, renovation_date FROM tramites WHERE id = ?",
+          args: [contractId],
+        });
+
+        if (currentResult.rows.length > 0) {
+          currentActivationDate = currentResult.rows[0].activation_date as
+            | string
+            | null;
+          currentRenovationDate = currentResult.rows[0].renovation_date as
+            | string
+            | null;
+        }
+      } catch (error) {
+        console.error("Error fetching current renewal dates:", error);
+        // Continue without tracking if we can't get current values
+      }
+    }
+
     // ==================== RENEWAL DATE CALCULATION ====================
-    
+
     const activationDate = NOW_DATE.toISOString();
     const renovationDate = RENOVATION_DATE.toISOString();
-    
-    console.log(`[INFO] Renewing contract ${contractId}: activation=${activationDate}, renovation=${renovationDate}`);
+
+    console.log(
+      `[INFO] Renewing contract ${contractId}: activation=${activationDate}, renovation=${renovationDate}`
+    );
 
     // ==================== DATABASE UPDATE EXECUTION ====================
-    
+
     const sql = `UPDATE tramites SET activation_date = ?, renovation_date = ? WHERE id = ?`;
     const args = [activationDate, renovationDate, contractId];
-    
+
     const { result, metrics } = await executeQuery(tursoClient, sql, args);
 
     // ==================== RESULT VALIDATION ====================
-    
+
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;
-      console.warn(`[WARNING] No rows affected for contract: ${contractId} after ${totalRequestTime.toFixed(2)}ms`);
-      
+      console.warn(
+        `[WARNING] No rows affected for contract: ${contractId} after ${totalRequestTime.toFixed(2)}ms`
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -212,28 +274,59 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     console.log(
       `[SUCCESS] Contract ${contractId} renewed successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-      `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
-      `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
+        `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
+        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
     );
+
+    // ==================== TRACK RENEWAL CHANGES ====================
+
+    // Track renewal changes if user_id is provided
+    if (user_id) {
+      const changes = [];
+
+      if (currentActivationDate !== activationDate) {
+        changes.push({
+          field_name: "activation_date",
+          old_value: currentActivationDate,
+          new_value: activationDate,
+          description: "Fecha de activación actualizada en renovación",
+        });
+      }
+
+      if (currentRenovationDate !== renovationDate) {
+        changes.push({
+          field_name: "renovation_date",
+          old_value: currentRenovationDate,
+          new_value: renovationDate,
+          description: "Fecha de renovación actualizada",
+        });
+      }
+
+      if (changes.length > 0) {
+        await recordFieldChanges(tursoClient, contractId, user_id, changes);
+      }
+    }
 
     // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
     return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     // ==================== ERROR HANDLING ====================
-    
+
     const totalRequestTime = performance.now() - startTime;
-    
+
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      console.error(`[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`, error.errors);
+      console.error(
+        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
+        error.issues
+      );
       return NextResponse.json(
         {
           success: false,
@@ -244,8 +337,11 @@ export async function POST(
     }
 
     // Handle general errors
-    console.error(`[ERROR] Contract renewal failed after ${totalRequestTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[ERROR] Contract renewal failed after ${totalRequestTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,
@@ -258,10 +354,10 @@ export async function POST(
 
 /**
  * PATCH /new_api/contracts/[id]/renewal
- * 
+ *
  * Backward compatibility alias for the POST method.
  * Maintains compatibility with clients expecting PATCH method from legacy endpoint.
- * 
+ *
  * @param request - Next.js request object
  * @param context - Route context with contract ID parameter
  * @returns Promise<NextResponse<ContractRenewalResponse>>
