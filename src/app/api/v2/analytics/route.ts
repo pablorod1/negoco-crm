@@ -224,8 +224,9 @@ export async function POST(
           SUM(c.consumption) AS total
       FROM contracts c
       INNER JOIN tramites t ON c.tramite_id = t.id
+      LEFT JOIN comercializadoras com ON (c.new_company = com.id OR c.new_company = com.name)
       WHERE t.status = 'Activo'
-        AND c.new_company IN (SELECT name FROM comercializadoras)
+        AND com.id IS NOT NULL
         ${consumptionUserFilter.filter.replace(/AND\s+(user_id)/g, "AND t.$1")}
     `;
     // Execute all queries in parallel for optimal performance
