@@ -103,6 +103,17 @@ export default function UserFilter({
     fetchComerciales();
   }, [fetchComerciales]);
 
+  const handleSearch = async (searchTerm: string) => {
+    if (searchTerm.trim() === "") {
+      return convertToOptions(comerciales);
+    }
+
+    const filtered = comerciales.filter((user) =>
+      user.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return convertToOptions(filtered);
+  };
+
   if (loading) {
     return <Skeleton className="h-10 w-full rounded-4xl" />;
   }
@@ -116,6 +127,7 @@ export default function UserFilter({
         onChange={(options) => setUserFilter(convertFromOptions(options))}
         placeholder="Seleccionar comercial"
         hidePlaceholderWhenSelected
+        onSearch={handleSearch}
         emptyIndicator={
           <p className="text-center text-sm text-gray-500">
             No se encontraron comerciales

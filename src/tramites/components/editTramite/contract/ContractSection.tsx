@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
-import { Building2, CircleX, FilePen, MapPin } from "lucide-react";
+import { Building2, CircleX, FilePen, FileText, MapPin } from "lucide-react";
 import { useState } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import EditDrawer from "../client/EditTramiteDrawer";
@@ -129,6 +129,51 @@ export default function ContractSection({
       showCustomToast({
         title: "Error al editar contrato",
         message: "Ha ocurrido un error al actualizar el contrato",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateContract = async (contract: ContractDB) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("contracts", JSON.stringify([contract]));
+      const res = await fetch(`/api/v2/contracts/${tramite_id}/contract`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const { success, error } = await res.json();
+
+      if (!success) {
+        showCustomToast({
+          title: "Error al añadir contrato",
+          message: error,
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        return;
+      }
+
+      showCustomToast({
+        title: "Contrato añadido",
+        message: "El contrato ha sido añadido correctamente",
+        icon: FileText,
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+      });
+      onContractUpdated();
+    } catch (error) {
+      console.error(error);
+      showCustomToast({
+        title: "Error al añadir contrato",
+        message: "Ha ocurrido un error al añadir el contrato",
         icon: CircleX,
         iconColor: "var(--danger-color)",
         iconSize: 24,
@@ -363,13 +408,21 @@ export default function ContractSection({
         </CardContent>
         {isEditable && (
           <CardFooter className="pt-4 border-t border-gray-200">
-            {contracts.length > 0 && (
+            {contracts.length > 0 && selectedContract ? (
               <EditDrawer
                 contract={selectedContract}
                 onContract={handleUpdateContract}
                 loading={loading}
               />
-            )}
+            ) : null}
+            {contracts.length === 0 ? (
+              <EditDrawer
+                tramite_id={tramite_id}
+                newContract
+                onContract={handleCreateContract}
+                loading={loading}
+              />
+            ) : null}
           </CardFooter>
         )}
       </Card>

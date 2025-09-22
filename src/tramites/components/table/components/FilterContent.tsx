@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Label } from "@/core/components/ui/label";
-import MultipleSelector from "@/core/components/ui/multiselect";
+import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
 import { DateRangePicker } from "@/dashboard/components/DateRangePicker";
 import UserFilter from "@/core/components/table/UserFilter";
 import { ProviderFilter } from "./ProviderFilter";
@@ -90,6 +90,17 @@ export function FilterContent({
       })),
     [activeSuppliers]
   );
+
+  const handleSearch = async (searchTerm: string, options: Option[]) => {
+    if (searchTerm.trim() === "") {
+      return convertToOptions(options);
+    }
+
+    const filtered = options.filter((option) =>
+      option.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return convertToOptions(filtered);
+  };
 
   return (
     <div className="py-6 space-y-8">
@@ -193,6 +204,7 @@ export function FilterContent({
                 }
                 placeholder="Seleccionar compañías"
                 hidePlaceholderWhenSelected
+                onSearch={(value) => handleSearch(value, supplierOptions)}
                 emptyIndicator={
                   <p className="text-center text-sm text-gray-500">
                     No se encontraron resultados

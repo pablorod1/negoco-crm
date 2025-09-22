@@ -1127,18 +1127,46 @@ export async function GET(
     };
 
     // Company filter helper (handles both ID and name for backward compatibility)
-    const addCompanyFilter = (filterArray?: string[]) => {
+    const addCompanyFilter = async (filterArray?: string[]) => {
       if (filterArray && filterArray.length > 0) {
-        // For each company filter, we need to check both the ID and name
-        // This handles the transition from name-based to ID-based storage
+        // Get company names for the provided IDs
+        const companyNames: string[] = [];
+
+        for (const companyId of filterArray) {
+          try {
+            const companyResult = await tursoClient.execute({
+              sql: `SELECT name FROM comercializadoras WHERE id = ? LIMIT 1`,
+              args: [companyId],
+            });
+
+            if (companyResult.rows.length > 0) {
+              const companyName = companyResult.rows[0].name as string;
+              companyNames.push(companyName);
+            }
+          } catch (error) {
+            console.error(
+              `Error fetching company name for ID ${companyId}:`,
+              error
+            );
+          }
+        }
+
+        // Create conditions for both ID and name matching
         const companyConditions = filterArray
-          .map(() => "(con.new_company = ? OR com.name = ?)")
+          .map(() => "con.new_company = ?")
+          .concat(companyNames.map(() => "con.new_company = ?"))
           .join(" OR ");
-        filters.push(`(${companyConditions})`);
-        // Add each filter value twice: once for ID match, once for name match
-        filterArray.forEach((company) => {
-          params.push(company, company);
-        });
+
+        if (companyConditions) {
+          filters.push(`(${companyConditions})`);
+          // Add IDs first, then names
+          filterArray.forEach((companyId) => {
+            params.push(companyId);
+          });
+          companyNames.forEach((companyName) => {
+            params.push(companyName);
+          });
+        }
       }
     };
 
@@ -1155,7 +1183,7 @@ export async function GET(
     };
 
     if (companyFilter) {
-      addCompanyFilter(companyFilter);
+      await addCompanyFilter(companyFilter);
     }
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);
@@ -1268,6 +1296,11 @@ export async function GET(
     });
     const total = Number(countResult.rows[0]?.total || 0);
 
+    console.log(
+      `[DEBUG] Executing data query with params:`,
+      dataQuery,
+      dataParams
+    );
     // Execute data query
     const dataResult = await tursoClient.execute({
       sql: dataQuery,

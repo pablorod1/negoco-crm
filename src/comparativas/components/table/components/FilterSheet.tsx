@@ -19,7 +19,7 @@ import TooltipComponent from "@/core/components/TooltipComponent";
 import { cn } from "@/core/utils";
 import type { User } from "@/core/types";
 import type { DateRange } from "react-day-picker";
-import MultipleSelector from "@/core/components/ui/multiselect";
+import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
 import { useMultipleSelector } from "@/core/hooks/use-multiple-selector";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
@@ -69,6 +69,17 @@ export function FilterSheet({
       })),
     [activeSuppliers]
   );
+
+  const handleSearch = async (searchTerm: string, options: Option[]) => {
+    if (searchTerm.trim() === "") {
+      return convertToOptions(options);
+    }
+
+    const filtered = options.filter((option) =>
+      option.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return convertToOptions(filtered);
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -137,6 +148,7 @@ export function FilterSheet({
                 onChange={(options) =>
                   setCompanyFilter(convertFromOptions(options))
                 }
+                onSearch={(value) => handleSearch(value, supplierOptions)}
                 placeholder="Seleccionar compañías"
                 hidePlaceholderWhenSelected
                 emptyIndicator={
