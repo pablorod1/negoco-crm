@@ -3,6 +3,7 @@ import { formatDate } from "@/core/utils/format";
 import { InfoIcon, RefreshCcw } from "lucide-react";
 import UpdateTramiteDateModal from "./dates/UpdateTramiteDateModal";
 import { cn } from "@/core/utils";
+import { User } from "@/core/types";
 
 interface TimelineItemProps {
   label: string;
@@ -12,6 +13,7 @@ interface TimelineItemProps {
   fieldToChange?: string;
   onUpdate?: () => void;
   isAdmin?: boolean;
+  userData: User;
 }
 
 export default function TimelineItem({
@@ -22,6 +24,7 @@ export default function TimelineItem({
   fieldToChange,
   onUpdate,
   isAdmin,
+  userData,
 }: TimelineItemProps) {
   // Determine status based on date presence
   const hasDate = date && date !== "---";
@@ -98,6 +101,7 @@ export default function TimelineItem({
               tramite_id={tramite_id}
               fieldToChange={fieldToChange}
               onUpdate={onUpdate}
+              userData={userData}
             />
           </div>
         )}

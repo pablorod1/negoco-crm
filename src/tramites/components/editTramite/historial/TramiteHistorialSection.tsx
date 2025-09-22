@@ -70,6 +70,7 @@ export default function TramiteHistorialSection({
           tramite={tramite}
           isComercial={isComercial}
           onUpdate={onUpdate}
+          userData={userData}
         />
       ) : null}
 

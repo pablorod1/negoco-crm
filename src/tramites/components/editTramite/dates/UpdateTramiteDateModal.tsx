@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/core/components/ui/dialog";
 import { Label } from "@/core/components/ui/label";
+import { User } from "@/core/types";
 import { CircleCheck, CircleX, Pencil } from "lucide-react";
 import { useState } from "react";
 
@@ -21,6 +22,7 @@ interface Props {
   date: Date;
   tramite_id: string;
   onUpdate?: () => void;
+  userData: User;
 }
 
 export default function UpdateTramiteDateModal({
@@ -29,6 +31,7 @@ export default function UpdateTramiteDateModal({
   tramite_id,
   fieldToChange,
   onUpdate,
+  userData,
 }: Props) {
   const [newDate, setNewDate] = useState<Date | null>(date);
   const [isOpen, setIsOpen] = useState(false);
@@ -69,6 +72,7 @@ export default function UpdateTramiteDateModal({
         body: JSON.stringify({
           field: fieldToChange,
           date: newDate,
+          user_id: userData.id,
         }),
       });
 

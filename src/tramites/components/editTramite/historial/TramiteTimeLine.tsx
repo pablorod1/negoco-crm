@@ -22,11 +22,13 @@ import {
 import { cn } from "@/core/utils";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import UpdateTramiteDateModal from "../dates/UpdateTramiteDateModal";
+import { User } from "@/core/types";
 
 interface Props {
   tramite: TramiteDB;
   isComercial: boolean;
   onUpdate?: () => void;
+  userData: User;
 }
 
 interface TimelineEvent {
@@ -45,6 +47,7 @@ export default function TramiteTimeLine({
   tramite,
   isComercial,
   onUpdate,
+  userData,
 }: Props) {
   // Generate timeline events based on tramite data
   const generateTimelineEvents = (): TimelineEvent[] => {
@@ -356,6 +359,7 @@ export default function TramiteTimeLine({
                               tramite_id={tramite.id}
                               fieldToChange={event.fieldToChange}
                               onUpdate={onUpdate}
+                              userData={userData}
                             />
                           </div>
                         )}
