@@ -132,7 +132,6 @@ export function ComparativasResume({ loading, userData }: Props) {
 
       const { data, success, error } = await rs.json();
 
-      console.log("Fetched comparativas: ", data);
       if (!success) {
         throw new Error(error || "Error al obtener comparativas");
       }

@@ -98,7 +98,6 @@ export default function ComparativasTable<TData, TValue>({
             console.error("Error al obtener comparativas:", error);
             return;
           }
-          console.log("Fetched comparativas:", data);
           if (isMounted) {
             setComparativas(data || []);
             setTotalComparativas(total || 0);

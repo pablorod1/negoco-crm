@@ -72,7 +72,12 @@ const getClientNameFromContext = async (
 
     switch (context) {
       case "tramite":
-        query = "SELECT client FROM tramites WHERE id = ?";
+        query = `
+          SELECT c.name as client
+          FROM tramites t 
+          JOIN clientes c ON t.client_id = c.id
+          WHERE t.id = ?
+        `;
         break;
       case "comparativa":
         query = "SELECT client FROM comparativas WHERE id = ?";

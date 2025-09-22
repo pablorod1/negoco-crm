@@ -138,8 +138,8 @@ const addComparativaOptimized = async (
         INSERT INTO comparativas (
           id, client, service, plan, comision_fijo, comision_indexado, 
           comision_sales_person_fijo, comision_sales_person_indexado, 
-          notes, user_id, creation_date, status, tramite_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          notes, user_id, creation_date, status, tramite_id, company_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         comparativa.id,
@@ -155,6 +155,7 @@ const addComparativaOptimized = async (
         comparativa.creation_date,
         comparativa.status,
         comparativa.tramite_id || null,
+        null,
       ],
     });
 
