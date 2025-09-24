@@ -30,7 +30,7 @@ export default function ComercialCard({
       <CardHeader className="pb-4">
         <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
           <div className="h-2 w-2 bg-gray-600 rounded-full"></div>
-          Comercial y Proveedor
+          Comercial {!isComercial ? "y Proveedor" : ""}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">

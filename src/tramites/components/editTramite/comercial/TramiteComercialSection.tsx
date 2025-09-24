@@ -122,7 +122,7 @@ export default function TramiteComercialSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-700">Proveedor</h4>
+        <h4 className="text-sm font-medium text-gray-700">Comercial</h4>
         {isEditable && !isEditMode ? (
           <Button
             size="sm"
