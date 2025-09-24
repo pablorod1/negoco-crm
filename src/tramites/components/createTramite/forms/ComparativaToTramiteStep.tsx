@@ -200,7 +200,8 @@ export default function ComparativaToTramiteStep({
             <FileText className="h-4 w-4" />
             Ver detalles adicionales ({
               comparativa.files.length
-            } documentos, {comparativa.notes.length} notas)
+            } documentos, {comparativa.notes ? comparativa.notes.length : 0}{" "}
+            notas)
           </span>
           <Calendar
             className={`h-4 w-4 transition-transform ${showDetails ? "rotate-180" : ""}`}
@@ -240,7 +241,7 @@ export default function ComparativaToTramiteStep({
                 )}
 
                 {/* Notes */}
-                {comparativa.notes.length > 0 && (
+                {comparativa.notes && comparativa.notes.length > 0 ? (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm text-gray-700">
@@ -260,7 +261,7 @@ export default function ComparativaToTramiteStep({
                       </div>
                     </CardContent>
                   </Card>
-                )}
+                ) : null}
               </div>
             </ScrollArea>
           </div>
