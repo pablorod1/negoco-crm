@@ -43,6 +43,7 @@ export default function ComparativaComissionsSection({
   });
 
   const isComercial = userData && userData.role === "2";
+  const isSubcomercial = userData && userData.role === "2" && userData.super_id;
   const hasFijo = comparativa.plan.includes("fijo");
   const hasIndexado = comparativa.plan.includes("indexado");
 
@@ -221,31 +222,35 @@ export default function ComparativaComissionsSection({
             )}
 
             {/* Sales Person Commissions */}
-            <div>
-              <p className="text-xs text-gray-500 mb-2">
-                {comparativa.user.name}
-              </p>
-              <div className="space-y-1">
-                {hasFijo && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Fijo:</span>
-                    <span className="font-medium text-primary-900">
-                      {getComissionText(comparativa.comision_sales_person.fijo)}
-                    </span>
-                  </div>
-                )}
-                {hasIndexado && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Indexado:</span>
-                    <span className="font-medium text-primary-900">
-                      {getComissionText(
-                        comparativa.comision_sales_person.indexado
-                      )}
-                    </span>
-                  </div>
-                )}
+            {!isSubcomercial ? (
+              <div>
+                <p className="text-xs text-gray-500 mb-2">
+                  {comparativa.user.name}
+                </p>
+                <div className="space-y-1">
+                  {hasFijo && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Fijo:</span>
+                      <span className="font-medium text-primary-900">
+                        {getComissionText(
+                          comparativa.comision_sales_person.fijo
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {hasIndexado && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Indexado:</span>
+                      <span className="font-medium text-primary-900">
+                        {getComissionText(
+                          comparativa.comision_sales_person.indexado
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         ) : (
           /* Edit Mode */
@@ -290,46 +295,48 @@ export default function ComparativaComissionsSection({
             )}
 
             {/* Sales Person Commissions */}
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">
-                {comparativa.user.name}
-              </p>
+            {!isSubcomercial ? (
               <div className="space-y-3">
-                {hasFijo && (
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">
-                      Comisión Fijo
-                    </label>
-                    <InputComponent
-                      label=""
-                      name="comision_sales_person_fijo"
-                      type="number"
-                      value={
-                        formData.comision_sales_person_fijo?.toString() || ""
-                      }
-                      onChange={handleChange}
-                    />
-                  </div>
-                )}
-                {hasIndexado && (
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">
-                      Comisión Indexado
-                    </label>
-                    <InputComponent
-                      label=""
-                      name="comision_sales_person_indexado"
-                      type="number"
-                      value={
-                        formData.comision_sales_person_indexado?.toString() ||
-                        ""
-                      }
-                      onChange={handleChange}
-                    />
-                  </div>
-                )}
+                <p className="text-sm font-medium text-gray-700">
+                  {comparativa.user.name}
+                </p>
+                <div className="space-y-3">
+                  {hasFijo && (
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">
+                        Comisión Fijo
+                      </label>
+                      <InputComponent
+                        label=""
+                        name="comision_sales_person_fijo"
+                        type="number"
+                        value={
+                          formData.comision_sales_person_fijo?.toString() || ""
+                        }
+                        onChange={handleChange}
+                      />
+                    </div>
+                  )}
+                  {hasIndexado && (
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">
+                        Comisión Indexado
+                      </label>
+                      <InputComponent
+                        label=""
+                        name="comision_sales_person_indexado"
+                        type="number"
+                        value={
+                          formData.comision_sales_person_indexado?.toString() ||
+                          ""
+                        }
+                        onChange={handleChange}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Action Buttons */}
             <div className="flex gap-2 pt-2">
