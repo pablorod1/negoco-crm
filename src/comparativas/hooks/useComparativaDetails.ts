@@ -61,7 +61,6 @@ export function useComparativaDetails({
       }
 
       const { success, data } = await rs.json();
-      console.log("Comparativa fetch result:", { success, data });
       if (success && data) {
         setComparativa(data);
         setLoadedData(true);
