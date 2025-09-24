@@ -50,6 +50,7 @@ export default function ComparativaToTramiteStep({
   const { supplier } = useEnergySupplierById(comparativa.company_id);
   const company_name = supplier?.name;
   const isComercial = userData.role === "2";
+  const isSubcomercial = userData.role === "2" && userData.super_id;
   const [showDetails, setShowDetails] = useState(false);
 
   const handleChange = (value: string) => {
@@ -123,22 +124,26 @@ export default function ComparativaToTramiteStep({
             {plan && (
               <div className="mt-4 p-3 bg-white rounded-lg border border-primary-100">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Comisión:</span>
-                    <span className="ml-2 font-medium text-gray-900">
-                      {formatComission(comparativa.comision[plan])}
-                    </span>
-                  </div>
-                  {!isComercial && (
+                  {!isComercial ? (
                     <div>
-                      <span className="text-gray-600">Comisión Comercial:</span>
+                      <span className="text-gray-600">Comisión:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        {formatComission(comparativa.comision[plan])}
+                      </span>
+                    </div>
+                  ) : null}
+                  {!isSubcomercial ? (
+                    <div>
+                      <span className="text-gray-600">
+                        Comisión {!isComercial ? "Comercial" : ""}:
+                      </span>
                       <span className="ml-2 font-medium text-gray-900">
                         {formatComission(
                           comparativa.comision_sales_person[plan]
                         )}
                       </span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}

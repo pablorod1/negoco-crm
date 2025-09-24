@@ -63,6 +63,7 @@ export default function ReviewStep({
   loadingMessage,
 }: Props) {
   const isComercial = userData && userData.role === "2";
+  const isSubcomercial = userData && userData.role === "2" && userData.super_id;
   const checkEmptyPots = (contract: ContractDB) => {
     return (
       contract.pot1 === 0 &&
@@ -150,7 +151,7 @@ export default function ReviewStep({
                       </p>
                     </div>
                   ) : null}
-                  {!isComercial && (
+                  {!isComercial ? (
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
                         Comisión
@@ -161,17 +162,19 @@ export default function ReviewStep({
                           : "---"}
                       </p>
                     </div>
-                  )}
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
-                      Comisión {!isComercial ? "Comercial" : ""}
-                    </p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {tramite.comision_sales_person > 0
-                        ? formatComission(tramite.comision_sales_person)
-                        : "---"}
-                    </p>
-                  </div>
+                  ) : null}
+                  {!isSubcomercial ? (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        Comisión {!isComercial ? "Comercial" : ""}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {tramite.comision_sales_person > 0
+                          ? formatComission(tramite.comision_sales_person)
+                          : "---"}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
