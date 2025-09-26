@@ -2,6 +2,7 @@
 import { ClientDB, SignerDB } from "@/tramites/types";
 import { Home, Mail, Phone } from "lucide-react";
 import EditClientDrawer from "./EditTramiteDrawer";
+import { User } from "@/core/types";
 
 export default function ClientTabContent({
   client,
@@ -9,12 +10,14 @@ export default function ClientTabContent({
   isEditable,
   tramite_id,
   signer,
+  userData,
 }: {
   client: ClientDB;
   onClientUpdated: () => void;
   isEditable: boolean | null;
   tramite_id: string;
   signer?: SignerDB | undefined;
+  userData: User;
 }) {
   return (
     <div className="space-y-6">
@@ -114,6 +117,7 @@ export default function ClientTabContent({
             client={client}
             onUpdate={onClientUpdated}
             signer={signer}
+            userData={userData}
           />
         </div>
       )}

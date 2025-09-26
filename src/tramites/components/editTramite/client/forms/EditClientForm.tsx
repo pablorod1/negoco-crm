@@ -19,7 +19,7 @@ interface Props {
   onCancel: () => void;
   onClientUpdated: () => void;
   signer?: SignerDB | undefined;
-  userData?: User;
+  userData: User;
 }
 
 export default function EditClientForm({
@@ -72,6 +72,10 @@ export default function EditClientForm({
 
   const updateExistingClientWithoutTramite = async () => {
     setLoading(true);
+
+    if (!userData) {
+      return;
+    }
     try {
       const res = await fetch(`/api/v2/clients/${client.id}`, {
         method: "PATCH",
@@ -80,7 +84,7 @@ export default function EditClientForm({
         },
         body: JSON.stringify({
           client: formData,
-          user_id: userData?.id,
+          user_id: userData.id,
         }),
       });
 
@@ -122,6 +126,10 @@ export default function EditClientForm({
 
   const updateExistingClient = async () => {
     setLoading(true);
+    if (!userData) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`/api/v2/contracts/${tramite_id}/client`, {
         method: "PATCH",
@@ -131,6 +139,7 @@ export default function EditClientForm({
         body: JSON.stringify({
           client: formData,
           signer,
+          user_id: userData.id,
         }),
       });
 

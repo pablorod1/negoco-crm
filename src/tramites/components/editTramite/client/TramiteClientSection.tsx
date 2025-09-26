@@ -11,6 +11,7 @@ import { ClientViewToggle, ClientView } from "./ClientViewToggle";
 import ClientTabContent from "./ClientTabContent";
 import SignerTabContent from "./SignerTabContent";
 import { ClientDB, SignerDB } from "@/tramites/types";
+import { User } from "@/core/types";
 
 interface Props {
   client: ClientDB;
@@ -18,6 +19,7 @@ interface Props {
   onUpdated: () => void;
   isEditable: boolean;
   tramite_id: string;
+  userData: User;
 }
 
 export default function TramiteClientSection({
@@ -26,6 +28,7 @@ export default function TramiteClientSection({
   onUpdated,
   isEditable,
   tramite_id,
+  userData,
 }: Props) {
   const [currentView, setCurrentView] = useState<ClientView>("client");
   const isEmpresaOrComunidad =
@@ -64,6 +67,7 @@ export default function TramiteClientSection({
               isEditable={isEditable}
               tramite_id={tramite_id}
               signer={isEmpresaOrComunidad ? signer : undefined}
+              userData={userData}
             />
           </div>
         )}

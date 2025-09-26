@@ -98,6 +98,7 @@ export default function TramiteDetails() {
               onUpdated={fetchTramite}
               isEditable={isEditable as boolean}
               tramite_id={tramite.id}
+              userData={userData as User}
             />
           </div>
         )}

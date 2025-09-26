@@ -66,7 +66,6 @@ export default function UserFilter({
       const res = await fetch(url, { method: "GET" });
 
       const { success, error, data } = await res.json();
-      console.log(data);
       if (!success) {
         showCustomToast({
           title: "Error",

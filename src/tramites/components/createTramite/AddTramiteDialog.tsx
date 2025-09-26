@@ -301,7 +301,6 @@ export default function AddTramiteDialog({
       formData.append("userData", JSON.stringify(userData));
       formData.append("client", JSON.stringify(client));
       formData.append("tramite", JSON.stringify(tramite));
-      console.log(tramite);
       // Optional fields
       if (signer) {
         formData.append("signer", JSON.stringify(signer));
