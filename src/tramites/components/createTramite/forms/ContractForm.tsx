@@ -57,7 +57,7 @@ export default function ContractForm({
     () =>
       activeSuppliers.map((supplier) => ({
         label: supplier.name,
-        value: supplier.name,
+        value: supplier.id,
       })),
     [activeSuppliers]
   );

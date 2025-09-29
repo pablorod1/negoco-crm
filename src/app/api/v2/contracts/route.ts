@@ -594,7 +594,7 @@ const addContractsOptimized = async (
     if (contracts.length === 0) {
       return { success: true };
     }
-
+    console.log(`[INFO] Adding contracts: ${contracts[0].new_company}`);
     const startTime = performance.now();
 
     // Use batch insert for better performance - include both legacy and ID fields
@@ -1268,7 +1268,7 @@ export async function GET(
           c.email AS client_email,
           c.id AS client_id,
           COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
-          COALESCE(GROUP_CONCAT(DISTINCT con.new_company), '') AS new_companies,
+          COALESCE(GROUP_CONCAT(DISTINCT com.name), '') AS new_companies,
           COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
           COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
           COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
@@ -1281,7 +1281,7 @@ export async function GET(
       ORDER BY t.creation_date DESC
       ${rowsPerPage === "Sin Límite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
     `;
-
+    console.log(`[DEBUG] Constructed Queries:`, { countQuery, dataQuery });
     // Add pagination parameters
     const countParams = [...params];
     const dataParams =

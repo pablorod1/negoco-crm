@@ -42,7 +42,7 @@ interface ComparisonResponseItem {
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   tramite_id: string;
-  company_id?: string;
+  company_id?: string; // Now contains company name instead of ID
   user: {
     name: string;
     email: string;
@@ -355,7 +355,7 @@ export async function GET(
                   c.comision_indexado AS comision_indexado,
                   c.status AS status,
                   c.service AS service,
-                  c.company_id AS company_id,
+                  com.name AS company_name,
                   c.tramite_id AS tramite_id,
                   CASE 
                     WHEN JSON_VALID(c.plan) THEN c.plan
@@ -365,7 +365,8 @@ export async function GET(
                   u.email AS user_email,
                   u.image AS user_image
               FROM comparativas c
-              JOIN user u ON c.user_id = u.id`;
+              JOIN user u ON c.user_id = u.id
+              LEFT JOIN comercializadoras com ON c.company_id = com.id`;
 
     const filters: string[] = [];
     const params: (string | number)[] = [];
@@ -434,6 +435,7 @@ export async function GET(
       SELECT COUNT(*) AS total
       FROM comparativas c
       JOIN user u ON c.user_id = u.id
+      LEFT JOIN comercializadoras com ON c.company_id = com.id
     `;
 
     // Apply filters to both queries
@@ -451,7 +453,7 @@ export async function GET(
     const total = Number(countResult.rows[0]?.total) || 0;
 
     // Add GROUP BY (exact original implementation)
-    query += ` GROUP BY c.id, c.creation_date, c.client, c.comision_sales_person_fijo, c.comision_sales_person_indexado, c.comision_fijo, c.comision_indexado, c.status, c.service, c.plan, u.name, u.email, u.image`;
+    query += ` GROUP BY c.id, c.creation_date, c.client, c.comision_sales_person_fijo, c.comision_sales_person_indexado, c.comision_fijo, c.comision_indexado, c.status, c.service, c.plan, com.name, u.name, u.email, u.image`;
 
     // Add ordering
     query += ` ORDER BY c.creation_date DESC`;
@@ -487,7 +489,7 @@ export async function GET(
       service: row.service as "Luz" | "Gas",
       plan: JSON.parse(row.plan as string) as ComparativaPlan[],
       tramite_id: row.tramite_id as string,
-      company_id: row.company_id as string | undefined,
+      company_id: row.company_name as string | undefined,
       user: {
         name: row.user_name as string,
         email: row.user_email as string,
