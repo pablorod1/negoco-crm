@@ -18,6 +18,14 @@ interface Props {
   onNext: () => void;
 }
 
+const convertToOptions = (users: User[]): Option[] => {
+  return users.map((user) => ({
+    value: user.id,
+    label: user.name,
+    icon: user.image || undefined,
+  }));
+};
+
 export default function FirstStepForm({
   userData,
   comparativa,
@@ -175,6 +183,18 @@ export default function FirstStepForm({
     onNext();
   };
 
+  const handleSearchComercial = async (inputValue: string) => {
+    if (inputValue.trim() === "") {
+      return convertToOptions(comerciales);
+    }
+    // Aquí podrías implementar una búsqueda en el backend si es necesario
+    return convertToOptions(
+      comerciales.filter((comercial) =>
+        comercial.name.toLowerCase().includes(inputValue.toLowerCase())
+      )
+    );
+  };
+
   return (
     <FormWrapper>
       <form onSubmit={handleSubmit} className="w-full space-y-4">
@@ -188,13 +208,28 @@ export default function FirstStepForm({
             <MultipleSelector
               value={selectedComercialOptions}
               onChange={handleComercialChange}
-              options={comerciales.map((comercial) => ({
-                value: comercial.id,
-                label: comercial.name,
-              }))}
+              options={convertToOptions(comerciales)}
               placeholder="Selecciona un comercial..."
               maxSelected={1}
               hidePlaceholderWhenSelected
+              onSearch={handleSearchComercial}
+              triggerSearchOnFocus={true}
+              commandProps={{
+                filter: (value: string, search: string) => {
+                  // Buscar por label (nombre) en lugar de por value (id)
+                  const option = convertToOptions(comerciales).find(
+                    (opt) => opt.value === value
+                  );
+                  if (option) {
+                    return option.label
+                      .toLowerCase()
+                      .includes(search.toLowerCase())
+                      ? 1
+                      : 0;
+                  }
+                  return 0;
+                },
+              }}
             />
             {errors.user_id && (
               <p className="text-red-600 text-xs">{errors.user_id}</p>

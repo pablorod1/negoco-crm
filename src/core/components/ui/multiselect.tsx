@@ -255,6 +255,8 @@ const MultipleSelector = ({
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchend", handleClickOutside);
+      // Reset initial search flag when dropdown closes
+      setHasInitialSearch(false);
     }
 
     return () => {
@@ -304,6 +306,8 @@ const MultipleSelector = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchTerm, groupBy, open, triggerSearchOnFocus]);
 
+  const [hasInitialSearch, setHasInitialSearch] = React.useState(false);
+
   useEffect(() => {
     /** async search */
 
@@ -317,11 +321,14 @@ const MultipleSelector = ({
     const exec = async () => {
       if (!onSearch || !open) return;
 
-      if (triggerSearchOnFocus) {
+      if (triggerSearchOnFocus && !hasInitialSearch) {
         await doSearch();
+        setHasInitialSearch(true);
       }
 
-      if (debouncedSearchTerm) {
+      // Always execute search when debouncedSearchTerm changes
+      // This ensures the list resets when user clears the search
+      if (hasInitialSearch || !triggerSearchOnFocus) {
         await doSearch();
       }
     };
