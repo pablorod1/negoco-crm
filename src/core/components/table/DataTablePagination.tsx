@@ -23,8 +23,7 @@ export function DataTablePagination({
   setPageIndex,
   setPageSize,
 }: DataTablePaginationProps) {
-  const totalPages =
-    rowsPerPage === "Sin Límite" ? 1 : Math.ceil(total / Number(rowsPerPage));
+  const totalPages = Math.ceil(total / Number(rowsPerPage));
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   // Determine which page numbers to show
@@ -55,8 +54,7 @@ export function DataTablePagination({
   const visiblePages = getVisiblePages();
 
   const handleSetPageSize = (value: string) => {
-    const newPageSize =
-      value === "Sin Límite" ? "Sin Límite" : parseInt(value, 10);
+    const newPageSize = value === "Sin Límite" ? 100 : parseInt(value, 10);
     setPageSize(newPageSize);
     setPageIndex(1); // Reset to first page when changing page size
   };
@@ -68,7 +66,7 @@ export function DataTablePagination({
           {total} {total === 1 ? "item" : "items"} encontrados
         </p>
         <p className="text-xs text-gray-500">
-          Página {pageIndex} de {rowsPerPage === "Sin Límite" ? 1 : totalPages}
+          Página {pageIndex} de {totalPages}
         </p>
       </div>
 
@@ -85,13 +83,11 @@ export function DataTablePagination({
               </SelectValue>
             </SelectTrigger>
             <SelectContent side="top">
-              {[5, 10, 15, 20, 30, 40, 50, "Sin Límite"].map(
-                (pageSize, index) => (
-                  <SelectItem key={index} value={pageSize.toString()}>
-                    {pageSize}
-                  </SelectItem>
-                )
-              )}
+              {[5, 10, 15, 20, 30, 40, 50, 100].map((pageSize, index) => (
+                <SelectItem key={index} value={pageSize.toString()}>
+                  {pageSize}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

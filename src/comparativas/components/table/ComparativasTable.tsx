@@ -61,7 +61,11 @@ export default function ComparativasTable<TData, TValue>({
           params.set("page", String(pageIndex));
           params.set(
             "rowsPerPage",
-            typeof pageSize === "number" ? String(pageSize) : pageSize
+            typeof pageSize === "number"
+              ? String(pageSize)
+              : pageSize === "Sin Límite"
+                ? "100"
+                : "100"
           );
           params.set("user_id", userData.id);
           params.set("user_role", userData.role);
