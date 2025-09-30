@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
+import { Skeleton } from "@/core/components/ui/skeleton";
 
 interface Props {
   tramite: TramiteDB;
@@ -74,11 +75,11 @@ export default function ReviewStep({
       contract.pot6 === 0
     );
   };
-  const { supplier: newSupplier } = useEnergySupplierById(
+  const { supplier: newSupplier, loading: newLoading } = useEnergySupplierById(
     contracts.length > 0 ? contracts[0].new_company : ""
   );
 
-  const { supplier: oldSupplier } = useEnergySupplierById(
+  const { supplier: oldSupplier, loading: oldLoading } = useEnergySupplierById(
     contracts.length > 0 ? contracts[0].old_company || "" : ""
   );
 
@@ -356,17 +357,21 @@ export default function ReviewStep({
                               Compañía anterior
                             </p>
                             <p className="font-medium text-gray-900">
-                              {oldSupplier?.name ||
-                                contract.old_company ||
-                                "No especificada"}
+                              {oldLoading ? (
+                                <Skeleton className="h-5 w-24" />
+                              ) : (
+                                oldSupplier?.name || "No especificada"
+                              )}
                             </p>
                           </div>
                           <div>
                             <p className="text-gray-600 mb-1">Nueva compañía</p>
                             <p className="font-medium text-gray-900">
-                              {newSupplier?.name ||
-                                contract.new_company ||
-                                "No especificada"}
+                              {newLoading ? (
+                                <Skeleton className="h-5 w-24" />
+                              ) : (
+                                newSupplier?.name || "No especificada"
+                              )}
                             </p>
                           </div>
                         </div>

@@ -19,7 +19,6 @@ import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { ComparativaVM } from "@/comparativas/types";
-import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
@@ -50,11 +49,6 @@ export default function ContractForm({
   // Load active energy suppliers
   const { activeSuppliers, loading: suppliersLoading } =
     useActiveEnergySuppliers();
-  const { supplier } = useEnergySupplierById(formData.new_company || "");
-
-  const { supplier: oldSupplier } = useEnergySupplierById(
-    formData.old_company || ""
-  );
 
   // Convert suppliers to dropdown format
   const supplierOptions = React.useMemo(
@@ -231,7 +225,11 @@ export default function ContractForm({
                   items={supplierOptions}
                   onChange={(value) => handleSelectChange(value, "old_company")}
                   selectedKey={formData.old_company || ""}
-                  textValue={oldSupplier ? oldSupplier.name : ""}
+                  textValue={
+                    supplierOptions.find(
+                      (s) => s.value === formData.old_company
+                    )?.label
+                  }
                 />
               )}
               {suppliersLoading ? (
@@ -245,7 +243,11 @@ export default function ContractForm({
                   errors={errors.new_company}
                   isRequired
                   selectedKey={formData.new_company || ""}
-                  textValue={supplier ? supplier.name : ""}
+                  textValue={
+                    supplierOptions.find(
+                      (s) => s.value === formData.new_company
+                    )?.label
+                  }
                 />
               )}
               <InputComponent

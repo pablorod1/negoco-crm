@@ -9,6 +9,7 @@ import { Badge } from "@/core/components/ui/badge";
 import { MapPin, Building2, ArrowRight, Gauge, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatConsumption } from "@/core/utils/format";
+import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 
 interface ContractPreviewProps {
   contract: ContractDB;
@@ -34,6 +35,14 @@ export default function ContractPreview({ contract }: ContractPreviewProps) {
     { period: "P5", value: contract.pot5 },
     { period: "P6", value: contract.pot6 },
   ].filter((pot) => pot.value > 0);
+
+  const { supplier: newSupplier, loading: newLoading } = useEnergySupplierById(
+    contract.new_company
+  );
+
+  const { supplier: oldSupplier, loading: oldLoading } = useEnergySupplierById(
+    contract.old_company || ""
+  );
 
   return (
     <motion.div
@@ -81,14 +90,18 @@ export default function ContractPreview({ contract }: ContractPreviewProps) {
                 <div className="flex-1 text-center">
                   <p className="text-xs text-gray-500 mb-1">Compañía Actual</p>
                   <p className="text-sm font-medium text-gray-700">
-                    {contract.old_company || "No especificada"}
+                    {oldLoading
+                      ? "Cargando..."
+                      : oldSupplier?.name || "No especificada"}
                   </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 <div className="flex-1 text-center">
                   <p className="text-xs text-gray-500 mb-1">Nueva Compañía</p>
                   <p className="text-sm font-bold text-primary-700">
-                    {contract.new_company}
+                    {newLoading
+                      ? "Cargando..."
+                      : newSupplier?.name || "No especificada"}
                   </p>
                 </div>
               </div>
