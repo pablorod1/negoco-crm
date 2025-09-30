@@ -594,7 +594,6 @@ const addContractsOptimized = async (
     if (contracts.length === 0) {
       return { success: true };
     }
-    console.log(`[INFO] Adding contracts: ${contracts[0].new_company}`);
     const startTime = performance.now();
 
     // Use batch insert for better performance - include both legacy and ID fields
@@ -1232,7 +1231,7 @@ export async function GET(
       LEFT JOIN 
           contracts con ON t.id = con.tramite_id
       LEFT JOIN 
-          comercializadoras com ON con.new_company = com.id
+          comercializadoras com ON con.new_company = com.id OR con.new_company = com.name
     `;
 
     // Add WHERE clause if filters exist
@@ -1281,7 +1280,6 @@ export async function GET(
       ORDER BY t.creation_date DESC
       ${rowsPerPage === "Sin Límite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
     `;
-    console.log(`[DEBUG] Constructed Queries:`, { countQuery, dataQuery });
     // Add pagination parameters
     const countParams = [...params];
     const dataParams =
@@ -1296,11 +1294,6 @@ export async function GET(
     });
     const total = Number(countResult.rows[0]?.total || 0);
 
-    console.log(
-      `[DEBUG] Executing data query with params:`,
-      dataQuery,
-      dataParams
-    );
     // Execute data query
     const dataResult = await tursoClient.execute({
       sql: dataQuery,
