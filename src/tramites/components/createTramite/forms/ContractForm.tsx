@@ -52,6 +52,10 @@ export default function ContractForm({
     useActiveEnergySuppliers();
   const { supplier } = useEnergySupplierById(formData.new_company || "");
 
+  const { supplier: oldSupplier } = useEnergySupplierById(
+    formData.old_company || ""
+  );
+
   // Convert suppliers to dropdown format
   const supplierOptions = React.useMemo(
     () =>
@@ -227,6 +231,7 @@ export default function ContractForm({
                   items={supplierOptions}
                   onChange={(value) => handleSelectChange(value, "old_company")}
                   selectedKey={formData.old_company || ""}
+                  textValue={oldSupplier ? oldSupplier.name : ""}
                 />
               )}
               {suppliersLoading ? (
