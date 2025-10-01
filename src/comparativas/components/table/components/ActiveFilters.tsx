@@ -53,13 +53,6 @@ export function ActiveFilters({
     return "";
   };
 
-  const getUserLabel = (values: string[]) => {
-    if (values.length === 1) {
-      return values[0];
-    }
-    return `${values.length} comerciales`;
-  };
-
   return (
     <div className="mt-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -92,8 +85,10 @@ export function ActiveFilters({
               variant="secondary"
               className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 flex items-center px-3 py-1"
             >
-              <span className="text-xs font-medium">Comercial:</span>
-              <span className="text-xs">{getUserLabel(userFilter)}</span>
+              <span className="text-xs font-medium">Comerciales:</span>
+              <span className="text-xs">
+                {userFilter.length} seleccionado(s)
+              </span>
             </Badge>
           )}
         </div>
