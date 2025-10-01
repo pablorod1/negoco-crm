@@ -112,6 +112,7 @@ export default function ComparativaComissionsSection({
           },
           body: JSON.stringify({
             comissions: changes,
+            user_id: userData.id,
           }),
         }
       );
