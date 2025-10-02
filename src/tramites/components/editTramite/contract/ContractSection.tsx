@@ -21,6 +21,7 @@ import EditDrawer from "../client/EditTramiteDrawer";
 import { ContractDB } from "@/tramites/types";
 import { User } from "@/core/types";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
+import { Skeleton } from "@/core/components/ui/skeleton";
 
 interface Props {
   contracts: ContractDB[];
@@ -42,28 +43,22 @@ export default function ContractSection({
   const [loading, setLoading] = useState(false);
   const userId = userData?.id;
 
-  // Hook to resolve supplier names from IDs when available
-  // Cast to ContractWithSupplierDB to access ID fields that might be present
-  const contractWithIds = selectedContract as ContractDB & {
-    old_company_id?: string;
-    new_company_id?: string;
-  };
-  const { supplier: oldSupplier } = useEnergySupplierById(
-    contractWithIds?.old_company_id
-  );
-  const { supplier: newSupplier } = useEnergySupplierById(
-    contractWithIds?.new_company_id
-  );
+  const { supplier: oldSupplier, loading: oldSupplierLoading } =
+    useEnergySupplierById(selectedContract?.old_company);
+  const { supplier: newSupplier, loading: newSupplierLoading } =
+    useEnergySupplierById(selectedContract?.new_company);
 
   // Helper function to get the display name (prioritize resolved supplier name over legacy string)
   const getOldCompanyDisplayName = () => {
-    if (oldSupplier) return oldSupplier.name;
-    return selectedContract?.old_company || "No especificada";
+    return oldSupplier
+      ? oldSupplier.name
+      : selectedContract?.old_company || "No especificada";
   };
 
   const getNewCompanyDisplayName = () => {
-    if (newSupplier) return newSupplier.name;
-    return selectedContract?.new_company || "No especificada";
+    return newSupplier
+      ? newSupplier.name
+      : selectedContract?.new_company || "No especificada";
   };
 
   const checkChanges = (contract: ContractDB) => {
@@ -240,17 +235,25 @@ export default function ContractSection({
                             <p className="text-xs text-gray-500 mb-1">
                               Compañía Antigua
                             </p>
-                            <p className="text-sm font-medium text-gray-800">
-                              {getOldCompanyDisplayName()}
-                            </p>
+                            {oldSupplierLoading ? (
+                              <Skeleton className="h-4 w-32 rounded-md" />
+                            ) : (
+                              <p className="text-sm font-medium text-gray-800">
+                                {getOldCompanyDisplayName()}
+                              </p>
+                            )}
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-1">
                               Compañía Nueva
                             </p>
-                            <p className="text-sm font-medium text-gray-800">
-                              {getNewCompanyDisplayName()}
-                            </p>
+                            {newSupplierLoading ? (
+                              <Skeleton className="h-4 w-32 rounded-md" />
+                            ) : (
+                              <p className="text-sm font-medium text-gray-800">
+                                {getNewCompanyDisplayName()}
+                              </p>
+                            )}
                           </div>
                         </div>
 
