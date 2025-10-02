@@ -21,6 +21,9 @@ export default function Header({ className }: ImprovedHeaderProps) {
     ? organization
     : { logo: null, name: null };
 
+  const beenergyLogo = "/beenergy.png";
+  const isBeenergy = organization?.name?.toLowerCase() === "beenergy";
+
   return (
     <header
       className={cn(
@@ -55,11 +58,11 @@ export default function Header({ className }: ImprovedHeaderProps) {
           {!loading && userData ? (
             <div className="relative">
               <Image
-                src={logo || "/favicon.ico"}
+                src={isBeenergy ? beenergyLogo : logo || "/favicon.ico"}
                 alt={name || "Negoco Cloud"}
-                className="h-8 w-auto max-w-32 object-contain transition-opacity hover:opacity-80"
-                width={128}
-                height={32}
+                className="h-full w-auto max-w-32 object-contain transition-opacity hover:opacity-80"
+                width={isBeenergy ? 700 : 128}
+                height={isBeenergy ? 300 : 128}
                 priority
               />
             </div>
