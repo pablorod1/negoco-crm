@@ -990,7 +990,7 @@ export async function GET(
       page: parseInt(searchParams.get("page") || "1"),
       rowsPerPage:
         searchParams.get("rowsPerPage") === "Sin Límite"
-          ? "Sin Límite"
+          ? 200
           : parseInt(searchParams.get("rowsPerPage") || "15"),
       user_id: searchParams.get("user_id") || "",
       user_role: searchParams.get("user_role") || "",
@@ -1278,7 +1278,7 @@ export async function GET(
           t.comision_sales_person, t.comision, t.status, t.liquidez_status,
           c.name, c.last_name, c.email
       ORDER BY t.creation_date DESC
-      ${rowsPerPage === "Sin Límite" ? "" : typeof rowsPerPage === "number" ? limitQuery : ""}
+      ${rowsPerPage === "Sin Límite" ? 200 : typeof rowsPerPage === "number" ? limitQuery : ""}
     `;
     // Add pagination parameters
     const countParams = [...params];

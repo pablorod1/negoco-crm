@@ -273,7 +273,7 @@ export async function GET(
       rowsParam === null
         ? 10
         : rowsParam === "Sin Límite"
-          ? "Sin Límite"
+          ? 200
           : Number(rowsParam);
 
     const requestData: PaginatedComparisonsRequest = {

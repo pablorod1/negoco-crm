@@ -63,8 +63,8 @@ export function useTramitesData({
           typeof pageSize === "number"
             ? pageSize.toString()
             : pageSize === "Sin Límite"
-              ? "100"
-              : "100"
+              ? "200"
+              : "200"
         );
         params.append("user_id", userData.id);
         params.append("user_role", userData.role);
