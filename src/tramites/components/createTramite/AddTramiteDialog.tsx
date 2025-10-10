@@ -102,29 +102,34 @@ export default function AddTramiteDialog({
     [comparativa, savedClient, userData]
   );
 
-  const handleClose = useCallback(async () => {
-    // Clean up any tickets created with this comparativa ID if cancelling
-    if (tramite.id && activeTab > 0) {
-      try {
-        await fetch(`/api/v2/tickets/cleanup`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            context: "tramite",
-            ref_id: tramite.id,
-          }),
-        });
-      } catch (error) {
-        console.error("Error cleaning up tickets:", error);
+  const handleClose = useCallback(
+    async (skipCleanup: boolean = false) => {
+      // Clean up any tickets created with this tramite ID if cancelling
+      // Skip cleanup when closing after successful creation
+      if (tramite.id && activeTab > 0 && !skipCleanup) {
+        try {
+          await fetch(`/api/v2/tickets/cleanup`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              context: "tramite",
+              ref_id: tramite.id,
+              include_notes: true, // When cancelling, delete ALL tickets including notes
+            }),
+          });
+        } catch (error) {
+          console.error("Error cleaning up tickets:", error);
+        }
       }
-    }
-    setIsOpen(false);
-    setLoading(false);
-    setLoadingStep(0);
-    setLoadingMessage("");
-  }, [tramite.id, activeTab]);
+      setIsOpen(false);
+      setLoading(false);
+      setLoadingStep(0);
+      setLoadingMessage("");
+    },
+    [tramite.id, activeTab]
+  );
 
   // Navigation handlers
   const handleBack = useCallback(() => {
@@ -370,7 +375,7 @@ export default function AddTramiteDialog({
         const updated = await processComparativaUpdate();
         if (updated && onComparativaUpdated) {
           onComparativaUpdated();
-          handleClose();
+          handleClose(true); // Skip cleanup on successful creation
         }
       }
 
@@ -380,7 +385,7 @@ export default function AddTramiteDialog({
 
       try {
         await refreshTramites();
-        handleClose();
+        handleClose(true); // Skip cleanup on successful creation
       } catch (error) {
         console.error("Error al refrescar los trámites:", error);
         showCustomToast({
@@ -390,7 +395,7 @@ export default function AddTramiteDialog({
           iconSize: 24,
           icon: CircleX,
         });
-        handleClose();
+        handleClose(true); // Skip cleanup even on refresh error since tramite was created
       }
     } catch (error) {
       console.error("Submission error:", error);

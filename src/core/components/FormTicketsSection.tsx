@@ -19,7 +19,6 @@ interface FormTicketsSectionProps {
   userData: User;
   title?: string;
   subtitle?: string;
-  maxHeight?: string;
   onTicketUpdate?: () => void;
   isReadOnly?: boolean;
 }
@@ -216,7 +215,6 @@ const FormTicketsSection: React.FC<FormTicketsSectionProps> = ({
   refId,
   assignedTo,
   userData,
-  maxHeight = "400px",
   onTicketUpdate,
   isReadOnly,
 }) => {
@@ -295,8 +293,8 @@ const FormTicketsSection: React.FC<FormTicketsSectionProps> = ({
           ))}
         </div>
       ) : (
-        <ScrollArea className="w-full" style={{ maxHeight }}>
-          <div className="space-y-2">
+        <ScrollArea className="w-full h-[320px]">
+          <div className="space-y-2 p-4">
             {tickets.length > 0 ? (
               tickets.map((ticket) => (
                 <TicketItem

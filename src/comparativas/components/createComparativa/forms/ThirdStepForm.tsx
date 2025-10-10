@@ -48,7 +48,6 @@ export default function ThirdStepForm({
             userData={userData}
             title=""
             subtitle=""
-            maxHeight="250px"
           />
         </div>
 

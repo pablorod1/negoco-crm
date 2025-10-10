@@ -47,30 +47,35 @@ export default function AddComparativaDialog({
   );
   const [documents, setDocuments] = useState<File[]>([]);
 
-  const onClose = useCallback(async () => {
-    // Clean up any tickets created with this comparativa ID if cancelling
-    if (comparativa.id && activeTab > 0) {
-      try {
-        await fetch(`/api/v2/tickets/cleanup`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            context: "comparativa",
-            ref_id: comparativa.id,
-          }),
-        });
-      } catch (error) {
-        console.error("Error cleaning up tickets:", error);
+  const onClose = useCallback(
+    async (skipCleanup: boolean = false) => {
+      // Clean up any tickets created with this comparativa ID if cancelling
+      // Skip cleanup when closing after successful creation
+      if (comparativa.id && activeTab > 0 && !skipCleanup) {
+        try {
+          await fetch(`/api/v2/tickets/cleanup`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              context: "comparativa",
+              ref_id: comparativa.id,
+              include_notes: true, // When cancelling, delete ALL tickets including notes
+            }),
+          });
+        } catch (error) {
+          console.error("Error cleaning up tickets:", error);
+        }
       }
-    }
 
-    setIsOpen(false);
-    setActiveTab(0);
-    setComparativa(createEmptyComparativaDB(userData as User));
-    setDocuments([]);
-  }, [comparativa.id, activeTab, userData]);
+      setIsOpen(false);
+      setActiveTab(0);
+      setComparativa(createEmptyComparativaDB(userData as User));
+      setDocuments([]);
+    },
+    [comparativa.id, activeTab, userData]
+  );
 
   const handleBack = () => {
     setActiveTab(() => activeTab - 1);
@@ -147,7 +152,7 @@ export default function AddComparativaDialog({
       });
       try {
         await refreshComparativas();
-        onClose();
+        onClose(true); // Skip cleanup on successful creation
       } catch (error) {
         console.error("Error al refrescar las comparativas:", error);
         showCustomToast({
@@ -157,7 +162,7 @@ export default function AddComparativaDialog({
           iconSize: 24,
           icon: CircleX,
         });
-        onClose();
+        onClose(true); // Skip cleanup even on refresh error since comparativa was created
       }
     } catch (error) {
       showCustomToast({

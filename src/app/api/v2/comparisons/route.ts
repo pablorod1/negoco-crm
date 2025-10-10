@@ -89,7 +89,7 @@ const ComparativaSchema = z.object({
   notes: z.array(z.string()).default([]),
   user_id: z.string().min(1, "User ID is required"),
   creation_date: z.string().min(1, "Creation date is required"),
-  company_id: z.string().nullable(),
+  company_id: z.string().nullable().optional(),
   status: ComparativaStatusSchema,
   tramite_id: z.string().optional(),
 });

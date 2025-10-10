@@ -243,7 +243,6 @@ export default function FourthStepForm({
               userData={userData}
               title="Notas del trámite"
               subtitle="Añade notas públicas o privadas para este trámite."
-              maxHeight="400px"
             />
           </div>
           <div className="h-4">
