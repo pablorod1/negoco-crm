@@ -82,6 +82,7 @@ export default function TramiteComercialSection({
         body: JSON.stringify({
           user_id: selectedComercial.id,
           sales_name: selectedComercial.name,
+          changed_by_user_id: userData.id,
         }),
       });
 
