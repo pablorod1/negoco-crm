@@ -293,7 +293,7 @@ const FormTicketsSection: React.FC<FormTicketsSectionProps> = ({
           ))}
         </div>
       ) : (
-        <ScrollArea className="w-full h-[320px]">
+        <ScrollArea className="w-full h-[280px]">
           <div className="space-y-2 p-4">
             {tickets.length > 0 ? (
               tickets.map((ticket) => (

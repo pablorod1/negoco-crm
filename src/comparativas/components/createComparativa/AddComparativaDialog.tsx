@@ -247,7 +247,7 @@ export default function AddComparativaDialog({
             isStarterPlan
               ? "sm:max-w-[425px]"
               : "w-full h-auto max-w-4xl [&>button]:hidden",
-            "overflow-visible max-h-[90vh] border-0 shadow-2xl"
+            "overflow-y-auto max-h-[90vh] border-0 shadow-2xl"
           )}
         >
           {isStarterPlan ? (
