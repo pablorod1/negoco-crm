@@ -9,7 +9,5 @@ export async function verifyPassword(
   password: string,
   hashedPassword: string
 ): Promise<boolean> {
-  console.log(password, hashedPassword);
-  console.log("Compare: ", await bcrypt.compare(password, hashedPassword));
   return await bcrypt.compare(password, hashedPassword);
 }
