@@ -75,7 +75,9 @@ export const getAuth = (req: NextRequest) => {
       expiresIn: 24 * 60 * 60, // 24 hours (24 * 60 * 60 seconds)
     },
     plugins: [
-      organization(),
+      organization({
+        membershipLimit: 20000,
+      }),
       admin({
         ac,
         roles: {
