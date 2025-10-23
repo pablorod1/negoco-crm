@@ -22,12 +22,16 @@ export const CONTRACT_TYPES = [
     label: "Cambio Compañía + Cambio Titular",
     value: "Cambio Compañía + Cambio Titular",
   },
+  { label: "Renovación", value: "Renovación" },
+  { label: "Alta Nueva", value: "Alta Nueva" },
 ];
 
 export const PLAIN_CONTRACT_TYPES = [
   "Cambio Compañía",
   "Cambio Compañía + Cambio Técnico",
   "Cambio Compañía + Cambio Titular",
+  "Renovación",
+  "Alta Nueva",
 ];
 
 export const CARGOS = ["Presidente de la Comunidad", "Administrador de Fincas"];
