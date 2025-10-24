@@ -506,7 +506,7 @@ export default function PersonalTramitesChart({
                                   {isComercial ? "Comisión" : "Comisión Total"}
                                 </span>
                               </div>
-                              {!isComercial && (
+                              {!isComercial ? (
                                 <div className="flex items-center gap-2">
                                   <div
                                     className="w-2 h-2 rounded-full"
@@ -517,7 +517,7 @@ export default function PersonalTramitesChart({
                                   />
                                   <span>Comisión Comercial</span>
                                 </div>
-                              )}
+                              ) : null}
                             </>
                           )}
                         </div>
@@ -526,7 +526,6 @@ export default function PersonalTramitesChart({
                     <Tooltip
                       content={(props) => {
                         if (!props.active || !props.payload) return null;
-
                         return (
                           <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-3 text-xs">
                             <p className="font-medium text-gray-900 mb-2 capitalize">
@@ -543,7 +542,9 @@ export default function PersonalTramitesChart({
                               ) => (
                                 <div
                                   key={index}
-                                  className="flex items-center justify-between gap-4 mb-1"
+                                  className={cn(
+                                    "flex items-center justify-between gap-4 mb-1"
+                                  )}
                                 >
                                   <div className="flex items-center gap-2">
                                     <div
@@ -559,7 +560,9 @@ export default function PersonalTramitesChart({
                                             ? "Comisión"
                                             : entry.dataKey ===
                                                 "comision_sales_person"
-                                              ? "Comisión Comercial"
+                                              ? isComercial
+                                                ? "Comisión"
+                                                : "Comisión Comercial"
                                               : entry.dataKey}
                                     </span>
                                   </div>
@@ -577,39 +580,58 @@ export default function PersonalTramitesChart({
 
                     {/* Primary Area - Main data */}
                     {!isComercial ? (
-                      <Area
-                        type="monotone"
-                        dataKey={
-                          chartView === "tramites" ? "active" : "comision"
-                        }
-                        stroke={
-                          chartView === "tramites"
-                            ? "var(--primary-color-500)"
-                            : "var(--primary-color-500)"
-                        }
-                        fill={
-                          chartView === "tramites"
-                            ? "var(--primary-color-500)"
-                            : "var(--primary-color-500)"
-                        }
-                        fillOpacity={0.12}
-                        strokeWidth={1}
-                      />
-                    ) : isComercial && chartView === "tramites" ? (
-                      <Area
-                        type="monotone"
-                        dataKey="active"
-                        stroke="var(--primary-color-500)"
-                        fill="var(--primary-color-500)"
-                        fillOpacity={0.12}
-                        strokeWidth={1}
-                        dot={{ r: 1, fill: "var(--primary-color-500)" }}
-                        activeDot={{
-                          r: 1,
-                          fill: "var(--primary-color-500)",
-                        }}
-                      />
-                    ) : isComercial && chartView === "comision" ? (
+                      <>
+                        <Area
+                          type="monotone"
+                          dataKey={
+                            chartView === "tramites" ? "active" : "comision"
+                          }
+                          stroke="var(--primary-color-500)"
+                          fill="var(--primary-color-500)"
+                          fillOpacity={0.12}
+                          strokeWidth={1}
+                        />
+                        {/* Secondary Area - Comparison data for non-comercial users */}
+                        <Area
+                          type="monotone"
+                          dataKey={
+                            chartView === "tramites"
+                              ? "baja"
+                              : "comision_sales_person"
+                          }
+                          stroke="var(--primary-color-400)"
+                          fill="var(--primary-color-400)"
+                          fillOpacity={0.1}
+                          strokeWidth={2}
+                        />
+                      </>
+                    ) : chartView === "tramites" ? (
+                      <>
+                        <Area
+                          type="monotone"
+                          dataKey="active"
+                          stroke="var(--primary-color-500)"
+                          fill="var(--primary-color-500)"
+                          fillOpacity={0.12}
+                          strokeWidth={1}
+                          dot={{ r: 1, fill: "var(--primary-color-500)" }}
+                          activeDot={{
+                            r: 1,
+                            fill: "var(--primary-color-500)",
+                          }}
+                        />
+                        {/* Secondary Area - Bajas for comercial users */}
+                        <Area
+                          type="monotone"
+                          dataKey="baja"
+                          stroke="var(--primary-color-400)"
+                          fill="var(--primary-color-400)"
+                          fillOpacity={0.1}
+                          strokeWidth={2}
+                        />
+                      </>
+                    ) : (
+                      /* Solo comision_sales_person para comercial en vista de comision */
                       <Area
                         type="monotone"
                         dataKey="comision_sales_person"
@@ -618,29 +640,7 @@ export default function PersonalTramitesChart({
                         fillOpacity={0.12}
                         strokeWidth={1}
                       />
-                    ) : null}
-
-                    {/* Secondary Area - Comparison data */}
-                    <Area
-                      type="monotone"
-                      dataKey={
-                        chartView === "tramites"
-                          ? "baja"
-                          : "comision_sales_person"
-                      }
-                      stroke={
-                        chartView === "tramites"
-                          ? "var(--primary-color-400)" // Muted primary for bajas
-                          : "var(--primary-color-400)" // Light primary for sales commission
-                      }
-                      fill={
-                        chartView === "tramites"
-                          ? "var(--primary-color-400)"
-                          : "var(--primary-color-400)"
-                      }
-                      fillOpacity={0.1}
-                      strokeWidth={2}
-                    />
+                    )}
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

@@ -52,8 +52,8 @@ export default function HeroDashboard({
   ticketsData,
 }: HeroDashboardProps) {
   const isPlanStarter = getPlan() === "starter";
-  const isSubcomercial =
-    userData && userData.role === "2" && userData.super_id !== null;
+
+  const isAdmin = userData && userData.role === "admin";
 
   // Determine which data to show based on view
   const isIncidenciasView = currentView === "incidencias";
@@ -176,10 +176,10 @@ export default function HeroDashboard({
             className={cn(
               "grid grid-cols-1 gap-6 mt-6",
               isPlanStarter
-                ? isSubcomercial
-                  ? "lg:grid-cols-3"
-                  : "lg:grid-cols-4"
-                : !isSubcomercial
+                ? isAdmin
+                  ? "lg:grid-cols-4"
+                  : "lg:grid-cols-3"
+                : isAdmin
                   ? "lg:grid-cols-3 2xl:grid-cols-5"
                   : "lg:grid-cols-4"
             )}
@@ -246,10 +246,10 @@ export default function HeroDashboard({
               className={cn(
                 "grid grid-cols-1 gap-6",
                 isPlanStarter
-                  ? isSubcomercial
+                  ? !isAdmin
                     ? "lg:grid-cols-1 lg:col-span-1"
-                    : "lg:grid-cols-2 lg:col-span-2 "
-                  : isSubcomercial
+                    : "lg:grid-cols-2 lg:col-span-2"
+                  : !isAdmin
                     ? "lg:col-span-1"
                     : "lg:grid-cols-2 lg:col-span-3 2xl:col-span-2"
               )}
@@ -263,7 +263,7 @@ export default function HeroDashboard({
                 type="consumption"
                 key="dashboard-consumption"
               />
-              {!isSubcomercial ? (
+              {isAdmin ? (
                 <StatCard
                   title="Balance"
                   total={totalBalance}
