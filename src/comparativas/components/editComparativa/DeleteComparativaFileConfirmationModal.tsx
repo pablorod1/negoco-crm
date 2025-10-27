@@ -19,10 +19,11 @@ interface Props {
   organization_id: string;
   file: ComparativaFile;
   onDeleted: () => void;
+  userId: string;
 }
 
 const DeleteComparativaFileConfirmationModal = memo(
-  ({ comparativa_id, organization_id, file, onDeleted }: Props) => {
+  ({ comparativa_id, organization_id, file, onDeleted, userId }: Props) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const onOpen = () => {
@@ -44,6 +45,7 @@ const DeleteComparativaFileConfirmationModal = memo(
             body: JSON.stringify({
               file_name: file.filename,
               organization_id,
+              user_id: userId,
             }),
           }
         );
@@ -83,7 +85,7 @@ const DeleteComparativaFileConfirmationModal = memo(
 
     return (
       <>
-        <Dialog open={isOpen}>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button size="icon" variant="destructive" onClick={onOpen}>
               <Trash size={16} />

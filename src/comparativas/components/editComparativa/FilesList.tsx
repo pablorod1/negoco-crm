@@ -19,6 +19,7 @@ interface FilesListProps {
   isComercial: boolean;
   onDeleted: () => void;
   isProcessed: boolean;
+  userId: string;
 }
 
 export const FilesList = ({
@@ -28,6 +29,7 @@ export const FilesList = ({
   isComercial,
   onDeleted,
   isProcessed,
+  userId,
 }: FilesListProps) => {
   const [previewFile, setPreviewFile] = React.useState<FileData | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
@@ -137,6 +139,7 @@ export const FilesList = ({
               file={file}
               organization_id={organization_id}
               onDeleted={onDeleted}
+              userId={userId}
             />
           ) : null}
         </div>
@@ -160,6 +163,7 @@ export const FilesList = ({
     onDeleted,
     isPreviewOpen,
     previewFile,
+    userId,
   ]);
 
   if (files.length === 0) {

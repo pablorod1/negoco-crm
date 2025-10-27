@@ -306,6 +306,7 @@ export default function MainView({
             onDeleted={onUpdate}
             isComercial={isComercial}
             isProcessed={isProcessed}
+            userId={userData.id}
           />
         </CardContent>
         <CardFooter>
