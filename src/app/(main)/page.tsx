@@ -3,4 +3,3 @@
 export default function DashboardPage() {
   return <DashboardBentoGrid />;
 }
-
