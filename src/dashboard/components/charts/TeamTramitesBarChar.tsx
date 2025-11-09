@@ -185,6 +185,8 @@ export function TeamTramitesBarChart({
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
         }
+        console.log("Personal tramites data retrieved:", data);
+
         setChartData(data as TeamData[]);
         setComerciales([...data.map((item: TeamData) => item.user as User)]);
       } else {
@@ -204,7 +206,6 @@ export function TeamTramitesBarChart({
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
         }
-
         setChartData(data as PersonalData[]);
       }
     } catch (error) {
@@ -256,7 +257,7 @@ export function TeamTramitesBarChart({
 
   // Helper function to check if all data values are zero
   const areAllValuesZero = React.useMemo(() => {
-    if (chartData.length === 0) return false;
+    if (chartData.length === 0) return true;
 
     return chartData.every((item) => {
       if ("user" in item) {
@@ -648,23 +649,8 @@ export function TeamTramitesBarChart({
               </div>
             </div>
           </div>
-        ) : chartData.length === 0 &&
-          selectedComercial === "all" &&
-          comerciales.length > 0 ? (
-          <div className="flex flex-col gap-4 items-center justify-center h-80 w-full">
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-              <Users className="h-6 w-6 text-gray-400" />
-            </div>
-            <div className="flex flex-col items-center space-y-1">
-              <p className="text-base font-medium text-gray-900">
-                Tu equipo todavía no tiene trámites activos
-              </p>
-              <p className="text-sm text-gray-500">
-                Aquí se mostrarán las ventas de tu equipo
-              </p>
-            </div>
-          </div>
-        ) : chartData.length === 0 && selectedComercial !== "all" ? (
+        ) : (
+          // No hay datos para este período
           <div className="flex flex-col gap-4 items-center justify-center h-80 w-full">
             <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
               <Users className="h-6 w-6 text-gray-400" />
@@ -675,20 +661,6 @@ export function TeamTramitesBarChart({
               </p>
               <p className="text-sm text-gray-500">
                 Intenta cambiar el rango de tiempo seleccionado
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4 items-center justify-center h-80 w-full">
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-              <Users className="h-6 w-6 text-gray-400" />
-            </div>
-            <div className="flex flex-col items-center space-y-1">
-              <p className="text-base font-medium text-gray-900">
-                Todavía no tienes comerciales en tu equipo
-              </p>
-              <p className="text-sm text-gray-500">
-                Aquí se mostrarán las ventas de tu equipo
               </p>
             </div>
           </div>

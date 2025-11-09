@@ -3,8 +3,17 @@
 export const getSubcomerciales = async (tursoClient: Client, id: string) => {
   try {
     const response = await tursoClient.execute({
-      sql: "SELECT id FROM user WHERE super_id = ?;",
-      args: [id],
+      sql: `
+        WITH RECURSIVE subcomerciales AS (
+          SELECT id FROM user WHERE id = ?
+          UNION ALL
+          SELECT u.id
+          FROM user u
+          INNER JOIN subcomerciales s ON u.super_id = s.id
+        )
+        SELECT id FROM subcomerciales WHERE id != ?;
+      `,
+      args: [id, id],
     });
 
     if (response.rows.length === 0) {

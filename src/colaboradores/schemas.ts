@@ -23,6 +23,7 @@ export const CreateUserSchema = z.object({
     .max(100, "La contraseña es demasiado larga"),
   role: UserRoleEnum,
   company: z.string().nullable().optional(),
+  super_id: z.string().nullable().optional(),
 });
 
 // Organization membership schema
@@ -48,6 +49,7 @@ export const WelcomeEmailSchema = z.object({
     email: z.string().email("Email inválido"),
     name: z.string().min(1, "Nombre requerido"),
     org_logo: z.string().optional(),
+    super_id: z.string().optional(),
   }),
 });
 

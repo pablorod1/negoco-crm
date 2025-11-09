@@ -47,7 +47,6 @@ export default function CreateUserForm({
   const { userData, getPlan } = useUser();
   const [formData, setFormData] = useState<FormData>(initialFormState);
   const [comerciales, setComerciales] = useState<Comercial[]>([]);
-  const [selectedSubcomercial, setSelectedSubcomercial] = useState<string>("");
   const isStarterPlan = getPlan() === "starter";
 
   const { loading, loadingStep, loadingMessage, submitUserCreation } =
@@ -96,23 +95,10 @@ export default function CreateUserForm({
     name: string
   ) => {
     if (e) e.preventDefault();
-    setFormData((prev) => {
-      if (name === "super_id") {
-        const comercial = comerciales.find(
-          (comercial) => comercial.id === value
-        );
-        if (comercial) setSelectedSubcomercial(comercial.name);
-        return {
-          ...prev,
-          super_id: value,
-        };
-      } else {
-        return {
-          ...prev,
-          [name]: value,
-        };
-      }
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const validateFields = () => {
@@ -234,15 +220,14 @@ export default function CreateUserForm({
             <SelectComponent
               name="super_id"
               label="Jefe de equipo"
-              onChange={(value, e) =>
-                handleSelectChange(
-                  value,
-                  e as React.ChangeEvent<HTMLSelectElement>,
-                  "super_id"
-                )
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, super_id: value }))
               }
-              selectedKey={selectedSubcomercial}
+              selectedKey={formData.super_id}
               items={comerciales}
+              textValue={
+                comerciales.find((c) => c.id === formData.super_id)?.name
+              }
             />
           )}
 

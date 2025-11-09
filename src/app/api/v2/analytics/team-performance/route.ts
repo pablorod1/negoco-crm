@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 
 /**
  * Request/Response Types for Team Performance Analytics
@@ -39,15 +40,15 @@ const TeamPerformanceQuerySchema = z.object({
 const buildTimeRangeFilter = (timeRange: string): string => {
   switch (timeRange) {
     case "current_month":
-      return ` AND strftime('%Y-%m', t.creation_date) = strftime('%Y-%m', 'now')`;
+      return ` AND strftime('%Y-%m', t.activation_date) = strftime('%Y-%m', 'now')`;
     case "current_week":
-      return ` AND strftime('%Y-%W', t.creation_date) = strftime('%Y-%W', 'now')`;
+      return ` AND strftime('%Y-%W', t.activation_date) = strftime('%Y-%W', 'now')`;
     case "last_week":
-      return ` AND strftime('%Y-%W', t.creation_date) = strftime('%Y-%W', 'now', '-7 days')`;
+      return ` AND strftime('%Y-%W', t.activation_date) = strftime('%Y-%W', 'now', '-7 days')`;
     case "90d":
-      return ` AND t.creation_date >= date('now', '-90 days')`;
+      return ` AND t.activation_date >= date('now', '-90 days')`;
     case "year":
-      return ` AND strftime('%Y', t.creation_date) = strftime('%Y', 'now')`;
+      return ` AND strftime('%Y', t.activation_date) = strftime('%Y', 'now')`;
     default:
       return "";
   }
@@ -116,9 +117,14 @@ export async function GET(
 
     // Apply role-based user filtering
     if (role === "2") {
-      // For commercial roles, get stats for their subcomercials
-      query += ` WHERE u.super_id = ?`;
-      params.push(id);
+      const subcomerciales = await getSubcomerciales(tursoClient, id);
+      console.log("Subcomerciales fetch result:", subcomerciales);
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` WHERE u.id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})`;
+        params.push(...subcomerciales.ids);
+      }
     } else {
       // For other roles, get stats for all users except themselves
       query += ` WHERE u.id != ?`;
@@ -132,12 +138,14 @@ export async function GET(
     }
 
     // Group by user attributes for aggregation
-    query += ` GROUP BY u.id, u.name, u.email, u.role, u.super_id, u.image ORDER BY u.name ASC;`;
+    query += ` GROUP BY u.id, u.name, u.email, u.role, u.image ORDER BY u.name ASC;`;
 
+    console.log("Final SQL Query:", query);
+    console.log("Query Parameters:", params);
     // Execute optimized query with prepared statement
-    const result = await tursoClient.execute({ 
-      sql: query, 
-      args: params 
+    const result = await tursoClient.execute({
+      sql: query,
+      args: params,
     });
 
     // Transform database results to response format
@@ -146,14 +154,14 @@ export async function GET(
         id: row.id as string,
         name: row.name as string,
         email: row.email as string,
-        image: row.image as string || "",
+        image: (row.image as string) || "",
         role: row.role as string,
-        super_id: row.super_id as string || "",
+        super_id: (row.super_id as string) || "",
       },
       active: (row.active as number) || 0,
       baja: (row.baja as number) || 0,
     }));
-
+    console.log("Team performance data retrieved:", teamData);
     return NextResponse.json({
       success: true,
       data: teamData,
@@ -183,7 +191,7 @@ export async function POST(
     // Parse and validate request body for backward compatibility
     const body = await request.json();
     const validationResult = TeamPerformanceQuerySchema.safeParse(body);
-    
+
     if (!validationResult.success) {
       return NextResponse.json(
         {
@@ -225,8 +233,13 @@ export async function POST(
     const params: (string | number)[] = [];
 
     if (role === "2") {
-      query += ` WHERE u.super_id = ?`;
-      params.push(id);
+      const subcomerciales = await getSubcomerciales(tursoClient, id);
+      if (subcomerciales.success && subcomerciales.ids) {
+        query += ` WHERE u.id IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")})`;
+        params.push(...subcomerciales.ids);
+      }
     } else {
       query += ` WHERE u.id != ?`;
       params.push(id);
@@ -248,9 +261,9 @@ export async function POST(
           id: row.id as string,
           name: row.name as string,
           email: row.email as string,
-          image: row.image as string || "",
+          image: (row.image as string) || "",
           role: row.role as string,
-          super_id: row.super_id as string || "",
+          super_id: (row.super_id as string) || "",
         },
         active: (row.active as number) || 0,
         baja: (row.baja as number) || 0,

@@ -1,4 +1,5 @@
 import { getTursoClient } from "@/core/libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -50,10 +51,14 @@ export async function POST(req: NextRequest) {
     `;
     const params: (string | number)[] = [];
 
-    if (role === "2") {
+    const subcomerciales = await getSubcomerciales(tursoClient, id);
+
+    if (role === "2" && subcomerciales.success && subcomerciales.ids) {
       // Para comerciales, obtener stats de sus subcomerciales
-      query += ` WHERE u.super_id = ?`;
-      params.push(id);
+      query += ` WHERE u.id IN (${subcomerciales.ids
+        .map(() => "?")
+        .join(", ")})`;
+      params.push(...subcomerciales.ids);
     } else {
       // Para otros roles, obtener stats de todos los usuarios excepto él mismo
       query += ` WHERE u.id != ?`;

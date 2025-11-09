@@ -150,7 +150,7 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
   );
 
   const submitUserCreation = useCallback(
-    async (formData: CreateUserPayload & { super_id?: string }) => {
+    async (formData: CreateUserPayload) => {
       setLoading(true);
       try {
         // Step 1: Validate data
@@ -191,7 +191,7 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
         await addToOrganization(userId, userData.organization.id, orgRole);
 
         // Step 4: Assign super user (optional)
-        if (formData.super_id) {
+        if (formData.super_id && formData.super_id.trim() !== "") {
           setLoadingStep(4);
           setLoadingMessage("Asignando jefe de equipo");
           await assignSuperUser(userId, formData.super_id);
