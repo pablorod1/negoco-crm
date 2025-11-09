@@ -197,9 +197,6 @@ export async function POST(
 
     if (!comparisonExists || fileCount === 0) {
       const totalRequestTime = performance.now() - startTime;
-      console.log(
-        `[INFO] No files to move for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms`
-      );
 
       // Return success if no files to move (maintains compatibility)
       return NextResponse.json({
@@ -215,11 +212,6 @@ export async function POST(
     }
 
     // ==================== CORE CONVERSION OPERATION ====================
-
-    console.log(
-      `[INFO] Starting conversion for comparison ${comparisonId} -> contract ${tramite_id}. ` +
-        `Files to process: ${fileCount}`
-    );
 
     // Execute the file conversion using the existing helper function
     // This maintains 100% compatibility with the original implementation
@@ -262,11 +254,6 @@ export async function POST(
       new_value: tramite_id,
       description: `Comparativa convertida a trámite: ${tramite_id}`,
     });
-
-    console.log(
-      `[SUCCESS] Conversion completed for comparison ${comparisonId} -> contract ${tramite_id} ` +
-        `after ${totalRequestTime.toFixed(2)}ms. Files processed: ${fileCount}`
-    );
 
     return NextResponse.json({
       success: true,

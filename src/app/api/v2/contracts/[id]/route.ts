@@ -60,12 +60,6 @@ async function executeQuery<T>(
 
   try {
     const result = await tursoClient.execute({ sql: query, args });
-    const queryTime = performance.now() - startTime;
-
-    // Log performance for monitoring (same as original)
-    console.log(
-      `[PERFORMANCE] Query executed in ${queryTime.toFixed(2)}ms, returned ${result.rows.length} rows`
-    );
 
     return result.rows as T[];
   } catch (error) {
@@ -351,17 +345,6 @@ export async function POST(
       queryResults.files
     );
 
-    // Calculate total request time
-    const totalRequestTime = performance.now() - requestStartTime;
-
-    // Log performance metrics
-    console.log(
-      `[PERFORMANCE] Contract by ID request completed in ${totalRequestTime.toFixed(2)}ms`
-    );
-    console.log(
-      `[METRICS] Results: tramite=${queryResults.tramite.length}, contracts=${queryResults.contracts.length}, files=${queryResults.files.length}`
-    );
-
     // Return successful response
     return NextResponse.json({
       success: true,
@@ -505,11 +488,6 @@ export async function DELETE(
         deleteObject(fileRef)
       );
       await Promise.all(deletePromises);
-
-      // Log successful file deletion for monitoring
-      console.log(
-        `[FIREBASE] Successfully deleted ${fileList.items.length} files for contract ${tramite_id}`
-      );
     } catch (storageError) {
       console.error("Error al eliminar archivos:", storageError);
       // Critical: If file deletion fails, abort the entire operation
@@ -523,12 +501,10 @@ export async function DELETE(
     }
 
     // Step 2: Only if files were deleted successfully, delete the contract from database
-    const deleteStartTime = performance.now();
     const response = await tursoClient.execute({
       sql: `DELETE FROM tramites WHERE id = ?`,
       args: [tramite_id],
     });
-    const deleteTime = performance.now() - deleteStartTime;
 
     // Check if contract was found and deleted
     if (response.rowsAffected === 0) {
@@ -540,17 +516,6 @@ export async function DELETE(
         { status: 404 }
       );
     }
-
-    // Calculate total request time
-    const totalRequestTime = performance.now() - requestStartTime;
-
-    // Log successful deletion with performance metrics
-    console.log(
-      `[PERFORMANCE] Contract deletion completed in ${totalRequestTime.toFixed(2)}ms (DB: ${deleteTime.toFixed(2)}ms)`
-    );
-    console.log(
-      `[SUCCESS] Contract ${tramite_id} deleted successfully with all associated files`
-    );
 
     // Return successful response
     return NextResponse.json({

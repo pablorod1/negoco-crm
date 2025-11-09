@@ -208,7 +208,12 @@ export default function ObjectiveDialog({
                 <SelectItem value="ratio">
                   Conversión de Comparativas
                 </SelectItem>
-                <SelectItem value="comisiones">Comisiones Generadas</SelectItem>
+                {/* Subcomerciales no pueden crear objetivos de comisiones */}
+                {!userData.super_id && (
+                  <SelectItem value="comisiones">
+                    Comisiones Generadas
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

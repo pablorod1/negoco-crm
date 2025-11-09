@@ -162,10 +162,6 @@ async function executeStatusUpdate(
       );
     }
 
-    console.log(
-      `[DB Performance] Status update executed in ${queryTime.toFixed(2)}ms with ${optimizations.length} optimizations`
-    );
-
     return {
       success: true,
       metrics: { queryTime, fieldsUpdated, optimizationApplied: optimizations },
@@ -302,10 +298,6 @@ async function executeCommissionUpdate(
         change.newValue
       );
     }
-
-    console.log(
-      `[DB Performance] Commission update executed in ${queryTime.toFixed(2)}ms for ${updates.length} fields`
-    );
 
     return {
       success: true,
@@ -462,20 +454,6 @@ export async function PATCH(
     }
 
     // Performance metrics logging
-    const requestEndTime = performance.now();
-    const totalTime = requestEndTime - requestStartTime;
-
-    console.log(
-      `[API Performance] Status update completed in ${totalTime.toFixed(2)}ms`,
-      {
-        statusMetrics: statusResult.metrics,
-        commissionMetrics: commissionResult.metrics,
-        totalOptimizations: [
-          ...(statusResult.metrics?.optimizationApplied || []),
-          ...(commissionResult.metrics?.optimizationApplied || []),
-        ],
-      }
-    );
 
     // Return identical response format to original endpoint
     return NextResponse.json({ success: true });

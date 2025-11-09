@@ -185,7 +185,6 @@ export function TeamTramitesBarChart({
         if (!success && error) {
           throw new Error(error || "Error fetching tramites");
         }
-        console.log("Personal tramites data retrieved:", data);
 
         setChartData(data as TeamData[]);
         setComerciales([...data.map((item: TeamData) => item.user as User)]);

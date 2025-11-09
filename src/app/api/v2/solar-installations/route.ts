@@ -93,8 +93,6 @@ const PaginationRequestSchema = z.object({
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<PaginatedSolarInstallationsResponse>> {
-  const startTime = performance.now();
-
   try {
     // Parse request body - maintaining exact compatibility with legacy endpoint
     const requestData: PaginatedSolarInstallationsRequest =
@@ -288,14 +286,6 @@ export async function POST(
       args: dataParams,
     });
 
-    // Performance logging
-    const executionTime = performance.now() - startTime;
-    console.log(
-      `🚀 Solar installations query executed in ${executionTime.toFixed(
-        2
-      )}ms for ${rs.rows.length} records`
-    );
-
     // Process and return results with optimized parsing
     return NextResponse.json({
       success: true,
@@ -352,7 +342,6 @@ export async function POST(
  * @returns Promise<NextResponse>
  */
 export async function PUT(request: NextRequest) {
-  const startTime = performance.now();
   try {
     const formData = await request.formData();
     const fotovoltaicaString = formData.get("fotovoltaica") as string;
@@ -412,11 +401,6 @@ export async function PUT(request: NextRequest) {
       }
 
       await tx.commit();
-
-      const totalTime = performance.now() - startTime;
-      console.log(
-        `✅ Solar installation created in ${totalTime.toFixed(2)}ms with ${fotovoltaicaFiles.length} file(s)`
-      );
 
       return NextResponse.json({ success: true }, { status: 200 });
     } catch (e) {

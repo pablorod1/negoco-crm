@@ -31,8 +31,6 @@ interface ActiveSupplierResponse {
 export async function GET(
   request: NextRequest
 ): Promise<NextResponse<ActiveSupplierResponse>> {
-  const startTime = Date.now();
-
   try {
     // Extract query parameters for GET request
     const { searchParams } = new URL(request.url);
@@ -124,19 +122,6 @@ export async function GET(
         total_consumption: 0,
       })
     );
-
-    // Performance metrics for monitoring
-    const totalTime = Date.now() - startTime;
-
-    // Log performance metrics in development
-    if (process.env.NODE_ENV === "development") {
-      console.log("Active Energy Suppliers API Performance:", {
-        totalTime: `${totalTime}ms`,
-        queryTime: `${queryTime}ms`,
-        resultCount: activeSuppliers.length,
-        userRole: user_role,
-      });
-    }
 
     // Return successful response
     return NextResponse.json(

@@ -129,11 +129,6 @@ async function executeQuery<
 
   try {
     const result = await client.execute({ sql, args });
-    const endTime = performance.now();
-
-    console.log(
-      `[DB Query] ${queryName} executed in ${(endTime - startTime).toFixed(2)}ms`
-    );
 
     return {
       success: true,
@@ -723,11 +718,6 @@ export async function PATCH(
       updatedComparison.data[0],
       files
     );
-    const endTime = performance.now();
-
-    console.log(
-      `[API Success] Comparison ${id} updated successfully in ${(endTime - startTime).toFixed(2)}ms`
-    );
 
     return NextResponse.json({
       success: true,
@@ -851,11 +841,6 @@ export async function POST(
 
     // Transform and return data
     const responseData = transformComparisonData(comparativa, files);
-    const endTime = performance.now();
-
-    console.log(
-      `[API Success] Comparison ${id} retrieved successfully in ${(endTime - startTime).toFixed(2)}ms`
-    );
 
     return NextResponse.json({
       success: true,
@@ -932,10 +917,6 @@ async function executeDeleteQuery(
     });
 
     const queryTime = performance.now() - startTime;
-
-    console.log(
-      `[INFO] ${operation} completed in ${queryTime.toFixed(2)}ms. Rows affected: ${result.rowsAffected}`
-    );
 
     return {
       result,
@@ -1120,15 +1101,12 @@ export async function DELETE(
     // ==================== BUSINESS LOGIC VALIDATION ====================
 
     // Validate that the comparison exists and get file count for optimization
-    const { exists: comparisonExists, fileCount } =
-      await validateComparisonExists(tursoClient, comparisonId);
+    const { exists: comparisonExists } = await validateComparisonExists(
+      tursoClient,
+      comparisonId
+    );
 
     if (!comparisonExists) {
-      const totalRequestTime = performance.now() - startTime;
-      console.log(
-        `[INFO] Comparison ${comparisonId} not found after ${totalRequestTime.toFixed(2)}ms`
-      );
-
       // Return consistent error format (backward compatibility)
       return NextResponse.json(
         { error: "Comparativa not found" },
@@ -1137,11 +1115,6 @@ export async function DELETE(
     }
 
     // ==================== CORE DELETION OPERATION ====================
-
-    console.log(
-      `[INFO] Starting deletion for comparison ${comparisonId}. ` +
-        `Files to delete: ${fileCount}`
-    );
 
     // Step 1: Delete from database (CASCADE will handle related files table)
     const dbDeletionResult = await deleteComparisonOptimized(
@@ -1162,13 +1135,11 @@ export async function DELETE(
     }
 
     // Step 2: Delete files from Firebase Storage
-    const storageStartTime = performance.now();
     const storageDeleteResult = await deleteFolderFromStorage(
       "comparativas",
       comparisonId,
       organization_id
     );
-    const storageTime = performance.now() - storageStartTime;
 
     if (!storageDeleteResult.success) {
       const totalRequestTime = performance.now() - startTime;
@@ -1185,14 +1156,6 @@ export async function DELETE(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] Comparison ${comparisonId} deleted successfully ` +
-        `after ${totalRequestTime.toFixed(2)}ms. DB: ${dbDeletionResult.metrics?.operationTime?.toFixed(2)}ms, ` +
-        `Storage: ${storageTime.toFixed(2)}ms, Files processed: ${fileCount}`
-    );
 
     // Return exact response format for backward compatibility
     return NextResponse.json({ success: true });

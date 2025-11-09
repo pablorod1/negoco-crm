@@ -143,8 +143,6 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ContractDocumentsResponse>> {
-  const startTime = performance.now();
-
   try {
     // ==================== INPUT VALIDATION ====================
 
@@ -236,13 +234,6 @@ export async function POST(
         );
       }
 
-      // Log performance metrics for monitoring
-      if (insertResult.metrics) {
-        console.log(
-          `[PERFORMANCE] Bulk inserted ${insertResult.metrics.filesProcessed} files in ${insertResult.metrics.queryTime.toFixed(2)}ms`
-        );
-      }
-
       // ==================== TRACK DOCUMENT UPLOADS ====================
 
       // Track each file upload
@@ -267,19 +258,10 @@ export async function POST(
       }
     }
 
-    const totalTime = performance.now() - startTime;
-    console.log(
-      `[PERFORMANCE] Document upload completed in ${totalTime.toFixed(2)}ms`
-    );
-
     // Return exact same response as original endpoint
     return NextResponse.json({ success: true });
   } catch (error) {
-    const totalTime = performance.now() - startTime;
     console.error("Error al subir archivos:", error);
-    console.log(
-      `[PERFORMANCE] Document upload failed after ${totalTime.toFixed(2)}ms`
-    );
 
     return NextResponse.json(
       {

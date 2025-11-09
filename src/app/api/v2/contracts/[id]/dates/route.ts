@@ -270,10 +270,7 @@ export async function POST(
     }
 
     // Execute the update query with performance monitoring
-    const { result, metrics } = await executeQuery(tursoClient!, sql, [
-      date,
-      id,
-    ]);
+    const { result } = await executeQuery(tursoClient!, sql, [date, id]);
 
     // ==================== TRACK CHANGES ====================
 
@@ -295,13 +292,6 @@ export async function POST(
     }
 
     // Log performance metrics for monitoring
-    const totalTime = performance.now() - requestStart;
-    console.log(`Contract dates update completed in ${totalTime}ms:`, {
-      contractId: id,
-      field,
-      queryMetrics: metrics,
-      totalRequestTime: totalTime,
-    });
 
     // Return success response (matches original endpoint exactly)
     return NextResponse.json({

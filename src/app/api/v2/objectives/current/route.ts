@@ -30,6 +30,7 @@ interface ObjectiveResponse {
 const GetCurrentObjectivesSchema = z.object({
   id: z.string().min(1),
   role: z.string().min(1),
+  super_id: z.string().optional().nullable(),
 });
 
 /**
@@ -45,9 +46,14 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const role = searchParams.get("role");
+    const super_id = searchParams.get("super_id");
 
     // Validate query parameters
-    const validation = GetCurrentObjectivesSchema.safeParse({ id, role });
+    const validation = GetCurrentObjectivesSchema.safeParse({
+      id,
+      role,
+      super_id,
+    });
     if (!validation.success) {
       return NextResponse.json(
         {
@@ -60,7 +66,7 @@ export async function GET(
       );
     }
 
-    const { id: userId, role: userRole } = validation.data;
+    const { id: userId, role: userRole, super_id: superId } = validation.data;
 
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
@@ -114,19 +120,26 @@ export async function GET(
               tursoClient,
               userId,
               userRole,
-              currentPeriod
+              currentPeriod,
+              superId
             );
             objective.current = Number(activeTramitesValues.active);
           }
 
           if (objective.type === "comisiones") {
-            const activeTramitesValues = await getObjectivesTramitesValues(
-              tursoClient,
-              userId,
-              userRole,
-              currentPeriod
-            );
-            objective.current = Number(activeTramitesValues.comision);
+            // Subcomerciales should not see commission objectives
+            if (superId !== null && superId !== undefined) {
+              objective.current = 0;
+            } else {
+              const activeTramitesValues = await getObjectivesTramitesValues(
+                tursoClient,
+                userId,
+                userRole,
+                currentPeriod,
+                superId
+              );
+              objective.current = Number(activeTramitesValues.comision);
+            }
           }
 
           if (objective.type === "ratio") {

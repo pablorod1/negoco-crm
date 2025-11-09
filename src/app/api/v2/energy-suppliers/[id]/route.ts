@@ -31,8 +31,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<SupplierByIdResponse>> {
-  const startTime = Date.now();
-
   try {
     const { id } = await params;
 
@@ -136,20 +134,6 @@ export async function GET(
       num_files: 0,
       total_consumption: 0,
     };
-
-    // Performance metrics for monitoring
-    const totalTime = Date.now() - startTime;
-
-    // Log performance metrics in development
-    if (process.env.NODE_ENV === "development") {
-      console.log("Energy Supplier By ID API Performance:", {
-        totalTime: `${totalTime}ms`,
-        queryTime: `${queryTime}ms`,
-        supplierId: id,
-        supplierName: supplier.name,
-        userRole: user_role,
-      });
-    }
 
     // Return successful response
     return NextResponse.json(

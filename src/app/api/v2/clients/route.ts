@@ -94,14 +94,7 @@ export async function POST(
     query += ` ORDER BY last_tramite_date DESC NULLS LAST`;
 
     // Execute query with performance monitoring
-    const startTime = performance.now();
     const res = await tursoClient.execute({ sql: query, args: params });
-    const queryTime = performance.now() - startTime;
-
-    // Log performance metrics for monitoring
-    console.log(
-      `[PERFORMANCE] Clients query executed in ${queryTime.toFixed(2)}ms, returned ${res.rows.length} rows`
-    );
 
     // Handle empty results
     if (res.rows.length === 0) {

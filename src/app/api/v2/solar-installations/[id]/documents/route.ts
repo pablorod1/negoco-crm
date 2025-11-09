@@ -107,8 +107,7 @@ const ParamsSchema = z.object({
 async function executeOptimizedQuery(
   client: Client,
   sql: string,
-  args: (string | number)[],
-  operation: string
+  args: (string | number)[]
 ): Promise<{ result: { rowsAffected: number }; metrics: QueryMetrics }> {
   const startTime = performance.now();
   const optimizations: string[] = [];
@@ -138,23 +137,8 @@ async function executeOptimizedQuery(
       optimizationApplied: optimizations,
     };
 
-    console.log(`✅ ${operation} completed:`, {
-      duration: `${queryTime.toFixed(2)}ms`,
-      rowsAffected: result.rowsAffected,
-      optimizations,
-    });
-
     return { result, metrics };
   } catch (error) {
-    const endTime = performance.now();
-    const queryTime = endTime - startTime;
-
-    console.error(`❌ ${operation} failed:`, {
-      duration: `${queryTime.toFixed(2)}ms`,
-      error: error instanceof Error ? error.message : "Unknown error",
-      sql: sql.substring(0, 100) + "...",
-    });
-
     throw error;
   }
 }
@@ -242,9 +226,6 @@ export async function POST(
     if (documents) {
       try {
         fotovoltaicaFiles = JSON.parse(documents);
-        console.log(
-          `📁 Processing ${fotovoltaicaFiles.length} files for solar installation ${id}`
-        );
       } catch (error) {
         console.error("❌ File validation failed:", error);
         return NextResponse.json(
@@ -261,10 +242,6 @@ export async function POST(
     if (comissionsString) {
       try {
         commissions = JSON.parse(comissionsString);
-        console.log(
-          `💰 Processing commission update for solar installation ${id}:`,
-          commissions
-        );
       } catch (error) {
         console.error("❌ Commission validation failed:", error);
         return NextResponse.json(
@@ -280,10 +257,6 @@ export async function POST(
     // ==================== FILE UPLOAD PROCESSING ====================
 
     if (fotovoltaicaFiles.length > 0) {
-      console.log(
-        `🔄 Uploading ${fotovoltaicaFiles.length} files to database...`
-      );
-
       const insertFilesResult = await addFotovoltaicaFiles(
         fotovoltaicaFiles,
         tursoClient
@@ -299,17 +272,11 @@ export async function POST(
           { status: 400 }
         );
       }
-
-      console.log(`✅ Successfully uploaded ${fotovoltaicaFiles.length} files`);
     }
 
     // ==================== STATUS AND COMMISSION UPDATE ====================
 
     if (status && commissions) {
-      console.log(
-        `🔄 Updating status and commissions for solar installation ${id}...`
-      );
-
       const optimizedUpdateQuery = `
         UPDATE fotovoltaica
         SET status = ?, comision = ?, comision_sales_person = ?
@@ -319,8 +286,7 @@ export async function POST(
       const { result } = await executeOptimizedQuery(
         tursoClient,
         optimizedUpdateQuery,
-        [status, commissions.comision, commissions.comision_sales_person, id],
-        "Solar installation status and commission update"
+        [status, commissions.comision, commissions.comision_sales_person, id]
       );
 
       if (result.rowsAffected === 0) {
@@ -333,26 +299,9 @@ export async function POST(
           { status: 400 }
         );
       }
-
-      console.log(
-        `✅ Successfully updated status and commissions for solar installation ${id}`
-      );
     }
 
     // ==================== SUCCESS RESPONSE ====================
-
-    const endTime = performance.now();
-    const totalTime = endTime - startTime;
-
-    console.log(
-      `🎉 Solar installation documents operation completed successfully:`,
-      {
-        id,
-        filesProcessed: fotovoltaicaFiles.length,
-        statusUpdated: !!(status && commissions),
-        totalDuration: `${totalTime.toFixed(2)}ms`,
-      }
-    );
 
     return NextResponse.json({
       success: true,

@@ -118,7 +118,6 @@ export async function GET(
     // Apply role-based user filtering
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
-      console.log("Subcomerciales fetch result:", subcomerciales);
       if (subcomerciales.success && subcomerciales.ids) {
         query += ` WHERE u.id IN (${subcomerciales.ids
           .map(() => "?")
@@ -140,8 +139,6 @@ export async function GET(
     // Group by user attributes for aggregation
     query += ` GROUP BY u.id, u.name, u.email, u.role, u.image ORDER BY u.name ASC;`;
 
-    console.log("Final SQL Query:", query);
-    console.log("Query Parameters:", params);
     // Execute optimized query with prepared statement
     const result = await tursoClient.execute({
       sql: query,
@@ -161,7 +158,6 @@ export async function GET(
       active: (row.active as number) || 0,
       baja: (row.baja as number) || 0,
     }));
-    console.log("Team performance data retrieved:", teamData);
     return NextResponse.json({
       success: true,
       data: teamData,

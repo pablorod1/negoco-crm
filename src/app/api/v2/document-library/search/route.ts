@@ -33,12 +33,12 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<SearchDocumentsResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // Extract query parameters for GET request
     const { searchParams } = new URL(request.url);
-    const name = searchParams.get('name');
-    
+    const name = searchParams.get("name");
+
     if (!name) {
       return NextResponse.json(
         { success: false, error: "Parámetros faltantes" },
@@ -64,9 +64,6 @@ export async function GET(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-SEARCH] Searching documents by name: ${name}`);
-    
-    const queryStartTime = performance.now();
     const response = await tursoClient.execute({
       sql: `
         SELECT id, name, size, extension, upload_date, download_url, preview_url, type, folder_name
@@ -76,7 +73,6 @@ export async function GET(
       `,
       args: [`%${name}%`],
     });
-    const queryTime = performance.now() - queryStartTime;
 
     const files: DocumentacionFile[] = response.rows.map((row) => ({
       id: row[0] as string,
@@ -86,12 +82,9 @@ export async function GET(
       upload_date: row[4] as string,
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
-      type: (row[7] as string) as "file" | "folder",
+      type: row[7] as string as "file" | "folder",
       folder_name: row[8] as string,
     }));
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-SEARCH] Found ${files.length} files matching "${name}" in ${totalTime.toFixed(2)}ms (query: ${queryTime.toFixed(2)}ms)`);
 
     return NextResponse.json({
       success: true,
@@ -99,8 +92,11 @@ export async function GET(
     });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-SEARCH] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-SEARCH] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error obteniendo archivo en el servidor" },
       { status: 500 }
@@ -118,7 +114,7 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<SearchDocumentsResponse>> {
   const startTime = performance.now();
-  
+
   try {
     const { name }: SearchDocumentsRequest = await request.json();
 
@@ -140,9 +136,6 @@ export async function POST(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-SEARCH-POST] Searching documents by name (legacy POST): ${name}`);
-    
-    const queryStartTime = performance.now();
     const response = await tursoClient.execute({
       sql: `
         SELECT id, name, size, extension, upload_date, download_url, preview_url, type, folder_name
@@ -152,7 +145,6 @@ export async function POST(
       `,
       args: [`%${name}%`],
     });
-    const queryTime = performance.now() - queryStartTime;
 
     const files: DocumentacionFile[] = response.rows.map((row) => ({
       id: row[0] as string,
@@ -162,12 +154,9 @@ export async function POST(
       upload_date: row[4] as string,
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
-      type: (row[7] as string) as "file" | "folder",
+      type: row[7] as string as "file" | "folder",
       folder_name: row[8] as string,
     }));
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-SEARCH-POST] Found ${files.length} files matching "${name}" in ${totalTime.toFixed(2)}ms (query: ${queryTime.toFixed(2)}ms)`);
 
     return NextResponse.json({
       success: true,
@@ -175,8 +164,11 @@ export async function POST(
     });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-SEARCH-POST] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-SEARCH-POST] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error obteniendo archivo en el servidor" },
       { status: 500 }

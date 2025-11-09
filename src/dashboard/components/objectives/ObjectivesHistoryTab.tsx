@@ -29,7 +29,7 @@ export default function ObjectivesHistoryTab({
   const fetchObjetivos = useCallback(async () => {
     try {
       const res = await fetch(
-        `/api/v2/objectives?id=${userData.id}&role=${userData.role}`,
+        `/api/v2/objectives?id=${userData.id}&role=${userData.role}&super_id=${userData.super_id || ""}`,
         {
           method: "GET",
           headers: {

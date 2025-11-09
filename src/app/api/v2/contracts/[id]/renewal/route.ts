@@ -168,10 +168,7 @@ export async function POST(
         user_id = requestBody.user_id;
       }
     } catch {
-      // No body or invalid JSON - this is fine for renewal endpoint
-      console.log(
-        `[INFO] No request body provided for renewal of contract ${contractId}`
-      );
+      // If body is not valid JSON or empty, proceed without user_id
     }
 
     // ==================== DATABASE CLIENT INITIALIZATION ====================
@@ -245,16 +242,12 @@ export async function POST(
     const activationDate = NOW_DATE.toISOString();
     const renovationDate = RENOVATION_DATE.toISOString();
 
-    console.log(
-      `[INFO] Renewing contract ${contractId}: activation=${activationDate}, renovation=${renovationDate}`
-    );
-
     // ==================== DATABASE UPDATE EXECUTION ====================
 
     const sql = `UPDATE tramites SET activation_date = ?, renovation_date = ? WHERE id = ?`;
     const args = [activationDate, renovationDate, contractId];
 
-    const { result, metrics } = await executeQuery(tursoClient, sql, args);
+    const { result } = await executeQuery(tursoClient, sql, args);
 
     // ==================== RESULT VALIDATION ====================
 
@@ -274,14 +267,6 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] Contract ${contractId} renewed successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
-        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
 
     // ==================== TRACK RENEWAL CHANGES ====================
 

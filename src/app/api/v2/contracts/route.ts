@@ -341,13 +341,6 @@ interface PaginatedContractsResponse {
   error?: string;
 }
 
-interface QueryMetrics {
-  queryTime: number;
-  operationsCompleted: number;
-  transactionTime: number;
-  geocodeTime?: number;
-}
-
 // A minimal interface for a DB executor (client or transaction)
 type DBExecutor = Pick<Client, "execute">;
 
@@ -358,16 +351,11 @@ const checkClientExists = async (
   db: DBExecutor
 ): Promise<boolean> => {
   try {
-    const startTime = performance.now();
     const res = await db.execute({
       sql: `SELECT id FROM clients WHERE id = ? AND document_number = ? LIMIT 1`,
       args: [id, documentNumber],
     });
-    const queryTime = performance.now() - startTime;
 
-    console.log(
-      `[PERFORMANCE] Client existence check: ${queryTime.toFixed(2)}ms`
-    );
     return res.rows.length > 0;
   } catch (error) {
     console.error("Error checking client existence:", error);
@@ -380,16 +368,11 @@ const checkSignerExists = async (
   db: DBExecutor
 ): Promise<boolean> => {
   try {
-    const startTime = performance.now();
     const res = await db.execute({
       sql: `SELECT id FROM signers WHERE id = ? LIMIT 1`,
       args: [id],
     });
-    const queryTime = performance.now() - startTime;
 
-    console.log(
-      `[PERFORMANCE] Signer existence check: ${queryTime.toFixed(2)}ms`
-    );
     return res.rows.length > 0;
   } catch (error) {
     console.error("Error checking signer existence:", error);
@@ -403,7 +386,6 @@ const geocodeAddress = async (
   province: string
 ): Promise<[number, number] | null> => {
   try {
-    const startTime = performance.now();
     const fullAddress = `${address}, ${postalCode}, ${province}, España`;
     const openCageKey = process.env.GEOCODE_API_KEY;
 
@@ -423,9 +405,6 @@ const geocodeAddress = async (
     }
 
     const data = await response.json();
-    const geocodeTime = performance.now() - startTime;
-
-    console.log(`[PERFORMANCE] Geocoding: ${geocodeTime.toFixed(2)}ms`);
 
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
@@ -455,7 +434,6 @@ const addClientOptimized = async (
       return { success: true };
     }
 
-    const startTime = performance.now();
     await db.execute({
       sql: `
         INSERT INTO clients (
@@ -481,9 +459,6 @@ const addClientOptimized = async (
       ],
     });
 
-    const queryTime = performance.now() - startTime;
-    console.log(`[PERFORMANCE] Client insert: ${queryTime.toFixed(2)}ms`);
-
     return { success: true };
   } catch (error) {
     console.error("Error adding client:", error);
@@ -505,7 +480,6 @@ const addSignerOptimized = async (
       return { success: true };
     }
 
-    const startTime = performance.now();
     await db.execute({
       sql: `
         INSERT INTO signers (
@@ -524,9 +498,6 @@ const addSignerOptimized = async (
       ],
     });
 
-    const queryTime = performance.now() - startTime;
-    console.log(`[PERFORMANCE] Signer insert: ${queryTime.toFixed(2)}ms`);
-
     return { success: true };
   } catch (error) {
     console.error("Error adding signer:", error);
@@ -542,7 +513,6 @@ const addTramiteOptimized = async (
   db: DBExecutor
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    const startTime = performance.now();
     await db.execute({
       sql: `
         INSERT INTO tramites (
@@ -573,9 +543,6 @@ const addTramiteOptimized = async (
       ],
     });
 
-    const queryTime = performance.now() - startTime;
-    console.log(`[PERFORMANCE] Tramite insert: ${queryTime.toFixed(2)}ms`);
-
     return { success: true };
   } catch (error) {
     console.error("Error adding tramite:", error);
@@ -594,7 +561,6 @@ const addContractsOptimized = async (
     if (contracts.length === 0) {
       return { success: true };
     }
-    const startTime = performance.now();
 
     // Use batch insert for better performance - include both legacy and ID fields
     const placeholders = contracts
@@ -635,11 +601,6 @@ const addContractsOptimized = async (
       args: values,
     });
 
-    const queryTime = performance.now() - startTime;
-    console.log(
-      `[PERFORMANCE] Contracts batch insert (${contracts.length}): ${queryTime.toFixed(2)}ms`
-    );
-
     return { success: true };
   } catch (error) {
     console.error("Error adding contracts:", error);
@@ -658,8 +619,6 @@ const addTramiteFilesOptimized = async (
     if (files.length === 0) {
       return { success: true };
     }
-
-    const startTime = performance.now();
 
     // Use batch insert for better performance
     const placeholders = files.map(() => "(?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
@@ -684,11 +643,6 @@ const addTramiteFilesOptimized = async (
       args: values,
     });
 
-    const queryTime = performance.now() - startTime;
-    console.log(
-      `[PERFORMANCE] Files batch insert (${files.length}): ${queryTime.toFixed(2)}ms`
-    );
-
     return { success: true };
   } catch (error) {
     console.error("Error adding tramite files:", error);
@@ -709,8 +663,6 @@ const addTramiteFilesOptimized = async (
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ContractCreateResponse>> {
-  const startTime = performance.now();
-
   try {
     // Initialize database connection
     const tursoClient = getTursoClient(request);
@@ -766,9 +718,6 @@ export async function POST(
       // Ensure tramite.client_id is set to client.id if missing or empty
       if (!tramite.client_id || tramite.client_id.trim() === "") {
         tramite.client_id = client.id;
-        console.log(
-          `[VALIDATION] Auto-assigned client_id: ${client.id} to tramite: ${tramite.id}`
-        );
       }
 
       // Validate that tramite.client_id matches client.id
@@ -789,13 +738,7 @@ export async function POST(
       // Ensure signer.client_id matches client.id if signer exists
       if (signer && (!signer.client_id || signer.client_id.trim() === "")) {
         signer.client_id = client.id;
-        console.log(
-          `[VALIDATION] Auto-assigned client_id: ${client.id} to signer: ${signer.id}`
-        );
       } else if (signer && signer.client_id !== client.id) {
-        console.warn(
-          `[VALIDATION] Mismatch between signer.client_id (${signer.client_id}) and client.id (${client.id}). Using client.id.`
-        );
         signer.client_id = client.id;
       }
 
@@ -836,7 +779,6 @@ export async function POST(
     }
 
     // Start transaction for data consistency
-    const transactionStartTime = performance.now();
     const tx = await tursoClient.transaction();
 
     try {
@@ -885,21 +827,6 @@ export async function POST(
       // Commit transaction
       await tx.commit();
 
-      const transactionTime = performance.now() - transactionStartTime;
-      const totalTime = performance.now() - startTime;
-
-      // Log performance metrics
-      const metrics: QueryMetrics = {
-        queryTime: totalTime,
-        operationsCompleted: 1 /* transaction committed */,
-        transactionTime,
-      };
-
-      console.log(
-        `[PERFORMANCE] Contract creation completed in ${totalTime.toFixed(2)}ms for user ${userData.name} (${userData.id}):`,
-        metrics
-      );
-
       return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
       // Rollback transaction on error
@@ -908,11 +835,6 @@ export async function POST(
     }
   } catch (error) {
     console.error("Error creating contract:", error);
-
-    const totalTime = performance.now() - startTime;
-    console.log(
-      `[PERFORMANCE] Contract creation failed after ${totalTime.toFixed(2)}ms`
-    );
 
     // Distinguish common error categories
     const message =
@@ -947,8 +869,6 @@ export async function POST(
 export async function GET(
   request: NextRequest
 ): Promise<NextResponse<PaginatedContractsResponse>> {
-  const startTime = performance.now();
-
   try {
     // Parse query parameters from URL
     const searchParams = request.nextUrl.searchParams;
@@ -1343,12 +1263,6 @@ export async function GET(
       };
     });
 
-    // Performance tracking
-    const totalTime = performance.now() - startTime;
-    console.log(
-      `[PERFORMANCE] GET Contracts pagination completed in ${totalTime.toFixed(2)}ms for user ${user_id}`
-    );
-
     // Return exact original response format
     return NextResponse.json({
       success: true,
@@ -1357,11 +1271,6 @@ export async function GET(
     });
   } catch (error) {
     console.error("Error en el servidor obteniendo los trámites", error);
-
-    const totalTime = performance.now() - startTime;
-    console.log(
-      `[PERFORMANCE] GET Contracts pagination failed after ${totalTime.toFixed(2)}ms`
-    );
 
     return NextResponse.json(
       {

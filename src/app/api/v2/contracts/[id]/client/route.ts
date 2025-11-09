@@ -225,7 +225,6 @@ export async function PATCH(
     // Parse and validate request body
     const body = await request.json();
     const validationResult = UpdateClientRequestSchema.safeParse(body);
-    console.log("Validation Result:", validationResult.error?.message);
     if (!validationResult.success) {
       return NextResponse.json(
         {

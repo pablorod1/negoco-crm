@@ -14,7 +14,7 @@ interface LatestContractResponse {
 /**
  * Retrieves the latest contract (tramite) for a specific client
  * Orders by creation_date DESC and returns the most recent contract
- * 
+ *
  * @param request - Next.js request object
  * @param params - Route parameters containing client ID
  * @returns Promise<NextResponse<LatestContractResponse>>
@@ -26,7 +26,7 @@ export async function POST(
   try {
     // Validate route parameters (maintain original validation logic)
     const { id } = await params;
-    
+
     if (!id) {
       return NextResponse.json(
         { success: false, message: "Missing Parameters" },
@@ -45,15 +45,12 @@ export async function POST(
     }
 
     // Execute optimized query with performance monitoring
-    const startTime = performance.now();
     const res = await tursoClient.execute({
       sql: `SELECT * FROM tramites WHERE client_id = ? ORDER BY creation_date DESC LIMIT 1;`,
       args: [id],
     });
-    const queryTime = performance.now() - startTime;
 
-    // Log performance metrics for monitoring
-    console.log(`[PERFORMANCE] Latest contract query executed in ${queryTime.toFixed(2)}ms, returned ${res.rows.length} rows`);
+    // Log performance  for monitoring
 
     // Handle no contracts found
     if (res.rows.length === 0) {
@@ -74,7 +71,6 @@ export async function POST(
       },
       { status: 200 }
     );
-
   } catch (error) {
     console.error("Error fetching tramites:", error);
     return NextResponse.json(
@@ -87,7 +83,7 @@ export async function POST(
 /**
  * Alternative GET endpoint for REST compliance
  * Maintains the same functionality as POST for backward compatibility
- * 
+ *
  * @param request - Next.js request object
  * @param params - Route parameters containing client ID
  * @returns Promise<NextResponse<LatestContractResponse>>
@@ -99,7 +95,6 @@ export async function GET(
   try {
     // Reuse POST logic for consistency
     return await POST(request, { params });
-
   } catch (error) {
     console.error("Error in GET /new_api/clients/[id]/latest-contract:", error);
     return NextResponse.json(

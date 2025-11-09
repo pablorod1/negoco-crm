@@ -30,7 +30,7 @@ export async function DELETE(
   request: NextRequest
 ): Promise<NextResponse<DeleteFolderResponse>> {
   const startTime = performance.now();
-  
+
   try {
     const body: DeleteFolderRequest = await request.json();
 
@@ -54,8 +54,6 @@ export async function DELETE(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-DELETE-FOLDER] Starting deletion of folder: ${folder_path}`);
-
     // Atomic operation design: Delete files from storage first
     const storageDeleteStartTime = performance.now();
     const { success: firebaseSuccess, errors: firebaseErrors } =
@@ -67,7 +65,10 @@ export async function DELETE(
     const storageDeleteTime = performance.now() - storageDeleteStartTime;
 
     if (!firebaseSuccess) {
-      console.error(`[DOCUMENT-LIBRARY-DELETE-FOLDER] Storage deletion failed after ${storageDeleteTime.toFixed(2)}ms:`, firebaseErrors);
+      console.error(
+        `[DOCUMENT-LIBRARY-DELETE-FOLDER] Storage deletion failed after ${storageDeleteTime.toFixed(2)}ms:`,
+        firebaseErrors
+      );
       return NextResponse.json(
         { success: false, error: firebaseErrors },
         { status: 500 }
@@ -75,22 +76,20 @@ export async function DELETE(
     }
 
     // Delete folder from database only after successful storage deletion
-    const dbDeleteStartTime = performance.now();
     const query = `DELETE FROM documentacion_files WHERE folder_name = ?`;
     await tursoClient.execute({
       sql: query,
       args: [folder_path],
     });
-    const dbDeleteTime = performance.now() - dbDeleteStartTime;
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-DELETE-FOLDER] Successfully deleted folder "${folder_path}" in ${totalTime.toFixed(2)}ms (storage: ${storageDeleteTime.toFixed(2)}ms, db: ${dbDeleteTime.toFixed(2)}ms)`);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-DELETE-FOLDER] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-DELETE-FOLDER] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error eliminando carpeta en el servidor" },
       { status: 500 }
@@ -108,7 +107,7 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<DeleteFolderResponse>> {
   const startTime = performance.now();
-  
+
   try {
     const body: DeleteFolderRequest = await request.json();
 
@@ -132,8 +131,6 @@ export async function POST(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-DELETE-FOLDER-POST] Starting deletion of folder (legacy POST): ${folder_path}`);
-
     // Atomic operation design: Delete files from storage first
     const storageDeleteStartTime = performance.now();
     const { success: firebaseSuccess, errors: firebaseErrors } =
@@ -145,7 +142,10 @@ export async function POST(
     const storageDeleteTime = performance.now() - storageDeleteStartTime;
 
     if (!firebaseSuccess) {
-      console.error(`[DOCUMENT-LIBRARY-DELETE-FOLDER-POST] Storage deletion failed after ${storageDeleteTime.toFixed(2)}ms:`, firebaseErrors);
+      console.error(
+        `[DOCUMENT-LIBRARY-DELETE-FOLDER-POST] Storage deletion failed after ${storageDeleteTime.toFixed(2)}ms:`,
+        firebaseErrors
+      );
       return NextResponse.json(
         { success: false, error: firebaseErrors },
         { status: 500 }
@@ -153,22 +153,20 @@ export async function POST(
     }
 
     // Delete folder from database only after successful storage deletion
-    const dbDeleteStartTime = performance.now();
     const query = `DELETE FROM documentacion_files WHERE folder_name = ?`;
     await tursoClient.execute({
       sql: query,
       args: [folder_path],
     });
-    const dbDeleteTime = performance.now() - dbDeleteStartTime;
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-DELETE-FOLDER-POST] Successfully deleted folder "${folder_path}" in ${totalTime.toFixed(2)}ms (storage: ${storageDeleteTime.toFixed(2)}ms, db: ${dbDeleteTime.toFixed(2)}ms)`);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-DELETE-FOLDER-POST] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-DELETE-FOLDER-POST] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error eliminando carpeta en el servidor" },
       { status: 500 }

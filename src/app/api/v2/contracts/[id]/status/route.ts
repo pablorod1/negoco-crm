@@ -319,16 +319,9 @@ export async function PATCH(
 
     const currentData = currentValues.rows[0];
 
-    const { sql, args, updatedFields } = buildUpdateQuery(
-      validatedData,
-      contractId
-    );
+    const { sql, args } = buildUpdateQuery(validatedData, contractId);
 
-    console.log(
-      `[INFO] Updating contract ${contractId} with fields: ${updatedFields.join(", ")}`
-    );
-
-    const { result, metrics } = await executeQuery(tursoClient, sql, args);
+    const { result } = await executeQuery(tursoClient, sql, args);
 
     // ==================== TRACK CHANGES ====================
 
@@ -447,14 +440,6 @@ export async function PATCH(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] Contract ${contractId} updated successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms, Fields updated: ${metrics.fieldsUpdated}, ` +
-        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
 
     // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
     return NextResponse.json({

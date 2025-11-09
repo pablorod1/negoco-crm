@@ -45,13 +45,6 @@ const BajaContractSchema = z.object({
   plan: z.string().default(""),
 });
 
-const UserSchema = z.object({
-  id: z.string().min(1, "User ID is required"),
-  name: z.string().min(1, "User name is required"),
-  email: z.string().email("Invalid email format"),
-  role: z.string().min(1, "User role is required"),
-});
-
 interface BajaCreateResponse {
   success: boolean;
   error?: string;
@@ -246,8 +239,6 @@ const createBajaContract = async (
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<BajaCreateResponse>> {
-  const startTime = performance.now();
-
   try {
     // Initialize database connection
     const tursoClient = getTursoClient(request);
@@ -290,19 +281,16 @@ export async function POST(
     let tramite: z.infer<typeof BajaTramiteSchema>;
     let client: z.infer<typeof BajaClientSchema>;
     let contracts: z.infer<typeof BajaContractSchema>[];
-    let userData: z.infer<typeof UserSchema>;
 
     try {
       const tramiteData = JSON.parse(tramiteString);
       const clientData = JSON.parse(clientString);
       const contractsData = JSON.parse(contractsString);
-      const userDataParsed = JSON.parse(userDataString);
 
       // Validate with Zod
       tramite = BajaTramiteSchema.parse(tramiteData);
       client = BajaClientSchema.parse(clientData);
       contracts = z.array(BajaContractSchema).parse(contractsData);
-      userData = UserSchema.parse(userDataParsed); // Validated for logging purposes
 
       // Ensure consistency
       if (!tramite.client_id || tramite.client_id.trim() === "") {
@@ -321,10 +309,6 @@ export async function POST(
         ...contract,
         tramite_id: tramite.id,
       }));
-
-      console.log(
-        `[BAJA] Creating baja for client: ${client.name} by user: ${userData.name}`
-      );
     } catch (validationError) {
       console.error("[BAJA] Validation error:", validationError);
       return NextResponse.json(
@@ -337,7 +321,6 @@ export async function POST(
     }
 
     // Start transaction
-    const transactionStartTime = performance.now();
     const tx = await tursoClient.transaction();
 
     try {
@@ -385,14 +368,6 @@ export async function POST(
       // Commit transaction
       await tx.commit();
 
-      const totalTime = performance.now() - startTime;
-      const transactionTime = performance.now() - transactionStartTime;
-
-      console.log(
-        `[BAJA] Successfully created baja in ${totalTime.toFixed(2)}ms`
-      );
-      console.log(`[BAJA] Transaction time: ${transactionTime.toFixed(2)}ms`);
-
       return NextResponse.json(
         {
           success: true,
@@ -410,9 +385,6 @@ export async function POST(
     }
   } catch (error) {
     console.error("[BAJA] Error creating baja:", error);
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[BAJA] Failed after ${totalTime.toFixed(2)}ms`);
 
     const message =
       error instanceof Error ? error.message : "Error al crear la baja";

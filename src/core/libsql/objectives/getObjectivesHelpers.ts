@@ -5,7 +5,8 @@ export const getObjectivesTramitesValues = async (
   tursoClient: Client,
   id: string,
   role: string,
-  period: string
+  period: string,
+  superId?: string | null
 ) => {
   try {
     // Convertir el período en un rango de fechas
@@ -31,25 +32,47 @@ export const getObjectivesTramitesValues = async (
     const datePrefixToSearch = `${year}-${monthMap[month]}`;
 
     const params = [datePrefixToSearch];
-    let query = `SELECT COUNT(id) as active_count, 
-      ${
-        role === "2"
-          ? "SUM(comision_sales_person) as comision"
-          : "SUM(comision) as comision"
-      }
-    FROM tramites WHERE substr(activation_date, 1, 7) = ? `;
+
+    // Si el usuario es subcomercial (tiene super_id), no debe ver comisiones
+    const isSubcomercial = superId !== null && superId !== undefined;
+
+    let query = `SELECT COUNT(id) as active_count${
+      !isSubcomercial
+        ? `, ${
+            role === "2"
+              ? "SUM(comision_sales_person) as comision"
+              : "SUM(comision) as comision"
+          }`
+        : ""
+    }
+    FROM tramites 
+    WHERE activation_date IS NOT NULL 
+    AND activation_date != ''
+    AND (
+      substr(activation_date, 1, 7) = ? 
+      OR (
+        length(activation_date) > 10 
+        AND substr(activation_date, 1, 7) = ?
+      )
+    )`;
+
+    // Añadir el mismo prefijo dos veces para manejar ambos formatos de fecha
+    params.push(datePrefixToSearch);
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
       if (subcomerciales.success && subcomerciales.ids) {
-        query += ` AND user_id = ? OR user_id IN (${subcomerciales.ids
+        query += ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
           .map(() => "?")
-          .join(", ")})`;
+          .join(", ")}))`;
         params.push(id, ...subcomerciales.ids);
       } else {
         query += ` AND user_id = ?`;
         params.push(id);
       }
+    } else {
+      query += ` AND user_id = ?`;
+      params.push(id);
     }
 
     const res = await tursoClient.execute({
@@ -59,7 +82,7 @@ export const getObjectivesTramitesValues = async (
 
     // Obtener el conteo de la primera fila
     const activeTramitesCount = res.rows[0]?.active_count ?? 0;
-    const comision = res.rows[0]?.comision ?? 0;
+    const comision = !isSubcomercial ? (res.rows[0]?.comision ?? 0) : 0;
 
     return {
       active: activeTramitesCount,

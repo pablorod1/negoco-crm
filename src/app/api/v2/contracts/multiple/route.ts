@@ -164,8 +164,6 @@ export async function POST(
 
     const { ids, status } = validationResult.data;
 
-    console.log(`[INFO] Updating ${ids.length} contracts to status: ${status}`);
-
     // ==================== DATABASE CONNECTION ====================
 
     const tursoClient = getTursoClient(request);
@@ -187,12 +185,7 @@ export async function POST(
 
     const { sql, args } = buildUpdateQuery(ids, status);
 
-    console.log(`[DEBUG] Executing SQL: ${sql}`);
-    console.log(
-      `[DEBUG] With args: [${args.slice(0, 2).join(", ")}, ...${ids.length} contract IDs]`
-    );
-
-    const { result, metrics } = await executeQuery(tursoClient, sql, args);
+    const { result } = await executeQuery(tursoClient, sql, args);
 
     // ==================== RESULT VALIDATION ====================
 
@@ -213,15 +206,6 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] Updated ${result.rowsAffected}/${ids.length} contracts ` +
-        `to status "${status}" after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
-        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
 
     // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
     return NextResponse.json({

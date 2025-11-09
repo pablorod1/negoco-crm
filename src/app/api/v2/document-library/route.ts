@@ -44,12 +44,16 @@ const GetQuerySchema = z.object({
 });
 
 const DeleteBodySchema = z.object({
-  files: z.array(z.object({
-    folder_path: z.string().min(1, "folder_path is required"),
-    file_name: z.string().min(1, "file_name is required"),
-    file_id: z.string().min(1, "file_id is required"),
-    organization_id: z.string().min(1, "organization_id is required"),
-  })).min(1, "At least one file must be specified"),
+  files: z
+    .array(
+      z.object({
+        folder_path: z.string().min(1, "folder_path is required"),
+        file_name: z.string().min(1, "file_name is required"),
+        file_id: z.string().min(1, "file_id is required"),
+        organization_id: z.string().min(1, "organization_id is required"),
+      })
+    )
+    .min(1, "At least one file must be specified"),
 });
 
 /**
@@ -62,12 +66,12 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<DocumentLibraryGetResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // Extract query parameters for GET request
     const { searchParams } = new URL(request.url);
-    const folder_name = searchParams.get('folder_name');
-    
+    const folder_name = searchParams.get("folder_name");
+
     if (!folder_name) {
       return NextResponse.json(
         { success: false, error: "Faltan parámetros" },
@@ -93,9 +97,6 @@ export async function GET(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-GET] Fetching files for folder: ${folder_name}`);
-    
-    const queryStartTime = performance.now();
     const response = await tursoClient.execute({
       sql: `
         SELECT id, name, size, extension, upload_date, download_url, preview_url, type
@@ -105,7 +106,6 @@ export async function GET(
       `,
       args: [folder_name],
     });
-    const queryTime = performance.now() - queryStartTime;
 
     const files: DocumentacionFile[] = response.rows.map((row) => ({
       id: row[0] as string,
@@ -116,11 +116,8 @@ export async function GET(
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
       folder_name,
-      type: (row[7] as string) as "file" | "folder",
+      type: row[7] as string as "file" | "folder",
     }));
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-GET] Retrieved ${files.length} files in ${totalTime.toFixed(2)}ms (query: ${queryTime.toFixed(2)}ms)`);
 
     return NextResponse.json({
       success: true,
@@ -128,8 +125,11 @@ export async function GET(
     });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-GET] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-GET] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error obteniendo los archivos en el servidor" },
       { status: 500 }
@@ -145,23 +145,28 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest
-): Promise<NextResponse<DocumentLibraryGetResponse | DocumentLibraryPostResponse>> {
+): Promise<
+  NextResponse<DocumentLibraryGetResponse | DocumentLibraryPostResponse>
+> {
   const startTime = performance.now();
-  
+
   try {
-    const contentType = request.headers.get('content-type') || '';
-    
+    const contentType = request.headers.get("content-type") || "";
+
     // Handle multipart/form-data for file uploads (from /api/documentacion/add)
-    if (contentType.includes('multipart/form-data')) {
+    if (contentType.includes("multipart/form-data")) {
       return await handleFileUpload(request, startTime);
     }
-    
+
     // Handle JSON for file listing (from /api/documentacion/get/files)
     return await handleFileListing(request, startTime);
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-POST] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-POST] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error en el servidor" },
       { status: 500 }
@@ -189,8 +194,6 @@ async function handleFileUpload(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-UPLOAD] Starting upload of ${files.length} files to folder: ${folder_name}`);
-
     const tursoClient = getTursoClient(request);
 
     if (!tursoClient) {
@@ -201,13 +204,11 @@ async function handleFileUpload(
     }
 
     // Upload files to Firebase Storage
-    const uploadStartTime = performance.now();
     const uploadedFiles = await uploadFiles(
       files,
       `${organization_id}/documentacion`,
       folder_name
     );
-    const uploadTime = performance.now() - uploadStartTime;
 
     // Prepare database records with optimized batch insert
     const documentacionFiles: DocumentacionFile[] = files.map((file, index) => {
@@ -227,7 +228,6 @@ async function handleFileUpload(
     });
 
     // Optimized batch insert using prepared statements
-    const dbStartTime = performance.now();
     const query = `
       INSERT INTO documentacion_files (id, name, size, extension, upload_date, download_url, preview_url, folder_name, type)
       VALUES ${documentacionFiles.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
@@ -249,16 +249,15 @@ async function handleFileUpload(
       sql: query,
       args: params,
     });
-    const dbTime = performance.now() - dbStartTime;
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-UPLOAD] Successfully uploaded ${files.length} files in ${totalTime.toFixed(2)}ms (upload: ${uploadTime.toFixed(2)}ms, db: ${dbTime.toFixed(2)}ms)`);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-UPLOAD] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-UPLOAD] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error subiendo archivos en el servidor" },
       { status: 500 }
@@ -301,9 +300,6 @@ async function handleFileListing(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-LIST] Fetching files for folder: ${folder_name}`);
-    
-    const queryStartTime = performance.now();
     const response = await tursoClient.execute({
       sql: `
         SELECT id, name, size, extension, upload_date, download_url, preview_url, type
@@ -313,7 +309,6 @@ async function handleFileListing(
       `,
       args: [folder_name],
     });
-    const queryTime = performance.now() - queryStartTime;
 
     const files: DocumentacionFile[] = response.rows.map((row) => ({
       id: row[0] as string,
@@ -324,11 +319,8 @@ async function handleFileListing(
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
       folder_name,
-      type: (row[7] as string) as "file" | "folder",
+      type: row[7] as string as "file" | "folder",
     }));
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-LIST] Retrieved ${files.length} files in ${totalTime.toFixed(2)}ms (query: ${queryTime.toFixed(2)}ms)`);
 
     return NextResponse.json({
       success: true,
@@ -336,8 +328,11 @@ async function handleFileListing(
     });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-LIST] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-LIST] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error obteniendo los archivos en el servidor" },
       { status: 500 }
@@ -355,7 +350,7 @@ export async function DELETE(
   request: NextRequest
 ): Promise<NextResponse<DocumentLibraryDeleteResponse>> {
   const startTime = performance.now();
-  
+
   try {
     const body: DocumentLibraryDeleteRequest = await request.json();
 
@@ -365,7 +360,7 @@ export async function DELETE(
       return NextResponse.json(
         {
           success: false,
-          error: "No files specified for deletion"
+          error: "No files specified for deletion",
         },
         { status: 400 }
       );
@@ -382,13 +377,10 @@ export async function DELETE(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-DELETE] Starting deletion of ${files.length} files`);
-
     const results: Array<{ file_id: string; success: boolean }> = [];
     const errors: string[] = [];
 
     // Process each file with optimized error handling
-    const fileDeleteStartTime = performance.now();
     for (const file of files) {
       const { folder_path, file_name, file_id, organization_id } = file;
 
@@ -417,18 +409,16 @@ export async function DELETE(
         });
 
         results.push({ file_id, success: true });
-        console.log(`[DOCUMENT-LIBRARY-DELETE] Successfully deleted file: ${file_name}`);
       } catch (error) {
-        console.error(`[DOCUMENT-LIBRARY-DELETE] Error processing file ${file_name}:`, error);
+        console.error(
+          `[DOCUMENT-LIBRARY-DELETE] Error processing file ${file_name}:`,
+          error
+        );
         errors.push(`Failed to delete ${file_name}`);
       }
     }
-    const fileDeleteTime = performance.now() - fileDeleteStartTime;
-
-    const totalTime = performance.now() - startTime;
 
     if (errors.length > 0) {
-      console.log(`[DOCUMENT-LIBRARY-DELETE] Partial success: ${results.length}/${files.length} files deleted in ${totalTime.toFixed(2)}ms`);
       return NextResponse.json(
         {
           success: false,
@@ -440,16 +430,17 @@ export async function DELETE(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-DELETE] Successfully deleted ${results.length} files in ${totalTime.toFixed(2)}ms (file operations: ${fileDeleteTime.toFixed(2)}ms)`);
-
     return NextResponse.json({
       success: true,
       message: `Successfully deleted ${results.length} file(s)`,
     });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-DELETE] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-DELETE] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
       { success: false, error: "Error eliminando archivos en el servidor" },
       { status: 500 }

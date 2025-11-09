@@ -79,8 +79,7 @@ const ParamsSchema = z.object({
 async function executeQuery(
   client: Client,
   sql: string,
-  args: (string | number)[],
-  operation: string
+  args: (string | number)[]
 ): Promise<{ result: { rowsAffected: number }; metrics: QueryMetrics }> {
   const startTime = performance.now();
   const optimizations: string[] = [];
@@ -117,10 +116,6 @@ async function executeQuery(
       estimatedNotesCount = Math.max(1, Math.floor(notesJSON.length / 50));
     }
 
-    console.log(
-      `[PERFORMANCE] ${operation} executed in ${queryTime.toFixed(2)}ms. Rows affected: ${result.rowsAffected}`
-    );
-
     return {
       result: { rowsAffected: result.rowsAffected },
       metrics: {
@@ -131,12 +126,6 @@ async function executeQuery(
       },
     };
   } catch (error) {
-    const endTime = performance.now();
-    const queryTime = endTime - startTime;
-    console.error(
-      `[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`,
-      error
-    );
     throw error;
   }
 }
@@ -260,12 +249,6 @@ export async function POST(
 
     // Determine which column to update based on is_internal flag (exact legacy behavior)
     const columnToUpdate = is_internal ? "internal_notes" : "notes";
-    const noteType = is_internal ? "internal" : "public";
-
-    console.log(
-      `[INFO] Adding ${noteType} note to solar installation ${id}. ` +
-        `Total notes after addition: ${updatedNotes.length}`
-    );
 
     const query = `
       UPDATE fotovoltaica
@@ -273,12 +256,10 @@ export async function POST(
       WHERE id = ?
     `;
 
-    const { result, metrics } = await executeQuery(
-      tursoClient,
-      query,
-      [notesJSON, id],
-      `add-${noteType}-note`
-    );
+    const { result, metrics } = await executeQuery(tursoClient, query, [
+      notesJSON,
+      id,
+    ]);
 
     // ==================== RESULT VALIDATION ====================
 
@@ -299,14 +280,6 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] ${metrics.noteType} note added to solar installation ${id} successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms, Total notes: ${metrics.notesCount}, ` +
-        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
 
     return NextResponse.json({
       success: true,

@@ -131,8 +131,6 @@ const addComparativaOptimized = async (
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    const startTime = performance.now();
-
     await tursoClient.execute({
       sql: `
         INSERT INTO comparativas (
@@ -170,9 +168,6 @@ const addComparativaOptimized = async (
       description: `Comparativa creada para el cliente ${comparativa.client}`,
     });
 
-    const queryTime = performance.now() - startTime;
-    console.log(`[PERFORMANCE] Comparativa insert: ${queryTime.toFixed(2)}ms`);
-
     return { success: true };
   } catch (error) {
     console.error("Error adding comparativa:", error);
@@ -196,8 +191,6 @@ const addComparativaFilesOptimized = async (
       return { success: true };
     }
 
-    const startTime = performance.now();
-
     const placeholders = files.map(() => "(?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
 
     const values = files.flatMap((file) => [
@@ -219,11 +212,6 @@ const addComparativaFilesOptimized = async (
       `,
       args: values,
     });
-
-    const queryTime = performance.now() - startTime;
-    console.log(
-      `[PERFORMANCE] Files batch insert (${files.length} files): ${queryTime.toFixed(2)}ms`
-    );
 
     return { success: true };
   } catch (error) {
@@ -465,12 +453,10 @@ export async function GET(
     }
 
     // Execute main query
-    const queryStartTime = performance.now();
     const rs = await tursoClient.execute({
       sql: query,
       args: params,
     });
-    const queryEndTime = performance.now();
 
     // Transform results (exact original format)
     const transformedData: ComparisonResponseItem[] = rs.rows.map((row) => ({
@@ -496,17 +482,6 @@ export async function GET(
         image: row.user_image as string,
       },
     }));
-
-    const endTime = performance.now();
-
-    // Performance logging
-    console.log(`✅ GET /new_api/comparisons executed successfully:`, {
-      totalTime: `${(endTime - startTime).toFixed(2)}ms`,
-      queryTime: `${(queryEndTime - queryStartTime).toFixed(2)}ms`,
-      resultCount: transformedData.length,
-      totalRecords: total,
-      filtersApplied: filters.length,
-    });
 
     // Return exact original response format
     return NextResponse.json({
@@ -553,7 +528,7 @@ export async function POST(
 
     // Check if this is a FormData request (comparison creation)
     if (contentType?.includes("multipart/form-data")) {
-      return await handleComparisonCreation(request, startTime);
+      return await handleComparisonCreation(request);
     }
 
     // Otherwise, this is a JSON request for pagination (backward compatibility)
@@ -593,8 +568,7 @@ export async function POST(
  * Handle comparison creation (FormData request)
  */
 async function handleComparisonCreation(
-  request: NextRequest,
-  startTime: number
+  request: NextRequest
 ): Promise<NextResponse<ComparisonCreateResponse>> {
   try {
     // Initialize database client
@@ -685,19 +659,9 @@ async function handleComparisonCreation(
       }
     }
 
-    const totalTime = performance.now() - startTime;
-    console.log(
-      `✅ Comparison creation completed in ${totalTime.toFixed(2)}ms`
-    );
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error creating comparison:", error);
-
-    const totalTime = performance.now() - startTime;
-    console.log(
-      `❌ Comparison creation failed after ${totalTime.toFixed(2)}ms`
-    );
 
     return NextResponse.json(
       {

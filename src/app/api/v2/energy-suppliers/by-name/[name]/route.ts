@@ -23,13 +23,6 @@ interface EnergySupplierByNameResponse {
   error?: string;
 }
 
-interface QueryMetrics {
-  queryTime: number;
-  resultCount: number;
-  cacheHit: boolean;
-  optimizationApplied: string[];
-}
-
 /**
  * Retrieves detailed information about a specific energy supplier by name
  *
@@ -208,10 +201,7 @@ export async function POST(
 
     const queryParams = [...userFilterParams, ...userFilterParams, name];
     optimizations.push("exact-main-endpoint-logic-single-comercializadora");
-    console.log("Energy Supplier By Name Query:", query);
     const response = await tursoClient.execute(query, queryParams);
-
-    const queryTime = Date.now() - startTime;
 
     // Validate query results
     if (!response || response.rows.length === 0) {
@@ -278,21 +268,6 @@ export async function POST(
       total_consumption: Number(comercializadora.total_consumption) || 0,
       files: files,
     };
-
-    // Log performance metrics for monitoring
-    const metrics: QueryMetrics = {
-      queryTime,
-      resultCount: 1,
-      cacheHit: false,
-      optimizationApplied: optimizations,
-    };
-
-    console.log(`Energy supplier by name query completed in ${queryTime}ms`, {
-      supplier: name,
-      user_id,
-      user_role,
-      metrics,
-    });
 
     return NextResponse.json(
       {

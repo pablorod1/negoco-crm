@@ -18,13 +18,6 @@ interface EnergySupplierResponse {
   error?: string;
 }
 
-interface QueryMetrics {
-  queryTime: number;
-  resultCount: number;
-  cacheHit: boolean;
-  optimizationApplied: string[];
-}
-
 /**
  * Retrieves all energy suppliers (comercializadoras) with associated statistics
  *
@@ -43,7 +36,6 @@ interface QueryMetrics {
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<EnergySupplierResponse>> {
-  const startTime = Date.now();
   const optimizations: string[] = [];
 
   try {
@@ -181,26 +173,6 @@ export async function POST(
     );
 
     optimizations.push("type-safe-transformation");
-
-    // Performance metrics for monitoring
-    const totalTime = Date.now() - startTime;
-    const metrics: QueryMetrics = {
-      queryTime,
-      resultCount: comercializadoras.length,
-      cacheHit: false, // Future enhancement: implement caching
-      optimizationApplied: optimizations,
-    };
-
-    // Log performance metrics in development
-    if (process.env.NODE_ENV === "development") {
-      console.log("Energy Suppliers API Performance:", {
-        totalTime: `${totalTime}ms`,
-        queryTime: `${queryTime}ms`,
-        resultCount: metrics.resultCount,
-        optimizations: metrics.optimizationApplied,
-        userRole: user_role,
-      });
-    }
 
     // Return successful response with exact original structure
     return NextResponse.json(

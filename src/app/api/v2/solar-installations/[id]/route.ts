@@ -110,25 +110,24 @@ async function executeUpdateQuery(
   operation: string
 ): Promise<{ success: boolean; rowsAffected: number; error?: string }> {
   const startTime = performance.now();
-  
+
   try {
     const result = await tursoClient.execute({
       sql: query,
       args: params,
     });
-    
-    const queryTime = performance.now() - startTime;
-    
-    console.log(`[PERFORMANCE] ${operation} executed in ${queryTime.toFixed(2)}ms. Rows affected: ${result.rowsAffected}`);
-    
+
     return {
       success: true,
       rowsAffected: result.rowsAffected,
     };
   } catch (error) {
     const queryTime = performance.now() - startTime;
-    console.error(`[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`,
+      error
+    );
+
     return {
       success: false,
       rowsAffected: 0,
@@ -169,7 +168,7 @@ async function updateSolarInstallation(
       comision_sales_person,
       status,
     } = updates;
-    
+
     const updateFields: string[] = [];
 
     // Build update fields in EXACT legacy order
@@ -197,7 +196,8 @@ async function updateSolarInstallation(
     updateFields.push("updated_at = CURRENT_TIMESTAMP");
 
     // Validate that we have fields to update (excluding audit fields)
-    if (updateFields.length === 2) { // Only audit fields present
+    if (updateFields.length === 2) {
+      // Only audit fields present
       return {
         success: false,
         error: "No fields to update provided",
@@ -225,8 +225,13 @@ async function updateSolarInstallation(
       installationId,
     ];
 
-    const result = await executeUpdateQuery(tursoClient, query, args, "update-solar-installation");
-    
+    const result = await executeUpdateQuery(
+      tursoClient,
+      query,
+      args,
+      "update-solar-installation"
+    );
+
     if (!result.success) {
       return {
         success: false,
@@ -256,11 +261,11 @@ async function updateSolarInstallation(
 /**
  * Retrieves a solar installation (fotovoltaica) by ID with comprehensive data
  * including files, user information, and authorization filtering
- * 
+ *
  * @param req - Next.js request object
  * @param params - Route parameters containing the installation ID
  * @returns Promise<NextResponse<SolarInstallationResponse>>
- * 
+ *
  * @example
  * POST /new_api/solar-installations/123
  * Body: { "user_id": "user123", "user_role": "2" }
@@ -467,10 +472,9 @@ export async function POST(
       { success: true, data: solarInstallationVM },
       { status: 200 }
     );
-
   } catch (error) {
     console.error("Error fetching solar installation:", error);
-    
+
     // Return generic error to avoid exposing internal details
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
@@ -481,14 +485,14 @@ export async function POST(
 
 /**
  * PATCH /new_api/solar-installations/[id]
- * 
+ *
  * Updates a solar installation (fotovoltaica) by ID
  * Maintains 100% functional compatibility with legacy /api/fotovoltaica/update/[id]
- * 
+ *
  * @param req - Next.js request object containing update data
  * @param params - URL parameters containing installation ID
  * @returns Promise<NextResponse<SolarInstallationUpdateResponse>>
- * 
+ *
  * @example
  * PATCH /new_api/solar-installations/inst123
  * Body: {
@@ -506,7 +510,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<SolarInstallationUpdateResponse>> {
   const startTime = performance.now();
-  
+
   try {
     // Extract and validate route parameters
     const { id } = await params;
@@ -540,8 +544,13 @@ export async function PATCH(
     }
 
     // Execute update using the helper function
-    const updateResult = await updateSolarInstallation(tursoClient, id, changes, user_id);
-    
+    const updateResult = await updateSolarInstallation(
+      tursoClient,
+      id,
+      changes,
+      user_id
+    );
+
     if (!updateResult.success) {
       return NextResponse.json(
         { success: false, error: updateResult.error || "Update failed" },
@@ -549,19 +558,18 @@ export async function PATCH(
       );
     }
 
-    const endTime = performance.now();
-    console.log(`[PERFORMANCE] Solar installation update completed in ${(endTime - startTime).toFixed(2)}ms`);
-
     // Return success response maintaining exact legacy format
     return NextResponse.json(
       { success: true, message: "Fotovoltaica updated successfully" },
       { status: 200 }
     );
-
   } catch (error) {
     const endTime = performance.now();
-    console.error(`[ERROR] Solar installation update failed after ${(endTime - startTime).toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[ERROR] Solar installation update failed after ${(endTime - startTime).toFixed(2)}ms:`,
+      error
+    );
+
     // Return error response maintaining exact legacy format
     return NextResponse.json(
       { success: false, error: (error as Error).message || "Unknown error" },
@@ -572,13 +580,13 @@ export async function PATCH(
 
 /**
  * DELETE /new_api/solar-installations/[id]
- * 
+ *
  * Deletes a solar installation (fotovoltaica) by ID
- * 
+ *
  * @param req - Next.js request object
  * @param params - URL parameters containing installation ID
- * @returns Promise<NextResponse<{ success: boolean; message?: string }>> 
- * 
+ * @returns Promise<NextResponse<{ success: boolean; message?: string }>>
+ *
  * @example
  * DELETE /new_api/solar-installations/inst123
  * Response: { "success": true, "message": "Fotovoltaica deleted successfully" }
@@ -587,21 +595,16 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<SolarInstallationDeleteResponse | { error: string }>> {
-  const startTime = performance.now();
-  
   try {
     // Extract installation ID from route parameters
     const { id: fotovoltaica_id } = await params;
-    
+
     // Parse request body to get organization_id
     const body: SolarInstallationDeleteRequest = await request.json();
     const { organization_id } = body;
 
-    console.log(`[SOLAR-DELETE] Starting deletion process for installation: ${fotovoltaica_id}, organization: ${organization_id}`);
-
     // Validate required parameters - maintain exact original validation
     if (!fotovoltaica_id || !organization_id) {
-      console.warn(`[SOLAR-DELETE] Missing parameters - ID: ${fotovoltaica_id}, Org: ${organization_id}`);
       return NextResponse.json(
         {
           success: false,
@@ -615,7 +618,6 @@ export async function DELETE(
     const tursoClient = getTursoClient(request);
 
     if (!tursoClient) {
-      console.error("[SOLAR-DELETE] Database client initialization failed");
       return NextResponse.json(
         {
           success: false,
@@ -632,36 +634,23 @@ export async function DELETE(
       `${organization_id}/fotovoltaicas/${fotovoltaica_id}`
     );
 
-    const fileDeleteStartTime = performance.now();
-    
     try {
-      console.log(`[SOLAR-DELETE] Listing files in storage path: ${organization_id}/fotovoltaicas/${fotovoltaica_id}`);
-      
       // List all files in the installation folder
       const fileList = await listAll(storageRef);
-      
-      console.log(`[SOLAR-DELETE] Found ${fileList.items.length} files to delete`);
 
       // Delete each file concurrently for optimal performance
       const deletePromises = fileList.items.map((fileRef) =>
         deleteObject(fileRef)
       );
-      
+
       await Promise.all(deletePromises);
-      
-      const fileDeleteTime = performance.now() - fileDeleteStartTime;
-      console.log(`[SOLAR-DELETE] Successfully deleted ${fileList.items.length} files in ${fileDeleteTime.toFixed(2)}ms`);
-      
-    } catch (storageError) {
-      const fileDeleteTime = performance.now() - fileDeleteStartTime;
-      console.error(`[SOLAR-DELETE] Storage deletion failed after ${fileDeleteTime.toFixed(2)}ms:`, storageError);
-      
+    } catch (e) {
       // If file deletion fails, abort the entire operation to maintain data consistency
       // This matches the exact behavior from the original endpoint
       return NextResponse.json(
         {
           success: false,
-          error: "Error al eliminar los archivos asociados a la solicitud",
+          error: e instanceof Error ? e.message : "File deletion error",
         },
         { status: 500 }
       );
@@ -669,18 +658,11 @@ export async function DELETE(
 
     // Step 2: Only if files were deleted successfully, remove the database record
     // This maintains the exact transaction pattern from the original endpoint
-    const dbDeleteStartTime = performance.now();
-    
-    console.log(`[SOLAR-DELETE] Deleting database record for installation: ${fotovoltaica_id}`);
-    
+
     const response = await tursoClient.execute({
       sql: `DELETE FROM fotovoltaica WHERE id = ?`,
       args: [fotovoltaica_id],
     });
-
-    const dbDeleteTime = performance.now() - dbDeleteStartTime;
-    
-    console.log(`[SOLAR-DELETE] Database deletion executed in ${dbDeleteTime.toFixed(2)}ms. Rows affected: ${response.rowsAffected}`);
 
     // Validate that the installation was found and deleted
     if (response.rowsAffected === 0) {
@@ -694,21 +676,14 @@ export async function DELETE(
       );
     }
 
-    const totalTime = performance.now() - startTime;
-    console.log(`[SOLAR-DELETE] Installation ${fotovoltaica_id} deleted successfully in ${totalTime.toFixed(2)}ms`);
-
     // Return success response exactly matching original format
     return NextResponse.json({
       success: true,
     });
-
-  } catch (error) {
-    const totalTime = performance.now() - startTime;
-    console.error(`[SOLAR-DELETE] Deletion failed after ${totalTime.toFixed(2)}ms:`, error);
-    
+  } catch (e) {
     // Return generic error response matching original pattern EXACTLY
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: e instanceof Error ? e.message : "Error eliminando trámite" },
       { status: 500 }
     );
   }

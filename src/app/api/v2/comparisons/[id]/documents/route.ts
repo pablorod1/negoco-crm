@@ -264,11 +264,6 @@ export async function POST(
         );
       }
 
-      console.log(
-        `[SUCCESS] ${comparativaFiles.length} files inserted successfully. ` +
-          `Performance enhanced with batch processing optimization`
-      );
-
       // Track file uploads
       if (user_id) {
         for (const file of comparativaFiles) {
@@ -286,13 +281,6 @@ export async function POST(
     }
 
     // ==================== SUCCESS RESPONSE ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] Documents operation completed for comparison ${id} after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Files added: ${comparativaFiles.length}`
-    );
 
     return NextResponse.json({
       success: true,
@@ -416,10 +404,6 @@ export async function DELETE(
 
     // ==================== BUSINESS LOGIC EXECUTION ====================
 
-    console.log(
-      `[INFO] Deleting file '${file_name}' from comparison ${id} in organization ${organization_id}`
-    );
-
     // 1. Delete file from Firebase Storage
     const { success: storageSuccess, error: storageError } =
       await deleteFileFromStorage(
@@ -444,13 +428,9 @@ export async function DELETE(
       );
     }
 
-    console.log(
-      `[SUCCESS] File '${file_name}' deleted from storage successfully`
-    );
-
     // 2. Delete file record from database
     const query = `DELETE FROM comparativa_files WHERE filename = ? AND comparativa_id = ?`;
-    const { result, metrics } = await executeQuery(
+    const { result } = await executeQuery(
       tursoClient,
       query,
       [file_name, id],
@@ -490,14 +470,6 @@ export async function DELETE(
         description: `Documento eliminado: ${file_name}`,
       });
     }
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] File '${file_name}' deleted from comparison ${id} successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms, ` +
-        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
 
     return NextResponse.json({
       success: true,

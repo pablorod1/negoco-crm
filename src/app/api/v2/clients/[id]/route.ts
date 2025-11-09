@@ -118,14 +118,7 @@ export async function POST(
     query += ` GROUP BY clients.id`;
 
     // Execute query with performance monitoring
-    const startTime = performance.now();
     const res = await tursoClient.execute({ sql: query, args: queryParams });
-    const queryTime = performance.now() - startTime;
-
-    // Log performance metrics for monitoring
-    console.log(
-      `[PERFORMANCE] Client by ID query executed in ${queryTime.toFixed(2)}ms, returned ${res.rows.length} rows`
-    );
 
     // Handle client not found or access denied
     if (res.rows.length === 0) {

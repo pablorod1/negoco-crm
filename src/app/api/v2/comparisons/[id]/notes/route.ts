@@ -256,11 +256,6 @@ export async function POST(
     // Convert to JSON for database storage
     const notesJSON = JSON.stringify(updatedNotes);
 
-    console.log(
-      `[INFO] Adding note to comparison ${comparisonId}. ` +
-        `Total notes after addition: ${updatedNotes.length}`
-    );
-
     const query = `
       UPDATE comparativas
       SET notes = ?
@@ -302,14 +297,6 @@ export async function POST(
       new_value: note,
       description: `Nota agregada: "${note.length > 50 ? note.substring(0, 50) + "..." : note}"`,
     });
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] Note added to comparison ${comparisonId} successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms, Total notes: ${metrics.notesCount}, ` +
-        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
 
     return NextResponse.json({
       success: true,
@@ -439,11 +426,6 @@ export async function DELETE(
     // Convert to JSON for database storage
     const notesJSON = JSON.stringify(updatedNotes);
 
-    console.log(
-      `[INFO] Removing note from comparison ${comparisonId}. ` +
-        `Notes count: ${notes.length} -> ${updatedNotes.length}`
-    );
-
     const query = `
       UPDATE comparativas
       SET notes = ?
@@ -485,14 +467,6 @@ export async function DELETE(
       new_value: null,
       description: `Nota eliminada: "${note.length > 50 ? note.substring(0, 50) + "..." : note}"`,
     });
-
-    const totalRequestTime = performance.now() - startTime;
-
-    console.log(
-      `[SUCCESS] Note removed from comparison ${comparisonId} successfully after ${totalRequestTime.toFixed(2)}ms. ` +
-        `Query time: ${metrics.queryTime.toFixed(2)}ms, Remaining notes: ${metrics.notesCount}, ` +
-        `Optimizations: [${metrics.optimizationApplied.join(", ")}]`
-    );
 
     return NextResponse.json({
       success: true,

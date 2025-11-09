@@ -43,6 +43,7 @@ const CreateObjectiveSchema = z.object({
 const GetObjectivesSchema = z.object({
   id: z.string().min(1),
   role: z.string().min(1),
+  super_id: z.string().optional().nullable(),
 });
 
 // ===== ROUTE HANDLERS =====
@@ -152,9 +153,10 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const role = searchParams.get("role");
+    const super_id = searchParams.get("super_id");
 
     // Validate query parameters
-    const validation = GetObjectivesSchema.safeParse({ id, role });
+    const validation = GetObjectivesSchema.safeParse({ id, role, super_id });
     if (!validation.success) {
       return NextResponse.json(
         {
@@ -167,7 +169,7 @@ export async function GET(
       );
     }
 
-    const { id: userId, role: userRole } = validation.data;
+    const { id: userId, role: userRole, super_id: superId } = validation.data;
 
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
@@ -179,13 +181,6 @@ export async function GET(
         { status: 500 }
       );
     }
-
-    // Calculate current period
-    const currentMonth = new Date().toLocaleDateString("es-ES", {
-      month: "long",
-    });
-    const currentYear = new Date().getFullYear();
-    const currentPeriod = `${currentMonth} ${currentYear}`;
 
     // Execute optimized query with prepared statement
     const response = await tursoClient.execute({
@@ -200,7 +195,7 @@ export async function GET(
       });
     }
 
-    // Process objectives with dynamic current values
+    // Process objectives with dynamic current values based on each objective's period
     const objectives = await Promise.all(
       response.rows.map(async (row) => {
         const objective = {
@@ -214,33 +209,40 @@ export async function GET(
           user_id: row.user_id as string,
         };
 
-        // Update current values based on objective type
+        // Update current values based on objective type and its specific period
         try {
           if (objective.type === "tramites") {
             const activeTramitesValues = await getObjectivesTramitesValues(
               tursoClient,
               userId,
               userRole,
-              currentPeriod
+              objective.period, // Use the objective's period, not current period
+              superId
             );
             objective.current = Number(activeTramitesValues.active);
           }
 
           if (objective.type === "comisiones") {
-            const activeTramitesValues = await getObjectivesTramitesValues(
-              tursoClient,
-              userId,
-              userRole,
-              currentPeriod
-            );
-            objective.current = Number(activeTramitesValues.comision);
+            // Subcomerciales should not see commission objectives
+            if (superId !== null && superId !== undefined) {
+              objective.current = 0;
+            } else {
+              const activeTramitesValues = await getObjectivesTramitesValues(
+                tursoClient,
+                userId,
+                userRole,
+                objective.period, // Use the objective's period, not current period
+                superId
+              );
+              objective.current = Number(activeTramitesValues.comision);
+            }
           }
 
           if (objective.type === "ratio") {
             const ratioPercentage = await getComparativasRatio(
               tursoClient,
               userId,
-              currentPeriod
+              objective.period // Use the objective's period, not current period
             );
             objective.current = ratioPercentage;
           }

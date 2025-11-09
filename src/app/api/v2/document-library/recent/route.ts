@@ -19,7 +19,7 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<RecentDocumentsResponse>> {
   const startTime = performance.now();
-  
+
   try {
     const tursoClient = getTursoClient(request);
 
@@ -30,16 +30,12 @@ export async function GET(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-RECENT] Fetching recent documents`);
-    
-    const queryStartTime = performance.now();
     const response = await tursoClient.execute(`
       SELECT id, name, size, extension, upload_date, download_url, preview_url, type, folder_name
       FROM documentacion_files
       ORDER BY upload_date DESC
       LIMIT 5
     `);
-    const queryTime = performance.now() - queryStartTime;
 
     const files: DocumentacionFile[] = response.rows.map((row) => ({
       id: row[0] as string,
@@ -49,12 +45,9 @@ export async function GET(
       upload_date: row[4] as string,
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
-      type: (row[7] as string) as "file" | "folder",
+      type: row[7] as string as "file" | "folder",
       folder_name: row[8] as string,
     }));
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-RECENT] Retrieved ${files.length} recent files in ${totalTime.toFixed(2)}ms (query: ${queryTime.toFixed(2)}ms)`);
 
     return NextResponse.json({
       success: true,
@@ -62,10 +55,16 @@ export async function GET(
     });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-RECENT] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-RECENT] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
-      { success: false, error: "Error obteniendo archivos recientes en el servidor" },
+      {
+        success: false,
+        error: "Error obteniendo archivos recientes en el servidor",
+      },
       { status: 500 }
     );
   }
@@ -81,7 +80,7 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<RecentDocumentsResponse>> {
   const startTime = performance.now();
-  
+
   try {
     const tursoClient = getTursoClient(request);
 
@@ -92,16 +91,12 @@ export async function POST(
       );
     }
 
-    console.log(`[DOCUMENT-LIBRARY-RECENT-POST] Fetching recent documents (legacy POST)`);
-    
-    const queryStartTime = performance.now();
     const response = await tursoClient.execute(`
       SELECT id, name, size, extension, upload_date, download_url, preview_url, type, folder_name
       FROM documentacion_files
       ORDER BY upload_date DESC
       LIMIT 5
     `);
-    const queryTime = performance.now() - queryStartTime;
 
     const files: DocumentacionFile[] = response.rows.map((row) => ({
       id: row[0] as string,
@@ -111,12 +106,9 @@ export async function POST(
       upload_date: row[4] as string,
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
-      type: (row[7] as string) as "file" | "folder",
+      type: row[7] as string as "file" | "folder",
       folder_name: row[8] as string,
     }));
-
-    const totalTime = performance.now() - startTime;
-    console.log(`[DOCUMENT-LIBRARY-RECENT-POST] Retrieved ${files.length} recent files in ${totalTime.toFixed(2)}ms (query: ${queryTime.toFixed(2)}ms)`);
 
     return NextResponse.json({
       success: true,
@@ -124,10 +116,16 @@ export async function POST(
     });
   } catch (error) {
     const totalTime = performance.now() - startTime;
-    console.error(`[DOCUMENT-LIBRARY-RECENT-POST] Error after ${totalTime.toFixed(2)}ms:`, error);
-    
+    console.error(
+      `[DOCUMENT-LIBRARY-RECENT-POST] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
     return NextResponse.json(
-      { success: false, error: "Error obteniendo archivos recientes en el servidor" },
+      {
+        success: false,
+        error: "Error obteniendo archivos recientes en el servidor",
+      },
       { status: 500 }
     );
   }
