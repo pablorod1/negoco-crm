@@ -6,7 +6,7 @@ export const getObjectivesTramitesValues = async (
   id: string,
   role: string,
   period: string,
-  superId?: string | null
+  isSubcomercial: boolean
 ) => {
   try {
     // Convertir el período en un rango de fechas
@@ -31,62 +31,65 @@ export const getObjectivesTramitesValues = async (
     // Construir el prefijo de fecha para la consulta
     const datePrefixToSearch = `${year}-${monthMap[month]}`;
 
-    const params = [datePrefixToSearch];
+    // Para el conteo de trámites activos
+    let queryActive = `SELECT COUNT(id) as active_count
+    FROM tramites 
+    WHERE substr(activation_date, 1, 7) = ?
+    AND status = 'Activo'`;
 
-    // Si el usuario es subcomercial (tiene super_id), no debe ver comisiones
-    const isSubcomercial = superId !== null && superId !== undefined;
-
-    let query = `SELECT COUNT(id) as active_count${
-      !isSubcomercial
-        ? `, ${
-            role === "2"
-              ? "SUM(comision_sales_person) as comision"
-              : "SUM(comision) as comision"
-          }`
-        : ""
+    // Para las comisiones (todos los trámites con activation_date)
+    let queryComision = `SELECT ${
+      role === "2"
+        ? "SUM(comision_sales_person) as comision"
+        : "SUM(comision) as comision"
     }
     FROM tramites 
-    WHERE activation_date IS NOT NULL 
-    AND activation_date != ''
-    AND (
-      substr(activation_date, 1, 7) = ? 
-      OR (
-        length(activation_date) > 10 
-        AND substr(activation_date, 1, 7) = ?
-      )
-    )`;
+    WHERE substr(activation_date, 1, 7) = ? AND status = 'Activo'`; //
 
-    // Añadir el mismo prefijo dos veces para manejar ambos formatos de fecha
-    params.push(datePrefixToSearch);
+    const params = [datePrefixToSearch];
+    const paramsComision = [datePrefixToSearch];
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
       if (subcomerciales.success && subcomerciales.ids) {
-        query += ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
+        const userFilter = ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")}))`;
+        queryActive += userFilter;
+        queryComision += userFilter;
         params.push(id, ...subcomerciales.ids);
+        paramsComision.push(id, ...subcomerciales.ids);
       } else {
-        query += ` AND user_id = ?`;
+        queryActive += ` AND user_id = ?`;
+        queryComision += ` AND user_id = ?`;
         params.push(id);
+        paramsComision.push(id);
       }
-    } else {
-      query += ` AND user_id = ?`;
-      params.push(id);
     }
 
-    const res = await tursoClient.execute({
-      sql: query,
+    // Ejecutar query para contar trámites activos
+    const resActive = await tursoClient.execute({
+      sql: queryActive,
       args: params,
     });
 
-    // Obtener el conteo de la primera fila
-    const activeTramitesCount = res.rows[0]?.active_count ?? 0;
-    const comision = !isSubcomercial ? (res.rows[0]?.comision ?? 0) : 0;
+    // Ejecutar query para comisiones (si no es subcomercial)
+    let comisionTotal = 0;
+    if (!isSubcomercial) {
+      const resComision = await tursoClient.execute({
+        sql: queryComision,
+        args: paramsComision,
+      });
+      comisionTotal = Number(resComision.rows[0]?.comision);
+    }
 
+    // Obtener el conteo de la primera fila
+    const activeTramitesCount = Number(resActive.rows[0]?.active_count ?? 0);
+
+    console.log("Comision Total:", comisionTotal);
     return {
       active: activeTramitesCount,
-      comision,
+      comision: comisionTotal,
     };
   } catch (error) {
     console.error("Error al obtener trámites activos:", error);

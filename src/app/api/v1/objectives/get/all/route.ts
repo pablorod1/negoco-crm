@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, role } = await req.json();
+    const { id, role, isSubcomercial } = await req.json();
 
     if (!id || !role) {
       return NextResponse.json({
@@ -64,7 +64,8 @@ export async function POST(req: NextRequest) {
             tursoClient,
             id,
             role,
-            currentPeriod
+            currentPeriod,
+            isSubcomercial
           );
           objective.current = Number(activeTramitesValues.active);
         }
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
             tursoClient,
             id,
             role,
-            currentPeriod
+            currentPeriod,
+            isSubcomercial
           );
           objective.current = Number(activeTramitesValues.comision);
         }

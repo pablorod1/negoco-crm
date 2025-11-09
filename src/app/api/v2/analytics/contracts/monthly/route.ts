@@ -86,7 +86,7 @@ export async function POST(
         SUM(comision) as comision,
         SUM(comision_sales_person) as comision_sales_person
       FROM tramites
-      WHERE 1=1`;
+      WHERE status IN ('Activo', 'Baja')`;
 
     const conditions: string[] = [];
     const params: (string | number)[] = [];

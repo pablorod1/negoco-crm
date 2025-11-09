@@ -29,7 +29,7 @@ export default function ObjectivesHistoryTab({
   const fetchObjetivos = useCallback(async () => {
     try {
       const res = await fetch(
-        `/api/v2/objectives?id=${userData.id}&role=${userData.role}&super_id=${userData.super_id || ""}`,
+        `/api/v2/objectives?id=${userData.id}&role=${userData.role}${userData.super_id ? `&isSubcomercial=true` : ""}`,
         {
           method: "GET",
           headers: {
@@ -51,6 +51,7 @@ export default function ObjectivesHistoryTab({
       }
 
       if (data) {
+        console.log("Fetched objetivos data:", data);
         setObjetivos(data);
       }
     } catch (error) {

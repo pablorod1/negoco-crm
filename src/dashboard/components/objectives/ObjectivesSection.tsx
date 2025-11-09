@@ -330,7 +330,7 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
     setLoadingData(true);
     try {
       const res = await fetch(
-        `/api/v2/objectives/current?id=${userData.id}&role=${userData.role}&super_id=${userData.super_id || ""}`,
+        `/api/v2/objectives/current?id=${userData.id}&role=${userData.role}${userData.super_id ? `&isSubcomercial=true` : ""}`,
         {
           method: "GET",
           headers: {

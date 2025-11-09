@@ -30,7 +30,7 @@ interface ObjectiveResponse {
 const GetCurrentObjectivesSchema = z.object({
   id: z.string().min(1),
   role: z.string().min(1),
-  super_id: z.string().optional().nullable(),
+  isSubcomercial: z.boolean().optional(),
 });
 
 /**
@@ -66,7 +66,7 @@ export async function GET(
       );
     }
 
-    const { id: userId, role: userRole, super_id: superId } = validation.data;
+    const { id: userId, role: userRole, isSubcomercial } = validation.data;
 
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
@@ -121,14 +121,14 @@ export async function GET(
               userId,
               userRole,
               currentPeriod,
-              superId
+              isSubcomercial ? true : false
             );
             objective.current = Number(activeTramitesValues.active);
           }
 
           if (objective.type === "comisiones") {
             // Subcomerciales should not see commission objectives
-            if (superId !== null && superId !== undefined) {
+            if (isSubcomercial) {
               objective.current = 0;
             } else {
               const activeTramitesValues = await getObjectivesTramitesValues(
@@ -136,7 +136,7 @@ export async function GET(
                 userId,
                 userRole,
                 currentPeriod,
-                superId
+                isSubcomercial ? true : false
               );
               objective.current = Number(activeTramitesValues.comision);
             }
