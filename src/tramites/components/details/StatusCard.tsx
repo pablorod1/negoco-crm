@@ -27,6 +27,8 @@ export default function StatusCard({
   client,
   isActive,
 }: StatusCardProps) {
+  const isComercial = userData.role === "2";
+  const showLiquidez = isComercial && tramite.status === "Baja" ? false : true;
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -45,7 +47,7 @@ export default function StatusCard({
           onRenew={onUpdate}
           client={client}
           isActive={isActive}
-          showLiquidez={true}
+          showLiquidez={showLiquidez}
         />
       </CardContent>
     </Card>

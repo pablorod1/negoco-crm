@@ -77,9 +77,8 @@ export default function TramiteStatusSection({
               </TooltipComponent>
             </div>
             <div className="flex items-center justify-center">
-              {(isComercial &&
-                tramite.liquidez_status !== "Pendiente de Cobro") ||
-              tramite.liquidez_status !== "Pagado al Comercial" ? (
+              {isComercial &&
+              tramite.liquidez_status === "Cobrado por Comercializadora" ? (
                 <div className="flex flex-col items-center space-y-2">
                   <p className="text-xs text-gray-500 text-center">
                     Estado actual de liquidez
