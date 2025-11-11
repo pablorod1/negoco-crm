@@ -86,7 +86,6 @@ export const getObjectivesTramitesValues = async (
     // Obtener el conteo de la primera fila
     const activeTramitesCount = Number(resActive.rows[0]?.active_count ?? 0);
 
-    console.log("Comision Total:", comisionTotal);
     return {
       active: activeTramitesCount,
       comision: comisionTotal,

@@ -132,7 +132,6 @@ export function ObjetivosAnimatedList({
   items: Objective[];
   handleEditObjetivo: (objetivo: Objective) => void;
 }) {
-  console.log("Rendering ObjetivosAnimatedList with items:", items);
   const [achievedObjective, setAchievedObjective] = useState<Objective | null>(
     null
   );

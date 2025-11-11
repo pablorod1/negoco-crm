@@ -51,7 +51,6 @@ export default function ObjectivesHistoryTab({
       }
 
       if (data) {
-        console.log("Fetched objetivos data:", data);
         setObjetivos(data);
       }
     } catch (error) {
