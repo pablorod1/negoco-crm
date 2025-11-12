@@ -114,7 +114,12 @@ const getClientNameFromContext = async (
 
     switch (context) {
       case "tramite":
-        query = "SELECT client FROM tramites WHERE id = ?";
+        query = `
+          SELECT c.name as client
+          FROM tramites t 
+          JOIN clients c ON t.client_id = c.id
+          WHERE t.id = ?
+        `;
         break;
       case "comparativa":
         query = "SELECT client FROM comparativas WHERE id = ?";
@@ -124,7 +129,7 @@ const getClientNameFromContext = async (
         break;
       case "cliente":
         query =
-          "SELECT CONCAT(name, ' ', COALESCE(last_name, '')) as client FROM clientes WHERE id = ?";
+          "SELECT CONCAT(name, ' ', COALESCE(last_name, '')) as client FROM clients WHERE id = ?";
         break;
       default:
         return undefined;
