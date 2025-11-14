@@ -147,9 +147,9 @@ export function ClientFilesGrid({ client_id }: Props) {
       </CardHeader>
       <CardContent className="pt-0">
         {filteredFiles.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 ">
             {filteredFiles.map((file) => (
-              <ClientFileCard file={file} view="grid" key={file.id} />
+              <ClientFileCard file={file} key={file.id} />
             ))}
           </div>
         ) : (
