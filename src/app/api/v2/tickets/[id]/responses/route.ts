@@ -9,6 +9,7 @@ import {
 import { NOW_DATE } from "@/dashboard/constants";
 import { ServerNotificationsService } from "@/core/services/serverNotificationsService";
 import { generateTicketReplyNotification } from "@/core/utils/notifications.helpers";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -152,10 +153,25 @@ const checkTicketAccessForReply = async (
       return { hasAccess: false, error: "Access denied to internal ticket" };
     }
 
-    // Role "2" can only access their own tickets
+    // Role "2" can access their own tickets and those of their subcomerciales
     if (userRole === "2") {
-      const hasAccess =
+      let hasAccess =
         ticket.created_by === userId || ticket.assigned_to === userId;
+
+      // If not direct access, check subcomerciales
+      if (!hasAccess) {
+        const subcomercialesRes = await getSubcomerciales(tursoClient, userId);
+        if (
+          subcomercialesRes.success &&
+          subcomercialesRes.ids &&
+          subcomercialesRes.ids.length > 0
+        ) {
+          hasAccess =
+            subcomercialesRes.ids.includes(ticket.created_by as string) ||
+            subcomercialesRes.ids.includes(ticket.assigned_to as string);
+        }
+      }
+
       if (!hasAccess) {
         return { hasAccess: false, error: "Access denied" };
       }

@@ -10,6 +10,7 @@ import {
 import { NOW_DATE } from "@/dashboard/constants";
 import { ServerNotificationsService } from "@/core/services/serverNotificationsService";
 import { generateTicketCreatedNotification } from "@/core/utils/notifications.helpers";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -150,15 +151,37 @@ const getClientNameFromContext = async (
 /**
  * Filter tickets based on user role and permissions
  */
-const filterTicketsByRole = (
+const filterTicketsByRole = async (
   user: AuthenticatedUser,
   whereConditions: string[],
-  params: (string | number | boolean)[]
-): void => {
-  // Role "2" (comercial) can only see their own tickets
+  params: (string | number | boolean)[],
+  tursoClient: Client
+): Promise<void> => {
+  // Role "2" (comercial) can see their own tickets and those of their subcomerciales
   if (user.role === "2") {
-    whereConditions.push("(t.created_by = ? OR t.assigned_to = ?)");
-    params.push(user.id, user.id);
+    const subcomercialesRes = await getSubcomerciales(tursoClient, user.id);
+
+    if (
+      subcomercialesRes.success &&
+      subcomercialesRes.ids &&
+      subcomercialesRes.ids.length > 0
+    ) {
+      // Include user's tickets and subcomerciales' tickets
+      const placeholders = subcomercialesRes.ids.map(() => "?").join(",");
+      whereConditions.push(
+        `(t.created_by = ? OR t.assigned_to = ? OR t.created_by IN (${placeholders}) OR t.assigned_to IN (${placeholders}))`
+      );
+      params.push(
+        user.id,
+        user.id,
+        ...subcomercialesRes.ids,
+        ...subcomercialesRes.ids
+      );
+    } else {
+      // If no subcomerciales, only show user's own tickets
+      whereConditions.push("(t.created_by = ? OR t.assigned_to = ?)");
+      params.push(user.id, user.id);
+    }
   }
 
   // Note: Internal tickets filtering is handled explicitly via include_internal parameter
@@ -256,7 +279,7 @@ export async function GET(
     const params: (string | number | boolean)[] = [];
 
     // Apply role-based filtering
-    filterTicketsByRole(user, whereConditions, params);
+    await filterTicketsByRole(user, whereConditions, params, tursoClient);
 
     // Apply query filters
     if (query.context) {
