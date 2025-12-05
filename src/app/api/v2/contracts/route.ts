@@ -910,7 +910,7 @@ export async function GET(
       page: parseInt(searchParams.get("page") || "1"),
       rowsPerPage:
         searchParams.get("rowsPerPage") === "Sin Límite"
-          ? 200
+          ? 400
           : parseInt(searchParams.get("rowsPerPage") || "15"),
       user_id: searchParams.get("user_id") || "",
       user_role: searchParams.get("user_role") || "",

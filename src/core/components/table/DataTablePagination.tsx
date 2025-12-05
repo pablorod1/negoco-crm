@@ -54,7 +54,7 @@ export function DataTablePagination({
   const visiblePages = getVisiblePages();
 
   const handleSetPageSize = (value: string) => {
-    const newPageSize = value === "Sin Límite" ? 200 : parseInt(value, 10);
+    const newPageSize = value === "Sin Límite" ? 400 : parseInt(value, 10);
     setPageSize(newPageSize);
     setPageIndex(1); // Reset to first page when changing page size
   };
@@ -83,11 +83,13 @@ export function DataTablePagination({
               </SelectValue>
             </SelectTrigger>
             <SelectContent side="top">
-              {[5, 10, 15, 20, 30, 40, 50, 100, 200].map((pageSize, index) => (
-                <SelectItem key={index} value={pageSize.toString()}>
-                  {pageSize}
-                </SelectItem>
-              ))}
+              {[5, 10, 15, 20, 30, 40, 50, 100, 200, 400].map(
+                (pageSize, index) => (
+                  <SelectItem key={index} value={pageSize.toString()}>
+                    {pageSize}
+                  </SelectItem>
+                )
+              )}
             </SelectContent>
           </Select>
         </div>
