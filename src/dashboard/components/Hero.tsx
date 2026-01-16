@@ -268,7 +268,7 @@ export default function HeroDashboard({
                   title="Balance"
                   total={totalBalance}
                   value={totalBalance}
-                  description="Comisiones 2025"
+                  description="Comisiones 2026"
                   type="chart"
                   delay={0.5}
                   key="dashboard-balance"

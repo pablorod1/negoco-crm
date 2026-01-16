@@ -62,9 +62,6 @@ const createUserFilter = (
       filter = `AND user_id = ?`;
       params.push(id);
     }
-  } else if (role !== "admin" && role !== "1") {
-    filter = `AND user_id = ?`;
-    params.push(id);
   }
 
   return { filter, params };

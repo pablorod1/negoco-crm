@@ -60,7 +60,7 @@ interface YearlyTramitesBarChartProps {
 // Utility functions
 const createEmptyData = (): ChartData[] =>
   Array.from({ length: 12 }, (_, i) => ({
-    field: new Date(2025, i).toLocaleString("es-ES", { month: "long" }),
+    field: new Date(2026, i).toLocaleString("es-ES", { month: "long" }),
     active: 0,
     baja: 0,
     comision: 0,
