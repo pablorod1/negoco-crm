@@ -34,7 +34,7 @@ interface EnergySupplierResponse {
  * @returns Promise<NextResponse<EnergySupplierResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<EnergySupplierResponse>> {
   const optimizations: string[] = [];
 
@@ -49,7 +49,7 @@ export async function POST(
           success: false,
           error: "Missing Parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -66,7 +66,7 @@ export async function POST(
           success: false,
           error: "Database not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -76,7 +76,7 @@ export async function POST(
           success: false,
           error: "Database not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -89,9 +89,7 @@ export async function POST(
       // Commercial users (role 2): only see their own tramites and their subcomerciales' non-draft tramites
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
-        userFilterClause = `AND (t.user_id = ? OR (t.user_id IN (${subcomerciales.ids
-          .map(() => "?")
-          .join(", ")})))`;
+        userFilterClause = `AND (t.user_id = ? OR t.user_id IN (${subcomerciales.ids.map(() => "?").join(", ")}))`;
         userFilterParams.push(user_id, ...subcomerciales.ids);
         optimizations.push("role-based-filtering");
         optimizations.push("subordinate-user-lookup");
@@ -101,9 +99,9 @@ export async function POST(
         optimizations.push("role-based-filtering");
       }
     } else {
-      // For other roles: show all non-draft tramites or user's own tramites (including drafts)
-      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ?))`;
-      userFilterParams.push(user_id, user_id);
+      // For other roles (admin, supervisor, etc.): no user filtering, show all tramites
+      userFilterClause = "";
+      // userFilterParams stays empty - no parameters needed
     }
 
     // Single optimized query with subqueries for efficient data retrieval and proper user filtering
@@ -119,24 +117,24 @@ export async function POST(
           SELECT COUNT(DISTINCT con.tramite_id)
           FROM contracts con
           JOIN tramites t ON t.id = con.tramite_id
-          WHERE 
-            con.new_company = c.id OR con.new_company = c.name 
-           ${userFilterClause}
+          WHERE (con.new_company = c.id OR con.new_company = c.name)
+            ${userFilterClause}
         ) as total_tramites,
         (
           SELECT 
-          SUM(con.consumption) AS total
-      FROM contracts con
-      INNER JOIN tramites t ON con.tramite_id = t.id
-          WHERE t.status = 'Activo' AND (
-            con.new_company = c.id OR con.new_company = c.name
-          ) ${userFilterClause}
+            SUM(con.consumption) AS total
+          FROM contracts con
+          INNER JOIN tramites t ON con.tramite_id = t.id
+          WHERE t.status = 'Activo' 
+            AND (con.new_company = c.id OR con.new_company = c.name)
+            ${userFilterClause}
         ) as total_consumption
       FROM comercializadoras c
       ORDER BY c.name ASC
     `;
     const params = [...userFilterParams, ...userFilterParams];
     optimizations.push("exact-by-name-logic-per-comercializadora");
+    console.log("Executing query with params:", { query, params });
 
     // Execute query with performance tracking
     const queryStartTime = Date.now();
@@ -155,7 +153,7 @@ export async function POST(
           success: false,
           error: "No commercializadoras found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -169,7 +167,7 @@ export async function POST(
         num_tramites: Number(row.total_tramites) || 0,
         num_files: Number(row.num_files) || 0,
         total_consumption: Number(row.total_consumption) || 0,
-      })
+      }),
     );
 
     optimizations.push("type-safe-transformation");
@@ -188,7 +186,7 @@ export async function POST(
           "X-Result-Count": comercializadoras.length.toString(),
           "X-Optimizations": optimizations.join(","),
         },
-      }
+      },
     );
   } catch (error) {
     // Enhanced error logging with context
@@ -203,7 +201,7 @@ export async function POST(
       {
         error: "Internal Server Error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

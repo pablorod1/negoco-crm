@@ -45,7 +45,7 @@ interface EnergySupplierByNameResponse {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ name: string }> }
+  { params }: { params: Promise<{ name: string }> },
 ): Promise<NextResponse<EnergySupplierByNameResponse>> {
   const startTime = Date.now();
   const optimizations: string[] = [
@@ -65,7 +65,7 @@ export async function POST(
           success: false,
           error: "Missing Parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -79,7 +79,7 @@ export async function POST(
           success: false,
           error: "Invalid request body",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -92,7 +92,7 @@ export async function POST(
           success: false,
           error: "Missing user authentication parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -108,7 +108,7 @@ export async function POST(
           success: false,
           error: "Missing Parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -120,7 +120,7 @@ export async function POST(
           success: false,
           error: "Database not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -132,9 +132,7 @@ export async function POST(
       // Commercial users (role 2): only see their own tramites and their subcomerciales' tramites
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
       if (subcomerciales.success && subcomerciales.ids) {
-        userFilterClause = `AND (t.user_id = ? OR (t.user_id IN (${subcomerciales.ids
-          .map(() => "?")
-          .join(", ")})))`;
+        userFilterClause = `AND (t.user_id = ? OR t.user_id IN (${subcomerciales.ids.map(() => "?").join(", ")}))`;
         userFilterParams.push(user_id, ...subcomerciales.ids);
         optimizations.push("role-based-filtering");
         optimizations.push("subordinate-user-lookup");
@@ -144,9 +142,9 @@ export async function POST(
         optimizations.push("role-based-filtering");
       }
     } else {
-      // For other roles: show all non-draft tramites or user's own tramites (including drafts)
-      userFilterClause = `AND (t.user_id = ? OR (t.user_id != ?))`;
-      userFilterParams.push(user_id, user_id);
+      // For other roles (admin, supervisor, etc.): no user filtering, show all tramites
+      userFilterClause = "";
+      // userFilterParams stays empty - no parameters needed
     }
 
     // Single optimized query with subqueries matching exactly the main endpoint logic
@@ -162,18 +160,17 @@ export async function POST(
           SELECT COUNT(DISTINCT con.tramite_id)
           FROM contracts con
           JOIN tramites t ON t.id = con.tramite_id
-          WHERE  
-            con.new_company = c.id OR con.new_company = c.name 
-          ${userFilterClause}
+          WHERE (con.new_company = c.id OR con.new_company = c.name)
+            ${userFilterClause}
         ) as num_tramites,
         (
           SELECT 
-          SUM(con.consumption) AS total
-      FROM contracts con
-      INNER JOIN tramites t ON con.tramite_id = t.id
-          WHERE t.status = 'Activo' AND (
-            con.new_company = c.id OR con.new_company = c.name
-          ) ${userFilterClause}
+            SUM(con.consumption) AS total
+          FROM contracts con
+          INNER JOIN tramites t ON con.tramite_id = t.id
+          WHERE t.status = 'Activo' 
+            AND (con.new_company = c.id OR con.new_company = c.name)
+            ${userFilterClause}
         ) as total_consumption,
         (SELECT json_group_array(
           json_object(
@@ -210,7 +207,7 @@ export async function POST(
           success: false,
           error: "No comercializadora found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -274,7 +271,7 @@ export async function POST(
         success: true,
         data: responseData,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     const queryTime = Date.now() - startTime;
@@ -290,7 +287,7 @@ export async function POST(
         success: false,
         error: "Internal Server Error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
