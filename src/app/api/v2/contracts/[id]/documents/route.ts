@@ -74,7 +74,7 @@ const BulkFileUploadSchema = z.object({
 const FileDeleteSchema = z.object({
   file_name: z.string().min(1, "File name is required"),
   organization_id: z.string().min(1, "Organization ID is required"),
-  user_id: z.string().min(1, "User ID is required"), // Add for tracking
+  user_id: z.string().min(1, "User ID is required").optional(), // Optional for backward compatibility; used for tracking when provided
 });
 
 // ==================== DATABASE OPERATIONS ====================
@@ -85,7 +85,7 @@ const FileDeleteSchema = z.object({
  */
 async function bulkInsertTramiteFiles(
   files: ContractDocumentFile[],
-  tursoClient: Client
+  tursoClient: Client,
 ): Promise<{ success: boolean; error?: string; metrics?: QueryMetrics }> {
   const startTime = performance.now();
 
@@ -141,7 +141,7 @@ async function bulkInsertTramiteFiles(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ContractDocumentsResponse>> {
   try {
     // ==================== INPUT VALIDATION ====================
@@ -156,7 +156,7 @@ export async function POST(
       console.error("Error parsing form data:", formError);
       return NextResponse.json(
         { success: false, error: "Error uploading files" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -173,7 +173,7 @@ export async function POST(
     } catch {
       return NextResponse.json(
         { success: false, error: "Error uploading files" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -184,7 +184,7 @@ export async function POST(
           success: false,
           error: "No files provided",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -197,7 +197,7 @@ export async function POST(
     if (!validationResult.success) {
       console.warn(
         "[VALIDATION] Enhanced validation failed:",
-        validationResult.error
+        validationResult.error,
       );
       // Continue with original behavior for backward compatibility
     }
@@ -212,7 +212,7 @@ export async function POST(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -221,7 +221,7 @@ export async function POST(
       // Perform the bulk insert with enhanced error handling
       const insertResult = await bulkInsertTramiteFiles(
         tramiteFiles,
-        tursoClient
+        tursoClient,
       );
 
       if (!insertResult.success) {
@@ -230,7 +230,7 @@ export async function POST(
             success: false,
             error: insertResult.error || "Error inserting files",
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -252,7 +252,7 @@ export async function POST(
             userId,
             "upload",
             file.filename,
-            file.extension
+            file.extension,
           );
         }
       }
@@ -268,7 +268,7 @@ export async function POST(
         success: false,
         error: "Error uploading files",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -281,7 +281,7 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<
   NextResponse<
     | ContractDocumentsResponse
@@ -294,7 +294,7 @@ export async function GET(
     if (!contractId) {
       return NextResponse.json(
         { success: false, error: "Contract ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -302,7 +302,7 @@ export async function GET(
     if (!tursoClient) {
       return NextResponse.json(
         { success: false, error: "Database client not initialized" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -327,7 +327,7 @@ export async function GET(
     console.error("Error retrieving contract documents:", error);
     return NextResponse.json(
       { success: false, error: "Error retrieving documents" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -340,7 +340,7 @@ export async function GET(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ContractDocumentsResponse>> {
   try {
     const { id: tramite_id } = await params;
@@ -354,7 +354,7 @@ export async function DELETE(
           success: false,
           error: "Faltan parámetros",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -367,7 +367,7 @@ export async function DELETE(
           success: false,
           error: "Faltan parámetros",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -379,7 +379,7 @@ export async function DELETE(
           success: false,
           error: "Error al conectar a la base de datos",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -395,7 +395,7 @@ export async function DELETE(
           success: false,
           error: "Error al eliminar el archivo de la base de datos",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -408,7 +408,7 @@ export async function DELETE(
         tramite_id,
         validation.data.user_id,
         "delete",
-        file_name
+        file_name,
       );
     }
 
@@ -416,7 +416,7 @@ export async function DELETE(
       {
         success: true,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error(error);
@@ -425,7 +425,7 @@ export async function DELETE(
         success: false,
         error: "Error al eliminar el archivo",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -441,7 +441,7 @@ export async function PUT(): Promise<NextResponse<ContractDocumentsResponse>> {
       error:
         "PUT method not allowed. Use POST to upload documents or PATCH to update.",
     },
-    { status: 405 }
+    { status: 405 },
   );
 }
 
@@ -453,6 +453,6 @@ export async function PATCH(): Promise<
       success: false,
       error: "PATCH method not implemented. Use POST to upload new documents.",
     },
-    { status: 405 }
+    { status: 405 },
   );
 }
