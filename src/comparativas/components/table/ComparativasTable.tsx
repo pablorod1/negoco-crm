@@ -65,7 +65,7 @@ export default function ComparativasTable<TData, TValue>({
               ? String(pageSize)
               : pageSize === "Sin Límite"
                 ? "200"
-                : "200"
+                : "200",
           );
           params.set("user_id", userData.id);
           params.set("user_role", userData.role);
@@ -124,7 +124,7 @@ export default function ComparativasTable<TData, TValue>({
       creationDateRange,
       userFilter,
       companyFilter,
-    ]
+    ],
   );
 
   // Consolidated useEffect for data fetching and refresh
@@ -160,7 +160,7 @@ export default function ComparativasTable<TData, TValue>({
         columnVisibility,
       },
     }),
-    [comparativas, columns, sorting, columnVisibility]
+    [comparativas, columns, sorting, columnVisibility],
   );
 
   const handleResetFilters = useCallback(() => {
@@ -199,13 +199,13 @@ export default function ComparativasTable<TData, TValue>({
       setUserFilter,
       companyFilter,
       setCompanyFilter,
-    ]
+    ],
   );
 
   const table = useReactTable(tableConfig);
 
   return (
-    <div className="flex flex-col gap-2 w-full h-full">
+    <div className="flex flex-col gap-2 w-full h-full min-w-0">
       <ComparativasHeader table={table} {...toolbarProps} />
       <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
         <TableContent

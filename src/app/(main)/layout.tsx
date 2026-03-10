@@ -25,9 +25,12 @@ export default function MainLayout({
       <SidebarProvider defaultOpen={false}>
         <SidebarComponent />
         <SidebarInset>
-          <div>
+          <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden">
             <Header />
-            <main className="main-content" data-client={activeOrganization}>
+            <main
+              className="main-content flex-1 overflow-auto"
+              data-client={activeOrganization}
+            >
               {children}
             </main>
             <Toaster position="bottom-center">

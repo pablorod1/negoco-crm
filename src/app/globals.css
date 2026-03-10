@@ -137,6 +137,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 
   :root {
@@ -312,6 +313,10 @@
 
 .hero-card {
   border: 1px solid var(--hero-card-border);
+}
+
+.squircle {
+  corner-shape: squircle;
 }
 
 /* Estilo para navegadores webkit (Chrome, Safari, Edge) */

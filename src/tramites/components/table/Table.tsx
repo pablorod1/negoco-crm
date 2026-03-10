@@ -150,13 +150,13 @@ export function DataTable<TData, TValue>({
       setUserFilter,
       providerFilter,
       setProviderFilter,
-    ]
+    ],
   );
 
   return (
-    <div className="flex flex-col gap-2 w-full h-full">
+    <div className="flex flex-col gap-2 w-full h-full min-w-0 px-2">
       <TramitesHeader table={table} {...toolbarProps} />
-      <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-4xl squircle border border-gray-100 shadow-sm overflow-hidden">
         <TableContent
           setPageSize={setPageSize}
           total={totalTramites}

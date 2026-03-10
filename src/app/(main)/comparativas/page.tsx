@@ -48,11 +48,14 @@ export default function ComparativasPage() {
     // Determine which columns to use based on user role
     if (userData.role === "2" && userData.super_id) {
       setColumns(
-        createSubcomercialComparativasColumns(handlePlanChange, getSelectedPlan)
+        createSubcomercialComparativasColumns(
+          handlePlanChange,
+          getSelectedPlan,
+        ),
       );
     } else if (userData.role === "2" && !userData.super_id) {
       setColumns(
-        createComercialComparativasColumns(handlePlanChange, getSelectedPlan)
+        createComercialComparativasColumns(handlePlanChange, getSelectedPlan),
       );
     } else {
       setColumns(createComparativasColumns(handlePlanChange, getSelectedPlan));
@@ -61,7 +64,7 @@ export default function ComparativasPage() {
 
   // Render appropriate UI based on plan
   return (
-    <section className="pb-12 px-4 min-h-screen">
+    <section className="pb-12 px-4 h-full">
       {isStarter ? (
         <PlanUpgradeView />
       ) : (

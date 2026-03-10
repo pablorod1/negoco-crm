@@ -59,7 +59,7 @@ export function TableContent<TData, TValue>({
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </div>
                   </TableHead>
@@ -75,7 +75,7 @@ export function TableContent<TData, TValue>({
                     key={row.id}
                     className={cn(
                       "border-b border-gray-50 hover:bg-gray-50/30 transition-all duration-200 cursor-default group",
-                      "bg-white"
+                      "bg-white",
                     )}
                     initial={{ opacity: 0, y: 2 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -93,7 +93,7 @@ export function TableContent<TData, TValue>({
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
-                          cell.getContext()
+                          cell.getContext(),
                         )}
                       </TableCell>
                     ))}

@@ -50,7 +50,7 @@ export default function FotovoltaicaPage() {
   }, [userData, isStarter, router]);
 
   return (
-    <main className="min-h-screen pb-12 px-4">
+    <main className="h-full pb-12 px-4">
       {!isStarter ? (
         <FotovoltaicasTable columns={columns} />
       ) : (
