@@ -343,7 +343,11 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
         );
       return (
         <div className="flex justify-end">
-          {getStatusBadge(row.original.liquidez_status as Status, "liquidez")}
+          {getStatusBadge(
+            row.original.liquidez_status as Status,
+            "liquidez",
+            true,
+          )}
         </div>
       );
     },

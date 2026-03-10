@@ -11,6 +11,7 @@ import { ColumnSelector } from "../ColumnSelector";
 import AddTramiteDialog from "../../createTramite/AddTramiteDialog";
 import CreateBajaModal from "../../createBaja/CreateBajaModal";
 import { UpdateMultipleTramitesModal } from "../../liquidez/UpdateMultipleTramitesModal";
+import { ImportExcelLiquidezModal } from "../../liquidez/ImportExcelLiquidezModal";
 import ExportTableModal from "@/core/components/ExportTableModal";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import type { Table } from "@tanstack/react-table";
@@ -65,10 +66,13 @@ export function ActionButtons<TData>({
 
       {/* Update Multiple Tramites Modal for Liquidez */}
       {isLiquidezTable && (
-        <UpdateMultipleTramitesModal
-          table={table}
-          userData={userData as User}
-        />
+        <>
+          <ImportExcelLiquidezModal />
+          <UpdateMultipleTramitesModal
+            table={table}
+            userData={userData as User}
+          />
+        </>
       )}
 
       {/* Create Button */}

@@ -20,6 +20,7 @@ const LIQUIDEZ_STATUS_BADGES = {
   "Cobrado por Comercializadora": (
     <Badge variant="pending">Cobrado por Comercializadora</Badge>
   ),
+  Adelantado: <Badge variant="info">Adelantado</Badge>,
   "Pagado al Comercial": <Badge variant="success">Pagado al Comercial</Badge>,
   "Pendiente de Descontar": (
     <Badge variant="warning">Pendiente de Descontar</Badge>
@@ -31,6 +32,7 @@ const LIQUIDEZ_STATUS_BADGES = {
 const TABLE_LIQUIDEZ_STATUS_BADGES = {
   "Pendiente de Cobro": <Badge variant="warning">Pendiente</Badge>,
   "Cobrado por Comercializadora": <Badge variant="pending">Cobrado</Badge>,
+  Adelantado: <Badge variant="info">Adelantado</Badge>,
   "Pagado al Comercial": <Badge variant="success">Pagado</Badge>,
   "Pendiente de Descontar": <Badge variant="warning">Pendiente</Badge>,
   Descontado: <Badge variant="success">Descontado</Badge>,
@@ -89,7 +91,7 @@ export const getStatusBadge = (
     | "fotovoltaica"
     | "general"
     | "ticket",
-  isTable: boolean = false
+  isTable: boolean = false,
 ) => {
   // If statusType is explicitly provided, use it directly
   if (statusType === "fotovoltaica") {
@@ -129,7 +131,7 @@ export const getStatusBadge = (
   // Verificar si el status pertenece a FotovoltaicaStatus
   if (
     ["pending", "validated", "processing", "completed", "rejected"].includes(
-      status as FotovoltaicaStatus
+      status as FotovoltaicaStatus,
     )
   ) {
     return (
@@ -141,7 +143,7 @@ export const getStatusBadge = (
   // Verificar si el status pertenece a ComparativaStatus
   if (
     ["pending", "completed", "processed", "rejected"].includes(
-      status as ComparativaStatus
+      status as ComparativaStatus,
     )
   ) {
     return (
@@ -173,6 +175,7 @@ export const getStatusBadge = (
       "Pendiente de Cobro",
       "Cobrado por Comercializadora",
       "Pagado al Comercial",
+      "Adelantado",
       "Pendiente de Descontar",
       "Descontado",
     ].includes(status as string)

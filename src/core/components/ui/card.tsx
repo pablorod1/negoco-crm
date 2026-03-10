@@ -14,7 +14,7 @@ const cardVariants = cva(
           " shadow flex flex-col justify-between relative h-full bg-white  transition-all duration-200 overflow-hidden",
       },
     },
-  }
+  },
 );
 
 export interface CardProps
@@ -28,7 +28,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       className={cn(cardVariants({ variant, className }))}
       {...props}
     />
-  )
+  ),
 );
 Card.displayName = "Card";
 

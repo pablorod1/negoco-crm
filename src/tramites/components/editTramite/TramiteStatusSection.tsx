@@ -85,6 +85,13 @@ export default function TramiteStatusSection({
                   </p>
                   {getStatusBadge("Pendiente de Cobro")}
                 </div>
+              ) : isComercial && tramite.liquidez_status === "Adelantado" ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <p className="text-xs text-gray-500 text-center">
+                    Estado actual de liquidez
+                  </p>
+                  {getStatusBadge("Pagado al Comercial")}
+                </div>
               ) : (
                 <div className="flex flex-col items-center space-y-2">
                   <p className="text-xs text-gray-500 text-center">

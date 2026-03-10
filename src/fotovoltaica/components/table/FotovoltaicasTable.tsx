@@ -86,7 +86,7 @@ export default function FotovoltaicasTable<TData, TValue>({
             }
             console.error(
               "Error al obtener solicitudes de placas solares:",
-              error
+              error,
             );
             return;
           }
@@ -102,7 +102,7 @@ export default function FotovoltaicasTable<TData, TValue>({
           }
           console.error(
             "Error al obtener solicitudes de placas solares:",
-            error
+            error,
           );
         }
       }
@@ -117,7 +117,7 @@ export default function FotovoltaicasTable<TData, TValue>({
       userFilter,
       activationDateRange,
       typeFilter,
-    ]
+    ],
   );
 
   // Consolidated useEffect for data fetching and refresh
@@ -153,7 +153,7 @@ export default function FotovoltaicasTable<TData, TValue>({
         columnVisibility,
       },
     }),
-    [fotovoltaicas, columns, sorting, columnVisibility]
+    [fotovoltaicas, columns, sorting, columnVisibility],
   );
 
   const handleResetFilters = useCallback(() => {
@@ -196,13 +196,13 @@ export default function FotovoltaicasTable<TData, TValue>({
       setTypeFilter,
       activationDateRange,
       setActivationDateRange,
-    ]
+    ],
   );
 
   const table = useReactTable(tableConfig);
 
   return (
-    <div className="flex flex-col gap-2 w-full h-full">
+    <div className="flex flex-col gap-2 w-full h-full min-w-0">
       <FotovoltaicasHeader table={table} {...toolbarProps} />
       <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
         <TableContent
