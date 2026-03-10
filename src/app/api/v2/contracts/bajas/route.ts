@@ -24,6 +24,7 @@ const BajaTramiteSchema = z.object({
     "Pendiente de Cobro",
     "Cobrado por Comercializadora",
     "Pagado al Comercial",
+    "Adelantado",
     "Pendiente de Descontar",
     "Descontado",
   ]),
@@ -64,7 +65,7 @@ type DBExecutor = Pick<Client, "execute">;
 const checkBajaClientExists = async (
   id: string,
   documentNumber: string,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<boolean> => {
   try {
     const res = await db.execute({
@@ -83,13 +84,13 @@ const checkBajaClientExists = async (
  */
 const createBajaClient = async (
   client: z.infer<typeof BajaClientSchema>,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const clientExists = await checkBajaClientExists(
       client.id,
       client.document_number,
-      db
+      db,
     );
 
     if (clientExists) {
@@ -135,7 +136,7 @@ const createBajaClient = async (
  */
 const createBajaTramite = async (
   tramite: z.infer<typeof BajaTramiteSchema>,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     await db.execute({
@@ -184,7 +185,7 @@ const createBajaTramite = async (
  */
 const createBajaContract = async (
   contract: z.infer<typeof BajaContractSchema>,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     await db.execute({
@@ -237,7 +238,7 @@ const createBajaContract = async (
  * @returns Promise<NextResponse<BajaCreateResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<BajaCreateResponse>> {
   try {
     // Initialize database connection
@@ -249,7 +250,7 @@ export async function POST(
           success: false,
           error: "Database connection failed",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -273,7 +274,7 @@ export async function POST(
           success: false,
           error: "Missing required parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -299,7 +300,7 @@ export async function POST(
 
       if (tramite.client_id !== client.id) {
         console.warn(
-          `[BAJA] Client ID mismatch. Using client.id: ${client.id}`
+          `[BAJA] Client ID mismatch. Using client.id: ${client.id}`,
         );
         tramite.client_id = client.id;
       }
@@ -316,7 +317,7 @@ export async function POST(
           success: false,
           error: "Invalid data format for baja",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -333,7 +334,7 @@ export async function POST(
             success: false,
             error: `Error creating client: ${clientResult.error}`,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -346,7 +347,7 @@ export async function POST(
             success: false,
             error: `Error creating tramite: ${tramiteResult.error}`,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -360,7 +361,7 @@ export async function POST(
               success: false,
               error: `Error creating contract: ${contractResult.error}`,
             },
-            { status: 500 }
+            { status: 500 },
           );
         }
       }
@@ -377,7 +378,7 @@ export async function POST(
             client_id: client.id,
           },
         },
-        { status: 201 }
+        { status: 201 },
       );
     } catch (error) {
       await tx.rollback();
@@ -394,7 +395,7 @@ export async function POST(
         success: false,
         error: message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

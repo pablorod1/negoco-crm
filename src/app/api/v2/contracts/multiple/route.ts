@@ -31,6 +31,7 @@ type LiquidezStatus =
   | "Pendiente de Cobro"
   | "Cobrado por Comercializadora"
   | "Pagado al Comercial"
+  | "Adelantado"
   | "Pendiente de Descontar"
   | "Descontado";
 
@@ -42,6 +43,7 @@ const RequestBodySchema = z.object({
     "Pendiente de Cobro",
     "Cobrado por Comercializadora",
     "Pagado al Comercial",
+    "Adelantado",
     "Pendiente de Descontar",
     "Descontado",
   ]),
@@ -61,7 +63,7 @@ interface QueryMetrics {
 async function executeQuery(
   client: Client,
   sql: string,
-  args: (string | number)[]
+  args: (string | number)[],
 ): Promise<{ result: { rowsAffected: number }; metrics: QueryMetrics }> {
   const startTime = performance.now();
 
@@ -88,7 +90,7 @@ async function executeQuery(
     const queryTime = performance.now() - startTime;
     console.error(
       `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
-      error
+      error,
     );
     throw error;
   }
@@ -99,7 +101,7 @@ async function executeQuery(
  */
 function buildUpdateQuery(
   ids: string[],
-  status: LiquidezStatus
+  status: LiquidezStatus,
 ): { sql: string; args: (string | number)[] } {
   const placeholders = ids.map(() => "?").join(",");
   const currentDate = NOW_DATE.toISOString();
@@ -133,7 +135,7 @@ function buildUpdateQuery(
  * @returns Promise<NextResponse<MultipleContractsUpdateResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<MultipleContractsUpdateResponse>> {
   const startTime = performance.now();
 
@@ -149,7 +151,7 @@ export async function POST(
     if (!validationResult.success) {
       console.error(
         "[VALIDATION ERROR] Invalid request body:",
-        validationResult.error.issues
+        validationResult.error.issues,
       );
 
       // BACKWARD COMPATIBILITY: Return same error message as original
@@ -158,7 +160,7 @@ export async function POST(
           success: false,
           error: "No se han seleccionado trámites.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -177,7 +179,7 @@ export async function POST(
           success: false,
           error: "Error al conectar con la base de datos.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -192,7 +194,7 @@ export async function POST(
     if (result.rowsAffected === 0) {
       const totalRequestTime = performance.now() - startTime;
       console.warn(
-        `[WARNING] No contracts updated after ${totalRequestTime.toFixed(2)}ms`
+        `[WARNING] No contracts updated after ${totalRequestTime.toFixed(2)}ms`,
       );
 
       // BACKWARD COMPATIBILITY: Return same error message as original
@@ -201,7 +203,7 @@ export async function POST(
           success: false,
           error: "No se han actualizado los trámites.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -220,21 +222,21 @@ export async function POST(
     if (error instanceof z.ZodError) {
       console.error(
         `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
-        error.issues
+        error.issues,
       );
       return NextResponse.json(
         {
           success: false,
           error: "No se han seleccionado trámites.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Handle general errors
     console.error(
       `[ERROR] Multiple contract update failed after ${totalRequestTime.toFixed(2)}ms:`,
-      error
+      error,
     );
 
     // BACKWARD COMPATIBILITY: Return same error message as original
@@ -243,7 +245,7 @@ export async function POST(
         success: false,
         error: "Error al actualizar los trámites.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -278,7 +280,9 @@ export async function POST(
  *                   - "Pendiente de Cobro"
  *                   - "Cobrado por Comercializadora"
  *                   - "Pagado al Comercial"
+ *                  - "Adelantado"
  *                   - "Pendiente de Descontar"
+ *
  *                   - "Descontado"
  *                 description: New liquidez status for the contracts
  *                 example: "Cobrado por Comercializadora"

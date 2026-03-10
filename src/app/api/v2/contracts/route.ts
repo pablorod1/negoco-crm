@@ -31,6 +31,7 @@ const LiquidezStatusSchema = z
     "Pendiente de Cobro",
     "Cobrado por Comercializadora",
     "Pagado al Comercial",
+    "Adelantado",
     "Pendiente de Descontar",
     "Descontado",
   ])
@@ -348,7 +349,7 @@ type DBExecutor = Pick<Client, "execute">;
 const checkClientExists = async (
   id: string,
   documentNumber: string,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<boolean> => {
   try {
     const res = await db.execute({
@@ -365,7 +366,7 @@ const checkClientExists = async (
 
 const checkSignerExists = async (
   id: string,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<boolean> => {
   try {
     const res = await db.execute({
@@ -383,7 +384,7 @@ const checkSignerExists = async (
 const geocodeAddress = async (
   address: string,
   postalCode: string,
-  province: string
+  province: string,
 ): Promise<[number, number] | null> => {
   try {
     const fullAddress = `${address}, ${postalCode}, ${province}, España`;
@@ -396,8 +397,8 @@ const geocodeAddress = async (
 
     const response = await fetch(
       `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-        fullAddress
-      )}&key=${openCageKey}&limit=1`
+        fullAddress,
+      )}&key=${openCageKey}&limit=1`,
     );
 
     if (!response.ok) {
@@ -421,13 +422,13 @@ const geocodeAddress = async (
 const addClientOptimized = async (
   client: ClientDB,
   db: DBExecutor,
-  precomputedCoordinates: [number, number] | null
+  precomputedCoordinates: [number, number] | null,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const clientExists = await checkClientExists(
       client.id,
       client.document_number,
-      db
+      db,
     );
 
     if (clientExists) {
@@ -471,7 +472,7 @@ const addClientOptimized = async (
 
 const addSignerOptimized = async (
   signer: SignerDB,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const signerExists = await checkSignerExists(signer.id, db);
@@ -510,7 +511,7 @@ const addSignerOptimized = async (
 
 const addTramiteOptimized = async (
   tramite: TramiteDB,
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     await db.execute({
@@ -555,7 +556,7 @@ const addTramiteOptimized = async (
 
 const addContractsOptimized = async (
   contracts: ContractDB[],
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     if (contracts.length === 0) {
@@ -613,7 +614,7 @@ const addContractsOptimized = async (
 
 const addTramiteFilesOptimized = async (
   files: TramiteFile[],
-  db: DBExecutor
+  db: DBExecutor,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     if (files.length === 0) {
@@ -661,7 +662,7 @@ const addTramiteFilesOptimized = async (
  * @returns Promise<NextResponse<ContractCreateResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ContractCreateResponse>> {
   try {
     // Initialize database connection
@@ -673,7 +674,7 @@ export async function POST(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -695,7 +696,7 @@ export async function POST(
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -723,7 +724,7 @@ export async function POST(
       // Validate that tramite.client_id matches client.id
       if (tramite.client_id !== client.id) {
         console.warn(
-          `[VALIDATION] Mismatch between tramite.client_id (${tramite.client_id}) and client.id (${client.id}). Using client.id.`
+          `[VALIDATION] Mismatch between tramite.client_id (${tramite.client_id}) and client.id (${client.id}). Using client.id.`,
         );
         tramite.client_id = client.id;
       }
@@ -757,7 +758,7 @@ export async function POST(
           success: false,
           error: "Invalid data format",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -768,13 +769,13 @@ export async function POST(
       coordinates = await geocodeAddress(
         client.address,
         client.postal_code,
-        client.province
+        client.province,
       );
     } catch (geoError) {
       // Don't fail the flow if geocoding fails; log and continue
       console.warn(
         "Geocoding failed, continuing without coordinates",
-        geoError
+        geoError,
       );
     }
 
@@ -811,7 +812,7 @@ export async function POST(
       if (existingFiles && existingFiles.length > 0) {
         const existingFilesRes = await addTramiteFilesOptimized(
           existingFiles,
-          tx
+          tx,
         );
         if (!existingFilesRes.success) throw new Error(existingFilesRes.error);
       }
@@ -821,7 +822,7 @@ export async function POST(
         tx,
         tramite.id,
         userData.id,
-        `Trámite creado por ${userData.name}`
+        `Trámite creado por ${userData.name}`,
       );
 
       // Commit transaction
@@ -852,7 +853,7 @@ export async function POST(
         success: false,
         error: message,
       },
-      { status }
+      { status },
     );
   }
 }
@@ -867,7 +868,7 @@ export async function POST(
  * @returns Promise<NextResponse<PaginatedContractsResponse>>
  */
 export async function GET(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<PaginatedContractsResponse>> {
   try {
     // Parse query parameters from URL
@@ -875,7 +876,7 @@ export async function GET(
 
     // Helper function to parse JSON from query params safely
     const parseJsonParam = (
-      param: string | null
+      param: string | null,
     ): { from?: Date; to?: Date } | undefined => {
       if (!param) return undefined;
       try {
@@ -918,20 +919,20 @@ export async function GET(
       companyFilter: parseArrayParam(searchParams.get("companyFilter")),
       statusFilter: parseArrayParam(searchParams.get("statusFilter")),
       liquidezStatusFilter: parseArrayParam(
-        searchParams.get("liquidezStatusFilter")
+        searchParams.get("liquidezStatusFilter"),
       ),
       contractTypeFilter: parseArrayParam(
-        searchParams.get("contractTypeFilter")
+        searchParams.get("contractTypeFilter"),
       ),
       activationDateRange: parseJsonParam(
-        searchParams.get("activationDateRange")
+        searchParams.get("activationDateRange"),
       ),
       creationDateRange: parseJsonParam(searchParams.get("creationDateRange")),
       renovationDateRange: parseJsonParam(
-        searchParams.get("renovationDateRange")
+        searchParams.get("renovationDateRange"),
       ),
       collectionDateRange: parseJsonParam(
-        searchParams.get("collectionDateRange")
+        searchParams.get("collectionDateRange"),
       ),
       paymentDateRange: parseJsonParam(searchParams.get("paymentDateRange")),
       userFilter: parseArrayParam(searchParams.get("userFilter")),
@@ -967,7 +968,7 @@ export async function GET(
     if (!tursoClient) {
       return NextResponse.json(
         { success: false, error: "Database client not initialized" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -990,7 +991,7 @@ export async function GET(
         filters.push(
           `(t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
             .map(() => "?")
-            .join(", ")})))`
+            .join(", ")})))`,
         );
         params.push(user_id, ...subcomerciales.ids);
       } else {
@@ -1002,12 +1003,12 @@ export async function GET(
       if (userFilter && userFilter.length > 0) {
         filters.push(
           `(t.user_id IN (${userFilter.map(() => "?").join(", ")}) AND 
-           (t.user_id = ? OR t.status != 'Borrador'))`
+           (t.user_id = ? OR t.status != 'Borrador'))`,
         );
         params.push(...userFilter, user_id);
       } else {
         filters.push(
-          `(t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`
+          `(t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`,
         );
         params.push(user_id, user_id);
       }
@@ -1033,7 +1034,7 @@ export async function GET(
           "c.email",
           "con.CUPS",
         ],
-        filterValue
+        filterValue,
       );
     }
 
@@ -1065,7 +1066,7 @@ export async function GET(
           } catch (error) {
             console.error(
               `Error fetching company name for ID ${companyId}:`,
-              error
+              error,
             );
           }
         }
@@ -1118,7 +1119,7 @@ export async function GET(
     // Date range filter helper (preserved exact logic)
     const addDateRangeFilter = (
       column: string,
-      dateRange?: { from?: Date; to?: Date }
+      dateRange?: { from?: Date; to?: Date },
     ) => {
       if (dateRange && dateRange.from && dateRange.to) {
         const fromDate = new Date(dateRange.from);
@@ -1130,7 +1131,7 @@ export async function GET(
         filters.push(`date(${column}) BETWEEN date(?) AND date(?)`);
         params.push(
           fromDate.toISOString().split("T")[0],
-          toDate.toISOString().split("T")[0]
+          toDate.toISOString().split("T")[0],
         );
       }
     };
@@ -1277,7 +1278,7 @@ export async function GET(
         success: false,
         error: "Error en el servidor obteniendo los trámites",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

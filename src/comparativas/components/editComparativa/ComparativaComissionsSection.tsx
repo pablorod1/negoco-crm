@@ -114,7 +114,7 @@ export default function ComparativaComissionsSection({
             comissions: changes,
             user_id: userData.id,
           }),
-        }
+        },
       );
 
       const { success, error } = await res.json();
@@ -153,8 +153,14 @@ export default function ComparativaComissionsSection({
   };
 
   const getComissionText = (comission: number) => {
-    if (comission === 0 && comparativa.status !== "pending")
-      return "No hay ahorro";
+    if (comission === 0) {
+      if (comparativa.status === "awaiting_review") {
+        return "Pendiente de revisión";
+      } else if (comparativa.status !== "pending") {
+        return "No hay ahorro";
+      }
+    }
+
     return formatComission(comission);
   };
 
@@ -234,7 +240,7 @@ export default function ComparativaComissionsSection({
                       <span className="text-gray-600">Fijo:</span>
                       <span className="font-medium text-primary-900">
                         {getComissionText(
-                          comparativa.comision_sales_person.fijo
+                          comparativa.comision_sales_person.fijo,
                         )}
                       </span>
                     </div>
@@ -244,7 +250,7 @@ export default function ComparativaComissionsSection({
                       <span className="text-gray-600">Indexado:</span>
                       <span className="font-medium text-primary-900">
                         {getComissionText(
-                          comparativa.comision_sales_person.indexado
+                          comparativa.comision_sales_person.indexado,
                         )}
                       </span>
                     </div>
