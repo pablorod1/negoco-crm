@@ -35,7 +35,7 @@ export const createEmptyTramiteVM = (): TramiteVM => ({
 
 const getComission = (
   comparativa: ComparativaVM,
-  plan: "fijo" | "indexado"
+  plan: "fijo" | "indexado",
 ) => {
   return plan === "fijo"
     ? {
@@ -51,7 +51,7 @@ const getComission = (
 export const createEmptyTramiteDB = (
   userData: User,
   plan?: "fijo" | "indexado",
-  comparativa?: ComparativaVM
+  comparativa?: ComparativaVM,
 ): TramiteDB => ({
   id: `${
     userData ? userData.organization.name.slice(0, 3).toUpperCase() : "NEG"
@@ -85,22 +85,31 @@ export const createEmptyTramiteDB = (
   plan: plan ? plan : null,
 });
 
-export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => ({
-  id: `CLI-${crypto.randomUUID()}`,
-  name: comparativa ? comparativa.client : "",
-  last_name: comparativa ? comparativa.client.split(" ")[1] || "" : "",
-  type: "Particular",
-  email: "",
-  phone: "",
-  address: "",
-  postal_code: "",
-  province: "",
-  city: "",
-  document_type: "DNI",
-  document_number: "",
-  IBAN: "",
-  coordinates: null,
-});
+export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => {
+  const abarca = comparativa?.abarca_estudio;
+  return {
+    id: `CLI-${crypto.randomUUID()}`,
+    name: abarca?.titular || (comparativa ? comparativa.client : ""),
+    last_name: abarca?.ape1
+      ? [abarca.ape1, abarca.ape2].filter(Boolean).join(" ")
+      : comparativa
+        ? comparativa.client.split(" ")[1] || ""
+        : "",
+    type: abarca?.nif_empresa ? "Empresa" : "Particular",
+    email: abarca?.email || "",
+    phone: abarca?.movil || "",
+    address: abarca
+      ? [abarca.calle, abarca.numero].filter(Boolean).join(" ")
+      : "",
+    postal_code: abarca?.codpostal || "",
+    province: "",
+    city: abarca?.localidad || "",
+    document_type: abarca?.nif_empresa ? "CIF" : "DNI",
+    document_number: abarca?.dni || "",
+    IBAN: abarca?.iban || "",
+    coordinates: null,
+  };
+};
 
 export const createEmptySignerDB = (): SignerDB => ({
   id: `SGN-${crypto.randomUUID()}`,
@@ -114,28 +123,62 @@ export const createEmptySignerDB = (): SignerDB => ({
 });
 
 export const createEmptyContractDB = (
-  comparativa?: ComparativaVM | undefined
-): ContractDB => ({
-  id: `CTR-${crypto.randomUUID()}`,
-  type: "",
-  province: "",
-  city: "",
-  address: "",
-  postal_code: "",
-  old_company: "",
-  new_company: comparativa ? comparativa.company_id || "" : "",
-  plan: "",
-  consumption: 0,
-  CUPS: "",
-  pot1: 0,
-  pot2: 0,
-  pot3: 0,
-  pot4: 0,
-  pot5: 0,
-  pot6: 0,
-  description: "",
-  tramite_id: "",
-});
+  comparativa?: ComparativaVM | undefined,
+): ContractDB => {
+  const abarca = comparativa?.abarca_estudio;
+
+  // Determine contract type from Abarca data
+  let type = "";
+  if (abarca) {
+    const empresaNorm = (abarca.empresa ?? "")
+      .split(" - ")[0]
+      .trim()
+      .toLowerCase();
+    const empresaClienteNorm = (abarca.empresa_cliente ?? "")
+      .split(" - ")[0]
+      .trim()
+      .toLowerCase();
+    const isDifferentCompany =
+      empresaNorm && empresaClienteNorm && empresaNorm !== empresaClienteNorm;
+
+    if (isDifferentCompany && abarca.cambio_titularidad) {
+      type = "Cambio Compañía + Cambio Titular";
+    } else if (isDifferentCompany) {
+      type = "Cambio Compañía";
+    }
+  }
+
+  // Sum consumos
+  const totalConsumo = abarca
+    ? (abarca.consumo_p1 ?? 0) +
+      (abarca.consumo_p2 ?? 0) +
+      (abarca.consumo_p3 ?? 0)
+    : 0;
+
+  return {
+    id: `CTR-${crypto.randomUUID()}`,
+    type,
+    province: "",
+    city: abarca?.localidad_cups || "",
+    address: abarca
+      ? [abarca.calle_cups, abarca.numero_cups].filter(Boolean).join(" ")
+      : "",
+    postal_code: abarca?.codpostal_cups || "",
+    old_company: "",
+    new_company: comparativa ? comparativa.company_id || "" : "",
+    plan: abarca?.tipo_tarifa || "",
+    consumption: totalConsumo,
+    CUPS: abarca?.cups || "",
+    pot1: abarca?.potencia_contratada ?? 0,
+    pot2: abarca?.potencia_contratada_p2 ?? 0,
+    pot3: 0,
+    pot4: 0,
+    pot5: 0,
+    pot6: 0,
+    description: "",
+    tramite_id: "",
+  };
+};
 
 export const createEmptyTramiteFile = (): TramiteFile => ({
   id: "",

@@ -21,6 +21,7 @@ export interface Organization {
   name: string;
   logo: string | null;
   plan: string | null;
+  abarca_user_id?: number;
 }
 
 export interface Notification {
@@ -77,6 +78,7 @@ export type LiquidezStatus =
 
 export type ComparativaStatus =
   | "pending"
+  | "awaiting_review"
   | "completed"
   | "processed"
   | "rejected";

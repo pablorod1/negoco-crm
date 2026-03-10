@@ -42,14 +42,16 @@ export default function ThirdStepForm({
   userData,
   comparativa,
 }: Props) {
-  const [showContractForm, setShowContractForm] = useState(false);
+  const [showContractForm, setShowContractForm] = useState(
+    !!comparativa?.abarca_estudio,
+  );
   const [isEditingContract, setIsEditingContract] = useState(false);
   const [selectedContract, setSelectedContract] = useState<ContractDB | null>(
-    null
+    null,
   );
 
   const handleProviderChange = (
-    value: string | React.ChangeEvent<HTMLInputElement>
+    value: string | React.ChangeEvent<HTMLInputElement>,
   ) => {
     const providerValue =
       typeof value === "string" ? value : value.target.value;
@@ -60,7 +62,7 @@ export default function ThirdStepForm({
   };
 
   const handleComisionChange = (
-    value: number | React.ChangeEvent<HTMLInputElement>
+    value: number | React.ChangeEvent<HTMLInputElement>,
   ) => {
     const numValue =
       typeof value === "number" ? value : Number(value.target.value);
@@ -71,7 +73,7 @@ export default function ThirdStepForm({
   };
 
   const handleComisionSalesChange = (
-    value: number | React.ChangeEvent<HTMLInputElement>
+    value: number | React.ChangeEvent<HTMLInputElement>,
   ) => {
     const numValue =
       typeof value === "number" ? value : Number(value.target.value);
@@ -88,7 +90,7 @@ export default function ThirdStepForm({
 
   const handleUpdateContract = (updatedContract: ContractDB) => {
     const updatedContracts = contracts.map((contract) =>
-      contract.id === updatedContract.id ? updatedContract : contract
+      contract.id === updatedContract.id ? updatedContract : contract,
     );
     setContracts(updatedContracts);
     setShowContractForm(false);

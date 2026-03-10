@@ -4,6 +4,24 @@ import { getSessionCookie } from "better-auth/cookies";
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const sessionCookie = getSessionCookie(request);
+  const host = request.headers.get("host") || "";
+  const isApiSubdomain =
+    host.startsWith("api.") || host === "api.negococloud.es";
+  const isDev = host.startsWith("localhost");
+
+  // Subdominio api.negococloud.es: solo permite acceso a webhooks
+  if (isApiSubdomain) {
+    if (path.startsWith("/api/webhooks/")) {
+      return NextResponse.next();
+    }
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Subdominio de tenant: bloquear acceso a webhooks (solo vía api.negococloud.es)
+  // En desarrollo (localhost) se permite el acceso para testing
+  if (path.startsWith("/api/webhooks/") && !isDev) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const protectedPathsRegex = [
     /^\/tramites(\/.*)?$/,
@@ -19,8 +37,7 @@ export async function middleware(request: NextRequest) {
   ];
 
   const isProtectedPath = protectedPathsRegex.some((regex) => regex.test(path));
-  const isApiProtected =
-    path.startsWith("/api") && !path.startsWith("/api/auth");
+  const isApiProtected = path.startsWith("/api/v2");
 
   // Redirigir a login si no hay sesión en rutas protegidas
   if (isProtectedPath && !sessionCookie) {

@@ -8,7 +8,7 @@ export type FirstForm = {
 
 export const createEmptyFirstForm = (
   userData: User,
-  comparativa?: ComparativaVM
+  comparativa?: ComparativaVM,
 ): FirstForm => ({
   sales_name: comparativa ? (comparativa.user.name as string) : userData.name,
   user_id: userData.id,
@@ -40,21 +40,28 @@ export interface SecondForm {
 }
 
 export const createEmptySecondForm = (
-  comparativa?: ComparativaVM
-): SecondForm => ({
-  type: "Particular",
-  document_type: "",
-  document_number: "",
-  name: comparativa ? comparativa.client : "",
-  last_name: "",
-  email: "",
-  phone: "",
-  IBAN: "",
-  address: "",
-  postal_code: "",
-  province: "",
-  city: "",
-});
+  comparativa?: ComparativaVM,
+): SecondForm => {
+  const abarca = comparativa?.abarca_estudio;
+  return {
+    type: abarca?.nif_empresa ? "Empresa" : "Particular",
+    document_type: abarca ? (abarca.nif_empresa ? "CIF" : "DNI") : "",
+    document_number: abarca?.dni || "",
+    name: abarca?.titular || (comparativa ? comparativa.client : ""),
+    last_name: abarca?.ape1
+      ? [abarca.ape1, abarca.ape2].filter(Boolean).join(" ")
+      : "",
+    email: abarca?.email || "",
+    phone: abarca?.movil || "",
+    IBAN: abarca?.iban || "",
+    address: abarca
+      ? [abarca.calle, abarca.numero].filter(Boolean).join(" ")
+      : "",
+    postal_code: abarca?.codpostal || "",
+    province: "",
+    city: abarca?.localidad || "",
+  };
+};
 
 export interface SecondFormError {
   document_type: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ interface Props {
   comparativa: ComparativaVM;
   onUpdate: () => void;
   userData: User;
+  mode?: "manual" | "abarca";
 }
 
 type ActionType = "complete" | "reject" | null;
@@ -43,6 +44,7 @@ export default function CompletarEstudioModal({
   comparativa,
   onUpdate,
   userData,
+  mode = "manual",
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [actionType, setActionType] = useState<ActionType>(null);
@@ -52,6 +54,32 @@ export default function CompletarEstudioModal({
 
   // Load active energy suppliers
   const { activeSuppliers } = useActiveEnergySuppliers();
+
+  // Auto-match supplier from Abarca estudio empresa field
+  useEffect(() => {
+    if (mode !== "abarca" || selectedSupplierId || activeSuppliers.length === 0)
+      return;
+
+    const empresa = comparativa.abarca_estudio?.empresa;
+    if (!empresa) return;
+
+    // Extract company name before " - " (e.g. "NATURGY - POR USO LUZ" → "naturgy")
+    const companyName = empresa.split(" - ")[0].trim().toLowerCase();
+    if (!companyName) return;
+
+    const match = activeSuppliers.find((s) =>
+      s.name.toLowerCase().includes(companyName),
+    );
+
+    if (match) {
+      setSelectedSupplierId(match.id);
+    }
+  }, [
+    mode,
+    activeSuppliers,
+    comparativa.abarca_estudio?.empresa,
+    selectedSupplierId,
+  ]);
 
   // Comisiones state
   const [formDataComissions, setFormDataComissions] = useState<
@@ -74,7 +102,7 @@ export default function CompletarEstudioModal({
             comision_indexado: comparativa.comision.indexado,
             comision_sales_person_indexado:
               comparativa.comision_sales_person.indexado,
-          }
+          },
   );
 
   const onClose = () => {
@@ -101,7 +129,7 @@ export default function CompletarEstudioModal({
               comision_indexado: comparativa.comision.indexado,
               comision_sales_person_indexado:
                 comparativa.comision_sales_person.indexado,
-            }
+            },
     );
   };
 
@@ -175,7 +203,7 @@ export default function CompletarEstudioModal({
           client: comparativa.client,
           user_id: comparativa.user.id as string,
           status: "rejected",
-        }
+        },
       );
 
       const notificationResponse = await fetch(`/api/v2/notifications`, {
@@ -212,7 +240,7 @@ export default function CompletarEstudioModal({
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const { success: emailSuccess, error: emailError } =
@@ -247,7 +275,7 @@ export default function CompletarEstudioModal({
   };
 
   const handleCompleteEstudio = async () => {
-    if (uploadedFiles.length === 0) {
+    if (mode === "manual" && uploadedFiles.length === 0) {
       showCustomToast({
         title: "Archivo requerido",
         message: "Debes subir al menos un archivo para completar el estudio",
@@ -282,37 +310,39 @@ export default function CompletarEstudioModal({
 
     setLoading(true);
     try {
-      // 1. Subir archivos
+      // 1. Subir archivos (solo en modo manual)
       const comparativaFiles: ComparativaFile[] = [];
 
-      for (const file of uploadedFiles) {
-        try {
-          const { downloadURL, previewURL } = await uploadFile(
-            file,
-            `${userData.organization.id}/comparativas`,
-            comparativa.id
-          );
+      if (mode === "manual") {
+        for (const file of uploadedFiles) {
+          try {
+            const { downloadURL, previewURL } = await uploadFile(
+              file,
+              `${userData.organization.id}/comparativas`,
+              comparativa.id,
+            );
 
-          comparativaFiles.push({
-            id: crypto.randomUUID(),
-            comparativa_id: comparativa.id,
-            filename: file.name,
-            size: file.size,
-            extension: file.name.split(".").pop() || "",
-            upload_date: new Date().toISOString(),
-            download_url: downloadURL,
-            preview_url: previewURL || null,
-          });
-        } catch (error) {
-          showCustomToast({
-            title: "Error al subir archivo",
-            message: "Inténtalo de nuevo más tarde",
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          console.error("Error uploading file:", error);
-          return;
+            comparativaFiles.push({
+              id: crypto.randomUUID(),
+              comparativa_id: comparativa.id,
+              filename: file.name,
+              size: file.size,
+              extension: file.name.split(".").pop() || "",
+              upload_date: new Date().toISOString(),
+              download_url: downloadURL,
+              preview_url: previewURL || null,
+            });
+          } catch (error) {
+            showCustomToast({
+              title: "Error al subir archivo",
+              message: "Inténtalo de nuevo más tarde",
+              iconColor: "var(--danger-color)",
+              iconSize: 24,
+              icon: CircleX,
+            });
+            console.error("Error uploading file:", error);
+            return;
+          }
         }
       }
 
@@ -345,32 +375,34 @@ export default function CompletarEstudioModal({
         return;
       }
 
-      // 3. Agregar archivos
-      const formData = new FormData();
-      formData.append("organization_id", userData.organization.id);
-      formData.append("files", JSON.stringify(comparativaFiles));
-      formData.append("estudio_realizado", "true");
+      // 3. Agregar archivos (solo en modo manual)
+      if (mode === "manual" && comparativaFiles.length > 0) {
+        const formData = new FormData();
+        formData.append("organization_id", userData.organization.id);
+        formData.append("files", JSON.stringify(comparativaFiles));
+        formData.append("estudio_realizado", "true");
 
-      const uploadResponse = await fetch(
-        `/api/v2/comparisons/${comparativa.id}/documents`,
-        {
-          method: "POST",
-          body: formData,
+        const uploadResponse = await fetch(
+          `/api/v2/comparisons/${comparativa.id}/documents`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+        const { success: uploadSuccess, error: uploadError } =
+          await uploadResponse.json();
+
+        if (!uploadSuccess) {
+          showCustomToast({
+            title: "Error al subir archivos",
+            message: uploadError,
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
         }
-      );
-
-      const { success: uploadSuccess, error: uploadError } =
-        await uploadResponse.json();
-
-      if (!uploadSuccess) {
-        showCustomToast({
-          title: "Error al subir archivos",
-          message: uploadError,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
       }
 
       // 4. Enviar notificación
@@ -380,9 +412,9 @@ export default function CompletarEstudioModal({
           client: comparativa.client,
           user_id: comparativa.user.id as string,
           status: "completed",
-          files: true,
+          files: mode === "manual" ? true : undefined,
           comissions: changes ? true : undefined,
-        }
+        },
       );
 
       const notificationResponse = await fetch(`/api/v2/notifications`, {
@@ -419,7 +451,7 @@ export default function CompletarEstudioModal({
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const { success: emailSuccess, error: emailError } =
@@ -457,8 +489,9 @@ export default function CompletarEstudioModal({
     return uuid.slice(-8).toUpperCase();
   };
 
-  // Si no es pending, no mostrar nada
-  if (comparativa.status !== "pending") {
+  // Guard: modo manual requiere pending, modo abarca requiere awaiting_review
+  const allowedStatus = mode === "abarca" ? "awaiting_review" : "pending";
+  if (comparativa.status !== allowedStatus) {
     return null;
   }
 
@@ -468,6 +501,109 @@ export default function CompletarEstudioModal({
 
   if (!isAdmin && !isBackoffice) {
     return null;
+  }
+
+  // Modo abarca: solo mostrar el modal simplificado (sin upload, sin rechazo)
+  if (mode === "abarca") {
+    return (
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full gap-2"
+            onClick={() => handleOpen("complete")}
+          >
+            <CheckCircle className="h-4 w-4" />
+            Asignar Comercializadora y Comisiones
+          </Button>
+        </DialogTrigger>
+        <DialogContent
+          aria-describedby={undefined}
+          className="w-full max-w-3xl max-h-[95dvh] h-full overflow-y-auto"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-primary-800">
+              Revisión de Estudio Abarca · {comparativa.client}
+            </DialogTitle>
+            <DialogDescription>
+              El estudio de Abarca se ha recibido correctamente. Asigna la
+              comercializadora ganadora y las comisiones para completar la
+              comparativa.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loading && (
+            <LoadingStateModal
+              title="Completando revisión..."
+              description="Espere unos segundos mientras procesamos la revisión."
+            />
+          )}
+
+          <div className="space-y-6">
+            {/* Seleccionar Comercializadora */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                Comercializadora Ganadora{" "}
+                <span className="text-red-500 text-xs">*</span>
+              </h3>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="supplier-select-abarca"
+                  className="text-sm text-gray-600"
+                >
+                  Selecciona la comercializadora que ganó la comparativa
+                </Label>
+                <Select
+                  value={selectedSupplierId}
+                  onValueChange={setSelectedSupplierId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar comercializadora..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeSuppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Comisiones */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                Asignar Comisiones{" "}
+                <span className="text-red-500 text-xs">*</span>
+              </h3>
+              <ComissionsForm
+                comparativa={comparativa}
+                formDataComissions={formDataComissions}
+                setFormDataComissions={setFormDataComissions}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={onClose} variant="outline">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCompleteEstudio}
+              disabled={
+                checkEmptyComissions() || !selectedSupplierId || loading
+              }
+            >
+              {loading ? "Completando..." : "Completar Revisión"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (
@@ -484,7 +620,7 @@ export default function CompletarEstudioModal({
 
       {/* Modal para confirmar rechazo */}
       <Dialog open={isOpen && actionType === "reject"} onOpenChange={setIsOpen}>
-        <DialogContent className="w-full max-w-md">
+        <DialogContent className="w-full max-w-md max-h-[95dvh] h-full overflow-y-auto">
           <DialogHeader>
             <DialogTitle>¿Rechazar comparativa?</DialogTitle>
             <DialogDescription>
@@ -525,7 +661,7 @@ export default function CompletarEstudioModal({
         </DialogTrigger>
         <DialogContent
           aria-describedby={undefined}
-          className="w-full max-w-3xl"
+          className="w-full max-w-3xl max-h-[95dvh] h-full overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-primary-800">
@@ -634,7 +770,8 @@ export default function CompletarEstudioModal({
               disabled={
                 uploadedFiles.length === 0 ||
                 checkEmptyComissions() ||
-                !selectedSupplierId
+                !selectedSupplierId ||
+                loading
               }
             >
               {loading ? "Completando..." : "Completar Estudio"}

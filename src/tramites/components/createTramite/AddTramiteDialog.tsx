@@ -58,7 +58,7 @@ export default function AddTramiteDialog({
 }: AddTramiteDialogProps) {
   // State management
   const [plan, setPlan] = useState<"fijo" | "indexado" | undefined>(
-    comparativa ? comparativa.plan[0] : undefined
+    comparativa ? comparativa.plan[0] : undefined,
   );
   const { userData } = useUser();
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -92,14 +92,14 @@ export default function AddTramiteDialog({
       setClient(
         savedClient
           ? savedClient
-          : createEmptyClientDB(comparativa ? comparativa : undefined)
+          : createEmptyClientDB(comparativa ? comparativa : undefined),
       );
       setSigner(null);
       setContracts([]);
       setDocuments([]);
       setSelectedExistingFiles(null);
     },
-    [comparativa, savedClient, userData]
+    [comparativa, savedClient, userData],
   );
 
   const handleClose = useCallback(
@@ -128,7 +128,7 @@ export default function AddTramiteDialog({
       setLoadingStep(0);
       setLoadingMessage("");
     },
-    [tramite.id, activeTab]
+    [tramite.id, activeTab],
   );
 
   // Navigation handlers
@@ -142,8 +142,8 @@ export default function AddTramiteDialog({
         createEmptyTramiteDB(
           userData as User,
           plan ? (plan as "fijo" | "indexado") : undefined,
-          comparativa ? comparativa : undefined
-        )
+          comparativa ? comparativa : undefined,
+        ),
       );
     }
     setActiveTab((prev) => prev + 1);
@@ -167,7 +167,7 @@ export default function AddTramiteDialog({
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const { success: comparativaSuccess, error: comparativaError } =
@@ -197,7 +197,7 @@ export default function AddTramiteDialog({
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const { success: moveFilesSuccess, error: moveFileError } =
@@ -233,7 +233,7 @@ export default function AddTramiteDialog({
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const { success: emailSuccess, error: emailError } =
@@ -279,7 +279,7 @@ export default function AddTramiteDialog({
           const { downloadURL, previewURL, file_path } = await uploadFile(
             file,
             `${userData?.organization.id}/tramites`,
-            tramite.id
+            tramite.id,
           );
 
           uploadedFilePaths.push(file_path as string);
@@ -294,7 +294,7 @@ export default function AddTramiteDialog({
             download_url: downloadURL,
             preview_url: previewURL || null,
           };
-        })
+        }),
       );
 
       const formData = new FormData();
@@ -661,7 +661,7 @@ export default function AddTramiteDialog({
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
-        className="transition-all duration-700 ease-in-out w-full h-auto max-w-[90vw]"
+        className="transition-all duration-700 ease-in-out w-full h-auto max-h-[95dvh] overflow-y-auto max-w-[90vw]"
       >
         <DialogHeader>
           <div className="hidden">

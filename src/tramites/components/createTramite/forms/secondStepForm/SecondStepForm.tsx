@@ -56,20 +56,22 @@ export default function SecondStepForm({
   const [clients, setClients] = useState<ClientDB[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedClient, setSelectedClient] = useState<string | null>(
-    savedClient ? savedClient.id : null
+    savedClient ? savedClient.id : null,
   );
+  const hasAbarcaData = !!comparativa?.abarca_estudio;
   const [newClientState, setNewClientState] = useState<boolean>(false);
+  const [abarcaAutoApplied, setAbarcaAutoApplied] = useState(false);
 
   // Form state
   const [errors, setErrors] = useState<SecondFormError>(
-    createEmptySecondFormError
+    createEmptySecondFormError,
   );
   const [formData, setFormData] = useState<SecondForm>(
-    createEmptySecondForm(comparativa)
+    createEmptySecondForm(comparativa),
   );
   const [signerData, setSignerData] = useState<SignerForm | null>(null);
   const [signerErrors, setSignerErrors] = useState<SignerFormError>(
-    createEmptySignerFormError
+    createEmptySignerFormError,
   );
 
   // Get cached client/signer data from localStorage
@@ -228,7 +230,7 @@ export default function SecondStepForm({
         if (data) {
           // Sort clients alphabetically by name
           const sortedClients = (data as ClientDB[]).sort((a, b) =>
-            a.name.localeCompare(b.name)
+            a.name.localeCompare(b.name),
           );
           setClients(sortedClients);
         }
@@ -248,6 +250,41 @@ export default function SecondStepForm({
 
     fetchClients();
   }, [userData]);
+
+  // Auto-select existing client by DNI or auto-open new client form with Abarca data
+  useEffect(() => {
+    if (!hasAbarcaData || abarcaAutoApplied || loading || clients.length === 0)
+      return;
+
+    const abarcaDni = comparativa?.abarca_estudio?.dni;
+    if (!abarcaDni) {
+      setNewClientState(true);
+      setAbarcaAutoApplied(true);
+      return;
+    }
+
+    const matchingClient = clients.find(
+      (c) => c.document_number.toLowerCase() === abarcaDni.toLowerCase(),
+    );
+
+    if (matchingClient) {
+      setSelectedClient(matchingClient.id);
+      setClient(matchingClient);
+      setTramite((prev) => ({ ...prev, client_id: matchingClient.id }));
+    } else {
+      setNewClientState(true);
+    }
+
+    setAbarcaAutoApplied(true);
+  }, [
+    hasAbarcaData,
+    abarcaAutoApplied,
+    loading,
+    clients,
+    comparativa,
+    setClient,
+    setTramite,
+  ]);
 
   return (
     <FormWrapper>

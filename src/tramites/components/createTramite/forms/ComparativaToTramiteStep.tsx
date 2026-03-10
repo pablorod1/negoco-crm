@@ -22,8 +22,9 @@ import {
   FileText,
   User as UserIcon,
   Building,
-  Calendar,
   Euro,
+  Zap,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import { useState } from "react";
@@ -139,7 +140,7 @@ export default function ComparativaToTramiteStep({
                       </span>
                       <span className="ml-2 font-medium text-gray-900">
                         {formatComission(
-                          comparativa.comision_sales_person[plan]
+                          comparativa.comision_sales_person[plan],
                         )}
                       </span>
                     </div>
@@ -162,7 +163,7 @@ export default function ComparativaToTramiteStep({
               </div>
               {getStatusBadge(
                 comparativa.status as ComparativaStatus,
-                "comparativa"
+                "comparativa",
               )}
             </div>
           </CardHeader>
@@ -189,6 +190,82 @@ export default function ComparativaToTramiteStep({
         </Card>
       </div>
 
+      {/* Abarca Study Data Summary */}
+      {comparativa.abarca_estudio && (
+        <Card className="mb-4 border-amber-200 bg-amber-50/30">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              <CardTitle className="text-sm font-medium text-gray-700">
+                Datos del Estudio Abarca
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500">Titular:</span>
+                <p className="font-medium text-gray-900">
+                  {comparativa.abarca_estudio.nombre_completo || "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500">DNI:</span>
+                <p className="font-medium text-gray-900">
+                  {comparativa.abarca_estudio.dni || "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500">CUPS:</span>
+                <p className="font-medium text-gray-900 break-all">
+                  {comparativa.abarca_estudio.cups}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500">Tarifa:</span>
+                <p className="font-medium text-gray-900">
+                  {comparativa.abarca_estudio.tipo_tarifa || "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500">Email:</span>
+                <p className="font-medium text-gray-900">
+                  {comparativa.abarca_estudio.email || "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500">Teléfono:</span>
+                <p className="font-medium text-gray-900">
+                  {comparativa.abarca_estudio.movil || "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500">Dirección:</span>
+                <p className="font-medium text-gray-900">
+                  {[
+                    comparativa.abarca_estudio.calle_cups,
+                    comparativa.abarca_estudio.numero_cups,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500">Localidad:</span>
+                <p className="font-medium text-gray-900">
+                  {[
+                    comparativa.abarca_estudio.localidad_cups,
+                    comparativa.abarca_estudio.codpostal_cups,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Progressive Disclosure - Additional Details */}
       <div className="mb-6">
         <Button
@@ -203,7 +280,7 @@ export default function ComparativaToTramiteStep({
             } documentos, {comparativa.notes ? comparativa.notes.length : 0}{" "}
             notas)
           </span>
-          <Calendar
+          <ChevronDown
             className={`h-4 w-4 transition-transform ${showDetails ? "rotate-180" : ""}`}
           />
         </Button>

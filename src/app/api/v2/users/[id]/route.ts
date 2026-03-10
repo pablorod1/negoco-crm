@@ -29,6 +29,7 @@ interface UserResponse {
       name: string;
       logo: string | null;
       plan: string | null;
+      abarca_user_id?: number;
     };
   };
 }
@@ -46,7 +47,7 @@ interface ErrorResponse {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<UserResponse | ErrorResponse>> {
   try {
     const { id } = await params;
@@ -59,7 +60,7 @@ export async function GET(
           success: false,
           error: validation.error.issues[0]?.message || "Invalid parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -70,7 +71,7 @@ export async function GET(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -83,6 +84,7 @@ export async function GET(
         o.name as org_name,
         o.logo as org_logo,
         o.plan as org_plan,
+        o.abarca_user_id as org_abarca_user_id,
         LOWER(p.name) as plan_name,
         COUNT(n.id) as notifications
       FROM user u
@@ -101,7 +103,7 @@ export async function GET(
           success: false,
           error: "User not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -128,6 +130,10 @@ export async function GET(
           name: row.org_name ? String(row.org_name) : "",
           logo: row.org_logo ? String(row.org_logo) : null,
           plan: row.plan_name ? String(row.plan_name) : null,
+          abarca_user_id:
+            row.org_abarca_user_id !== null
+              ? Number(row.org_abarca_user_id)
+              : undefined,
         },
       },
     });
@@ -138,7 +144,7 @@ export async function GET(
         success: false,
         error: "Internal Server Error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -149,7 +155,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<UserResponse | ErrorResponse>> {
   // Delegate to GET method for backward compatibility
   return GET(request, { params });

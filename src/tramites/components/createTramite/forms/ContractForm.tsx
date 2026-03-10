@@ -40,10 +40,10 @@ export default function ContractForm({
   comparativa,
 }: Props) {
   const [errors, setErrors] = React.useState<ContractError>(
-    createEmptyContractError
+    createEmptyContractError,
   );
   const [formData, setFormData] = React.useState<ContractDB>(
-    contract ? contract : createEmptyContractDB(comparativa)
+    contract ? contract : createEmptyContractDB(comparativa),
   );
 
   // Load active energy suppliers
@@ -57,8 +57,25 @@ export default function ContractForm({
         label: supplier.name,
         value: supplier.id,
       })),
-    [activeSuppliers]
+    [activeSuppliers],
   );
+
+  // Auto-match old_company from Abarca empresa_cliente
+  React.useEffect(() => {
+    if (formData.old_company || activeSuppliers.length === 0) return;
+    const empresaCliente = comparativa?.abarca_estudio?.empresa_cliente;
+    if (!empresaCliente) return;
+
+    const name = empresaCliente.split(" - ")[0].trim().toLowerCase();
+    if (!name) return;
+
+    const match = activeSuppliers.find((s) =>
+      s.name.toLowerCase().includes(name),
+    );
+    if (match) {
+      setFormData((prev) => ({ ...prev, old_company: match.id }));
+    }
+  }, [activeSuppliers, comparativa, formData.old_company]);
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -227,7 +244,7 @@ export default function ContractForm({
                   selectedKey={formData.old_company || ""}
                   textValue={
                     supplierOptions.find(
-                      (s) => s.value === formData.old_company
+                      (s) => s.value === formData.old_company,
                     )?.label
                   }
                 />
@@ -245,7 +262,7 @@ export default function ContractForm({
                   selectedKey={formData.new_company || ""}
                   textValue={
                     supplierOptions.find(
-                      (s) => s.value === formData.new_company
+                      (s) => s.value === formData.new_company,
                     )?.label
                   }
                 />

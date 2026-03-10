@@ -9,6 +9,7 @@ import {
 
 const COMPARATIVA_STATUS_BADGES = {
   pending: <Badge variant="warning">Pendiente de Estudio</Badge>,
+  awaiting_review: <Badge variant="info">Pendiente de Revisión</Badge>,
   completed: <Badge variant="pending">Estudio Realizado</Badge>,
   processed: <Badge variant="success">Completada</Badge>,
   rejected: <Badge variant="danger">Rechazada</Badge>,
@@ -89,7 +90,7 @@ export const getStatusBadge = (
     | "fotovoltaica"
     | "general"
     | "ticket",
-  isTable: boolean = false
+  isTable: boolean = false,
 ) => {
   // If statusType is explicitly provided, use it directly
   if (statusType === "fotovoltaica") {
@@ -129,7 +130,7 @@ export const getStatusBadge = (
   // Verificar si el status pertenece a FotovoltaicaStatus
   if (
     ["pending", "validated", "processing", "completed", "rejected"].includes(
-      status as FotovoltaicaStatus
+      status as FotovoltaicaStatus,
     )
   ) {
     return (
@@ -141,7 +142,7 @@ export const getStatusBadge = (
   // Verificar si el status pertenece a ComparativaStatus
   if (
     ["pending", "completed", "processed", "rejected"].includes(
-      status as ComparativaStatus
+      status as ComparativaStatus,
     )
   ) {
     return (

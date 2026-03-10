@@ -18,6 +18,9 @@ import {
   ClipboardList,
   FileText,
   CheckCircle,
+  Zap,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 import UpdateComparativaStatusModal from "@/comparativas/components/editComparativa/UpdateComparativaStatusModal";
 import CompletarEstudioModal from "@/comparativas/components/editComparativa/CompletarEstudioModal";
@@ -30,6 +33,7 @@ import ComparativaComissionsSection from "@/comparativas/components/editComparat
 import { cn } from "@/core/utils";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
+import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
 
 interface MainViewProps {
   comparativa: ComparativaVM;
@@ -52,13 +56,14 @@ export default function MainView({
 }: MainViewProps) {
   const isComercial = userData.role === "2";
   const isStudied = comparativa.status === "completed";
+  const isAwaitingReview = comparativa.status === "awaiting_review";
   const isAdmin = userData.role === "admin" || userData.role === "1";
   // Los admins pueden editar comisiones cuando la comparativa está estudiada
   const canEditComissions = isAdmin && isStudied;
 
   // Fetch supplier information if company_id is available
   const { supplier, loading: isLoadingSupplier } = useEnergySupplierById(
-    comparativa.company_id
+    comparativa.company_id,
   );
 
   const handleSidebarClick = useSidebarSlideNavigation();
@@ -69,7 +74,7 @@ export default function MainView({
       <div
         className={cn(
           "grid grid-cols-1  gap-6",
-          isSubcomercial ? "lg:grid-cols-2" : "lg:grid-cols-3"
+          isSubcomercial ? "lg:grid-cols-2" : "lg:grid-cols-3",
         )}
       >
         {/* Card 1: Estado y Acciones */}
@@ -100,8 +105,8 @@ export default function MainView({
                 Acciones disponibles
               </p>
 
-              <div className="space-y-2 space-x-2">
-                {/* Comparativa procesada - Ver trámite */}
+              <div className="space-y-2">
+                {/* Comparativa procesada — Ver trámite */}
                 {comparativa.status === "processed" &&
                   comparativa.tramite_id && (
                     <TooltipComponent content="Ver el trámite generado desde esta comparativa">
@@ -125,18 +130,73 @@ export default function MainView({
                     </TooltipComponent>
                   )}
 
-                {/* Comparativa pendiente - Acciones de backoffice */}
-                {comparativa.status === "pending" && !isComercial && (
-                  <div className="space-y-2 space-x-2">
+                {/* Comparativa pendiente */}
+                {comparativa.status === "pending" && (
+                  <div className="space-y-2">
+                    {/* Primary: Comparador IA (cuando disponible) */}
+                    {userData.organization.abarca_user_id && (
+                      <div className="p-3 rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-1.5 rounded-md bg-primary/10">
+                            <Zap className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              Acción recomendada
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Realiza el estudio con el comparador energético
+                            </p>
+                          </div>
+                        </div>
+                        <AbarcaPanel
+                          comparativaId={comparativa.id}
+                          userId={userData.id}
+                          abarcaUserId={userData.organization.abarca_user_id}
+                        />
+                      </div>
+                    )}
+
+                    {/* Secondary: Estudio manual (solo backoffice) */}
+                    {!isComercial && (
+                      <div className="flex items-center gap-2">
+                        <CompletarEstudioModal
+                          comparativa={comparativa}
+                          onUpdate={onUpdate}
+                          userData={userData}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Estudio de Abarca recibido — pendiente de revisión */}
+                {isAwaitingReview && !isComercial && (
+                  <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-1.5 rounded-md bg-amber-100">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-amber-900">
+                          Estudio Abarca Recibido
+                        </p>
+                        <p className="text-xs text-amber-700">
+                          Asigna la comercializadora y las comisiones para
+                          continuar
+                        </p>
+                      </div>
+                    </div>
                     <CompletarEstudioModal
                       comparativa={comparativa}
                       onUpdate={onUpdate}
                       userData={userData}
+                      mode="abarca"
                     />
                   </div>
                 )}
 
-                {/* Comparativa completada - Crear trámite */}
+                {/* Comparativa completada — Crear trámite */}
                 {isStudied && (
                   <div className="p-3 rounded-lg border border-green-200 bg-green-50">
                     <div className="flex items-center gap-3 mb-2">
@@ -160,10 +220,11 @@ export default function MainView({
                   </div>
                 )}
 
-                {/* Otros estados - Modal genérico */}
+                {/* Otros estados — Modal genérico */}
                 {comparativa.status !== "completed" &&
                   comparativa.status !== "processed" &&
                   comparativa.status !== "pending" &&
+                  comparativa.status !== "awaiting_review" &&
                   !isComercial && (
                     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
                       <div className="flex items-center gap-3 mb-2">
@@ -187,9 +248,36 @@ export default function MainView({
                     </div>
                   )}
 
+                {/* Comercial: estudio en revisión */}
+                {isAwaitingReview && isComercial && (
+                  <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-md bg-amber-100">
+                        <Clock className="h-4 w-4 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-amber-900">
+                          Estudio en revisión
+                        </p>
+                        <p className="text-xs text-amber-700">
+                          El backoffice está revisando el estudio. La conversión
+                          a trámite estará disponible una vez completada la
+                          revisión.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Sin acciones disponibles */}
                 {(comparativa.status === "rejected" ||
-                  (isComercial && comparativa.status !== "completed")) && (
+                  (isComercial &&
+                    comparativa.status !== "completed" &&
+                    comparativa.status !== "awaiting_review" &&
+                    !(
+                      comparativa.status === "pending" &&
+                      userData.organization.abarca_user_id
+                    ))) && (
                   <div className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-center">
                     <p className="text-sm text-gray-500">
                       No hay acciones disponibles
@@ -284,6 +372,149 @@ export default function MainView({
           </CardContent>
         </Card>
       </div>
+
+      {/* Estudio Abarca Section */}
+      {comparativa.abarca_estudio && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              Estudio Negoco Cloud IA
+            </CardTitle>
+            <CardDescription className="text-gray-500">
+              Datos recibidos del comparador energético
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Titular */}
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+                  Titular
+                </p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Nombre completo</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.nombre_completo || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">DNI / NIF</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.dni || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Email</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.email || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Teléfono</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.movil || "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Suministro */}
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+                  Suministro
+                </p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-gray-500">CUPS</p>
+                    <p className="text-sm font-medium text-gray-900 break-all">
+                      {comparativa.abarca_estudio.cups}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Tarifa</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.tipo_tarifa || "—"}
+                    </p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Potencia P1</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.abarca_estudio.potencia_contratada != null
+                          ? `${comparativa.abarca_estudio.potencia_contratada} kW`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Potencia P2</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.abarca_estudio.potencia_contratada_p2 !=
+                        null
+                          ? `${comparativa.abarca_estudio.potencia_contratada_p2} kW`
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Compañía actual</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.empresa_cliente || "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dirección y Contacto */}
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+                  Dirección del suministro
+                </p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Dirección</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {[
+                        comparativa.abarca_estudio.calle_cups,
+                        comparativa.abarca_estudio.numero_cups,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Localidad</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.localidad_cups || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Código Postal</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.codpostal_cups || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">IBAN</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.abarca_estudio.iban || "—"}
+                    </p>
+                  </div>
+                  {comparativa.abarca_estudio.observaciones && (
+                    <div>
+                      <p className="text-xs text-gray-500">Observaciones</p>
+                      <p className="text-sm text-gray-700">
+                        {comparativa.abarca_estudio.observaciones}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Documentos Section */}
       <Card>

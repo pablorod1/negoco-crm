@@ -1,8 +1,10 @@
 import { User } from "@/core/types";
+import { AbarcaEstudio } from "./abarca.types";
 
 // Comparativa related types
 export type ComparativaStatus =
   | "pending"
+  | "awaiting_review"
   | "completed"
   | "processed"
   | "rejected";
@@ -56,6 +58,7 @@ export interface ComparativaVM {
   files: Partial<ComparativaFile>[];
   company_id?: string; // ID reference to comercializadoras table
   company_name?: string; // Resolved name for display purposes
+  abarca_estudio?: AbarcaEstudio; // Datos del estudio de Abarca si existe
 }
 
 export interface ComparativaRow {

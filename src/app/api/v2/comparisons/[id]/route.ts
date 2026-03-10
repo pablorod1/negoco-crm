@@ -7,6 +7,7 @@ import { Client } from "@libsql/client";
 import { updateComparativaGeneral } from "@/comparativas/utils/updateComparativaHelpers";
 import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
 import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
+import { AbarcaEstudio } from "@/comparativas/types/abarca.types";
 
 /**
  * Database row interfaces for type safety
@@ -101,6 +102,7 @@ interface ComparisonByIdResponse {
     creation_date: string;
     tramite_id: string | null;
     company_id?: string; // ID reference to comercializadoras table
+    abarca_estudio?: AbarcaEstudio;
     files: Array<{
       id: string;
       filename: string;
@@ -123,7 +125,7 @@ async function executeQuery<
   client: Client,
   sql: string,
   args: (string | number)[],
-  queryName: string
+  queryName: string,
 ): Promise<{ success: boolean; data?: T[]; error?: string }> {
   const startTime = performance.now();
 
@@ -138,7 +140,7 @@ async function executeQuery<
     const endTime = performance.now();
     console.error(
       `[DB Query Error] ${queryName} failed after ${(endTime - startTime).toFixed(2)}ms:`,
-      error
+      error,
     );
 
     return {
@@ -155,7 +157,7 @@ async function fetchComparisonData(
   client: Client,
   id: string,
   user_id: string,
-  user_role: string
+  user_role: string,
 ): Promise<{ success: boolean; data?: ComparativaRow[]; error?: string }> {
   const queryParams: (string | number)[] = [id];
 
@@ -201,7 +203,7 @@ async function fetchComparisonData(
     client,
     comparativaQuery,
     queryParams,
-    "fetch-comparison-data"
+    "fetch-comparison-data",
   );
 }
 
@@ -210,7 +212,7 @@ async function fetchComparisonData(
  */
 async function fetchComparisonFiles(
   client: Client,
-  comparativaId: string
+  comparativaId: string,
 ): Promise<{
   success: boolean;
   data?: Array<{
@@ -243,7 +245,7 @@ async function fetchComparisonFiles(
     client,
     filesQuery,
     [comparativaId],
-    "fetch-comparison-files"
+    "fetch-comparison-files",
   );
 
   if (!result.success) {
@@ -279,7 +281,8 @@ function transformComparisonData(
     upload_date: string;
     download_url: string;
     preview_url: string | null;
-  }>
+  }>,
+  abarcaEstudio?: AbarcaEstudio,
 ): ComparisonByIdResponse["data"] {
   return {
     id: String(comparativa.id),
@@ -307,6 +310,7 @@ function transformComparisonData(
     company_id: comparativa.company_id
       ? String(comparativa.company_id)
       : undefined,
+    abarca_estudio: abarcaEstudio,
     files,
   };
 }
@@ -354,7 +358,7 @@ function transformComparisonData(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ComparisonByIdResponse>> {
   const startTime = performance.now();
 
@@ -366,7 +370,7 @@ export async function PATCH(
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing comparison ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -377,7 +381,7 @@ export async function PATCH(
     if (!validation.success) {
       console.warn(
         "[Validation Warning] Invalid update parameters:",
-        validation.error.issues
+        validation.error.issues,
       );
       return NextResponse.json(
         {
@@ -386,7 +390,7 @@ export async function PATCH(
             "Invalid parameters: " +
             validation.error.issues.map((e) => e.message).join(", "),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -401,7 +405,7 @@ export async function PATCH(
       console.error("[Database Error] Failed to initialize Turso client");
       return NextResponse.json(
         { success: false, error: "Database client not initialized" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -410,7 +414,7 @@ export async function PATCH(
       tursoClient,
       id,
       "admin",
-      "admin"
+      "admin",
     );
     if (
       !existingComparison.success ||
@@ -419,7 +423,7 @@ export async function PATCH(
     ) {
       return NextResponse.json(
         { success: false, error: "Comparativa not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -472,17 +476,17 @@ export async function PATCH(
     const updateResult = await updateComparativaGeneral(
       tursoClient,
       id,
-      updateData
+      updateData,
     );
 
     if (!updateResult.success) {
       console.error(
         "[Database Error] Failed to update comparison:",
-        updateResult.error
+        updateResult.error,
       );
       return NextResponse.json(
         { success: false, error: updateResult.error },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -686,7 +690,7 @@ export async function PATCH(
       tursoClient,
       id,
       "admin",
-      "admin"
+      "admin",
     );
     if (
       !updatedComparison.success ||
@@ -696,7 +700,7 @@ export async function PATCH(
       console.error("[Database Error] Failed to fetch updated comparison data");
       return NextResponse.json(
         { success: false, error: "Failed to retrieve updated comparison" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -705,18 +709,18 @@ export async function PATCH(
     if (!filesResult.success) {
       console.error(
         "[Database Error] Failed to fetch comparison files:",
-        filesResult.error
+        filesResult.error,
       );
       return NextResponse.json(
         { success: false, error: filesResult.error },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     const files = filesResult.data || [];
     const responseData = transformComparisonData(
       updatedComparison.data[0],
-      files
+      files,
     );
 
     return NextResponse.json({
@@ -727,18 +731,18 @@ export async function PATCH(
     const endTime = performance.now();
     console.error(
       `[API Error] Failed to update comparison after ${(endTime - startTime).toFixed(2)}ms:`,
-      error
+      error,
     );
 
     return NextResponse.json(
       { success: false, error: "Error updating comparativa" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ComparisonByIdResponse>> {
   const startTime = performance.now();
 
@@ -757,14 +761,14 @@ export async function POST(
     if (!validation.success) {
       console.warn(
         "[Validation Warning] Invalid request parameters:",
-        validation.error.issues
+        validation.error.issues,
       );
       return NextResponse.json(
         {
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -779,7 +783,7 @@ export async function POST(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -788,33 +792,33 @@ export async function POST(
       tursoClient,
       id,
       user_id,
-      user_role
+      user_role,
     );
 
     if (!comparisonResult.success) {
       console.error(
         "[Database Error] Failed to fetch comparison:",
-        comparisonResult.error
+        comparisonResult.error,
       );
       return NextResponse.json(
         {
           success: false,
           error: comparisonResult.error,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     if (!comparisonResult.data || comparisonResult.data.length === 0) {
       console.warn(
-        `[Authorization] Comparison not found or access denied: ${id} for user: ${user_id}`
+        `[Authorization] Comparison not found or access denied: ${id} for user: ${user_id}`,
       );
       return NextResponse.json(
         {
           success: false,
           error: "Comparativa not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -826,21 +830,91 @@ export async function POST(
     if (!filesResult.success) {
       console.error(
         "[Database Error] Failed to fetch comparison files:",
-        filesResult.error
+        filesResult.error,
       );
       return NextResponse.json(
         {
           success: false,
           error: filesResult.error,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     const files = filesResult.data || [];
 
+    // Fetch Abarca estudio data if exists
+    let abarcaEstudio: AbarcaEstudio | undefined;
+    try {
+      const abarcaResult = await tursoClient.execute({
+        sql: "SELECT * FROM abarca_estudios WHERE comparativa_id = ? LIMIT 1",
+        args: [id],
+      });
+      if (abarcaResult.rows.length > 0) {
+        const row = abarcaResult.rows[0];
+        abarcaEstudio = {
+          id: String(row.id),
+          comparativa_id: String(row.comparativa_id),
+          crm_id: Number(row.crm_id),
+          ide: Number(row.ide),
+          cups: String(row.cups),
+          tipo_tarifa: row.tipo_tarifa ? String(row.tipo_tarifa) : null,
+          potencia_contratada: row.potencia_contratada
+            ? Number(row.potencia_contratada)
+            : null,
+          potencia_contratada_p2: row.potencia_contratada_p2
+            ? Number(row.potencia_contratada_p2)
+            : null,
+          consumo_p1: row.consumo_p1 ? Number(row.consumo_p1) : null,
+          consumo_p2: row.consumo_p2 ? Number(row.consumo_p2) : null,
+          consumo_p3: row.consumo_p3 ? Number(row.consumo_p3) : null,
+          empresa_cliente: row.empresa_cliente
+            ? String(row.empresa_cliente)
+            : null,
+          empresa: row.empresa ? String(row.empresa) : null,
+          nombre_completo: row.nombre_completo
+            ? String(row.nombre_completo)
+            : null,
+          titular: row.titular ? String(row.titular) : null,
+          ape1: row.ape1 ? String(row.ape1) : null,
+          ape2: row.ape2 ? String(row.ape2) : null,
+          dni: row.dni ? String(row.dni) : null,
+          nif_empresa: Boolean(row.nif_empresa),
+          autonomo: Boolean(row.autonomo),
+          calle: row.calle ? String(row.calle) : null,
+          numero: row.numero ? String(row.numero) : null,
+          codpostal: row.codpostal ? String(row.codpostal) : null,
+          localidad: row.localidad ? String(row.localidad) : null,
+          calle_cups: row.calle_cups ? String(row.calle_cups) : null,
+          numero_cups: row.numero_cups ? String(row.numero_cups) : null,
+          codpostal_cups: row.codpostal_cups
+            ? String(row.codpostal_cups)
+            : null,
+          localidad_cups: row.localidad_cups
+            ? String(row.localidad_cups)
+            : null,
+          email: row.email ? String(row.email) : null,
+          movil: row.movil ? String(row.movil) : null,
+          iban: row.iban ? String(row.iban) : null,
+          cambio_titularidad: Boolean(row.cambio_titularidad),
+          tiene_placas: Boolean(row.tiene_placas),
+          observaciones: row.observaciones ? String(row.observaciones) : null,
+          servicios: row.servicios ? String(row.servicios) : null,
+          permanencia: Number(row.permanencia ?? 0),
+          raw_payload: String(row.raw_payload),
+          created_at: String(row.created_at),
+        };
+      }
+    } catch {
+      // abarca_estudios table may not exist yet, ignore
+    }
+
     // Transform and return data
-    const responseData = transformComparisonData(comparativa, files);
+    const responseData = transformComparisonData(
+      comparativa,
+      files,
+      abarcaEstudio,
+    );
 
     return NextResponse.json({
       success: true,
@@ -850,7 +924,7 @@ export async function POST(
     const endTime = performance.now();
     console.error(
       `[API Error] Failed to retrieve comparison after ${(endTime - startTime).toFixed(2)}ms:`,
-      error
+      error,
     );
 
     return NextResponse.json(
@@ -858,7 +932,7 @@ export async function POST(
         success: false,
         error: "Error getting comparativa",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -903,7 +977,7 @@ async function executeDeleteQuery(
   tursoClient: Client,
   query: string,
   params: (string | number)[],
-  operation: string
+  operation: string,
 ): Promise<{
   result: { rows: Record<string, unknown>[]; rowsAffected: number };
   metrics: Partial<DeleteMetrics>;
@@ -930,7 +1004,7 @@ async function executeDeleteQuery(
     const queryTime = performance.now() - startTime;
     console.error(
       `[ERROR] ${operation} failed after ${queryTime.toFixed(2)}ms:`,
-      error
+      error,
     );
     throw error;
   }
@@ -944,7 +1018,7 @@ async function executeDeleteQuery(
  */
 async function validateComparisonExists(
   tursoClient: Client,
-  comparisonId: string
+  comparisonId: string,
 ): Promise<{ exists: boolean; fileCount: number }> {
   const { result } = await executeDeleteQuery(
     tursoClient,
@@ -952,7 +1026,7 @@ async function validateComparisonExists(
        (SELECT COUNT(*) FROM comparativas WHERE id = ?) as comparison_exists,
        (SELECT COUNT(*) FROM comparativa_files WHERE comparativa_id = ?) as file_count`,
     [comparisonId, comparisonId],
-    "validate_comparison_existence"
+    "validate_comparison_existence",
   );
 
   const row = result.rows[0] as Record<string, unknown>;
@@ -970,7 +1044,7 @@ async function validateComparisonExists(
  */
 async function deleteComparisonOptimized(
   tursoClient: Client,
-  comparisonId: string
+  comparisonId: string,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -984,7 +1058,7 @@ async function deleteComparisonOptimized(
       tursoClient,
       `DELETE FROM comparativas WHERE id = ?`,
       [comparisonId],
-      "delete_comparison"
+      "delete_comparison",
     );
 
     const totalTime = performance.now() - startTime;
@@ -1017,7 +1091,7 @@ async function deleteComparisonOptimized(
     const totalTime = performance.now() - startTime;
     console.error(
       `[ERROR] Delete comparison failed after ${totalTime.toFixed(2)}ms:`,
-      error
+      error,
     );
     return {
       success: false,
@@ -1048,7 +1122,7 @@ async function deleteComparisonOptimized(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<DeleteComparisonResponse>> {
   const startTime = performance.now();
 
@@ -1060,7 +1134,7 @@ export async function DELETE(
     if (!comparisonId) {
       return NextResponse.json(
         { error: "Missing parameters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -1072,7 +1146,7 @@ export async function DELETE(
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -1081,7 +1155,7 @@ export async function DELETE(
     if (!validation.success) {
       return NextResponse.json(
         { error: "Missing parameters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -1094,7 +1168,7 @@ export async function DELETE(
     if (!tursoClient) {
       return NextResponse.json(
         { error: "Database client not initialized" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -1103,14 +1177,14 @@ export async function DELETE(
     // Validate that the comparison exists and get file count for optimization
     const { exists: comparisonExists } = await validateComparisonExists(
       tursoClient,
-      comparisonId
+      comparisonId,
     );
 
     if (!comparisonExists) {
       // Return consistent error format (backward compatibility)
       return NextResponse.json(
         { error: "Comparativa not found" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -1119,18 +1193,18 @@ export async function DELETE(
     // Step 1: Delete from database (CASCADE will handle related files table)
     const dbDeletionResult = await deleteComparisonOptimized(
       tursoClient,
-      comparisonId
+      comparisonId,
     );
 
     if (!dbDeletionResult.success) {
       const totalRequestTime = performance.now() - startTime;
       console.error(
-        `[ERROR] Database deletion failed for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms: ${dbDeletionResult.error}`
+        `[ERROR] Database deletion failed for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms: ${dbDeletionResult.error}`,
       );
 
       return NextResponse.json(
         { error: dbDeletionResult.error },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -1138,20 +1212,20 @@ export async function DELETE(
     const storageDeleteResult = await deleteFolderFromStorage(
       "comparativas",
       comparisonId,
-      organization_id
+      organization_id,
     );
 
     if (!storageDeleteResult.success) {
       const totalRequestTime = performance.now() - startTime;
       console.error(
-        `[ERROR] Storage deletion failed for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms: ${storageDeleteResult.errors}`
+        `[ERROR] Storage deletion failed for comparison ${comparisonId} after ${totalRequestTime.toFixed(2)}ms: ${storageDeleteResult.errors}`,
       );
 
       // Note: Database deletion already succeeded, so we have partial failure
       // Return exact error format for backward compatibility
       return NextResponse.json(
         { error: storageDeleteResult.errors },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -1166,13 +1240,13 @@ export async function DELETE(
 
     console.error(
       `[ERROR] Deletion operation failed after ${totalRequestTime.toFixed(2)}ms:`,
-      error
+      error,
     );
 
     // Return exact error format for backward compatibility
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -35,3 +35,15 @@ export const getTursoClient = (req: NextRequest) => {
     authToken: tursoAuthToken,
   });
 };
+
+export const getTursoClientByTenant = (tenant: string) => {
+  const tursoUrl = process.env[`NEXT_TURSO_DB_URL_${tenant.toUpperCase()}`];
+  const tursoAuth =
+    process.env[`NEXT_TURSO_DB_AUTH_TOKEN_${tenant.toUpperCase()}`];
+
+  if (!tursoUrl || !tursoAuth) {
+    throw new Error(`Missing Turso configuration for tenant: ${tenant}`);
+  }
+
+  return createClient({ url: tursoUrl, authToken: tursoAuth });
+};
