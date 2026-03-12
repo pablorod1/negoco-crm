@@ -20,9 +20,11 @@ export async function POST(req: NextRequest) {
       const host = req.headers.get("host");
       const tenant = host ? host.split(".")[0] : "unknown";
 
-      // Expire previous pending sessions for this same user
+      // Expire previous pending sessions for this user + any stale sessions (>30 min)
       await tursoClient.execute({
-        sql: `UPDATE abarca_sessions SET status = 'expired' WHERE crm_id = ? AND tenant = ? AND user_id = ? AND status = 'pending'`,
+        sql: `UPDATE abarca_sessions SET status = 'expired'
+              WHERE crm_id = ? AND tenant = ? AND status = 'pending'
+              AND (user_id = ? OR created_at < datetime('now', '-30 minutes'))`,
         args: [idcm, tenant, user_id],
       });
 

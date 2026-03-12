@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -9,7 +9,7 @@ import {
   SheetDescription,
 } from "@/core/components/ui/sheet";
 import { Button } from "@/core/components/ui/button";
-import { Loader2, X, RotateCcw, Stars } from "lucide-react";
+import { Loader2, X, RotateCcw, Stars, Lock } from "lucide-react";
 import Image from "next/image";
 
 interface AbarcaPanelProps {
@@ -28,6 +28,33 @@ export function AbarcaPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionBlocked, setSessionBlocked] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // Check if another user has a pending session
+  useEffect(() => {
+    let cancelled = false;
+    async function checkSession() {
+      try {
+        const res = await fetch(
+          `/api/v2/integrations/abarca/session-status?user_id=${encodeURIComponent(userId)}`,
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        // Blocked only if there's a pending session from ANOTHER user
+        setSessionBlocked(data.hasPendingSession && !data.isOwnSession);
+      } catch {
+        // On error, allow access (fail open for usability)
+      } finally {
+        if (!cancelled) setCheckingSession(false);
+      }
+    }
+    checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const fetchLoginUrl = useCallback(async () => {
     setIsLoading(true);
@@ -74,10 +101,25 @@ export function AbarcaPanel({
         variant="default"
         size="sm"
         className="w-full"
+        disabled={sessionBlocked || checkingSession}
       >
         <span className="flex items-center gap-2">
-          <Stars className="h-4 w-4 " />
-          Realizar estudio con IA
+          {checkingSession ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Comprobando disponibilidad...
+            </>
+          ) : sessionBlocked ? (
+            <>
+              <Lock className="h-4 w-4" />
+              Otro usuario está realizando un estudio
+            </>
+          ) : (
+            <>
+              <Stars className="h-4 w-4" />
+              Realizar estudio con IA
+            </>
+          )}
         </span>
       </Button>
 
@@ -164,7 +206,7 @@ export function AbarcaPanel({
                   id="abarca-panel"
                   src={iframeUrl}
                   title="Comparador Energético Abarca"
-                  className="abarca-panel w-full h-full min-h-dvh border-0 absolute -top-20 left-0"
+                  className="abarca-panel w-full h-full min-h-dvh border-0"
                   onLoad={() => setIsIframeLoading(false)}
                 />
               </>
