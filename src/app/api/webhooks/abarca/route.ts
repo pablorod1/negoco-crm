@@ -246,5 +246,12 @@ export async function POST(req: Request) {
     "awaiting_review",
   );
 
+  // 11. Mark any pending sessions for this comparativa as completed
+  await db.execute({
+    sql: `UPDATE abarca_sessions SET status = 'completed'
+          WHERE tenant = ? AND comparativa_id = ? AND status = 'pending'`,
+    args: [tenant, comparativaId],
+  });
+
   return NextResponse.json({ success: true });
 }

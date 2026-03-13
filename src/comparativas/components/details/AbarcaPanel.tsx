@@ -1,16 +1,46 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/core/components/ui/button";
-import { Loader2, Stars } from "lucide-react";
+import { Loader2, Stars, Lock } from "lucide-react";
 
 interface AbarcaPanelProps {
   comparativaId: string;
+  userId: string;
   abarcaUserId: number;
 }
 
-export function AbarcaPanel({ comparativaId, abarcaUserId }: AbarcaPanelProps) {
+export function AbarcaPanel({
+  comparativaId,
+  userId,
+  abarcaUserId,
+}: AbarcaPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionBlocked, setSessionBlocked] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkSession() {
+      try {
+        const res = await fetch(
+          `/api/v2/integrations/abarca/session-status?user_id=${encodeURIComponent(userId)}`,
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setSessionBlocked(data.hasPendingSession && !data.isOwnSession);
+      } catch {
+        // On error, allow access (fail open)
+      } finally {
+        if (!cancelled) setCheckingSession(false);
+      }
+    }
+    checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const handleOpen = useCallback(async () => {
     setIsLoading(true);
@@ -22,6 +52,7 @@ export function AbarcaPanel({ comparativaId, abarcaUserId }: AbarcaPanelProps) {
           ide: 100,
           idcm: abarcaUserId,
           comparativa_id: comparativaId,
+          user_id: userId,
         }),
       });
 
@@ -37,7 +68,7 @@ export function AbarcaPanel({ comparativaId, abarcaUserId }: AbarcaPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [abarcaUserId, comparativaId]);
+  }, [abarcaUserId, comparativaId, userId]);
 
   return (
     <Button
@@ -45,13 +76,23 @@ export function AbarcaPanel({ comparativaId, abarcaUserId }: AbarcaPanelProps) {
       variant="default"
       size="sm"
       className="w-full"
-      disabled={isLoading}
+      disabled={sessionBlocked || checkingSession || isLoading}
     >
       <span className="flex items-center gap-2">
-        {isLoading ? (
+        {checkingSession ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Comprobando disponibilidad...
+          </>
+        ) : isLoading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             Conectando con Abarca...
+          </>
+        ) : sessionBlocked ? (
+          <>
+            <Lock className="h-4 w-4" />
+            Otro usuario está realizando un estudio
           </>
         ) : (
           <>
