@@ -16,6 +16,16 @@ const CUPS_HEADER_PATTERNS = [
   /punto.*suministro/i,
 ];
 
+const COMMISSION_HEADER_PATTERNS = [
+  /^comisi[oó]n$/i,
+  /^comision$/i,
+  /^commission$/i,
+  /^fee$/i,
+  /comisi[oó]n.*agente/i,
+  /comisi[oó]n.*comercial/i,
+  /^retribuci[oó]n$/i,
+];
+
 /** Sanitize a raw CUPS string: trim, remove inner spaces/dashes, uppercase */
 export function sanitizeCups(raw: string): string {
   if (!raw) return "";
@@ -59,6 +69,24 @@ function detectCupsColumn(headers: string[], rows: string[][]): number {
   return bestCol;
 }
 
+/** Detect which column contains commission data by header name */
+function detectCommissionColumn(headers: string[]): number | null {
+  for (let i = 0; i < headers.length; i++) {
+    const h = headers[i]?.trim() ?? "";
+    if (COMMISSION_HEADER_PATTERNS.some((p) => p.test(h))) return i;
+  }
+  return null;
+}
+
+/** Parse a raw cell value into a numeric commission */
+function parseCommissionValue(raw: string): number | null {
+  if (!raw) return null;
+  // Handle formats: "12,50", "12.50", "€12.50", "12,50€", "12.50 €"
+  const cleaned = raw.replace(/[€$\s]/g, "").replace(",", ".");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
 /** Parse an Excel/CSV file and extract CUPS data */
 export async function parseExcelFile(
   file: ArrayBuffer,
@@ -92,24 +120,32 @@ export async function parseExcelFile(
     .filter((row) => row.some((cell) => String(cell).trim() !== ""));
 
   const detectedColumn = detectCupsColumn(headers, dataRows);
+  const commissionColumn = detectCommissionColumn(headers);
 
   if (detectedColumn === -1) {
     return {
       cups: [],
       headers,
       detectedColumn: -1,
+      commissionColumn,
       sheetNames,
       totalRows: dataRows.length,
       previewRows: dataRows.slice(0, 5).map((r) => r.map(String)),
     };
   }
 
-  const cups = extractCupsFromColumn(dataRows, detectedColumn, headers);
+  const cups = extractCupsFromColumn(
+    dataRows,
+    detectedColumn,
+    headers,
+    commissionColumn,
+  );
 
   return {
     cups,
     headers,
     detectedColumn,
+    commissionColumn,
     sheetNames,
     totalRows: dataRows.length,
     previewRows: dataRows.slice(0, 5).map((r) => r.map(String)),
@@ -121,6 +157,7 @@ function extractCupsFromColumn(
   rows: string[][],
   colIndex: number,
   headers: string[],
+  commissionColIndex?: number | null,
 ): ImportedCUPS[] {
   const result: ImportedCUPS[] = [];
 
@@ -136,9 +173,15 @@ function extractCupsFromColumn(
       }
     });
 
+    const commission =
+      commissionColIndex != null
+        ? parseCommissionValue(String(rows[i][commissionColIndex] ?? ""))
+        : null;
+
     result.push({
       cups,
       rowIndex: i + 2, // +2 because: +1 for 0-index, +1 for header row
+      commission,
       extraData,
     });
   }
@@ -175,6 +218,7 @@ export async function reparseWithColumn(
   file: ArrayBuffer,
   sheetIndex: number,
   columnIndex: number,
+  commissionColumnIndex?: number | null,
 ): Promise<ExcelParseResult> {
   const XLSX = await loadXLSX();
   const workbook = XLSX.read(file, { type: "array" });
@@ -192,12 +236,21 @@ export async function reparseWithColumn(
     .slice(1)
     .filter((row) => row.some((cell) => String(cell).trim() !== ""));
 
-  const cups = extractCupsFromColumn(dataRows, columnIndex, headers);
+  // Use provided commission column or auto-detect
+  const commissionColumn =
+    commissionColumnIndex ?? detectCommissionColumn(headers);
+  const cups = extractCupsFromColumn(
+    dataRows,
+    columnIndex,
+    headers,
+    commissionColumn,
+  );
 
   return {
     cups,
     headers,
     detectedColumn: columnIndex,
+    commissionColumn,
     sheetNames,
     totalRows: dataRows.length,
     previewRows: dataRows.slice(0, 5).map((r) => r.map(String)),

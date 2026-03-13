@@ -6,6 +6,7 @@ export const AbarcaWebhookSchema = z.object({
   // Identificación
   ide: z.number(),
   crm_id: z.number(),
+  comparativa_id: z.string().min(1),
 
   // Suministro
   cups: z.string().min(1),

@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "api-design": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "dafbff951f8f1c29336fe9f6cd1e1f2ad9f203b36fcdc8b5a0c1c9cea500e6d5"
+    },
     "apple-hig-designer": {
       "source": "jamesrochabrun/skills",
       "sourceType": "github",
@@ -16,6 +21,11 @@
       "sourceType": "github",
       "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
     },
+    "sql-optimization": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "47c930907f25d67454ac8c2d155785eae3dce72242960d0c0e9ebf2ced9cd231"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
@@ -25,11 +35,6 @@
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "computedHash": "3462ec83f862abb2d532953df33a4dbf87f4616849da5d4b5cc7c13601aaf997"
-    },
-    "api-design": {
-      "source": "supercent-io/skills-template",
-      "sourceType": "github",
-      "computedHash": "dafbff951f8f1c29336fe9f6cd1e1f2ad9f203b36fcdc8b5a0c1c9cea500e6d5"
     }
   }
 }

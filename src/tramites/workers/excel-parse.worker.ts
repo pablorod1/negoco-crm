@@ -8,6 +8,7 @@ export type WorkerRequest =
       buffer: ArrayBuffer;
       sheetIndex: number;
       columnIndex: number;
+      commissionColumnIndex?: number | null;
     };
 
 export type WorkerResponse =
@@ -25,6 +26,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         event.data.buffer,
         event.data.sheetIndex,
         event.data.columnIndex,
+        event.data.commissionColumnIndex,
       );
     }
 

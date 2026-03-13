@@ -52,11 +52,16 @@ export function ImportExcelLiquidezModal() {
     handleFileDrop,
     changeSheet,
     changeColumn,
+    changeCommissionColumn,
     isMatching,
     matchedCups,
     unmatchedCups,
     duplicatesInExcel,
     runMatching,
+    commissionMismatches,
+    correctCommission,
+    correctAllCommissions,
+    isCorrectingCommission,
     selectedIds,
     toggleSelection,
     selectAllFiltered,
@@ -194,6 +199,7 @@ export function ImportExcelLiquidezModal() {
                 onFileDrop={handleFileDrop}
                 onChangeSheet={changeSheet}
                 onChangeColumn={changeColumn}
+                onChangeCommissionColumn={changeCommissionColumn}
                 onNext={() => setStep("validation")}
               />
             )}
@@ -205,6 +211,10 @@ export function ImportExcelLiquidezModal() {
                 unmatchedCups={unmatchedCups}
                 duplicatesInExcel={duplicatesInExcel}
                 totalInExcel={parseResult?.cups.length ?? 0}
+                commissionMismatches={commissionMismatches}
+                isCorrectingCommission={isCorrectingCommission}
+                onCorrectCommission={correctCommission}
+                onCorrectAllCommissions={correctAllCommissions}
                 onRunMatching={runMatching}
                 onNext={() => setStep("selection")}
                 onBack={() => setStep("upload")}

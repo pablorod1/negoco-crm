@@ -21,6 +21,7 @@ import type {
   MatchCupsResponse,
   ConflictWarning,
   UpdateProgress,
+  CommissionMismatch,
 } from "@/tramites/types";
 
 const SESSION_STORAGE_KEY = "excel-import-wizard-state";
@@ -51,6 +52,7 @@ interface UseExcelImportReturn {
   handleFileDrop: (file: File) => Promise<void>;
   changeSheet: (sheetIndex: number) => void;
   changeColumn: (columnIndex: number) => void;
+  changeCommissionColumn: (columnIndex: number | null) => void;
 
   // Step 2: Validation
   isMatching: boolean;
@@ -58,6 +60,10 @@ interface UseExcelImportReturn {
   unmatchedCups: UnmatchedCUPS[];
   duplicatesInExcel: string[];
   runMatching: () => Promise<void>;
+  commissionMismatches: CommissionMismatch[];
+  correctCommission: (tramiteId: string) => Promise<void>;
+  correctAllCommissions: () => Promise<void>;
+  isCorrectingCommission: boolean;
 
   // Step 3: Selection
   selectedIds: Set<string>;
@@ -101,6 +107,7 @@ export function useExcelImport(): UseExcelImportReturn {
   const [matchedCups, setMatchedCups] = useState<MatchedCUPS[]>([]);
   const [unmatchedCups, setUnmatchedCups] = useState<UnmatchedCUPS[]>([]);
   const [duplicatesInExcel, setDuplicatesInExcel] = useState<string[]>([]);
+  const [isCorrectingCommission, setIsCorrectingCommission] = useState(false);
 
   // Step 3 state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -332,6 +339,7 @@ export function useExcelImport(): UseExcelImportReturn {
           buffer: fileBuffer,
           sheetIndex: currentSheet,
           columnIndex,
+          commissionColumnIndex: parseResult?.commissionColumn,
         });
         setParseResult(result);
         setParseError(null);
@@ -341,7 +349,28 @@ export function useExcelImport(): UseExcelImportReturn {
         );
       }
     },
-    [fileBuffer, currentSheet, parseInWorker],
+    [fileBuffer, currentSheet, parseResult, parseInWorker],
+  );
+
+  const changeCommissionColumn = useCallback(
+    async (columnIndex: number | null) => {
+      if (!fileBuffer || !parseResult) return;
+      try {
+        const result = await parseInWorker({
+          type: "reparse",
+          buffer: fileBuffer,
+          sheetIndex: currentSheet,
+          columnIndex: parseResult.detectedColumn,
+          commissionColumnIndex: columnIndex,
+        });
+        setParseResult(result);
+      } catch (err) {
+        setParseError(
+          err instanceof Error ? err.message : "Error al reprocesar.",
+        );
+      }
+    },
+    [fileBuffer, currentSheet, parseResult, parseInWorker],
   );
 
   // --- Step 2: Matching ---
@@ -390,10 +419,14 @@ export function useExcelImport(): UseExcelImportReturn {
         return;
       }
 
-      const matched: MatchedCUPS[] = data.matched.map((m) => ({
-        ...m,
-        selected: true,
-      }));
+      const matched: MatchedCUPS[] = data.matched.map((m) => {
+        const excelEntry = unique.find((c) => c.cups === m.cups);
+        return {
+          ...m,
+          comisionExcel: excelEntry?.commission ?? null,
+          selected: true,
+        };
+      });
 
       const notFoundUnmatched: UnmatchedCUPS[] = data.unmatched.map((cups) => ({
         cups,
@@ -410,6 +443,97 @@ export function useExcelImport(): UseExcelImportReturn {
       setIsMatching(false);
     }
   }, [parseResult]);
+
+  // --- Commission mismatch detection ---
+
+  const commissionMismatches = useMemo<CommissionMismatch[]>(() => {
+    return matchedCups
+      .filter(
+        (m) =>
+          m.comisionExcel != null &&
+          Math.abs(m.comisionExcel - m.comision) > 0.001,
+      )
+      .map((m) => ({
+        cups: m.cups,
+        tramiteId: m.tramiteId,
+        clientName: m.clientName,
+        comisionDB: m.comision,
+        comisionExcel: m.comisionExcel!,
+      }));
+  }, [matchedCups]);
+
+  const correctCommission = useCallback(
+    async (tramiteId: string) => {
+      const mismatch = commissionMismatches.find(
+        (m) => m.tramiteId === tramiteId,
+      );
+      if (!mismatch) return;
+
+      setIsCorrectingCommission(true);
+      try {
+        const res = await fetch("/api/v2/contracts/update-commission", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updates: [
+              {
+                tramiteId: mismatch.tramiteId,
+                comision: mismatch.comisionExcel,
+              },
+            ],
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMatchedCups((prev) =>
+            prev.map((m) =>
+              m.tramiteId === tramiteId
+                ? { ...m, comision: mismatch.comisionExcel }
+                : m,
+            ),
+          );
+        }
+      } catch (error) {
+        console.error("Error al corregir comisión:", error);
+      } finally {
+        setIsCorrectingCommission(false);
+      }
+    },
+    [commissionMismatches],
+  );
+
+  const correctAllCommissions = useCallback(async () => {
+    if (commissionMismatches.length === 0) return;
+
+    setIsCorrectingCommission(true);
+    try {
+      const updates = commissionMismatches.map((m) => ({
+        tramiteId: m.tramiteId,
+        comision: m.comisionExcel,
+      }));
+
+      const res = await fetch("/api/v2/contracts/update-commission", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMatchedCups((prev) =>
+          prev.map((m) => {
+            const mismatch = commissionMismatches.find(
+              (mm) => mm.tramiteId === m.tramiteId,
+            );
+            return mismatch ? { ...m, comision: mismatch.comisionExcel } : m;
+          }),
+        );
+      }
+    } catch (error) {
+      console.error("Error al corregir comisiones:", error);
+    } finally {
+      setIsCorrectingCommission(false);
+    }
+  }, [commissionMismatches]);
 
   // --- Step 3: Selection & Batch update ---
 
@@ -644,11 +768,16 @@ export function useExcelImport(): UseExcelImportReturn {
     handleFileDrop,
     changeSheet,
     changeColumn,
+    changeCommissionColumn,
     isMatching,
     matchedCups,
     unmatchedCups,
     duplicatesInExcel,
     runMatching,
+    commissionMismatches,
+    correctCommission,
+    correctAllCommissions,
+    isCorrectingCommission,
     selectedIds,
     toggleSelection,
     selectAllFiltered,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle,
   AlertTriangle,
@@ -8,9 +8,15 @@ import {
   ChevronDown,
   Copy,
   Loader2,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
-import type { MatchedCUPS, UnmatchedCUPS } from "@/tramites/types";
+import { Progress } from "@/core/components/ui/progress";
+import type {
+  MatchedCUPS,
+  UnmatchedCUPS,
+  CommissionMismatch,
+} from "@/tramites/types";
 
 interface ValidationStepProps {
   isMatching: boolean;
@@ -18,6 +24,10 @@ interface ValidationStepProps {
   unmatchedCups: UnmatchedCUPS[];
   duplicatesInExcel: string[];
   totalInExcel: number;
+  commissionMismatches: CommissionMismatch[];
+  isCorrectingCommission: boolean;
+  onCorrectCommission: (tramiteId: string) => Promise<void>;
+  onCorrectAllCommissions: () => Promise<void>;
   onRunMatching: () => Promise<void>;
   onNext: () => void;
   onBack: () => void;
@@ -29,11 +39,16 @@ export default function ValidationStep({
   unmatchedCups,
   duplicatesInExcel,
   totalInExcel,
+  commissionMismatches,
+  isCorrectingCommission,
+  onCorrectCommission,
+  onCorrectAllCommissions,
   onRunMatching,
   onNext,
   onBack,
 }: ValidationStepProps) {
   const [showUnmatched, setShowUnmatched] = useState(false);
+  const [showCommissionTable, setShowCommissionTable] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const hasResults = matchedCups.length > 0 || unmatchedCups.length > 0;
@@ -41,6 +56,20 @@ export default function ValidationStep({
   const invalidCups = unmatchedCups.filter(
     (u) => u.reason === "invalid_format",
   );
+
+  // Commission comparison data
+  const cupsWithCommission = useMemo(
+    () => matchedCups.filter((m) => m.comisionExcel != null),
+    [matchedCups],
+  );
+  const hasCommissionData = cupsWithCommission.length > 0;
+  const correctCount = useMemo(
+    () => cupsWithCommission.length - commissionMismatches.length,
+    [cupsWithCommission, commissionMismatches],
+  );
+  const correctPercentage = hasCommissionData
+    ? Math.round((correctCount / cupsWithCommission.length) * 100)
+    : 0;
 
   // Auto-run matching on mount
   useEffect(() => {
@@ -179,6 +208,150 @@ export default function ValidationStep({
               </code>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Commission comparison */}
+      {hasCommissionData && hasResults && (
+        <div className="border rounded-lg overflow-hidden border-emerald-200">
+          {/* Header with progress bar */}
+          <button
+            onClick={() => setShowCommissionTable(!showCommissionTable)}
+            className="flex flex-col gap-2.5 w-full px-4 py-3 text-left bg-emerald-50 hover:bg-emerald-100/70 transition-colors"
+          >
+            <div className="flex items-center justify-between w-full">
+              <span className="flex items-center gap-2 text-sm font-medium text-emerald-700">
+                <ArrowRightLeft className="h-4 w-4" />
+                Validación de comisiones
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-emerald-600 transition-transform ${showCommissionTable ? "rotate-180" : ""}`}
+              />
+            </div>
+            <div className="flex items-center gap-3 w-full">
+              <Progress
+                value={correctPercentage}
+                className="h-2 bg-emerald-100"
+                indicatorClassName={
+                  correctPercentage === 100 ? "bg-emerald-500" : "bg-amber-500"
+                }
+              />
+              <span className="text-xs font-medium text-emerald-600 whitespace-nowrap">
+                {correctCount}/{cupsWithCommission.length} correctas
+              </span>
+            </div>
+          </button>
+
+          {showCommissionTable && (
+            <div className="border-t border-emerald-200">
+              {/* Bulk action */}
+              {commissionMismatches.length > 0 && (
+                <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                  <p className="text-xs text-amber-600">
+                    {commissionMismatches.length} discrepancia
+                    {commissionMismatches.length !== 1 ? "s" : ""} encontrada
+                    {commissionMismatches.length !== 1 ? "s" : ""}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onCorrectAllCommissions}
+                    disabled={isCorrectingCommission}
+                    className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    {isCorrectingCommission ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : null}
+                    Corregir todos
+                  </Button>
+                </div>
+              )}
+
+              {/* All-correct message */}
+              {commissionMismatches.length === 0 && (
+                <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  <p className="text-xs text-emerald-600 font-medium">
+                    Todas las comisiones coinciden con la base de datos
+                  </p>
+                </div>
+              )}
+
+              {/* Table */}
+              <div className="max-h-60 overflow-y-auto px-4 pb-3 pt-2">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="pb-1.5 font-medium">CUPS</th>
+                      <th className="pb-1.5 font-medium">Cliente</th>
+                      <th className="pb-1.5 font-medium">Comercial</th>
+                      <th className="pb-1.5 font-medium text-right">CRM</th>
+                      <th className="pb-1.5 font-medium text-right">Excel</th>
+                      <th className="pb-1.5 font-medium text-center">Estado</th>
+                      <th className="pb-1.5"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cupsWithCommission.map((m) => {
+                      const isMismatch =
+                        Math.abs(m.comisionExcel! - m.comision) > 0.001;
+                      const diff = m.comisionExcel! - m.comision;
+                      return (
+                        <tr
+                          key={m.cups}
+                          className={`border-b last:border-0 border-gray-100 ${isMismatch ? "bg-amber-50/50" : ""}`}
+                        >
+                          <td className="py-1.5 font-mono text-gray-700 truncate max-w-[140px]">
+                            {m.cups}
+                          </td>
+                          <td className="py-1.5 text-gray-600 truncate max-w-[120px]">
+                            {m.clientName}
+                          </td>
+                          <td className="py-1.5 text-gray-600 truncate max-w-[100px]">
+                            {m.comercialName}
+                          </td>
+                          <td className="py-1.5 text-right text-gray-500">
+                            {m.comision.toFixed(2)} €
+                          </td>
+                          <td
+                            className={`py-1.5 text-right font-medium ${isMismatch ? "text-amber-700" : "text-emerald-700"}`}
+                          >
+                            {m.comisionExcel!.toFixed(2)} €
+                          </td>
+                          <td className="py-1.5 text-center">
+                            {isMismatch ? (
+                              <span className="inline-flex items-center gap-0.5 text-amber-600">
+                                <AlertTriangle className="h-3 w-3" />
+                                <span>
+                                  {diff > 0 ? "+" : ""}
+                                  {diff.toFixed(2)}
+                                </span>
+                              </span>
+                            ) : (
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mx-auto" />
+                            )}
+                          </td>
+                          <td className="py-1.5 text-right">
+                            {isMismatch && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onCorrectCommission(m.tramiteId)}
+                                disabled={isCorrectingCommission}
+                                className="h-6 px-2 text-xs text-emerald-700 hover:bg-emerald-50"
+                              >
+                                Corregir
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -151,7 +151,6 @@ export default function MainView({
                         </div>
                         <AbarcaPanel
                           comparativaId={comparativa.id}
-                          userId={userData.id}
                           abarcaUserId={userData.organization.abarca_user_id}
                         />
                       </div>

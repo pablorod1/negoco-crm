@@ -1,47 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/core/components/ui/button";
-import { Loader2, Stars, Lock } from "lucide-react";
+import { Loader2, Stars } from "lucide-react";
 
 interface AbarcaPanelProps {
   comparativaId: string;
-  userId: string;
   abarcaUserId: number;
 }
 
-export function AbarcaPanel({
-  comparativaId,
-  userId,
-  abarcaUserId,
-}: AbarcaPanelProps) {
+export function AbarcaPanel({ comparativaId, abarcaUserId }: AbarcaPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionBlocked, setSessionBlocked] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
-
-  // Check if another user has a pending session
-  useEffect(() => {
-    let cancelled = false;
-    async function checkSession() {
-      try {
-        const res = await fetch(
-          `/api/v2/integrations/abarca/session-status?user_id=${encodeURIComponent(userId)}`,
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled) return;
-        setSessionBlocked(data.hasPendingSession && !data.isOwnSession);
-      } catch {
-        // On error, allow access (fail open for usability)
-      } finally {
-        if (!cancelled) setCheckingSession(false);
-      }
-    }
-    checkSession();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
 
   const handleOpen = useCallback(async () => {
     setIsLoading(true);
@@ -53,7 +22,6 @@ export function AbarcaPanel({
           ide: 100,
           idcm: abarcaUserId,
           comparativa_id: comparativaId,
-          user_id: userId,
         }),
       });
 
@@ -69,7 +37,7 @@ export function AbarcaPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [abarcaUserId, comparativaId, userId]);
+  }, [abarcaUserId, comparativaId]);
 
   return (
     <Button
@@ -77,23 +45,13 @@ export function AbarcaPanel({
       variant="default"
       size="sm"
       className="w-full"
-      disabled={sessionBlocked || checkingSession || isLoading}
+      disabled={isLoading}
     >
       <span className="flex items-center gap-2">
-        {checkingSession ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Comprobando disponibilidad...
-          </>
-        ) : isLoading ? (
+        {isLoading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             Conectando con Abarca...
-          </>
-        ) : sessionBlocked ? (
-          <>
-            <Lock className="h-4 w-4" />
-            Otro usuario está realizando un estudio
           </>
         ) : (
           <>

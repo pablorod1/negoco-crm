@@ -63,25 +63,8 @@ export async function POST(req: Request) {
   }
   const organizationId = org.id as string;
 
-  // 5. Resolve comparativa via session tracking
-  const sessionResult = await db.execute({
-    sql: `SELECT id, comparativa_id, user_id FROM abarca_sessions
-          WHERE crm_id = ? AND tenant = ? AND status = 'pending'
-          ORDER BY created_at DESC LIMIT 1`,
-    args: [payload.crm_id, tenant],
-  });
-
-  if (sessionResult.rows.length === 0) {
-    return NextResponse.json(
-      { error: "No pending session found for this crm_id" },
-      { status: 400 },
-    );
-  }
-
-  const session = sessionResult.rows[0];
-  const comparativaId = session.comparativa_id as string;
-  const sessionId = session.id as string;
-  const sessionUserId = session.user_id as string;
+  // 5. Resolve comparativa directly from payload
+  const comparativaId = payload.comparativa_id;
 
   // 6. Verify comparativa exists
   const compResult = await db.execute({
@@ -183,7 +166,7 @@ export async function POST(req: Request) {
         null,
       ],
     });
-    await recordDocumentUpload(db, comparativaId, sessionUserId, file.filename);
+    await recordDocumentUpload(db, comparativaId, "system", file.filename);
   }
 
   // 9. Insert abarca_estudios
@@ -258,16 +241,10 @@ export async function POST(req: Request) {
   await recordStatusChange(
     db,
     comparativaId,
-    sessionUserId,
+    "system",
     currentStatus,
     "awaiting_review",
   );
-
-  // 11. Mark session as completed
-  await db.execute({
-    sql: "UPDATE abarca_sessions SET status = 'completed' WHERE id = ?",
-    args: [sessionId],
-  });
 
   return NextResponse.json({ success: true });
 }

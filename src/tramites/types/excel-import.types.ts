@@ -4,6 +4,7 @@ import { LiquidezStatus, Status } from "./tramite.types";
 export interface ImportedCUPS {
   cups: string;
   rowIndex: number;
+  commission?: number | null;
   extraData?: Record<string, string>;
 }
 
@@ -14,9 +15,11 @@ export interface MatchedCUPS {
   status: Status;
   liquidezStatus: LiquidezStatus;
   clientName: string;
-  salesName: string;
+  comercialName: string;
   newCompany: string;
   activationDate: string;
+  comision: number;
+  comisionExcel: number | null;
   selected: boolean;
 }
 
@@ -73,6 +76,7 @@ export interface ExcelParseResult {
   cups: ImportedCUPS[];
   headers: string[];
   detectedColumn: number;
+  commissionColumn: number | null;
   sheetNames: string[];
   totalRows: number;
   previewRows: string[][];
@@ -81,10 +85,20 @@ export interface ExcelParseResult {
 /** Step del wizard */
 export type WizardStep = "upload" | "validation" | "selection" | "summary";
 
+/** Discrepancia de comisión entre Excel y BD */
+export interface CommissionMismatch {
+  cups: string;
+  tramiteId: string;
+  clientName: string;
+  comisionDB: number;
+  comisionExcel: number;
+  corrected?: boolean;
+}
+
 /** Respuesta del endpoint match-cups */
 export interface MatchCupsResponse {
   success: boolean;
-  matched: Omit<MatchedCUPS, "selected">[];
+  matched: Omit<MatchedCUPS, "selected" | "comisionExcel">[];
   unmatched: string[];
   error?: string;
 }

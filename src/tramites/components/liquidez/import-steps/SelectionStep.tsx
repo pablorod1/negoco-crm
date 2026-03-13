@@ -99,6 +99,7 @@ export default function SelectionStep({
         const matchesSearch =
           m.cups.toLowerCase().includes(q) ||
           m.clientName.toLowerCase().includes(q) ||
+          m.comercialName.toLowerCase().includes(q) ||
           m.newCompany.toLowerCase().includes(q);
         if (!matchesSearch) return false;
       }
@@ -317,6 +318,12 @@ export default function SelectionStep({
                 scope="col"
                 className="px-3 py-2 text-left font-medium text-gray-500"
               >
+                Comercial
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2 text-left font-medium text-gray-500"
+              >
                 Compañía
               </th>
               <th
@@ -432,7 +439,7 @@ function VirtualizedTableBody({
       <tbody>
         <tr>
           <td
-            colSpan={6}
+            colSpan={7}
             className="px-3 py-8 text-center text-gray-400 text-sm"
           >
             No se encontraron CUPS con los filtros aplicados
@@ -452,7 +459,7 @@ function VirtualizedTableBody({
     <tbody>
       {paddingTop > 0 && (
         <tr>
-          <td colSpan={6} style={{ height: paddingTop, padding: 0 }} />
+          <td colSpan={7} style={{ height: paddingTop, padding: 0 }} />
         </tr>
       )}
       {virtualItems.map((virtualRow) => {
@@ -478,6 +485,9 @@ function VirtualizedTableBody({
               {m.clientName}
             </td>
             <td className="px-3 py-2 text-gray-700 truncate max-w-[120px]">
+              {m.comercialName}
+            </td>
+            <td className="px-3 py-2 text-gray-700 truncate max-w-[120px]">
               {m.newCompany}
             </td>
             <td className="px-3 py-2">
@@ -491,7 +501,7 @@ function VirtualizedTableBody({
       })}
       {paddingBottom > 0 && (
         <tr>
-          <td colSpan={6} style={{ height: paddingBottom, padding: 0 }} />
+          <td colSpan={7} style={{ height: paddingBottom, padding: 0 }} />
         </tr>
       )}
     </tbody>

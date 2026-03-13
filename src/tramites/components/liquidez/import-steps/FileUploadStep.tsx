@@ -20,6 +20,7 @@ interface FileUploadStepProps {
   onFileDrop: (file: File) => Promise<void>;
   onChangeSheet: (sheetIndex: number) => void;
   onChangeColumn: (columnIndex: number) => void;
+  onChangeCommissionColumn: (columnIndex: number | null) => void;
   onNext: () => void;
 }
 
@@ -38,6 +39,7 @@ export default function FileUploadStep({
   onFileDrop,
   onChangeSheet,
   onChangeColumn,
+  onChangeCommissionColumn,
   onNext,
 }: FileUploadStepProps) {
   const onDrop = useCallback(
@@ -172,6 +174,53 @@ export default function FileUploadStep({
         </div>
       )}
 
+      {/* Commission column selector (optional) */}
+      {parseResult &&
+        parseResult.headers.length > 0 &&
+        parseResult.detectedColumn >= 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-gray-700">
+              Columna Comisiones{" "}
+              <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <Select
+              onValueChange={(val) =>
+                onChangeCommissionColumn(val === "none" ? null : Number(val))
+              }
+              value={
+                parseResult.commissionColumn != null
+                  ? String(parseResult.commissionColumn)
+                  : "none"
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona la columna de comisiones" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-gray-400">
+                    Sin columna de comisiones
+                  </span>
+                </SelectItem>
+                {parseResult.headers.map((header, idx) => (
+                  <SelectItem
+                    key={idx}
+                    value={String(idx)}
+                    disabled={idx === parseResult.detectedColumn}
+                  >
+                    <span className="flex items-center gap-2">
+                      {header || `Columna ${idx + 1}`}
+                      {idx === parseResult.commissionColumn && (
+                        <Check className="h-3 w-3 text-green-600" />
+                      )}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
       {/* Preview table */}
       {parseResult &&
         parseResult.previewRows.length > 0 &&
@@ -191,7 +240,9 @@ export default function FileUploadStep({
                         className={`px-3 py-2 text-left font-medium whitespace-nowrap ${
                           idx === parseResult.detectedColumn
                             ? "bg-primary/10 text-primary"
-                            : "text-gray-500"
+                            : idx === parseResult.commissionColumn
+                              ? "bg-emerald-50 text-emerald-600"
+                              : "text-gray-500"
                         }`}
                       >
                         {h || `Col ${idx + 1}`}
@@ -211,7 +262,9 @@ export default function FileUploadStep({
                           className={`px-3 py-1.5 whitespace-nowrap truncate max-w-20 ${
                             cIdx === parseResult.detectedColumn
                               ? "font-medium text-primary bg-primary/5"
-                              : "text-gray-600"
+                              : cIdx === parseResult.commissionColumn
+                                ? "font-medium text-emerald-600 bg-emerald-50/50"
+                                : "text-gray-600"
                           }`}
                         >
                           {cell || "—"}

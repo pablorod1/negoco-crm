@@ -12,9 +12,10 @@ interface MatchedEntry {
   status: string;
   liquidezStatus: string | null;
   clientName: string;
-  salesName: string;
+  comercialName: string;
   newCompany: string;
   activationDate: string;
+  comision: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -66,12 +67,14 @@ export async function POST(request: NextRequest) {
             t.status,
             t.liquidez_status,
             t.activation_date,
-            t.sales_name,
+            COALESCE(t.comision, 0) AS comision,
             c.name || ' ' || c.last_name AS client_name,
+            COALESCE(u.name, t.sales_name, '') AS comercial_name,
             COALESCE(com.name, con.new_company, '') AS new_company
           FROM contracts con
           JOIN tramites t ON con.tramite_id = t.id
           LEFT JOIN clients c ON t.client_id = c.id
+          LEFT JOIN user u ON t.user_id = u.id
           LEFT JOIN comercializadoras com ON con.new_company = com.id OR con.new_company = com.name
           WHERE con.CUPS IN (${placeholders})
             AND t.status IN ('Activo', 'Baja')
@@ -89,9 +92,10 @@ export async function POST(request: NextRequest) {
           status: row.status as string,
           liquidezStatus: row.liquidez_status as string | null,
           clientName: (row.client_name as string) || "",
-          salesName: (row.sales_name as string) || "",
+          comercialName: (row.comercial_name as string) || "",
           newCompany: (row.new_company as string) || "",
           activationDate: (row.activation_date as string) || "",
+          comision: Number(row.comision) || 0,
         });
       }
     }

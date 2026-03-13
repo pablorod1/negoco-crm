@@ -16,7 +16,7 @@ import { Client } from "@libsql/client";
  * Business Logic:
  * - Updates liquidez_status for multiple contract IDs
  * - Automatically sets collection_date for "Cobrado por Comercializadora"
- * - Automatically sets payment_date for "Pagado al Comercial"
+ * - Automatically sets payment_date for "Pagado al Comercial" and "Adelantado"
  * - Maintains 100% functional compatibility with original endpoint
  */
 
@@ -112,7 +112,7 @@ function buildUpdateQuery(
   if (status === "Cobrado por Comercializadora") {
     sql = `UPDATE tramites SET liquidez_status = ?, collection_date = ? WHERE id IN (${placeholders})`;
     args = [status, currentDate, ...ids];
-  } else if (status === "Pagado al Comercial") {
+  } else if (status === "Pagado al Comercial" || status === "Adelantado") {
     sql = `UPDATE tramites SET liquidez_status = ?, payment_date = ? WHERE id IN (${placeholders})`;
     args = [status, currentDate, ...ids];
   } else {
