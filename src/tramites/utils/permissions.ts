@@ -6,7 +6,7 @@ import { EditTramiteFormData } from "@/tramites/types/tramite.types";
  */
 export function isEditableTramite(
   tramite: EditTramiteFormData,
-  userRole?: string
+  userRole?: string,
 ): boolean {
   if (!userRole) return false;
 
@@ -29,7 +29,7 @@ export function isEditableTramite(
  */
 export function isComercialEditableTramite(
   tramite: EditTramiteFormData,
-  userRole?: string
+  userRole?: string,
 ): boolean {
   if (!userRole) return false;
 
@@ -50,10 +50,10 @@ export function isComercialEditableTramite(
  */
 export function isRenewableTramite(tramite: EditTramiteFormData): boolean {
   // Lógica exacta del componente original:
-  // new Date(tramite.renovation_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  // new Date(tramite.renovation_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) esto significa
   return (
     new Date(tramite.tramite.renovation_date) <=
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
   );
 }
 
