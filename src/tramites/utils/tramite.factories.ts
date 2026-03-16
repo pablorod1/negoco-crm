@@ -31,6 +31,7 @@ export const createEmptyTramiteVM = (): TramiteVM => ({
   user: {},
   updated_by: null,
   updated_at: null,
+  renewal_count: 0,
 });
 
 const getComission = (
@@ -83,6 +84,7 @@ export const createEmptyTramiteDB = (
       ? userData.id
       : "",
   plan: plan ? plan : null,
+  renewal_count: 0,
 });
 
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => {
