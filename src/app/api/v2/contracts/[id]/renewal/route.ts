@@ -1,356 +1,331 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
-import { NOW_DATE, RENOVATION_DATE } from "@/dashboard/constants";
-import { Client } from "@libsql/client";
-import { recordFieldChanges } from "@/tramites/utils/tramiteChangesHelpers";
+import {
+  createTramiteChange,
+  recordStatusChange,
+} from "@/tramites/utils/tramiteChangesHelpers";
 
 /**
- * REFACTORED CONTRACT RENEWAL ENDPOINT
+ * CONTRACT RENEWAL ENDPOINT
  *
- * Original: /api/tramites/renew/[id] (PATCH)
- * Refactored: /new_api/contracts/[id]/renewal (POST)
+ * POST /api/v2/contracts/[id]/renewal
  *
- * This endpoint creates a contract renewal by updating the activation_date and renovation_date
- * with enhanced performance, type safety, and comprehensive error handling.
- *
- * Business Logic:
- * - Sets activation_date to current date (NOW_DATE)
- * - Sets renovation_date to one year from current date (RENOVATION_DATE)
- * - Maintains 100% functional compatibility with original endpoint
+ * Processes a contract renewal with the following operations (atomic transaction):
+ * 1. Updates tramite: status → "Pendiente de Firma", liquidez_status → NULL,
+ *    new dates, renewal_count + 1
+ * 2. Updates contracts: type → "Renovación", optionally rotates companies
+ * 3. Inserts snapshot into tramite_renewal_history
+ * 4. Records granular changes in tramite_changes
  */
-
-// ==================== TYPE DEFINITIONS ====================
-
-interface ContractRenewalResponse {
-  success: boolean;
-  error?: string;
-}
-
-interface QueryMetrics {
-  queryTime: number;
-  optimizationApplied: string[];
-}
 
 // ==================== VALIDATION SCHEMAS ====================
 
-/**
- * Schema for URL parameters
- * Validates that the contract ID is provided and non-empty
- */
 const ParamsSchema = z.object({
   id: z.string().min(1, "Contract ID is required"),
 });
 
-// ==================== UTILITY FUNCTIONS ====================
-
-/**
- * Executes a database query with performance monitoring and error handling
- * @param client - Turso database client
- * @param sql - SQL query string
- * @param args - Query parameters
- * @returns Promise with query result and metrics
- */
-async function executeQuery(
-  client: Client,
-  sql: string,
-  args: (string | number)[]
-): Promise<{ result: { rowsAffected: number }; metrics: QueryMetrics }> {
-  const startTime = performance.now();
-  const optimizations: string[] = [];
-
-  try {
-    // Add query optimization tracking
-    if (sql.includes("WHERE id = ?")) {
-      optimizations.push("indexed-primary-key-lookup");
-    }
-    if (sql.includes("prepared-statement")) {
-      optimizations.push("prepared-statement");
-    }
-
-    const result = await client.execute({ sql, args });
-    const queryTime = performance.now() - startTime;
-
-    return {
-      result,
-      metrics: {
-        queryTime,
-        optimizationApplied: optimizations,
-      },
-    };
-  } catch (error) {
-    const queryTime = performance.now() - startTime;
-    console.error(
-      `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
-      error
-    );
-    throw error;
-  }
-}
-
-/**
- * Validates that the contract exists before attempting renewal
- * This prevents unnecessary update operations on non-existent records
- * @param client - Turso database client
- * @param contractId - Contract ID to validate
- * @returns Promise<boolean> - True if contract exists
- */
-async function validateContractExists(
-  client: Client,
-  contractId: string
-): Promise<boolean> {
-  try {
-    const result = await client.execute({
-      sql: "SELECT id FROM tramites WHERE id = ? LIMIT 1",
-      args: [contractId],
-    });
-
-    return result.rows.length > 0;
-  } catch (error) {
-    console.error(
-      `[ERROR] Contract validation failed for ID ${contractId}:`,
-      error
-    );
-    return false;
-  }
-}
+const RenewalBodySchema = z.object({
+  user_id: z.string().min(1, "User ID is required"),
+  activation_date: z.string().min(1, "Activation date is required"),
+  renovation_date: z.string().min(1, "Renovation date is required"),
+  company_changed: z.boolean().default(false),
+  new_company_id: z.string().optional(),
+});
 
 // ==================== MAIN ENDPOINT HANDLER ====================
 
-/**
- * POST /new_api/contracts/[id]/renewal
- *
- * Creates a contract renewal by updating activation and renovation dates.
- * Maintains 100% compatibility with the original endpoint while adding:
- * - Enhanced type safety with Zod validation
- * - Performance monitoring and optimization
- * - Comprehensive error handling
- * - Better logging and debugging information
- * - Contract existence validation for improved error messages
- *
- * @param request - Next.js request object
- * @param context - Route context with contract ID parameter
- * @returns Promise<NextResponse<ContractRenewalResponse>>
- */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ContractRenewalResponse>> {
-  const startTime = performance.now();
-
+): Promise<NextResponse> {
   try {
     // ==================== PARAMETER VALIDATION ====================
 
-    const { id: contractId } = await params;
-
-    // Validate URL parameters
-    const paramValidation = ParamsSchema.safeParse({ id: contractId });
+    const { id: tramiteId } = await params;
+    const paramValidation = ParamsSchema.safeParse({ id: tramiteId });
     if (!paramValidation.success) {
-      console.error(`[VALIDATION ERROR] Invalid contract ID: ${contractId}`);
+      return NextResponse.json(
+        { success: false, error: "Missing parameters" },
+        { status: 400 }
+      );
+    }
+
+    // ==================== BODY VALIDATION ====================
+
+    const body = await request.json();
+    const bodyValidation = RenewalBodySchema.safeParse(body);
+    if (!bodyValidation.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing parameters",
+          error: `Datos inválidos: ${bodyValidation.error.issues.map((i) => i.message).join(", ")}`,
         },
         { status: 400 }
       );
     }
 
-    // ==================== REQUEST BODY PARSING ====================
+    const {
+      user_id,
+      activation_date,
+      renovation_date,
+      company_changed,
+      new_company_id,
+    } = bodyValidation.data;
 
-    let requestBody: { user_id?: string } = {};
-    let user_id: string | undefined;
-
-    try {
-      const bodyText = await request.text();
-      if (bodyText.trim()) {
-        requestBody = JSON.parse(bodyText);
-        user_id = requestBody.user_id;
-      }
-    } catch {
-      // If body is not valid JSON or empty, proceed without user_id
-    }
-
-    // ==================== DATABASE CLIENT INITIALIZATION ====================
-
-    const tursoClient = getTursoClient(request);
-
-    if (!tursoClient) {
-      const totalRequestTime = performance.now() - startTime;
-      console.error(
-        `[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`
-      );
-
+    if (company_changed && !new_company_id) {
       return NextResponse.json(
         {
           success: false,
-          error: "Database client not initialized",
+          error: "Se requiere nueva compañía cuando hay cambio de compañía",
         },
+        { status: 400 }
+      );
+    }
+
+    // ==================== DATABASE CLIENT ====================
+
+    const tursoClient = getTursoClient(request);
+    if (!tursoClient) {
+      return NextResponse.json(
+        { success: false, error: "Database client not initialized" },
         { status: 500 }
       );
     }
 
-    // ==================== CONTRACT EXISTENCE VALIDATION ====================
+    // ==================== TRANSACTION ====================
 
-    const contractExists = await validateContractExists(
-      tursoClient,
-      contractId
-    );
-    if (!contractExists) {
-      const totalRequestTime = performance.now() - startTime;
-      console.warn(
-        `[WARNING] Contract not found: ${contractId} after ${totalRequestTime.toFixed(2)}ms`
-      );
+    const tx = await tursoClient.transaction();
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No existe el tramite",
-        },
-        { status: 404 }
-      );
-    }
+    try {
+      // 1. Read current tramite state
+      const tramiteResult = await tx.execute({
+        sql: `SELECT id, activation_date, renovation_date, status, liquidez_status, renewal_count
+              FROM tramites WHERE id = ? LIMIT 1`,
+        args: [tramiteId],
+      });
 
-    // ==================== GET CURRENT VALUES FOR TRACKING ====================
+      if (tramiteResult.rows.length === 0) {
+        await tx.rollback();
+        return NextResponse.json(
+          { success: false, error: "No existe el trámite" },
+          { status: 404 }
+        );
+      }
 
-    let currentActivationDate: string | null = null;
-    let currentRenovationDate: string | null = null;
+      const currentTramite = tramiteResult.rows[0];
+      const oldActivationDate = currentTramite.activation_date as string | null;
+      const oldRenovationDate = currentTramite.renovation_date as string | null;
+      const oldStatus = currentTramite.status as string;
+      const oldLiquidezStatus = currentTramite.liquidez_status as
+        | string
+        | null;
+      const currentRenewalCount = (currentTramite.renewal_count as number) || 0;
+      const newRenewalCount = currentRenewalCount + 1;
 
-    if (user_id) {
-      try {
-        const currentResult = await tursoClient.execute({
-          sql: "SELECT activation_date, renovation_date FROM tramites WHERE id = ?",
-          args: [contractId],
+      // 2. Read associated contracts
+      const contractsResult = await tx.execute({
+        sql: `SELECT id, type, old_company, new_company FROM contracts WHERE tramite_id = ?`,
+        args: [tramiteId],
+      });
+
+      // Capture first contract's company info for history tracking
+      const firstContract =
+        contractsResult.rows.length > 0 ? contractsResult.rows[0] : null;
+      const previousCompany = firstContract
+        ? (firstContract.new_company as string)
+        : null;
+      const resolvedNewCompany = company_changed
+        ? new_company_id!
+        : previousCompany;
+
+      // 3. Update tramite
+      await tx.execute({
+        sql: `UPDATE tramites
+              SET status = 'Pendiente de Firma',
+                  liquidez_status = NULL,
+                  activation_date = ?,
+                  renovation_date = ?,
+                  renewal_count = ?
+              WHERE id = ?`,
+        args: [activation_date, renovation_date, newRenewalCount, tramiteId],
+      });
+
+      // 4. Update contracts
+      if (company_changed && new_company_id) {
+        await tx.execute({
+          sql: `UPDATE contracts
+                SET type = 'Renovación',
+                    old_company = new_company,
+                    new_company = ?
+                WHERE tramite_id = ?`,
+          args: [new_company_id, tramiteId],
         });
+      } else {
+        await tx.execute({
+          sql: `UPDATE contracts SET type = 'Renovación' WHERE tramite_id = ?`,
+          args: [tramiteId],
+        });
+      }
 
-        if (currentResult.rows.length > 0) {
-          currentActivationDate = currentResult.rows[0].activation_date as
-            | string
-            | null;
-          currentRenovationDate = currentResult.rows[0].renovation_date as
-            | string
-            | null;
+      // 5. Insert renewal history snapshot
+      await tx.execute({
+        sql: `INSERT INTO tramite_renewal_history (
+                id, tramite_id, renewal_number, user_id,
+                previous_activation_date, previous_renovation_date,
+                new_activation_date, new_renovation_date,
+                previous_status, previous_liquidez_status,
+                company_changed, previous_company, new_company
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          crypto.randomUUID(),
+          tramiteId,
+          newRenewalCount,
+          user_id,
+          oldActivationDate,
+          oldRenovationDate,
+          activation_date,
+          renovation_date,
+          oldStatus,
+          oldLiquidezStatus,
+          company_changed ? 1 : 0,
+          previousCompany,
+          resolvedNewCompany,
+        ],
+      });
+
+      // 6. Record changes in tramite_changes
+
+      // 6.1 Status change
+      await recordStatusChange(
+        tx,
+        tramiteId,
+        user_id,
+        oldStatus,
+        "Pendiente de Firma",
+        `Renovación: Estado cambiado de "${oldStatus}" a "Pendiente de Firma"`
+      );
+
+      // 6.2 Liquidez status reset
+      if (oldLiquidezStatus) {
+        await createTramiteChange(tx, {
+          tramite_id: tramiteId,
+          user_id,
+          change_type: "field_update",
+          field_name: "liquidez_status",
+          old_value: oldLiquidezStatus,
+          new_value: null,
+          description: "Renovación: Estado de liquidez reiniciado",
+        });
+      }
+
+      // 6.3 Activation date change
+      await createTramiteChange(tx, {
+        tramite_id: tramiteId,
+        user_id,
+        change_type: "date_update",
+        field_name: "activation_date",
+        old_value: oldActivationDate,
+        new_value: activation_date,
+        description: `Renovación: Fecha de activación actualizada`,
+      });
+
+      // 6.4 Renovation date change
+      await createTramiteChange(tx, {
+        tramite_id: tramiteId,
+        user_id,
+        change_type: "date_update",
+        field_name: "renovation_date",
+        old_value: oldRenovationDate,
+        new_value: renovation_date,
+        description: `Renovación: Fecha de renovación actualizada`,
+      });
+
+      // 6.5 Contract type changes
+      for (const contract of contractsResult.rows) {
+        const oldType = contract.type as string;
+        if (oldType !== "Renovación") {
+          await createTramiteChange(tx, {
+            tramite_id: tramiteId,
+            user_id,
+            change_type: "contract_updated",
+            field_name: "contract.type",
+            old_value: oldType,
+            new_value: "Renovación",
+            description: `Renovación: Tipo de contrato actualizado a "Renovación"`,
+          });
         }
-      } catch (error) {
-        console.error("Error fetching current renewal dates:", error);
-        // Continue without tracking if we can't get current values
       }
+
+      // 6.6 Renovation completed summary
+      const companyDescription = company_changed
+        ? `Contrato renovado y cambio de compañía de "${previousCompany}" a "${resolvedNewCompany}"`
+        : `Contrato renovado, sin cambio de compañía "${previousCompany}"`;
+
+      await createTramiteChange(tx, {
+        tramite_id: tramiteId,
+        user_id,
+        change_type: "renovation_completed",
+        field_name: "company",
+        old_value: previousCompany,
+        new_value: resolvedNewCompany,
+        description: companyDescription,
+      });
+
+      // 6.7 Company change tracking (if applicable)
+      if (company_changed && new_company_id) {
+        for (const contract of contractsResult.rows) {
+          const contractOldCompany = contract.old_company as string;
+          const contractNewCompany = contract.new_company as string;
+
+          await createTramiteChange(tx, {
+            tramite_id: tramiteId,
+            user_id,
+            change_type: "contract_updated",
+            field_name: "contract.old_company",
+            old_value: contractOldCompany,
+            new_value: contractNewCompany,
+            description: `Renovación: Compañía anterior actualizada`,
+          });
+
+          await createTramiteChange(tx, {
+            tramite_id: tramiteId,
+            user_id,
+            change_type: "contract_updated",
+            field_name: "contract.new_company",
+            old_value: contractNewCompany,
+            new_value: new_company_id,
+            description: `Renovación: Compañía actualizada de "${contractNewCompany}" a "${new_company_id}"`,
+          });
+        }
+      }
+
+      await tx.commit();
+
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      await tx.rollback();
+      throw error;
     }
-
-    // ==================== RENEWAL DATE CALCULATION ====================
-
-    const activationDate = NOW_DATE.toISOString();
-    const renovationDate = RENOVATION_DATE.toISOString();
-
-    // ==================== DATABASE UPDATE EXECUTION ====================
-
-    const sql = `UPDATE tramites SET activation_date = ?, renovation_date = ? WHERE id = ?`;
-    const args = [activationDate, renovationDate, contractId];
-
-    const { result } = await executeQuery(tursoClient, sql, args);
-
-    // ==================== RESULT VALIDATION ====================
-
-    if (result.rowsAffected === 0) {
-      const totalRequestTime = performance.now() - startTime;
-      console.warn(
-        `[WARNING] No rows affected for contract: ${contractId} after ${totalRequestTime.toFixed(2)}ms`
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No existe el tramite",
-        },
-        { status: 404 }
-      );
-    }
-
-    // ==================== SUCCESS RESPONSE ====================
-
-    // ==================== TRACK RENEWAL CHANGES ====================
-
-    // Track renewal changes if user_id is provided
-    if (user_id) {
-      const changes = [];
-
-      if (currentActivationDate !== activationDate) {
-        changes.push({
-          field_name: "activation_date",
-          old_value: currentActivationDate,
-          new_value: activationDate,
-          description: "Fecha de activación actualizada en renovación",
-        });
-      }
-
-      if (currentRenovationDate !== renovationDate) {
-        changes.push({
-          field_name: "renovation_date",
-          old_value: currentRenovationDate,
-          new_value: renovationDate,
-          description: "Fecha de renovación actualizada",
-        });
-      }
-
-      if (changes.length > 0) {
-        await recordFieldChanges(tursoClient, contractId, user_id, changes);
-      }
-    }
-
-    // BACKWARD COMPATIBILITY: Return exact same response as original endpoint
-    return NextResponse.json({
-      success: true,
-    });
   } catch (error) {
-    // ==================== ERROR HANDLING ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      console.error(
-        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
-        error.issues
-      );
       return NextResponse.json(
-        {
-          success: false,
-          error: "Missing parameters",
-        },
+        { success: false, error: "Missing parameters" },
         { status: 400 }
       );
     }
 
-    // Handle general errors
-    console.error(
-      `[ERROR] Contract renewal failed after ${totalRequestTime.toFixed(2)}ms:`,
-      error
-    );
-
+    console.error("[ERROR] Contract renewal failed:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Error updating tramite",
-      },
+      { success: false, error: "Error updating tramite" },
       { status: 500 }
     );
   }
 }
 
-/**
- * PATCH /new_api/contracts/[id]/renewal
- *
- * Backward compatibility alias for the POST method.
- * Maintains compatibility with clients expecting PATCH method from legacy endpoint.
- *
- * @param request - Next.js request object
- * @param context - Route context with contract ID parameter
- * @returns Promise<NextResponse<ContractRenewalResponse>>
- */
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ContractRenewalResponse>> {
-  // Delegate to POST implementation for consistency
+): Promise<NextResponse> {
   return POST(request, context);
 }

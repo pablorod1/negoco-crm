@@ -4,10 +4,12 @@ import React, { useState } from "react";
 import { TramiteDB } from "@/tramites/types";
 import { User } from "@/core/types";
 import { Button } from "@/core/components/ui/button";
-import { Clock, History } from "lucide-react";
+import { Badge } from "@/core/components/ui/badge";
+import { Clock, History, RefreshCcw } from "lucide-react";
 import { cn } from "@/core/utils";
 import TramiteTimeLine from "./TramiteTimeLine";
 import TramiteChangesHistory from "./TramiteChangesHistory";
+import TramiteRenewalHistoryView from "./TramiteRenewalHistoryView";
 
 interface Props {
   tramite: TramiteDB;
@@ -17,7 +19,7 @@ interface Props {
   userIsAdmin?: boolean;
 }
 
-type HistorialView = "timeline" | "changes";
+type HistorialView = "timeline" | "changes" | "renewals";
 
 export default function TramiteHistorialSection({
   tramite,
@@ -27,24 +29,25 @@ export default function TramiteHistorialSection({
   userIsAdmin = false,
 }: Props) {
   const [currentView, setCurrentView] = useState<HistorialView>("timeline");
+  const renewalCount = tramite.renewal_count || 0;
 
   return (
     <div className="space-y-6">
       {/* View Toggle */}
-      <div className="flex items-center gap-2 max-w-80 w-full">
+      <div className="flex items-center gap-2 max-w-full w-full flex-wrap">
         <Button
           onClick={() => setCurrentView("timeline")}
           variant={currentView === "timeline" ? "default" : "outline"}
           size="sm"
           className={cn(
-            "flex-1 flex items-center gap-2",
+            "flex items-center gap-2",
             currentView === "timeline"
               ? "bg-gray-900 text-white shadow-sm"
               : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
           )}
         >
           <Clock className="h-4 w-4" />
-          Timeline del Trámite
+          Timeline
         </Button>
         {userIsAdmin ? (
           <Button
@@ -52,7 +55,7 @@ export default function TramiteHistorialSection({
             variant={currentView === "changes" ? "default" : "outline"}
             size="sm"
             className={cn(
-              "flex-1 flex items-center gap-2",
+              "flex items-center gap-2",
               currentView === "changes"
                 ? "bg-gray-900 text-white shadow-sm"
                 : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
@@ -62,21 +65,50 @@ export default function TramiteHistorialSection({
             Historial de Cambios
           </Button>
         ) : null}
+        {renewalCount > 0 && (
+          <Button
+            onClick={() => setCurrentView("renewals")}
+            variant={currentView === "renewals" ? "default" : "outline"}
+            size="sm"
+            className={cn(
+              "flex items-center gap-2",
+              currentView === "renewals"
+                ? "bg-gray-900 text-white shadow-sm"
+                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+            )}
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Renovaciones
+            <Badge
+              variant={currentView === "renewals" ? "secondary" : "warning"}
+              className="ml-0.5 tabular-nums text-xs px-1.5 py-0"
+            >
+              {renewalCount}
+            </Badge>
+          </Button>
+        )}
       </div>
 
       {/* Content */}
-      {currentView === "timeline" ? (
+      {currentView === "timeline" && (
         <TramiteTimeLine
           tramite={tramite}
           isComercial={isComercial}
           onUpdate={onUpdate}
           userData={userData}
         />
-      ) : null}
+      )}
 
-      {currentView === "changes" && userIsAdmin ? (
+      {currentView === "changes" && userIsAdmin && (
         <TramiteChangesHistory tramiteId={tramite.id} userData={userData} />
-      ) : null}
+      )}
+
+      {currentView === "renewals" && renewalCount > 0 && (
+        <TramiteRenewalHistoryView
+          tramiteId={tramite.id}
+          renewalCount={renewalCount}
+        />
+      )}
     </div>
   );
 }

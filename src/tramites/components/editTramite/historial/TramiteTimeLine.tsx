@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
+import { Badge } from "@/core/components/ui/badge";
 import { cn } from "@/core/utils";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import UpdateTramiteDateModal from "../dates/UpdateTramiteDateModal";
@@ -40,7 +41,7 @@ interface TimelineEvent {
   fieldToChange?: string;
   status: "completed" | "pending" | "cancelled" | "current";
   icon: React.ReactNode;
-  category: "process" | "financial" | "administrative";
+  category: "process" | "financial" | "administrative" | "renewal";
 }
 
 export default function TramiteTimeLine({
@@ -99,20 +100,24 @@ export default function TramiteTimeLine({
 
     // Add renewal if exists
     if (tramite.renovation_date) {
+      const renewalCount = tramite.renewal_count || 0;
+      const isPastRenewal = new Date(tramite.renovation_date) <= new Date();
+
       events.push({
         id: "renovation",
-        label: "Fecha de Renovación",
+        label: renewalCount > 0
+          ? `Renovación (${renewalCount}${renewalCount === 1 ? "ª" : "ª"} vez)`
+          : "Fecha de Renovación",
         date: tramite.renovation_date,
-        description: "Fecha de renovación del contrato",
+        description: renewalCount > 0
+          ? `Contrato renovado ${renewalCount} ${renewalCount === 1 ? "vez" : "veces"}. Próxima renovación programada.`
+          : "Fecha de renovación del contrato",
         tooltipContent:
           "La fecha de renovación se asignará cuando el estado del trámite cambie a Activo.",
         fieldToChange: "renovation_date",
-        status:
-          new Date(tramite.renovation_date) <= new Date()
-            ? "current"
-            : "pending",
-        icon: <Calendar className="h-4 w-4" />,
-        category: "administrative",
+        status: isPastRenewal ? "current" : "pending",
+        icon: <RefreshCcw className="h-4 w-4" />,
+        category: "renewal",
       });
     }
 
@@ -214,6 +219,8 @@ export default function TramiteTimeLine({
         return "text-green-600";
       case "administrative":
         return "text-purple-600";
+      case "renewal":
+        return "text-amber-600";
       default:
         return "text-gray-600";
     }
@@ -240,6 +247,12 @@ export default function TramiteTimeLine({
         <CardTitle className="flex items-center gap-3 text-gray-800 text-lg font-semibold">
           <Clock className="h-5 w-5 text-gray-600" />
           Timeline del Trámite
+          {tramite.renewal_count > 0 && (
+            <Badge variant="warning" className="ml-auto tabular-nums">
+              <RefreshCcw className="h-3 w-3 mr-1" />
+              {tramite.renewal_count} {tramite.renewal_count === 1 ? "renovación" : "renovaciones"}
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
@@ -321,13 +334,15 @@ export default function TramiteTimeLine({
                               event.category === "process" && "bg-blue-100",
                               event.category === "financial" && "bg-green-100",
                               event.category === "administrative" &&
-                                "bg-purple-100"
+                                "bg-purple-100",
+                              event.category === "renewal" && "bg-amber-100"
                             )}
                           >
                             {event.category === "process" && "Proceso"}
                             {event.category === "financial" && "Financiero"}
                             {event.category === "administrative" &&
                               "Administrativo"}
+                            {event.category === "renewal" && "Renovación"}
                           </span>
                         </div>
                         {event.description && (

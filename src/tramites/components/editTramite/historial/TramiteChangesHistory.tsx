@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { TramiteChangeWithUser } from "@/tramites/types/tramite-changes.types";
 import { User } from "@/core/types";
+import { useEnergySupplierNames } from "@/comercializadoras/hooks/useEnergySupplierById";
 import {
   Card,
   CardContent,
@@ -57,6 +58,34 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
   const [changes, setChanges] = useState<TramiteChangeWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Collect unique company IDs from company-related change values
+  const companyIds = useMemo(() => {
+    const ids = new Set<string>();
+    const companyFields = ["contract.old_company", "contract.new_company", "company"];
+    changes.forEach((change) => {
+      if (change.field_name && companyFields.includes(change.field_name)) {
+        if (change.old_value) ids.add(change.old_value);
+        if (change.new_value) ids.add(change.new_value);
+      }
+    });
+    return Array.from(ids);
+  }, [changes]);
+
+  const { supplierNames } = useEnergySupplierNames(companyIds);
+
+  const isCompanyField = (fieldName: string | null): boolean => {
+    if (!fieldName) return false;
+    return ["contract.old_company", "contract.new_company", "company"].includes(fieldName);
+  };
+
+  const resolveValue = (fieldName: string | null, value: string | null): string | null => {
+    if (!value) return value;
+    if (isCompanyField(fieldName)) {
+      return supplierNames[value] || value;
+    }
+    return value;
+  };
 
   useEffect(() => {
     const fetchChanges = async () => {
@@ -128,6 +157,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
         return <Building className="h-4 w-4" />;
       case "renewal_created":
       case "renewal_updated":
+      case "renovation_completed":
         return <RefreshCw className="h-4 w-4" />;
       default:
         return <Settings className="h-4 w-4" />;
@@ -167,6 +197,8 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
       case "renewal_created":
       case "renewal_updated":
         return "bg-sky-100 text-sky-700 border-sky-200";
+      case "renovation_completed":
+        return "bg-amber-100 text-amber-700 border-amber-200";
       default:
         return "bg-gray-100 text-gray-700 border-gray-200";
     }
@@ -191,6 +223,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
       provider_update: "Proveedor",
       renewal_created: "Renovación Creada",
       renewal_updated: "Renovación",
+      renovation_completed: "Renovación Completada",
     };
     return typeMap[changeType] || changeType;
   };
@@ -280,6 +313,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
       contracts: "Contratos",
       contract: "Contrato",
       client_id: "Cliente",
+      company: "Compañía",
     };
 
     return tramiteFieldMap[fieldName] || fieldName;
@@ -411,7 +445,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
                   <TableCell className="py-2 px-3">
                     {change.old_value ? (
                       <code className="bg-red-50 text-red-700 px-2 py-1 rounded text-xs">
-                        {change.old_value}
+                        {resolveValue(change.field_name, change.old_value)}
                       </code>
                     ) : (
                       <span className="text-gray-400 italic">vacío</span>
@@ -420,7 +454,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
                   <TableCell className="py-2 px-3">
                     {change.new_value ? (
                       <code className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs">
-                        {change.new_value}
+                        {resolveValue(change.field_name, change.new_value)}
                       </code>
                     ) : (
                       <span className="text-gray-400 italic">vacío</span>
@@ -535,10 +569,18 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
 
                 {/* Changes in this group */}
                 <div className="ml-16 space-y-3">
-                  {group.changes.map((change, changeIndex) => (
+                  {group.changes.map((change, changeIndex) => {
+                    const isRenewalCompleted = change.change_type === "renovation_completed";
+
+                    return (
                     <div
                       key={`${change.id}-${changeIndex}`}
-                      className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-sm transition-shadow duration-200"
+                      className={cn(
+                        "flex items-start gap-3 p-4 rounded-lg border hover:shadow-sm transition-shadow duration-200",
+                        isRenewalCompleted
+                          ? "bg-amber-50/70 border-amber-200"
+                          : "bg-gray-50 border-gray-200"
+                      )}
                     >
                       <div
                         className={cn(
@@ -584,7 +626,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
                                       Anterior:
                                     </span>
                                     <code className="bg-red-50 text-red-700 px-2 py-1 rounded border">
-                                      {change.old_value}
+                                      {resolveValue(change.field_name, change.old_value)}
                                     </code>
                                   </div>
                                 )}
@@ -594,7 +636,7 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
                                       Nuevo:
                                     </span>
                                     <code className="bg-green-50 text-green-700 px-2 py-1 rounded border">
-                                      {change.new_value}
+                                      {resolveValue(change.field_name, change.new_value)}
                                     </code>
                                   </div>
                                 )}
@@ -612,7 +654,8 @@ export default function TramiteChangesHistory({ tramiteId, userData }: Props) {
                         )}
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
             );

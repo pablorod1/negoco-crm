@@ -19,7 +19,8 @@ export type TramiteChangeType =
   | "date_update"
   | "provider_update"
   | "renewal_created"
-  | "renewal_updated";
+  | "renewal_updated"
+  | "renovation_completed";
 
 export interface TramiteChange {
   id: string;

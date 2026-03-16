@@ -49,6 +49,7 @@ export interface TramiteDB {
   rejected_date?: string | null;
   provider?: string | null;
   plan?: "fijo" | "indexado" | null;
+  renewal_count: number;
 }
 
 export interface TramiteVM extends TramiteDB {
