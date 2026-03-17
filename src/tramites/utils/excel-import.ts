@@ -5,7 +5,7 @@ async function loadXLSX(): Promise<typeof XLSXTypes> {
   return await import("xlsx");
 }
 
-const CUPS_REGEX = /^ES\d{16}[A-Z]{2}\d{0,2}$/;
+const CUPS_REGEX = /^ES\d{16}[A-Z]{2}[A-Z0-9]{0,2}$/;
 
 const CUPS_HEADER_PATTERNS = [
   /^cups$/i,

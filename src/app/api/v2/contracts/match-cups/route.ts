@@ -55,9 +55,16 @@ export async function POST(request: NextRequest) {
     const BATCH_SIZE = 500;
     const allMatched: MatchedEntry[] = [];
 
+    // Normalize CUPS to base-20 for flexible matching (with/without punto de medida suffix)
+    const cupsBaseMap = new Map<string, string>();
+    for (const c of cups) {
+      cupsBaseMap.set(c.substring(0, 20), c);
+    }
+
     for (let i = 0; i < cups.length; i += BATCH_SIZE) {
       const batch = cups.slice(i, i + BATCH_SIZE);
-      const placeholders = batch.map(() => "?").join(",");
+      const baseBatch = batch.map((c) => c.substring(0, 20));
+      const placeholders = baseBatch.map(() => "?").join(",");
 
       const result = await tursoClient.execute({
         sql: `
@@ -76,18 +83,19 @@ export async function POST(request: NextRequest) {
           LEFT JOIN clients c ON t.client_id = c.id
           LEFT JOIN user u ON t.user_id = u.id
           LEFT JOIN comercializadoras com ON con.new_company = com.id OR con.new_company = com.name
-          WHERE con.CUPS IN (${placeholders})
+          WHERE SUBSTR(con.CUPS, 1, 20) IN (${placeholders})
             AND t.status IN ('Activo', 'Baja')
           ORDER BY
             CASE WHEN t.status = 'Activo' THEN 0 ELSE 1 END,
             t.activation_date DESC
         `,
-        args: batch,
+        args: baseBatch,
       });
 
       for (const row of result.rows) {
+        const base = (row.cups as string).substring(0, 20);
         allMatched.push({
-          cups: row.cups as string,
+          cups: cupsBaseMap.get(base) ?? (row.cups as string),
           tramiteId: row.tramite_id as string,
           status: row.status as string,
           liquidezStatus: row.liquidez_status as string | null,
