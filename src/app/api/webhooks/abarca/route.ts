@@ -10,6 +10,7 @@ import {
 export async function POST(req: Request) {
   // 1. Auth: solo x-api-key
   const apiKey = req.headers.get("x-api-key");
+
   if (!apiKey || apiKey !== process.env.ABARCA_API_KEY) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -63,8 +64,14 @@ export async function POST(req: Request) {
   }
   const organizationId = org.id as string;
 
-  // 5. Resolve comparativa directly from payload
-  const comparativaId = payload.comparativa_id;
+  // 5. Extract comparativa ID from header
+  const comparativaId = req.headers.get("x-comparativa-id");
+  if (!comparativaId) {
+    return NextResponse.json(
+      { error: "Missing comparativa ID" },
+      { status: 400 },
+    );
+  }
 
   // 6. Verify comparativa exists
   const compResult = await db.execute({
