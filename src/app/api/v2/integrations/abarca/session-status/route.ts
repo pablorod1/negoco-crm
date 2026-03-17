@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("user_id");
