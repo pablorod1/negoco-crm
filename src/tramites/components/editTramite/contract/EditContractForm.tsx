@@ -35,7 +35,7 @@ export default function EditContractForm({
   lastStep,
 }: Props) {
   const [errors, setErrors] = React.useState<ContractError>(
-    createEmptyContractError
+    createEmptyContractError,
   );
   const [formData, setFormData] = React.useState<ContractDB>(contract);
 
@@ -47,15 +47,15 @@ export default function EditContractForm({
     () =>
       activeSuppliers.map((supplier) => ({
         label: supplier.name,
-        value: supplier.name,
+        value: supplier.id,
       })),
-    [activeSuppliers]
+    [activeSuppliers],
   );
 
   const handleFieldChange = (
     e:
       | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
     const value = e.target.value;
     const name = e.target.name;
@@ -117,6 +117,13 @@ export default function EditContractForm({
       setErrors(validation.errors);
     }
   };
+
+  const oldCompanyText = supplierOptions.find(
+    (option) => option.value === formData.old_company,
+  )?.label;
+  const newCompanyText = supplierOptions.find(
+    (option) => option.value === formData.new_company,
+  )?.label;
 
   return (
     <FormWrapper>
@@ -198,6 +205,7 @@ export default function EditContractForm({
               onChange={(value) => handleSelectChange(value, "old_company")}
               isRequired
               selectedKey={formData.old_company || ""}
+              textValue={oldCompanyText || formData.old_company || ""}
             />
             <SelectComponent
               name="new_company"
@@ -206,7 +214,8 @@ export default function EditContractForm({
               onChange={(value) => handleSelectChange(value, "new_company")}
               errors={errors.new_company}
               isRequired
-              selectedKey={formData.new_company}
+              selectedKey={formData.new_company || ""}
+              textValue={newCompanyText || formData.new_company || ""}
             />
             <InputComponent
               name="consumption"
