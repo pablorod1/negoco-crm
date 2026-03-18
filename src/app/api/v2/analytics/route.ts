@@ -43,7 +43,7 @@ const createUserFilter = (
   role: string,
   id: string,
   subcomerciales?: { success: boolean; ids?: string[] },
-  includeSubcomerciales: boolean = true
+  includeSubcomerciales: boolean = true,
 ) => {
   const params: (string | number)[] = [];
   let filter = "";
@@ -81,7 +81,7 @@ const calculatePercentage = (currentValue: number, previousValue: number) => {
  * @returns Promise<NextResponse<AnalyticsResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<AnalyticsResponse>> {
   try {
     // Parse and validate request body
@@ -95,7 +95,7 @@ export async function POST(
           error:
             "Invalid request parameters: " + validationResult.error.message,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -109,7 +109,7 @@ export async function POST(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -179,7 +179,7 @@ export async function POST(
     const comisionesPendientesUserFilter = createUserFilter(
       role,
       id,
-      subcomerciales
+      subcomerciales,
     );
     const comisionesPendientesQuery = `
       SELECT SUM(CASE WHEN liquidez_status IN (${
@@ -198,7 +198,7 @@ export async function POST(
           strftime('%Y-%m', activation_date) AS month_key,
           SUM(${role === "2" ? "comision_sales_person" : "comision"}) AS total
       FROM tramites
-      WHERE strftime('%Y', activation_date) = strftime('%Y', 'now')
+      WHERE strftime('%Y', activation_date) = strftime('%Y', 'now') AND status = 'Activo'
       ${balanceUserFilter.filter}
       GROUP BY month_key ORDER BY month_key ASC
     `;
@@ -276,7 +276,7 @@ export async function POST(
     };
     const clientsDifference = calculatePercentage(
       Number(clientsData.current_total || 0),
-      Number(clientsData.prev_total || 0)
+      Number(clientsData.prev_total || 0),
     );
 
     // Process active contracts data
@@ -287,12 +287,12 @@ export async function POST(
     };
     const activeTramitesDifference = calculatePercentage(
       Number(activeTramitesData.active || 0),
-      Number(activeTramitesData.prev_active || 0)
+      Number(activeTramitesData.prev_active || 0),
     );
 
     // Process pending commissions
     const comisionesPendientes = Number(
-      comisionesPendientesResult.rows[0]?.total || 0
+      comisionesPendientesResult.rows[0]?.total || 0,
     );
 
     // Process annual balance calculation
@@ -328,7 +328,7 @@ export async function POST(
 
     const totalBalance = balanceArray.reduce(
       (acc, item) => acc + item.total,
-      0
+      0,
     );
 
     // Process comparisons data
@@ -339,7 +339,7 @@ export async function POST(
     };
     const comparativasDifference = calculatePercentage(
       Number(comparativasData.completed || 0),
-      Number(comparativasData.prev_completed || 0)
+      Number(comparativasData.prev_completed || 0),
     );
 
     // Process total consumption data
@@ -381,7 +381,7 @@ export async function POST(
         success: false,
         error: "Error fetching dashboard analytics data",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
