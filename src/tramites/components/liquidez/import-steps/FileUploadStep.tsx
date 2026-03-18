@@ -119,98 +119,51 @@ export default function FileUploadStep({
         </div>
       )}
 
-      {/* Sheet selector (if multiple sheets) */}
-      {parseResult && parseResult.sheetNames.length > 1 && (
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">Hoja</label>
-          <Select
-            onValueChange={(val) => onChangeSheet(Number(val))}
-            defaultValue="0"
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {parseResult.sheetNames.map((name, idx) => (
-                <SelectItem key={idx} value={String(idx)}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Column selector */}
-      {parseResult && parseResult.headers.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">
-            Columna CUPS
-          </label>
-          <Select
-            onValueChange={(val) => onChangeColumn(Number(val))}
-            value={
-              parseResult.detectedColumn >= 0
-                ? String(parseResult.detectedColumn)
-                : undefined
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona la columna de CUPS" />
-            </SelectTrigger>
-            <SelectContent>
-              {parseResult.headers.map((header, idx) => (
-                <SelectItem key={idx} value={String(idx)}>
-                  <span className="flex items-center gap-2">
-                    {header || `Columna ${idx + 1}`}
-                    {idx === parseResult.detectedColumn && (
-                      <Check className="h-3 w-3 text-green-600" />
-                    )}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Commission column selector (optional) */}
-      {parseResult &&
-        parseResult.headers.length > 0 &&
-        parseResult.detectedColumn >= 0 && (
+      <div className="flex items-center gap-4">
+        {/* Sheet selector (if multiple sheets) */}
+        {parseResult && parseResult.sheetNames.length > 1 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-gray-700">Hoja</label>
+            <Select
+              onValueChange={(val) => onChangeSheet(Number(val))}
+              defaultValue="0"
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {parseResult.sheetNames.map((name, idx) => (
+                  <SelectItem key={idx} value={String(idx)}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {/* Column selector */}
+        {parseResult && parseResult.headers.length > 0 && (
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-700">
-              Columna Comisiones{" "}
-              <span className="text-gray-400 font-normal">(opcional)</span>
+              Columna CUPS
             </label>
             <Select
-              onValueChange={(val) =>
-                onChangeCommissionColumn(val === "none" ? null : Number(val))
-              }
+              onValueChange={(val) => onChangeColumn(Number(val))}
               value={
-                parseResult.commissionColumn != null
-                  ? String(parseResult.commissionColumn)
-                  : "none"
+                parseResult.detectedColumn >= 0
+                  ? String(parseResult.detectedColumn)
+                  : undefined
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona la columna de comisiones" />
+                <SelectValue placeholder="Selecciona la columna de CUPS" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">
-                  <span className="text-gray-400">
-                    Sin columna de comisiones
-                  </span>
-                </SelectItem>
                 {parseResult.headers.map((header, idx) => (
-                  <SelectItem
-                    key={idx}
-                    value={String(idx)}
-                    disabled={idx === parseResult.detectedColumn}
-                  >
+                  <SelectItem key={idx} value={String(idx)}>
                     <span className="flex items-center gap-2">
                       {header || `Columna ${idx + 1}`}
-                      {idx === parseResult.commissionColumn && (
+                      {idx === parseResult.detectedColumn && (
                         <Check className="h-3 w-3 text-green-600" />
                       )}
                     </span>
@@ -220,6 +173,53 @@ export default function FileUploadStep({
             </Select>
           </div>
         )}
+        {/* Commission column selector (optional) */}
+        {parseResult &&
+          parseResult.headers.length > 0 &&
+          parseResult.detectedColumn >= 0 && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Columna Comisiones{" "}
+                <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <Select
+                onValueChange={(val) =>
+                  onChangeCommissionColumn(val === "none" ? null : Number(val))
+                }
+                value={
+                  parseResult.commissionColumn != null
+                    ? String(parseResult.commissionColumn)
+                    : "none"
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona la columna de comisiones" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <span className="text-gray-400">
+                      Sin columna de comisiones
+                    </span>
+                  </SelectItem>
+                  {parseResult.headers.map((header, idx) => (
+                    <SelectItem
+                      key={idx}
+                      value={String(idx)}
+                      disabled={idx === parseResult.detectedColumn}
+                    >
+                      <span className="flex items-center gap-2">
+                        {header || `Columna ${idx + 1}`}
+                        {idx === parseResult.commissionColumn && (
+                          <Check className="h-3 w-3 text-green-600" />
+                        )}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+      </div>
 
       {/* Preview table */}
       {parseResult &&

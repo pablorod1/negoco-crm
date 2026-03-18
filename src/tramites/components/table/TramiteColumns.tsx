@@ -17,7 +17,7 @@ import TooltipComponent from "@/core/components/TooltipComponent";
 import { LiquidezStatus, Status, TramiteRow } from "@/tramites/types";
 
 const isRenewable = (
-  renovation_date: string
+  renovation_date: string,
 ): {
   renewable: boolean;
   days?: number;
@@ -65,7 +65,7 @@ const SortableHeader = ({
 const dateSortingFn = (
   rowA: { original: TramiteRow },
   rowB: { original: TramiteRow },
-  accessor: keyof TramiteRow
+  accessor: keyof TramiteRow,
 ) => {
   const a = rowA.original[accessor] as string | null;
   const b = rowB.original[accessor] as string | null;
@@ -380,10 +380,12 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow, unknown>[] = [
         return <span className="text-gray-400 text-sm">---</span>;
       if (row.original.liquidez_status === "Cobrado por Comercializadora")
         return <span className="text-gray-400 text-sm">---</span>;
+      if (row.original.liquidez_status === "Adelantado")
+        return getStatusBadge("Pagado al Comercial", "liquidez", true);
       return getStatusBadge(
         row.original.liquidez_status as LiquidezStatus,
         "liquidez",
-        true
+        true,
       );
     },
   },
@@ -521,7 +523,7 @@ export const TramiteColumns: ColumnDef<TramiteRow, unknown>[] = [
       return getStatusBadge(
         row.original.liquidez_status as LiquidezStatus,
         "liquidez",
-        true
+        true,
       );
     },
   },
