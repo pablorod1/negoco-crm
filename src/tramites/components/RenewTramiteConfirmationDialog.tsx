@@ -2,7 +2,7 @@
 import {
   ArrowRightLeft,
   Calendar,
-  ChevronRight,
+  ChevronDown,
   CircleX,
   Info,
   RefreshCcw,
@@ -58,7 +58,7 @@ export default function RenewTramiteConfirmationDialog({
   const initialRenovationDate = new Date(
     initialActivationDate.getFullYear() + 1,
     initialActivationDate.getMonth(),
-    initialActivationDate.getDate()
+    initialActivationDate.getDate(),
   );
 
   const [isOpen, setIsOpen] = useState(false);
@@ -88,7 +88,7 @@ export default function RenewTramiteConfirmationDialog({
           renovation_date: new Date(
             date.getFullYear() + 1,
             date.getMonth(),
-            date.getDate()
+            date.getDate(),
           ),
         }),
       }));
@@ -217,9 +217,12 @@ export default function RenewTramiteConfirmationDialog({
             Renovar Trámite
           </Button>
         </DialogTrigger>
-        <DialogContent className="py-0 w-full max-w-lg max-h-[90vh] overflow-auto [&>button]:hidden">
+        <DialogContent className="py-0 w-full max-w-3xl max-h-[90vh] overflow-auto [&>button]:hidden">
           {/* Header with renewal count */}
-          <DialogHeader className="sticky top-0 z-10 bg-white pt-5 pb-4 border-b" aria-describedby={undefined}>
+          <DialogHeader
+            className="sticky top-0 z-10 bg-white pt-5 pb-4 border-b"
+            aria-describedby={undefined}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary-100">
@@ -230,11 +233,15 @@ export default function RenewTramiteConfirmationDialog({
                     Renovar Trámite
                   </DialogTitle>
                   <p className="text-sm text-gray-500">
-                    {formatUUID(tramite.id)} &middot; {client.name} {client.last_name}
+                    {formatUUID(tramite.id)} &middot; {client.name}{" "}
+                    {client.last_name}
                   </p>
                 </div>
               </div>
-              <Badge variant={renewalNumber === 1 ? "info" : "warning"} className="tabular-nums">
+              <Badge
+                variant={renewalNumber === 1 ? "info" : "warning"}
+                className="tabular-nums"
+              >
                 Renovación #{renewalNumber}
               </Badge>
             </div>
@@ -261,7 +268,7 @@ export default function RenewTramiteConfirmationDialog({
             )}
 
             {/* Date transition visualization */}
-            <div className="space-y-3">
+            <div className="space-y-6">
               <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <Calendar size={15} className="text-gray-500" />
                 Fechas del nuevo periodo
@@ -270,36 +277,54 @@ export default function RenewTramiteConfirmationDialog({
               {/* Current → New dates */}
               <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-3">
                 <div className="text-center p-3 rounded-lg bg-gray-50 border border-gray-200">
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">Activación actual</p>
-                  <p className="text-sm font-semibold text-gray-700">{formatDate(tramite.activation_date)}</p>
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">
+                    Activación actual
+                  </p>
+                  <p className="text-sm font-semibold text-gray-700">
+                    {formatDate(tramite.activation_date)}
+                  </p>
                 </div>
-                <ChevronRight size={16} className="text-gray-300" />
+                <div className="w-full flex items-center justify-center">
+                  <ChevronDown size={16} className="text-gray-500" />
+                </div>
                 <div className="text-center p-3 rounded-lg bg-primary-50 border border-primary-200">
-                  <p className="text-[11px] font-medium text-primary-400 uppercase tracking-wider mb-1">Nueva activación</p>
+                  <p className="text-[11px] font-medium text-primary-400 uppercase tracking-wider mb-1">
+                    Nueva activación
+                  </p>
                   <DatePicker
                     date={formData.activation_date}
                     setDate={(value) =>
                       handleDateChange(value as Date, "activation_date")
                     }
-                    className="w-full"
+                    className="w-full bg-white"
                   />
                 </div>
               </div>
 
+              <Separator />
+
               <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-3">
                 <div className="text-center p-3 rounded-lg bg-gray-50 border border-gray-200">
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">Renovación actual</p>
-                  <p className="text-sm font-semibold text-gray-700">{formatDate(tramite.renovation_date)}</p>
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">
+                    Renovación actual
+                  </p>
+                  <p className="text-sm font-semibold text-gray-700">
+                    {formatDate(tramite.renovation_date)}
+                  </p>
                 </div>
-                <ChevronRight size={16} className="text-gray-300" />
+                <div className="w-full flex items-center justify-center">
+                  <ChevronDown size={16} className="text-gray-500" />
+                </div>
                 <div className="text-center p-3 rounded-lg bg-primary-50 border border-primary-200">
-                  <p className="text-[11px] font-medium text-primary-400 uppercase tracking-wider mb-1">Nueva renovación</p>
+                  <p className="text-[11px] font-medium text-primary-400 uppercase tracking-wider mb-1">
+                    Nueva renovación
+                  </p>
                   <DatePicker
                     date={formData.renovation_date}
                     setDate={(value) =>
                       handleDateChange(value as Date, "renovation_date")
                     }
-                    className="w-full"
+                    className="w-full bg-white"
                   />
                 </div>
               </div>
@@ -339,7 +364,10 @@ export default function RenewTramiteConfirmationDialog({
                     label="Nueva compañía"
                     items={supplierItems}
                     onChange={(value) =>
-                      setFormData((prev) => ({ ...prev, new_company_id: value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        new_company_id: value,
+                      }))
                     }
                     selectedKey={formData.new_company_id}
                     textValue={selectedSupplierName}
@@ -359,13 +387,22 @@ export default function RenewTramiteConfirmationDialog({
                 Cambios automáticos
               </p>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="text-xs bg-white border-blue-200 text-blue-700">
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-white border-blue-200 text-blue-700"
+                >
                   Estado → Pendiente de Firma
                 </Badge>
-                <Badge variant="outline" className="text-xs bg-white border-blue-200 text-blue-700">
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-white border-blue-200 text-blue-700"
+                >
                   Liquidez → Reiniciada
                 </Badge>
-                <Badge variant="outline" className="text-xs bg-white border-blue-200 text-blue-700">
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-white border-blue-200 text-blue-700"
+                >
                   Contrato → Renovación
                 </Badge>
               </div>
