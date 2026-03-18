@@ -186,7 +186,7 @@ export function AbarcaPanel({
                   id="abarca-panel"
                   src={iframeUrl}
                   title="Comparador Energético Abarca"
-                  className="abarca-panel w-full h-full min-h-dvh border-0"
+                  className="abarca-panel w-full h-full border-0"
                   onLoad={() => setIsIframeLoading(false)}
                 />
               </>
