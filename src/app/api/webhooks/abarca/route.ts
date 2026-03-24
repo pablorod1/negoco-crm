@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 import { getTursoClientByTenant } from "@/core/libsql/client";
 import { AbarcaWebhookSchema } from "@/comparativas/types/abarca.types";
 import { uploadBase64File } from "@/core/firebase/data/uploadBase64File";
-import {
-  recordStatusChange,
-  recordDocumentUpload,
-} from "@/comparativas/utils/comparativaChangesHelpers";
 
 export async function POST(req: Request) {
   // 1. Auth: solo x-api-key
@@ -84,7 +80,6 @@ export async function POST(req: Request) {
       { status: 404 },
     );
   }
-  const currentStatus = compResult.rows[0].status as string;
 
   // 7. Upload files to Firebase
   const storagePath = `${organizationId}/comparativas/${comparativaId}`;
@@ -173,7 +168,6 @@ export async function POST(req: Request) {
         null,
       ],
     });
-    await recordDocumentUpload(db, comparativaId, "system", file.filename);
   }
 
   // 9. Insert abarca_estudios
@@ -245,13 +239,6 @@ export async function POST(req: Request) {
     sql: "UPDATE comparativas SET status = 'awaiting_review' WHERE id = ?",
     args: [comparativaId],
   });
-  await recordStatusChange(
-    db,
-    comparativaId,
-    "system",
-    currentStatus,
-    "awaiting_review",
-  );
 
   return NextResponse.json({ success: true });
 }
