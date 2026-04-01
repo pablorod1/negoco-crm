@@ -170,69 +170,93 @@ export async function POST(req: Request) {
     });
   }
 
-  // 9. Insert abarca_estudios
-  const estudioId = crypto.randomUUID();
-  await db.execute({
-    sql: `INSERT INTO abarca_estudios (
-      id, comparativa_id, crm_id, ide,
-      cups, tipo_tarifa, potencia_contratada, potencia_contratada_p2, potencia_contratada_p3, potencia_contratada_p4, potencia_contratada_p5, potencia_contratada_p6,
-      consumo_p1, consumo_p2, consumo_p3, consumo_p4, consumo_p5, consumo_p6,
-      empresa_cliente, empresa,
-      nombre_completo, titular, ape1, ape2, dni, nif_empresa, autonomo,
-      calle, numero, codpostal, localidad,
-      calle_cups, numero_cups, codpostal_cups, localidad_cups,
-      email, movil, iban,
-      cambio_titularidad, tiene_placas,
-      observaciones, servicios, permanencia,
-      raw_payload
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      estudioId,
-      comparativaId,
-      payload.crm_id,
-      payload.ide,
-      payload.cups,
-      payload.tipo_tarifa ?? null,
-      payload.potencia_contratada ?? null,
-      payload.potencia_contratada_p2 ?? null,
-      payload.potencia_contratada_p3 ?? null,
-      payload.potencia_contratada_p4 ?? null,
-      payload.potencia_contratada_p5 ?? null,
-      payload.potencia_contratada_p6 ?? null,
-      payload.consumo_p1 ?? null,
-      payload.consumo_p2 ?? null,
-      payload.consumo_p3 ?? null,
-      payload.consumo_p4 ?? null,
-      payload.consumo_p5 ?? null,
-      payload.consumo_p6 ?? null,
-      payload.empresa_cliente ?? null,
-      payload.empresa ?? null,
-      payload.nombre_completo ?? null,
-      payload.titular ?? null,
-      payload.ape1 ?? null,
-      payload.ape2 ?? null,
-      payload.dni ?? null,
-      payload.nif_empresa ? 1 : 0,
-      payload.autonomo ? 1 : 0,
-      payload.calle ?? null,
-      payload.numero ?? null,
-      payload.codpostal ?? null,
-      payload.localidad ?? null,
-      payload.calle_cups ?? null,
-      payload.numero_cups ?? null,
-      payload.codpostal_cups ?? null,
-      payload.localidad_cups ?? null,
-      payload.email ?? null,
-      payload.movil ?? null,
-      payload.iban ?? null,
-      payload.cambio_titularidad ? 1 : 0,
-      payload.tiene_placas ? 1 : 0,
-      payload.observaciones ?? null,
-      payload.servicios ?? null,
-      payload.permanencia ?? 0,
-      JSON.stringify(body),
-    ],
+  // 9. Insert or update abarca_estudios
+  const existingEstudio = await db.execute({
+    sql: "SELECT id FROM abarca_estudios WHERE comparativa_id = ?",
+    args: [comparativaId],
   });
+
+  const estudioArgs = [
+    payload.crm_id,
+    payload.ide,
+    payload.cups,
+    payload.tipo_tarifa ?? null,
+    payload.potencia_contratada ?? null,
+    payload.potencia_contratada_p2 ?? null,
+    payload.potencia_contratada_p3 ?? null,
+    payload.potencia_contratada_p4 ?? null,
+    payload.potencia_contratada_p5 ?? null,
+    payload.potencia_contratada_p6 ?? null,
+    payload.consumo_p1 ?? null,
+    payload.consumo_p2 ?? null,
+    payload.consumo_p3 ?? null,
+    payload.consumo_p4 ?? null,
+    payload.consumo_p5 ?? null,
+    payload.consumo_p6 ?? null,
+    payload.empresa_cliente ?? null,
+    payload.empresa ?? null,
+    payload.nombre_completo ?? null,
+    payload.titular ?? null,
+    payload.ape1 ?? null,
+    payload.ape2 ?? null,
+    payload.dni ?? null,
+    payload.nif_empresa ? 1 : 0,
+    payload.autonomo ? 1 : 0,
+    payload.calle ?? null,
+    payload.numero ?? null,
+    payload.codpostal ?? null,
+    payload.localidad ?? null,
+    payload.calle_cups ?? null,
+    payload.numero_cups ?? null,
+    payload.codpostal_cups ?? null,
+    payload.localidad_cups ?? null,
+    payload.email ?? null,
+    payload.movil ?? null,
+    payload.iban ?? null,
+    payload.cambio_titularidad ? 1 : 0,
+    payload.tiene_placas ? 1 : 0,
+    payload.observaciones ?? null,
+    payload.servicios ?? null,
+    payload.permanencia ?? 0,
+    JSON.stringify(body),
+  ];
+
+  if (existingEstudio.rows.length > 0) {
+    await db.execute({
+      sql: `UPDATE abarca_estudios SET
+        crm_id = ?, ide = ?,
+        cups = ?, tipo_tarifa = ?, potencia_contratada = ?, potencia_contratada_p2 = ?, potencia_contratada_p3 = ?, potencia_contratada_p4 = ?, potencia_contratada_p5 = ?, potencia_contratada_p6 = ?,
+        consumo_p1 = ?, consumo_p2 = ?, consumo_p3 = ?, consumo_p4 = ?, consumo_p5 = ?, consumo_p6 = ?,
+        empresa_cliente = ?, empresa = ?,
+        nombre_completo = ?, titular = ?, ape1 = ?, ape2 = ?, dni = ?, nif_empresa = ?, autonomo = ?,
+        calle = ?, numero = ?, codpostal = ?, localidad = ?,
+        calle_cups = ?, numero_cups = ?, codpostal_cups = ?, localidad_cups = ?,
+        email = ?, movil = ?, iban = ?,
+        cambio_titularidad = ?, tiene_placas = ?,
+        observaciones = ?, servicios = ?, permanencia = ?,
+        raw_payload = ?
+      WHERE comparativa_id = ?`,
+      args: [...estudioArgs, comparativaId],
+    });
+  } else {
+    const estudioId = crypto.randomUUID();
+    await db.execute({
+      sql: `INSERT INTO abarca_estudios (
+        id, comparativa_id, crm_id, ide,
+        cups, tipo_tarifa, potencia_contratada, potencia_contratada_p2, potencia_contratada_p3, potencia_contratada_p4, potencia_contratada_p5, potencia_contratada_p6,
+        consumo_p1, consumo_p2, consumo_p3, consumo_p4, consumo_p5, consumo_p6,
+        empresa_cliente, empresa,
+        nombre_completo, titular, ape1, ape2, dni, nif_empresa, autonomo,
+        calle, numero, codpostal, localidad,
+        calle_cups, numero_cups, codpostal_cups, localidad_cups,
+        email, movil, iban,
+        cambio_titularidad, tiene_placas,
+        observaciones, servicios, permanencia,
+        raw_payload
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [estudioId, comparativaId, ...estudioArgs],
+    });
+  }
 
   // 10. Update comparativa status → awaiting_review (admin must assign company + commissions)
   await db.execute({

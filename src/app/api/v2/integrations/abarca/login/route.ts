@@ -12,32 +12,55 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const response = await fetch(
-    "https://abarcaia.com/comparar/api/generate-login-token",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ABARCA_API_KEY,
+  let response: Response;
+  try {
+    response = await fetch(
+      "https://abarcaia.com/comparar/api/generate-login-token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ABARCA_API_KEY,
+        },
+        body: JSON.stringify({
+          ide,
+          idcm,
+          clave: ABARCA_TOKEN,
+          comparativa_id,
+        }),
       },
-      body: JSON.stringify({
-        ide,
-        idcm,
-        clave: ABARCA_TOKEN,
-        comparativa_id,
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    console.error("Error fetching Abarca login token:", await response.text());
+    );
+  } catch (err) {
+    console.error("Network error fetching Abarca login token:", err);
     return NextResponse.json(
-      { error: "Error fetching Abarca login token" },
-      { status: 500 },
+      { error: "Network error contacting Abarca" },
+      { status: 502 },
     );
   }
 
-  const data = await response.json();
+  const rawText = await response.text();
+
+  if (!response.ok) {
+    console.error(
+      `Abarca login token error (HTTP ${response.status}):`,
+      rawText,
+    );
+    return NextResponse.json(
+      { error: "Error fetching Abarca login token" },
+      { status: response.status === 404 ? 404 : 502 },
+    );
+  }
+
+  let data: { login_url: string };
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    console.error("Abarca returned non-JSON response:", rawText);
+    return NextResponse.json(
+      { error: "Invalid response from Abarca" },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({ loginUrl: data.login_url });
 }
