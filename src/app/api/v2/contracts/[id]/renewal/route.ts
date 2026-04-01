@@ -37,7 +37,7 @@ const RenewalBodySchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   try {
     // ==================== PARAMETER VALIDATION ====================
@@ -47,7 +47,7 @@ export async function POST(
     if (!paramValidation.success) {
       return NextResponse.json(
         { success: false, error: "Missing parameters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -61,7 +61,7 @@ export async function POST(
           success: false,
           error: `Datos inválidos: ${bodyValidation.error.issues.map((i) => i.message).join(", ")}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -79,7 +79,7 @@ export async function POST(
           success: false,
           error: "Se requiere nueva compañía cuando hay cambio de compañía",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -89,7 +89,7 @@ export async function POST(
     if (!tursoClient) {
       return NextResponse.json(
         { success: false, error: "Database client not initialized" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -109,7 +109,7 @@ export async function POST(
         await tx.rollback();
         return NextResponse.json(
           { success: false, error: "No existe el trámite" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -117,9 +117,7 @@ export async function POST(
       const oldActivationDate = currentTramite.activation_date as string | null;
       const oldRenovationDate = currentTramite.renovation_date as string | null;
       const oldStatus = currentTramite.status as string;
-      const oldLiquidezStatus = currentTramite.liquidez_status as
-        | string
-        | null;
+      const oldLiquidezStatus = currentTramite.liquidez_status as string | null;
       const currentRenewalCount = (currentTramite.renewal_count as number) || 0;
       const newRenewalCount = currentRenewalCount + 1;
 
@@ -203,7 +201,7 @@ export async function POST(
         user_id,
         oldStatus,
         "Pendiente de Firma",
-        `Renovación: Estado cambiado de "${oldStatus}" a "Pendiente de Firma"`
+        `Renovación: Estado cambiado de "${oldStatus}" a "Pendiente de Firma"`,
       );
 
       // 6.2 Liquidez status reset
@@ -265,7 +263,7 @@ export async function POST(
       await createTramiteChange(tx, {
         tramite_id: tramiteId,
         user_id,
-        change_type: "renovation_completed",
+        change_type: "renewal_created",
         field_name: "company",
         old_value: previousCompany,
         new_value: resolvedNewCompany,
@@ -311,21 +309,21 @@ export async function POST(
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: "Missing parameters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     console.error("[ERROR] Contract renewal failed:", error);
     return NextResponse.json(
       { success: false, error: "Error updating tramite" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   return POST(request, context);
 }
