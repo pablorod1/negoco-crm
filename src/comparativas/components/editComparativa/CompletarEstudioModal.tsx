@@ -176,7 +176,6 @@ export default function CompletarEstudioModal({
         method: "PATCH",
         body: JSON.stringify({
           status: "rejected",
-          user_id: userData.id,
         }),
         headers: {
           "Content-Type": "application/json",
@@ -354,7 +353,6 @@ export default function CompletarEstudioModal({
         body: JSON.stringify({
           status: "completed",
           comissions: changes ? changes : undefined,
-          user_id: userData.id,
           company_id: selectedSupplierId,
         }),
         headers: {

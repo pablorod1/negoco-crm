@@ -162,7 +162,6 @@ export default function AddTramiteDialog({
           body: JSON.stringify({
             status: "processed",
             tramite_id: tramite.id,
-            user_id: userData.id,
           }),
           headers: {
             "Content-Type": "application/json",

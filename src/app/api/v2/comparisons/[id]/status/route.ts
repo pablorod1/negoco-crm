@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
+import { validateUserSession } from "@/core/auth/session-utils";
 import {
   recordStatusChange,
   recordCommissionChange,
@@ -26,7 +28,6 @@ const optionalCommissionNumber = z.preprocess((val) => {
 const ComparisonStatusUpdateSchema = z.object({
   status: z.string().min(1, "Status is required"),
   tramite_id: z.string().optional(),
-  user_id: z.string().optional(), // For change tracking
   company_id: z.string().optional(), // For completed comparisons
   comissions: z
     .object({
@@ -53,6 +54,31 @@ interface QueryMetrics {
   queryTime: number;
   fieldsUpdated: number;
   optimizationApplied: string[];
+}
+
+async function canUpdateComparison(
+  client: Client,
+  comparativaId: string,
+  userId: string,
+  userRole: string,
+): Promise<boolean> {
+  const args: string[] = [comparativaId];
+  let sql = "SELECT id FROM comparativas WHERE id = ?";
+
+  if (userRole === "2") {
+    const subcomerciales = await getSubcomerciales(client, userId);
+    const allowedUserIds = [userId];
+
+    if (subcomerciales.success && subcomerciales.ids) {
+      allowedUserIds.push(...subcomerciales.ids);
+    }
+
+    sql += ` AND user_id IN (${allowedUserIds.map(() => "?").join(", ")})`;
+    args.push(...allowedUserIds);
+  }
+
+  const result = await client.execute({ sql, args });
+  return result.rows.length > 0;
 }
 
 /**
@@ -360,6 +386,19 @@ export async function PATCH(
     const resolvedParams = await params;
     const id = resolvedParams.id;
 
+    const authResult = await validateUserSession(req);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+        },
+        { status: 401 }
+      );
+    }
+
+    const authenticatedUser = authResult.user;
+
     // Parse and validate request body with Zod
     const body = await req.json();
     const validation = ComparisonStatusUpdateSchema.safeParse(body);
@@ -378,11 +417,10 @@ export async function PATCH(
       );
     }
 
-    const { status, tramite_id, comissions, user_id, company_id } =
-      validation.data;
+    const { status, tramite_id, comissions, company_id } = validation.data;
 
     // Validate required parameters (maintaining original validation logic)
-    if (!id || !status || !user_id) {
+    if (!id || !status) {
       return NextResponse.json(
         {
           success: false,
@@ -405,13 +443,30 @@ export async function PATCH(
       );
     }
 
+    const hasAccess = await canUpdateComparison(
+      tursoClient,
+      id,
+      authenticatedUser.id,
+      authenticatedUser.role
+    );
+
+    if (!hasAccess) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Comparativa no encontrada",
+        },
+        { status: 404 }
+      );
+    }
+
     // Execute status update with enhanced performance monitoring
     const statusResult = await executeStatusUpdate(
       tursoClient,
       id,
       status,
       tramite_id,
-      user_id, // Pass user_id for change tracking
+      authenticatedUser.id,
       company_id // Pass company_id for completed comparisons
     );
 
@@ -438,7 +493,7 @@ export async function PATCH(
         tursoClient,
         id,
         comissions,
-        body.user_id // Pass user_id for change tracking
+        authenticatedUser.id
       );
 
       if (!commissionResult.success) {
