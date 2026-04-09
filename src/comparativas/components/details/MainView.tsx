@@ -131,7 +131,7 @@ export default function MainView({
                   )}
 
                 {/* Comparativa pendiente */}
-                {comparativa.status === "pending" && (
+                {comparativa.status === "pending" && !isComercial ? (
                   <div className="space-y-2">
                     {/* Primary: Comparador IA (cuando disponible) */}
                     {userData.organization.abarca_user_id && (
@@ -157,18 +157,15 @@ export default function MainView({
                       </div>
                     )}
 
-                    {/* Secondary: Estudio manual (solo backoffice) */}
-                    {!isComercial && (
-                      <div className="flex items-center gap-2">
-                        <CompletarEstudioModal
-                          comparativa={comparativa}
-                          onUpdate={onUpdate}
-                          userData={userData}
-                        />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <CompletarEstudioModal
+                        comparativa={comparativa}
+                        onUpdate={onUpdate}
+                        userData={userData}
+                      />
+                    </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Estudio de Abarca recibido — pendiente de revisión */}
                 {isAwaitingReview && !isComercial && (
