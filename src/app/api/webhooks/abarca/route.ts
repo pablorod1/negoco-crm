@@ -14,14 +14,22 @@ export async function POST(req: Request) {
   // 2. Tenant
   const tenant = req.headers.get("x-tenant");
   if (!tenant) {
-    return NextResponse.json({ error: "Missing tenant" }, { status: 400 });
+    console.error("MISSING_TENANT");
+    return NextResponse.json(
+      { error: "MISSING_TENANT", message: "No se ha proporcionado tenant" },
+      { status: 400 },
+    );
   }
 
   let db;
   try {
     db = getTursoClientByTenant(tenant);
   } catch {
-    return NextResponse.json({ error: "Invalid tenant" }, { status: 400 });
+    console.error("INVALID_TENANT");
+    return NextResponse.json(
+      { error: "INVALID_TENANT", message: "El tenant no existe" },
+      { status: 404 },
+    );
   }
 
   // 3. Parse + validate body
@@ -29,13 +37,15 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    console.error("INVALID_JSON");
+    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
   const parsed = AbarcaWebhookSchema.safeParse(body);
   if (!parsed.success) {
+    console.error("VALIDATION_ERROR");
     return NextResponse.json(
-      { error: "Validation error", details: parsed.error.issues },
+      { error: "VALIDATION_ERROR", details: parsed.error.issues },
       { status: 400 },
     );
   }
