@@ -974,11 +974,7 @@ export async function GET(
 
     // Calculate pagination offset
     const offset =
-      rowsPerPage === "Sin Límite"
-        ? 0
-        : typeof rowsPerPage === "number"
-          ? (page - 1) * rowsPerPage
-          : 0;
+      (page - 1) * (typeof rowsPerPage === "number" ? rowsPerPage : 0);
 
     // Build dynamic filters and parameters (exact original logic)
     const filters: string[] = [];
@@ -1046,48 +1042,22 @@ export async function GET(
       }
     };
 
-    // Company filter helper (handles both ID and name for backward compatibility)
+    // Company filter: single batch query instead of N+1
     const addCompanyFilter = async (filterArray?: string[]) => {
-      if (filterArray && filterArray.length > 0) {
-        // Get company names for the provided IDs
-        const companyNames: string[] = [];
+      if (!filterArray || filterArray.length === 0) return;
 
-        for (const companyId of filterArray) {
-          try {
-            const companyResult = await tursoClient.execute({
-              sql: `SELECT name FROM comercializadoras WHERE id = ? LIMIT 1`,
-              args: [companyId],
-            });
+      const placeholders = filterArray.map(() => "?").join(", ");
+      const companyResult = await tursoClient.execute({
+        sql: `SELECT name FROM comercializadoras WHERE id IN (${placeholders})`,
+        args: filterArray,
+      });
+      const companyNames = companyResult.rows.map((r) => r.name as string);
 
-            if (companyResult.rows.length > 0) {
-              const companyName = companyResult.rows[0].name as string;
-              companyNames.push(companyName);
-            }
-          } catch (error) {
-            console.error(
-              `Error fetching company name for ID ${companyId}:`,
-              error,
-            );
-          }
-        }
-
-        // Create conditions for both ID and name matching
-        const companyConditions = filterArray
-          .map(() => "con.new_company = ?")
-          .concat(companyNames.map(() => "con.new_company = ?"))
-          .join(" OR ");
-
-        if (companyConditions) {
-          filters.push(`(${companyConditions})`);
-          // Add IDs first, then names
-          filterArray.forEach((companyId) => {
-            params.push(companyId);
-          });
-          companyNames.forEach((companyName) => {
-            params.push(companyName);
-          });
-        }
-      }
+      // Match by both ID and resolved name
+      const allValues = [...filterArray, ...companyNames];
+      const allPlaceholders = allValues.map(() => "?").join(", ");
+      filters.push(`con.new_company IN (${allPlaceholders})`);
+      params.push(...allValues);
     };
 
     // Provider filter helper (case-insensitive)
@@ -1144,15 +1114,16 @@ export async function GET(
     addDateRangeFilter("payment_date", paymentDateRange);
 
     // Construct base query
+    // PK-only JOIN on comercializadoras (avoids full table scan from OR condition)
     let baseQuery = `
-      FROM 
+      FROM
           tramites t
-      LEFT JOIN 
+      LEFT JOIN
           clients c ON t.client_id = c.id
-      LEFT JOIN 
+      LEFT JOIN
           contracts con ON t.id = con.tramite_id
-      LEFT JOIN 
-          comercializadoras com ON con.new_company = com.id OR con.new_company = com.name
+      LEFT JOIN
+          comercializadoras com ON com.id = con.new_company
     `;
 
     // Add WHERE clause if filters exist
@@ -1188,38 +1159,27 @@ export async function GET(
           c.email AS client_email,
           c.id AS client_id,
           COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
-          COALESCE(GROUP_CONCAT(DISTINCT com.name), '') AS new_companies,
+          COALESCE(GROUP_CONCAT(DISTINCT COALESCE(com.name, con.new_company)), '') AS new_companies,
           COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
           COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
           COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
           COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
       ${baseQuery}
-      GROUP BY 
-          t.id, t.creation_date, t.renovation_date, t.sales_name, 
-          t.comision_sales_person, t.comision, t.status, t.liquidez_status,
-          c.name, c.last_name, c.email
+      GROUP BY t.id
       ORDER BY t.creation_date DESC
-      ${rowsPerPage === "Sin Límite" ? 200 : typeof rowsPerPage === "number" ? limitQuery : ""}
+      ${limitQuery}
     `;
-    // Add pagination parameters
+
+    // Snapshot params for count, add pagination for data
     const countParams = [...params];
-    const dataParams =
-      typeof rowsPerPage === "number"
-        ? [...params, rowsPerPage, offset]
-        : [...params];
+    const dataParams = [...params, rowsPerPage, offset];
 
-    // Execute count query
-    const countResult = await tursoClient.execute({
-      sql: countQuery,
-      args: countParams,
-    });
+    // Execute count and data queries in parallel
+    const [countResult, dataResult] = await Promise.all([
+      tursoClient.execute({ sql: countQuery, args: countParams }),
+      tursoClient.execute({ sql: dataQuery, args: dataParams }),
+    ]);
     const total = Number(countResult.rows[0]?.total || 0);
-
-    // Execute data query
-    const dataResult = await tursoClient.execute({
-      sql: dataQuery,
-      args: dataParams,
-    });
 
     // Process and return results (exact original format)
     const processedData = dataResult.rows.map((row) => {

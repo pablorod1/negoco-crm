@@ -128,7 +128,7 @@ const PaginationQuerySchema = z.object({
  */
 const addComparativaOptimized = async (
   comparativa: ComparativaDB,
-  tursoClient: Client
+  tursoClient: Client,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     await tursoClient.execute({
@@ -184,7 +184,7 @@ const addComparativaOptimized = async (
  */
 const addComparativaFilesOptimized = async (
   files: ComparativaFile[],
-  tursoClient: Client
+  tursoClient: Client,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     if (files.length === 0) {
@@ -247,7 +247,7 @@ const addComparativaFilesOptimized = async (
  * - Compatible with existing frontend components
  */
 export async function GET(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<PaginatedComparisonsResponse>> {
   const startTime = performance.now();
 
@@ -289,7 +289,7 @@ export async function GET(
     if (!validationResult.success) {
       console.warn(
         "❌ Validation warnings for GET /new_api/comparisons:",
-        validationResult.error.issues
+        validationResult.error.issues,
       );
     }
 
@@ -312,7 +312,7 @@ export async function GET(
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -324,7 +324,7 @@ export async function GET(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -366,7 +366,7 @@ export async function GET(
         filters.push(
           `( c.user_id = ? OR c.user_id IN (${subcomerciales.ids
             .map(() => "?")
-            .join(", ")}))`
+            .join(", ")}))`,
         );
         params.push(user_id, ...subcomerciales.ids);
       } else {
@@ -409,7 +409,7 @@ export async function GET(
       filters.push(`date(creation_date) BETWEEN date(?) AND date(?)`);
       params.push(
         fromDate.toISOString().split("T")[0],
-        toDate.toISOString().split("T")[0]
+        toDate.toISOString().split("T")[0],
       );
     }
 
@@ -433,30 +433,24 @@ export async function GET(
       countQuery += whereClause;
     }
 
-    // Execute count query
-    const countResult = await tursoClient.execute({
-      sql: countQuery,
-      args: params,
-    });
-    const total = Number(countResult.rows[0]?.total) || 0;
-
-    // Add GROUP BY (exact original implementation)
-    query += ` GROUP BY c.id, c.creation_date, c.client, c.comision_sales_person_fijo, c.comision_sales_person_indexado, c.comision_fijo, c.comision_indexado, c.status, c.service, c.plan, com.name, u.name, u.email, u.image`;
-
-    // Add ordering
+    // Complete the data query before executing (no GROUP BY needed: JOINs are 1:1)
     query += ` ORDER BY c.creation_date DESC`;
 
-    // Add pagination
+    // Snapshot params for count before adding pagination params
+    const countParams = [...params];
+
     if (typeof rowsPerPage === "number") {
       query += ` LIMIT ? OFFSET ?`;
       params.push(rowsPerPage, offset);
     }
 
-    // Execute main query
-    const rs = await tursoClient.execute({
-      sql: query,
-      args: params,
-    });
+    // Execute count and data queries in parallel
+    const [countResult, rs] = await Promise.all([
+      tursoClient.execute({ sql: countQuery, args: countParams }),
+      tursoClient.execute({ sql: query, args: params }),
+    ]);
+
+    const total = Number(countResult.rows[0]?.total) || 0;
 
     // Transform results (exact original format)
     const transformedData: ComparisonResponseItem[] = rs.rows.map((row) => ({
@@ -502,7 +496,7 @@ export async function GET(
         success: false,
         error: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -517,7 +511,7 @@ export async function GET(
  * Migration from: /api/comparativas/add (create) + /api/comparativas/get/paginated-comparativas (list)
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<
   NextResponse<ComparisonCreateResponse | PaginatedComparisonsResponse>
 > {
@@ -545,7 +539,7 @@ export async function POST(
         success: false,
         error: "Invalid request format",
       },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     const endTime = performance.now();
@@ -559,7 +553,7 @@ export async function POST(
         success: false,
         error: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -568,7 +562,7 @@ export async function POST(
  * Handle comparison creation (FormData request)
  */
 async function handleComparisonCreation(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ComparisonCreateResponse>> {
   try {
     // Initialize database client
@@ -579,7 +573,7 @@ async function handleComparisonCreation(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -596,7 +590,7 @@ async function handleComparisonCreation(
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -623,14 +617,14 @@ async function handleComparisonCreation(
           success: false,
           error: "Missing parameters", // Use original error message for consistency
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Execute database operations (maintaining original logic flow)
     const comparativaResult = await addComparativaOptimized(
       comparativa,
-      tursoClient
+      tursoClient,
     );
 
     if (!comparativaResult.success) {
@@ -639,14 +633,14 @@ async function handleComparisonCreation(
           success: false,
           error: comparativaResult.error,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (comparativaFiles.length > 0) {
       const insertFilesResult = await addComparativaFilesOptimized(
         comparativaFiles,
-        tursoClient
+        tursoClient,
       );
       if (!insertFilesResult.success) {
         return NextResponse.json(
@@ -654,7 +648,7 @@ async function handleComparisonCreation(
             success: false,
             error: insertFilesResult.error,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -668,7 +662,7 @@ async function handleComparisonCreation(
         success: false,
         error: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -678,7 +672,7 @@ async function handleComparisonCreation(
  */
 async function handlePaginatedRequest(
   request: NextRequest,
-  requestData: PaginatedComparisonsRequest
+  requestData: PaginatedComparisonsRequest,
 ): Promise<NextResponse<PaginatedComparisonsResponse>> {
   // Convert POST request to internal GET-style processing
   const searchParams = new URLSearchParams({
