@@ -39,9 +39,16 @@ export async function middleware(request: NextRequest) {
   const isProtectedPath = protectedPathsRegex.some((regex) => regex.test(path));
   const isApiProtected = path.startsWith("/api/v2");
 
-  // Redirigir a login si no hay sesión en rutas protegidas
+  // Redirigir a login si no hay sesión en rutas protegidas.
+  // Nota: `getSessionCookie` solo valida presencia de cookie, no vigencia.
+  // La validación real de la sesión la hace el cliente (UserContext) y los
+  // endpoints API (devuelven 401 → activa ReauthModal / redirect a login).
   if (isProtectedPath && !sessionCookie) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const loginUrl = new URL("/login", request.url);
+    if (path !== "/") {
+      loginUrl.searchParams.set("redirectTo", path + request.nextUrl.search);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   // Redirigir a la home si el usuario ya está autenticado y accede a /login
