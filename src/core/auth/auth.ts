@@ -33,6 +33,10 @@ export const getAuth = (req: NextRequest) => {
     : `https://${host}/reset-pass`;
 
   return betterAuth({
+    secrets: [
+      { version: 1, secret: process.env.BETTER_AUTH_SECRET_V1 },
+      { version: 2, secret: process.env.BETTER_AUTH_SECRET_V2 },
+    ],
     baseURL: origin as string,
     database: drizzleAdapter(db, {
       provider: "sqlite",
