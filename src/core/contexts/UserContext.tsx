@@ -7,7 +7,6 @@ import {
   useCallback,
   useState,
 } from "react";
-import { usePathname } from "next/navigation";
 import { User } from "@/core/types";
 import { authClient } from "@/core/auth/auth-client";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
@@ -21,55 +20,20 @@ interface UserContextType {
   setShowReauthModal: (show: boolean) => void;
 }
 
-const PUBLIC_PATHS = ["/login"];
-
-const isPublicPath = (pathname: string | null) => {
-  if (!pathname) return false;
-  return PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
-};
-
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReauthModal, setShowReauthModal] = useState(false);
-  const { data: session, isPending: isSessionPending } =
-    authClient.useSession();
-  const pathname = usePathname();
+  const { data: session } = authClient.useSession();
   const userID = session?.user.id;
   const expiredAt = session?.session.expiresAt;
-
-  // Fuerza el cierre de sesión (limpia cookies obsoletas en servidor y
-  // cliente) y redirige a /login. Necesario cuando el navegador conserva
-  // una cookie que el servidor ya no reconoce: el middleware dejaría pasar
-  // indefinidamente y, al intentar redirigir a /login, rebotaría a "/"
-  // generando un bucle / pantalla en blanco.
-  const forceSignOutAndRedirect = useCallback(async () => {
-    try {
-      await authClient.signOut();
-    } catch (err) {
-      console.error("Error during forced sign-out:", err);
-    }
-    setUserData(null);
-    setShowReauthModal(false);
-    setLoading(false);
-    if (!isPublicPath(pathname)) {
-      const loginUrl =
-        pathname && pathname !== "/"
-          ? `/login?redirectTo=${encodeURIComponent(pathname)}`
-          : "/login";
-      // Usamos replace para no dejar la ruta rota en el historial
-      window.location.replace(loginUrl);
-    }
-  }, [pathname]);
 
   const refreshUserData = useCallback(async () => {
     if (!userID) {
       setUserData(null);
-      setLoading(false);
+      setTimeout(() => setLoading(false), 400);
       return;
     }
 
@@ -81,16 +45,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      // Sesión rechazada por el servidor: si aún no tenemos userData
-      // (no podemos mostrar ReauthModal sin email), forzamos logout.
+      // Check if the response indicates session expiration
       if (res.status === 401) {
-        if (userData?.email) {
-          setShowReauthModal(true);
-          setLoading(false);
-        } else {
-          await forceSignOutAndRedirect();
-        }
+        setShowReauthModal(true);
         setUserData(null);
+        setLoading(false);
         return;
       }
 
@@ -105,7 +64,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [userID, userData?.email, forceSignOutAndRedirect]);
+  }, [userID]);
 
   const getPlan = useCallback(() => {
     if (!userData || !userData.organization) {
@@ -119,32 +78,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     await refreshUserData();
   }, [refreshUserData]);
 
-  // Esperar a que better-auth resuelva la sesión antes de actuar
   useEffect(() => {
-    if (isSessionPending) {
-      return;
-    }
-
-    // Sin sesión válida: la cookie puede estar obsoleta (el middleware la
-    // deja pasar pero el servidor la rechaza). Forzamos signOut para
-    // limpiarla y evitamos el bucle middleware ↔ cliente.
-    if (!userID) {
-      setUserData(null);
-      setLoading(false);
-      if (!isPublicPath(pathname)) {
-        forceSignOutAndRedirect();
-      }
-      return;
-    }
-
     refreshUserData();
-  }, [
-    isSessionPending,
-    userID,
-    pathname,
-    refreshUserData,
-    forceSignOutAndRedirect,
-  ]);
+  }, [refreshUserData]);
 
   // Check session expiration periodically
   useEffect(() => {
@@ -166,11 +102,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [expiredAt, session, showReauthModal, userData]);
 
-  // Mostrar loader mientras:
-  // - better-auth está resolviendo la sesión
-  // - o estamos cargando los datos del usuario en una ruta protegida
-  // En rutas públicas (login) no bloqueamos el render.
-  if ((isSessionPending || loading) && !isPublicPath(pathname)) {
+  if (loading) {
     return <FullScreenLoaderComponent />;
   }
 
