@@ -7,7 +7,7 @@ import {
   useCallback,
   useState,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { User } from "@/core/types";
 import { authClient } from "@/core/auth/auth-client";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
@@ -38,10 +38,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [showReauthModal, setShowReauthModal] = useState(false);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const router = useRouter();
   const pathname = usePathname();
   const userID = session?.user.id;
   const expiredAt = session?.session.expiresAt;
+
+  // Fuerza el cierre de sesión (limpia cookies obsoletas en servidor y
+  // cliente) y redirige a /login. Necesario cuando el navegador conserva
+  // una cookie que el servidor ya no reconoce: el middleware dejaría pasar
+  // indefinidamente y, al intentar redirigir a /login, rebotaría a "/"
+  // generando un bucle / pantalla en blanco.
+  const forceSignOutAndRedirect = useCallback(async () => {
+    try {
+      await authClient.signOut();
+    } catch (err) {
+      console.error("Error during forced sign-out:", err);
+    }
+    setUserData(null);
+    setShowReauthModal(false);
+    setLoading(false);
+    if (!isPublicPath(pathname)) {
+      const loginUrl =
+        pathname && pathname !== "/"
+          ? `/login?redirectTo=${encodeURIComponent(pathname)}`
+          : "/login";
+      // Usamos replace para no dejar la ruta rota en el historial
+      window.location.replace(loginUrl);
+    }
+  }, [pathname]);
 
   const refreshUserData = useCallback(async () => {
     if (!userID) {
@@ -58,11 +81,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      // Check if the response indicates session expiration
+      // Sesión rechazada por el servidor: si aún no tenemos userData
+      // (no podemos mostrar ReauthModal sin email), forzamos logout.
       if (res.status === 401) {
-        setShowReauthModal(true);
+        if (userData?.email) {
+          setShowReauthModal(true);
+          setLoading(false);
+        } else {
+          await forceSignOutAndRedirect();
+        }
         setUserData(null);
-        setLoading(false);
         return;
       }
 
@@ -77,7 +105,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [userID]);
+  }, [userID, userData?.email, forceSignOutAndRedirect]);
 
   const getPlan = useCallback(() => {
     if (!userData || !userData.organization) {
@@ -97,20 +125,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Sin sesión válida: limpiar estado y redirigir a /login
-    // si estamos en una ruta protegida. Esto cubre el caso en que la cookie
-    // existe (pasa el middleware) pero el servidor ya no reconoce la sesión.
+    // Sin sesión válida: la cookie puede estar obsoleta (el middleware la
+    // deja pasar pero el servidor la rechaza). Forzamos signOut para
+    // limpiarla y evitamos el bucle middleware ↔ cliente.
     if (!userID) {
       setUserData(null);
       setLoading(false);
       if (!isPublicPath(pathname)) {
-        router.replace("/login");
+        forceSignOutAndRedirect();
       }
       return;
     }
 
     refreshUserData();
-  }, [isSessionPending, userID, pathname, router, refreshUserData]);
+  }, [
+    isSessionPending,
+    userID,
+    pathname,
+    refreshUserData,
+    forceSignOutAndRedirect,
+  ]);
 
   // Check session expiration periodically
   useEffect(() => {
