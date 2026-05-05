@@ -1113,116 +1113,155 @@ export async function GET(
     addDateRangeFilter("collection_date", collectionDateRange);
     addDateRangeFilter("payment_date", paymentDateRange);
 
-    // Construct base query
-    // PK-only JOIN on comercializadoras (avoids full table scan from OR condition)
+    // Determine which JOINs are required by the active filters. This lets
+    // the count + pagination phase avoid the expensive contracts/comercializadoras
+    // joins when not needed, which is the main source of memory blow-up.
+    const needsContractsJoin =
+      Boolean(filterValue) ||
+      (contractTypeFilter?.length ?? 0) > 0 ||
+      (companyFilter?.length ?? 0) > 0;
+
+    // Construct base query for the pagination/count phase.
+    // We keep the clients join because text search and clientFilter use it
+    // and it's a 1:1 relation (no row explosion).
     let baseQuery = `
       FROM
           tramites t
       LEFT JOIN
           clients c ON t.client_id = c.id
+    `;
+
+    if (needsContractsJoin) {
+      baseQuery += `
       LEFT JOIN
           contracts con ON t.id = con.tramite_id
-      LEFT JOIN
-          comercializadoras com ON com.id = con.new_company
-    `;
+      `;
+    }
 
     // Add WHERE clause if filters exist
     if (filters.length > 0) {
       baseQuery += ` WHERE ` + filters.join(" AND ");
     }
 
-    // Total count query
-    const countQuery = `
-      SELECT COUNT(DISTINCT t.id) AS total
-      ${baseQuery}
-    `;
+    // Total count query.
+    // Wrapping in a subquery + COUNT(*) is more memory-friendly than
+    // COUNT(DISTINCT t.id) over an exploded contracts join: SQLite can drop
+    // duplicates incrementally via GROUP BY instead of buffering a hash set
+    // of all distinct ids in memory.
+    const countQuery = needsContractsJoin
+      ? `SELECT COUNT(*) AS total FROM (SELECT t.id ${baseQuery} GROUP BY t.id) sub`
+      : `SELECT COUNT(*) AS total ${baseQuery}`;
 
-    const limitQuery = `LIMIT ? OFFSET ?`;
-
-    // Main query with data retrieval
-    const dataQuery = `
-      SELECT 
-          t.id AS id,
-          t.creation_date AS creation_date,
-          t.activation_date AS activation_date,
-          t.renovation_date AS renovation_date,
-          t.collection_date AS collection_date,
-          t.payment_date AS payment_date,
-          t.sales_name AS sales_name,
-          t.comision_sales_person AS comision_sales_person,
-          t.comision AS comision,
-          t.status AS status,
-          t.liquidez_status AS liquidez_status,
-          t.provider AS provider,
-          c.name AS client_name,
-          c.last_name AS client_last_name,
-          c.email AS client_email,
-          c.id AS client_id,
-          COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
-          COALESCE(GROUP_CONCAT(DISTINCT COALESCE(com.name, con.new_company)), '') AS new_companies,
-          COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
-          COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
-          COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
-          COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
+    // Paginated tramite IDs query — small, bounded result set (page size).
+    // No GROUP_CONCAT here: aggregation is deferred to the second query
+    // and runs only over the page's contracts.
+    const idsQuery = `
+      SELECT t.id, t.creation_date
       ${baseQuery}
       GROUP BY t.id
       ORDER BY t.creation_date DESC
-      ${limitQuery}
+      LIMIT ? OFFSET ?
     `;
 
-    // Snapshot params for count, add pagination for data
+    // Snapshot params for count, add pagination for ids
     const countParams = [...params];
-    const dataParams = [...params, rowsPerPage, offset];
+    const idsParams = [...params, rowsPerPage, offset];
 
-    // Execute count and data queries in parallel
-    const [countResult, dataResult] = await Promise.all([
+    // Execute count and id queries in parallel
+    const [countResult, idsResult] = await Promise.all([
       tursoClient.execute({ sql: countQuery, args: countParams }),
-      tursoClient.execute({ sql: dataQuery, args: dataParams }),
+      tursoClient.execute({ sql: idsQuery, args: idsParams }),
     ]);
     const total = Number(countResult.rows[0]?.total || 0);
 
-    // Process and return results (exact original format)
-    const processedData = dataResult.rows.map((row) => {
-      const parseArray = (value: string | null) =>
-        value ? value.split(",").filter(Boolean) : [];
+    const pageIds = idsResult.rows.map((r) => String(r.id));
 
-      const parseNumericArray = (value: string | null) =>
-        value
-          ? (value
-              .split(",")
-              .map((x) => {
-                const num = Number(x);
-                return !isNaN(num) ? num : null;
-              })
-              .filter((x) => x !== null) as number[])
-          : [];
+    // Second phase: hydrate the page with full data + aggregated contracts.
+    // GROUP_CONCAT now runs over at most `rowsPerPage` tramites worth of
+    // contracts, eliminating the SQLITE_NOMEM risk.
+    let processedData: ContractData[] = [];
+    if (pageIds.length > 0) {
+      const idPlaceholders = pageIds.map(() => "?").join(", ");
+      const dataQuery = `
+        SELECT
+            t.id AS id,
+            t.creation_date AS creation_date,
+            t.activation_date AS activation_date,
+            t.renovation_date AS renovation_date,
+            t.collection_date AS collection_date,
+            t.payment_date AS payment_date,
+            t.sales_name AS sales_name,
+            t.comision_sales_person AS comision_sales_person,
+            t.comision AS comision,
+            t.status AS status,
+            t.liquidez_status AS liquidez_status,
+            t.provider AS provider,
+            c.name AS client_name,
+            c.last_name AS client_last_name,
+            c.email AS client_email,
+            c.id AS client_id,
+            COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
+            COALESCE(GROUP_CONCAT(DISTINCT COALESCE(com.name, con.new_company)), '') AS new_companies,
+            COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
+            COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
+            COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
+            COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
+        FROM tramites t
+        LEFT JOIN clients c ON t.client_id = c.id
+        LEFT JOIN contracts con ON t.id = con.tramite_id
+        LEFT JOIN comercializadoras com ON com.id = con.new_company
+        WHERE t.id IN (${idPlaceholders})
+        GROUP BY t.id
+        ORDER BY t.creation_date DESC
+      `;
 
-      return {
-        id: row.id as string,
-        creation_date: row.creation_date as string,
-        activation_date: row.activation_date as string,
-        renovation_date: row.renovation_date as string,
-        collection_date: row.collection_date as string | null,
-        payment_date: row.payment_date as string | null,
-        sales_name: row.sales_name as string,
-        client_name: `${row.client_name || ""} ${
-          row.client_last_name || ""
-        }`.trim(),
-        client_email: row.client_email as string,
-        client_id: row.client_id as string,
-        CUPS: parseArray(row.CUPS as string),
-        new_company: parseArray(row.new_companies as string),
-        old_company: parseArray(row.old_companies as string),
-        plan: parseArray(row.plans as string),
-        contract_type: parseArray(row.contract_types as string),
-        consumption: parseNumericArray(row.consumptions as string),
-        comision_sales_person: row.comision_sales_person as number,
-        comision: row.comision as number,
-        status: row.status as string,
-        liquidez_status: row.liquidez_status as string,
-        provider: row.provider as string | null,
-      };
-    });
+      const dataResult = await tursoClient.execute({
+        sql: dataQuery,
+        args: pageIds,
+      });
+
+      processedData = dataResult.rows.map((row) => {
+        const parseArray = (value: string | null) =>
+          value ? value.split(",").filter(Boolean) : [];
+
+        const parseNumericArray = (value: string | null) =>
+          value
+            ? (value
+                .split(",")
+                .map((x) => {
+                  const num = Number(x);
+                  return !isNaN(num) ? num : null;
+                })
+                .filter((x) => x !== null) as number[])
+            : [];
+
+        return {
+          id: row.id as string,
+          creation_date: row.creation_date as string,
+          activation_date: row.activation_date as string,
+          renovation_date: row.renovation_date as string,
+          collection_date: row.collection_date as string | null,
+          payment_date: row.payment_date as string | null,
+          sales_name: row.sales_name as string,
+          client_name: `${row.client_name || ""} ${
+            row.client_last_name || ""
+          }`.trim(),
+          client_email: row.client_email as string,
+          client_id: row.client_id as string,
+          CUPS: parseArray(row.CUPS as string),
+          new_company: parseArray(row.new_companies as string),
+          old_company: parseArray(row.old_companies as string),
+          plan: parseArray(row.plans as string),
+          contract_type: parseArray(row.contract_types as string),
+          consumption: parseNumericArray(row.consumptions as string),
+          comision_sales_person: row.comision_sales_person as number,
+          comision: row.comision as number,
+          status: row.status as string,
+          liquidez_status: row.liquidez_status as string,
+          provider: row.provider as string | null,
+        };
+      });
+    }
 
     // Return exact original response format
     return NextResponse.json({

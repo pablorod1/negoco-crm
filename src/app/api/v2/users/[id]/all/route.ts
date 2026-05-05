@@ -49,7 +49,7 @@ interface ErrorResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<UsersResponse | ErrorResponse>> {
   try {
     const { id } = await params;
@@ -66,7 +66,7 @@ export async function GET(
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -77,19 +77,30 @@ export async function GET(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    // Query logic (unchanged)
+    // Optimized query:
+    // - Explicit column list (avoids SELECT u.*)
+    // - Pre-aggregated session derived table instead of correlated subquery
+    //   (correlated subquery re-ran for every user × every session row, causing
+    //   SQLITE_NOMEM on instances with large session tables).
     let query = `
-      SELECT u.*, o.id as org_id, o.name as org_name, o.logo as org_logo, s.created_at as last_login
-      FROM user u 
+      SELECT
+        u.id, u.email, u.email_verified, u.name, u.created_at, u.updated_at,
+        u.image, u.role, u.banned, u.ban_reason, u.ban_expires, u.super_id,
+        u.should_reset_password, u.company,
+        o.id AS org_id, o.name AS org_name, o.logo AS org_logo,
+        ls.last_login AS last_login
+      FROM user u
       INNER JOIN member m ON u.id = m.user_id
       INNER JOIN organization o ON m.organization_id = o.id
-      LEFT JOIN session s ON u.id = s.user_id AND s.created_at = (
-        SELECT MAX(created_at) FROM session WHERE user_id = u.id
-      )
+      LEFT JOIN (
+        SELECT user_id, MAX(created_at) AS last_login
+        FROM session
+        GROUP BY user_id
+      ) ls ON ls.user_id = u.id
     `;
 
     const queryParams: (string | number)[] = [];
@@ -134,7 +145,7 @@ export async function GET(
           name: row.org_name ? String(row.org_name) : "",
           logo: row.org_logo ? String(row.org_logo) : null,
         },
-      })
+      }),
     );
     return NextResponse.json({ success: true, data: mappedData });
   } catch (error) {
@@ -144,7 +155,7 @@ export async function GET(
         success: false,
         error: "Error fetching users",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
