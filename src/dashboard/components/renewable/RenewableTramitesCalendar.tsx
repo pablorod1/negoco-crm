@@ -33,6 +33,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/core/utils";
 import { Button } from "@/core/components/ui/button";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
+import RenewableExportModal from "./RenewableExportModal";
 
 interface RenewableTramite {
   id: string;
@@ -266,6 +267,10 @@ export default function RenewableTramitesCalendar({
                 className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
               />
             </Button>
+            <RenewableExportModal
+              currentDate={currentDate}
+              userData={userData}
+            />
           </div>
         </div>
 
@@ -334,7 +339,7 @@ export default function RenewableTramitesCalendar({
                         : "",
                       isSameDay(day.date, new Date()) && day.tramites.length > 0
                         ? "animate-pulse"
-                        : ""
+                        : "",
                     )}
                   >
                     {/* Date Number */}
@@ -350,7 +355,7 @@ export default function RenewableTramitesCalendar({
                           "absolute inset-0 rounded-lg transition-all duration-200",
                           isSameDay(day.date, new Date())
                             ? "border-0"
-                            : "border-2"
+                            : "border-2",
                         )}
                         style={{
                           borderColor: marker.color,
@@ -361,7 +366,7 @@ export default function RenewableTramitesCalendar({
 
                     {/* Special renovation day indicator */}
                     {day.tramites.some((t) =>
-                      isSameDay(new Date(t.renovationDate), day.date)
+                      isSameDay(new Date(t.renovationDate), day.date),
                     ) && (
                       <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white" />
                     )}
@@ -384,7 +389,7 @@ export default function RenewableTramitesCalendar({
                           const renewalDate = new Date(tramite.renovationDate);
                           const daysUntil = differenceInDays(
                             renewalDate,
-                            day.date
+                            day.date,
                           );
 
                           return (

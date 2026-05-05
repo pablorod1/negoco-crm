@@ -57,9 +57,10 @@ export async function POST(
     }
 
     // Build WHERE clause with role-based filtering.
-    // Date range: 7 days before today to 60 days ahead, so expired contracts
-    // don't crowd out current/upcoming ones within the limit.
-    let whereClause = `WHERE status = ? AND renovation_date >= date('now', '-7 days') AND renovation_date <= date('now', '+60 days')`;
+    // date() returns plain YYYY-MM-DD; substr() normalizes stored ISO datetimes
+    // (e.g. "2026-03-18T11:35:43.842Z") so the lexicographic comparison is correct.
+    // Date range: 7 days before today to 60 days ahead.
+    let whereClause = `WHERE status = ? AND substr(renovation_date, 1, 10) >= date('now', '-7 days') AND substr(renovation_date, 1, 10) <= date('now', '+60 days')`;
     const params: (string | number)[] = ["Activo"];
 
     if (role === "2") {
