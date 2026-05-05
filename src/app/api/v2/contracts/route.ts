@@ -679,7 +679,18 @@ export async function POST(
     }
 
     // Parse form data (maintaining exact compatibility)
-    const formData = await request.formData();
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid Content-Type: expected multipart/form-data",
+        },
+        { status: 400 },
+      );
+    }
 
     const tramiteString = formData.get("tramite") as string;
     const clientString = formData.get("client") as string;

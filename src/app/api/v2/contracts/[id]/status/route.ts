@@ -72,7 +72,7 @@ const ParamsSchema = z.object({
 async function executeQuery(
   client: Client,
   sql: string,
-  args: (string | number)[]
+  args: (string | number)[],
 ): Promise<{ result: { rowsAffected: number }; metrics: QueryMetrics }> {
   const startTime = performance.now();
   const optimizations: string[] = [];
@@ -101,7 +101,7 @@ async function executeQuery(
     const queryTime = performance.now() - startTime;
     console.error(
       `[ERROR] Query failed after ${queryTime.toFixed(2)}ms:`,
-      error
+      error,
     );
     throw error;
   }
@@ -116,7 +116,7 @@ async function executeQuery(
  */
 function buildUpdateQuery(
   requestData: z.infer<typeof ContractStatusUpdateSchema>,
-  contractId: string
+  contractId: string,
 ): { sql: string; args: (string | number)[]; updatedFields: string[] } {
   const updateFields: string[] = [];
   const queryArgs: (string | number)[] = [];
@@ -228,10 +228,8 @@ function buildUpdateQuery(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ContractStatusUpdateResponse>> {
-  const startTime = performance.now();
-
   try {
     // ==================== PARAMETER VALIDATION ====================
 
@@ -246,20 +244,27 @@ export async function PATCH(
           success: false,
           error: "Invalid contract ID",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // ==================== REQUEST BODY VALIDATION ====================
 
-    const requestBody = await request.json();
+    let requestBody: unknown;
+    try {
+      requestBody = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid JSON body" },
+        { status: 400 },
+      );
+    }
     const validation = ContractStatusUpdateSchema.safeParse(requestBody);
 
     if (!validation.success) {
-      const totalRequestTime = performance.now() - startTime;
       console.error(
-        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
-        validation.error.issues
+        `[VALIDATION ERROR] PATCH ${contractId}/status:`,
+        validation.error.issues,
       );
 
       return NextResponse.json(
@@ -267,7 +272,7 @@ export async function PATCH(
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -278,17 +283,12 @@ export async function PATCH(
     const tursoClient = getTursoClient(request);
 
     if (!tursoClient) {
-      const totalRequestTime = performance.now() - startTime;
-      console.error(
-        `[ERROR] Database client not initialized after ${totalRequestTime.toFixed(2)}ms`
-      );
-
       return NextResponse.json(
         {
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -303,17 +303,9 @@ export async function PATCH(
     });
 
     if (currentValues.rows.length === 0) {
-      const totalRequestTime = performance.now() - startTime;
-      console.warn(
-        `[WARNING] Contract not found: ${contractId} after ${totalRequestTime.toFixed(2)}ms`
-      );
-
       return NextResponse.json(
-        {
-          success: false,
-          error: "Tramite not found",
-        },
-        { status: 404 }
+        { success: false, error: "Tramite not found" },
+        { status: 404 },
       );
     }
 
@@ -339,7 +331,7 @@ export async function PATCH(
         contractId,
         validatedData.user_id,
         currentData.status as string,
-        validatedData.status
+        validatedData.status,
       );
     }
 
@@ -408,7 +400,7 @@ export async function PATCH(
         tursoClient,
         contractId,
         validatedData.user_id,
-        changes
+        changes,
       );
     }
 
@@ -418,24 +410,16 @@ export async function PATCH(
         tursoClient,
         contractId,
         validatedData.user_id,
-        validatedData.note
+        validatedData.note,
       );
     }
 
     // ==================== RESULT VALIDATION ====================
 
     if (result.rowsAffected === 0) {
-      const totalRequestTime = performance.now() - startTime;
-      console.warn(
-        `[WARNING] Contract not found: ${contractId} after ${totalRequestTime.toFixed(2)}ms`
-      );
-
       return NextResponse.json(
-        {
-          success: false,
-          error: "Tramite not found",
-        },
-        { status: 404 }
+        { success: false, error: "Tramite not found" },
+        { status: 404 },
       );
     }
 
@@ -446,37 +430,13 @@ export async function PATCH(
       success: true,
     });
   } catch (error) {
-    // ==================== ERROR HANDLING ====================
-
-    const totalRequestTime = performance.now() - startTime;
-
-    // Handle Zod validation errors
-    if (error instanceof z.ZodError) {
-      console.error(
-        `[VALIDATION ERROR] Request failed after ${totalRequestTime.toFixed(2)}ms:`,
-        error.issues
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing parameters",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Handle general errors
-    console.error(
-      `[ERROR] Contract status update failed after ${totalRequestTime.toFixed(2)}ms:`,
-      error
-    );
-
+    console.error(`[ERROR] Contract status update failed:`, error);
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : "Error desconocido",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
