@@ -7,7 +7,7 @@ const RenewableContractsRequestSchema = z.object({
   id: z.string().min(1, "User ID is required"),
   role: z.string().min(1, "User role is required"),
   page: z.coerce.number().min(1).optional().default(1),
-  limit: z.coerce.number().min(1).max(500).optional().default(100),
+  limit: z.coerce.number().min(1).max(1000).optional().default(500),
 });
 
 interface RenewableContract {
@@ -56,8 +56,10 @@ export async function POST(
       );
     }
 
-    // Build WHERE clause with role-based filtering
-    let whereClause = `WHERE status = ?`;
+    // Build WHERE clause with role-based filtering.
+    // Date range: 7 days before today to 60 days ahead, so expired contracts
+    // don't crowd out current/upcoming ones within the limit.
+    let whereClause = `WHERE status = ? AND renovation_date >= date('now', '-7 days') AND renovation_date <= date('now', '+60 days')`;
     const params: (string | number)[] = ["Activo"];
 
     if (role === "2") {
