@@ -11,6 +11,7 @@ import {
 import { Button } from "@/core/components/ui/button";
 import { Loader2, X, RotateCcw, Stars } from "lucide-react";
 import Image from "next/image";
+import { useUser } from "@/core/contexts/UserContext";
 
 interface AbarcaPanelProps {
   comparativaId: string;
@@ -29,14 +30,23 @@ export function AbarcaPanel({
   const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { userData } = useUser();
 
   // Poll comparativa status while the panel is open
   useEffect(() => {
-    if (!isOpen || !iframeUrl) return;
+    if (!isOpen || !iframeUrl || !userData) return;
 
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/v2/comparisons/${comparativaId}`);
+        const res = await fetch(`/api/v2/comparisons/${comparativaId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: comparativaId,
+            user_id: userData.id,
+            user_role: userData.role,
+          }),
+        });
         if (!res.ok) return;
         const data = await res.json();
         if (data.status !== "pending") {
@@ -52,7 +62,7 @@ export function AbarcaPanel({
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [isOpen, iframeUrl, comparativaId, onStudyCompleted]);
+  }, [isOpen, iframeUrl, comparativaId, onStudyCompleted, userData]);
 
   const fetchLoginUrl = useCallback(async () => {
     setIsLoading(true);
