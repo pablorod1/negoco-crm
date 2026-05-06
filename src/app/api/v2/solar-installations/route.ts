@@ -152,7 +152,7 @@ export async function POST(
     // User role-based filtering - exact same logic as legacy
     if (user_role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         filters.push(
           `(f.user_id = ? OR f.user_id IN (${subcomerciales.ids
             .map(() => "?")

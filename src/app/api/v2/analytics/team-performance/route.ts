@@ -118,7 +118,7 @@ export async function GET(
     // Apply role-based user filtering
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         query += ` WHERE u.id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")})`;
@@ -230,7 +230,7 @@ export async function POST(
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         query += ` WHERE u.id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")})`;

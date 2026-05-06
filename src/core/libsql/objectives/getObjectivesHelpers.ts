@@ -51,7 +51,7 @@ export const getObjectivesTramitesValues = async (
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         const userFilter = ` AND (user_id = ? OR user_id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")}))`;

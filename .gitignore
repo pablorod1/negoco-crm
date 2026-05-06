@@ -23,9 +23,6 @@
 .vscode
 /scripts
 *.sql
-.agent
-.agents
-docs
 
 # misc
 .DS_Store

@@ -52,7 +52,8 @@ const createUserFilter = (
     if (
       includeSubcomerciales &&
       subcomerciales?.success &&
-      subcomerciales.ids
+      subcomerciales.ids &&
+      subcomerciales.ids.length > 0
     ) {
       filter = `AND (user_id = ? OR user_id IN (${subcomerciales.ids
         .map(() => "?")

@@ -55,7 +55,11 @@ const createUserFilter = (
   let filter = "";
 
   if (role === "2") {
-    if (subcomerciales?.success && subcomerciales.ids) {
+    if (
+      subcomerciales?.success &&
+      subcomerciales.ids &&
+      subcomerciales.ids.length > 0
+    ) {
       filter = `(user_id = ? OR user_id IN (${subcomerciales.ids
         .map(() => "?")
         .join(", ")}))`;

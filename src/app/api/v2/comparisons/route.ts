@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import {
+  executeReadWithRetry,
+  isRetryableLibsqlError,
+} from "@/core/libsql/executeWithRetry";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import {
   ComparativaDB,
@@ -62,6 +66,20 @@ interface ComparisonCreateResponse {
   error?: string;
 }
 
+const databaseUnavailableResponse = () =>
+  NextResponse.json(
+    {
+      success: false,
+      error: "Base de datos temporalmente no disponible",
+    },
+    {
+      status: 503,
+      headers: {
+        "Retry-After": "1",
+      },
+    },
+  );
+
 // Zod Validation Schemas
 const ComparativaPlanSchema = z.enum(["fijo", "indexado"]);
 
@@ -120,6 +138,7 @@ const PaginationQuerySchema = z.object({
     })
     .optional(),
   userFilter: z.array(z.string()).optional(),
+  companyFilter: z.array(z.string()).optional(),
 });
 
 /**
@@ -255,6 +274,15 @@ export async function GET(
     // Extract query parameters from URL
     const { searchParams } = new URL(request.url);
 
+    const parseJsonParam = <T,>(param: string | null): T | undefined => {
+      if (!param) return undefined;
+      try {
+        return JSON.parse(param) as T;
+      } catch {
+        return undefined;
+      }
+    };
+
     // Parse query parameters (convert from URL params to original format)
     const rowsParam = searchParams.get("rowsPerPage");
     const rowsPerPageParsed: number | string =
@@ -270,26 +298,21 @@ export async function GET(
       user_id: searchParams.get("user_id") || "",
       user_role: searchParams.get("user_role") || "",
       filterValue: searchParams.get("filterValue") || undefined,
-      statusFilter: searchParams.get("statusFilter")
-        ? JSON.parse(searchParams.get("statusFilter")!)
-        : undefined,
-      dateRange: searchParams.get("dateRange")
-        ? JSON.parse(searchParams.get("dateRange")!)
-        : undefined,
-      userFilter: searchParams.get("userFilter")
-        ? JSON.parse(searchParams.get("userFilter")!)
-        : undefined,
-      companyFilter: searchParams.get("companyFilter")
-        ? JSON.parse(searchParams.get("companyFilter")!)
-        : undefined,
+      statusFilter: parseJsonParam<string[]>(searchParams.get("statusFilter")),
+      dateRange: parseJsonParam<DateRange>(searchParams.get("dateRange")),
+      userFilter: parseJsonParam<string[]>(searchParams.get("userFilter")),
+      companyFilter: parseJsonParam<string[]>(searchParams.get("companyFilter")),
     };
 
-    // Validate request parameters (warn only for backward compatibility)
+    // Validate request parameters
     const validationResult = PaginationQuerySchema.safeParse(requestData);
     if (!validationResult.success) {
-      console.warn(
-        "❌ Validation warnings for GET /new_api/comparisons:",
-        validationResult.error.issues,
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing parameters",
+        },
+        { status: 400 },
       );
     }
 
@@ -303,18 +326,7 @@ export async function GET(
       dateRange,
       userFilter,
       companyFilter,
-    } = requestData;
-
-    // Validate required parameters (maintaining original validation logic)
-    if (!page || !rowsPerPage || !user_id || !user_role) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing parameters",
-        },
-        { status: 400 },
-      );
-    }
+    } = validationResult.data;
 
     // Initialize database client
     const tursoClient = getTursoClient(request);
@@ -362,7 +374,7 @@ export async function GET(
     // Handle user role-based filtering (exact original logic)
     if (user_role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         filters.push(
           `( c.user_id = ? OR c.user_id IN (${subcomerciales.ids
             .map(() => "?")
@@ -446,8 +458,8 @@ export async function GET(
 
     // Execute count and data queries in parallel
     const [countResult, rs] = await Promise.all([
-      tursoClient.execute({ sql: countQuery, args: countParams }),
-      tursoClient.execute({ sql: query, args: params }),
+      executeReadWithRetry(tursoClient, { sql: countQuery, args: countParams }),
+      executeReadWithRetry(tursoClient, { sql: query, args: params }),
     ]);
 
     const total = Number(countResult.rows[0]?.total) || 0;
@@ -485,6 +497,14 @@ export async function GET(
     });
   } catch (error) {
     const endTime = performance.now();
+    if (isRetryableLibsqlError(error)) {
+      console.warn("Turso unavailable fetching comparisons:", {
+        error: error instanceof Error ? error.message : error,
+        executionTime: `${(endTime - startTime).toFixed(2)}ms`,
+      });
+      return databaseUnavailableResponse();
+    }
+
     console.error("❌ Error in GET /new_api/comparisons:", {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,

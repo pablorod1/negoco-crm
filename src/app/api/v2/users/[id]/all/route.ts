@@ -107,7 +107,7 @@ export async function GET(
 
     if (role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         query += ` WHERE u.id = ? OR u.id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")})`;

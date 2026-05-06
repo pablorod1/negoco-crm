@@ -88,7 +88,7 @@ export async function POST(
     if (user_role === "2") {
       // Commercial users (role 2): only see their own tramites and their subcomerciales' non-draft tramites
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         userFilterClause = `AND (t.user_id = ? OR t.user_id IN (${subcomerciales.ids.map(() => "?").join(", ")}))`;
         userFilterParams.push(user_id, ...subcomerciales.ids);
         optimizations.push("role-based-filtering");

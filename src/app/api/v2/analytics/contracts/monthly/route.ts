@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import {
+  executeReadWithRetry,
+  isRetryableLibsqlError,
+} from "@/core/libsql/executeWithRetry";
 import { TimeRange } from "@/core/types";
 import { DateRange } from "react-day-picker";
 
@@ -18,6 +22,20 @@ interface ContractAnalyticsData {
   comision?: number;
   comision_sales_person?: number;
 }
+
+const databaseUnavailableResponse = () =>
+  NextResponse.json(
+    {
+      success: false,
+      error: "Base de datos temporalmente no disponible",
+    },
+    {
+      status: 503,
+      headers: {
+        "Retry-After": "1",
+      },
+    },
+  );
 
 // Zod Validation Schemas
 const MonthlyContractsRequestSchema = z.object({
@@ -157,7 +175,10 @@ export async function POST(
     query += ` ORDER BY date(activation_date)`;
 
     // Execute query
-    const rs = await tursoClient.execute({ sql: query, args: params });
+    const rs = await executeReadWithRetry(tursoClient, {
+      sql: query,
+      args: params,
+    });
 
     // Process results based on time range
     const results = new Map<string, Omit<ContractAnalyticsData, "field">>();
@@ -188,6 +209,11 @@ export async function POST(
       data,
     });
   } catch (error) {
+    if (isRetryableLibsqlError(error)) {
+      console.warn("Turso unavailable fetching monthly contract analytics:", error);
+      return databaseUnavailableResponse();
+    }
+
     console.error("Error fetching monthly contract analytics:", error);
     return NextResponse.json(
       {

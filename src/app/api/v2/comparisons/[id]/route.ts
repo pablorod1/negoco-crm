@@ -190,7 +190,7 @@ async function fetchComparisonData(
     const subcomerciales = await getSubcomerciales(client, user_id);
     const idsToInclude = [user_id];
 
-    if (subcomerciales.success && subcomerciales.ids) {
+    if (subcomerciales.success && subcomerciales.ids.length > 0) {
       idsToInclude.push(...subcomerciales.ids);
     }
 

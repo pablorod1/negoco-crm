@@ -48,19 +48,31 @@ export function AbarcaPanel({
           }),
         });
         if (!res.ok) return;
-        const data = await res.json();
-        if (data.status !== "pending") {
-          setIsOpen(false);
-          setIframeUrl(null);
-          onStudyCompleted();
+        const responseBody = (await res.json()) as {
+          data?: { status?: string };
+        };
+        const comparativaStatus = responseBody.data?.status;
+
+        if (!comparativaStatus || comparativaStatus === "pending") return;
+
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
         }
+
+        setIsOpen(false);
+        setIframeUrl(null);
+        onStudyCompleted();
       } catch {
         // Ignore polling errors
       }
     }, 5000);
 
     return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     };
   }, [isOpen, iframeUrl, comparativaId, onStudyCompleted, userData]);
 

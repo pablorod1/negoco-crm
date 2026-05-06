@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import {
+  executeReadWithRetry,
+  isRetryableLibsqlError,
+} from "@/core/libsql/executeWithRetry";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import {
   ClientDB,
@@ -341,6 +345,20 @@ interface PaginatedContractsResponse {
   total?: number;
   error?: string;
 }
+
+const databaseUnavailableResponse = () =>
+  NextResponse.json(
+    {
+      success: false,
+      error: "Base de datos temporalmente no disponible",
+    },
+    {
+      status: 503,
+      headers: {
+        "Retry-After": "1",
+      },
+    },
+  );
 
 // A minimal interface for a DB executor (client or transaction)
 type DBExecutor = Pick<Client, "execute">;
@@ -952,7 +970,19 @@ export async function GET(
     };
 
     // Validate input parameters
-    const validatedData = PaginatedContractsRequestSchema.parse(requestData);
+    const validationResult =
+      PaginatedContractsRequestSchema.safeParse(requestData);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing parameters",
+        },
+        { status: 400 },
+      );
+    }
+
+    const validatedData = validationResult.data;
 
     const {
       page,
@@ -994,7 +1024,7 @@ export async function GET(
     // User role-based filtering (preserved exact logic)
     if (user_role === "2") {
       const subcomerciales = await getSubcomerciales(tursoClient, user_id);
-      if (subcomerciales.success && subcomerciales.ids) {
+      if (subcomerciales.success && subcomerciales.ids.length > 0) {
         filters.push(
           `(t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
             .map(() => "?")
@@ -1058,7 +1088,7 @@ export async function GET(
       if (!filterArray || filterArray.length === 0) return;
 
       const placeholders = filterArray.map(() => "?").join(", ");
-      const companyResult = await tursoClient.execute({
+      const companyResult = await executeReadWithRetry(tursoClient, {
         sql: `SELECT name FROM comercializadoras WHERE id IN (${placeholders})`,
         args: filterArray,
       });
@@ -1180,8 +1210,8 @@ export async function GET(
 
     // Execute count and id queries in parallel
     const [countResult, idsResult] = await Promise.all([
-      tursoClient.execute({ sql: countQuery, args: countParams }),
-      tursoClient.execute({ sql: idsQuery, args: idsParams }),
+      executeReadWithRetry(tursoClient, { sql: countQuery, args: countParams }),
+      executeReadWithRetry(tursoClient, { sql: idsQuery, args: idsParams }),
     ]);
     const total = Number(countResult.rows[0]?.total || 0);
 
@@ -1226,7 +1256,7 @@ export async function GET(
         ORDER BY t.creation_date DESC
       `;
 
-      const dataResult = await tursoClient.execute({
+      const dataResult = await executeReadWithRetry(tursoClient, {
         sql: dataQuery,
         args: pageIds,
       });
@@ -1281,6 +1311,11 @@ export async function GET(
       total,
     });
   } catch (error) {
+    if (isRetryableLibsqlError(error)) {
+      console.warn("Turso unavailable fetching contracts:", error);
+      return databaseUnavailableResponse();
+    }
+
     console.error("Error en el servidor obteniendo los trámites", error);
 
     return NextResponse.json(

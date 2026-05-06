@@ -69,7 +69,7 @@ async function canUpdateComparison(
     const subcomerciales = await getSubcomerciales(client, userId);
     const allowedUserIds = [userId];
 
-    if (subcomerciales.success && subcomerciales.ids) {
+    if (subcomerciales.success && subcomerciales.ids.length > 0) {
       allowedUserIds.push(...subcomerciales.ids);
     }
 
