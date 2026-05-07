@@ -865,9 +865,24 @@ export async function POST(
           potencia_contratada_p2: row.potencia_contratada_p2
             ? Number(row.potencia_contratada_p2)
             : null,
+          potencia_contratada_p3: row.potencia_contratada_p3
+            ? Number(row.potencia_contratada_p3)
+            : null,
+          potencia_contratada_p4: row.potencia_contratada_p4
+            ? Number(row.potencia_contratada_p4)
+            : null,
+          potencia_contratada_p5: row.potencia_contratada_p5
+            ? Number(row.potencia_contratada_p5)
+            : null,
+          potencia_contratada_p6: row.potencia_contratada_p6
+            ? Number(row.potencia_contratada_p6)
+            : null,
           consumo_p1: row.consumo_p1 ? Number(row.consumo_p1) : null,
           consumo_p2: row.consumo_p2 ? Number(row.consumo_p2) : null,
           consumo_p3: row.consumo_p3 ? Number(row.consumo_p3) : null,
+          consumo_p4: row.consumo_p4 ? Number(row.consumo_p4) : null,
+          consumo_p5: row.consumo_p5 ? Number(row.consumo_p5) : null,
+          consumo_p6: row.consumo_p6 ? Number(row.consumo_p6) : null,
           empresa_cliente: row.empresa_cliente
             ? String(row.empresa_cliente)
             : null,
