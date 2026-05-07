@@ -64,7 +64,7 @@ export const DireccionView = ({ userData, loading, getPlan }: Props) => {
           <div
             className={cn(
               "row-start-5 row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-1 2xl:col-start-4",
-              isStarterPlan ? "row-start-3" : ""
+              isStarterPlan ? "row-start-3" : "",
             )}
           >
             <ObjetivosCard loading={loading} userData={userData} />
@@ -75,7 +75,7 @@ export const DireccionView = ({ userData, loading, getPlan }: Props) => {
               "row-start-7 row-span-2 col-start-1 lg:row-start-5 2xl:row-start-3 2xl:col-span-1",
               isStarterPlan
                 ? "row-start-5 lg:row-start-3 2xl:row-start-1 2xl:col-start-3"
-                : ""
+                : "",
             )}
           >
             <RenewableTramitesCalendar userData={userData} loading={loading} />
@@ -89,7 +89,7 @@ export const DireccionView = ({ userData, loading, getPlan }: Props) => {
           <div
             className={cn(
               "row-start-11 row-span-2 lg:col-span-2 lg:row-start-7 2xl:row-start-3 2xl:col-start-3",
-              isStarterPlan ? "row-start-7 lg:row-start-5" : ""
+              isStarterPlan ? "row-start-7 lg:row-start-5" : "",
             )}
           >
             <PersonalTramitesChart userData={userData} loading={loading} />
@@ -99,7 +99,7 @@ export const DireccionView = ({ userData, loading, getPlan }: Props) => {
               "row-start-13 row-span-2 lg:col-span-2 lg:row-start-9 2xl:row-start-5 2xl:col-span-4",
               isStarterPlan
                 ? "row-start-9 lg:row-start-7 2xl:row-start-3 2xl:col-span-2"
-                : ""
+                : "",
             )}
           >
             <TeamTramitesBarChart loading={loading} userData={userData} />
@@ -136,14 +136,14 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
     <div
       className={cn(
         "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 items-stretch gap-4",
-        isStarterPlan ? "lg:grid-cols-3" : ""
+        isStarterPlan ? "lg:grid-cols-3" : "",
       )}
     >
       <div
         className={cn(
           "row-span-2 2xl:col-span-3",
           hasSubComerciales ? "2xl:col-span-2" : "",
-          isStarterPlan ? "lg:col-span-2" : ""
+          isStarterPlan ? "lg:col-span-2" : "",
         )}
       >
         <PersonalTramitesChart userData={userData} loading={loading} />
@@ -153,7 +153,11 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
         <>
           {!isStarterPlan && (
             <div className="row-span-2 lg:row-start-3 2xl:row-start-1 2xl:col-start-3 2xl:col-span-1">
-              <ComparativasRatio userData={userData} loading={loading} />
+              <ComparativasRatio
+                userData={userData}
+                loading={loading}
+                hasSubComerciales={hasSubComerciales}
+              />
             </div>
           )}
           <div
@@ -161,7 +165,7 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
               "row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-1 2xl:col-start-4",
               isStarterPlan
                 ? "lg:row-start-1 lg:col-start-3 2xl:col-start-4 2xl:col-span-1"
-                : ""
+                : "",
             )}
           >
             <ObjetivosCard loading={loading} userData={userData} />
@@ -174,7 +178,7 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
           <div
             className={cn(
               "lg:col-span-2 2xl:row-start-3 row-span-2",
-              isStarterPlan ? "lg:col-span-3 2xl:col-span-4" : ""
+              isStarterPlan ? "lg:col-span-3 2xl:col-span-4" : "",
             )}
           >
             <TeamTramitesBarChart loading={loading} userData={userData} />
@@ -192,7 +196,7 @@ export const ComercialView = ({ userData, loading, getPlan }: Props) => {
               "row-span-2 lg:row-start-3 lg:col-start-2 2xl:row-start-3 2xl:col-start-1 2xl:col-span-2",
               isStarterPlan
                 ? "lg:row-start-1 lg:col-start-3 2xl:row-start-1 2xl:col-start-4"
-                : ""
+                : "",
             )}
           >
             <ObjetivosCard loading={loading} userData={userData} />
@@ -228,7 +232,7 @@ export const BackofficeView = ({ userData, loading, getPlan }: Props) => {
       <div
         className={cn(
           "col-span-1 lg:col-span-2 2xl:col-span-1 row-span-2",
-          isStarterPlan ? "lg:col-span-2" : ""
+          isStarterPlan ? "lg:col-span-2" : "",
         )}
       >
         <RenewableTramitesCalendar

@@ -4,7 +4,6 @@ import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramite
 import RenewableTramitesCalendar from "@/dashboard/components/renewable/RenewableTramitesCalendar";
 import { AnimatePresence, motion } from "framer-motion";
 import { ComparativasRatio } from "../components/charts/ComparativasRatio";
-import { ComparativasResume } from "../components/comparativas/ComparativasResume";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 
 interface BackofficeLayoutProps {
@@ -44,24 +43,22 @@ export const BackofficeLayout = ({
           className="space-y-6"
         >
           {/* Comparativas Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <motion.div
-              className="lg:col-span-1"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-            >
-              <ComparativasRatio loading={loading} userData={userData} />
-            </motion.div>
-            <motion.div
+          <motion.div
+            className="lg:col-span-1"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+          >
+            <ComparativasRatio loading={loading} userData={userData} />
+          </motion.div>
+          {/* <motion.div
               className="lg:col-span-1"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
             >
               <ComparativasResume loading={loading} userData={userData} />
-            </motion.div>
-          </div>
+            </motion.div> */}
         </motion.div>
       </AnimatePresence>
     );

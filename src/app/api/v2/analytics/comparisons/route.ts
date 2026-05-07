@@ -48,7 +48,10 @@ const ComparisonAnalyticsSchema = z.object({
     .default("completed-count"),
   month: z.string().optional(), // Required for converted-ratio
   status: z.string().optional(), // Required for by-status
+  commercialId: z.string().optional(),
 });
+
+type SubcomercialesResult = { success: boolean; ids?: string[] };
 
 /**
  * Creates user filter with subcomerciales support
@@ -56,31 +59,35 @@ const ComparisonAnalyticsSchema = z.object({
 const createUserFilter = (
   role: string,
   id: string,
-  subcomerciales?: { success: boolean; ids?: string[] }
+  subcomerciales?: SubcomercialesResult,
+  commercialId?: string,
+  userColumn = "user_id",
 ) => {
   const params: (string | number)[] = [];
-  let filter = "";
+  const filters: string[] = [];
+  const selectedCommercialId =
+    commercialId && commercialId !== "all" ? commercialId : "";
 
   if (role === "2") {
-    if (
-      subcomerciales?.success &&
-      subcomerciales.ids &&
-      subcomerciales.ids.length > 0
-    ) {
-      filter = `(user_id = ? OR user_id IN (${subcomerciales.ids
-        .map(() => "?")
-        .join(", ")}))`;
+    if (subcomerciales?.success && subcomerciales.ids?.length) {
+      filters.push(
+        `(${userColumn} = ? OR ${userColumn} IN (${subcomerciales.ids
+          .map(() => "?")
+          .join(", ")}))`,
+      );
       params.push(id, ...subcomerciales.ids);
     } else {
-      filter = `user_id = ?`;
+      filters.push(`${userColumn} = ?`);
       params.push(id);
     }
-  } else if (role !== "admin" && role !== "1") {
-    filter = `user_id = ?`;
-    params.push(id);
   }
 
-  return { filter, params };
+  if (selectedCommercialId) {
+    filters.push(`${userColumn} = ?`);
+    params.push(selectedCommercialId);
+  }
+
+  return { filter: filters.join(" AND "), params };
 };
 
 /**
@@ -98,7 +105,7 @@ const getCompletedCountMetrics = async (
   tursoClient: Client,
   role: string,
   id: string,
-  subcomerciales?: { success: boolean; ids?: string[] }
+  subcomerciales?: SubcomercialesResult,
 ): Promise<ComparisonMetrics> => {
   const userFilter = createUserFilter(role, id, subcomerciales);
   const whereClause = userFilter.filter ? `AND ${userFilter.filter}` : "";
@@ -125,7 +132,7 @@ const getCompletedCountMetrics = async (
 
   const completedDifference = calculatePercentage(
     Number(data.completed || 0),
-    Number(data.prev_completed || 0)
+    Number(data.prev_completed || 0),
   );
 
   return {
@@ -144,19 +151,26 @@ const getConversionRatio = async (
   role: string,
   id: string,
   month: string,
-  subcomerciales?: { success: boolean; ids?: string[] }
+  subcomerciales?: SubcomercialesResult,
+  commercialId?: string,
 ): Promise<ConversionRatio[]> => {
-  const userFilter = createUserFilter(role, id, subcomerciales);
+  const userFilter = createUserFilter(
+    role,
+    id,
+    subcomerciales,
+    commercialId,
+    "c.user_id",
+  );
   const whereClause = userFilter.filter ? `AND ${userFilter.filter}` : "";
 
   const query = `
     SELECT 
-      COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS total,
-      COALESCE(SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END), 0) AS processed
-    FROM comparativas 
-    WHERE strftime('%m', creation_date) = strftime('%m', ?)
-      AND strftime('%Y', creation_date) = strftime('%Y', 'now') 
-      AND status IN ('completed', 'processed')
+      COALESCE(SUM(CASE WHEN c.status = 'completed' THEN 1 ELSE 0 END), 0) AS total,
+      COALESCE(SUM(CASE WHEN c.status = 'processed' THEN 1 ELSE 0 END), 0) AS processed
+    FROM comparativas c
+    WHERE strftime('%m', c.creation_date) = strftime('%m', ?)
+      AND strftime('%Y', c.creation_date) = strftime('%Y', 'now') 
+      AND c.status IN ('completed', 'processed')
       ${whereClause}
   `;
 
@@ -181,9 +195,10 @@ const getComparisonsByStatus = async (
   role: string,
   id: string,
   status: string,
-  subcomerciales?: { success: boolean; ids?: string[] }
+  subcomerciales?: SubcomercialesResult,
 ): Promise<ComparisonsByStatus[]> => {
   const params: (string | number)[] = [];
+  const whereConditions: string[] = [];
 
   let query = `
     SELECT 
@@ -199,33 +214,28 @@ const getComparisonsByStatus = async (
 
   // Apply status filtering
   if (status !== "all") {
+    whereConditions.push("c.status = ?");
     params.push(status);
     if (status === "completed") {
-      query += `WHERE c.status = ? AND strftime(c.creation_date) = strftime('now')`;
-    } else {
-      query += `WHERE c.status = ?`;
+      whereConditions.push("strftime(c.creation_date) = strftime('now')");
     }
   }
 
   // Apply user filtering
-  if (role === "2") {
-    const idsToInclude = [id];
-    if (
-      subcomerciales?.success &&
-      subcomerciales.ids &&
-      subcomerciales.ids.length > 0
-    ) {
-      idsToInclude.push(...subcomerciales.ids);
-    }
+  const userFilter = createUserFilter(
+    role,
+    id,
+    subcomerciales,
+    undefined,
+    "c.user_id",
+  );
+  if (userFilter.filter) {
+    whereConditions.push(userFilter.filter);
+    params.push(...userFilter.params);
+  }
 
-    query += ` AND (user_id = ? OR user_id IN (${idsToInclude
-      .slice(1)
-      .map(() => "?")
-      .join(", ")}))`;
-    params.push(...idsToInclude);
-  } else if (role !== "admin" && role !== "1") {
-    query += ` AND user_id = ?`;
-    params.push(id);
+  if (whereConditions.length > 0) {
+    query += ` WHERE ${whereConditions.join(" AND ")}`;
   }
 
   const result = await tursoClient.execute({
@@ -252,7 +262,7 @@ const getComparisonsByStatus = async (
  * @returns Promise<NextResponse<ComparisonAnalyticsResponse>>
  */
 export async function GET(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ComparisonAnalyticsResponse>> {
   try {
     const { searchParams } = new URL(request.url);
@@ -262,6 +272,10 @@ export async function GET(
       metric: searchParams.get("metric") || "completed-count",
       month: searchParams.get("month") || "",
       status: searchParams.get("status") || "",
+      commercialId:
+        searchParams.get("commercialId") ||
+        searchParams.get("commercial_id") ||
+        "",
     };
 
     const validationResult = ComparisonAnalyticsSchema.safeParse(queryParams);
@@ -271,11 +285,12 @@ export async function GET(
           success: false,
           error: "Invalid query parameters: " + validationResult.error.message,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { id, role, metric, month, status } = validationResult.data;
+    const { id, role, metric, month, status, commercialId } =
+      validationResult.data;
 
     // Validate required parameters based on metric
     if (metric === "converted-ratio" && !month) {
@@ -284,7 +299,7 @@ export async function GET(
           success: false,
           error: "Missing parameters. El mes (month) es obligatorio.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -294,7 +309,7 @@ export async function GET(
           success: false,
           error: "Missing parameters. Status is required.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -305,12 +320,12 @@ export async function GET(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     // Get subcomerciales for role "2"
-    let subcomerciales: { success: boolean; ids?: string[] } = {
+    let subcomerciales: SubcomercialesResult = {
       success: false,
     };
     if (role === "2") {
@@ -326,7 +341,7 @@ export async function GET(
           tursoClient,
           role,
           id,
-          subcomerciales
+          subcomerciales,
         );
         break;
       case "converted-ratio":
@@ -336,7 +351,8 @@ export async function GET(
             role,
             id,
             month,
-            subcomerciales
+            subcomerciales,
+            commercialId,
           );
         } else {
           return NextResponse.json(
@@ -344,7 +360,7 @@ export async function GET(
               success: false,
               error: "Month parameter is required for converted-ratio metric",
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
         break;
@@ -355,7 +371,7 @@ export async function GET(
             role,
             id,
             status,
-            subcomerciales
+            subcomerciales,
           );
         } else {
           return NextResponse.json(
@@ -363,7 +379,7 @@ export async function GET(
               success: false,
               error: "Status parameter is required for by-status metric",
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
         break;
@@ -373,7 +389,7 @@ export async function GET(
             success: false,
             error: "Invalid metric parameter",
           },
-          { status: 400 }
+          { status: 400 },
         );
     }
 
@@ -388,7 +404,7 @@ export async function GET(
         success: false,
         error: "Error fetching comparison analytics",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -397,7 +413,7 @@ export async function GET(
  * POST methods for backward compatibility with legacy endpoints
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ComparisonAnalyticsResponse>> {
   try {
     const body = await request.json();
@@ -415,7 +431,7 @@ export async function POST(
             success: false,
             error: "Missing parameters. El mes (month) es obligatorio.",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -428,7 +444,7 @@ export async function POST(
             success: false,
             error: "Database client not initialized",
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -444,7 +460,8 @@ export async function POST(
         role,
         id,
         month,
-        subcomerciales
+        subcomerciales,
+        body.commercialId || body.commercial_id || "",
       );
       return NextResponse.json({ success: true, data });
     } else if (body.status !== undefined) {
@@ -456,7 +473,7 @@ export async function POST(
       if (!validationResult.success) {
         return NextResponse.json(
           { success: false, error: "Missing parameters" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -466,7 +483,7 @@ export async function POST(
       if (!tursoClient) {
         return NextResponse.json(
           { success: false, error: "Database client not initialized" },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -482,7 +499,7 @@ export async function POST(
         role,
         id,
         status,
-        subcomerciales
+        subcomerciales,
       );
       return NextResponse.json({ success: true, data });
     } else {
@@ -499,7 +516,7 @@ export async function POST(
             success: false,
             error: "Missing parameters",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -512,7 +529,7 @@ export async function POST(
             success: false,
             error: "Database client not initialized",
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -527,7 +544,7 @@ export async function POST(
         tursoClient,
         role,
         id,
-        subcomerciales
+        subcomerciales,
       );
       return NextResponse.json({ success: true, data });
     }
@@ -538,7 +555,7 @@ export async function POST(
         success: false,
         error: "Error fetching comparison analytics",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

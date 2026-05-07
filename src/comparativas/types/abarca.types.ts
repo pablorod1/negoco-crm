@@ -85,9 +85,16 @@ export interface AbarcaEstudio {
   tipo_tarifa: string | null;
   potencia_contratada: number | null;
   potencia_contratada_p2: number | null;
+  potencia_contratada_p3: number | null;
+  potencia_contratada_p4: number | null;
+  potencia_contratada_p5: number | null;
+  potencia_contratada_p6: number | null;
   consumo_p1: number | null;
   consumo_p2: number | null;
   consumo_p3: number | null;
+  consumo_p4: number | null;
+  consumo_p5: number | null;
+  consumo_p6: number | null;
 
   // Empresas
   empresa_cliente: string | null;

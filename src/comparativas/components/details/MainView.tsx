@@ -435,7 +435,7 @@ export default function MainView({
                       {comparativa.abarca_estudio.tipo_tarifa || "—"}
                     </p>
                   </div>
-                  <div className="flex gap-4">
+                  <div className="flex flex-wrap items-start gap-4">
                     <div>
                       <p className="text-xs text-gray-500">Potencia P1</p>
                       <p className="text-sm font-medium text-gray-900">
@@ -450,6 +450,42 @@ export default function MainView({
                         {comparativa.abarca_estudio.potencia_contratada_p2 !=
                         null
                           ? `${comparativa.abarca_estudio.potencia_contratada_p2} kW`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Potencia P3</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.abarca_estudio.potencia_contratada_p3 !=
+                        null
+                          ? `${comparativa.abarca_estudio.potencia_contratada_p3} kW`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Potencia P4</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.abarca_estudio.potencia_contratada_p4 !=
+                        null
+                          ? `${comparativa.abarca_estudio.potencia_contratada_p4} kW`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Potencia P5</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.abarca_estudio.potencia_contratada_p5 !=
+                        null
+                          ? `${comparativa.abarca_estudio.potencia_contratada_p5} kW`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Potencia P6</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.abarca_estudio.potencia_contratada_p6 !=
+                        null
+                          ? `${comparativa.abarca_estudio.potencia_contratada_p6} kW`
                           : "—"}
                       </p>
                     </div>

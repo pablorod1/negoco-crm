@@ -48,7 +48,7 @@ export const dashboardAPI = {
       {
         method: "GET",
         headers: API_HEADERS,
-      }
+      },
     );
     return response.json();
   },
@@ -68,7 +68,7 @@ export const dashboardAPI = {
       {
         method: "GET",
         headers: API_HEADERS,
-      }
+      },
     );
     return response.json();
   },
@@ -79,7 +79,7 @@ export const dashboardAPI = {
       {
         method: "GET",
         headers: API_HEADERS,
-      }
+      },
     );
     return response.json();
   },
@@ -103,13 +103,21 @@ export const dashboardAPI = {
     return response.json();
   },
 
-  getConvertedRatio: async (id: string, role: string, month: string) => {
+  getConvertedRatio: async (
+    id: string,
+    role: string,
+    month: string,
+    commercialId?: string,
+  ) => {
+    const commercialParam = commercialId
+      ? `&commercialId=${encodeURIComponent(commercialId)}`
+      : "";
     const response = await fetch(
-      `/api/v2/analytics/comparisons?metric=converted-ratio&id=${id}&role=${role}&month=${month}`,
+      `/api/v2/analytics/comparisons?metric=converted-ratio&id=${id}&role=${role}&month=${month}${commercialParam}`,
       {
         method: "GET",
         headers: API_HEADERS,
-      }
+      },
     );
     return response.json();
   },
@@ -120,7 +128,7 @@ export const dashboardAPI = {
       {
         method: "GET",
         headers: API_HEADERS,
-      }
+      },
     );
     return response.json();
   },
@@ -129,14 +137,14 @@ export const dashboardAPI = {
   getTeamPerformance: async (
     id: string,
     role: string,
-    timeRange: string = "all_time"
+    timeRange: string = "all_time",
   ) => {
     const response = await fetch(
       `${DASHBOARD_API_ENDPOINTS.TEAM_TRAMITES}?id=${id}&role=${role}&time_range=${timeRange}`,
       {
         method: "GET",
         headers: API_HEADERS,
-      }
+      },
     );
     return response.json();
   },
