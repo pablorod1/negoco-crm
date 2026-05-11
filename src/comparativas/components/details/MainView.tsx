@@ -153,6 +153,7 @@ export default function MainView({
                           comparativaId={comparativa.id}
                           abarcaUserId={userData.organization.abarca_user_id}
                           onStudyCompleted={onUpdate}
+                          files={comparativa.files}
                         />
                       </div>
                     )}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { ide, idcm, comparativa_id } = await req.json();
+  const { ide, idcm, comparativa_id, file_url } = await req.json();
 
   const { ABARCA_API_KEY, ABARCA_TOKEN } = process.env;
 
@@ -10,6 +10,29 @@ export async function POST(req: NextRequest) {
       { error: "Missing Environment Variables" },
       { status: 500 },
     );
+  }
+
+  let pdfBase64: string | undefined;
+  if (file_url) {
+    let fileResponse: Response;
+    try {
+      fileResponse = await fetch(file_url as string);
+    } catch (err) {
+      console.error("Error downloading file for Abarca:", err);
+      return NextResponse.json(
+        { error: "Error downloading file" },
+        { status: 502 },
+      );
+    }
+    if (!fileResponse.ok) {
+      console.error(`File download failed (HTTP ${fileResponse.status})`);
+      return NextResponse.json(
+        { error: "Failed to download file" },
+        { status: 502 },
+      );
+    }
+    const fileBuffer = await fileResponse.arrayBuffer();
+    pdfBase64 = Buffer.from(fileBuffer).toString("base64");
   }
 
   let response: Response;
@@ -27,6 +50,7 @@ export async function POST(req: NextRequest) {
           idcm,
           clave: ABARCA_TOKEN,
           comparativa_id,
+          ...(pdfBase64 ? { pdf_base64: pdfBase64 } : {}),
         }),
       },
     );

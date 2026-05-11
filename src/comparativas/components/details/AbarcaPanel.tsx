@@ -8,29 +8,44 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/core/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/core/components/ui/dialog";
 import { Button } from "@/core/components/ui/button";
-import { Loader2, X, RotateCcw, Stars } from "lucide-react";
+import { Loader2, X, RotateCcw, Stars, FileText } from "lucide-react";
 import Image from "next/image";
 import { useUser } from "@/core/contexts/UserContext";
+import { ComparativaFile } from "@/comparativas/types";
 
 interface AbarcaPanelProps {
   comparativaId: string;
   abarcaUserId: number;
   onStudyCompleted: () => void;
+  files: Partial<ComparativaFile>[];
 }
 
 export function AbarcaPanel({
   comparativaId,
   abarcaUserId,
   onStudyCompleted,
+  files,
 }: AbarcaPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { userData } = useUser();
+
+  const pdfFiles = files.filter(
+    (f) => f.extension?.toLowerCase() === "pdf" && f.download_url,
+  );
 
   // Poll comparativa status while the panel is open
   useEffect(() => {
@@ -76,42 +91,61 @@ export function AbarcaPanel({
     };
   }, [isOpen, iframeUrl, comparativaId, onStudyCompleted, userData]);
 
-  const fetchLoginUrl = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/v2/integrations/abarca/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ide: 100,
-          idcm: abarcaUserId,
-          comparativa_id: comparativaId,
-        }),
-      });
+  const fetchLoginUrl = useCallback(
+    async (fileUrl?: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/v2/integrations/abarca/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ide: 100,
+            idcm: abarcaUserId,
+            comparativa_id: comparativaId,
+            ...(fileUrl ? { file_url: fileUrl } : {}),
+          }),
+        });
 
-      if (!res.ok) {
-        console.error("Error fetching Abarca login URL:", await res.text());
-        setError("No se pudo conectar con Abarca");
-        return;
+        if (!res.ok) {
+          console.error("Error fetching Abarca login URL:", await res.text());
+          setError("No se pudo conectar con Abarca");
+          return;
+        }
+
+        const data = await res.json();
+        setIframeUrl(data.loginUrl);
+        setIsIframeLoading(true);
+        setIsOpen(true);
+      } catch {
+        setError("Error de conexión con Abarca");
+      } finally {
+        setIsLoading(false);
       }
-
-      const data = await res.json();
-      setIframeUrl(data.loginUrl);
-      setIsIframeLoading(true);
-    } catch {
-      setError("Error de conexión con Abarca");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [abarcaUserId, comparativaId]);
+    },
+    [abarcaUserId, comparativaId],
+  );
 
   const handleOpen = useCallback(() => {
-    setIsOpen(true);
-    if (!iframeUrl) {
-      fetchLoginUrl();
+    if (iframeUrl) {
+      setIsOpen(true);
+      return;
     }
-  }, [iframeUrl, fetchLoginUrl]);
+
+    if (pdfFiles.length > 1) {
+      setIsFileModalOpen(true);
+    } else {
+      fetchLoginUrl(pdfFiles[0]?.download_url ?? undefined);
+    }
+  }, [iframeUrl, pdfFiles, fetchLoginUrl]);
+
+  const handleFileSelect = useCallback(
+    (fileUrl: string) => {
+      setIsFileModalOpen(false);
+      fetchLoginUrl(fileUrl);
+    },
+    [fetchLoginUrl],
+  );
 
   return (
     <>
@@ -120,12 +154,46 @@ export function AbarcaPanel({
         variant="default"
         size="sm"
         className="w-full"
+        disabled={isLoading}
       >
-        <span className="flex items-center gap-2">
-          <Stars className="h-4 w-4" />
-          Realizar estudio con IA
-        </span>
+        {isLoading ? (
+          <span className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Conectando...
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <Stars className="h-4 w-4" />
+            Realizar estudio con IA
+          </span>
+        )}
       </Button>
+
+      {/* File selection modal */}
+      <Dialog open={isFileModalOpen} onOpenChange={setIsFileModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Seleccionar factura</DialogTitle>
+            <DialogDescription>
+              Elige el PDF que quieres enviar al comparador energético.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-2">
+            {pdfFiles.map((file) => (
+              <button
+                key={file.id ?? file.download_url}
+                onClick={() => handleFileSelect(file.download_url!)}
+                className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <FileText className="h-5 w-5 shrink-0 text-gray-400" />
+                <span className="truncate text-sm font-medium text-gray-800">
+                  {file.filename ?? "Documento PDF"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent
@@ -164,17 +232,6 @@ export function AbarcaPanel({
           </SheetHeader>
 
           <div className="flex-1 h-full relative overflow-hidden">
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80 z-10">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
-                  <p className="text-sm text-gray-500">
-                    Conectando con Abarca...
-                  </p>
-                </div>
-              </div>
-            )}
-
             {error && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
                 <div className="flex flex-col items-center gap-3 text-center">
@@ -182,7 +239,7 @@ export function AbarcaPanel({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchLoginUrl}
+                    onClick={() => fetchLoginUrl()}
                     className="gap-2"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
