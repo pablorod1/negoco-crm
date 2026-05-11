@@ -29,7 +29,7 @@ interface ClientCreateResponse {
  * @returns Promise<NextResponse<ClientsResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ClientsResponse>> {
   try {
     const { id, role } = await request.json();
@@ -37,7 +37,7 @@ export async function POST(
     if (!id || !role) {
       return NextResponse.json(
         { success: false, message: "Missing Parameters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -47,7 +47,7 @@ export async function POST(
     if (!tursoClient) {
       return NextResponse.json(
         { success: false, message: "Database not initialized" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -100,19 +100,19 @@ export async function POST(
     if (res.rows.length === 0) {
       return NextResponse.json(
         { success: true, message: "No clients found" },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
     return NextResponse.json(
       { success: true, data: res.rows },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching clients:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -125,7 +125,7 @@ export async function POST(
  * @returns Promise<NextResponse<ClientsResponse>>
  */
 export async function GET(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ClientsResponse>> {
   try {
     const { searchParams } = new URL(request.url);
@@ -135,7 +135,7 @@ export async function GET(
     if (!id || !role) {
       return NextResponse.json(
         { success: false, message: "Missing Parameters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -150,7 +150,7 @@ export async function GET(
     console.error("Error in GET /new_api/clients:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -162,7 +162,7 @@ export async function GET(
  * @returns Promise<NextResponse<ClientCreateResponse>>
  */
 export async function PUT(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ClientCreateResponse>> {
   try {
     const tursoClient = getTursoClient(request);
@@ -170,7 +170,7 @@ export async function PUT(
     if (!tursoClient) {
       return NextResponse.json(
         { success: false, error: "Database not initialized" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -181,7 +181,7 @@ export async function PUT(
     if (!client) {
       return NextResponse.json(
         { success: false, error: "Missing client data" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -215,7 +215,7 @@ export async function PUT(
           success: false,
           error: clientResult.error || "Error creating client",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -232,12 +232,11 @@ export async function PUT(
         email: signer.email,
         phone: signer.phone,
         document_number: signer.document_number,
-        document_type: "DNI",
       };
 
       // Add signer (using the same pattern as in contracts endpoint)
       const signerQuery = `
-        INSERT INTO signers (id, client_id, name, last_name, email, phone, document_number, document_type)
+        INSERT INTO signers (id, client_id, name, last_name, email, phone, document_number)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
@@ -251,7 +250,6 @@ export async function PUT(
           signerDB.email,
           signerDB.phone,
           signerDB.document_number,
-          signerDB.document_type,
         ],
       });
     }
@@ -262,13 +260,13 @@ export async function PUT(
         message: "Client created successfully",
         data: { clientId },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error creating client:", error);
     return NextResponse.json(
       { success: false, error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
