@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
   const parsed = AbarcaWebhookSchema.safeParse(body);
   if (!parsed.success) {
-    console.error("VALIDATION_ERROR");
+    console.error("VALIDATION_ERROR", parsed.error.issues);
     return NextResponse.json(
       { error: "VALIDATION_ERROR", details: parsed.error.issues },
       { status: 400 },
