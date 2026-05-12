@@ -189,7 +189,7 @@ export async function POST(req: Request) {
   const estudioArgs = [
     payload.crm_id,
     payload.ide,
-    payload.cups,
+    payload.cups ?? null,
     payload.tipo_tarifa ?? null,
     payload.potencia_contratada ?? null,
     payload.potencia_contratada_p2 ?? null,

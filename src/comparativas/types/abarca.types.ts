@@ -8,7 +8,7 @@ export const AbarcaWebhookSchema = z.object({
   crm_id: z.number(),
 
   // Suministro
-  cups: z.string().min(1),
+  cups: z.string().optional(),
   tipo_tarifa: z.string().optional(),
   potencia_contratada: z.number().optional(),
   potencia_contratada_p2: z.number().optional(),
