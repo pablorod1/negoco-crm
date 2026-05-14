@@ -60,28 +60,46 @@ const ClientSchema = z.object({
     }),
 });
 
-const SignerSchema = z
-  .object({
-    id: z.string().min(1, "Signer ID is required"),
-    name: z.string().min(1, "Name is required"),
-    last_name: z.string().min(1, "Last name is required"),
-    email: z.string().email("Valid email is required"),
-    phone: z.string().min(1, "Phone is required"),
-    document_number: z.string().min(1, "Document number is required"),
-    cargo: z.string().nullable().optional(),
-    client_id: z.string().min(1, "Client ID is required"),
-  })
-  .optional();
+const SignerSchema = z.object({
+  id: z.string().min(1, "Signer ID is required"),
+  name: z.string().min(1, "Name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().min(1, "Phone is required"),
+  document_number: z.string().min(1, "Document number is required"),
+  cargo: z.string().nullable().optional(),
+  client_id: z.string().min(1, "Client ID is required"),
+});
+
+const clientRequiresSigner = (clientType: string) =>
+  clientType === "Empresa" || clientType === "Comunidad de Propietarios";
+
+const validateSignerForClient = (clientType: string, signer: unknown) => {
+  if (!clientRequiresSigner(clientType)) {
+    return { success: true as const, signer: undefined };
+  }
+
+  const signerValidationResult = SignerSchema.safeParse(signer);
+
+  if (!signerValidationResult.success) {
+    return {
+      success: false as const,
+      issues: signerValidationResult.error.issues,
+    };
+  }
+
+  return { success: true as const, signer: signerValidationResult.data };
+};
 
 const UpdateClientRequestSchema = z.object({
   client: ClientSchema,
-  signer: SignerSchema,
+  signer: z.unknown().optional(),
   user_id: z.string().min(1, "User ID is required"), // Add user_id for tracking
 });
 
 const CreateClientRequestSchema = z.object({
   client: ClientSchema,
-  signer: SignerSchema,
+  signer: z.unknown().optional(),
 });
 
 // Response interfaces
@@ -97,7 +115,7 @@ interface ClientResponse {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ClientResponse>> {
   try {
     const { id: tramite_id } = await params;
@@ -107,24 +125,49 @@ export async function POST(
     const validationResult = CreateClientRequestSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.error(
+        "Validation error creating client:",
+        validationResult.error.issues,
+      );
       return NextResponse.json(
         {
           success: false,
-          error: `Validation error: ${validationResult.error.issues.map((e) => e.message).join(", ")}`,
+          error: `Validation error: ${validationResult.error.issues.join("; ")}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { client, signer } = validationResult.data;
+    const { client } = validationResult.data;
+    const signerValidationResult = validateSignerForClient(
+      client.type,
+      validationResult.data.signer,
+    );
+
+    if (!signerValidationResult.success) {
+      console.error(
+        "Validation error creating client signer:",
+        signerValidationResult.issues,
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Validation error: ${signerValidationResult.issues.map((issue) => issue.message).join(", ")}`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const { signer } = signerValidationResult;
 
     if (!tramite_id) {
+      console.error("Contract ID is required to add client");
       return NextResponse.json(
         {
           success: false,
           error: "Contract ID is required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -136,7 +179,7 @@ export async function POST(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -153,7 +196,7 @@ export async function POST(
           success: false,
           error: insertClientRes.error || "Error inserting client",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -161,7 +204,7 @@ export async function POST(
     const updateTramiteRes = await updateTramite(
       { client_id: client.id },
       tramite_id,
-      tursoClient
+      tursoClient,
     );
 
     if (!updateTramiteRes.success) {
@@ -170,7 +213,7 @@ export async function POST(
           success: false,
           error: updateTramiteRes.error || "Error updating contract",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -183,7 +226,7 @@ export async function POST(
       const updateSignerRes = await updateSigner(
         { client_id: client.id },
         signer.id,
-        tursoClient
+        tursoClient,
       );
 
       if (!updateSignerRes.success) {
@@ -192,7 +235,7 @@ export async function POST(
             success: false,
             error: updateSignerRes.error || "Error updating signer",
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -205,7 +248,7 @@ export async function POST(
         success: false,
         error: "Error adding client to contract",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -217,7 +260,7 @@ export async function POST(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ClientResponse>> {
   try {
     const { id: tramite_id } = await params;
@@ -231,11 +274,27 @@ export async function PATCH(
           success: false,
           error: `Validation error: ${validationResult.error.issues.map((e) => e.message).join(", ")}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { client, signer, user_id } = validationResult.data;
+    const { client, user_id } = validationResult.data;
+    const signerValidationResult = validateSignerForClient(
+      client.type,
+      validationResult.data.signer,
+    );
+
+    if (!signerValidationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Validation error: ${signerValidationResult.issues.map((issue) => issue.message).join(", ")}`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const { signer } = signerValidationResult;
 
     const tursoClient = getTursoClient(request);
 
@@ -245,7 +304,7 @@ export async function PATCH(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -271,7 +330,7 @@ export async function PATCH(
           success: false,
           error: updateClientRes.error || "Error updating client",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -326,7 +385,7 @@ export async function PATCH(
       const updateSignerRes = await updateSigner(
         signer,
         signer.id,
-        tursoClient
+        tursoClient,
       );
 
       if (!updateSignerRes.success) {
@@ -335,7 +394,7 @@ export async function PATCH(
             success: false,
             error: updateSignerRes.error || "Error updating signer",
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -378,7 +437,7 @@ export async function PATCH(
             tursoClient,
             tramite_id,
             user_id,
-            signerChanges
+            signerChanges,
           );
         }
       }
@@ -392,7 +451,7 @@ export async function PATCH(
         success: false,
         error: "Error updating client information",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

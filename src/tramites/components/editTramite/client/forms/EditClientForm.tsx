@@ -13,6 +13,33 @@ import { ClientDB, SignerDB } from "@/tramites/types";
 import ClientUpdateConfirmationDialog from "../ClientUpdateConfirmationDialog";
 import { User } from "@/core/types";
 
+type ClientType = keyof typeof DOCUMENT_TYPES;
+
+const clientRequiresSigner = (clientType: string) =>
+  clientType === "Empresa" || clientType === "Comunidad de Propietarios";
+
+const getDocumentTypeOptions = (clientType: string): string[] => {
+  if (clientType in DOCUMENT_TYPES) {
+    return [...DOCUMENT_TYPES[clientType as ClientType].documentTypes];
+  }
+
+  return [];
+};
+
+const hasRequiredText = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+const hasValidSigner = (signer?: SignerDB): signer is SignerDB =>
+  Boolean(
+    signer &&
+      hasRequiredText(signer.id) &&
+      hasRequiredText(signer.name) &&
+      hasRequiredText(signer.last_name) &&
+      hasRequiredText(signer.email) &&
+      hasRequiredText(signer.phone) &&
+      hasRequiredText(signer.document_number),
+  );
+
 interface Props {
   tramite_id: string;
   client: ClientDB;
@@ -34,6 +61,8 @@ export default function EditClientForm({
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
+  const documentTypeOptions = getDocumentTypeOptions(formData.type);
+
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -43,10 +72,24 @@ export default function EditClientForm({
   };
 
   const handleSelectChange = (value: string, name: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => {
+      if (name !== "type") {
+        return {
+          ...prev,
+          [name]: value,
+        };
+      }
+
+      const nextDocumentTypeOptions = getDocumentTypeOptions(value);
+
+      return {
+        ...prev,
+        type: value,
+        document_type: nextDocumentTypeOptions.includes(prev.document_type)
+          ? prev.document_type
+          : "",
+      };
+    });
   };
 
   const checkChanges = () => {
@@ -66,8 +109,40 @@ export default function EditClientForm({
       return;
     }
 
-    // Show confirmation dialog before proceeding
+    if (!documentTypeOptions.includes(formData.document_type)) {
+      showCustomToast({
+        title: "Tipo de documento no válido",
+        message: "Selecciona un tipo de documento válido para este cliente",
+        iconColor: "var(--warning-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
+
+    if (clientRequiresSigner(formData.type) && !hasValidSigner(signer)) {
+      showCustomToast({
+        title: "Faltan datos del firmante",
+        message: "Este tipo de cliente requiere un firmante válido",
+        iconColor: "var(--warning-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
+
     setShowConfirmDialog(true);
+  };
+
+  const getSignerPayload = (clientId: string) => {
+    if (!clientRequiresSigner(formData.type) || !hasValidSigner(signer)) {
+      return undefined;
+    }
+
+    return {
+      ...signer,
+      client_id: clientId,
+    };
   };
 
   const updateExistingClientWithoutTramite = async () => {
@@ -138,7 +213,7 @@ export default function EditClientForm({
         },
         body: JSON.stringify({
           client: formData,
-          signer,
+          signer: getSignerPayload(formData.id),
           user_id: userData.id,
         }),
       });
@@ -188,6 +263,8 @@ export default function EditClientForm({
         id: `CLI-${crypto.randomUUID()}`,
       };
 
+      const signerPayload = getSignerPayload(newClientData.id);
+
       const res = await fetch(`/api/v2/contracts/${tramite_id}/client`, {
         method: "POST",
         headers: {
@@ -195,12 +272,7 @@ export default function EditClientForm({
         },
         body: JSON.stringify({
           client: newClientData,
-          signer: signer
-            ? {
-                ...signer,
-                client_id: newClientData.id,
-              }
-            : undefined,
+          signer: signerPayload,
         }),
       });
 
@@ -276,15 +348,7 @@ export default function EditClientForm({
             selectedKey={formData.document_type}
             isRequired
             onChange={(value) => handleSelectChange(value, "document_type")}
-            items={
-              client.type
-                ? [
-                    ...DOCUMENT_TYPES[
-                      client.type as keyof typeof DOCUMENT_TYPES
-                    ].documentTypes,
-                  ]
-                : []
-            }
+            items={documentTypeOptions}
           />
           <InputComponent
             name="document_number"
