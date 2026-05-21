@@ -1127,23 +1127,21 @@ export async function GET(
       addProviderFilter(providerFilter);
     }
 
-    // Date range filter helper (preserved exact logic)
+    // Date range filter helper
     const addDateRangeFilter = (
       column: string,
       dateRange?: { from?: Date; to?: Date },
     ) => {
       if (dateRange && dateRange.from && dateRange.to) {
         const fromDate = new Date(dateRange.from);
-        const toDate = new Date(dateRange.to);
+        const toExclusiveDate = new Date(dateRange.to);
 
-        fromDate.setDate(fromDate.getDate() + 1);
-        toDate.setDate(toDate.getDate() + 1);
+        toExclusiveDate.setDate(toExclusiveDate.getDate() + 1);
 
-        filters.push(`date(${column}) BETWEEN date(?) AND date(?)`);
-        params.push(
-          fromDate.toISOString().split("T")[0],
-          toDate.toISOString().split("T")[0],
+        filters.push(
+          `(datetime(${column}) >= datetime(?) AND datetime(${column}) < datetime(?))`,
         );
+        params.push(fromDate.toISOString(), toExclusiveDate.toISOString());
       }
     };
 
