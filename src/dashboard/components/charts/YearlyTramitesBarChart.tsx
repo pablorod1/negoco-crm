@@ -17,7 +17,16 @@ import {
   CardTitle,
 } from "@/core/components/ui/card";
 import React from "react";
-import { Coins, Filter, FilterX, ReceiptEuro, RefreshCw } from "lucide-react";
+import {
+  CircleX,
+  Coins,
+  Download,
+  FileSpreadsheet,
+  Filter,
+  FilterX,
+  ReceiptEuro,
+  RefreshCw,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/core/components/ui/button";
 import { TimeRange, User } from "@/core/types";
@@ -31,6 +40,12 @@ import {
 import { Calendar } from "@/core/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/core/utils";
+import TooltipComponent from "@/core/components/TooltipComponent";
+import { showCustomToast } from "@/core/components/CustomToast";
+import {
+  exportRowsToExcel,
+  getExportDateStamp,
+} from "@/dashboard/utils/exportExcel";
 
 // Chart color configuration using primary palette
 const CHART_COLORS = {
@@ -165,6 +180,15 @@ const calculateTotals = (data: ChartData[]) => ({
     0
   ),
 });
+
+const buildChartExportRows = (data: ChartData[]) =>
+  data.map((item) => ({
+    "Período": item.field,
+    "Trámites activos": item.active,
+    "Bajas": Math.abs(item.baja),
+    "Comisión total": item.comision,
+    "Comisión comercial": item.comision_sales_person,
+  }));
 
 // Helper function to check if all data values are zero
 const areAllValuesZero = (data: ChartData[], chartView: ChartView): boolean => {
@@ -856,6 +880,7 @@ export default function YearlyTramitesBarChart({
   const [dateRange, setDateRange] = React.useState<DateRange>();
   const [chartView, setChartView] = React.useState<ChartView>("comision");
   const [showFilters, setShowFilters] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const { chartData, isRefreshing, refetch } = useChartData(
     userData,
@@ -888,6 +913,38 @@ export default function YearlyTramitesBarChart({
     setDateRange(undefined);
     setTimeRange("year");
   }, []);
+
+  const handleExport = React.useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const rows = buildChartExportRows(chartData);
+
+      await exportRowsToExcel({
+        rows,
+        sheetName: "Resumen Global",
+        fileName: `Resumen_Global_Ventas_${getExportDateStamp()}`,
+      });
+
+      showCustomToast({
+        title: "Exportado",
+        message: `${rows.length} períodos exportados a Excel`,
+        icon: FileSpreadsheet,
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+      });
+    } catch (error) {
+      showCustomToast({
+        title: "Error al exportar",
+        message:
+          error instanceof Error ? error.message : "Error al exportar datos",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [chartData]);
 
   return (
     <Card
@@ -935,6 +992,25 @@ export default function YearlyTramitesBarChart({
                 className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
               />
             </Button>
+            <TooltipComponent content="Exportar datos a Excel">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                onClick={handleExport}
+                disabled={
+                  loading ||
+                  isRefreshing ||
+                  isExporting ||
+                  chartData.length === 0
+                }
+                aria-label="Exportar datos a Excel"
+              >
+                <Download
+                  className={cn("h-3.5 w-3.5", isExporting && "animate-pulse")}
+                />
+              </Button>
+            </TooltipComponent>
             {/* Filters */}
             <AnimatePresence>
               <ChartFilters

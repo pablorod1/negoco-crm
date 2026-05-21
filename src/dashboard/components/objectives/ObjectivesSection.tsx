@@ -15,7 +15,9 @@ import {
   Target,
   TrendingUp,
   Calendar,
+  Download,
   Edit3,
+  FileSpreadsheet,
   Coins,
   ReceiptEuro,
   Scale,
@@ -29,6 +31,11 @@ import LoadingStateCard from "../LoadingStateCard";
 import { createEmptyObjective } from "@/dashboard/utils/dashboard.factories";
 import { Objective } from "@/dashboard/types";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
+import TooltipComponent from "@/core/components/TooltipComponent";
+import {
+  exportRowsToExcel,
+  getExportDateStamp,
+} from "@/dashboard/utils/exportExcel";
 
 type ObjetivosCardProps = {
   userData: User;
@@ -88,6 +95,43 @@ const formatValue = (value: number, type: string) => {
   return value.toString();
 };
 
+const getObjectivesQuery = (userData: User) =>
+  `id=${encodeURIComponent(userData.id)}&role=${encodeURIComponent(
+    userData.role
+  )}${userData.super_id ? "&isSubcomercial=true" : ""}`;
+
+const calculateObjectiveProgress = (objetivo: Objective) => {
+  if (objetivo.peak <= 0) return 0;
+  return Math.min(Math.round((objetivo.current / objetivo.peak) * 100), 100);
+};
+
+const formatCreatedAt = (createdAt: string) => {
+  if (!createdAt) return "---";
+
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return createdAt;
+
+  return date.toLocaleDateString("es-ES");
+};
+
+const buildObjectiveExportRows = (objetivos: Objective[]) =>
+  objetivos.map((objetivo) => {
+    const progress = calculateObjectiveProgress(objetivo);
+
+    return {
+      "Tipo": getObjectiveLabel(objetivo.type),
+      "Período": objetivo.period,
+      "Valor actual": objetivo.current,
+      "Objetivo": objetivo.peak,
+      "Progreso %": progress,
+      "Estado":
+        objetivo.completed || objetivo.current >= objetivo.peak
+          ? "Completado"
+          : "En progreso",
+      "Fecha de creación": formatCreatedAt(objetivo.created_at),
+    };
+  });
+
 // Progress Dashboard Component
 const ProgressDashboard = ({
   objetivos,
@@ -115,10 +159,8 @@ const ProgressDashboard = ({
   }
 
   const totalProgress =
-    objetivos.reduce(
-      (acc, obj) => acc + Math.min((obj.current / obj.peak) * 100, 100),
-      0
-    ) / objetivos.length;
+    objetivos.reduce((acc, obj) => acc + calculateObjectiveProgress(obj), 0) /
+    objetivos.length;
   const completedObjectives = objetivos.filter(
     (obj) => obj.current >= obj.peak
   ).length;
@@ -150,10 +192,7 @@ const ProgressDashboard = ({
       <ScrollArea className="max-h-[240px] overflow-y-auto mask-b-from-95% mask-t-from-95%">
         <div className="grid gap-4 p-2">
           {objetivos.map((objetivo) => {
-            const percentage = Math.min(
-              Math.round((objetivo.current / objetivo.peak) * 100),
-              100
-            );
+            const percentage = calculateObjectiveProgress(objetivo);
 
             return (
               <div
@@ -310,6 +349,7 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [objetivos, setObjetivos] = useState<Objective[]>([]);
   const [currentView, setCurrentView] = useState<ObjectiveView>("actuales");
+  const [isExporting, setIsExporting] = useState<boolean>(false);
   const currentMonth = new Date().toLocaleString("es-ES", {
     month: "long",
   });
@@ -330,7 +370,7 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
     setLoadingData(true);
     try {
       const res = await fetch(
-        `/api/v2/objectives/current?id=${userData.id}&role=${userData.role}${userData.super_id ? `&isSubcomercial=true` : ""}`,
+        `/api/v2/objectives/current?${getObjectivesQuery(userData)}`,
         {
           method: "GET",
           headers: {
@@ -380,11 +420,86 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
     fetchObjetivos();
   };
 
+  const fetchHistoricalObjetivosForExport = useCallback(async () => {
+    const res = await fetch(
+      `/api/v2/objectives?${getObjectivesQuery(userData)}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const { success, data, error } = (await res.json()) as {
+      success: boolean;
+      data?: Objective | Objective[];
+      error?: string;
+    };
+
+    if (!success) {
+      throw new Error(error || "Error al obtener objetivos");
+    }
+
+    return Array.isArray(data) ? data : data ? [data] : [];
+  }, [userData]);
+
   const handleEditObjective = (objetivo: Objective) => {
     setEditingObjetivo(objetivo);
     setNewObjetivo(objetivo);
     setOpen(true);
   };
+
+  const handleExportObjectives = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const exportObjetivos =
+        currentView === "actuales"
+          ? objetivos
+          : await fetchHistoricalObjetivosForExport();
+
+      if (exportObjetivos.length === 0) {
+        showCustomToast({
+          title: "Sin datos para exportar",
+          message: "No hay objetivos disponibles en esta vista",
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        return;
+      }
+
+      const rows = buildObjectiveExportRows(exportObjetivos);
+      const viewLabel = currentView === "actuales" ? "Actuales" : "Histórico";
+      const fileViewLabel =
+        currentView === "actuales" ? "Actuales" : "Historico";
+
+      await exportRowsToExcel({
+        rows,
+        sheetName: `Objetivos ${viewLabel}`,
+        fileName: `Objetivos_${fileViewLabel}_${getExportDateStamp()}`,
+      });
+
+      showCustomToast({
+        title: "Exportado",
+        message: `${rows.length} objetivos exportados a Excel`,
+        icon: FileSpreadsheet,
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+      });
+    } catch (error) {
+      showCustomToast({
+        title: "Error al exportar",
+        message:
+          error instanceof Error ? error.message : "Error al exportar objetivos",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [currentView, fetchHistoricalObjetivosForExport, objetivos]);
 
   if (loading) {
     return (
@@ -424,6 +539,27 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
                   }`}
                 />
               </Button>
+              <TooltipComponent content="Exportar objetivos a Excel">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleExportObjectives}
+                  disabled={
+                    loadingData ||
+                    loading ||
+                    isRefreshing ||
+                    isExporting ||
+                    (currentView === "actuales" && objetivos.length === 0)
+                  }
+                  aria-label="Exportar objetivos a Excel"
+                >
+                  <Download
+                    className={`h-3 w-3 text-gray-600 ${
+                      isExporting ? "animate-pulse" : ""
+                    }`}
+                  />
+                </Button>
+              </TooltipComponent>
             </div>
             <CardDescription className="text-xs text-gray-500">
               Seguimiento de{" "}
