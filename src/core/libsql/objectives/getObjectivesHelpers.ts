@@ -37,14 +37,13 @@ export const getObjectivesTramitesValues = async (
     WHERE substr(activation_date, 1, 7) = ?
     AND status = 'Activo'`;
 
-    // Para las comisiones (todos los trámites con activation_date)
-    let queryComision = `SELECT ${
-      role === "2"
-        ? "SUM(comision_sales_person) as comision"
-        : "SUM(comision) as comision"
-    }
+    const commissionColumn =
+      role === "2" ? "comision_sales_person" : "comision";
+
+    // Para las comisiones, se alinea con el gráfico global.
+    let queryComision = `SELECT COALESCE(SUM(${commissionColumn}), 0) as comision
     FROM tramites 
-    WHERE substr(activation_date, 1, 7) = ? AND status = 'Activo'`; //
+    WHERE substr(activation_date, 1, 7) = ? AND status IN ('Activo', 'Baja')`;
 
     const params = [datePrefixToSearch];
     const paramsComision = [datePrefixToSearch];

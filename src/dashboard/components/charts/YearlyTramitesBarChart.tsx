@@ -781,7 +781,7 @@ const ChartContent: React.FC<ChartContentProps> = ({
                                   : entry.dataKey === "baja"
                                     ? "Bajas"
                                     : entry.dataKey === "comision"
-                                      ? "Comisión"
+                                      ? "Comisión Total"
                                       : entry.dataKey ===
                                           "comision_sales_person"
                                         ? "Comisión Comercial"

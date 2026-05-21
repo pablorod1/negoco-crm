@@ -23,6 +23,62 @@ interface ContractAnalyticsData {
   comision_sales_person?: number;
 }
 
+const MONTH_NAMES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const toMonthKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+const getWeekStart = (date: Date) => {
+  const weekStart = new Date(date);
+  const day = weekStart.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  weekStart.setDate(weekStart.getDate() + offset);
+  return weekStart;
+};
+
+const addDays = (date: Date, days: number) => {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+};
+
+const getDateLabel = (dateKey: string) => {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  if (!year || !month || !day) return dateKey;
+
+  return new Date(year, month - 1, day).toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+};
+
+const getMonthLabel = (monthKey: string) => {
+  const month =
+    monthKey.length === 2 ? Number(monthKey) : Number(monthKey.split("-")[1]);
+  return MONTH_NAMES[month - 1] ?? monthKey;
+};
+
 const databaseUnavailableResponse = () =>
   NextResponse.json(
     {
@@ -95,60 +151,62 @@ export async function POST(
       );
     }
 
-    // Build query for all contracts (not filtered by user)
-    let query = `
-      SELECT 
-        date(activation_date) as date,
-        COUNT(CASE WHEN status = 'Activo' THEN 1 ELSE NULL END) as active,
-        COUNT(CASE WHEN status = 'Baja' THEN 1 ELSE NULL END) as baja,
-        SUM(comision) as comision,
-        SUM(comision_sales_person) as comision_sales_person
-      FROM tramites
-      WHERE status IN ('Activo', 'Baja')`;
-
+    let dateExpression = "substr(activation_date, 1, 10)";
     const conditions: string[] = [];
     const params: (string | number)[] = [];
     let groupBy: string | undefined;
 
     // Add time range conditions
     if (time_range) {
+      const now = new Date();
+
       switch (time_range) {
         case "year":
-          conditions.push(`activation_date >= date('now', 'start of year')`);
-          groupBy = `strftime('%m', activation_date)`;
+          dateExpression = "substr(activation_date, 6, 2)";
+          conditions.push(`substr(activation_date, 1, 4) = ?`);
+          params.push(String(now.getFullYear()));
+          groupBy = dateExpression;
           break;
         case "current_month":
-          conditions.push(
-            `strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now')`
-          );
-          groupBy = `strftime('%d', activation_date)`;
+          dateExpression = "substr(activation_date, 1, 10)";
+          conditions.push(`substr(activation_date, 1, 7) = ?`);
+          params.push(toMonthKey(now));
+          groupBy = dateExpression;
           break;
-        case "current_week":
-          conditions.push(
-            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now')`
-          );
-          groupBy = `strftime('%w', activation_date)`;
+        case "current_week": {
+          const weekStart = getWeekStart(now);
+          const weekEnd = addDays(weekStart, 6);
+          dateExpression = "substr(activation_date, 1, 10)";
+          conditions.push(`substr(activation_date, 1, 10) BETWEEN ? AND ?`);
+          params.push(toDateKey(weekStart), toDateKey(weekEnd));
+          groupBy = dateExpression;
           break;
-        case "last_week":
-          conditions.push(
-            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now', '-7 days')`
-          );
-          groupBy = `strftime('%w', activation_date)`;
+        }
+        case "last_week": {
+          const currentWeekStart = getWeekStart(now);
+          const lastWeekStart = addDays(currentWeekStart, -7);
+          const lastWeekEnd = addDays(lastWeekStart, 6);
+          dateExpression = "substr(activation_date, 1, 10)";
+          conditions.push(`substr(activation_date, 1, 10) BETWEEN ? AND ?`);
+          params.push(toDateKey(lastWeekStart), toDateKey(lastWeekEnd));
+          groupBy = dateExpression;
           break;
-        case "90d":
-          conditions.push(`activation_date >= date('now', '-90 days')`);
-          groupBy = `date(activation_date)`;
+        }
+        case "90d": {
+          const fromDate = addDays(now, -89);
+          dateExpression = "substr(activation_date, 1, 10)";
+          conditions.push(`substr(activation_date, 1, 10) BETWEEN ? AND ?`);
+          params.push(toDateKey(fromDate), toDateKey(now));
+          groupBy = dateExpression;
           break;
+        }
       }
     }
 
     // Add custom date range conditions
     if (date_range?.from && date_range?.to) {
       // Validate that from date is not after to date
-      const fromDate = new Date(date_range.from);
-      const toDate = new Date(date_range.to);
-
-      if (fromDate > toDate) {
+      if (date_range.from > date_range.to) {
         return NextResponse.json(
           {
             success: false,
@@ -158,10 +216,22 @@ export async function POST(
         );
       }
 
-      conditions.push(`date(activation_date) BETWEEN date(?) AND date(?)`);
+      dateExpression = "substr(activation_date, 1, 10)";
+      conditions.push(`substr(activation_date, 1, 10) BETWEEN ? AND ?`);
       params.push(date_range.from, date_range.to);
-      groupBy = `date(activation_date)`;
+      groupBy = dateExpression;
     }
+
+    // Build query for all contracts (not filtered by user)
+    let query = `
+      SELECT
+        ${dateExpression} as date,
+        COUNT(CASE WHEN status = 'Activo' THEN 1 ELSE NULL END) as active,
+        COUNT(CASE WHEN status = 'Baja' THEN 1 ELSE NULL END) as baja,
+        COALESCE(SUM(comision), 0) as comision,
+        COALESCE(SUM(comision_sales_person), 0) as comision_sales_person
+      FROM tramites
+      WHERE status IN ('Activo', 'Baja')`;
 
     // Apply conditions to query
     if (conditions.length > 0) {
@@ -172,7 +242,7 @@ export async function POST(
     if (groupBy) {
       query += ` GROUP BY ${groupBy}`;
     }
-    query += ` ORDER BY date(activation_date)`;
+    query += ` ORDER BY date`;
 
     // Execute query
     const rs = await executeReadWithRetry(tursoClient, {
@@ -184,14 +254,10 @@ export async function POST(
     const results = new Map<string, Omit<ContractAnalyticsData, "field">>();
 
     // Initialize results structure based on time range
-    const convertedDateRange =
-      date_range && date_range.from && date_range.to
-        ? { from: new Date(date_range.from), to: new Date(date_range.to) }
-        : undefined;
-    initializeResultsStructure(results, time_range, convertedDateRange);
+    initializeResultsStructure(results, time_range, date_range);
 
     // Populate results with query data
-    populateResults(results, rs.rows, time_range, convertedDateRange);
+    populateResults(results, rs.rows, time_range, date_range);
 
     // Convert to response format
     const data: ContractAnalyticsData[] = Array.from(results.entries()).map(
@@ -231,7 +297,7 @@ export async function POST(
 function initializeResultsStructure(
   results: Map<string, Omit<ContractAnalyticsData, "field">>,
   timeRange?: TimeRange,
-  dateRange?: DateRange
+  dateRange?: DateRange | { from?: string; to?: string }
 ): void {
   const defaultData = {
     active: 0,
@@ -241,15 +307,14 @@ function initializeResultsStructure(
   };
 
   if (timeRange === "current_week" || timeRange === "last_week") {
+    const currentWeekStart = getWeekStart(new Date());
     const weekStart =
       timeRange === "current_week"
-        ? new Date()
-        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+        ? currentWeekStart
+        : addDays(currentWeekStart, -7);
 
     for (let i = 0; i < 7; i++) {
-      const day = new Date(weekStart);
-      day.setDate(weekStart.getDate() + i);
+      const day = addDays(weekStart, i);
       const dayStr = day.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
@@ -278,25 +343,10 @@ function initializeResultsStructure(
       results.set(dayStr, { ...defaultData });
     }
   } else if (timeRange === "year") {
-    const months = [
-      "Enero",
-      "Febrero",
-      "Marzo",
-      "Abril",
-      "Mayo",
-      "Junio",
-      "Julio",
-      "Agosto",
-      "Septiembre",
-      "Octubre",
-      "Noviembre",
-      "Diciembre",
-    ];
-
-    months.forEach((month) => results.set(month, { ...defaultData }));
+    MONTH_NAMES.forEach((month) => results.set(month, { ...defaultData }));
   } else if (timeRange === "90d") {
     for (let i = 89; i >= 0; i--) {
-      const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const date = addDays(new Date(), -i);
       const dayStr = date.toLocaleDateString("es-ES", {
         weekday: "long",
         day: "numeric",
@@ -305,8 +355,14 @@ function initializeResultsStructure(
       results.set(dayStr, { ...defaultData });
     }
   } else if (dateRange?.from && dateRange?.to) {
-    const fromDate = new Date(dateRange.from);
-    const toDate = new Date(dateRange.to);
+    const fromDate =
+      dateRange.from instanceof Date
+        ? dateRange.from
+        : new Date(`${dateRange.from}T00:00:00`);
+    const toDate =
+      dateRange.to instanceof Date
+        ? dateRange.to
+        : new Date(`${dateRange.to}T00:00:00`);
 
     for (
       let date = new Date(fromDate);
@@ -330,48 +386,22 @@ function populateResults(
   results: Map<string, Omit<ContractAnalyticsData, "field">>,
   rows: Record<string, unknown>[],
   timeRange?: TimeRange,
-  dateRange?: DateRange
+  dateRange?: DateRange | { from?: string; to?: string }
 ): void {
   rows.forEach((row) => {
-    const date = new Date(row.date as string);
+    const dateKey = row.date as string;
     let key: string;
 
     if (timeRange === "current_week" || timeRange === "last_week") {
-      key = date.toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      });
+      key = getDateLabel(dateKey);
     } else if (timeRange === "current_month") {
-      key = date.toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      });
+      key = getDateLabel(dateKey);
     } else if (timeRange === "year") {
-      const months = [
-        "Enero",
-        "Febrero",
-        "Marzo",
-        "Abril",
-        "Mayo",
-        "Junio",
-        "Julio",
-        "Agosto",
-        "Septiembre",
-        "Octubre",
-        "Noviembre",
-        "Diciembre",
-      ];
-      key = months[date.getMonth()];
+      key = getMonthLabel(dateKey);
     } else if (timeRange === "90d" || (dateRange?.from && dateRange?.to)) {
-      key = date.toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      });
+      key = getDateLabel(dateKey);
     } else {
-      key = row.date as string;
+      key = dateKey;
     }
 
     if (results.has(key)) {
