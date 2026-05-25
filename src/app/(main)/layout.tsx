@@ -6,6 +6,11 @@ import React, { useEffect, useState } from "react";
 import { SidebarComponent } from "@/core/components/sidebar/Sidebar";
 import { SidebarInset, SidebarProvider } from "@/core/components/ui/sidebar";
 import Header from "@/core/components/Header";
+import { PlanRedirectGuard } from "@/core/components/PlanRedirectGuard";
+import { PlanGuard } from "@/core/components/PlanGuard";
+import { usePathname } from "next/navigation";
+
+const CRM_ALLOWED_PLANS = ["starter", "pro", "elite"];
 
 export default function MainLayout({
   children,
@@ -13,6 +18,12 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   const [activeOrganization, setActiveOrganization] = useState("");
+  const pathname = usePathname();
+  const isComparadorRoute = pathname === "/comparador";
+  const isPerfilRoute = pathname === "/perfil";
+  const isSoporteRoute = pathname === "/soporte";
+  const isAllowedForComparador =
+    isComparadorRoute || isPerfilRoute || isSoporteRoute;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -22,6 +33,7 @@ export default function MainLayout({
 
   return (
     <Providers>
+      <PlanRedirectGuard />
       <SidebarProvider defaultOpen={false}>
         <SidebarComponent />
         <SidebarInset>
@@ -31,7 +43,13 @@ export default function MainLayout({
               className="main-content flex-1 overflow-auto"
               data-client={activeOrganization}
             >
-              {children}
+              {isAllowedForComparador ? (
+                children
+              ) : (
+                <PlanGuard allowedPlans={CRM_ALLOWED_PLANS}>
+                  {children}
+                </PlanGuard>
+              )}
             </main>
             <Toaster position="bottom-center">
               {(t) => <ToastBar toast={t} />}

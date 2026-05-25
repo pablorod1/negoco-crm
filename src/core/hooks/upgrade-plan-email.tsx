@@ -1,5 +1,4 @@
-﻿import * as React from "react";
-import {
+﻿import {
   Body,
   Container,
   Head,
@@ -25,9 +24,10 @@ export async function sendUpgradePlanEmail({
 }) {
   const email = process.env.EMAIL_NOREPLY;
   const password = process.env.EMAIL_PASS_NOREPLY;
+  const smtpHost = process.env.SMTP_HOST;
 
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: smtpHost,
     port: 465,
     secure: true,
     auth: {
@@ -43,7 +43,7 @@ export async function sendUpgradePlanEmail({
       companyName={user.company}
       currentPlan={plan.old}
       requestedPlan={plan.new}
-    />
+    />,
   );
 
   const mailOptions = {
@@ -51,7 +51,7 @@ export async function sendUpgradePlanEmail({
       address: email as string,
       name: "Negoco Cloud",
     },
-    to: process.env.EMAIL_DIRECCION,
+    to: "info@negococloud.es",
     subject: `Solicitud de Mejora de Suscripción - ${user.name}`,
     html: emailHtml,
   };
@@ -230,4 +230,3 @@ UpgradeRequestEmail.PreviewProps = {
 };
 
 export default UpgradeRequestEmail;
-

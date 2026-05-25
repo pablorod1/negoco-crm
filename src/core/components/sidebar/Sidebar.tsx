@@ -39,7 +39,7 @@ import UpgradePlanDialog from "../UpgradePlanDialog";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 
 // Types
-type PlanType = "starter" | "pro" | "elite";
+type PlanType = "starter" | "pro" | "elite" | "comparador";
 
 interface SidebarItem {
   title: string;
@@ -66,8 +66,9 @@ const useNavigationAccess = () => {
     const isElite = userPlan === "elite";
     const isPro = userPlan === "pro";
     const isStarter = userPlan === "starter";
+    const isComparador = userPlan === "comparador";
 
-    return { userPlan, isAdmin, isElite, isPro, isStarter };
+    return { userPlan, isAdmin, isElite, isPro, isStarter, isComparador };
   }, [userData?.role, getPlan]);
 };
 
@@ -165,10 +166,12 @@ const SidebarItemComponent: React.FC<{
   item: SidebarItem;
   userPlan: PlanType;
   isCollapsed: boolean;
-}> = ({ item, userPlan, isCollapsed }) => {
+  isComparador?: boolean;
+}> = ({ item, userPlan, isCollapsed, isComparador = false }) => {
   const pathname = usePathname();
   const isPlanAvailable = !item.plans || item.plans.includes(userPlan);
-  const isDisabled = item.comingSoon;
+  const isDisabled = item.comingSoon || (!isPlanAvailable && !isComparador);
+  const showUpgradeIndicator = isComparador && !isPlanAvailable;
   const isActive =
     pathname === "/"
       ? pathname === item.url
@@ -186,17 +189,19 @@ const SidebarItemComponent: React.FC<{
         isActive
           ? "!bg-primary-900 !text-white"
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-        isDisabled
+        isDisabled && !isComparador
           ? "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-gray-600"
           : "",
-        !isPlanAvailable ? "hidden" : ""
+        isComparador
+          ? "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-gray-600"
+          : ""
       )}
-      disabled={isDisabled}
+      disabled={isDisabled || isComparador}
     >
       <a
-        href={isDisabled ? "#" : item.url}
+        href={isDisabled || isComparador ? "#" : item.url}
         className="flex items-center gap-3 w-full "
-        onClick={isDisabled ? undefined : handleSidebarClick}
+        onClick={isDisabled || isComparador ? undefined : handleSidebarClick}
         data-sidebar-item={item.url}
       >
         {/* Icon */}
@@ -215,7 +220,10 @@ const SidebarItemComponent: React.FC<{
                   Próximo
                 </div>
               )}
-              {!isPlanAvailable && !item.comingSoon && (
+              {showUpgradeIndicator && (
+                <div className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
+              )}
+              {!isPlanAvailable && !item.comingSoon && !isComparador && (
                 <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
               )}
             </div>
@@ -247,7 +255,8 @@ const SidebarSectionComponent: React.FC<{
   isAdmin: boolean;
   userPlan: PlanType;
   isCollapsed: boolean;
-}> = ({ section, isAdmin, userPlan, isCollapsed }) => {
+  isComparador: boolean;
+}> = ({ section, isAdmin, userPlan, isCollapsed, isComparador }) => {
   const visibleItems = section.items.filter(
     (item) => !item.requiresAdmin || isAdmin
   );
@@ -256,7 +265,7 @@ const SidebarSectionComponent: React.FC<{
 
   return (
     <SidebarGroup>
-      {!isCollapsed && (
+      {!isCollapsed && !isComparador && (
         <div className="mb-2">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
             {section.title}
@@ -271,6 +280,7 @@ const SidebarSectionComponent: React.FC<{
               item={item}
               userPlan={userPlan}
               isCollapsed={isCollapsed}
+              isComparador={isComparador}
             />
           ))}
         </SidebarMenu>
@@ -281,7 +291,7 @@ const SidebarSectionComponent: React.FC<{
 
 export function SidebarComponent() {
   const { open } = useSidebar();
-  const { userPlan, isAdmin, isElite } = useNavigationAccess();
+  const { userPlan, isAdmin, isElite, isComparador } = useNavigationAccess();
 
   const menuSections = useMemo(() => getMenuSections(), []);
 
@@ -289,7 +299,7 @@ export function SidebarComponent() {
     <Sidebar collapsible="icon" className="header-static">
       <SidebarHeader className={cn("", open ? "p-4" : "px-0 items-center")}>
         <NavUser />
-        <ShortcutsMenu open={open} />
+        {!isComparador && <ShortcutsMenu open={open} />}
       </SidebarHeader>
 
       <Separator className="max-w-64 w-full mx-auto" />
@@ -303,6 +313,7 @@ export function SidebarComponent() {
               isAdmin={isAdmin}
               userPlan={userPlan}
               isCollapsed={!open}
+              isComparador={isComparador}
             />
           ))}
         </div>
@@ -314,8 +325,24 @@ export function SidebarComponent() {
           open ? "p-4" : "px-0 mx-auto"
         )}
       >
+        {/* Mensaje para plan comparador */}
+        {isComparador && open && (
+          <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-amber-500 rounded-full" />
+              <span className="text-xs font-medium text-amber-800">
+                Plan Comparador
+              </span>
+            </div>
+            <p className="text-xs text-amber-700 mb-2">
+              Accede al CRM completo para gestionar comparativas, clientes y trámites.
+            </p>
+            <UpgradePlanDialog />
+          </div>
+        )}
+
         {/* Plan indicator for non-Elite admins */}
-        {!isElite && isAdmin && open && (
+        {!isElite && isAdmin && open && !isComparador && (
           <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full" />
@@ -331,26 +358,17 @@ export function SidebarComponent() {
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {/* <SidebarItemComponent
-                item={{
-                  title: "Ajustes",
-                  icon: Settings,
-                  url: "/ajustes",
-                  plans: ["starter", "pro", "elite"],
-                }}
-                userPlan={userPlan}
-                isCollapsed={!open}
-              /> */}
               <SidebarItemComponent
                 item={{
                   title: "Soporte",
                   icon: HelpCircle,
                   url: "/soporte",
-                  plans: ["starter", "pro", "elite"],
+                  plans: isComparador ? ["comparador"] : ["starter", "pro", "elite"],
                   requiresAdmin: true,
                 }}
                 userPlan={userPlan}
                 isCollapsed={!open}
+                isComparador={isComparador}
               />
             </SidebarMenu>
           </SidebarGroupContent>

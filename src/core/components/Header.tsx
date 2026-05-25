@@ -14,7 +14,8 @@ interface ImprovedHeaderProps {
 }
 
 export default function Header({ className }: ImprovedHeaderProps) {
-  const { userData, loading } = useUser();
+  const { userData, loading, getPlan } = useUser();
+  const isComparadorPlan = getPlan() === "comparador";
 
   const organization = userData && userData.organization;
   const { logo, name } = organization
@@ -45,11 +46,13 @@ export default function Header({ className }: ImprovedHeaderProps) {
           </div>
 
           <div>
-            <SmartBreadcrumb
-              variant="minimal"
-              showBackButton={true}
-              maxItems={4}
-            />
+            {!isComparadorPlan && (
+              <SmartBreadcrumb
+                variant="minimal"
+                showBackButton={true}
+                maxItems={4}
+              />
+            )}
           </div>
         </div>
 

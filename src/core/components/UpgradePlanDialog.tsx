@@ -89,7 +89,9 @@ const subscriptionPlans = [
 export default function UpgradePlanDialog() {
   const { getPlan, userData } = useUser();
   const [open, setOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(getPlan());
+  const [selectedPlan, setSelectedPlan] = useState(
+    getPlan() === "comparador" ? "starter" : getPlan()
+  );
   const [formData, setFormData] = useState({
     name: "",
     email: "",
