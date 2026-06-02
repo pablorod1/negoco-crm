@@ -274,15 +274,19 @@ export default function MainView({
                           type="checkbox"
                           checked={!!comparativa.has_permanencia}
                           onChange={async (e) => {
-                            await fetch(
-                              `/api/v2/comparisons/${comparativa.id}/flags`,
-                              {
-                                method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ has_permanencia: e.target.checked }),
-                              },
-                            );
-                            onUpdate();
+                            try {
+                              const res = await fetch(
+                                `/api/v2/comparisons/${comparativa.id}/flags`,
+                                {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ has_permanencia: e.target.checked }),
+                                },
+                              );
+                              if (res.ok) onUpdate();
+                            } catch {
+                              // silent
+                            }
                           }}
                           className="rounded"
                         />
@@ -293,15 +297,19 @@ export default function MainView({
                           type="checkbox"
                           checked={!!comparativa.has_renovacion}
                           onChange={async (e) => {
-                            await fetch(
-                              `/api/v2/comparisons/${comparativa.id}/flags`,
-                              {
-                                method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ has_renovacion: e.target.checked }),
-                              },
-                            );
-                            onUpdate();
+                            try {
+                              const res = await fetch(
+                                `/api/v2/comparisons/${comparativa.id}/flags`,
+                                {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ has_renovacion: e.target.checked }),
+                                },
+                              );
+                              if (res.ok) onUpdate();
+                            } catch {
+                              // silent
+                            }
                           }}
                           className="rounded"
                         />

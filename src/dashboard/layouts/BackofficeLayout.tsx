@@ -51,14 +51,7 @@ export const BackofficeLayout = ({
           >
             <ComparativasRatio loading={loading} userData={userData} />
           </motion.div>
-          {/* <motion.div
-              className="lg:col-span-1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.3 }}
-            >
-              <ComparativasResume loading={loading} userData={userData} />
-            </motion.div> */}
+          
         </motion.div>
       </AnimatePresence>
     );

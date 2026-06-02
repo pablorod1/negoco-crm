@@ -30,6 +30,8 @@ interface ComparativaRow extends Record<string, unknown> {
   name: string;
   image: string | null;
   company_id?: string; // ID reference to comercializadoras table
+  has_permanencia?: number;
+  has_renovacion?: number;
 }
 
 interface ComparativaFileRow extends Record<string, unknown> {
@@ -102,6 +104,8 @@ interface ComparisonByIdResponse {
     creation_date: string;
     tramite_id: string | null;
     company_id?: string; // ID reference to comercializadoras table
+    has_permanencia: boolean;
+    has_renovacion: boolean;
     abarca_estudio?: AbarcaEstudio;
     files: Array<{
       id: string;
@@ -176,6 +180,8 @@ async function fetchComparisonData(
       c.creation_date,
       c.tramite_id,
       c.company_id,
+      c.has_permanencia,
+      c.has_renovacion,
       u.id as user_id,
       u.email,
       u.name,
@@ -310,6 +316,8 @@ function transformComparisonData(
     company_id: comparativa.company_id
       ? String(comparativa.company_id)
       : undefined,
+    has_permanencia: comparativa.has_permanencia === 1,
+    has_renovacion: comparativa.has_renovacion === 1,
     abarca_estudio: abarcaEstudio,
     files,
   };
