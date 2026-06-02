@@ -31,6 +31,8 @@ export interface ComparativaDB {
   status: ComparativaStatus;
   tramite_id: string | undefined;
   company_id?: string; // ID reference to comercializadoras table
+  has_permanencia: number;
+  has_renovacion: number;
 }
 
 // Enhanced comparativa with supplier information
@@ -60,6 +62,8 @@ export interface ComparativaVM {
   company_id?: string; // ID reference to comercializadoras table
   company_name?: string; // Resolved name for display purposes
   abarca_estudio?: AbarcaEstudio; // Datos del estudio de Abarca si existe
+  has_permanencia: boolean;
+  has_renovacion: boolean;
 }
 
 export interface ComparativaRow {

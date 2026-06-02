@@ -268,6 +268,46 @@ export default function MainView({
                         {rechazando ? "Rechazando..." : "Rechazar Cliente"}
                       </button>
                     )}
+                    <div className="flex gap-3 mt-2">
+                      <label className="flex items-center gap-1.5 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={!!comparativa.has_permanencia}
+                          onChange={async (e) => {
+                            await fetch(
+                              `/api/v2/comparisons/${comparativa.id}/flags`,
+                              {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ has_permanencia: e.target.checked }),
+                              },
+                            );
+                            onUpdate();
+                          }}
+                          className="rounded"
+                        />
+                        Permanencia
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={!!comparativa.has_renovacion}
+                          onChange={async (e) => {
+                            await fetch(
+                              `/api/v2/comparisons/${comparativa.id}/flags`,
+                              {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ has_renovacion: e.target.checked }),
+                              },
+                            );
+                            onUpdate();
+                          }}
+                          className="rounded"
+                        />
+                        Renovación
+                      </label>
+                    </div>
                   </div>
                 )}
 

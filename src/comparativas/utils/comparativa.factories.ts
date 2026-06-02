@@ -19,4 +19,6 @@ export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
   creation_date: new Date().toISOString(),
   status: "pending",
   tramite_id: undefined,
+  has_permanencia: 0,
+  has_renovacion: 0,
 });
