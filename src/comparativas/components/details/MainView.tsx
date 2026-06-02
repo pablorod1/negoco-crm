@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ComparativaVM, ComparativaFile } from "@/comparativas/types";
 import { User } from "@/core/types";
 import {
@@ -34,6 +35,7 @@ import { cn } from "@/core/utils";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
+import { showCustomToast } from "@/core/components/CustomToast";
 
 interface MainViewProps {
   comparativa: ComparativaVM;
@@ -67,6 +69,47 @@ export default function MainView({
   );
 
   const handleSidebarClick = useSidebarSlideNavigation();
+
+  const [rechazando, setRechazando] = useState(false);
+
+  const handleRechazarCliente = async () => {
+    setRechazando(true);
+    try {
+      const res = await fetch(
+        `/api/v2/comparisons/${comparativa.id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "rechazado_cliente" }),
+        },
+      );
+      const data = await res.json();
+      if (data.success) {
+        showCustomToast({
+          title: "Cliente rechazado",
+          message:
+            "La comparativa ha sido marcada como rechazada por el cliente",
+        });
+        onUpdate();
+      } else {
+        showCustomToast({
+          title: "Error",
+          message: data.error || "No se pudo rechazar el cliente",
+          icon: AlertTriangle,
+          iconColor: "var(--danger-color)",
+        });
+      }
+    } catch {
+      showCustomToast({
+        title: "Error",
+        message: "Error de conexión",
+        icon: AlertTriangle,
+        iconColor: "var(--danger-color)",
+      });
+    } finally {
+      setRechazando(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -218,20 +261,11 @@ export default function MainView({
                     {!isComercial && (
                       <button
                         type="button"
-                        onClick={async () => {
-                          const res = await fetch(
-                            `/api/v2/comparisons/${comparativa.id}/status`,
-                            {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ status: "rechazado_cliente" }),
-                            },
-                          );
-                          if (res.ok) onUpdate();
-                        }}
-                        className="mt-2 w-full text-sm font-medium text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg py-2 transition-colors"
+                        onClick={handleRechazarCliente}
+                        disabled={rechazando}
+                        className="mt-2 w-full text-sm font-medium text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg py-2 transition-colors disabled:opacity-50"
                       >
-                        Rechazar Cliente
+                        {rechazando ? "Rechazando..." : "Rechazar Cliente"}
                       </button>
                     )}
                   </div>
