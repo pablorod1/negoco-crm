@@ -11,7 +11,7 @@ interface SubcomercialLayoutProps {
   loading: boolean;
   dashboardData: DashboardData;
   refreshData: () => void;
-  view?: "main" | "comparativas" | "incidencias";
+  view?: "main" | "metrics" | "incidencias";
 }
 
 export const SubcomercialLayout = ({
@@ -30,12 +30,12 @@ export const SubcomercialLayout = ({
     ease: "anticipate",
     duration: 0.3,
   };
-  // Comparativas view
-  if (view === "comparativas") {
+  // Metrics view
+  if (view === "metrics") {
     return (
       <AnimatePresence mode="wait">
         <motion.div
-          key="comparativas"
+          key="metrics"
           initial="initial"
           animate="in"
           exit="out"

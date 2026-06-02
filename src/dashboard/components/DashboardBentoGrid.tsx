@@ -97,6 +97,7 @@ export default function DashboardBentoGrid() {
         getPlan={getPlan}
         currentView={currentView}
         onViewChange={setCurrentView}
+        isDireccion={permissions.isDireccion}
       />
 
       {/* Dashboard View */}

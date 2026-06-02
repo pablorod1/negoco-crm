@@ -11,7 +11,7 @@ interface BackofficeLayoutProps {
   loading: boolean;
   dashboardData: DashboardData;
   refreshData: () => void;
-  view?: "main" | "comparativas" | "incidencias";
+  view?: "main" | "metrics" | "incidencias";
 }
 
 export const BackofficeLayout = ({
@@ -30,11 +30,11 @@ export const BackofficeLayout = ({
     ease: "anticipate",
     duration: 0.3,
   };
-  if (view === "comparativas") {
+  if (view === "metrics") {
     return (
       <AnimatePresence mode="wait">
         <motion.div
-          key="comparativas"
+          key="metrics"
           initial="initial"
           animate="in"
           exit="out"

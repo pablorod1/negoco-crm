@@ -13,7 +13,7 @@ interface ComercialLayoutProps {
   dashboardData: DashboardData;
   refreshData: () => void;
   hasSubComerciales?: boolean;
-  view?: "main" | "comparativas" | "incidencias";
+  view?: "main" | "metrics" | "incidencias";
 }
 
 export const ComercialLayout = ({
@@ -34,12 +34,12 @@ export const ComercialLayout = ({
     duration: 0.3,
   };
 
-  // Comparativas view
-  if (view === "comparativas") {
+  // Metrics view
+  if (view === "metrics") {
     return (
       <AnimatePresence mode="wait">
         <motion.div
-          key="comparativas"
+          key="metrics"
           initial="initial"
           animate="in"
           exit="out"

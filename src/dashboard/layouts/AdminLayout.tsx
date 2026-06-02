@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import YearlyTramitesBarChart from "@/dashboard/components/charts/YearlyTramitesBarChart";
 import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "@/dashboard/components/charts/TeamTramitesBarChar";
-import { ComparativasRatio } from "@/dashboard/components/charts/ComparativasRatio";
+import { MetricsView } from "@/dashboard/components/charts/MetricsView";
 import RenewableTramitesCalendar from "@/dashboard/components/renewable/RenewableTramitesCalendar";
 import { ObjetivosCard } from "@/dashboard/components/objectives/ObjectivesSection";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
@@ -14,7 +14,7 @@ interface AdminLayoutProps {
   loading: boolean;
   dashboardData: DashboardData;
   refreshData: () => void;
-  view?: "main" | "comparativas" | "incidencias";
+  view?: "main" | "metrics" | "incidencias";
 }
 
 export const AdminLayout = ({
@@ -34,11 +34,11 @@ export const AdminLayout = ({
     duration: 0.3,
   };
 
-  if (view === "comparativas") {
+  if (view === "metrics") {
     return (
       <AnimatePresence mode="wait">
         <motion.div
-          key="comparativas"
+          key="metrics"
           initial="initial"
           animate="in"
           exit="out"
@@ -46,16 +46,14 @@ export const AdminLayout = ({
           transition={pageTransition}
           className="space-y-6"
         >
-          {/* Comparativas Section */}
           <motion.div
             className="lg:col-span-1"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, duration: 0.3 }}
           >
-            <ComparativasRatio loading={loading} userData={userData} />
+            <MetricsView loading={loading} userData={userData} />
           </motion.div>
-          
         </motion.div>
       </AnimatePresence>
     );
