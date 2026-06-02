@@ -194,7 +194,7 @@ export default function MainView({
                   </div>
                 )}
 
-                {/* Comparativa completada — Crear trámite */}
+                {/* Comparativa completada — Crear trámite o rechazar */}
                 {isStudied && (
                   <div className="p-3 rounded-lg border border-green-200 bg-green-50">
                     <div className="flex items-center gap-3 mb-2">
@@ -215,6 +215,25 @@ export default function MainView({
                       comparativa={comparativa}
                       onComparativaUpdated={onUpdate}
                     />
+                    {!isComercial && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await fetch(
+                            `/api/v2/comparisons/${comparativa.id}/status`,
+                            {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ status: "rechazado_cliente" }),
+                            },
+                          );
+                          if (res.ok) onUpdate();
+                        }}
+                        className="mt-2 w-full text-sm font-medium text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg py-2 transition-colors"
+                      >
+                        Rechazar Cliente
+                      </button>
+                    )}
                   </div>
                 )}
 
