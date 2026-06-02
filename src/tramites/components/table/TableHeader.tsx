@@ -44,6 +44,10 @@ interface TableHeaderProps<TData> {
   setUserFilter: (value: string[] | undefined) => void;
   providerFilter: string[] | undefined;
   setProviderFilter: (value: string[] | undefined) => void;
+  excludeCompany: boolean;
+  setExcludeCompany: (value: boolean) => void;
+  excludeUser: boolean;
+  setExcludeUser: (value: boolean) => void;
 }
 
 export default function TramitesHeader<TData>({
@@ -77,6 +81,10 @@ export default function TramitesHeader<TData>({
   setUserFilter,
   providerFilter,
   setProviderFilter,
+  excludeCompany,
+  setExcludeCompany,
+  excludeUser,
+  setExcludeUser,
 }: TableHeaderProps<TData>) {
   const isComercial = userData?.role === "2";
   const isTramitesTable = title === "Trámites";
@@ -174,6 +182,10 @@ export default function TramitesHeader<TData>({
               setPaymentDateRange={setPaymentDateRange}
               setUserFilter={setUserFilter}
               setProviderFilter={setProviderFilter}
+              excludeCompany={excludeCompany}
+              setExcludeCompany={setExcludeCompany}
+              excludeUser={excludeUser}
+              setExcludeUser={setExcludeUser}
               resetFilters={resetFilters}
               userData={userData}
               isTramitesTable={isTramitesTable}

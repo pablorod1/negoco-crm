@@ -62,6 +62,13 @@ export function useTableFilters(id?: string) {
     initialValues.typeFilter
   );
 
+  const [excludeCompany, setExcludeCompany] = useState<boolean>(
+    initialValues.excludeCompany ?? false
+  );
+  const [excludeUser, setExcludeUser] = useState<boolean>(
+    initialValues.excludeUser ?? false
+  );
+
   // Try to load filters from localStorage on initial load
   const loadFiltersFromStorage = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -95,6 +102,10 @@ export function useTableFilters(id?: string) {
         if (parsedFilters.typeFilter) setTypeFilter(parsedFilters.typeFilter);
         if (parsedFilters.providerFilter)
           setProviderFilter(parsedFilters.providerFilter);
+        if (parsedFilters.excludeCompany !== undefined)
+          setExcludeCompany(parsedFilters.excludeCompany);
+        if (parsedFilters.excludeUser !== undefined)
+          setExcludeUser(parsedFilters.excludeUser);
       }
     } catch (error) {
       console.error("Error loading filters from localStorage:", error);
@@ -127,6 +138,8 @@ export function useTableFilters(id?: string) {
         userFilter,
         typeFilter,
         providerFilter,
+        excludeCompany,
+        excludeUser,
       };
       localStorage.setItem(storageKey, JSON.stringify(filtersToSave));
     } catch (error) {
@@ -146,6 +159,8 @@ export function useTableFilters(id?: string) {
     userFilter,
     typeFilter,
     providerFilter,
+    excludeCompany,
+    excludeUser,
   ]);
 
   // Auto-save filters to localStorage whenever they change
@@ -167,6 +182,8 @@ export function useTableFilters(id?: string) {
     userFilter,
     typeFilter,
     providerFilter,
+    excludeCompany,
+    excludeUser,
     saveFiltersToStorage,
   ]);
 
@@ -185,6 +202,8 @@ export function useTableFilters(id?: string) {
     setUserFilter(undefined);
     setTypeFilter(undefined);
     setProviderFilter(undefined);
+    setExcludeCompany(false);
+    setExcludeUser(false);
 
     // Clear localStorage when filters are reset
     if (typeof window !== "undefined") {
@@ -222,5 +241,9 @@ export function useTableFilters(id?: string) {
     userFilter,
     setUserFilter,
     setProviderFilter,
+    excludeCompany,
+    setExcludeCompany,
+    excludeUser,
+    setExcludeUser,
   };
 }

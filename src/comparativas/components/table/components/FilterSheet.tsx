@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "@/core/components/ui/sheet";
 import { Label } from "@/core/components/ui/label";
+import { Switch } from "@/core/components/ui/switch";
 import { DateRangePicker } from "@/dashboard/components/DateRangePicker";
 import UserFilter from "@/core/components/table/UserFilter";
 import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
@@ -36,6 +37,10 @@ interface FilterSheetProps {
   userData: User;
   companyFilter: string[] | undefined;
   setCompanyFilter: (value: string[] | undefined) => void;
+  excludeCompany: boolean;
+  setExcludeCompany: (value: boolean) => void;
+  excludeUser: boolean;
+  setExcludeUser: (value: boolean) => void;
 }
 
 export function FilterSheet({
@@ -50,6 +55,10 @@ export function FilterSheet({
   userData,
   companyFilter,
   setCompanyFilter,
+  excludeCompany,
+  setExcludeCompany,
+  excludeUser,
+  setExcludeUser,
 }: FilterSheetProps) {
   const [open, setOpen] = useState(false);
   const isComercial = userData?.role === "2";
@@ -158,6 +167,21 @@ export function FilterSheet({
                 }
               />
             )}
+            {companyFilter && companyFilter.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="exclude-company-comp"
+                  checked={excludeCompany}
+                  onCheckedChange={setExcludeCompany}
+                />
+                <Label
+                  htmlFor="exclude-company-comp"
+                  className="text-xs text-gray-500 cursor-pointer"
+                >
+                  Excluir compañías seleccionadas
+                </Label>
+              </div>
+            )}
           </div>
 
           {/* Date Range Filter */}
@@ -175,6 +199,8 @@ export function FilterSheet({
               userData={userData}
               userFilter={userFilter}
               setUserFilter={setUserFilter}
+              excludeUser={excludeUser}
+              setExcludeUser={setExcludeUser}
             />
           )}
         </div>

@@ -28,6 +28,8 @@ interface PaginatedComparisonsRequest {
   dateRange?: DateRange | undefined;
   userFilter?: string[];
   companyFilter?: string[];
+  excludeCompany?: boolean;
+  excludeUser?: boolean;
 }
 
 interface ComparisonResponseItem {
@@ -139,6 +141,8 @@ const PaginationQuerySchema = z.object({
     .optional(),
   userFilter: z.array(z.string()).optional(),
   companyFilter: z.array(z.string()).optional(),
+  excludeCompany: z.boolean().optional(),
+  excludeUser: z.boolean().optional(),
 });
 
 /**
@@ -302,6 +306,8 @@ export async function GET(
       dateRange: parseJsonParam<DateRange>(searchParams.get("dateRange")),
       userFilter: parseJsonParam<string[]>(searchParams.get("userFilter")),
       companyFilter: parseJsonParam<string[]>(searchParams.get("companyFilter")),
+      excludeCompany: searchParams.get("excludeCompany") === "true",
+      excludeUser: searchParams.get("excludeUser") === "true",
     };
 
     // Validate request parameters
@@ -326,6 +332,8 @@ export async function GET(
       dateRange,
       userFilter,
       companyFilter,
+      excludeCompany,
+      excludeUser,
     } = validationResult.data;
 
     // Initialize database client
@@ -427,8 +435,20 @@ export async function GET(
 
     // Apply status and user filters
     if (statusFilter) addArrayFilter("c.status", statusFilter);
-    if (userFilter) addArrayFilter("c.user_id", userFilter);
-    if (companyFilter) addArrayFilter("c.company_id", companyFilter);
+    if (userFilter) {
+      const operator = excludeUser ? "NOT IN" : "IN";
+      filters.push(
+        `c.user_id ${operator} (${userFilter.map(() => "?").join(", ")})`,
+      );
+      params.push(...userFilter);
+    }
+    if (companyFilter) {
+      const operator = excludeCompany ? "NOT IN" : "IN";
+      filters.push(
+        `c.company_id ${operator} (${companyFilter.map(() => "?").join(", ")})`,
+      );
+      params.push(...companyFilter);
+    }
 
     // Build count query for pagination
     let countQuery = `

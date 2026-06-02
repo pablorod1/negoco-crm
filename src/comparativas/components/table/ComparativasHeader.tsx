@@ -28,6 +28,10 @@ interface Props<TData> {
   setUserFilter: (value: string[] | undefined) => void;
   companyFilter: string[] | undefined;
   setCompanyFilter: (value: string[] | undefined) => void;
+  excludeCompany: boolean;
+  setExcludeCompany: (value: boolean) => void;
+  excludeUser: boolean;
+  setExcludeUser: (value: boolean) => void;
 }
 
 const ComparativasHeader = <TData,>({
@@ -46,6 +50,10 @@ const ComparativasHeader = <TData,>({
   setUserFilter,
   companyFilter,
   setCompanyFilter,
+  excludeCompany,
+  setExcludeCompany,
+  excludeUser,
+  setExcludeUser,
 }: Props<TData>) => {
   const isComercial = userData?.role === "2";
 
@@ -109,6 +117,10 @@ const ComparativasHeader = <TData,>({
               userData={userData}
               companyFilter={companyFilter}
               setCompanyFilter={setCompanyFilter}
+              excludeCompany={excludeCompany}
+              setExcludeCompany={setExcludeCompany}
+              excludeUser={excludeUser}
+              setExcludeUser={setExcludeUser}
             />
 
             {/* Action Buttons */}

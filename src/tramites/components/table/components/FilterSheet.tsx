@@ -29,6 +29,10 @@ interface FilterSheetProps {
   paymentDateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   providerFilter: string[] | undefined;
+  excludeCompany: boolean;
+  setExcludeCompany: (value: boolean) => void;
+  excludeUser: boolean;
+  setExcludeUser: (value: boolean) => void;
   setStatusFilter: (value: string[]) => void;
   setLiquidezStatusFilter: (value: string[]) => void;
   setContractTypeFilter: (value: string[]) => void;
@@ -59,6 +63,10 @@ export function FilterSheet({
   paymentDateRange,
   userFilter,
   providerFilter,
+  excludeCompany,
+  setExcludeCompany,
+  excludeUser,
+  setExcludeUser,
   setStatusFilter,
   setLiquidezStatusFilter,
   setContractTypeFilter,
@@ -102,6 +110,10 @@ export function FilterSheet({
           paymentDateRange={paymentDateRange}
           userFilter={userFilter}
           providerFilter={providerFilter}
+          excludeCompany={excludeCompany}
+          setExcludeCompany={setExcludeCompany}
+          excludeUser={excludeUser}
+          setExcludeUser={setExcludeUser}
           setStatusFilter={setStatusFilter}
           setLiquidezStatusFilter={setLiquidezStatusFilter}
           setContractTypeFilter={setContractTypeFilter}

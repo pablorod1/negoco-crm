@@ -69,6 +69,8 @@ const PaginatedContractsRequestSchema = z.object({
   userFilter: z.array(z.string()).optional(),
   clientFilter: z.string().optional(),
   providerFilter: z.array(z.string()).optional(),
+  excludeCompany: z.boolean().optional(),
+  excludeUser: z.boolean().optional(),
 });
 
 const TramiteSchema = z.object({
@@ -967,6 +969,8 @@ export async function GET(
       userFilter: parseArrayParam(searchParams.get("userFilter")),
       clientFilter: searchParams.get("clientFilter") || undefined,
       providerFilter: parseArrayParam(searchParams.get("providerFilter")),
+      excludeCompany: searchParams.get("excludeCompany") === "true",
+      excludeUser: searchParams.get("excludeUser") === "true",
     };
 
     // Validate input parameters
@@ -1002,6 +1006,8 @@ export async function GET(
       userFilter,
       clientFilter,
       providerFilter,
+      excludeCompany,
+      excludeUser,
     } = validatedData;
 
     // Initialize database connection
@@ -1038,8 +1044,9 @@ export async function GET(
     } else {
       // For other roles: apply userFilter if provided, otherwise show all non-draft tramites
       if (userFilter && userFilter.length > 0) {
+        const operator = excludeUser ? "NOT IN" : "IN";
         filters.push(
-          `(t.user_id IN (${userFilter.map(() => "?").join(", ")}) AND 
+          `(t.user_id ${operator} (${userFilter.map(() => "?").join(", ")}) AND 
            (t.user_id = ? OR t.status != 'Borrador'))`,
         );
         params.push(...userFilter, user_id);
@@ -1084,7 +1091,10 @@ export async function GET(
     };
 
     // Company filter: single batch query instead of N+1
-    const addCompanyFilter = async (filterArray?: string[]) => {
+    const addCompanyFilter = async (
+      filterArray?: string[],
+      exclude?: boolean,
+    ) => {
       if (!filterArray || filterArray.length === 0) return;
 
       const placeholders = filterArray.map(() => "?").join(", ");
@@ -1097,7 +1107,8 @@ export async function GET(
       // Match by both ID and resolved name
       const allValues = [...filterArray, ...companyNames];
       const allPlaceholders = allValues.map(() => "?").join(", ");
-      filters.push(`con.new_company IN (${allPlaceholders})`);
+      const operator = exclude ? "NOT IN" : "IN";
+      filters.push(`con.new_company ${operator} (${allPlaceholders})`);
       params.push(...allValues);
     };
 
@@ -1114,7 +1125,7 @@ export async function GET(
     };
 
     if (companyFilter) {
-      await addCompanyFilter(companyFilter);
+      await addCompanyFilter(companyFilter, excludeCompany);
     }
     addArrayFilter("t.status", statusFilter);
     addArrayFilter("con.type", contractTypeFilter);

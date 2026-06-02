@@ -56,6 +56,10 @@ export function DataTable<TData, TValue>({
     setUserFilter,
     providerFilter,
     setProviderFilter,
+    excludeCompany,
+    setExcludeCompany,
+    excludeUser,
+    setExcludeUser,
   } = useTableFilters(isLiquidezTable ? "liquidez" : "tramites");
 
   const { tramites, loading, totalTramites } = useTramitesData({
@@ -74,6 +78,8 @@ export function DataTable<TData, TValue>({
     paymentDateRange,
     userFilter,
     providerFilter,
+    excludeCompany,
+    excludeUser,
     isTramitesTable,
     isLiquidezTable,
   });
@@ -119,6 +125,10 @@ export function DataTable<TData, TValue>({
       setUserFilter,
       providerFilter,
       setProviderFilter,
+      excludeCompany,
+      setExcludeCompany,
+      excludeUser,
+      setExcludeUser,
     }),
     [
       filterValue,
@@ -150,6 +160,10 @@ export function DataTable<TData, TValue>({
       setUserFilter,
       providerFilter,
       setProviderFilter,
+      excludeCompany,
+      setExcludeCompany,
+      excludeUser,
+      setExcludeUser,
     ],
   );
 

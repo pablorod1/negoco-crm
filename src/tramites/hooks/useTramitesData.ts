@@ -20,6 +20,8 @@ interface UseTramitesDataParams {
   paymentDateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   providerFilter: string[] | undefined;
+  excludeCompany: boolean;
+  excludeUser: boolean;
   isTramitesTable: boolean;
   isLiquidezTable: boolean;
 }
@@ -40,6 +42,8 @@ export function useTramitesData({
   paymentDateRange,
   userFilter,
   providerFilter,
+  excludeCompany,
+  excludeUser,
   isTramitesTable,
   isLiquidezTable,
 }: UseTramitesDataParams) {
@@ -72,6 +76,7 @@ export function useTramitesData({
         if (filterValue) params.append("filterValue", filterValue);
         if (companyFilter && companyFilter.length > 0) {
           params.append("companyFilter", JSON.stringify(companyFilter));
+          if (excludeCompany) params.append("excludeCompany", "true");
         }
 
         const statusToSend = isTramitesTable
@@ -121,6 +126,7 @@ export function useTramitesData({
         }
         if (userFilter && userFilter.length > 0) {
           params.append("userFilter", JSON.stringify(userFilter));
+          if (excludeUser) params.append("excludeUser", "true");
         }
 
         if (isLiquidezTable && providerFilter && providerFilter.length > 0) {
@@ -172,6 +178,8 @@ export function useTramitesData({
       paymentDateRange,
       userFilter,
       providerFilter,
+      excludeCompany,
+      excludeUser,
     ]
   );
 

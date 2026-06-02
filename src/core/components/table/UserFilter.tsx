@@ -1,5 +1,6 @@
 ﻿import { showCustomToast } from "@/core/components/CustomToast";
 import { Label } from "@/core/components/ui/label";
+import { Switch } from "@/core/components/ui/switch";
 import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
 import { User } from "@/core/types";
 import { CircleX } from "lucide-react";
@@ -11,6 +12,8 @@ interface Props {
   setUserFilter: (value: string[] | undefined) => void;
   isComercial: boolean;
   userData: User;
+  excludeUser?: boolean;
+  setExcludeUser?: (value: boolean) => void;
 }
 
 // Helper functions for converting between formats
@@ -51,6 +54,8 @@ export default function UserFilter({
   setUserFilter,
   isComercial,
   userData,
+  excludeUser,
+  setExcludeUser,
 }: Props) {
   const [comerciales, setComerciales] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -133,6 +138,21 @@ export default function UserFilter({
           </p>
         }
       />
+      {userFilter && userFilter.length > 0 && setExcludeUser && (
+        <div className="flex items-center gap-2">
+          <Switch
+            id="exclude-user"
+            checked={excludeUser}
+            onCheckedChange={setExcludeUser}
+          />
+          <Label
+            htmlFor="exclude-user"
+            className="text-xs text-gray-500 cursor-pointer"
+          >
+            Excluir comerciales seleccionados
+          </Label>
+        </div>
+      )}
     </div>
   );
 }

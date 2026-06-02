@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Label } from "@/core/components/ui/label";
+import { Switch } from "@/core/components/ui/switch";
 import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
 import { DateRangePicker } from "@/dashboard/components/DateRangePicker";
 import UserFilter from "@/core/components/table/UserFilter";
@@ -29,6 +30,10 @@ interface FilterContentProps {
   paymentDateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   providerFilter: string[] | undefined;
+  excludeCompany: boolean;
+  setExcludeCompany: (value: boolean) => void;
+  excludeUser: boolean;
+  setExcludeUser: (value: boolean) => void;
   setStatusFilter: (value: string[]) => void;
   setLiquidezStatusFilter: (value: string[]) => void;
   setContractTypeFilter: (value: string[]) => void;
@@ -57,6 +62,10 @@ export function FilterContent({
   paymentDateRange,
   userFilter,
   providerFilter,
+  excludeCompany,
+  setExcludeCompany,
+  excludeUser,
+  setExcludeUser,
   setStatusFilter,
   setLiquidezStatusFilter,
   setContractTypeFilter,
@@ -212,6 +221,21 @@ export function FilterContent({
                 }
               />
             )}
+            {companyFilter && companyFilter.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="exclude-company"
+                  checked={excludeCompany}
+                  onCheckedChange={setExcludeCompany}
+                />
+                <Label
+                  htmlFor="exclude-company"
+                  className="text-xs text-gray-500 cursor-pointer"
+                >
+                  Excluir compañías seleccionadas
+                </Label>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -302,6 +326,8 @@ export function FilterContent({
                   userData={userData}
                   userFilter={userFilter}
                   setUserFilter={setUserFilter}
+                  excludeUser={excludeUser}
+                  setExcludeUser={setExcludeUser}
                 />
               </div>
             )}

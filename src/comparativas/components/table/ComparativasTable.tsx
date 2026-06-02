@@ -49,6 +49,10 @@ export default function ComparativasTable<TData, TValue>({
     setUserFilter,
     companyFilter,
     setCompanyFilter,
+    excludeCompany,
+    setExcludeCompany,
+    excludeUser,
+    setExcludeUser,
   } = useTableFilters("comparativas");
 
   const fetchComparativas = useCallback(
@@ -84,10 +88,12 @@ export default function ComparativasTable<TData, TValue>({
           }
           if (userFilter && userFilter.length > 0) {
             params.set("userFilter", JSON.stringify(userFilter));
+            if (excludeUser) params.set("excludeUser", "true");
           }
 
           if (companyFilter && companyFilter.length > 0) {
             params.set("companyFilter", JSON.stringify(companyFilter));
+            if (excludeCompany) params.set("excludeCompany", "true");
           }
 
           const url = `/api/v2/comparisons?${params.toString()}`;
@@ -124,6 +130,8 @@ export default function ComparativasTable<TData, TValue>({
       creationDateRange,
       userFilter,
       companyFilter,
+      excludeCompany,
+      excludeUser,
     ],
   );
 
@@ -183,6 +191,10 @@ export default function ComparativasTable<TData, TValue>({
       setUserFilter,
       companyFilter,
       setCompanyFilter,
+      excludeCompany,
+      setExcludeCompany,
+      excludeUser,
+      setExcludeUser,
     }),
     [
       filterValue,
@@ -199,6 +211,10 @@ export default function ComparativasTable<TData, TValue>({
       setUserFilter,
       companyFilter,
       setCompanyFilter,
+      excludeCompany,
+      setExcludeCompany,
+      excludeUser,
+      setExcludeUser,
     ],
   );
 
