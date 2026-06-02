@@ -4,6 +4,7 @@ export const COMPARATIVA_STATUS_TYPES = [
   { value: "completed", label: "Estudio Realizado" },
   { value: "processed", label: "Completada" },
   { value: "rejected", label: "Rechazada" },
+  { value: "rechazado_cliente", label: "Rechazado Cliente" },
 ];
 
 export const PLAIN_COMPARATIVA_STATUS_TYPES = [
@@ -12,4 +13,5 @@ export const PLAIN_COMPARATIVA_STATUS_TYPES = [
   "completed",
   "processed",
   "rejected",
+  "rechazado_cliente",
 ];

@@ -13,6 +13,7 @@ const COMPARATIVA_STATUS_BADGES = {
   completed: <Badge variant="pending">Estudio Realizado</Badge>,
   processed: <Badge variant="success">Completada</Badge>,
   rejected: <Badge variant="danger">Rechazada</Badge>,
+  rechazado_cliente: <Badge variant="danger">Rechazado Cliente</Badge>,
   default: <Badge>Desconocido</Badge>,
 };
 

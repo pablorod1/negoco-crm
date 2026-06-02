@@ -7,7 +7,8 @@ export type ComparativaStatus =
   | "awaiting_review"
   | "completed"
   | "processed"
-  | "rejected";
+  | "rejected"
+  | "rechazado_cliente";
 
 export type ComparativaPlan = "fijo" | "indexado";
 
