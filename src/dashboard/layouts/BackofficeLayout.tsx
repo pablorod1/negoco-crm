@@ -3,7 +3,7 @@ import { DashboardData } from "@/dashboard/hooks/useDashboardData";
 import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramitesBarChart";
 import RenewableTramitesCalendar from "@/dashboard/components/renewable/RenewableTramitesCalendar";
 import { AnimatePresence, motion } from "framer-motion";
-import { ComparativasRatio } from "../components/charts/ComparativasRatio";
+import { MetricsView } from "@/dashboard/components/charts/MetricsView";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 
 interface BackofficeLayoutProps {
@@ -42,14 +42,14 @@ export const BackofficeLayout = ({
           transition={pageTransition}
           className="space-y-6"
         >
-          {/* Comparativas Section */}
+          {/* Métricas Section */}
           <motion.div
             className="lg:col-span-1"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, duration: 0.3 }}
           >
-            <ComparativasRatio loading={loading} userData={userData} />
+            <MetricsView loading={loading} userData={userData} />
           </motion.div>
           
         </motion.div>

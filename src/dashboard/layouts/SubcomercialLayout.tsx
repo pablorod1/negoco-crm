@@ -3,7 +3,7 @@ import { DashboardData } from "@/dashboard/hooks/useDashboardData";
 import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramitesBarChart";
 import { ObjetivosCard } from "@/dashboard/components/objectives/ObjectivesSection";
 import { AnimatePresence, motion } from "framer-motion";
-import { ComparativasRatio } from "../components/charts/ComparativasRatio";
+import { MetricsView } from "@/dashboard/components/charts/MetricsView";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 
 interface SubcomercialLayoutProps {
@@ -43,7 +43,7 @@ export const SubcomercialLayout = ({
           transition={pageTransition}
           className="space-y-6"
         >
-          {/* Comparativas Section */}
+          {/* Métricas Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <motion.div
               className="lg:col-span-1"
@@ -51,7 +51,7 @@ export const SubcomercialLayout = ({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
             >
-              <ComparativasRatio loading={loading} userData={userData} />
+              <MetricsView loading={loading} userData={userData} />
             </motion.div>
            
           </div>

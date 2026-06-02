@@ -2,7 +2,7 @@ import { User } from "@/core/types";
 import { DashboardData } from "@/dashboard/hooks/useDashboardData";
 import { motion, AnimatePresence } from "framer-motion";
 import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramitesBarChart";
-import { ComparativasRatio } from "@/dashboard/components/charts/ComparativasRatio";
+import { MetricsView } from "@/dashboard/components/charts/MetricsView";
 import { ObjetivosCard } from "@/dashboard/components/objectives/ObjectivesSection";
 import { TeamTramitesBarChart } from "@/dashboard/components/charts/TeamTramitesBarChar";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
@@ -47,18 +47,14 @@ export const ComercialLayout = ({
           transition={pageTransition}
           className="space-y-6"
         >
-          {/* Comparativas Section */}
+          {/* Métricas Section */}
           <motion.div
             className="lg:col-span-1"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, duration: 0.3 }}
           >
-            <ComparativasRatio
-              loading={loading}
-              userData={userData}
-              hasSubComerciales={hasSubComerciales}
-            />
+            <MetricsView loading={loading} userData={userData} />
           </motion.div>
          
         </motion.div>
