@@ -1,5 +1,6 @@
 import { ClientListItem } from "@/clientes/components/ClientsList";
 import { User } from "@/core/types";
+import { SignerDB } from "@/tramites/types/tramite.types";
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDial
 import { showCustomToast } from "@/core/components/CustomToast";
 import ClientMap from "./ClientMap";
 import EditDrawer from "@/tramites/components/editTramite/client/EditTramiteDrawer";
+import { SignerEditor } from "@/clientes/components/SignerEditor";
 
 // Helper function to format phone number for WhatsApp
 const formatWhatsAppNumber = (phone: string | null | undefined): string => {
@@ -162,13 +164,22 @@ export default function ClientMainView({
                 <UserIcon className="h-4 w-4" />
                 Información del Cliente - {client.name} {client.last_name}
               </CardTitle>
-              {client.tramites_count === 0 ? (
-                <EditDrawer
-                  userData={userData}
-                  client={client}
-                  onUpdate={onUpdate}
-                />
-              ) : null}
+              <div className="flex items-center gap-2">
+                {client.tramites_count === 0 ? (
+                  <EditDrawer
+                    userData={userData}
+                    client={client}
+                    onUpdate={onUpdate}
+                  />
+                ) : null}
+                {"signer" in client && client.signer ? (
+                  <SignerEditor
+                    clientId={client.id}
+                    signer={client.signer as SignerDB}
+                    onUpdated={onUpdate}
+                  />
+                ) : null}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4 grid grid-cols-2">
