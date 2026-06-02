@@ -18,19 +18,25 @@ interface MetricsViewProps {
   userData: User;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function MetricsView({ loading, userData: _userData }: MetricsViewProps) {
+export function MetricsView({ loading, userData }: MetricsViewProps) {
   const [data, setData] = useState<MetricsData | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState(false);
 
   const fetchMetrics = useCallback(async () => {
     setFetching(true);
+    setError(false);
     try {
-      const res = await fetch("/api/v2/analytics/metrics?role=admin");
+      const res = await fetch("/api/v2/analytics/metrics");
+      if (!res.ok) {
+        setError(true);
+        return;
+      }
       const json = await res.json();
       if (json.success) setData(json.data);
+      else setError(true);
     } catch {
-      // silent
+      setError(true);
     } finally {
       setFetching(false);
     }
@@ -39,6 +45,14 @@ export function MetricsView({ loading, userData: _userData }: MetricsViewProps) 
   useEffect(() => {
     fetchMetrics();
   }, [fetchMetrics]);
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p className="text-sm">No tienes permisos para ver las métricas</p>
+      </div>
+    );
+  }
 
   const isLoading = loading || fetching;
   const kpis = data ?? {
