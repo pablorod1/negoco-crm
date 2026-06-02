@@ -24,6 +24,7 @@ import AvatarComponent from "@/core/components/AvatarComponent";
 import DeleteUserConfirmationModal from "./BanUserConfirmationModal";
 import { useUser } from "@/core/contexts/UserContext";
 import UnbanUserConfirmationModal from "./UnbanUserConfirmationModal";
+import EditUserConfigModal from "./EditUserConfigModal";
 import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
 import { useMultipleSelector } from "@/core/hooks/use-multiple-selector";
 import { Input } from "@/core/components/ui/input";
@@ -137,28 +138,29 @@ function UsersGridTable({
 
   // Columna de acciones que solo se muestra para administradores
   const actionColumn: ColumnDef<User, string> = columnHelper.accessor("id", {
-    cell: (info) => {
-      if (info.row.original.banned) {
-        return (
+    cell: (info) => (
+      <div className="flex items-center gap-1">
+        {(isAdmin || isBackoffice) && (
+          <EditUserConfigModal user={info.row.original} />
+        )}
+        {info.row.original.banned ? (
           <UnbanUserConfirmationModal
             userName={info.row.original.name}
             user_id={info.row.original.id}
           />
-        );
-      } else {
-        return (
+        ) : (
           <DeleteUserConfirmationModal
             userName={info.row.original.name}
             user_id={info.row.original.id}
           />
-        );
-      }
-    },
+        )}
+      </div>
+    ),
     header: "Acciones",
   });
 
   // Combinamos las columnas según el rol
-  const columns: ColumnDef<User, string>[] = isAdmin
+  const columns: ColumnDef<User, string>[] = isAdmin || isBackoffice
     ? [...baseColumns, actionColumn]
     : baseColumns;
 
@@ -256,7 +258,7 @@ function UsersGridTable({
               </p>
             </div>
           ) : isGridView ? (
-            <GridView users={filteredUsers} isAdmin={isAdmin} />
+            <GridView users={filteredUsers} isAdmin={isAdmin} isBackoffice={isBackoffice} />
           ) : (
             <div className="border border-gray-200 rounded-4xl overflow-hidden">
               <table className="min-w-full bg-white">
@@ -316,7 +318,7 @@ function UsersGridTable({
 }
 
 // Vista Grid minimalista y elegante
-function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
+function GridView({ users, isAdmin, isBackoffice }: { users: User[]; isAdmin: boolean; isBackoffice: boolean }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-4">
       {users.map((user) => (
@@ -339,8 +341,9 @@ function GridView({ users, isAdmin }: { users: User[]; isAdmin: boolean }) {
                 <p className="text-sm text-gray-500 truncate">{user.email}</p>
               </div>
             </div>
-            {isAdmin && (
-              <div className="flex-shrink-0">
+            {(isAdmin || isBackoffice) && (
+              <div className="flex-shrink-0 flex items-center gap-1">
+                <EditUserConfigModal user={user} />
                 {user.banned ? (
                   <UnbanUserConfirmationModal
                     userName={user.name}

@@ -1,4 +1,4 @@
-﻿import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+﻿import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
@@ -13,6 +13,8 @@ export const user = sqliteTable("user", {
   banReason: text("ban_reason"),
   banExpires: integer("ban_expires", { mode: "timestamp" }),
   superId: text("super_id"),
+  commissionPct: real("commission_pct"),
+  defaultNotes: text("default_notes"),
 });
 
 export const session = sqliteTable("session", {
