@@ -435,18 +435,26 @@ export async function GET(
 
     // Apply status and user filters
     if (statusFilter) addArrayFilter("c.status", statusFilter);
-    if (userFilter) {
-      const operator = excludeUser ? "NOT IN" : "IN";
-      filters.push(
-        `c.user_id ${operator} (${userFilter.map(() => "?").join(", ")})`,
-      );
+    if (userFilter && userFilter.length > 0) {
+      const placeholders = userFilter.map(() => "?").join(", ");
+      if (excludeUser) {
+        filters.push(
+          `(c.user_id NOT IN (${placeholders}) OR c.user_id IS NULL)`,
+        );
+      } else {
+        filters.push(`c.user_id IN (${placeholders})`);
+      }
       params.push(...userFilter);
     }
-    if (companyFilter) {
-      const operator = excludeCompany ? "NOT IN" : "IN";
-      filters.push(
-        `c.company_id ${operator} (${companyFilter.map(() => "?").join(", ")})`,
-      );
+    if (companyFilter && companyFilter.length > 0) {
+      const placeholders = companyFilter.map(() => "?").join(", ");
+      if (excludeCompany) {
+        filters.push(
+          `(c.company_id NOT IN (${placeholders}) OR c.company_id IS NULL)`,
+        );
+      } else {
+        filters.push(`c.company_id IN (${placeholders})`);
+      }
       params.push(...companyFilter);
     }
 
