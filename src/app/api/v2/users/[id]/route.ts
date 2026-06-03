@@ -31,6 +31,24 @@ interface UserResponse {
       plan: string | null;
       abarca_user_id?: number;
     };
+    company_commissions: {
+      id: string;
+      user_id: string;
+      comercializadora_id: string;
+      comercializadora_name: string | null;
+      commission_type: "percent" | "fixed";
+      commission_value: number;
+      created_at: string | null;
+      updated_at: string | null;
+    }[];
+    targeted_notes: {
+      id: string;
+      user_id: string;
+      target: "global" | "tramites" | "comparativas";
+      note: string;
+      created_at: string | null;
+      updated_at: string | null;
+    }[];
   };
 }
 
@@ -108,6 +126,31 @@ export async function GET(
     }
 
     const row = response.rows[0];
+    const [commissionsResponse, notesResponse] = await Promise.all([
+      tursoClient.execute({
+        sql: `SELECT
+          ucc.id,
+          ucc.user_id,
+          ucc.comercializadora_id,
+          c.name as comercializadora_name,
+          ucc.commission_type,
+          ucc.commission_value,
+          ucc.created_at,
+          ucc.updated_at
+        FROM user_company_commissions ucc
+        LEFT JOIN comercializadoras c ON c.id = ucc.comercializadora_id
+        WHERE ucc.user_id = ?
+        ORDER BY c.name ASC`,
+        args: [id],
+      }),
+      tursoClient.execute({
+        sql: `SELECT id, user_id, target, note, created_at, updated_at
+        FROM user_default_notes
+        WHERE user_id = ?
+        ORDER BY created_at ASC`,
+        args: [id],
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -135,6 +178,28 @@ export async function GET(
               ? Number(row.org_abarca_user_id)
               : undefined,
         },
+        company_commissions: commissionsResponse.rows.map((commission) => ({
+          id: String(commission.id),
+          user_id: String(commission.user_id),
+          comercializadora_id: String(commission.comercializadora_id),
+          comercializadora_name: commission.comercializadora_name
+            ? String(commission.comercializadora_name)
+            : null,
+          commission_type: String(commission.commission_type) as
+            | "percent"
+            | "fixed",
+          commission_value: Number(commission.commission_value) || 0,
+          created_at: commission.created_at ? String(commission.created_at) : null,
+          updated_at: commission.updated_at ? String(commission.updated_at) : null,
+        })),
+        targeted_notes: notesResponse.rows.map((note) => ({
+          id: String(note.id),
+          user_id: String(note.user_id),
+          target: String(note.target) as "global" | "tramites" | "comparativas",
+          note: String(note.note),
+          created_at: note.created_at ? String(note.created_at) : null,
+          updated_at: note.updated_at ? String(note.updated_at) : null,
+        })),
       },
     });
   } catch (error) {

@@ -28,10 +28,13 @@ interface ClientByIdResponse {
   success: boolean;
   message?: string;
   error?: string;
-  data?: Row & {
+  data?: Record<string, unknown> & {
     coordinates: unknown;
+    signer?: Row | null;
   };
 }
+
+const signerRequiredClientTypes = ["Empresa", "Comunidad de Propietarios"];
 
 const UpdateClientRequestSchema = z.object({
   client: ClientSchema,
@@ -132,13 +135,25 @@ export async function POST(
       );
     }
 
+    const client = res.rows[0];
+    let signer: Row | null | undefined;
+
+    if (signerRequiredClientTypes.includes(client.type as string)) {
+      const signerRes = await tursoClient.execute({
+        sql: "SELECT * FROM signers WHERE client_id = ? LIMIT 1",
+        args: [id],
+      });
+      signer = signerRes.rows[0] ?? null;
+    }
+
     // Transform coordinates and return response (maintaining original format)
     return NextResponse.json(
       {
         success: true,
         data: {
-          ...res.rows[0],
-          coordinates: JSON.parse(res.rows[0].coordinates as string),
+          ...client,
+          coordinates: JSON.parse(client.coordinates as string),
+          ...(signer !== undefined ? { signer } : {}),
         },
       },
       { status: 200 }

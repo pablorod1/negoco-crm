@@ -10,7 +10,7 @@ import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import ContractPreview from "../ContractPreview";
 import { InputComponent, SelectComponent } from "../InputComponent";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CheckComisionModal from "../CheckComisionModal";
 import EmptyComisionModal from "../EmptyComisionModal";
 import { Euro, FileX2, Pencil } from "lucide-react";
@@ -18,6 +18,9 @@ import ContractForm from "./ContractForm";
 import { Button } from "@/core/components/ui/button";
 import { Separator } from "@/core/components/ui/separator";
 import { ComparativaVM } from "@/comparativas/types";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
+import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 
 interface Props {
   onBack: () => void;
@@ -49,6 +52,57 @@ export default function ThirdStepForm({
   const [selectedContract, setSelectedContract] = useState<ContractDB | null>(
     null,
   );
+  const [salesCommissionTouched, setSalesCommissionTouched] = useState(false);
+  const { activeSuppliers } = useActiveEnergySuppliers();
+  const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
+    tramite.user_id,
+  );
+
+  const firstContract = contracts[0];
+  const contractSupplierId = activeSuppliers.find(
+    (supplier) => supplier.id === firstContract?.new_company,
+  )?.id;
+  const providerSupplierId = activeSuppliers.find(
+    (supplier) =>
+      supplier.name.trim().toLowerCase() ===
+      (tramite.provider || "").trim().toLowerCase(),
+  )?.id;
+  const supplierId =
+    comparativa?.company_id || providerSupplierId || contractSupplierId;
+  const supplierName = tramite.provider || firstContract?.new_company;
+
+  useEffect(() => {
+    if (salesCommissionTouched) return;
+
+    const calculatedCommission = calculateSalesPersonCommission({
+      baseCommission: tramite.comision,
+      supplierId,
+      supplierName,
+      commissions: userCompanyCommissions,
+      suppliers: activeSuppliers,
+    });
+
+    if (calculatedCommission === null) return;
+
+    setTramite((prevState) => {
+      if (prevState.comision_sales_person === calculatedCommission) {
+        return prevState;
+      }
+
+      return {
+        ...prevState,
+        comision_sales_person: calculatedCommission,
+      };
+    });
+  }, [
+    activeSuppliers,
+    supplierId,
+    supplierName,
+    salesCommissionTouched,
+    setTramite,
+    tramite.comision,
+    userCompanyCommissions,
+  ]);
 
   const handleProviderChange = (
     value: string | React.ChangeEvent<HTMLInputElement>,
@@ -75,6 +129,7 @@ export default function ThirdStepForm({
   const handleComisionSalesChange = (
     value: number | React.ChangeEvent<HTMLInputElement>,
   ) => {
+    setSalesCommissionTouched(true);
     const numValue =
       typeof value === "number" ? value : Number(value.target.value);
     setTramite((prevState) => ({
@@ -218,8 +273,11 @@ export default function ThirdStepForm({
 
         {contracts.length > 0 ? (
           <div className="w-full">
-            {contracts.map((contract, index) => (
-              <div key={index} className="flex items-center flex-col gap-2 ">
+            {contracts.map((contract) => (
+              <div
+                key={contract.id || contract.CUPS}
+                className="flex items-center flex-col gap-2 "
+              >
                 <ContractPreview contract={contract} />
                 <Button
                   variant="outline"

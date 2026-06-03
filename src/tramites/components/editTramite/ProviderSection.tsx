@@ -106,21 +106,23 @@ export default function ProviderSection({ tramite, onUpdate }: Props) {
     <div className="space-y-2">
       {/* Section Header */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-700">Proveedor</h4>
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Proveedor
+        </h4>
         <Button
           size="sm"
           variant={isEditing ? "outline" : "ghost"}
           onClick={handleEdit}
-          className="h-7 px-2 text-gray-600 hover:text-gray-900"
+          className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900"
         >
           {!isEditing ? (
             <>
-              <Pencil className="h-3 w-3 mr-1" />
+              <Pencil className="mr-1 size-3" />
               Editar
             </>
           ) : (
             <>
-              <CircleX className="h-3 w-3 mr-1" />
+              <CircleX className="mr-1 size-3" />
               Cancelar
             </>
           )}
@@ -129,31 +131,28 @@ export default function ProviderSection({ tramite, onUpdate }: Props) {
 
       {/* Content Area */}
       {!isEditing ? (
-        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
-          <div className="flex items-center justify-center">
-            {tramite.provider ? (
-              <div className="flex flex-col items-center space-y-2">
-                <Badge
-                  variant="secondary"
-                  className="bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1"
-                >
-                  {tramite.provider}
-                </Badge>
-                <p className="text-xs text-gray-500">Proveedor asignado</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center space-y-2">
-                <Badge
-                  variant="outline"
-                  className="border-gray-300 text-gray-600 px-3 py-1"
-                >
-                  Sin Asignar
-                </Badge>
-                <p className="text-xs text-gray-500">
-                  No hay proveedor asignado
-                </p>
-              </div>
-            )}
+        <div className="rounded-xl border border-gray-200 bg-gray-50/80 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-gray-900">
+                {tramite.provider || "Sin proveedor"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {tramite.provider
+                  ? "Proveedor asignado"
+                  : "No hay proveedor asignado"}
+              </p>
+            </div>
+            <Badge
+              variant={tramite.provider ? "secondary" : "outline"}
+              className={
+                tramite.provider
+                  ? "shrink-0 bg-gray-200 px-2 py-0.5 text-xs text-gray-800 hover:bg-gray-300"
+                  : "shrink-0 border-gray-300 px-2 py-0.5 text-xs text-gray-600"
+              }
+            >
+              {tramite.provider ? "Asignado" : "Sin asignar"}
+            </Badge>
           </div>
         </div>
       ) : (
@@ -168,8 +167,8 @@ export default function ProviderSection({ tramite, onUpdate }: Props) {
           />
           <div className="flex gap-2">
             <Button size="sm" onClick={handleSubmit} disabled={isLoading}>
-              <CircleCheck className="h-4 w-4 mr-2" />
-              {isLoading ? "Guardando..." : "Guardar"}
+              <CircleCheck className="mr-2 size-4" />
+              {isLoading ? "Guardando" : "Guardar"}
             </Button>
             <Button
               size="sm"
@@ -177,7 +176,7 @@ export default function ProviderSection({ tramite, onUpdate }: Props) {
               onClick={handleEdit}
               disabled={isLoading}
             >
-              <CircleX className="h-4 w-4 mr-2" />
+              <CircleX className="mr-2 size-4" />
               Cancelar
             </Button>
           </div>

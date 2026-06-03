@@ -12,10 +12,13 @@ import { CheckCircle, CircleX, Coins } from "lucide-react";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
 import { ComparativaVM } from "@/comparativas/types/comparativa.types";
 import { Notification } from "@/core/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
+import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -28,6 +31,12 @@ export default function UpdateComissionsModal({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [manualSalesCommissionFields, setManualSalesCommissionFields] =
+    useState<Partial<Record<keyof ComissionFormValues, boolean>>>({});
+  const { activeSuppliers } = useActiveEnergySuppliers();
+  const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
+    comparativa.user.id,
+  );
   const [formDataComissions, setFormDataComissions] = useState<
     Partial<ComissionFormValues>
   >(
@@ -51,7 +60,68 @@ export default function UpdateComissionsModal({
           }
   );
 
+  useEffect(() => {
+    setFormDataComissions((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      if (
+        comparativa.plan.includes("fijo") &&
+        !manualSalesCommissionFields.comision_sales_person_fijo
+      ) {
+        const calculatedCommission = calculateSalesPersonCommission({
+          baseCommission: next.comision_fijo ?? 0,
+          supplierId: comparativa.company_id,
+          supplierName: comparativa.company_name,
+          commissions: userCompanyCommissions,
+          suppliers: activeSuppliers,
+        });
+
+        if (
+          calculatedCommission !== null &&
+          next.comision_sales_person_fijo !== calculatedCommission
+        ) {
+          next.comision_sales_person_fijo = calculatedCommission;
+          changed = true;
+        }
+      }
+
+      if (
+        comparativa.plan.includes("indexado") &&
+        !manualSalesCommissionFields.comision_sales_person_indexado
+      ) {
+        const calculatedCommission = calculateSalesPersonCommission({
+          baseCommission: next.comision_indexado ?? 0,
+          supplierId: comparativa.company_id,
+          supplierName: comparativa.company_name,
+          commissions: userCompanyCommissions,
+          suppliers: activeSuppliers,
+        });
+
+        if (
+          calculatedCommission !== null &&
+          next.comision_sales_person_indexado !== calculatedCommission
+        ) {
+          next.comision_sales_person_indexado = calculatedCommission;
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [
+    activeSuppliers,
+    comparativa.company_id,
+    comparativa.company_name,
+    comparativa.plan,
+    formDataComissions.comision_fijo,
+    formDataComissions.comision_indexado,
+    manualSalesCommissionFields,
+    userCompanyCommissions,
+  ]);
+
   const onOpen = () => {
+    setManualSalesCommissionFields({});
     setIsOpen(true);
   };
 
@@ -225,6 +295,16 @@ export default function UpdateComissionsModal({
             comparativa={comparativa}
             setFormDataComissions={setFormDataComissions}
             formDataComissions={formDataComissions}
+            onSalesCommissionManualChange={(field) =>
+              setManualSalesCommissionFields((prev) => ({
+                ...prev,
+                [field]: true,
+              }))
+            }
+            showAutoSalesCommissionHint={
+              !manualSalesCommissionFields.comision_sales_person_fijo ||
+              !manualSalesCommissionFields.comision_sales_person_indexado
+            }
           />
           <DialogFooter className="mt-4">
             <Button onClick={onClose} variant="destructive">

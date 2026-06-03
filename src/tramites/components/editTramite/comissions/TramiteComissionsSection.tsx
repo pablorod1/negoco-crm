@@ -3,10 +3,13 @@ import { formatComission } from "@/core/utils/format";
 import { User } from "@/core/types";
 import { Button } from "@/core/components/ui/button";
 import { CheckCircle, CircleX, Pencil } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { InputComponent } from "../../createTramite/InputComponent";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { TramiteDB } from "@/tramites/types";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
+import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 
 interface Props {
   userData: User;
@@ -33,11 +36,46 @@ export default function TramiteComissionsSection({
     comision_sales_person: tramite.comision_sales_person,
     comision: tramite.comision,
   });
+  const [salesCommissionTouched, setSalesCommissionTouched] = useState(false);
+  const { activeSuppliers } = useActiveEnergySuppliers();
+  const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
+    tramite.user_id,
+  );
 
   const isComercial = userData && userData.role === "2";
 
+  useEffect(() => {
+    if (salesCommissionTouched) return;
+
+    const calculatedCommission = calculateSalesPersonCommission({
+      baseCommission: formData.comision,
+      supplierId: tramite.provider,
+      supplierName: tramite.provider,
+      commissions: userCompanyCommissions,
+      suppliers: activeSuppliers,
+    });
+
+    if (calculatedCommission === null) return;
+
+    setFormData((prev) => {
+      if (prev.comision_sales_person === calculatedCommission) return prev;
+
+      return {
+        ...prev,
+        comision_sales_person: calculatedCommission,
+      };
+    });
+  }, [
+    activeSuppliers,
+    formData.comision,
+    salesCommissionTouched,
+    tramite.provider,
+    userCompanyCommissions,
+  ]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (name === "comision_sales_person") setSalesCommissionTouched(true);
     setFormData((prev) => ({
       ...prev,
       [name]: parseFloat(value),
@@ -116,13 +154,15 @@ export default function TramiteComissionsSection({
     }
   };
   return (
-    <div className="space-y-6">
-      {/* Sales Commission Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-gray-700">
-            {isComercial ? "Comisión" : "Comisión Comercial"}
-          </h4>
+    <div className="grid grid-cols-1 gap-3">
+      <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3">
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="text-sm font-semibold text-gray-800">
+              {isComercial ? "Comisión" : "Comisión comercial"}
+            </h4>
+            <p className="text-xs text-gray-500">Asignada al comercial</p>
+          </div>
           {!isComercial && isEditable && !isSalesComissionEditMode ? (
             <Button
               size="sm"
@@ -130,25 +170,20 @@ export default function TramiteComissionsSection({
               onClick={() =>
                 setIsSalesComissionEditMode(!isSalesComissionEditMode)
               }
-              className="h-7 px-2 text-gray-600 hover:text-gray-900"
+              className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900"
             >
-              <Pencil className="h-3 w-3 mr-1" />
+              <Pencil className="mr-1 size-3" />
               Editar
             </Button>
           ) : null}
         </div>
 
         {!isSalesComissionEditMode ? (
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
-            <div className="text-2xl font-bold text-gray-900">
-              {formatComission(tramite.comision_sales_person)}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Comisión asignada al comercial
-            </div>
+          <div className="text-xl font-bold leading-none text-gray-950">
+            {formatComission(tramite.comision_sales_person)}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <InputComponent
               type="number"
               name="comision_sales_person"
@@ -156,9 +191,15 @@ export default function TramiteComissionsSection({
               label="Nueva comisión comercial"
               onChange={handleChange}
             />
-            <div className="flex gap-2">
+            {!salesCommissionTouched && (
+              <p className="text-xs text-primary-500">
+                Calculada automáticamente si existe una regla para esta
+                comercializadora.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={handleSubmit}>
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <CheckCircle className="mr-2 size-4" />
                 Guardar
               </Button>
               <Button
@@ -166,7 +207,7 @@ export default function TramiteComissionsSection({
                 variant="dangerGhost"
                 onClick={() => setIsSalesComissionEditMode(false)}
               >
-                <CircleX className="h-4 w-4 mr-2" />
+                <CircleX className="mr-2 size-4" />
                 Cancelar
               </Button>
             </div>
@@ -174,37 +215,34 @@ export default function TramiteComissionsSection({
         )}
       </div>
 
-      {/* Organization Commission Section */}
       {!isComercial && (
-        <div className="space-y-3 pt-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-700">
-              Comisión {userData?.organization.name}
-            </h4>
+        <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3">
+          <div className="mb-2 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="truncate text-sm font-semibold text-gray-800">
+                Comisión {userData?.organization.name}
+              </h4>
+              <p className="text-xs text-gray-500">Comisión de organización</p>
+            </div>
             {isEditable && !isComissionEditMode ? (
               <Button
                 size="sm"
                 variant={isComissionEditMode ? "outline" : "ghost"}
                 onClick={() => setIsComissionEditMode(!isComissionEditMode)}
-                className="h-7 px-2 text-gray-600 hover:text-gray-900"
+                className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900"
               >
-                <Pencil className="h-3 w-3 mr-1" />
+                <Pencil className="mr-1 size-3" />
                 Editar
               </Button>
             ) : null}
           </div>
 
           {!isComissionEditMode ? (
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">
-                {formatComission(tramite.comision)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Comisión de la organización
-              </div>
+            <div className="text-xl font-bold leading-none text-gray-950">
+              {formatComission(tramite.comision)}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <InputComponent
                 type="number"
                 name="comision"
@@ -212,9 +250,9 @@ export default function TramiteComissionsSection({
                 label="Nueva comisión de organización"
                 onChange={handleChange}
               />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={handleSubmit}>
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <CheckCircle className="mr-2 size-4" />
                   Guardar
                 </Button>
                 <Button
@@ -222,7 +260,7 @@ export default function TramiteComissionsSection({
                   variant="dangerGhost"
                   onClick={() => setIsComissionEditMode(false)}
                 >
-                  <CircleX className="h-4 w-4 mr-2" />
+                  <CircleX className="mr-2 size-4" />
                   Cancelar
                 </Button>
               </div>

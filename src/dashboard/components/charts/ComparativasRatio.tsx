@@ -72,13 +72,13 @@ const calculateProcessedPercentage = (data: ComparativasData): number => {
 };
 
 const gaugeChartConfig = {
-  filled: { label: "Completadas", color: "#10b981" },
+  filled: { label: "Completadas", color: "var(--primary-color)" },
   unfilled: { label: "En estudio", color: "#f3f4f6" },
 } satisfies ChartConfig;
 
 const RadialGauge = ({ percentage }: { percentage: number }) => {
   const gaugeData = [
-    { name: "filled", value: percentage, fill: "var(--color-primary)" },
+    { name: "filled", value: percentage, fill: "var(--primary-color)" },
     { name: "unfilled", value: 100 - percentage, fill: "#f3f4f6" },
   ];
 
@@ -422,7 +422,7 @@ export function ComparativasRatio({
               transition={{ duration: 0.2 }}
             >
               {/* Hero: radial gauge with percentage inside */}
-              <div className="flex flex-col items-center px-6 pb-6 pt-8">
+              <div className="flex flex-col items-center px-6 py-4">
                 <div className="relative flex h-52 w-52 items-center justify-center">
                   <RadialGauge percentage={processedPercentage} />
 
@@ -434,7 +434,7 @@ export function ComparativasRatio({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                     >
-                      <span className="text-5xl font-black tabular-nums leading-[0.85] tracking-tighter text-gray-950">
+                      <span className="text-4xl font-black tabular-nums leading-[0.85] tracking-tighter text-gray-950">
                         <NumberTicker
                           value={processedPercentage}
                           className="text-gray-950"
@@ -457,7 +457,7 @@ export function ComparativasRatio({
                 </div>
 
                 <motion.p
-                  className="mt-2 text-xs text-gray-400"
+                  className="text-xs text-gray-400"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4, delay: 0.3 }}
@@ -475,7 +475,7 @@ export function ComparativasRatio({
               <div className="grid grid-cols-3 divide-x divide-gray-100">
                 <MetricCell
                   value={processed}
-                  label="Convertidas a trámite"
+                  label="Convertidas"
                   accentClass="bg-emerald-500"
                   delay={0.1}
                 />

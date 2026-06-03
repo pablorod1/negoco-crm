@@ -153,9 +153,9 @@ const TramiteSchema = z.object({
       }
       if (val.length < 1) {
         ctx.addIssue({
-          code: "too_small",
+          code: z.ZodIssueCode.too_small,
           minimum: 1,
-          type: "string",
+          origin: "string",
           inclusive: true,
           message: "Client ID is required",
         });
@@ -262,9 +262,9 @@ const SignerSchema = z
         }
         if (val.length < 1) {
           ctx.addIssue({
-            code: "too_small",
+            code: z.ZodIssueCode.too_small,
             minimum: 1,
-            type: "string",
+            origin: "string",
             inclusive: true,
             message: "Client ID is required",
           });
@@ -324,6 +324,7 @@ interface ContractData {
   renovation_date: string;
   collection_date: string | null;
   payment_date: string | null;
+  rejected_date: string | null;
   sales_name: string;
   client_name: string;
   client_email: string;
@@ -1107,8 +1108,13 @@ export async function GET(
       // Match by both ID and resolved name
       const allValues = [...filterArray, ...companyNames];
       const allPlaceholders = allValues.map(() => "?").join(", ");
-      const operator = exclude ? "NOT IN" : "IN";
-      filters.push(`con.new_company ${operator} (${allPlaceholders})`);
+      if (exclude) {
+        filters.push(
+          `t.id NOT IN (SELECT tramite_id FROM contracts WHERE tramite_id IS NOT NULL AND new_company IN (${allPlaceholders}))`,
+        );
+      } else {
+        filters.push(`con.new_company IN (${allPlaceholders})`);
+      }
       params.push(...allValues);
     };
 
@@ -1240,6 +1246,7 @@ export async function GET(
             t.renovation_date AS renovation_date,
             t.collection_date AS collection_date,
             t.payment_date AS payment_date,
+            t.rejected_date AS rejected_date,
             t.sales_name AS sales_name,
             t.comision_sales_person AS comision_sales_person,
             t.comision AS comision,
@@ -1292,6 +1299,7 @@ export async function GET(
           renovation_date: row.renovation_date as string,
           collection_date: row.collection_date as string | null,
           payment_date: row.payment_date as string | null,
+          rejected_date: row.rejected_date as string | null,
           sales_name: row.sales_name as string,
           client_name: `${row.client_name || ""} ${
             row.client_last_name || ""

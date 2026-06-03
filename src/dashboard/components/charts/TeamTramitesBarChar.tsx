@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import type { TooltipPayloadEntry } from "recharts";
 
 import {
   Card,
@@ -472,6 +473,7 @@ export function TeamTramitesBarChart({
                       axisLine={false}
                       tickMargin={10}
                       stroke="#6b7280"
+                      fontSize={11}
                       className="text-[11px]"
                       angle={-45}
                       tickFormatter={(value) => {
@@ -492,6 +494,7 @@ export function TeamTramitesBarChart({
                       tickMargin={8}
                       width={selectedComercial === "all" ? 30 : 5}
                       stroke="#6b7280"
+                      fontSize={10}
                       className="capitalize  text-[10px]"
                     />
                   </>
@@ -504,6 +507,7 @@ export function TeamTramitesBarChart({
                       axisLine={false}
                       tickMargin={8}
                       stroke="#6b7280"
+                      fontSize={11}
                       className="text-[11px] capitalize"
                       angle={-45}
                       textAnchor="end"
@@ -517,6 +521,7 @@ export function TeamTramitesBarChart({
                       axisLine={false}
                       tickMargin={8}
                       stroke="#6b7280"
+                      fontSize={11}
                       className="text-[11px]"
                     />
                   </>
@@ -531,27 +536,42 @@ export function TeamTramitesBarChart({
                         <p className="font-medium text-gray-900 mb-2 capitalize">
                           {props.label}
                         </p>
-                        {props.payload.map((entry, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between gap-4 mb-1"
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: entry.color }}
-                              />
-                              <span className="text-gray-600">
-                                {entry.dataKey === "active"
-                                  ? "Activos"
-                                  : "Bajas"}
+                        {props.payload.map((entry: TooltipPayloadEntry) => {
+                          const dataKey =
+                            typeof entry.dataKey === "string"
+                              ? entry.dataKey
+                              : String(entry.dataKey ?? "");
+                          const color =
+                            entry.color ??
+                            entry.fill ??
+                            entry.stroke ??
+                            "var(--primary-color-300)";
+                          const value =
+                            typeof entry.value === "number"
+                              ? entry.value
+                              : Number(entry.value ?? 0);
+                          const itemKey = dataKey || entry.graphicalItemId;
+
+                          return (
+                            <div
+                              key={itemKey}
+                              className="flex items-center justify-between gap-4 mb-1"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: color }}
+                                />
+                                <span className="text-gray-600">
+                                  {dataKey === "active" ? "Activos" : "Bajas"}
+                                </span>
+                              </div>
+                              <span className="font-medium text-gray-900">
+                                {value}
                               </span>
                             </div>
-                            <span className="font-medium text-gray-900">
-                              {entry.value}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     );
                   }}

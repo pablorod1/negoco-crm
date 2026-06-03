@@ -30,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/core/components/ui/select";
+import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
+import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -51,9 +53,14 @@ export default function CompletarEstudioModal({
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
+  const [manualSalesCommissionFields, setManualSalesCommissionFields] =
+    useState<Partial<Record<keyof ComissionFormValues, boolean>>>({});
 
   // Load active energy suppliers
   const { activeSuppliers } = useActiveEnergySuppliers();
+  const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
+    comparativa.user.id,
+  );
 
   // Auto-match supplier from Abarca estudio empresa field
   useEffect(() => {
@@ -105,11 +112,69 @@ export default function CompletarEstudioModal({
           },
   );
 
+  useEffect(() => {
+    setFormDataComissions((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      if (
+        comparativa.plan.includes("fijo") &&
+        !manualSalesCommissionFields.comision_sales_person_fijo
+      ) {
+        const calculatedCommission = calculateSalesPersonCommission({
+          baseCommission: next.comision_fijo ?? 0,
+          supplierId: selectedSupplierId,
+          commissions: userCompanyCommissions,
+          suppliers: activeSuppliers,
+        });
+
+        if (
+          calculatedCommission !== null &&
+          next.comision_sales_person_fijo !== calculatedCommission
+        ) {
+          next.comision_sales_person_fijo = calculatedCommission;
+          changed = true;
+        }
+      }
+
+      if (
+        comparativa.plan.includes("indexado") &&
+        !manualSalesCommissionFields.comision_sales_person_indexado
+      ) {
+        const calculatedCommission = calculateSalesPersonCommission({
+          baseCommission: next.comision_indexado ?? 0,
+          supplierId: selectedSupplierId,
+          commissions: userCompanyCommissions,
+          suppliers: activeSuppliers,
+        });
+
+        if (
+          calculatedCommission !== null &&
+          next.comision_sales_person_indexado !== calculatedCommission
+        ) {
+          next.comision_sales_person_indexado = calculatedCommission;
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [
+    activeSuppliers,
+    comparativa.plan,
+    formDataComissions.comision_fijo,
+    formDataComissions.comision_indexado,
+    manualSalesCommissionFields,
+    selectedSupplierId,
+    userCompanyCommissions,
+  ]);
+
   const onClose = () => {
     setIsOpen(false);
     setActionType(null);
     setUploadedFiles([]);
     setSelectedSupplierId("");
+    setManualSalesCommissionFields({});
     setFormDataComissions(
       comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
         ? {
@@ -582,6 +647,16 @@ export default function CompletarEstudioModal({
                 comparativa={comparativa}
                 formDataComissions={formDataComissions}
                 setFormDataComissions={setFormDataComissions}
+                onSalesCommissionManualChange={(field) =>
+                  setManualSalesCommissionFields((prev) => ({
+                    ...prev,
+                    [field]: true,
+                  }))
+                }
+                showAutoSalesCommissionHint={
+                  !manualSalesCommissionFields.comision_sales_person_fijo ||
+                  !manualSalesCommissionFields.comision_sales_person_indexado
+                }
               />
             </div>
           </div>
@@ -608,7 +683,7 @@ export default function CompletarEstudioModal({
     <>
       {/* Botón para rechazar */}
       <Button
-        variant="destructive"
+        variant="destructiveOutline"
         size="sm"
         onClick={() => handleOpen("reject")}
       >
@@ -649,12 +724,13 @@ export default function CompletarEstudioModal({
       >
         <DialogTrigger asChild>
           <Button
-            variant="default"
+            variant="outline"
             size="sm"
             onClick={() => handleOpen("complete")}
+            className="w-full"
           >
             <CheckCircle className="h-4 w-4" />
-            Completar Estudio
+            Completar Estudio Manual
           </Button>
         </DialogTrigger>
         <DialogContent
@@ -748,6 +824,16 @@ export default function CompletarEstudioModal({
                 comparativa={comparativa}
                 formDataComissions={formDataComissions}
                 setFormDataComissions={setFormDataComissions}
+                onSalesCommissionManualChange={(field) =>
+                  setManualSalesCommissionFields((prev) => ({
+                    ...prev,
+                    [field]: true,
+                  }))
+                }
+                showAutoSalesCommissionHint={
+                  !manualSalesCommissionFields.comision_sales_person_fijo ||
+                  !manualSalesCommissionFields.comision_sales_person_indexado
+                }
               />
               <div className="flex items-start gap-1">
                 <small className="text-gray-500">*</small>

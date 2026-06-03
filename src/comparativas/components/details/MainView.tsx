@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ComparativaVM, ComparativaFile } from "@/comparativas/types";
-import { User } from "@/core/types";
+import { User, UserDefaultNote } from "@/core/types";
 import {
   Card,
   CardContent,
@@ -9,6 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
+import { Button } from "@/core/components/ui/button";
+import { Switch } from "@/core/components/ui/switch";
 import { ServiceInfo } from "@/comparativas/components/editComparativa/ServiceInfo";
 import { formatDateTime } from "@/core/utils/format";
 import AvatarComponent from "@/core/components/AvatarComponent";
@@ -18,7 +20,9 @@ import {
   Info,
   ClipboardList,
   FileText,
-  CheckCircle,
+  XCircle,
+  ShieldCheck,
+  RefreshCw,
   Zap,
   AlertTriangle,
   Clock,
@@ -31,7 +35,6 @@ import { Link } from "next-view-transitions";
 import { FilesList } from "@/comparativas/components/editComparativa/FilesList";
 import UploadComparativaFilesModal from "@/comparativas/components/editComparativa/UploadComparativaFilesModal";
 import ComparativaComissionsSection from "@/comparativas/components/editComparativa/ComparativaComissionsSection";
-import { cn } from "@/core/utils";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
@@ -60,8 +63,10 @@ export default function MainView({
   const isStudied = comparativa.status === "completed";
   const isAwaitingReview = comparativa.status === "awaiting_review";
   const isAdmin = userData.role === "admin" || userData.role === "1";
+  const assignedCommercialId = comparativa.user.id;
   // Los admins pueden editar comisiones cuando la comparativa está estudiada
   const canEditComissions = isAdmin && isStudied;
+  const hasPrioritySummary = !isSubcomercial || isStudied;
 
   // Fetch supplier information if company_id is available
   const { supplier, loading: isLoadingSupplier } = useEnergySupplierById(
@@ -71,6 +76,96 @@ export default function MainView({
   const handleSidebarClick = useSidebarSlideNavigation();
 
   const [rechazando, setRechazando] = useState(false);
+  const [updatingFlag, setUpdatingFlag] = useState<
+    "has_permanencia" | "has_renovacion" | null
+  >(null);
+  const [predefinedNotes, setPredefinedNotes] = useState<UserDefaultNote[]>([]);
+  const [isLoadingPredefinedNotes, setIsLoadingPredefinedNotes] =
+    useState(false);
+
+  useEffect(() => {
+    if (!assignedCommercialId) {
+      setPredefinedNotes([]);
+      setIsLoadingPredefinedNotes(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadPredefinedNotes = async () => {
+      setIsLoadingPredefinedNotes(true);
+
+      try {
+        const res = await fetch(`/api/v2/users/${assignedCommercialId}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error("No se pudieron obtener las notas predefinidas");
+        }
+
+        const data = (await res.json()) as {
+          success?: boolean;
+          data?: { targeted_notes?: UserDefaultNote[] };
+        };
+
+        const notes = data.success ? data.data?.targeted_notes ?? [] : [];
+        setPredefinedNotes(
+          notes.filter(
+            (note) =>
+              note.target === "global" || note.target === "comparativas",
+          ),
+        );
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setPredefinedNotes([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingPredefinedNotes(false);
+        }
+      }
+    };
+
+    loadPredefinedNotes();
+
+    return () => controller.abort();
+  }, [assignedCommercialId]);
+
+  const handleFlagChange = async (
+    field: "has_permanencia" | "has_renovacion",
+    value: boolean,
+  ) => {
+    setUpdatingFlag(field);
+    try {
+      const res = await fetch(`/api/v2/comparisons/${comparativa.id}/flags`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+
+      if (res.ok) {
+        onUpdate();
+        return;
+      }
+
+      showCustomToast({
+        title: "Error",
+        message: "No se pudo actualizar la opción de la comparativa",
+        icon: AlertTriangle,
+        iconColor: "var(--danger-color)",
+      });
+    } catch {
+      showCustomToast({
+        title: "Error",
+        message: "Error de conexión al actualizar la opción",
+        icon: AlertTriangle,
+        iconColor: "var(--danger-color)",
+      });
+    } finally {
+      setUpdatingFlag(null);
+    }
+  };
 
   const handleRechazarCliente = async () => {
     setRechazando(true);
@@ -113,37 +208,53 @@ export default function MainView({
 
   return (
     <div className="space-y-6">
-      {/* Hero Section - 3 Cards */}
-      <div
-        className={cn(
-          "grid grid-cols-1  gap-6",
-          isSubcomercial ? "lg:grid-cols-2" : "lg:grid-cols-3",
-        )}
-      >
-        {/* Card 1: Estado y Acciones */}
+      {/* Hero Section */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,2.15fr)]">
+        {/* Card 1: Acciones */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Info className="h-4 w-4" />
-              Estado y Acciones
+              Acciones
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Estado actual */}
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
-                Estado actual
-              </p>
-              <div className="flex items-center gap-2">
-                {getStatusBadge(comparativa.status, "comparativa")}
-              </div>
-            </div>
-
-            {/* Separador visual */}
-            <div className="border-t border-gray-100"></div>
-
             {/* Acciones disponibles */}
             <div className="space-y-3">
+              <div className="border-b border-gray-200 pb-4">
+                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Resto de información
+                  </p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-xs text-gray-500">Estado</p>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(comparativa.status, "comparativa")}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs text-gray-500">Servicio</p>
+                      <ServiceInfo service={comparativa.service} size="sm" />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs text-gray-500">Comercializadora</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.company_id
+                          ? supplier?.name ??
+                            (isLoadingSupplier ? "Cargando" : "—")
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs text-gray-500">
+                        Fecha de creación
+                      </p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {formatDateTime(comparativa.creation_date)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
                 Acciones disponibles
               </p>
@@ -175,33 +286,18 @@ export default function MainView({
 
                 {/* Comparativa pendiente */}
                 {comparativa.status === "pending" && !isComercial ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {/* Primary: Comparador IA (cuando disponible) */}
                     {userData.organization.abarca_user_id && (
-                      <div className="p-3 rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="p-1.5 rounded-md bg-primary/10">
-                            <Zap className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">
-                              Acción recomendada
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Realiza el estudio con el comparador energético
-                            </p>
-                          </div>
-                        </div>
-                        <AbarcaPanel
-                          comparativaId={comparativa.id}
-                          abarcaUserId={userData.organization.abarca_user_id}
-                          onStudyCompleted={onUpdate}
-                          files={comparativa.files}
-                        />
-                      </div>
+                      <AbarcaPanel
+                        comparativaId={comparativa.id}
+                        abarcaUserId={userData.organization.abarca_user_id}
+                        onStudyCompleted={onUpdate}
+                        files={comparativa.files}
+                      />
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                       <CompletarEstudioModal
                         comparativa={comparativa}
                         onUpdate={onUpdate}
@@ -239,83 +335,23 @@ export default function MainView({
 
                 {/* Comparativa completada — Crear trámite o rechazar */}
                 {isStudied && (
-                  <div className="p-3 rounded-lg border border-green-200 bg-green-50">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-1.5 rounded-md bg-green-100">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-green-900">
-                          Estudio Completado
-                        </p>
-                        <p className="text-xs text-green-600">
-                          Listo para convertir en trámite
-                        </p>
-                      </div>
-                    </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <AddTramiteDialog
                       variant="default"
                       comparativa={comparativa}
                       onComparativaUpdated={onUpdate}
                     />
-                    {!isComercial && (
-                      <button
+                      <Button
                         type="button"
+                        variant="destructiveOutline"
+                        size="sm"
                         onClick={handleRechazarCliente}
                         disabled={rechazando}
-                        className="mt-2 w-full text-sm font-medium text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg py-2 transition-colors disabled:opacity-50"
+                        aria-label="Rechazar Cliente: marcar como rechazado por cliente"
                       >
-                        {rechazando ? "Rechazando..." : "Rechazar Cliente"}
-                      </button>
-                    )}
-                    <div className="flex gap-3 mt-2">
-                      <label className="flex items-center gap-1.5 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={!!comparativa.has_permanencia}
-                          onChange={async (e) => {
-                            try {
-                              const res = await fetch(
-                                `/api/v2/comparisons/${comparativa.id}/flags`,
-                                {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ has_permanencia: e.target.checked }),
-                                },
-                              );
-                              if (res.ok) onUpdate();
-                            } catch {
-                              // silent
-                            }
-                          }}
-                          className="rounded"
-                        />
-                        Permanencia
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={!!comparativa.has_renovacion}
-                          onChange={async (e) => {
-                            try {
-                              const res = await fetch(
-                                `/api/v2/comparisons/${comparativa.id}/flags`,
-                                {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ has_renovacion: e.target.checked }),
-                                },
-                              );
-                              if (res.ok) onUpdate();
-                            } catch {
-                              // silent
-                            }
-                          }}
-                          className="rounded"
-                        />
-                        Renovación
-                      </label>
-                    </div>
+                        <XCircle className="size-4" />
+                        {rechazando ? "Rechazando..." : "Rechazado por cliente"}
+                      </Button>
                   </div>
                 )}
 
@@ -393,81 +429,137 @@ export default function MainView({
           </CardContent>
         </Card>
 
-        {/* Card 2: Comisiones */}
-        {!isSubcomercial ? (
-          <ComparativaComissionsSection
-            userData={userData}
-            comparativa={comparativa}
-            onUpdate={onUpdate}
-            canEdit={canEditComissions}
-          />
-        ) : null}
-
-        {/* Card 3: Información General */}
+        {/* Card 2: Resumen comercial e información general */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <UserIcon className="h-4 w-4" />
-              Información General
+              Resumen comercial
             </CardTitle>
+            <CardDescription className="text-gray-500">
+              Comisiones, condiciones e información principal de la comparativa
+            </CardDescription>
           </CardHeader>
-          <CardContent className=" relative overflow-hidden">
-            <div className="grid grid-cols-2 gap-6 space-x-12 gap-x-16">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Servicio</p>
-                <ServiceInfo service={comparativa.service} size="sm" />
-              </div>
-              {/* Supplier information section */}
-              {comparativa.company_id && supplier ? (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Comercializadora</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {supplier.name}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {isLoadingSupplier ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
-                        <span className="text-sm text-gray-500">
-                          Cargando...
-                        </span>
+          <CardContent className="space-y-6">
+            <div
+              className={
+                hasPrioritySummary
+                  ? "grid grid-cols-1 gap-6 xl:grid-cols-[minmax(260px,0.95fr)_minmax(0,1.05fr)]"
+                  : "grid grid-cols-1 gap-6"
+              }
+            >
+              {hasPrioritySummary ? (
+                <div className="space-y-5">
+                  {!isSubcomercial ? (
+                    <ComparativaComissionsSection
+                      userData={userData}
+                      comparativa={comparativa}
+                      onUpdate={onUpdate}
+                      canEdit={canEditComissions}
+                      embedded
+                    />
+                  ) : null}
+
+                  {isStudied && (
+                    <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+                      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Renovación y permanencia
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="flex items-center justify-between gap-4 rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100">
+                          <label
+                            htmlFor={`permanencia-${comparativa.id}`}
+                            className="flex min-w-0 items-center gap-2 text-xs font-medium text-gray-700"
+                          >
+                            <ShieldCheck className="size-3.5 shrink-0 text-gray-500" />
+                            <span>Permanencia</span>
+                          </label>
+                          <Switch
+                            id={`permanencia-${comparativa.id}`}
+                            checked={!!comparativa.has_permanencia}
+                            disabled={updatingFlag !== null || isComercial}
+                            aria-label="Marcar comparativa con permanencia"
+                            onCheckedChange={(checked) =>
+                              handleFlagChange("has_permanencia", checked)
+                            }
+                            className="data-[state=checked]:bg-green-600"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100">
+                          <label
+                            htmlFor={`renovacion-${comparativa.id}`}
+                            className="flex min-w-0 items-center gap-2 text-xs font-medium text-gray-700"
+                          >
+                            <RefreshCw className="size-3.5 shrink-0 text-gray-500" />
+                            <span>Renovación</span>
+                          </label>
+                          <Switch
+                            id={`renovacion-${comparativa.id}`}
+                            checked={!!comparativa.has_renovacion}
+                            disabled={updatingFlag !== null || isComercial}
+                            aria-label="Marcar comparativa con renovación"
+                            onCheckedChange={(checked) =>
+                              handleFlagChange("has_renovacion", checked)
+                            }
+                          />
+                        </div>
                       </div>
-                    ) : null}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div></div>
-              )}
-              <div className="flex flex-col gap-6">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">
-                    Fecha de Creación
+              ) : null}
+
+              <div className="space-y-5">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Comercial asignado
                   </p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {formatDateTime(comparativa.creation_date)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Creado por</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-start gap-3">
                     <AvatarComponent
                       userData={comparativa.user as User}
-                      className="!rounded-full w-6 h-6"
+                      className="!rounded-full h-9 w-9"
                     />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.user.name}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {comparativa.user.name || "Sin asignar"}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {comparativa.user.email}
+                      <p className="truncate text-xs text-gray-500">
+                        {comparativa.user.email || "Sin email"}
                       </p>
                     </div>
                   </div>
+
+                  {!isComercial ? <div className="mt-4 border-t border-gray-100 pt-4">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Notas predefinidas
+                    </p>
+                    {isLoadingPredefinedNotes ? (
+                      <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
+                        Cargando notas predefinidas&hellip;
+                      </p>
+                    ) : predefinedNotes.length > 0 ? (
+                      <div className="space-y-2">
+                        {predefinedNotes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                          >
+                            <p className="text-sm leading-relaxed text-gray-700">
+                              {note.note}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
+                        Sin notas predefinidas para comparativas.
+                      </p>
+                    )}
+                  </div> : null}
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center justify-between"></div>
           </CardContent>
         </Card>
       </div>

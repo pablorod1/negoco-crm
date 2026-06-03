@@ -8,12 +8,13 @@ import { ClientsFilters } from "./ClientsFilters";
 import { ClientsTable } from "./ClientsTable";
 import { ClientsGrid } from "./ClientsGrid";
 import { ClientEmptyState } from "./ClientEmptyState";
-import { ClientDB } from "@/tramites/types";
+import { ClientDB, SignerDB } from "@/tramites/types";
 import { User } from "@/core/types";
 
 export interface ClientListItem extends ClientDB {
   tramites_count: number;
   files_count: number;
+  signer?: SignerDB | null;
 }
 
 export default function ClientsList() {

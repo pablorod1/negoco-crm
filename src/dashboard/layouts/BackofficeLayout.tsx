@@ -3,15 +3,18 @@ import { DashboardData } from "@/dashboard/hooks/useDashboardData";
 import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramitesBarChart";
 import RenewableTramitesCalendar from "@/dashboard/components/renewable/RenewableTramitesCalendar";
 import { AnimatePresence, motion } from "framer-motion";
-import { MetricsView } from "@/dashboard/components/charts/MetricsView";
+import type { Transition } from "framer-motion";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
+import type { DashboardView } from "../components/ViewToggle";
+
+type NonAdminDashboardView = Exclude<DashboardView, "metrics">;
 
 interface BackofficeLayoutProps {
   userData: User;
   loading: boolean;
   dashboardData: DashboardData;
   refreshData: () => void;
-  view?: "main" | "metrics" | "incidencias";
+  view?: NonAdminDashboardView;
 }
 
 export const BackofficeLayout = ({
@@ -25,37 +28,11 @@ export const BackofficeLayout = ({
     out: { opacity: 0, y: -20 },
   };
 
-  const pageTransition = {
+  const pageTransition: Transition = {
     type: "tween",
     ease: "anticipate",
     duration: 0.3,
   };
-  if (view === "metrics") {
-    return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="metrics"
-          initial="initial"
-          animate="in"
-          exit="out"
-          variants={pageVariants}
-          transition={pageTransition}
-          className="space-y-6"
-        >
-          {/* Métricas Section */}
-          <motion.div
-            className="lg:col-span-1"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
-          >
-            <MetricsView loading={loading} userData={userData} />
-          </motion.div>
-          
-        </motion.div>
-      </AnimatePresence>
-    );
-  }
 
   if (view === "incidencias") {
     return (

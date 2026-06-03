@@ -630,6 +630,7 @@ export default function AddTramiteDialog({
         {!shortcut ? (
           <Button
             onClick={handleOpen}
+            size="sm"
             variant={
               variant
                 ? (variant as VariantProps<typeof buttonVariants>["variant"])

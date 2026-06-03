@@ -31,6 +31,11 @@ export const DashboardView = ({
 }: DashboardViewProps) => {
   const [hasSubComerciales, setComercialHasSubComerciales] = useState(false);
   const isSubcomercial = userData.role === "2" && userData.super_id !== null;
+  const canAccessMetrics = permissions.isDireccion;
+  const visibleView: ViewType =
+    canAccessMetrics || currentView !== "metrics" ? currentView : "main";
+  const nonAdminView: Exclude<ViewType, "metrics"> =
+    visibleView === "incidencias" ? "incidencias" : "main";
 
   const checkSubComerciales = useCallback(async () => {
     if (userData.role === "2" && !isSubcomercial) {
@@ -60,29 +65,32 @@ export const DashboardView = ({
     dashboardData,
     refreshData,
     getPlan,
-    view: currentView,
   };
 
   // Subcomercial gets most restricted view
   if (isSubcomercial) {
-    return <SubcomercialLayout {...commonProps} />;
+    return <SubcomercialLayout {...commonProps} view={nonAdminView} />;
   }
 
   // Regular comercial
   if (permissions.isComercial) {
     return (
-      <ComercialLayout {...commonProps} hasSubComerciales={hasSubComerciales} />
+      <ComercialLayout
+        {...commonProps}
+        hasSubComerciales={hasSubComerciales}
+        view={nonAdminView}
+      />
     );
   }
 
   // Backoffice
   if (permissions.isBackOffice) {
-    return <BackofficeLayout {...commonProps} />;
+    return <BackofficeLayout {...commonProps} view={nonAdminView} />;
   }
 
   // Admin/Direccion
   if (permissions.isDireccion) {
-    return <AdminLayout {...commonProps} />;
+    return <AdminLayout {...commonProps} view={visibleView} />;
   }
 
   // Fallback

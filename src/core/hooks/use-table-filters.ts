@@ -63,11 +63,25 @@ export function useTableFilters(id?: string) {
   );
 
   const [excludeCompany, setExcludeCompany] = useState<boolean>(
-    initialValues.excludeCompany ?? false
+    initialValues.companyFilter?.length > 0
+      ? (initialValues.excludeCompany ?? false)
+      : false
   );
   const [excludeUser, setExcludeUser] = useState<boolean>(
-    initialValues.excludeUser ?? false
+    initialValues.userFilter?.length > 0
+      ? (initialValues.excludeUser ?? false)
+      : false
   );
+
+  const handleSetCompanyFilter = useCallback((value: string[] | undefined) => {
+    setCompanyFilter(value);
+    if (!value || value.length === 0) setExcludeCompany(false);
+  }, []);
+
+  const handleSetUserFilter = useCallback((value: string[] | undefined) => {
+    setUserFilter(value);
+    if (!value || value.length === 0) setExcludeUser(false);
+  }, []);
 
   // Try to load filters from localStorage on initial load
   const loadFiltersFromStorage = useCallback(() => {
@@ -103,9 +117,17 @@ export function useTableFilters(id?: string) {
         if (parsedFilters.providerFilter)
           setProviderFilter(parsedFilters.providerFilter);
         if (parsedFilters.excludeCompany !== undefined)
-          setExcludeCompany(parsedFilters.excludeCompany);
+          setExcludeCompany(
+            parsedFilters.companyFilter?.length > 0
+              ? parsedFilters.excludeCompany
+              : false
+          );
         if (parsedFilters.excludeUser !== undefined)
-          setExcludeUser(parsedFilters.excludeUser);
+          setExcludeUser(
+            parsedFilters.userFilter?.length > 0
+              ? parsedFilters.excludeUser
+              : false
+          );
       }
     } catch (error) {
       console.error("Error loading filters from localStorage:", error);
@@ -226,7 +248,7 @@ export function useTableFilters(id?: string) {
     providerFilter,
     setTypeFilter,
     setFilterValue,
-    setCompanyFilter,
+    setCompanyFilter: handleSetCompanyFilter,
     setStatusFilter,
     setContractTypeFilter,
     resetFilters,
@@ -239,7 +261,7 @@ export function useTableFilters(id?: string) {
     saveFiltersToStorage,
     loadFiltersFromStorage,
     userFilter,
-    setUserFilter,
+    setUserFilter: handleSetUserFilter,
     setProviderFilter,
     excludeCompany,
     setExcludeCompany,

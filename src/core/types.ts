@@ -14,6 +14,31 @@
   should_reset_password: boolean;
   notifications?: number;
   last_login?: string | null;
+  company_commissions?: UserCompanyCommission[];
+  targeted_notes?: UserDefaultNote[];
+}
+
+export type CommissionType = "percent" | "fixed";
+export type UserDefaultNoteTarget = "global" | "tramites" | "comparativas";
+
+export interface UserCompanyCommission {
+  id: string;
+  user_id: string;
+  comercializadora_id: string;
+  comercializadora_name?: string | null;
+  commission_type: CommissionType;
+  commission_value: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface UserDefaultNote {
+  id: string;
+  user_id: string;
+  target: UserDefaultNoteTarget;
+  note: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface Organization {

@@ -16,6 +16,7 @@ interface StatusCardProps {
   isRenewable: boolean;
   client: ClientDB;
   isActive: boolean;
+  mode?: "full" | "actions";
 }
 
 export default function StatusCard({
@@ -26,15 +27,16 @@ export default function StatusCard({
   isRenewable,
   client,
   isActive,
+  mode = "full",
 }: StatusCardProps) {
   const isComercial = userData.role === "2";
   const showLiquidez = isComercial && tramite.status === "Baja" ? false : true;
   return (
     <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-          <div className="h-2 w-2 bg-gray-600 rounded-full"></div>
-          Estado del Trámite
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <div className="size-2 bg-gray-600 rounded-full"></div>
+          {mode === "actions" ? "Acciones" : "Estado del Trámite"}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -48,6 +50,7 @@ export default function StatusCard({
           client={client}
           isActive={isActive}
           showLiquidez={showLiquidez}
+          mode={mode}
         />
       </CardContent>
     </Card>

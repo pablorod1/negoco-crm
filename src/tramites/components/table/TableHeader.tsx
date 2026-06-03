@@ -216,6 +216,8 @@ export default function TramitesHeader<TData>({
           paymentDateRange={paymentDateRange}
           userFilter={userFilter}
           providerFilter={providerFilter}
+          excludeCompany={excludeCompany}
+          excludeUser={excludeUser}
           isComercial={isComercial}
           onResetFilters={resetFilters}
           onRemoveProvider={removeProvider}

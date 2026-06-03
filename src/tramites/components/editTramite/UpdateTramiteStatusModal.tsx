@@ -43,6 +43,9 @@ import { Separator } from "@/core/components/ui/separator";
 import { Label } from "@/core/components/ui/label";
 import { Button } from "@/core/components/ui/button";
 import TooltipComponent from "@/core/components/TooltipComponent";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
+import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 
 interface Props {
   tramite: TramiteVM;
@@ -87,6 +90,11 @@ export default function UpdateTramiteStatusModal({
     tramitation_date: null,
   });
   const [isOpen, setIsOpen] = useState(false);
+  const [salesCommissionTouched, setSalesCommissionTouched] = useState(false);
+  const { activeSuppliers } = useActiveEnergySuppliers();
+  const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
+    tramite.user_id,
+  );
 
   const isComercial = userData && userData.role === "2";
   const isTramitable = formData.status === "Tramitable";
@@ -98,6 +106,35 @@ export default function UpdateTramiteStatusModal({
 
   // Estado para controlar si podemos actualizar
   const [canUpdate, setCanUpdate] = useState(isTramitable || isBorrador);
+
+  useEffect(() => {
+    if (salesCommissionTouched) return;
+
+    const calculatedCommission = calculateSalesPersonCommission({
+      baseCommission: formData.comision,
+      supplierId: tramite.provider,
+      supplierName: tramite.provider,
+      commissions: userCompanyCommissions,
+      suppliers: activeSuppliers,
+    });
+
+    if (calculatedCommission === null) return;
+
+    setFormData((prev) => {
+      if (prev.comision_sales_person === calculatedCommission) return prev;
+
+      return {
+        ...prev,
+        comision_sales_person: calculatedCommission,
+      };
+    });
+  }, [
+    activeSuppliers,
+    formData.comision,
+    salesCommissionTouched,
+    tramite.provider,
+    userCompanyCommissions,
+  ]);
 
   // Verificar si necesitamos confirmación de comisiones
   const needsConfirmation =
@@ -157,6 +194,7 @@ export default function UpdateTramiteStatusModal({
       | React.ChangeEvent<HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    if (name === "comision_sales_person") setSalesCommissionTouched(true);
 
     setFormData((prev) => ({
       ...prev,
@@ -621,6 +659,12 @@ export default function UpdateTramiteStatusModal({
                         label="Comisión Comercial"
                         onChange={handleChange}
                       />
+                      {!salesCommissionTouched && (
+                        <p className="text-xs text-primary-500">
+                          Calculada automáticamente si existe una regla para
+                          esta comercializadora.
+                        </p>
+                      )}
                       {needsConfirmation && (
                         <div className="flex items-center space-x-2 mt-1">
                           <Checkbox

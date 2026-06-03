@@ -7,11 +7,15 @@ import { DateRange } from "react-day-picker";
 import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 
 interface ActiveFiltersProps {
   statusFilter: string[] | undefined;
   dateRange: DateRange | undefined;
   userFilter: string[] | undefined;
+  companyFilter: string[] | undefined;
+  excludeCompany: boolean;
+  excludeUser: boolean;
   isComercial: boolean;
   onResetFilters: () => void;
 }
@@ -20,13 +24,19 @@ export function ActiveFilters({
   statusFilter,
   dateRange,
   userFilter,
+  companyFilter,
+  excludeCompany,
+  excludeUser,
   isComercial,
   onResetFilters,
 }: ActiveFiltersProps) {
+  const { activeSuppliers } = useActiveEnergySuppliers();
+
   const hasActiveFilters =
     (statusFilter && statusFilter.length > 0) ||
     (dateRange && (dateRange.from || dateRange.to)) ||
-    (userFilter && userFilter.length > 0 && !isComercial);
+    (userFilter && userFilter.length > 0 && !isComercial) ||
+    (companyFilter && companyFilter.length > 0);
 
   if (!hasActiveFilters) return null;
 
@@ -51,6 +61,14 @@ export function ActiveFilters({
       return `Hasta ${format(range.to, "dd/MM/yy", { locale: es })}`;
     }
     return "";
+  };
+
+  const getCompanyLabel = (values: string[]) => {
+    const labels = values.map(
+      (value) =>
+        activeSuppliers.find((supplier) => supplier.id === value)?.name || value
+    );
+    return labels.join(", ");
   };
 
   return (
@@ -85,10 +103,24 @@ export function ActiveFilters({
               variant="secondary"
               className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 flex items-center px-3 py-1"
             >
-              <span className="text-xs font-medium">Comerciales:</span>
+              <span className="text-xs font-medium">
+                {excludeUser ? "Excluir comerciales:" : "Comerciales:"}
+              </span>
               <span className="text-xs">
                 {userFilter.length} seleccionado(s)
               </span>
+            </Badge>
+          )}
+
+          {companyFilter && companyFilter.length > 0 && (
+            <Badge
+              variant="secondary"
+              className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 flex items-center px-3 py-1"
+            >
+              <span className="text-xs font-medium">
+                {excludeCompany ? "Excluir compañía:" : "Compañía:"}
+              </span>
+              <span className="text-xs">{getCompanyLabel(companyFilter)}</span>
             </Badge>
           )}
         </div>

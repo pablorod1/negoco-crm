@@ -15,6 +15,7 @@ interface FinancialCardProps {
   userData: User;
   onUpdate: () => void;
   isEditable: boolean | null;
+  embedded?: boolean;
 }
 
 export default function FinancialCard({
@@ -22,13 +23,20 @@ export default function FinancialCard({
   userData,
   onUpdate,
   isEditable,
+  embedded = false,
 }: FinancialCardProps) {
-  return (
-    <Card>
-      <CardHeader className="pb-4">
+  const content = (
+    <>
+      <CardHeader className={embedded ? "p-0 pb-3" : "pb-4"}>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-            <div className="h-2 w-2 bg-gray-600 rounded-full"></div>
+          <CardTitle
+            className={
+              embedded
+                ? "text-sm font-semibold text-gray-800 flex items-center gap-2"
+                : "text-base font-semibold text-gray-800 flex items-center gap-2"
+            }
+          >
+            <div className="size-2 bg-gray-600 rounded-full"></div>
             Información Financiera
           </CardTitle>
           {tramite.plan ? (
@@ -38,7 +46,7 @@ export default function FinancialCard({
           ) : null}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className={embedded ? "p-0" : undefined}>
         <TramiteComissionsSection
           tramite={tramite}
           userData={userData}
@@ -46,6 +54,20 @@ export default function FinancialCard({
           isEditable={isEditable}
         />
       </CardContent>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        {content}
+      </section>
+    );
+  }
+
+  return (
+    <Card>
+      {content}
     </Card>
   );
 }

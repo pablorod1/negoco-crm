@@ -9,8 +9,8 @@ import {
   STATUS_TYPES,
   LIQUIDEZ_STATUS,
   CONTRACT_TYPES,
-  COMPANIES,
 } from "@/tramites/constants";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 
 interface ActiveFiltersProps {
   statusFilter: string[] | undefined;
@@ -24,6 +24,8 @@ interface ActiveFiltersProps {
   paymentDateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   providerFilter: string[] | undefined;
+  excludeCompany: boolean;
+  excludeUser: boolean;
   isComercial: boolean;
   onResetFilters: () => void;
   onRemoveProvider: (provider: string) => void;
@@ -41,10 +43,21 @@ export function ActiveFilters({
   paymentDateRange,
   userFilter,
   providerFilter,
+  excludeCompany,
+  excludeUser,
   isComercial,
   onResetFilters,
   onRemoveProvider,
 }: ActiveFiltersProps) {
+  const { activeSuppliers } = useActiveEnergySuppliers();
+
+  const companyLabel = companyFilter
+    ?.map(
+      (value) =>
+        activeSuppliers.find((supplier) => supplier.id === value)?.name || value
+    )
+    .join(", ");
+
   const hasActiveFilters =
     (statusFilter && statusFilter.length > 0) ||
     (liquidezStatusFilter && liquidezStatusFilter.length > 0) ||
@@ -115,10 +128,10 @@ export function ActiveFilters({
               variant="secondary"
               className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 flex items-center px-3 py-1"
             >
-              <span className="text-xs font-medium">Compañía:</span>
-              <span className="text-xs">
-                {getFilterLabel("select", companyFilter, COMPANIES)}
+              <span className="text-xs font-medium">
+                {excludeCompany ? "Excluir compañía:" : "Compañía:"}
               </span>
+              <span className="text-xs">{companyLabel}</span>
             </Badge>
           )}
 
@@ -192,7 +205,9 @@ export function ActiveFilters({
               variant="secondary"
               className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 flex items-center px-3 py-1"
             >
-              <span className="text-xs font-medium">Comerciales:</span>
+              <span className="text-xs font-medium">
+                {excludeUser ? "Excluir comerciales:" : "Comerciales:"}
+              </span>
               <span className="text-xs">
                 {userFilter.length} seleccionado(s)
               </span>

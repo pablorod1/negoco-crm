@@ -140,8 +140,11 @@ function UsersGridTable({
   const actionColumn: ColumnDef<User, string> = columnHelper.accessor("id", {
     cell: (info) => (
       <div className="flex items-center gap-1">
-        {(isAdmin || isBackoffice) && (
-          <EditUserConfigModal user={info.row.original} />
+        {(isAdmin) && (
+          <EditUserConfigModal
+            user={info.row.original}
+            onUpdated={handleUserUpdated}
+          />
         )}
         {info.row.original.banned ? (
           <UnbanUserConfirmationModal
@@ -160,7 +163,7 @@ function UsersGridTable({
   });
 
   // Combinamos las columnas según el rol
-  const columns: ColumnDef<User, string>[] = isAdmin || isBackoffice
+  const columns: ColumnDef<User, string>[] = isAdmin
     ? [...baseColumns, actionColumn]
     : baseColumns;
 
@@ -201,6 +204,12 @@ function UsersGridTable({
         user.company?.toLowerCase().includes(value)
     );
     setFilteredUsers(filtered);
+  };
+
+  const handleUserUpdated = (updatedUser: User) => {
+    setFilteredUsers((current) =>
+      current.map((user) => (user.id === updatedUser.id ? updatedUser : user))
+    );
   };
 
   return (
@@ -258,7 +267,12 @@ function UsersGridTable({
               </p>
             </div>
           ) : isGridView ? (
-            <GridView users={filteredUsers} isAdmin={isAdmin} isBackoffice={isBackoffice} />
+            <GridView
+              users={filteredUsers}
+              isAdmin={isAdmin}
+              isBackoffice={isBackoffice}
+              onUserUpdated={handleUserUpdated}
+            />
           ) : (
             <div className="border border-gray-200 rounded-4xl overflow-hidden">
               <table className="min-w-full bg-white">
@@ -318,7 +332,17 @@ function UsersGridTable({
 }
 
 // Vista Grid minimalista y elegante
-function GridView({ users, isAdmin, isBackoffice }: { users: User[]; isAdmin: boolean; isBackoffice: boolean }) {
+function GridView({
+  users,
+  isAdmin,
+  isBackoffice,
+  onUserUpdated,
+}: {
+  users: User[];
+  isAdmin: boolean;
+  isBackoffice: boolean;
+  onUserUpdated: (user: User) => void;
+}) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-4">
       {users.map((user) => (
@@ -343,7 +367,7 @@ function GridView({ users, isAdmin, isBackoffice }: { users: User[]; isAdmin: bo
             </div>
             {(isAdmin || isBackoffice) && (
               <div className="flex-shrink-0 flex items-center gap-1">
-                <EditUserConfigModal user={user} />
+                <EditUserConfigModal user={user} onUpdated={onUserUpdated} />
                 {user.banned ? (
                   <UnbanUserConfirmationModal
                     userName={user.name}

@@ -154,9 +154,11 @@ export function FilterSheet({
               <MultipleSelector
                 value={getSelectedOptions(companyFilter, supplierOptions)}
                 defaultOptions={convertToOptions(supplierOptions)}
-                onChange={(options) =>
-                  setCompanyFilter(convertFromOptions(options))
-                }
+                onChange={(options) => {
+                  const values = convertFromOptions(options);
+                  setCompanyFilter(values);
+                  if (values.length === 0) setExcludeCompany(false);
+                }}
                 onSearch={(value) => handleSearch(value, supplierOptions)}
                 placeholder="Seleccionar compañías"
                 hidePlaceholderWhenSelected

@@ -59,7 +59,7 @@ export default function SendResetPassForm({ setForgotPass }: Props) {
     setIsLoading(true);
     setErrors({});
     try {
-      const response = await authClient.forgetPassword({
+      const response = await authClient.requestPasswordReset({
         email: formData.email,
         redirectTo: "/reset-pass",
       });
@@ -159,4 +159,3 @@ export default function SendResetPassForm({ setForgotPass }: Props) {
     </>
   );
 }
-

@@ -72,6 +72,9 @@ const ComparativasHeader = <TData,>({
     statusFilter,
     dateRange,
     userFilter,
+    companyFilter,
+    excludeCompany,
+    excludeUser,
     saveFiltersToStorage,
     activeFilters.length,
   ]);
@@ -133,6 +136,9 @@ const ComparativasHeader = <TData,>({
           statusFilter={statusFilter}
           dateRange={dateRange}
           userFilter={userFilter}
+          companyFilter={companyFilter}
+          excludeCompany={excludeCompany}
+          excludeUser={excludeUser}
           isComercial={isComercial}
           onResetFilters={resetFilters}
         />

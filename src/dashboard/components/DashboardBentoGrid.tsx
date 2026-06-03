@@ -21,11 +21,20 @@ export default function DashboardBentoGrid() {
     useTicketsData(userData);
   const permissions = getUserRolePermissions(userData);
   const [currentView, setCurrentView] = useState<ViewType>("main");
+  const canAccessMetrics = permissions.isDireccion;
+  const visibleCurrentView: ViewType =
+    canAccessMetrics || currentView !== "metrics" ? currentView : "main";
 
   useEffect(() => {
     fetchData();
     fetchTicketsStats();
   }, [fetchData, fetchTicketsStats]);
+
+  useEffect(() => {
+    if (!canAccessMetrics && currentView === "metrics") {
+      setCurrentView("main");
+    }
+  }, [canAccessMetrics, currentView]);
 
   const handleRefreshData = () => {
     refreshData();
@@ -42,7 +51,7 @@ export default function DashboardBentoGrid() {
     totalConsumption: dashboardData.totalConsumption,
     refreshData: handleRefreshData,
     getPlan,
-    currentView,
+    currentView: visibleCurrentView,
     ticketsData,
   };
 
@@ -95,9 +104,9 @@ export default function DashboardBentoGrid() {
       {/* View Toggle */}
       <DashboardViewToggle
         getPlan={getPlan}
-        currentView={currentView}
+        currentView={visibleCurrentView}
         onViewChange={setCurrentView}
-        isDireccion={permissions.isDireccion}
+        isDireccion={canAccessMetrics}
       />
 
       {/* Dashboard View */}
@@ -108,7 +117,7 @@ export default function DashboardBentoGrid() {
         refreshData={refreshData}
         getPlan={getPlan}
         permissions={permissions}
-        currentView={currentView}
+        currentView={visibleCurrentView}
       />
     </section>
   );

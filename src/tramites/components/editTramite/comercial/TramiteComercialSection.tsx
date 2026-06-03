@@ -121,27 +121,31 @@ export default function TramiteComercialSection({
     }
   };
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-700">Comercial</h4>
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Comercial
+        </h4>
         {isEditable && !isEditMode ? (
           <Button
             size="sm"
             variant="ghost"
             onClick={() => setIsEditMode(!isEditMode)}
-            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100"
           >
-            <UserPen className="h-4 w-4 mr-2" />
+            <UserPen className="mr-1.5 size-3.5" />
             Cambiar
           </Button>
         ) : null}
       </div>
       {!isEditMode ? (
-        <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-200">
-          <AvatarComponent userData={user as User} className=" h-12 w-12" />
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-3 py-2.5">
+          <AvatarComponent userData={user as User} className="size-9" />
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-gray-900 truncate">{user.name}</h4>
-            <div className="flex items-center gap-2 mt-1">
+            <h4 className="truncate text-sm font-semibold text-gray-900">
+              {user.name}
+            </h4>
+            <div className="mt-0.5 flex items-center gap-1.5">
               <TooltipComponent
                 content={
                   <div className="flex items-center gap-2">
@@ -150,14 +154,14 @@ export default function TramiteComercialSection({
                       size="icon"
                       variant="ghost"
                       onClick={() => copyLink(user.email as string)}
-                      className="h-6 w-6"
+                      className="size-6"
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="size-3" />
                     </Button>
                   </div>
                 }
               >
-                <p className="text-sm text-gray-500 truncate max-w-64">
+                <p className="max-w-64 truncate text-xs text-gray-500">
                   {user.email}
                 </p>
               </TooltipComponent>
@@ -165,9 +169,9 @@ export default function TramiteComercialSection({
                 size="icon"
                 variant="ghost"
                 onClick={() => copyLink(user.email as string)}
-                className="h-6 w-6 text-gray-400 hover:text-gray-600"
+                className="size-6 text-gray-400 hover:text-gray-600"
               >
-                <Copy className="h-3 w-3" />
+                <Copy className="size-3" />
               </Button>
             </div>
           </div>
@@ -188,7 +192,7 @@ export default function TramiteComercialSection({
               size="sm"
               onClick={() => setIsEditMode(false)}
             >
-              <CircleX className="h-4 w-4 mr-2" />
+              <CircleX className="mr-2 size-4" />
               Cancelar
             </Button>
           </div>

@@ -1,4 +1,12 @@
-﻿import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+﻿import { sql } from "drizzle-orm";
+import {
+  check,
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
@@ -13,8 +21,6 @@ export const user = sqliteTable("user", {
   banReason: text("ban_reason"),
   banExpires: integer("ban_expires", { mode: "timestamp" }),
   superId: text("super_id"),
-  commissionPct: real("commission_pct"),
-  defaultNotes: text("default_notes"),
 });
 
 export const session = sqliteTable("session", {
@@ -53,6 +59,51 @@ export const account = sqliteTable("account", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
+
+export const userCompanyCommissions = sqliteTable(
+  "user_company_commissions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id),
+    comercializadoraId: text("comercializadora_id").notNull(),
+    commissionType: text("commission_type").notNull(),
+    commissionValue: real("commission_value").notNull().default(0),
+    createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("user_company_commissions_user_company_unique").on(
+      table.userId,
+      table.comercializadoraId,
+    ),
+    check(
+      "user_company_commissions_type_check",
+      sql`${table.commissionType} IN ('percent', 'fixed')`,
+    ),
+  ],
+);
+
+export const userDefaultNotes = sqliteTable(
+  "user_default_notes",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id),
+    target: text("target").notNull(),
+    note: text("note").notNull(),
+    createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    check(
+      "user_default_notes_target_check",
+      sql`${table.target} IN ('global', 'tramites', 'comparativas')`,
+    ),
+  ],
+);
 
 export const verification = sqliteTable("verification", {
   id: text("id").primaryKey(),

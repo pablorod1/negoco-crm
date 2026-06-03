@@ -1,6 +1,5 @@
 import { ClientListItem } from "@/clientes/components/ClientsList";
 import { User } from "@/core/types";
-import { SignerDB } from "@/tramites/types/tramite.types";
 import {
   Card,
   CardContent,
@@ -52,6 +51,9 @@ export default function ClientMainView({
   onUpdate,
   userData,
 }: ClientMainViewProps) {
+  const canEditSigner =
+    client.type === "Empresa" || client.type === "Comunidad de Propietarios";
+
   // Contact handling functions
   const handleWhatsAppClick = () => {
     if (!client?.phone) {
@@ -172,10 +174,10 @@ export default function ClientMainView({
                     onUpdate={onUpdate}
                   />
                 ) : null}
-                {"signer" in client && client.signer ? (
+                {canEditSigner ? (
                   <SignerEditor
                     clientId={client.id}
-                    signer={client.signer as SignerDB}
+                    signer={client.signer ?? null}
                     onUpdated={onUpdate}
                   />
                 ) : null}

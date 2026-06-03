@@ -15,6 +15,7 @@ interface ComercialCardProps {
   userData: User;
   onUpdate: () => void;
   isComercialEditable: boolean | null;
+  embedded?: boolean;
 }
 
 export default function ComercialCard({
@@ -22,18 +23,25 @@ export default function ComercialCard({
   userData,
   onUpdate,
   isComercialEditable,
+  embedded = false,
 }: ComercialCardProps) {
   const isComercial = isComercialUser(userData.role);
 
-  return (
-    <Card className=" lg:col-span-1 xl:col-span-1">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-          <div className="h-2 w-2 bg-gray-600 rounded-full"></div>
+  const content = (
+    <>
+      <CardHeader className={embedded ? "p-0 pb-3" : "pb-4"}>
+        <CardTitle
+          className={
+            embedded
+              ? "text-sm font-semibold text-gray-800 flex items-center gap-2"
+              : "text-base font-semibold text-gray-800 flex items-center gap-2"
+          }
+        >
+          <div className="size-2 bg-gray-600 rounded-full"></div>
           Comercial {!isComercial ? "y Proveedor" : ""}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className={embedded ? "space-y-3 p-0" : "space-y-4"}>
         <TramiteComercialSection
           user={tramite.user as User}
           isEditable={isComercialEditable}
@@ -45,6 +53,20 @@ export default function ComercialCard({
           <ProviderSection tramite={tramite} onUpdate={onUpdate} />
         )}
       </CardContent>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        {content}
+      </section>
+    );
+  }
+
+  return (
+    <Card className=" lg:col-span-1 xl:col-span-1">
+      {content}
     </Card>
   );
 }

@@ -16,6 +16,8 @@ interface ComissionsFormProps {
   setFormDataComissions: React.Dispatch<
     React.SetStateAction<Partial<ComissionFormValues>>
   >;
+  onSalesCommissionManualChange?: (field: keyof ComissionFormValues) => void;
+  showAutoSalesCommissionHint?: boolean;
 }
 
 // Using memo to prevent unnecessary re-renders
@@ -24,9 +26,14 @@ const ComissionsForm = memo(
     comparativa,
     setFormDataComissions,
     formDataComissions,
+    onSalesCommissionManualChange,
+    showAutoSalesCommissionHint,
   }: ComissionsFormProps) => {
     const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { name, value } = e.target;
+      if (name.startsWith("comision_sales_person_")) {
+        onSalesCommissionManualChange?.(name as keyof ComissionFormValues);
+      }
       // Convert string to number, handle empty strings as undefined
       const numericValue = value === "" ? undefined : parseFloat(value);
       setFormDataComissions((prev) => ({
@@ -96,6 +103,12 @@ const ComissionsForm = memo(
               />
             )}
           </div>
+          {showAutoSalesCommissionHint && (
+            <p className="text-xs text-primary-500">
+              Calculada automáticamente si existe una regla para esta
+              comercializadora.
+            </p>
+          )}
         </div>
       </div>
     );

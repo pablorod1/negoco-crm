@@ -26,6 +26,13 @@ export function DatePickerDemo({
   modifiers,
   modifiersStyles,
 }: Props) {
+  const [fallbackDate, setFallbackDate] = React.useState("Seleccionar fecha");
+  const selectedDate = date ? formatDate(date.toString()) : "";
+
+  React.useEffect(() => {
+    setFallbackDate(new Date().toLocaleDateString());
+  }, []);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -34,8 +41,7 @@ export function DatePickerDemo({
             ${!date && "text-muted-foreground"}`}
         >
           <CalendarIcon />
-          {formatDate(date?.toString() as string) ||
-            new Date().toLocaleDateString()}
+          {selectedDate || fallbackDate}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
@@ -46,7 +52,6 @@ export function DatePickerDemo({
           onSelect={setDate}
           modifiers={modifiers}
           modifiersStyles={modifiersStyles}
-          initialFocus
         />
       </PopoverContent>
     </Popover>

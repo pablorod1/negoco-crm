@@ -1,11 +1,14 @@
 import { User } from "@/core/types";
 import { DashboardData } from "@/dashboard/hooks/useDashboardData";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Transition } from "framer-motion";
 import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramitesBarChart";
-import { MetricsView } from "@/dashboard/components/charts/MetricsView";
 import { ObjetivosCard } from "@/dashboard/components/objectives/ObjectivesSection";
 import { TeamTramitesBarChart } from "@/dashboard/components/charts/TeamTramitesBarChar";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
+import type { DashboardView } from "../components/ViewToggle";
+
+type NonAdminDashboardView = Exclude<DashboardView, "metrics">;
 
 interface ComercialLayoutProps {
   userData: User;
@@ -13,7 +16,7 @@ interface ComercialLayoutProps {
   dashboardData: DashboardData;
   refreshData: () => void;
   hasSubComerciales?: boolean;
-  view?: "main" | "metrics" | "incidencias";
+  view?: NonAdminDashboardView;
 }
 
 export const ComercialLayout = ({
@@ -28,39 +31,11 @@ export const ComercialLayout = ({
     out: { opacity: 0, y: -20 },
   };
 
-  const pageTransition = {
+  const pageTransition: Transition = {
     type: "tween",
     ease: "anticipate",
     duration: 0.3,
   };
-
-  // Metrics view
-  if (view === "metrics") {
-    return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="metrics"
-          initial="initial"
-          animate="in"
-          exit="out"
-          variants={pageVariants}
-          transition={pageTransition}
-          className="space-y-6"
-        >
-          {/* Métricas Section */}
-          <motion.div
-            className="lg:col-span-1"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
-          >
-            <MetricsView loading={loading} userData={userData} />
-          </motion.div>
-         
-        </motion.div>
-      </AnimatePresence>
-    );
-  }
 
   // Incidencias view
   if (view === "incidencias") {

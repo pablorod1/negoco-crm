@@ -37,6 +37,7 @@ export interface TramiteDB {
   renovation_date: string;
   collection_date: string | null;
   payment_date: string | null;
+  rejected_date: string | null;
   sales_name: string;
   comision_sales_person: number;
   comision: number;
@@ -46,7 +47,6 @@ export interface TramiteDB {
   internal_notes: string[];
   client_id: string;
   user_id: string;
-  rejected_date?: string | null;
   provider?: string | null;
   plan?: "fijo" | "indexado" | null;
   renewal_count: number;
@@ -86,6 +86,7 @@ export interface TramiteRow {
   renovation_date: string;
   collection_date: string | null;
   payment_date: string | null;
+  rejected_date: string | null;
   sales_name: string;
   client_name: string;
   client_email: string;

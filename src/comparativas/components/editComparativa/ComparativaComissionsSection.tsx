@@ -19,6 +19,7 @@ interface Props {
   comparativa: ComparativaVM;
   onUpdate: () => void;
   canEdit: boolean;
+  embedded?: boolean;
 }
 
 interface FormData {
@@ -33,6 +34,7 @@ export default function ComparativaComissionsSection({
   comparativa,
   onUpdate,
   canEdit,
+  embedded = false,
 }: Props) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -175,10 +177,10 @@ export default function ComparativaComissionsSection({
     setIsEditMode(false);
   };
 
-  return (
-    <Card>
+  const content = (
+    <>
       {/* Header with edit button */}
-      <CardHeader>
+      <CardHeader className={embedded ? "p-0 pb-3" : undefined}>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
             <Euro className="h-4 w-4" />
@@ -197,10 +199,10 @@ export default function ComparativaComissionsSection({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className={embedded ? "p-0" : undefined}>
         {!isEditMode ? (
           /* View Mode */
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-6">
             {/* Organization Commissions */}
             {!isComercial && (
               <div>
@@ -364,6 +366,16 @@ export default function ComparativaComissionsSection({
           </div>
         )}
       </CardContent>
+    </>
+  );
+
+  if (embedded) {
+    return <div>{content}</div>;
+  }
+
+  return (
+    <Card>
+      {content}
     </Card>
   );
 }

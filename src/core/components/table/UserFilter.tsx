@@ -128,7 +128,11 @@ export default function UserFilter({
       <MultipleSelector
         value={getSelectedOptions(userFilter, comerciales)}
         defaultOptions={convertToOptions(comerciales)}
-        onChange={(options) => setUserFilter(convertFromOptions(options))}
+        onChange={(options) => {
+          const values = convertFromOptions(options);
+          setUserFilter(values);
+          if (values.length === 0) setExcludeUser?.(false);
+        }}
         placeholder="Seleccionar comercial"
         hidePlaceholderWhenSelected
         onSearch={handleSearch}

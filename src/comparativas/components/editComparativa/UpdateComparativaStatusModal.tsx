@@ -12,7 +12,7 @@ import {
   ComparativaStatus,
   ComparativaVM,
 } from "@/comparativas/types/comparativa.types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { CircleCheck, CircleX } from "lucide-react";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
@@ -23,6 +23,9 @@ import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
 import { Separator } from "@/core/components/ui/separator";
 import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
 import { formatUUID } from "@/core/utils/format";
+import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
+import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -62,6 +65,72 @@ export default function UpdateComparativaStatusModal({
           }
   );
   const [loading, setLoading] = useState(false);
+  const [manualSalesCommissionFields, setManualSalesCommissionFields] =
+    useState<Partial<Record<keyof ComissionFormValues, boolean>>>({});
+  const { activeSuppliers } = useActiveEnergySuppliers();
+  const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
+    comparativa.user.id,
+  );
+
+  useEffect(() => {
+    setFormDataComissions((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      if (
+        comparativa.plan.includes("fijo") &&
+        !manualSalesCommissionFields.comision_sales_person_fijo
+      ) {
+        const calculatedCommission = calculateSalesPersonCommission({
+          baseCommission: next.comision_fijo ?? 0,
+          supplierId: comparativa.company_id,
+          supplierName: comparativa.company_name,
+          commissions: userCompanyCommissions,
+          suppliers: activeSuppliers,
+        });
+
+        if (
+          calculatedCommission !== null &&
+          next.comision_sales_person_fijo !== calculatedCommission
+        ) {
+          next.comision_sales_person_fijo = calculatedCommission;
+          changed = true;
+        }
+      }
+
+      if (
+        comparativa.plan.includes("indexado") &&
+        !manualSalesCommissionFields.comision_sales_person_indexado
+      ) {
+        const calculatedCommission = calculateSalesPersonCommission({
+          baseCommission: next.comision_indexado ?? 0,
+          supplierId: comparativa.company_id,
+          supplierName: comparativa.company_name,
+          commissions: userCompanyCommissions,
+          suppliers: activeSuppliers,
+        });
+
+        if (
+          calculatedCommission !== null &&
+          next.comision_sales_person_indexado !== calculatedCommission
+        ) {
+          next.comision_sales_person_indexado = calculatedCommission;
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [
+    activeSuppliers,
+    comparativa.company_id,
+    comparativa.company_name,
+    comparativa.plan,
+    formDataComissions.comision_fijo,
+    formDataComissions.comision_indexado,
+    manualSalesCommissionFields,
+    userCompanyCommissions,
+  ]);
 
   const onClose = () => {
     setIsOpen(false);
@@ -70,6 +139,7 @@ export default function UpdateComparativaStatusModal({
   const handleOpen = () => {
     setIsOpen(true);
     setNewStatus(comparativa.status);
+    setManualSalesCommissionFields({});
   };
 
   const handleChange = (value: string) => {
@@ -128,7 +198,6 @@ export default function UpdateComparativaStatusModal({
         return;
       } else {
         const changes = checkComissionsChanged();
-
         const res = await fetch(
           `/api/v2/comparisons/${comparativa.id}/status`,
           {
@@ -136,7 +205,9 @@ export default function UpdateComparativaStatusModal({
             body: JSON.stringify({
               status: newStatus,
               comissions: changes ? changes : undefined,
-              tramite_id: comparativa.tramite_id,
+              tramite_id: comparativa.tramite_id ?? undefined,
+              user_id: userData.id,
+              user_role: userData.role,
             }),
             headers: {
               "Content-Type": "application/json",
@@ -259,6 +330,10 @@ export default function UpdateComparativaStatusModal({
         return "Completada";
       case "rejected":
         return "Rechazada";
+      case "rechazado_cliente":
+        return "Rechazado Cliente";
+      case "awaiting_review":
+        return "Pendiente de Revisión";
       default:
         return status;
     }
@@ -311,6 +386,16 @@ export default function UpdateComparativaStatusModal({
                     comparativa={comparativa}
                     formDataComissions={formDataComissions}
                     setFormDataComissions={setFormDataComissions}
+                    onSalesCommissionManualChange={(field) =>
+                      setManualSalesCommissionFields((prev) => ({
+                        ...prev,
+                        [field]: true,
+                      }))
+                    }
+                    showAutoSalesCommissionHint={
+                      !manualSalesCommissionFields.comision_sales_person_fijo ||
+                      !manualSalesCommissionFields.comision_sales_person_indexado
+                    }
                   />
                   <div className="flex items-start gap-1">
                     <small className="text-gray-500">*</small>

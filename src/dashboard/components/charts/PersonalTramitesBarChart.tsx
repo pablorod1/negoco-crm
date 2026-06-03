@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import type { TooltipPayloadEntry } from "recharts";
 import {
   Card,
   CardContent,
@@ -460,6 +461,8 @@ export default function PersonalTramitesChart({
                       axisLine={false}
                       tickMargin={6}
                       tickFormatter={(value) => value.slice(0, 3)}
+                      stroke="#6b7280"
+                      fontSize={12}
                       className="text-xs text-gray-500 capitalize"
                       angle={-45}
                       textAnchor="end"
@@ -469,6 +472,8 @@ export default function PersonalTramitesChart({
                       axisLine={false}
                       tickMargin={12}
                       width={30}
+                      stroke="#6b7280"
+                      fontSize={11}
                       className="text-[11px] text-gray-500"
                     />
                     <Legend
@@ -532,16 +537,25 @@ export default function PersonalTramitesChart({
                               {props.label}
                             </p>
                             {props.payload.map(
-                              (
-                                entry: {
-                                  dataKey: string;
-                                  value: number;
-                                  color: string;
-                                },
-                                index: number
-                              ) => (
+                              (entry: TooltipPayloadEntry, index: number) => {
+                                const dataKey =
+                                  typeof entry.dataKey === "string"
+                                    ? entry.dataKey
+                                    : String(entry.dataKey ?? "");
+                                const color =
+                                  entry.color ??
+                                  entry.fill ??
+                                  entry.stroke ??
+                                  "var(--primary-color-300)";
+                                const value =
+                                  typeof entry.value === "number"
+                                    ? entry.value
+                                    : Number(entry.value ?? 0);
+                                const itemKey = dataKey || entry.graphicalItemId;
+
+                                return (
                                 <div
-                                  key={index}
+                                  key={itemKey}
                                   className={cn(
                                     "flex items-center justify-between gap-4 mb-1"
                                   )}
@@ -549,29 +563,29 @@ export default function PersonalTramitesChart({
                                   <div className="flex items-center gap-2">
                                     <div
                                       className="w-3 h-3 rounded-full"
-                                      style={{ backgroundColor: entry.color }}
+                                      style={{ backgroundColor: color }}
                                     />
                                     <span className="text-gray-600">
-                                      {entry.dataKey === "active"
+                                      {dataKey === "active"
                                         ? "Activos"
-                                        : entry.dataKey === "baja"
+                                        : dataKey === "baja"
                                           ? "Bajas"
-                                          : entry.dataKey === "comision"
+                                          : dataKey === "comision"
                                             ? "Comisión"
-                                            : entry.dataKey ===
-                                                "comision_sales_person"
+                                            : dataKey === "comision_sales_person"
                                               ? isComercial
                                                 ? "Comisión"
                                                 : "Comisión Comercial"
-                                              : entry.dataKey}
+                                              : dataKey}
                                     </span>
                                   </div>
                                   <span className="font-medium text-gray-900">
-                                    {entry.value}
+                                    {value}
                                     {chartView === "comision" ? "€" : ""}
                                   </span>
                                 </div>
-                              )
+                                );
+                              }
                             )}
                           </div>
                         );

@@ -216,7 +216,7 @@ export function AbarcaPanel({
                     Comparador Energético
                   </SheetTitle>
                   <SheetDescription className="text-xs">
-                    Integración con Abarca IA
+                    Negoco Cloud AI
                   </SheetDescription>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { User } from "@/core/types";
 import { DashboardData } from "@/dashboard/hooks/useDashboardData";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Transition } from "framer-motion";
 import YearlyTramitesBarChart from "@/dashboard/components/charts/YearlyTramitesBarChart";
 import PersonalTramitesChart from "@/dashboard/components/charts/PersonalTramitesBarChart";
 import { TeamTramitesBarChart } from "@/dashboard/components/charts/TeamTramitesBarChar";
@@ -28,7 +29,7 @@ export const AdminLayout = ({
     out: { opacity: 0, y: -20 },
   };
 
-  const pageTransition = {
+  const pageTransition: Transition = {
     type: "tween",
     ease: "anticipate",
     duration: 0.3,

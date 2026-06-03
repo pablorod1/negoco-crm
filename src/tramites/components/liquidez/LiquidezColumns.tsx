@@ -172,6 +172,48 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     },
   },
   {
+    id: "Fecha de baja",
+    accessorKey: "rejected_date",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2 font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-0 justify-between w-full"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          <span className="text-xs">Baja</span>
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpIcon className="ml-2 h-3 w-3" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-3 w-3" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />
+          )}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      if (!row.original.rejected_date)
+        return <span className="text-gray-400 text-sm">---</span>;
+      return (
+        <span className="text-gray-700 text-sm">
+          {formatDate(row.original.rejected_date)}
+        </span>
+      );
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = rowA.original.rejected_date;
+      const b = rowB.original.rejected_date;
+
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+
+      return new Date(a).getTime() - new Date(b).getTime();
+    },
+  },
+  {
     id: "Comercial",
     accessorKey: "sales_name",
     header: () => (
@@ -211,10 +253,10 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex flex-col space-y-1">
-          {row.original.CUPS.map((CUPS, index) => (
+          {row.original.CUPS.map((CUPS) => (
             <div
               onClick={() => copyLink(CUPS)}
-              key={index}
+              key={CUPS}
               className="flex items-center gap-2 group cursor-pointer p-1 rounded hover:bg-gray-50 transition-colors"
             >
               <span className="text-gray-700 text-sm font-mono">{CUPS}</span>
@@ -234,9 +276,9 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex flex-col space-y-1">
-          {row.original.new_company.map((company, index) => (
+          {row.original.new_company.map((company) => (
             <span
-              key={index}
+              key={company}
               className="text-gray-700 text-sm text-ellipsis overflow-hidden whitespace-nowrap max-w-44 w-full"
             >
               {company}
