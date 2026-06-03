@@ -41,6 +41,71 @@ const addDays = (date: Date, days: number) => {
   return nextDate;
 };
 
+const getDateFromKey = (dateKey: string) => {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const getMonthEnd = (year: number, month: number) =>
+  new Date(year, month, 0);
+
+const minDate = (a: Date, b: Date) => (a.getTime() <= b.getTime() ? a : b);
+
+const getRenewalEligibilityCutoff = ({
+  timeRange,
+  month,
+  year,
+  dateTo,
+}: {
+  timeRange?: z.infer<typeof QueryParamsSchema>["time_range"];
+  month?: string;
+  year?: string;
+  dateTo?: string;
+}) => {
+  const now = new Date();
+  const today = getDateFromKey(toDateKey(now));
+
+  if (dateTo) {
+    return toDateKey(addDays(getDateFromKey(dateTo), 60));
+  }
+
+  let periodEnd: Date;
+  switch (timeRange) {
+    case "current_month":
+      periodEnd = minDate(
+        getMonthEnd(now.getFullYear(), now.getMonth() + 1),
+        today,
+      );
+      break;
+    case "current_week": {
+      const weekEnd = addDays(getWeekStart(now), 6);
+      periodEnd = minDate(weekEnd, today);
+      break;
+    }
+    case "last_week": {
+      const currentWeekStart = getWeekStart(now);
+      periodEnd = addDays(currentWeekStart, -1);
+      break;
+    }
+    case "90d":
+      periodEnd = today;
+      break;
+    case "year":
+      periodEnd = minDate(new Date(now.getFullYear(), 11, 31), today);
+      break;
+    default:
+      if (month || year) {
+        const selectedYear = Number(year ?? now.getFullYear());
+        const selectedMonth = Number(month ?? now.getMonth() + 1);
+        periodEnd = minDate(getMonthEnd(selectedYear, selectedMonth), today);
+      } else {
+        periodEnd = today;
+      }
+  }
+
+  return toDateKey(addDays(periodEnd, 60));
+};
+
 const createUserFilter = (
   role: string,
   id: string,
@@ -247,12 +312,10 @@ export async function GET(req: NextRequest) {
       dateFrom,
       dateTo,
     });
-    const joinedTramitesDateFilter = buildDateFilter({
-      column: "t.activation_date",
+    const renewalEligibilityCutoff = getRenewalEligibilityCutoff({
       timeRange,
       month,
       year,
-      dateFrom,
       dateTo,
     });
     const comparativasWhere = [
@@ -264,10 +327,14 @@ export async function GET(req: NextRequest) {
       tramitesDateFilter.condition,
       tramitesUserFilter.filter,
     ].filter(Boolean).join(" AND ");
-    const joinedTramitesWhere = [
+    const renewedContractsWhere = [
+      "con.type = 'Renovación'",
+      joinedTramitesUserFilter.filter,
+    ].filter(Boolean).join(" AND ");
+    const pendingRenewableContractsWhere = [
       "t.status = 'Activo'",
-      "t.renewal_count > 0",
-      joinedTramitesDateFilter.condition,
+      "con.type <> 'Renovación'",
+      "date(substr(t.renovation_date, 1, 10)) <= date(?)",
       joinedTramitesUserFilter.filter,
     ].filter(Boolean).join(" AND ");
     const comparativasArgs = [
@@ -278,8 +345,9 @@ export async function GET(req: NextRequest) {
       ...tramitesDateFilter.args,
       ...tramitesUserFilter.params,
     ];
-    const joinedTramitesArgs = [
-      ...joinedTramitesDateFilter.args,
+    const renewedContractsArgs = [...joinedTramitesUserFilter.params];
+    const pendingRenewableContractsArgs = [
+      renewalEligibilityCutoff,
       ...joinedTramitesUserFilter.params,
     ];
 
@@ -320,23 +388,44 @@ export async function GET(req: NextRequest) {
       comisionMediaPagada: Number(row.comisionMediaPagada ?? 0),
     }));
 
-    const [totalActive, renewedActive] = await Promise.all([
+    const [renewedSummary, pendingRenewable] = await Promise.all([
       runQuery(
-        `SELECT COUNT(*) as total FROM tramites WHERE ${tramitesWhere}`,
-        tramitesArgs,
+        `SELECT
+            COUNT(DISTINCT con.id) as renewedContracts,
+            COUNT(DISTINCT CASE WHEN rh.id IS NULL THEN con.id END) as legacyRenewedContracts
+          FROM contracts con
+          JOIN tramites t ON t.id = con.tramite_id
+          LEFT JOIN tramite_renewal_history rh ON rh.tramite_id = t.id
+          WHERE ${renewedContractsWhere}`,
+        renewedContractsArgs,
       ),
       runQuery(
-        `SELECT COUNT(*) as total FROM tramites WHERE ${tramitesWhere} AND renewal_count > 0`,
-        tramitesArgs,
+        `SELECT COUNT(DISTINCT con.id) as total
+          FROM contracts con
+          JOIN tramites t ON t.id = con.tramite_id
+          WHERE ${pendingRenewableContractsWhere}`,
+        pendingRenewableContractsArgs,
       ),
     ]);
-    const totalActiveTramites = Number(totalActive[0]?.total ?? 0);
-    const renewedTramites = Number(renewedActive[0]?.total ?? 0);
-    const renewalRatio = totalActiveTramites > 0 ? renewedTramites / totalActiveTramites : 0;
+    const renewedContracts = Number(renewedSummary[0]?.renewedContracts ?? 0);
+    const legacyRenewedContracts = Number(
+      renewedSummary[0]?.legacyRenewedContracts ?? 0,
+    );
+    const pendingRenewableContracts = Number(pendingRenewable[0]?.total ?? 0);
+    const renewableOpportunityTotal =
+      renewedContracts + pendingRenewableContracts;
+    const renewalRatio =
+      renewableOpportunityTotal > 0
+        ? renewedContracts / renewableOpportunityTotal
+        : 0;
 
     const renewalByTariff = await runQuery(
-      `SELECT con.plan as tariff, COUNT(*) as count FROM tramites t JOIN contracts con ON t.id = con.tramite_id WHERE ${joinedTramitesWhere} GROUP BY con.plan`,
-      joinedTramitesArgs,
+      `SELECT con.plan as tariff, COUNT(DISTINCT con.id) as count
+        FROM contracts con
+        JOIN tramites t ON t.id = con.tramite_id
+        WHERE ${renewedContractsWhere}
+        GROUP BY con.plan`,
+      renewedContractsArgs,
     );
     const renewalByTariffMap: Record<string, number> = {};
     const renewalByTariffSeries: { tariff: string; count: number }[] = [];
@@ -355,6 +444,10 @@ export async function GET(req: NextRequest) {
         comisionMediaPagada,
         ticketComisionSeries,
         renewalRatio,
+        renewedContracts,
+        pendingRenewableContracts,
+        renewableOpportunityTotal,
+        legacyRenewedContracts,
         renewalByTariff: renewalByTariffMap,
         renewalByTariffSeries,
       },

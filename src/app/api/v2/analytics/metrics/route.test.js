@@ -31,6 +31,15 @@ beforeEach(() => {
     if (sql.includes("GROUP BY con.plan")) {
       return { rows: [{ tariff: "Fijo", count: 3 }], rowsAffected: 0 };
     }
+    if (sql.includes("legacyRenewedContracts")) {
+      return {
+        rows: [{ renewedContracts: 4, legacyRenewedContracts: 1 }],
+        rowsAffected: 0,
+      };
+    }
+    if (sql.includes("con.type <> 'Renovación'")) {
+      return { rows: [{ total: 6 }], rowsAffected: 0 };
+    }
     if (sql.includes("COUNT")) {
       return { rows: [{ total: 10 }], rowsAffected: 0 };
     }
@@ -94,6 +103,11 @@ describe("GET /api/v2/analytics/metrics", () => {
     expect(body.data.renewalByTariffSeries).toEqual([
       { tariff: "Fijo", count: 3 },
     ]);
+    expect(body.data.renewedContracts).toBe(4);
+    expect(body.data.pendingRenewableContracts).toBe(6);
+    expect(body.data.renewableOpportunityTotal).toBe(10);
+    expect(body.data.legacyRenewedContracts).toBe(1);
+    expect(body.data.renewalRatio).toBe(0.4);
   });
 
   test("uses date range params when provided", async () => {
@@ -119,6 +133,11 @@ describe("GET /api/v2/analytics/metrics", () => {
       "2026-01-01",
       "2026-06-02",
     ]);
+
+    const pendingRenewableCall = execute.mock.calls.find(([stmt]) =>
+      stmt.sql.includes("con.type <> 'Renovación'"),
+    );
+    expect(pendingRenewableCall[0].args[0]).toBe("2026-08-01");
   });
 
   test("uses time range and commercial filters when provided", async () => {
@@ -142,5 +161,56 @@ describe("GET /api/v2/analytics/metrics", () => {
     );
     expect(execute.mock.calls[0][0].sql).toContain("user_id = ?");
     expect(execute.mock.calls[0][0].args).toContain("c1");
+
+    const renewalSql = execute.mock.calls
+      .map(([stmt]) => stmt.sql)
+      .filter((sql) => sql.includes("Renovación"))
+      .join("\n");
+
+    expect(renewalSql).not.toContain("renewal_count");
+    expect(renewalSql).toContain("con.type = 'Renovación'");
+    expect(renewalSql).toContain(
+      "date(substr(t.renovation_date, 1, 10)) <= date(?)",
+    );
+    expect(renewalSql).toContain("t.user_id = ?");
+  });
+
+  test("returns zero renewal ratio when there are no renewable opportunities", async () => {
+    executeImpl = async (stmt) => {
+      const sql = stmt.sql || stmt;
+      if (sql.includes("GROUP BY substr(activation_date")) {
+        return { rows: [], rowsAffected: 0 };
+      }
+      if (sql.includes("legacyRenewedContracts")) {
+        return {
+          rows: [{ renewedContracts: 0, legacyRenewedContracts: 0 }],
+          rowsAffected: 0,
+        };
+      }
+      if (sql.includes("con.type <> 'Renovación'")) {
+        return { rows: [{ total: 0 }], rowsAffected: 0 };
+      }
+      if (sql.includes("GROUP BY con.plan")) {
+        return { rows: [], rowsAffected: 0 };
+      }
+      if (sql.includes("COUNT")) {
+        return { rows: [{ total: 0 }], rowsAffected: 0 };
+      }
+      if (sql.includes("AVG")) {
+        return { rows: [{ avg: 0 }], rowsAffected: 0 };
+      }
+      return { rows: [], rowsAffected: 0 };
+    };
+
+    const { GET: freshGET } = await import("./route.ts");
+    const res = await freshGET(new Request("https://x/api/v2/analytics/metrics"));
+    const body = await res.json();
+
+    expect(body.success).toBe(true);
+    expect(body.data.renewedContracts).toBe(0);
+    expect(body.data.pendingRenewableContracts).toBe(0);
+    expect(body.data.renewableOpportunityTotal).toBe(0);
+    expect(body.data.legacyRenewedContracts).toBe(0);
+    expect(body.data.renewalRatio).toBe(0);
   });
 });
