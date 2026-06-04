@@ -115,14 +115,6 @@ export default function TramiteStatusSection({
             <div className="flex items-center gap-2">
               {getStatusBadge(tramite.status, "general")}
             </div>
-            {isBaja && tramite.rejected_date && (
-              <div className="mt-2">
-                <p className="text-xs text-gray-500">Fecha de Baja</p>
-                <p className="text-sm font-medium text-red-600">
-                  {formatDate(tramite.rejected_date)}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Liquidez Status Section */}

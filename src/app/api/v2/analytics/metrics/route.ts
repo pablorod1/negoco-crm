@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
 import { validateUserSession } from "@/core/auth/session-utils";
-import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { z } from "zod";
 import type { Client } from "@libsql/client";
 
@@ -17,8 +16,6 @@ const QueryParamsSchema = z.object({
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
-
-type SubcomercialesResult = { success: boolean; ids?: string[] };
 
 const toDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -107,9 +104,6 @@ const getRenewalEligibilityCutoff = ({
 };
 
 const createUserFilter = (
-  role: string,
-  id: string,
-  subcomerciales?: SubcomercialesResult,
   commercialId?: string,
   userColumn = "user_id",
 ) => {
@@ -117,20 +111,6 @@ const createUserFilter = (
   const filters: string[] = [];
   const selectedCommercialId =
     commercialId && commercialId !== "all" ? commercialId : "";
-
-  if (role === "2") {
-    if (subcomerciales?.success && subcomerciales.ids?.length) {
-      filters.push(
-        `(${userColumn} = ? OR ${userColumn} IN (${subcomerciales.ids
-          .map(() => "?")
-          .join(", ")}))`,
-      );
-      params.push(id, ...subcomerciales.ids);
-    } else {
-      filters.push(`${userColumn} = ?`);
-      params.push(id);
-    }
-  }
 
   if (selectedCommercialId) {
     filters.push(`${userColumn} = ?`);
@@ -225,6 +205,13 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  if (authResult.user.role !== "admin") {
+    return NextResponse.json(
+      { success: false, error: "Forbidden" },
+      { status: 403 },
+    );
+  }
+
   const client = getTursoClient(req) as Client;
   if (!client) {
     return NextResponse.json({ success: false, error: "Database error" }, { status: 500 });
@@ -248,12 +235,6 @@ export async function GET(req: NextRequest) {
   const timeRange = parsedParams.success ? parsedParams.data.time_range : undefined;
   const dateFrom = parsedParams.success ? parsedParams.data.date_from : undefined;
   const dateTo = parsedParams.success ? parsedParams.data.date_to : undefined;
-  const requestedId = parsedParams.success ? parsedParams.data.id : undefined;
-  const role = authResult.user.role;
-  const id =
-    role === "admin" || role === "1"
-      ? requestedId || authResult.user.id
-      : authResult.user.id;
   const commercialId = parsedParams.success ? parsedParams.data.commercialId : undefined;
 
   if (
@@ -273,26 +254,15 @@ export async function GET(req: NextRequest) {
       return result.rows;
     }
 
-    const subcomerciales =
-      role === "2" ? await getSubcomerciales(client, id) : undefined;
     const comparativasUserFilter = createUserFilter(
-      role,
-      id,
-      subcomerciales,
       commercialId,
       "user_id",
     );
     const tramitesUserFilter = createUserFilter(
-      role,
-      id,
-      subcomerciales,
       commercialId,
       "user_id",
     );
     const joinedTramitesUserFilter = createUserFilter(
-      role,
-      id,
-      subcomerciales,
       commercialId,
       "t.user_id",
     );

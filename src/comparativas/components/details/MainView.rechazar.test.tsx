@@ -1,14 +1,21 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
+import type React from "react";
 import { render, screen } from "@testing-library/react";
 import MainView from "./MainView";
 
-mock.module("@/comercializadoras/hooks/useEnergySupplierById", () => ({
+vi.mock("@/comercializadoras/hooks/useEnergySupplierById", () => ({
   useEnergySupplierById: () => ({ supplier: null, loading: false }),
 }));
-mock.module("@/core/view-transitions/useGenieEffect", () => ({
+vi.mock("@/core/view-transitions/useGenieEffect", () => ({
   useSidebarSlideNavigation: () => () => {},
 }));
-mock.module("@/core/contexts/UserContext", () => ({
+vi.mock("next-view-transitions", () => ({
+  Link: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props}>{children}</a>
+  ),
+  useTransitionRouter: () => ({ push: () => {} }),
+}));
+vi.mock("@/core/contexts/UserContext", () => ({
   useUser: () => ({
     userData: { id: "u1", role: "admin", organization: { id: "o1" } },
     loading: false,
@@ -42,11 +49,14 @@ const userData = {
 };
 
 describe("MainView rechazar cliente", () => {
-  test("shows 'Rechazar Cliente' action when status is completed", () => {
+  test.each([
+    ["admin"],
+    ["2"],
+  ])("shows Rechazar Cliente action for role %s", (role) => {
     render(
       <MainView
         comparativa={baseComparativa as never}
-        userData={userData as never}
+        userData={{ ...userData, role } as never}
         onUpdate={() => {}}
         isSubcomercial={false}
         isEditable
@@ -54,6 +64,9 @@ describe("MainView rechazar cliente", () => {
         isProcessed={false}
       />,
     );
-    expect(screen.getByRole("button", { name: /Rechazar Cliente/i })).toBeDefined();
+
+    const button = screen.getByRole("button", { name: /Rechazar Cliente/i });
+    expect(button).toBeDefined();
+    expect(button.textContent).toContain("Rechazar Cliente");
   });
 });

@@ -17,6 +17,8 @@ import StatusCard from "./StatusCard";
 import ComercialCard from "./ComercialCard";
 import FinancialCard from "./FinancialCard";
 import ContractSection from "@/tramites/components/editTramite/contract/ContractSection";
+import ProviderSection from "@/tramites/components/editTramite/ProviderSection";
+import { isComercialUser } from "@/tramites/utils/permissions";
 import { User as UserIcon } from "lucide-react";
 
 interface MainViewProps {
@@ -46,6 +48,7 @@ export default function MainView({
 }: MainViewProps) {
   const assignedCommercialId = tramite.user.id || tramite.user_id;
   const showPrioritySummary = !isSubcomercial;
+  const showProvider = showPrioritySummary && !isComercialUser(userData.role);
   const [predefinedNotesByUser, setPredefinedNotesByUser] = useState<{
     userId: string;
     notes: UserDefaultNote[];
@@ -58,6 +61,32 @@ export default function MainView({
       : [];
   const isLoadingPredefinedNotes =
     loadingPredefinedNotesUserId === assignedCommercialId;
+  const predefinedNotesSection = (
+    <section className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        Notas predefinidas
+      </p>
+      {isLoadingPredefinedNotes ? (
+        <p className="text-sm text-gray-500">
+          Cargando notas predefinidas&hellip;
+        </p>
+      ) : predefinedNotes.length > 0 ? (
+        <div className="space-y-2">
+          {predefinedNotes.map((note) => (
+            <div key={note.id} className="border-l border-gray-200 pl-3">
+              <p className="text-sm leading-relaxed text-gray-700">
+                {note.note}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">
+          Sin notas predefinidas para trámites.
+        </p>
+      )}
+    </section>
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -133,14 +162,12 @@ export default function MainView({
           <CardContent>
             <div
               className={cn(
-                "grid grid-cols-1 gap-4",
-                showPrioritySummary
-                  ? "xl:grid-cols-[minmax(300px,0.9fr)_minmax(360px,1.1fr)]"
-                  : "",
+                "grid grid-cols-1 gap-6",
+                showPrioritySummary ? "xl:grid-cols-2" : "",
               )}
             >
               {showPrioritySummary ? (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <FinancialCard
                     tramite={tramite}
                     userData={userData}
@@ -149,37 +176,13 @@ export default function MainView({
                     embedded
                   />
 
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Notas predefinidas
-                    </p>
-                    {isLoadingPredefinedNotes ? (
-                      <p className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                        Cargando notas predefinidas&hellip;
-                      </p>
-                    ) : predefinedNotes.length > 0 ? (
-                      <div className="space-y-2">
-                        {predefinedNotes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2"
-                          >
-                            <p className="text-sm leading-relaxed text-gray-700">
-                              {note.note}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                        Sin notas predefinidas para trámites.
-                      </p>
-                    )}
-                  </div>
+                  {showProvider ? (
+                    <ProviderSection tramite={tramite} onUpdate={onUpdate} />
+                  ) : null}
                 </div>
               ) : null}
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {showPrioritySummary ? (
                   <ComercialCard
                     tramite={tramite}
@@ -187,38 +190,11 @@ export default function MainView({
                     onUpdate={onUpdate}
                     isComercialEditable={isComercialEditable}
                     embedded
+                    showProvider={false}
                   />
                 ) : null}
 
-                {!showPrioritySummary ? (
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Notas predefinidas
-                    </p>
-                    {isLoadingPredefinedNotes ? (
-                      <p className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                        Cargando notas predefinidas&hellip;
-                      </p>
-                    ) : predefinedNotes.length > 0 ? (
-                      <div className="space-y-2">
-                        {predefinedNotes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2"
-                          >
-                            <p className="text-sm leading-relaxed text-gray-700">
-                              {note.note}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                        Sin notas predefinidas para trámites.
-                      </p>
-                    )}
-                  </div>
-                ) : null}
+                {predefinedNotesSection}
               </div>
             </div>
           </CardContent>

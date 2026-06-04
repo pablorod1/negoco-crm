@@ -16,6 +16,7 @@ interface ComercialCardProps {
   onUpdate: () => void;
   isComercialEditable: boolean | null;
   embedded?: boolean;
+  showProvider?: boolean;
 }
 
 export default function ComercialCard({
@@ -24,6 +25,7 @@ export default function ComercialCard({
   onUpdate,
   isComercialEditable,
   embedded = false,
+  showProvider = true,
 }: ComercialCardProps) {
   const isComercial = isComercialUser(userData.role);
 
@@ -49,7 +51,7 @@ export default function ComercialCard({
           tramite_id={tramite.id}
           onUpdate={onUpdate}
         />
-        {!isComercial && (
+        {showProvider && !isComercial && (
           <ProviderSection tramite={tramite} onUpdate={onUpdate} />
         )}
       </CardContent>
@@ -57,11 +59,7 @@ export default function ComercialCard({
   );
 
   if (embedded) {
-    return (
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        {content}
-      </section>
-    );
+    return <section className="space-y-3">{content}</section>;
   }
 
   return (

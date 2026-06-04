@@ -82,11 +82,13 @@ export default function MainView({
   const [predefinedNotes, setPredefinedNotes] = useState<UserDefaultNote[]>([]);
   const [isLoadingPredefinedNotes, setIsLoadingPredefinedNotes] =
     useState(false);
+  const visiblePredefinedNotes = assignedCommercialId ? predefinedNotes : [];
+  const visibleIsLoadingPredefinedNotes = assignedCommercialId
+    ? isLoadingPredefinedNotes
+    : false;
 
   useEffect(() => {
     if (!assignedCommercialId) {
-      setPredefinedNotes([]);
-      setIsLoadingPredefinedNotes(false);
       return;
     }
 
@@ -350,7 +352,7 @@ export default function MainView({
                         aria-label="Rechazar Cliente: marcar como rechazado por cliente"
                       >
                         <XCircle className="size-4" />
-                        {rechazando ? "Rechazando..." : "Rechazado por cliente"}
+                        {rechazando ? "Rechazando..." : "Rechazar Cliente"}
                       </Button>
                   </div>
                 )}
@@ -534,13 +536,13 @@ export default function MainView({
                     <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
                       Notas predefinidas
                     </p>
-                    {isLoadingPredefinedNotes ? (
+                    {visibleIsLoadingPredefinedNotes ? (
                       <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
                         Cargando notas predefinidas&hellip;
                       </p>
-                    ) : predefinedNotes.length > 0 ? (
+                    ) : visiblePredefinedNotes.length > 0 ? (
                       <div className="space-y-2">
-                        {predefinedNotes.map((note) => (
+                        {visiblePredefinedNotes.map((note) => (
                           <div
                             key={note.id}
                             className="rounded-lg border border-gray-100 bg-gray-50 p-3"

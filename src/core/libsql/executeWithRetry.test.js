@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import {
   executeReadWithRetry,
   isRetryableLibsqlError,
@@ -25,7 +25,7 @@ describe("executeReadWithRetry", () => {
   test("retries transient libsql read errors and returns the eventual result", async () => {
     let calls = 0;
     const client = {
-      execute: mock(async () => {
+      execute: vi.fn(async () => {
         calls += 1;
         if (calls === 1) throw retryableError();
         return resultSet;
@@ -44,7 +44,7 @@ describe("executeReadWithRetry", () => {
   test("does not retry non-transient query errors", async () => {
     const sqlError = new Error("SQLITE_ERROR: no such table");
     const client = {
-      execute: mock(async () => {
+      execute: vi.fn(async () => {
         throw sqlError;
       }),
     };
@@ -57,7 +57,7 @@ describe("executeReadWithRetry", () => {
 
   test("refuses writes before executing", async () => {
     const client = {
-      execute: mock(async () => resultSet),
+      execute: vi.fn(async () => resultSet),
     };
 
     await expect(
@@ -68,7 +68,7 @@ describe("executeReadWithRetry", () => {
 
   test("propagates retryable errors after three attempts", async () => {
     const client = {
-      execute: mock(async () => {
+      execute: vi.fn(async () => {
         throw retryableError();
       }),
     };

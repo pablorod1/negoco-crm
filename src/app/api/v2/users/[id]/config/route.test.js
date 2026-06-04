@@ -1,26 +1,35 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const execute = mock(() => ({ rows: [], rowsAffected: 1 }));
-const getTursoClient = mock(() => ({ execute }));
-const hashPassword = mock(async () => "hashed-password");
-let sessionResult = {
-  success: true,
-  user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
-};
+const mocks = vi.hoisted(() => ({
+  execute: vi.fn(() => ({ rows: [], rowsAffected: 1 })),
+  getTursoClient: vi.fn(),
+  hashPassword: vi.fn(async () => "hashed-password"),
+  sessionResult: {
+    success: true,
+    user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
+  },
+}));
 
-mock.module("@/core/libsql/client", () => ({ getTursoClient }));
-mock.module("@/core/auth/auth-utils", () => ({ hashPassword }));
-mock.module("@/core/auth/session-utils", () => ({
-  validateUserSession: () => sessionResult,
+mocks.getTursoClient.mockImplementation(() => ({ execute: mocks.execute }));
+
+vi.mock(import("@/core/libsql/client"), () => ({ getTursoClient: mocks.getTursoClient }));
+vi.mock(import("@/core/auth/auth-utils"), () => ({ hashPassword: mocks.hashPassword }));
+vi.mock(import("@/core/auth/session-utils"), () => ({
+  validateUserSession: () => mocks.sessionResult,
+}));
+vi.mock("/src/core/libsql/client.ts", () => ({ getTursoClient: mocks.getTursoClient }));
+vi.mock("/src/core/auth/auth-utils.ts", () => ({ hashPassword: mocks.hashPassword }));
+vi.mock("/src/core/auth/session-utils.ts", () => ({
+  validateUserSession: () => mocks.sessionResult,
 }));
 
 const configRoute = await import("./route.ts");
 
 beforeEach(() => {
-  execute.mockClear();
-  getTursoClient.mockClear();
-  hashPassword.mockClear();
-  sessionResult = {
+  mocks.execute.mockClear();
+  mocks.getTursoClient.mockClear();
+  mocks.hashPassword.mockClear();
+  mocks.sessionResult = {
     success: true,
     user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
   };
@@ -28,7 +37,7 @@ beforeEach(() => {
 
 describe("GET /users/[id]/config", () => {
   test("returns company commissions and targeted notes", async () => {
-    execute.mockImplementation(({ sql }) => {
+    mocks.execute.mockImplementation(({ sql }) => {
       if (sql.includes("user_company_commissions")) {
         return {
           rows: [
@@ -76,7 +85,7 @@ describe("GET /users/[id]/config", () => {
 
 describe("PATCH /users/[id]/config", () => {
   test("updates profile, password, commissions, and notes", async () => {
-    execute.mockImplementation(({ sql }) => {
+    mocks.execute.mockImplementation(({ sql }) => {
       if (sql.includes("SELECT id FROM user")) {
         return { rows: [{ id: "u1" }], rowsAffected: 0 };
       }
@@ -117,32 +126,32 @@ describe("PATCH /users/[id]/config", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(hashPassword).toHaveBeenCalledWith("secret");
-    expect(execute.mock.calls.some(([arg]) => arg.sql.includes("UPDATE user SET"))).toBe(true);
-    expect(execute.mock.calls.some(([arg]) => arg.sql.includes("UPDATE account"))).toBe(true);
+    expect(mocks.hashPassword).toHaveBeenCalledWith("secret");
+    expect(mocks.execute.mock.calls.some(([arg]) => arg.sql.includes("UPDATE user SET"))).toBe(true);
+    expect(mocks.execute.mock.calls.some(([arg]) => arg.sql.includes("UPDATE account"))).toBe(true);
     expect(
-      execute.mock.calls.some(([arg]) =>
+      mocks.execute.mock.calls.some(([arg]) =>
         arg.sql.includes("DELETE FROM user_company_commissions"),
       ),
     ).toBe(true);
     expect(
-      execute.mock.calls.some(([arg]) =>
+      mocks.execute.mock.calls.some(([arg]) =>
         arg.sql.includes("INSERT INTO user_company_commissions"),
       ),
     ).toBe(true);
     expect(
-      execute.mock.calls.some(([arg]) => arg.sql.includes("UPDATE user_default_notes")),
+      mocks.execute.mock.calls.some(([arg]) => arg.sql.includes("UPDATE user_default_notes")),
     ).toBe(true);
     expect(
-      execute.mock.calls.some(([arg]) => arg.sql.includes("INSERT INTO user_default_notes")),
+      mocks.execute.mock.calls.some(([arg]) => arg.sql.includes("INSERT INTO user_default_notes")),
     ).toBe(true);
     expect(
-      execute.mock.calls.some(([arg]) => arg.sql.includes("DELETE FROM user_default_notes")),
+      mocks.execute.mock.calls.some(([arg]) => arg.sql.includes("DELETE FROM user_default_notes")),
     ).toBe(true);
   });
 
   test("rejects unauthenticated requests", async () => {
-    sessionResult = { success: false };
+    mocks.sessionResult = { success: false };
     const res = await configRoute.PATCH(
       new Request("https://x/api/v2/users/u1/config", {
         method: "PATCH",
@@ -155,7 +164,7 @@ describe("PATCH /users/[id]/config", () => {
   });
 
   test("returns an error when password account is missing", async () => {
-    execute.mockImplementation(({ sql }) => {
+    mocks.execute.mockImplementation(({ sql }) => {
       if (sql.includes("SELECT id FROM user")) {
         return { rows: [{ id: "u1" }], rowsAffected: 0 };
       }

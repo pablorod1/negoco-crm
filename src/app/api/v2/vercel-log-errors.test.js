@@ -1,21 +1,34 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-let executeImpl;
-let getSubcomercialesImpl;
 let getTursoClientCalls = 0;
 
-const execute = mock((statement) => executeImpl(statement));
-const getTursoClient = mock(() => {
-  getTursoClientCalls += 1;
-  return { execute };
-});
-
-mock.module("@/core/libsql/client", () => ({
-  getTursoClient,
+const mocks = vi.hoisted(() => ({
+  executeImpl: undefined,
+  getSubcomercialesImpl: undefined,
+  execute: vi.fn((statement) => mocks.executeImpl(statement)),
+  getTursoClient: vi.fn(),
+  getSubcomerciales: vi.fn((...args) => mocks.getSubcomercialesImpl(...args)),
 }));
 
-mock.module("@/core/libsql/users/getSubcomerciales", () => ({
-  getSubcomerciales: mock((...args) => getSubcomercialesImpl(...args)),
+const getTursoClient = vi.fn(() => {
+  getTursoClientCalls += 1;
+  return { execute: mocks.execute };
+});
+
+mocks.getTursoClient.mockImplementation(getTursoClient);
+
+vi.mock("@/core/libsql/client", () => ({
+  getTursoClient: mocks.getTursoClient,
+}));
+vi.mock("/src/core/libsql/client.ts", () => ({
+  getTursoClient: mocks.getTursoClient,
+}));
+
+vi.mock("@/core/libsql/users/getSubcomerciales", () => ({
+  getSubcomerciales: mocks.getSubcomerciales,
+}));
+vi.mock("/src/core/libsql/users/getSubcomerciales.ts", () => ({
+  getSubcomerciales: mocks.getSubcomerciales,
 }));
 
 const contractsRoute = await import("./contracts/route.ts");
@@ -48,7 +61,7 @@ const contractsRequest = (query) => ({
 
 const withMutedWarn = async (callback) => {
   const originalWarn = console.warn;
-  const warn = mock(() => {});
+  const warn = vi.fn(() => {});
   console.warn = warn;
   try {
     const result = await callback(warn);
@@ -59,11 +72,11 @@ const withMutedWarn = async (callback) => {
 };
 
 beforeEach(() => {
-  execute.mockClear();
-  getTursoClient.mockClear();
+  mocks.execute.mockClear();
+  mocks.getTursoClient.mockClear();
   getTursoClientCalls = 0;
-  getSubcomercialesImpl = async () => ({ success: true, ids: [] });
-  executeImpl = async () => resultSet();
+  mocks.getSubcomercialesImpl = async () => ({ success: true, ids: [] });
+  mocks.executeImpl = async () => resultSet();
 });
 
 describe("Vercel log error routes", () => {
@@ -96,7 +109,7 @@ describe("Vercel log error routes", () => {
   });
 
   test("contracts returns 503 when subcomerciales lookup remains unavailable", async () => {
-    getSubcomercialesImpl = async () => {
+    mocks.getSubcomercialesImpl = async () => {
       throw retryableError();
     };
 
@@ -119,7 +132,7 @@ describe("Vercel log error routes", () => {
 
   test("contracts recovers when a count query fails transiently once", async () => {
     let countFailed = false;
-    executeImpl = async (statement) => {
+    mocks.executeImpl = async (statement) => {
       if (statement.sql.includes("COUNT") && !countFailed) {
         countFailed = true;
         throw retryableError();
@@ -136,12 +149,12 @@ describe("Vercel log error routes", () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({ success: true, data: [], total: 0 });
-    expect(execute.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(mocks.execute.mock.calls.length).toBeGreaterThanOrEqual(3);
   });
 
   test("monthly analytics recovers when its query fails transiently once", async () => {
     let failed = false;
-    executeImpl = async (statement) => {
+    mocks.executeImpl = async (statement) => {
       if (statement.sql.includes("FROM tramites") && !failed) {
         failed = true;
         throw retryableError();
@@ -168,6 +181,6 @@ describe("Vercel log error routes", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data).toHaveLength(12);
-    expect(execute.mock.calls.length).toBe(2);
+    expect(mocks.execute.mock.calls.length).toBe(2);
   });
 });

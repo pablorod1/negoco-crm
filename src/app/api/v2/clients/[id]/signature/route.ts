@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
-import { Row } from "@libsql/client";
+import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
+import type { Client, Row } from "@libsql/client";
 import { z } from "zod";
 import { validateUserSession } from "@/core/auth/session-utils";
 import crypto from "crypto";
@@ -13,71 +14,34 @@ interface SignatureResponse {
   data?: Row;
 }
 
-/**
- * Retrieves the signature information for a specific client
- *
- * Migration from: /api/clients/get/[id]/signer
- * New endpoint: /new_api/clients/[id]/signature
- *
- * @param request - Next.js request object
- * @param params - Route parameters containing client ID
- * @returns Promise<NextResponse<SignatureResponse>>
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-): Promise<NextResponse<SignatureResponse>> {
-  try {
-    // Validate route parameters
-    const { id } = await params;
+async function getAccessibleClient(
+  tursoClient: Client,
+  clientId: string,
+  user: { id: string; role: string },
+) {
+  const args: string[] = [clientId];
+  let sql = "SELECT clients.* FROM clients WHERE clients.id = ?";
 
-    if (!id) {
-      return NextResponse.json(
-        { success: false, message: "Missing Parameters" },
-        { status: 400 },
-      );
+  if (user.role === "2") {
+    const subcomerciales = await getSubcomerciales(tursoClient, user.id);
+    const allowedUserIds = [user.id];
+
+    if (subcomerciales.success && subcomerciales.ids.length > 0) {
+      allowedUserIds.push(...subcomerciales.ids);
     }
 
-    // Initialize database connection
-    const tursoClient = getTursoClient(request);
-
-    if (!tursoClient) {
-      return NextResponse.json(
-        { success: false, message: "Database not initialized" },
-        { status: 500 },
-      );
-    }
-
-    // Execute query to get signer information
-    const result = await tursoClient.execute({
-      sql: "SELECT * FROM signers WHERE client_id = ? LIMIT 1",
-      args: [id],
-    });
-
-    // Handle no results found - EXACTLY match original behavior
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { success: true, message: "No signers found" },
-        { status: 200 },
-      );
-    }
-
-    // Return the first signer record
-    return NextResponse.json(
-      { success: true, data: result.rows[0] },
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error("Error fetching signature:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    sql = `
+      SELECT DISTINCT clients.*
+      FROM clients
+      JOIN tramites ON tramites.client_id = clients.id
+      WHERE clients.id = ?
+        AND tramites.user_id IN (${allowedUserIds.map(() => "?").join(", ")})
+    `;
+    args.push(...allowedUserIds);
   }
+
+  const result = await tursoClient.execute({ sql, args });
+  return result.rows[0] ?? null;
 }
 
 /**
@@ -93,7 +57,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<SignatureResponse>> {
   try {
-    // Validate route parameters
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
 
     if (!id) {
@@ -103,8 +71,7 @@ export async function GET(
       );
     }
 
-    // Initialize database connection
-    const tursoClient = getTursoClient(request);
+    const tursoClient = getTursoClient(request) as Client | null;
 
     if (!tursoClient) {
       return NextResponse.json(
@@ -113,13 +80,16 @@ export async function GET(
       );
     }
 
-    // Execute query to get signer information
+    const client = await getAccessibleClient(tursoClient, id, authResult.user);
+    if (!client) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const result = await tursoClient.execute({
       sql: "SELECT * FROM signers WHERE client_id = ? LIMIT 1",
       args: [id],
     });
 
-    // Handle no results found - EXACTLY match original behavior
     if (result.rows.length === 0) {
       return NextResponse.json(
         { success: true, message: "No signers found" },
@@ -127,7 +97,6 @@ export async function GET(
       );
     }
 
-    // Return the first signer record
     return NextResponse.json(
       { success: true, data: result.rows[0] },
       { status: 200 },
@@ -188,7 +157,7 @@ export async function PATCH(
 ): Promise<NextResponse<PatchSignatureResponse>> {
   try {
     const authResult = await validateUserSession(request);
-    if (!authResult.success) {
+    if (!authResult.success || !authResult.user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -212,21 +181,22 @@ export async function PATCH(
 
     const { client: clientUpdates, signer: signerUpdates } = validation.data;
 
-    const tursoClient = getTursoClient(request);
+    const tursoClient = getTursoClient(request) as Client | null;
     if (!tursoClient) {
       return NextResponse.json({ success: false, error: "Database not initialized" }, { status: 500 });
     }
 
-    const clientResult = await tursoClient.execute({
-      sql: "SELECT * FROM clients WHERE id = ?",
-      args: [id],
-    });
-
-    if (clientResult.rows.length === 0) {
-      return NextResponse.json({ success: false, error: "Client not found" }, { status: 404 });
+    const existingClient = await getAccessibleClient(tursoClient, id, authResult.user);
+    if (!existingClient) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const existingClient = clientResult.rows[0];
+    if (signerUpdates && !SIGNER_CLIENT_TYPES.includes(existingClient.type as string)) {
+      return NextResponse.json(
+        { success: false, error: "Este tipo de cliente no requiere firmante" },
+        { status: 400 },
+      );
+    }
 
     if (clientUpdates && Object.keys(clientUpdates).length > 0) {
       const setClauses: string[] = [];
@@ -248,7 +218,7 @@ export async function PATCH(
       }
     }
 
-    if (signerUpdates && SIGNER_CLIENT_TYPES.includes(existingClient.type as string)) {
+    if (signerUpdates) {
       const signerResult = await tursoClient.execute({
         sql: "SELECT * FROM signers WHERE client_id = ? LIMIT 1",
         args: [id],

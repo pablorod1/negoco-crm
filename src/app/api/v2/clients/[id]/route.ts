@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
-import { Row } from "@libsql/client";
+import type { Client, Row } from "@libsql/client";
 import { z } from "zod";
+import { validateUserSession } from "@/core/auth/session-utils";
 import { updateClient } from "@/tramites/utils/updateTramiteHelpers";
 
 const DocumentTypeSchema = z.enum(["DNI", "NIE", "CIF", "Otro", ""]);
@@ -44,6 +45,28 @@ const UpdateClientRequestSchema = z.object({
 interface ClientResponse {
   success: boolean;
   error?: string;
+}
+
+async function canUpdateClient(
+  tursoClient: Client,
+  clientId: string,
+  userId: string,
+  userRole: string,
+) {
+  if (userRole !== "2") return true;
+
+  const subcomerciales = await getSubcomerciales(tursoClient, userId);
+  const allowedUserIds = [userId];
+  if (subcomerciales.success && subcomerciales.ids.length > 0) {
+    allowedUserIds.push(...subcomerciales.ids);
+  }
+
+  const result = await tursoClient.execute({
+    sql: `SELECT 1 FROM tramites WHERE client_id = ? AND user_id IN (${allowedUserIds.map(() => "?").join(", ")}) LIMIT 1`,
+    args: [clientId, ...allowedUserIds],
+  });
+
+  return result.rows.length > 0;
 }
 /**
  * Retrieves a specific client by ID with aggregated tramites and files data
@@ -211,7 +234,14 @@ export async function PATCH(
   request: NextRequest
 ): Promise<NextResponse<ClientResponse>> {
   try {
-    // Parse and validate request body
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const validationResult = UpdateClientRequestSchema.safeParse(body);
 
@@ -227,7 +257,7 @@ export async function PATCH(
 
     const { client } = validationResult.data;
 
-    const tursoClient = getTursoClient(request);
+    const tursoClient = getTursoClient(request) as Client | null;
 
     if (!tursoClient) {
       return NextResponse.json(
@@ -239,7 +269,20 @@ export async function PATCH(
       );
     }
 
-    // Update client information
+    const hasAccess = await canUpdateClient(
+      tursoClient,
+      client.id,
+      authResult.user.id,
+      authResult.user.role,
+    );
+
+    if (!hasAccess) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     const updateClientRes = await updateClient(client, client.id, tursoClient);
 
     if (!updateClientRes.success) {

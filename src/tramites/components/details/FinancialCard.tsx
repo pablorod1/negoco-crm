@@ -58,11 +58,7 @@ export default function FinancialCard({
   );
 
   if (embedded) {
-    return (
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        {content}
-      </section>
-    );
+    return <section className="space-y-3">{content}</section>;
   }
 
   return (

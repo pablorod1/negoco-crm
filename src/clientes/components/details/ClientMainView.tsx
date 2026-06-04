@@ -28,7 +28,7 @@ import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDial
 import { showCustomToast } from "@/core/components/CustomToast";
 import ClientMap from "./ClientMap";
 import EditDrawer from "@/tramites/components/editTramite/client/EditTramiteDrawer";
-import { SignerEditor } from "@/clientes/components/SignerEditor";
+import { SignerInfoBlock } from "@/clientes/components/SignerInfoBlock";
 
 // Helper function to format phone number for WhatsApp
 const formatWhatsAppNumber = (phone: string | null | undefined): string => {
@@ -167,24 +167,16 @@ export default function ClientMainView({
                 Información del Cliente - {client.name} {client.last_name}
               </CardTitle>
               <div className="flex items-center gap-2">
-                {client.tramites_count === 0 ? (
-                  <EditDrawer
-                    userData={userData}
-                    client={client}
-                    onUpdate={onUpdate}
-                  />
-                ) : null}
-                {canEditSigner ? (
-                  <SignerEditor
-                    clientId={client.id}
-                    signer={client.signer ?? null}
-                    onUpdated={onUpdate}
-                  />
-                ) : null}
+                <EditDrawer
+                  userData={userData}
+                  client={client}
+                  signer={client.signer ?? undefined}
+                  onUpdate={onUpdate}
+                />
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 grid grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* Email */}
             <div className="space-y-6">
               <span className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-4">
@@ -260,6 +252,16 @@ export default function ClientMainView({
                 </p>
               </div>
             </div>
+            {canEditSigner ? (
+              <div className="border-t border-gray-100 pt-4 md:col-span-2">
+                <SignerInfoBlock
+                  clientId={client.id}
+                  signer={client.signer ?? null}
+                  canEdit
+                  onUpdated={onUpdate}
+                />
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -273,7 +275,7 @@ export default function ClientMainView({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-full min-h-[320px] w-full rounded-4xl overflow-hidden">
+            <div className="h-full min-h-80 w-full rounded-4xl overflow-hidden">
               <ClientMap
                 width="100%"
                 height={"520px"}

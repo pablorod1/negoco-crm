@@ -1,24 +1,47 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-let executeImpl;
-const execute = mock((statement) => executeImpl(statement));
-const getTursoClient = mock(() => ({ execute }));
+const adminSession = {
+  success: true,
+  user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
+};
 
-mock.module("@/core/libsql/client", () => ({ getTursoClient }));
-
-mock.module("@/core/auth/session-utils", () => ({
-  validateUserSession: () => ({
+const mocks = vi.hoisted(() => ({
+  executeImpl: undefined,
+  execute: vi.fn((statement) => mocks.executeImpl(statement)),
+  getTursoClient: vi.fn(),
+  getSubcomerciales: vi.fn(async () => ({ success: true, ids: [] })),
+  sessionResult: {
     success: true,
     user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
-  }),
+  },
+}));
+
+mocks.getTursoClient.mockImplementation(() => ({ execute: mocks.execute }));
+
+vi.mock("@/core/libsql/client", () => ({ getTursoClient: mocks.getTursoClient }));
+vi.mock("/src/core/libsql/client.ts", () => ({ getTursoClient: mocks.getTursoClient }));
+vi.mock("@/core/libsql/users/getSubcomerciales", () => ({
+  getSubcomerciales: mocks.getSubcomerciales,
+}));
+vi.mock("/src/core/libsql/users/getSubcomerciales.ts", () => ({
+  getSubcomerciales: mocks.getSubcomerciales,
+}));
+
+vi.mock("@/core/auth/session-utils", () => ({
+  validateUserSession: () => mocks.sessionResult,
+}));
+vi.mock("/src/core/auth/session-utils.ts", () => ({
+  validateUserSession: () => mocks.sessionResult,
 }));
 
 const metricsRoute = await import("./route.ts");
 
 beforeEach(() => {
-  execute.mockClear();
-  getTursoClient.mockClear();
-  executeImpl = async (stmt) => {
+  mocks.execute.mockClear();
+  mocks.getTursoClient.mockClear();
+  mocks.getSubcomerciales.mockClear();
+  mocks.sessionResult = adminSession;
+  mocks.executeImpl = async (stmt) => {
     const sql = stmt.sql || stmt;
     if (sql.includes("GROUP BY substr(activation_date")) {
       return {
@@ -55,43 +78,26 @@ beforeEach(() => {
 
 describe("GET /api/v2/analytics/metrics", () => {
   test("returns 401 for unauthenticated requests", async () => {
-    mock.module("@/core/auth/session-utils", () => ({
-      validateUserSession: () => ({ success: false }),
-    }));
-    const { GET: freshGET } = await import("./route.ts");
-    const res = await freshGET(new Request("https://x/api/v2/analytics/metrics"));
+    mocks.sessionResult = { success: false };
+    const res = await metricsRoute.GET(new Request("https://x/api/v2/analytics/metrics"));
     expect(res.status).toBe(401);
   });
 
-  test("returns metrics for non-admin users scoped by user", async () => {
-    mock.module("@/core/auth/session-utils", () => ({
-      validateUserSession: () => ({
-        success: true,
-        user: { id: "c1", role: "2", email: "c@b.com", name: "Comercial" },
-      }),
-    }));
-    const { GET: freshGET } = await import("./route.ts");
-    const res = await freshGET(
+  test("returns 403 for non-admin users", async () => {
+    mocks.sessionResult = {
+      success: true,
+      user: { id: "c1", role: "2", email: "c@b.com", name: "Comercial" },
+    };
+    const res = await metricsRoute.GET(
       new Request("https://x/api/v2/analytics/metrics?id=c1&role=2"),
     );
-    const body = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(
-      execute.mock.calls.some(([stmt]) => stmt.sql.includes("user_id = ?")),
-    ).toBe(true);
+    expect(res.status).toBe(403);
   });
 
   test("returns metrics data for admin", async () => {
-    mock.module("@/core/auth/session-utils", () => ({
-      validateUserSession: () => ({
-        success: true,
-        user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
-      }),
-    }));
-    const { GET: freshGET } = await import("./route.ts");
-    const res = await freshGET(
+    mocks.sessionResult = adminSession;
+    const res = await metricsRoute.GET(
       new Request("https://x/api/v2/analytics/metrics?role=admin&id=admin1"),
     );
     const body = await res.json();
@@ -111,14 +117,8 @@ describe("GET /api/v2/analytics/metrics", () => {
   });
 
   test("uses date range params when provided", async () => {
-    mock.module("@/core/auth/session-utils", () => ({
-      validateUserSession: () => ({
-        success: true,
-        user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
-      }),
-    }));
-    const { GET: freshGET } = await import("./route.ts");
-    const res = await freshGET(
+    mocks.sessionResult = adminSession;
+    const res = await metricsRoute.GET(
       new Request(
         "https://x/api/v2/analytics/metrics?date_from=2026-01-01&date_to=2026-06-02",
       ),
@@ -126,29 +126,23 @@ describe("GET /api/v2/analytics/metrics", () => {
     const body = await res.json();
 
     expect(body.success).toBe(true);
-    expect(execute.mock.calls[0][0].sql).toContain(
+    expect(mocks.execute.mock.calls[0][0].sql).toContain(
       "date(substr(creation_date, 1, 10)) BETWEEN date(?) AND date(?)",
     );
-    expect(execute.mock.calls[0][0].args).toEqual([
+    expect(mocks.execute.mock.calls[0][0].args).toEqual([
       "2026-01-01",
       "2026-06-02",
     ]);
 
-    const pendingRenewableCall = execute.mock.calls.find(([stmt]) =>
+    const pendingRenewableCall = mocks.execute.mock.calls.find(([stmt]) =>
       stmt.sql.includes("con.type <> 'Renovación'"),
     );
     expect(pendingRenewableCall[0].args[0]).toBe("2026-08-01");
   });
 
   test("uses time range and commercial filters when provided", async () => {
-    mock.module("@/core/auth/session-utils", () => ({
-      validateUserSession: () => ({
-        success: true,
-        user: { id: "admin1", role: "admin", email: "a@b.com", name: "Admin" },
-      }),
-    }));
-    const { GET: freshGET } = await import("./route.ts");
-    const res = await freshGET(
+    mocks.sessionResult = adminSession;
+    const res = await metricsRoute.GET(
       new Request(
         "https://x/api/v2/analytics/metrics?id=admin1&role=admin&time_range=year&commercialId=c1",
       ),
@@ -156,13 +150,13 @@ describe("GET /api/v2/analytics/metrics", () => {
     const body = await res.json();
 
     expect(body.success).toBe(true);
-    expect(execute.mock.calls[0][0].sql).toContain(
+    expect(mocks.execute.mock.calls[0][0].sql).toContain(
       "substr(creation_date, 1, 4) = ?",
     );
-    expect(execute.mock.calls[0][0].sql).toContain("user_id = ?");
-    expect(execute.mock.calls[0][0].args).toContain("c1");
+    expect(mocks.execute.mock.calls[0][0].sql).toContain("user_id = ?");
+    expect(mocks.execute.mock.calls[0][0].args).toContain("c1");
 
-    const renewalSql = execute.mock.calls
+    const renewalSql = mocks.execute.mock.calls
       .map(([stmt]) => stmt.sql)
       .filter((sql) => sql.includes("Renovación"))
       .join("\n");
@@ -176,7 +170,7 @@ describe("GET /api/v2/analytics/metrics", () => {
   });
 
   test("returns zero renewal ratio when there are no renewable opportunities", async () => {
-    executeImpl = async (stmt) => {
+    mocks.executeImpl = async (stmt) => {
       const sql = stmt.sql || stmt;
       if (sql.includes("GROUP BY substr(activation_date")) {
         return { rows: [], rowsAffected: 0 };
@@ -202,8 +196,7 @@ describe("GET /api/v2/analytics/metrics", () => {
       return { rows: [], rowsAffected: 0 };
     };
 
-    const { GET: freshGET } = await import("./route.ts");
-    const res = await freshGET(new Request("https://x/api/v2/analytics/metrics"));
+    const res = await metricsRoute.GET(new Request("https://x/api/v2/analytics/metrics"));
     const body = await res.json();
 
     expect(body.success).toBe(true);

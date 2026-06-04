@@ -15,7 +15,7 @@ import { User } from "@/core/types";
 
 interface Props {
   client: ClientDB;
-  signer: SignerDB;
+  signer?: SignerDB | null;
   onUpdated: () => void;
   isEditable: boolean;
   tramite_id: string;
@@ -66,7 +66,7 @@ export default function TramiteClientSection({
               onClientUpdated={onUpdated}
               isEditable={isEditable}
               tramite_id={tramite_id}
-              signer={isEmpresaOrComunidad ? signer : undefined}
+              signer={isEmpresaOrComunidad ? signer ?? undefined : undefined}
               userData={userData}
             />
           </div>
@@ -75,9 +75,10 @@ export default function TramiteClientSection({
         {currentView === "signer" && isEmpresaOrComunidad && (
           <div className="mt-0">
             <SignerTabContent
-              signer={signer}
+              clientId={client.id}
+              signer={signer ?? null}
               onSignerUpdated={onUpdated}
-              isEditable={false}
+              isEditable={isEditable}
             />
           </div>
         )}

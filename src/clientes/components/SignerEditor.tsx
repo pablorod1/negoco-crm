@@ -31,17 +31,40 @@ interface SignerFormState {
   cargo: string;
 }
 
+const getSignerForm = (signer: SignerDB | null): SignerFormState => ({
+  name: signer?.name ?? "",
+  last_name: signer?.last_name ?? "",
+  email: signer?.email ?? "",
+  phone: signer?.phone ?? "",
+  document_number: signer?.document_number ?? "",
+  cargo: signer?.cargo ?? "",
+});
+
+const getSignerFormKey = (signer: SignerDB | null) =>
+  [
+    signer?.id ?? "",
+    signer?.name ?? "",
+    signer?.last_name ?? "",
+    signer?.email ?? "",
+    signer?.phone ?? "",
+    signer?.document_number ?? "",
+    signer?.cargo ?? "",
+  ].join("|");
+
 export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<SignerFormState>({
-    name: signer?.name ?? "",
-    last_name: signer?.last_name ?? "",
-    email: signer?.email ?? "",
-    phone: signer?.phone ?? "",
-    document_number: signer?.document_number ?? "",
-    cargo: signer?.cargo ?? "",
-  });
+  const [form, setForm] = useState<SignerFormState>(() => getSignerForm(signer));
+  const formResetKey = open ? getSignerFormKey(signer) : "closed";
+  const [syncedFormKey, setSyncedFormKey] = useState(formResetKey);
+  const actionLabel = signer ? "Editar Firmante" : "Añadir Firmante";
+
+  if (syncedFormKey !== formResetKey) {
+    setSyncedFormKey(formResetKey);
+    if (open) {
+      setForm(getSignerForm(signer));
+    }
+  }
 
   const handleChange = (field: keyof SignerFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -95,13 +118,13 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <PenLine className="h-4 w-4" />
-          Editar Firmante
+          <PenLine className="size-4" />
+          {actionLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Editar Firmante</DialogTitle>
+          <DialogTitle>{actionLabel}</DialogTitle>
           <DialogDescription>
             Modifica los datos del firmante asociado a este cliente.
           </DialogDescription>
@@ -176,8 +199,8 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
           <Button onClick={handleSave} disabled={saving}>
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Guardando...
+                <Loader2 className="size-4 animate-spin" />
+                Guardando&hellip;
               </>
             ) : (
               "Guardar"
