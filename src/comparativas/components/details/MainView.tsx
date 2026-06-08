@@ -224,39 +224,39 @@ export default function MainView({
             {/* Acciones disponibles */}
             <div className="space-y-3">
               <div className="border-b border-gray-200 pb-4">
-                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Resto de información
-                  </p>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <p className="mb-1 text-xs text-gray-500">Estado</p>
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(comparativa.status, "comparativa")}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="mb-1 text-xs text-gray-500">Servicio</p>
-                      <ServiceInfo service={comparativa.service} size="sm" />
-                    </div>
-                    <div>
-                      <p className="mb-1 text-xs text-gray-500">Comercializadora</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.company_id
-                          ? supplier?.name ??
-                            (isLoadingSupplier ? "Cargando" : "—")
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="mb-1 text-xs text-gray-500">
-                        Fecha de creación
-                      </p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatDateTime(comparativa.creation_date)}
-                      </p>
+                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Resto de información
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500">Estado</p>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(comparativa.status, "comparativa")}
                     </div>
                   </div>
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500">Servicio</p>
+                    <ServiceInfo service={comparativa.service} size="sm" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500">Comercializadora</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {comparativa.company_id
+                        ? supplier?.name ??
+                        (isLoadingSupplier ? "Cargando" : "—")
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500">
+                      Fecha de creación
+                    </p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatDateTime(comparativa.creation_date)}
+                    </p>
+                  </div>
                 </div>
+              </div>
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
                 Acciones disponibles
               </p>
@@ -343,17 +343,17 @@ export default function MainView({
                       comparativa={comparativa}
                       onComparativaUpdated={onUpdate}
                     />
-                      <Button
-                        type="button"
-                        variant="destructiveOutline"
-                        size="sm"
-                        onClick={handleRechazarCliente}
-                        disabled={rechazando}
-                        aria-label="Rechazar Cliente: marcar como rechazado por cliente"
-                      >
-                        <XCircle className="size-4" />
-                        {rechazando ? "Rechazando..." : "Rechazar Cliente"}
-                      </Button>
+                    <Button
+                      type="button"
+                      variant="destructiveOutline"
+                      size="sm"
+                      onClick={handleRechazarCliente}
+                      disabled={rechazando}
+                      aria-label="Rechazar Cliente: marcar como rechazado por cliente"
+                    >
+                      <XCircle className="size-4" />
+                      {rechazando ? "Rechazando..." : "Rechazar Cliente"}
+                    </Button>
                   </div>
                 )}
 
@@ -415,17 +415,17 @@ export default function MainView({
                       comparativa.status === "pending" &&
                       userData.organization.abarca_user_id
                     ))) && (
-                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-center">
-                    <p className="text-sm text-gray-500">
-                      No hay acciones disponibles
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {comparativa.status === "rejected"
-                        ? "Comparativa rechazada"
-                        : "Esperando respuesta del backoffice"}
-                    </p>
-                  </div>
-                )}
+                    <div className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-center">
+                      <p className="text-sm text-gray-500">
+                        No hay acciones disponibles
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {comparativa.status === "rejected"
+                          ? "Comparativa rechazada"
+                          : "Esperando respuesta del backoffice"}
+                      </p>
+                    </div>
+                  )}
               </div>
             </div>
           </CardContent>
@@ -479,7 +479,7 @@ export default function MainView({
                           <Switch
                             id={`permanencia-${comparativa.id}`}
                             checked={!!comparativa.has_permanencia}
-                            disabled={updatingFlag !== null || isComercial}
+                            disabled={updatingFlag !== null || isComercial}
                             aria-label="Marcar comparativa con permanencia"
                             onCheckedChange={(checked) =>
                               handleFlagChange("has_permanencia", checked)
@@ -499,7 +499,7 @@ export default function MainView({
                           <Switch
                             id={`renovacion-${comparativa.id}`}
                             checked={!!comparativa.has_renovacion}
-                            disabled={updatingFlag !== null || isComercial}
+                            disabled={updatingFlag !== null || isComercial}
                             aria-label="Marcar comparativa con renovación"
                             onCheckedChange={(checked) =>
                               handleFlagChange("has_renovacion", checked)
@@ -520,7 +520,7 @@ export default function MainView({
                   <div className="flex items-start gap-3">
                     <AvatarComponent
                       userData={comparativa.user as User}
-                      className="!rounded-full h-9 w-9"
+                      className="rounded-full! h-9 w-9"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-gray-900">
@@ -644,7 +644,7 @@ export default function MainView({
                       <p className="text-xs text-gray-500">Potencia P2</p>
                       <p className="text-sm font-medium text-gray-900">
                         {comparativa.abarca_estudio.potencia_contratada_p2 !=
-                        null
+                          null
                           ? `${comparativa.abarca_estudio.potencia_contratada_p2} kW`
                           : "—"}
                       </p>
@@ -653,7 +653,7 @@ export default function MainView({
                       <p className="text-xs text-gray-500">Potencia P3</p>
                       <p className="text-sm font-medium text-gray-900">
                         {comparativa.abarca_estudio.potencia_contratada_p3 !=
-                        null
+                          null
                           ? `${comparativa.abarca_estudio.potencia_contratada_p3} kW`
                           : "—"}
                       </p>
@@ -662,7 +662,7 @@ export default function MainView({
                       <p className="text-xs text-gray-500">Potencia P4</p>
                       <p className="text-sm font-medium text-gray-900">
                         {comparativa.abarca_estudio.potencia_contratada_p4 !=
-                        null
+                          null
                           ? `${comparativa.abarca_estudio.potencia_contratada_p4} kW`
                           : "—"}
                       </p>
@@ -671,7 +671,7 @@ export default function MainView({
                       <p className="text-xs text-gray-500">Potencia P5</p>
                       <p className="text-sm font-medium text-gray-900">
                         {comparativa.abarca_estudio.potencia_contratada_p5 !=
-                        null
+                          null
                           ? `${comparativa.abarca_estudio.potencia_contratada_p5} kW`
                           : "—"}
                       </p>
@@ -680,7 +680,7 @@ export default function MainView({
                       <p className="text-xs text-gray-500">Potencia P6</p>
                       <p className="text-sm font-medium text-gray-900">
                         {comparativa.abarca_estudio.potencia_contratada_p6 !=
-                        null
+                          null
                           ? `${comparativa.abarca_estudio.potencia_contratada_p6} kW`
                           : "—"}
                       </p>

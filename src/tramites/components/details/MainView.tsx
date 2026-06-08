@@ -194,7 +194,7 @@ export default function MainView({
                   />
                 ) : null}
 
-                {predefinedNotesSection}
+                {!isComercialUser ? predefinedNotesSection : null}
               </div>
             </div>
           </CardContent>
