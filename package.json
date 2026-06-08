@@ -61,7 +61,7 @@
     "next": "^16.2.6",
     "next-view-transitions": "^0.3.4",
     "nodemailer": "^8.0.10",
-    "pdfjs-dist": "5.3.93",
+    "pdfjs-dist": "5.4.296",
     "postcss": "^8.5.15",
     "radix-ui": "^1.4.3",
     "react": "^19.2.6",

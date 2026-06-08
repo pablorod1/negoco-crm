@@ -41,8 +41,11 @@ import {
   FilePreviewError,
 } from "@/types/files";
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `/pdfjs-dist/5.3.93/build/pdf.worker.min.js`;
+// Keep the worker in lockstep with the pdfjs-dist version bundled by react-pdf.
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 interface PdfViewerState extends ViewerState {
   numPages: number;
