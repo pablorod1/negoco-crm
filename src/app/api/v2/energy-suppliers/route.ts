@@ -134,7 +134,6 @@ export async function POST(
     `;
     const params = [...userFilterParams, ...userFilterParams];
     optimizations.push("exact-by-name-logic-per-comercializadora");
-    console.log("Executing query with params:", { query, params });
 
     // Execute query with performance tracking
     const queryStartTime = Date.now();

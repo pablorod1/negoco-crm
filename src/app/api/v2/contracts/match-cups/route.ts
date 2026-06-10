@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { cups } = validation.data;
-    const startTime = performance.now();
     const tursoClient = getTursoClient(request);
 
     if (!tursoClient) {
@@ -120,12 +119,6 @@ export async function POST(request: NextRequest) {
     const matchedCupsSet = new Set(matched.map((m) => m.cups));
     const unmatched = cups.filter((c) => !matchedCupsSet.has(c));
 
-    console.log("[match-cups]", {
-      cupsRequested: cups.length,
-      cupsMatched: matched.length,
-      cupsUnmatched: unmatched.length,
-      durationMs: Math.round(performance.now() - startTime),
-    });
 
     return NextResponse.json({
       success: true,

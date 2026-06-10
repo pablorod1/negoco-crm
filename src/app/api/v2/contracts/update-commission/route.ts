@@ -51,10 +51,6 @@ export async function PATCH(request: NextRequest) {
       totalUpdated += results.filter((r) => r.rowsAffected > 0).length;
     }
 
-    console.log("[update-commission]", {
-      requested: updates.length,
-      updated: totalUpdated,
-    });
 
     return NextResponse.json({ success: true, updated: totalUpdated });
   } catch (error) {
