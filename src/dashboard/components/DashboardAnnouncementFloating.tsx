@@ -145,7 +145,7 @@ export default function DashboardAnnouncementFloating() {
       </aside>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar cartel del dashboard</DialogTitle>
             <DialogDescription>
