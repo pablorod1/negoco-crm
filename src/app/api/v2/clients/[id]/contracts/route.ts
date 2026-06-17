@@ -11,8 +11,10 @@ interface ClientContractsResponse {
       status: string;
       creation_date: string;
       sales_name: string;
+      files_count: number;
     }>;
     total: number;
+    files_total: number;
   };
 }
 
@@ -50,31 +52,40 @@ export async function GET(
       );
     }
 
-    // Query to get all contracts for this client
     const result = await tursoClient.execute({
       sql: `
         SELECT 
-          id,
-          status,
-          creation_date,
-          sales_name
+          tramites.id,
+          tramites.status,
+          tramites.creation_date,
+          tramites.sales_name,
+          COUNT(DISTINCT tramite_files.id) AS files_count
         FROM tramites 
-        WHERE client_id = ?
-        ORDER BY creation_date DESC
+        LEFT JOIN tramite_files ON tramite_files.tramite_id = tramites.id
+        WHERE tramites.client_id = ?
+        GROUP BY tramites.id
+        ORDER BY tramites.creation_date DESC
       `,
       args: [client_id],
     });
 
+    const contracts = result.rows.map((row) => ({
+      id: row.id as string,
+      status: row.status as string,
+      creation_date: row.creation_date as string,
+      sales_name: row.sales_name as string,
+      files_count: Number(row.files_count || 0),
+    }));
+
     return NextResponse.json({
       success: true,
       data: {
-        contracts: result.rows.map((row) => ({
-          id: row.id as string,
-          status: row.status as string,
-          creation_date: row.creation_date as string,
-          sales_name: row.sales_name as string,
-        })),
-        total: result.rows.length,
+        contracts,
+        total: contracts.length,
+        files_total: contracts.reduce(
+          (total, contract) => total + contract.files_count,
+          0
+        ),
       },
     });
   } catch (error) {

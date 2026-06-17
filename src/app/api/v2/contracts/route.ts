@@ -43,6 +43,21 @@ const LiquidezStatusSchema = z
 
 const DocumentTypeSchema = z.enum(["DNI", "NIE", "CIF", "Otro", ""]);
 
+const EmailFormatSchema = z.string().email("Invalid email format");
+
+const OptionalEmailSchema = z.preprocess(
+  (value) => (value == null ? "" : value),
+  z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || EmailFormatSchema.safeParse(value).success,
+      {
+        message: "Invalid email format",
+      },
+    ),
+);
+
 // Pagination-specific schemas
 const DateRangeSchema = z
   .object({
@@ -173,7 +188,7 @@ const ClientSchema = z.object({
   id: z.string().min(1, "Client ID is required"),
   name: z.string().min(1, "Client name is required"),
   last_name: z.string().optional().default(""),
-  email: z.string().email("Invalid email format"),
+  email: OptionalEmailSchema,
   type: z.string().min(1, "Client type is required"),
   phone: z.string().min(1, "Phone is required"),
   address: z.string().min(1, "Address is required"),
@@ -247,7 +262,7 @@ const SignerSchema = z
     id: z.string().min(1, "Signer ID is required"),
     name: z.string().min(1, "Signer name is required"),
     last_name: z.string().min(1, "Last name is required"),
-    email: z.string().email("Invalid email format"),
+    email: OptionalEmailSchema,
     phone: z.string().min(1, "Phone is required"),
     document_number: z.string().min(1, "Document number is required"),
     cargo: z.string().nullable(),

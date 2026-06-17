@@ -29,6 +29,7 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import ClientMap from "./ClientMap";
 import EditDrawer from "@/tramites/components/editTramite/client/EditTramiteDrawer";
 import { SignerInfoBlock } from "@/clientes/components/SignerInfoBlock";
+import DeleteClientConfirmationModal from "./DeleteClientConfirmationModal";
 
 // Helper function to format phone number for WhatsApp
 const formatWhatsAppNumber = (phone: string | null | undefined): string => {
@@ -153,7 +154,15 @@ export default function ClientMainView({
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
                 Gestión
               </p>
-              <AddTramiteDialog savedClient={client} />
+              <div className="flex items-center gap-2">
+                <AddTramiteDialog savedClient={client} />
+                {userData.role === "admin" ? (
+                  <DeleteClientConfirmationModal
+                    client={client}
+                    userData={userData}
+                  />
+                ) : null}
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -42,9 +42,23 @@ const UpdateClientRequestSchema = z.object({
   user_id: z.string().min(1, "User ID is required"), // Add user_id for tracking
 });
 
+const DeleteClientRequestSchema = z.object({
+  organization_id: z.string().min(1, "Organization ID is required"),
+});
+
 interface ClientResponse {
   success: boolean;
   error?: string;
+}
+
+interface DeleteClientResponse {
+  success: boolean;
+  error?: string;
+  data?: {
+    client_id: string;
+    contracts_deleted: number;
+    firebase_files_deleted: number;
+  };
 }
 
 async function canUpdateClient(
@@ -302,6 +316,159 @@ export async function PATCH(
       {
         success: false,
         error: "Error updating client information",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse<DeleteClientResponse>> {
+  try {
+    const { id: clientId } = await params;
+    if (!clientId) {
+      return NextResponse.json(
+        { success: false, error: "Client ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    if (authResult.user.role !== "admin") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
+    const validationResult = DeleteClientRequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { success: false, error: "Missing parameters" },
+        { status: 400 }
+      );
+    }
+
+    const tursoClient = getTursoClient(request) as Client | null;
+    if (!tursoClient) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Database client not initialized",
+        },
+        { status: 500 }
+      );
+    }
+
+    const clientResult = await tursoClient.execute({
+      sql: "SELECT id FROM clients WHERE id = ? LIMIT 1",
+      args: [clientId],
+    });
+
+    if (clientResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Client not found" },
+        { status: 404 }
+      );
+    }
+
+    const tramitesResult = await tursoClient.execute({
+      sql: "SELECT id FROM tramites WHERE client_id = ?",
+      args: [clientId],
+    });
+
+    const tramiteIds = tramitesResult.rows.map((row) => String(row.id));
+    const { organization_id } = validationResult.data;
+
+    let firebaseFilesDeleted = 0;
+    try {
+      const { storage } = await import("@/core/firebase/firebaseConfig");
+      const { deleteObject, listAll, ref } = await import("firebase/storage");
+
+      const deleteFolder = async (folderPath: string): Promise<number> => {
+        const folderRef = ref(storage, folderPath);
+        const fileList = await listAll(folderRef);
+
+        const nestedDeleteCounts = await Promise.all(
+          fileList.prefixes.map((prefixRef) => deleteFolder(prefixRef.fullPath))
+        );
+
+        await Promise.all(
+          fileList.items.map((fileRef) => deleteObject(fileRef))
+        );
+
+        return (
+          fileList.items.length +
+          nestedDeleteCounts.reduce((total, count) => total + count, 0)
+        );
+      };
+
+      const deleteCounts = await Promise.all(
+        tramiteIds.map((tramiteId) =>
+          deleteFolder(`${organization_id}/tramites/${tramiteId}`)
+        )
+      );
+
+      firebaseFilesDeleted = deleteCounts.reduce(
+        (total, count) => total + count,
+        0
+      );
+    } catch (storageError) {
+      console.error("Error deleting client files from Firebase:", storageError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Error al eliminar los archivos asociados al cliente",
+        },
+        { status: 500 }
+      );
+    }
+
+    const deleteResult = await tursoClient.execute({
+      sql: "DELETE FROM clients WHERE id = ?",
+      args: [clientId],
+    });
+
+    if (deleteResult.rowsAffected === 0) {
+      return NextResponse.json(
+        { success: false, error: "Client not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        client_id: clientId,
+        contracts_deleted: tramiteIds.length,
+        firebase_files_deleted: firebaseFilesDeleted,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting client:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Error deleting client",
       },
       { status: 500 }
     );

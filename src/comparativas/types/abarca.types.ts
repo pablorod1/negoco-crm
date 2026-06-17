@@ -2,71 +2,75 @@ import { z } from "zod";
 
 // --- Zod Schema ---
 
+const optionalString = z.string().nullish();
+const optionalNumber = z.number().nullish();
+const optionalBoolean = z.boolean().nullish();
+
 export const AbarcaWebhookSchema = z.object({
   // Identificación
   ide: z.number(),
   crm_id: z.number(),
 
   // Suministro
-  cups: z.string().optional(),
-  tipo_tarifa: z.string().optional(),
-  potencia_contratada: z.number().optional(),
-  potencia_contratada_p2: z.number().optional(),
-  potencia_contratada_p3: z.number().optional(),
-  potencia_contratada_p4: z.number().optional(),
-  potencia_contratada_p5: z.number().optional(),
-  potencia_contratada_p6: z.number().optional(),
-  consumo_p1: z.number().optional(),
-  consumo_p2: z.number().optional(),
-  consumo_p3: z.number().optional(),
-  consumo_p4: z.number().optional(),
-  consumo_p5: z.number().optional(),
-  consumo_p6: z.number().optional(),
+  cups: optionalString,
+  tipo_tarifa: optionalString,
+  potencia_contratada: optionalNumber,
+  potencia_contratada_p2: optionalNumber,
+  potencia_contratada_p3: optionalNumber,
+  potencia_contratada_p4: optionalNumber,
+  potencia_contratada_p5: optionalNumber,
+  potencia_contratada_p6: optionalNumber,
+  consumo_p1: optionalNumber,
+  consumo_p2: optionalNumber,
+  consumo_p3: optionalNumber,
+  consumo_p4: optionalNumber,
+  consumo_p5: optionalNumber,
+  consumo_p6: optionalNumber,
 
   // Empresas
-  empresa_cliente: z.string().optional(),
-  empresa: z.string().optional(),
+  empresa_cliente: optionalString,
+  empresa: optionalString,
 
   // Titular
-  titular: z.string().optional(),
-  ape1: z.string().optional(),
-  ape2: z.string().optional(),
-  nombre_completo: z.string().optional(),
-  dni: z.string().optional(),
-  nif_empresa: z.boolean().optional(),
-  autonomo: z.boolean().optional(),
+  titular: optionalString,
+  ape1: optionalString,
+  ape2: optionalString,
+  nombre_completo: optionalString,
+  dni: optionalString,
+  nif_empresa: optionalBoolean,
+  autonomo: optionalBoolean,
 
   // Dirección titular
-  calle: z.string().optional(),
-  numero: z.string().optional(),
-  codpostal: z.string().optional(),
-  localidad: z.string().optional(),
+  calle: optionalString,
+  numero: optionalString,
+  codpostal: optionalString,
+  localidad: optionalString,
 
   // Dirección CUPS
-  calle_cups: z.string().optional(),
-  numero_cups: z.string().optional(),
-  localidad_cups: z.string().optional(),
-  codpostal_cups: z.string().optional(),
+  calle_cups: optionalString,
+  numero_cups: optionalString,
+  localidad_cups: optionalString,
+  codpostal_cups: optionalString,
 
   // Contacto
-  email: z.string().optional(),
-  movil: z.string().optional(),
-  iban: z.string().optional(),
+  email: optionalString,
+  movil: optionalString,
+  iban: optionalString,
 
   // Documentos base64
-  dni_photo_front: z.string().optional(),
-  dni_photo_back: z.string().optional(),
-  justo_titulo: z.string().optional(),
-  comparativa_pdf: z.string().optional(),
+  dni_photo_front: optionalString,
+  dni_photo_back: optionalString,
+  justo_titulo: optionalString,
+  comparativa_pdf: optionalString,
 
   // Banderas
-  cambio_titularidad: z.boolean().optional(),
-  tiene_placas: z.boolean().optional(),
+  cambio_titularidad: optionalBoolean,
+  tiene_placas: optionalBoolean,
 
   // Otros
-  observaciones: z.string().optional(),
-  servicios: z.string().optional(),
-  permanencia: z.number().optional(),
+  observaciones: optionalString,
+  servicios: optionalString,
+  permanencia: optionalNumber,
   datos_crm: z.array(z.unknown()).optional(),
 });
 

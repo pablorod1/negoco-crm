@@ -236,7 +236,7 @@ export async function PUT(
 
       // Add signer (using the same pattern as in contracts endpoint)
       const signerQuery = `
-        INSERT INTO signers (id, client_id, name, last_name, email, phone, document_number)
+        INSERT INTO signers (id, name, last_name, email, phone, document_number, cargo, client_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
@@ -244,12 +244,13 @@ export async function PUT(
         sql: signerQuery,
         args: [
           signerDB.id,
-          signerDB.client_id,
           signerDB.name,
           signerDB.last_name,
           signerDB.email,
           signerDB.phone,
           signerDB.document_number,
+          null,
+          signerDB.client_id,
         ],
       });
     }
