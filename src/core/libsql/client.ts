@@ -47,3 +47,17 @@ export const getTursoClientByTenant = (tenant: string) => {
 
   return createClient({ url: tursoUrl, authToken: tursoAuth });
 };
+
+export const getTursoControlClient = () => {
+  const tursoUrl =
+    process.env.NEXT_TURSO_CONTROL_DB_URL || process.env.TURSO_CONTROL_DB_URL;
+  const tursoAuth =
+    process.env.NEXT_TURSO_CONTROL_DB_AUTH_TOKEN ||
+    process.env.TURSO_CONTROL_DB_AUTH_TOKEN;
+
+  if (!tursoUrl || !tursoAuth) {
+    throw new Error("Missing Turso control database configuration");
+  }
+
+  return createClient({ url: tursoUrl, authToken: tursoAuth });
+};

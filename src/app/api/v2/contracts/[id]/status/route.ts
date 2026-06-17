@@ -8,6 +8,11 @@ import {
   recordFieldChanges,
   recordNoteChange,
 } from "@/tramites/utils/tramiteChangesHelpers";
+import { getCrmSettings } from "@/crm-settings/server";
+import {
+  cancelPendingProcessingJobsFromRequest,
+  createProcessingJobFromRequest,
+} from "@/crm-settings/processing-jobs";
 
 /**
  * REFACTORED CONTRACT STATUS UPDATE ENDPOINT
@@ -117,6 +122,7 @@ async function executeQuery(
 function buildUpdateQuery(
   requestData: z.infer<typeof ContractStatusUpdateSchema>,
   contractId: string,
+  processingDate?: string,
 ): { sql: string; args: (string | number)[]; updatedFields: string[] } {
   const updateFields: string[] = [];
   const queryArgs: (string | number)[] = [];
@@ -126,6 +132,12 @@ function buildUpdateQuery(
   updateFields.push("status = ?");
   queryArgs.push(requestData.status);
   updatedFieldNames.push("status");
+
+  if (processingDate) {
+    updateFields.push("processing_date = ?");
+    queryArgs.push(processingDate);
+    updatedFieldNames.push("processing_date");
+  }
 
   // Conditional field updates for performance optimization
   if (requestData.comision !== undefined) {
@@ -297,7 +309,7 @@ export async function PATCH(
     // First, get the current values to track changes
     const currentValues = await tursoClient.execute({
       sql: `SELECT status, comision, comision_sales_person, notes, liquidez_status, 
-                   collection_date, payment_date, activation_date, tramitation_date, renovation_date
+                   collection_date, payment_date, activation_date, tramitation_date, renovation_date, processing_date
             FROM tramites WHERE id = ?`,
       args: [contractId],
     });
@@ -311,9 +323,65 @@ export async function PATCH(
 
     const currentData = currentValues.rows[0];
 
-    const { sql, args } = buildUpdateQuery(validatedData, contractId);
+    const isEnteringProcessing =
+      validatedData.status === "Procesando" &&
+      currentData.status !== "Procesando";
+    const isLeavingProcessing =
+      validatedData.status !== "Procesando" &&
+      currentData.status === "Procesando";
+    const processingDate = isEnteringProcessing
+      ? new Date().toISOString()
+      : undefined;
 
-    const { result } = await executeQuery(tursoClient, sql, args);
+    let createdProcessingJob = false;
+
+    if (isEnteringProcessing && processingDate) {
+      const settings = await getCrmSettings(tursoClient);
+      if (settings.processing_auto_activation.enabled) {
+        await createProcessingJobFromRequest({
+          request,
+          tramiteId: contractId,
+          processingDate,
+          delayMinutes: settings.processing_auto_activation.delay_minutes,
+        });
+        createdProcessingJob = true;
+      }
+    }
+
+    const { sql, args } = buildUpdateQuery(
+      validatedData,
+      contractId,
+      processingDate,
+    );
+
+    let result: { rowsAffected: number };
+    try {
+      const updateResponse = await executeQuery(tursoClient, sql, args);
+      result = updateResponse.result;
+    } catch (error) {
+      if (createdProcessingJob) {
+        await cancelPendingProcessingJobsFromRequest({
+          request,
+          tramiteId: contractId,
+        }).catch((cancelError) => {
+          console.error(
+            "Error canceling processing job after failed status update:",
+            cancelError,
+          );
+        });
+      }
+
+      throw error;
+    }
+
+    if (isLeavingProcessing) {
+      await cancelPendingProcessingJobsFromRequest({
+        request,
+        tramiteId: contractId,
+      }).catch((error) => {
+        console.error("Error canceling pending processing jobs:", error);
+      });
+    }
 
     // ==================== TRACK CHANGES ====================
 
@@ -392,6 +460,15 @@ export async function PATCH(
           description: `${field.replace("_", " ")} actualizada`,
         });
       }
+    }
+
+    if (processingDate && currentData.processing_date !== processingDate) {
+      changes.push({
+        field_name: "processing_date",
+        old_value: currentData.processing_date as string | null,
+        new_value: processingDate,
+        description: "Fecha de entrada en procesamiento actualizada",
+      });
     }
 
     // Record field changes if any

@@ -40,7 +40,7 @@ export default function MainLayout({
           <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden">
             <Header />
             <main
-              className="main-content flex-1 overflow-auto"
+              className="main-content flex-1 overflow-auto pt-12"
               data-client={activeOrganization}
             >
               {isAllowedForComparador ? (

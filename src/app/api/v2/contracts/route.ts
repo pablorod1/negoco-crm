@@ -15,6 +15,11 @@ import {
 } from "@/tramites/types/tramite.types";
 import { Client } from "@libsql/client";
 import { recordTramiteCreation } from "@/tramites/utils/tramiteChangesHelpers";
+import { getCrmSettings, isProviderAllowed } from "@/crm-settings/server";
+import {
+  cancelPendingProcessingJobsFromRequest,
+  createProcessingJobFromRequest,
+} from "@/crm-settings/processing-jobs";
 
 // Zod Validation Schemas
 const StatusSchema = z.enum([
@@ -81,6 +86,7 @@ const TramiteSchema = z.object({
   renovation_date: z.string().optional().default(""),
   collection_date: z.string().nullable().optional(),
   payment_date: z.string().nullable().optional(),
+  processing_date: z.string().nullable().optional(),
   sales_name: z.string().min(1, "Sales name is required"),
   comision_sales_person: z.coerce.number().optional().default(0),
   comision: z.coerce.number().optional().default(0),
@@ -540,8 +546,8 @@ const addTramiteOptimized = async (
         INSERT INTO tramites (
           id, creation_date, tramitation_date, activation_date, renovation_date,
           sales_name, comision, comision_sales_person, status, liquidez_status,
-          notes, internal_notes, client_id, user_id, collection_date, payment_date, provider, plan
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          notes, internal_notes, client_id, user_id, collection_date, payment_date, processing_date, provider, plan
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         tramite.id,
@@ -560,6 +566,7 @@ const addTramiteOptimized = async (
         tramite.user_id,
         tramite.collection_date || null,
         tramite.payment_date || null,
+        tramite.processing_date || null,
         tramite.provider || null,
         tramite.plan || null,
       ],
@@ -794,6 +801,39 @@ export async function POST(
       );
     }
 
+    const crmSettings = await getCrmSettings(tursoClient);
+    if (
+      !isProviderAllowed(
+        crmSettings.providers,
+        tramite.provider ? String(tramite.provider) : null,
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Proveedor no configurado",
+        },
+        { status: 422 },
+      );
+    }
+
+    const shouldCreateProcessingJob =
+      tramite.status === "Procesando" &&
+      crmSettings.processing_auto_activation.enabled;
+
+    if (tramite.status === "Procesando" && !tramite.processing_date) {
+      tramite.processing_date = new Date().toISOString();
+    }
+
+    if (shouldCreateProcessingJob && tramite.processing_date) {
+      await createProcessingJobFromRequest({
+        request,
+        tramiteId: tramite.id,
+        processingDate: tramite.processing_date,
+        delayMinutes: crmSettings.processing_auto_activation.delay_minutes,
+      });
+    }
+
     // Pre-compute any external dependencies BEFORE starting transaction
     // e.g., geocoding the client address
     let coordinates: [number, number] | null = null;
@@ -864,6 +904,19 @@ export async function POST(
     } catch (error) {
       // Rollback transaction on error
       await tx.rollback();
+
+      if (shouldCreateProcessingJob) {
+        await cancelPendingProcessingJobsFromRequest({
+          request,
+          tramiteId: tramite.id,
+        }).catch((cancelError) => {
+          console.error(
+            "Error canceling processing job after failed contract creation:",
+            cancelError,
+          );
+        });
+      }
+
       throw error;
     }
   } catch (error) {

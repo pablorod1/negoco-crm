@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
 import { recordFieldChanges } from "@/tramites/utils/tramiteChangesHelpers";
+import { getProviderOptions, isProviderAllowed } from "@/crm-settings/server";
 
 /**
  * PROVIDER UPDATE ENDPOINT
@@ -123,26 +124,52 @@ export async function PATCH(
     // ==================== GET CURRENT PROVIDER VALUE ====================
 
     let currentProvider: string | null = null;
-    if (user_id) {
-      try {
-        const currentResult = await tursoClient.execute({
-          sql: "SELECT provider FROM tramites WHERE id = ?",
-          args: [contractId],
-        });
+    try {
+      const currentResult = await tursoClient.execute({
+        sql: "SELECT provider FROM tramites WHERE id = ?",
+        args: [contractId],
+      });
 
-        if (currentResult.rows.length > 0) {
-          currentProvider = currentResult.rows[0].provider as string | null;
-        }
-      } catch (error) {
-        console.error("Error fetching current provider:", error);
-        // Continue without tracking if we can't get current value
+      if (currentResult.rows.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Contract not found",
+          },
+          { status: 404 }
+        );
       }
+
+      currentProvider = currentResult.rows[0].provider as string | null;
+    } catch (error) {
+      console.error("Error fetching current provider:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Database query failed",
+        },
+        { status: 500 }
+      );
     }
 
     // ==================== DATABASE UPDATE OPERATION ====================
 
     // Convert empty string to null for database storage
     const providerValue = provider.trim() === "" ? null : provider.trim();
+    const configuredProviders = await getProviderOptions(tursoClient);
+
+    if (
+      !isProviderAllowed(configuredProviders, providerValue, currentProvider)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Proveedor no configurado",
+        },
+        { status: 422 }
+      );
+    }
+
     const updateQuery = `UPDATE tramites SET provider = ? WHERE id = ?`;
     const updateArgs = [providerValue, contractId];
 
