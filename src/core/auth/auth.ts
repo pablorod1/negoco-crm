@@ -17,24 +17,32 @@ import { organization, admin } from "better-auth/plugins";
 import { sendPasswordResetEmail } from "../hooks/reset-pass-email";
 import { admin as adminRole, comercial, backoffice, ac } from "./permissions";
 
-export const getAuth = (req: NextRequest) => {
-  const tursoClient = getTursoClient(req);
-  const db = drizzle(tursoClient);
-
+const getBetterAuthBaseURL = (req: NextRequest) => {
   const host = req.headers.get("host");
-  const origin = req.headers.get("origin");
-
   if (!host) {
     throw new Error("No host found in request headers");
   }
 
-  const resetLink = host.includes("localhost")
-    ? `http://${host}/reset-pass`
-    : `https://${host}/reset-pass`;
+  const protocol = host.includes("localhost") ? "http" : "https";
+  const baseURL = `${protocol}://${host}`;
+
+  try {
+    new URL(baseURL);
+  } catch {
+    throw new Error(`Invalid Better Auth base URL for host: ${host}`);
+  }
+
+  return baseURL;
+};
+
+export const getAuth = (req: NextRequest) => {
+  const tursoClient = getTursoClient(req);
+  const db = drizzle(tursoClient);
+  const baseURL = getBetterAuthBaseURL(req);
 
   return betterAuth({
     secret: process.env.BETTER_AUTH_SECRET as string,
-    baseURL: origin as string,
+    baseURL,
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {
@@ -57,9 +65,12 @@ export const getAuth = (req: NextRequest) => {
       },
       requireEmailVerification: false,
       sendResetPassword: async ({ user, token }) => {
+        const resetPasswordURL = new URL("/reset-pass", baseURL);
+        resetPasswordURL.searchParams.set("token", token);
+
         await sendPasswordResetEmail({
           email: user.email,
-          resetLink: `${resetLink}?token=${token}`,
+          resetLink: resetPasswordURL.toString(),
         });
       },
       resetPasswordTokenExpiresIn: 24 * 60 * 60,
