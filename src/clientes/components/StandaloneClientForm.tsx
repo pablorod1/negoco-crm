@@ -163,12 +163,12 @@ export default function StandaloneClientForm({
                 name="document_type"
                 items={
                   formData.type &&
-                  DOCUMENT_TYPES[formData.type as keyof typeof DOCUMENT_TYPES]
+                    DOCUMENT_TYPES[formData.type as keyof typeof DOCUMENT_TYPES]
                     ? [
-                        ...DOCUMENT_TYPES[
-                          formData.type as keyof typeof DOCUMENT_TYPES
-                        ].documentTypes,
-                      ]
+                      ...DOCUMENT_TYPES[
+                        formData.type as keyof typeof DOCUMENT_TYPES
+                      ].documentTypes,
+                    ]
                     : []
                 }
                 onChange={(value: string) =>
@@ -182,7 +182,7 @@ export default function StandaloneClientForm({
             </div>
             <InputComponent
               name="document_number"
-              label="Número"
+              label="Número de documento"
               onChange={handleFieldChange}
               errors={errors.document_number}
               value={formData.document_number}
