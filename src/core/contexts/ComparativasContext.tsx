@@ -1,5 +1,5 @@
 ﻿"use client";
-import { createContext, useContext, useCallback, useRef } from "react";
+import { createContext, use, useCallback, useRef } from "react";
 
 interface ComparativasContextType {
   refreshComparativas: () => Promise<void>;
@@ -11,7 +11,7 @@ const ComparativasContext = createContext<ComparativasContextType>({
   setRefreshComparativas: () => () => {},
 });
 
-export const useComparativas = () => useContext(ComparativasContext);
+export const useComparativas = () => use(ComparativasContext);
 
 export function ComparativasProvider({
   children,

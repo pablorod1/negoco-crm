@@ -30,7 +30,7 @@ export const API_HEADERS = {
 /**
  * Helper functions for API calls with proper method and parameter handling
  */
-export const dashboardAPI = {
+const dashboardAPI = {
   // Dashboard hero data (POST method)
   getHeroData: async (id: string, role: string) => {
     const response = await fetch(DASHBOARD_API_ENDPOINTS.HERO_DATA, {

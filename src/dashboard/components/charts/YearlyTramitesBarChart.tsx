@@ -377,7 +377,7 @@ const ViewToggleButton: React.FC<ViewToggleButtonProps> = ({
   unit,
   isMonetary = false,
 }) => (
-  <button
+  <button type="button"
     onClick={onClick}
     className={cn(
       "relative z-10 flex items-center justify-between gap-4 w-1/2 px-3 py-2 rounded-full transition-all duration-200",

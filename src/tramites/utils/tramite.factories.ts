@@ -11,7 +11,7 @@ import {
 import { ComparativaVM } from "@/comparativas/types";
 
 // Factory functions
-export const createEmptyTramiteVM = (): TramiteVM => ({
+const createEmptyTramiteVM = (): TramiteVM => ({
   id: "",
   creation_date: "",
   tramitation_date: "",
@@ -186,7 +186,7 @@ export const createEmptyContractDB = (
   };
 };
 
-export const createEmptyTramiteFile = (): TramiteFile => ({
+const createEmptyTramiteFile = (): TramiteFile => ({
   id: "",
   tramite_id: "",
   filename: "",

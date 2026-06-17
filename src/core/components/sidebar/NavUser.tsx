@@ -47,7 +47,7 @@ export default function NavUser() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200">
+        <button type="button" className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200">
           <AvatarComponent userData={userData} className="w-8 h-8" />
           <div className="flex-1 text-left min-w-0">
             <div className="font-medium text-gray-900 text-sm truncate">

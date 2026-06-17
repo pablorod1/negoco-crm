@@ -31,26 +31,25 @@ export function NumberTicker({
   const isInView = useInView(ref, { once: true, margin: "0px" });
 
   useEffect(() => {
-    if (isInView) {
-      setTimeout(() => {
-        motionValue.set(direction === "down" ? 0 : value);
-      }, delay * 1000);
-    }
+    if (!isInView) return;
+    const timeoutId = setTimeout(() => {
+      motionValue.set(direction === "down" ? 0 : value);
+    }, delay * 1000);
+    return () => clearTimeout(timeoutId);
   }, [motionValue, isInView, delay, value, direction]);
 
-  useEffect(
-    () =>
-      springValue.on("change", (latest) => {
-        if (ref.current) {
-          ref.current.textContent =
-            Intl.NumberFormat("es-ES", {
-              minimumFractionDigits: decimalPlaces,
-              maximumFractionDigits: decimalPlaces,
-            }).format(Number(latest.toFixed(decimalPlaces))) + endContent;
-        }
-      }),
-    [springValue, decimalPlaces, endContent]
-  );
+  useEffect(() => {
+    const unsubscribe = springValue.on("change", (latest) => {
+      if (ref.current) {
+        ref.current.textContent =
+          Intl.NumberFormat("es-ES", {
+            minimumFractionDigits: decimalPlaces,
+            maximumFractionDigits: decimalPlaces,
+          }).format(Number(latest.toFixed(decimalPlaces))) + endContent;
+      }
+    });
+    return unsubscribe;
+  }, [springValue, decimalPlaces, endContent]);
 
   return (
     <span

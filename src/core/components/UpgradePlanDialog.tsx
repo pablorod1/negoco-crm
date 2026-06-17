@@ -291,7 +291,7 @@ export default function UpgradePlanDialog() {
                   </div>
                   <div className="space-y-2">
                     {selectedPlanDetails.features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                      <div key={feature} className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-600" />
                         <span className="text-sm">{feature}</span>
                       </div>

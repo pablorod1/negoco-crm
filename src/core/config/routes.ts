@@ -198,14 +198,14 @@ export const routeConfig: Record<string, RouteConfig> = {
   },
 };
 
-export const categoryLabels: Record<string, string> = {
+const categoryLabels: Record<string, string> = {
   principal: "Principal",
   operaciones: "Operaciones",
   gestion: "Gestión",
   usuario: "Usuario",
 };
 
-export const categoryIcons: Record<string, LucideIcon> = {
+const categoryIcons: Record<string, LucideIcon> = {
   principal: Home,
   operaciones: BarChart3,
   gestion: FileText,

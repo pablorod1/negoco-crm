@@ -344,7 +344,7 @@ function StatCard({
           {type === "chart" && (
             <motion.div
               className="text-gray-400"
-              initial={{ scale: 0, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
                 delay: delay + 0.2,
@@ -358,7 +358,7 @@ function StatCard({
           {type === "consumption" && (
             <motion.div
               className="text-gray-400"
-              initial={{ scale: 0, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
                 delay: delay + 0.2,
@@ -371,7 +371,7 @@ function StatCard({
           )}
           {trend && (
             <motion.div
-              initial={{ scale: 0, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
                 delay: delay + 0.2,

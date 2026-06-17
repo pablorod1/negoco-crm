@@ -52,7 +52,7 @@ const timeRangeOptions: {
   { value: "last_week", label: "La semana pasada" },
 ];
 
-export const showCommercialFilterForUser = (
+const showCommercialFilterForUser = (
   userData: User,
   hasSubComerciales = false,
 ) =>
@@ -60,7 +60,7 @@ export const showCommercialFilterForUser = (
   userData.role === "1" ||
   (userData.role === "2" && hasSubComerciales);
 
-export const formatDateParam = (date: Date) => {
+const formatDateParam = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");

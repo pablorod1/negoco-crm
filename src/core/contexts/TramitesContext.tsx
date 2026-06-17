@@ -1,5 +1,5 @@
 ﻿"use client";
-import { createContext, useContext, useCallback, useRef } from "react";
+import { createContext, use, useCallback, useRef } from "react";
 
 interface TramitesContextType {
   refreshTramites: () => Promise<void>;
@@ -11,7 +11,7 @@ const TramitesContext = createContext<TramitesContextType>({
   setRefreshTramites: () => () => {},
 });
 
-export const useTramites = () => useContext(TramitesContext);
+export const useTramites = () => use(TramitesContext);
 
 export function TramitesProvider({ children }: { children: React.ReactNode }) {
   const refreshCallbacks = useRef<Set<() => Promise<void>>>(new Set());

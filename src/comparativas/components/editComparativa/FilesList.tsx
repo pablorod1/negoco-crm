@@ -81,7 +81,7 @@ export const FilesList = ({
   const fileElements = useMemo(() => {
     return files.map((file, index) => (
       <div
-        key={index}
+        key={file.id}
         className="flex items-center justify-between p-3 border rounded-lg h-full"
       >
         <div className="flex items-center gap-3">

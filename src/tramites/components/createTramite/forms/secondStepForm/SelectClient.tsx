@@ -305,7 +305,15 @@ export default function SelectClient({
                           ? "ring-2 ring-primary-200 bg-primary-50 border-primary-200"
                           : "hover:bg-gray-50 hover:border-gray-300"
                       }`}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleClientClick(client)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleClientClick(client);
+                        }
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">

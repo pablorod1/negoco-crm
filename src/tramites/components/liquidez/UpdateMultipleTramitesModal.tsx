@@ -59,18 +59,11 @@ export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
     return selectedRows;
   }, [table]);
 
-  const hasSelectedRows = useMemo(
-    () => selectedRowsCount > 0,
-    [selectedRowsCount]
-  );
+  const hasSelectedRows = selectedRowsCount > 0;
 
-  const buttonClasses = useMemo(
-    () =>
-      hasSelectedRows
-        ? "h-10 w-10 bg-blue-50 border-blue-200"
-        : "h-10 w-10 bg-gray-50 border-gray-200",
-    [hasSelectedRows]
-  );
+  const buttonClasses = hasSelectedRows
+    ? "h-10 w-10 bg-blue-50 border-blue-200"
+    : "h-10 w-10 bg-gray-50 border-gray-200";
 
   const handleOpenModal = useCallback(() => {
     getSelectedRows();
@@ -160,37 +153,24 @@ export function UpdateMultipleTramitesModal<TData>({ table }: Props<TData>) {
     }
   }, [selectedTramites, onClose, status, table, refreshTramites]);
 
-  const tooltipContent = useMemo(
-    () =>
-      hasSelectedRows
-        ? `Actualizar ${selectedRowsCount} trámites`
-        : "No hay trámites seleccionados",
-    [hasSelectedRows, selectedRowsCount]
-  );
+  const tooltipContent = hasSelectedRows
+    ? `Actualizar ${selectedRowsCount} trámites`
+    : "No hay trámites seleccionados";
 
-  const modalTitle = useMemo(
-    () =>
-      selectedTramites.length > 1
-        ? `¿Estás seguro de que deseas actualizar ${selectedTramites.length} trámites?`
-        : "¿Estás seguro de que deseas actualizar el trámite?",
-    [selectedTramites.length]
-  );
+  const modalTitle =
+    selectedTramites.length > 1
+      ? `¿Estás seguro de que deseas actualizar ${selectedTramites.length} trámites?`
+      : "¿Estás seguro de que deseas actualizar el trámite?";
 
-  const modalDescription = useMemo(
-    () =>
-      selectedTramites.length > 1
-        ? "Todos los trámites se actualizarán al estado seleccionado."
-        : "El trámite se actualizará al estado seleccionado.",
-    [selectedTramites.length]
-  );
+  const modalDescription =
+    selectedTramites.length > 1
+      ? "Todos los trámites se actualizarán al estado seleccionado."
+      : "El trámite se actualizará al estado seleccionado.";
 
-  const updateButtonText = useMemo(
-    () =>
-      selectedTramites.length > 1
-        ? "Actualizar Trámites"
-        : "Actualizar Trámite",
-    [selectedTramites.length]
-  );
+  const updateButtonText =
+    selectedTramites.length > 1
+      ? "Actualizar Trámites"
+      : "Actualizar Trámite";
 
   const handleStatusChange = (value: string) => {
     setStatus(value as LiquidezStatus);

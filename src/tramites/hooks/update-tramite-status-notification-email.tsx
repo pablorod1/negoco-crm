@@ -1,6 +1,4 @@
 ﻿import * as React from "react";
-import { NextRequest } from "next/server";
-import nodemailer from "nodemailer";
 import {
   Body,
   Button,
@@ -14,82 +12,7 @@ import {
   Section,
   Text,
   Tailwind,
-  render,
 } from "@react-email/components";
-
-export async function sendTramiteStatusUpdatedNotification({
-  user_to,
-  tramite_id,
-  status,
-  link,
-  req,
-  client,
-}: {
-  user_to: { name: string; email: string; org_logo: string | undefined };
-  tramite_id: string;
-  status: { old: string; new: string };
-  link: string;
-  req: NextRequest;
-  client: { name: string; last_name?: string | undefined };
-}) {
-  // Configurar el transporter de nodemailer
-  const host = req.headers.get("host");
-  if (!host) {
-    throw new Error("No host found in request headers");
-  }
-
-  // Extraer el subdominio (client1, client2, etc.)
-  const subdomain = host.split(".")[0];
-  const email =
-    subdomain === "beenergy"
-      ? process.env.EMAIL_BEENERGY
-      : process.env.EMAIL_NOREPLY;
-  const password =
-    subdomain === "beenergy"
-      ? process.env.EMAIL_PASS_BEENERGY
-      : process.env.EMAIL_PASS_NOREPLY;
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: 465,
-    secure: true,
-    auth: {
-      user: email,
-      pass: password,
-    },
-  });
-
-  const tramiteLink = `${link}/tramites/${tramite_id}`;
-
-  const emailHtml = await render(
-    <TramiteStatusUpdateEmail
-      name={user_to.name}
-      tramiteLink={tramiteLink}
-      status={status}
-      org_logo={user_to.org_logo}
-      subdomain={subdomain}
-      client={client}
-    />
-  );
-
-  const mailOptions = {
-    from: {
-      address: email as string,
-      name: subdomain === "beenergy" ? "BEENERGY" : "Negoco Cloud",
-    },
-    to: user_to.email,
-    subject: `Actualización de Trámite - ${client.name} ${client.last_name}`,
-    html: emailHtml,
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    return info;
-  } catch (error) {
-    console.error("Error al enviar el email:", error);
-    throw new Error("No se pudo enviar el correo");
-  }
-}
 
 const TramiteStatusUpdateEmail = ({
   name,

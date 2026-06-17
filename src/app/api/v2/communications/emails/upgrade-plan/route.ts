@@ -7,7 +7,7 @@ import { z } from "zod";
  */
 const UpgradePlanEmailSchema = z.object({
   user: z.object({
-    email: z.string().email("Invalid email format"),
+    email: z.email("Invalid email format"),
     name: z.string().min(1, "Name is required"),
     company: z.string().min(1, "Company is required"),
   }),

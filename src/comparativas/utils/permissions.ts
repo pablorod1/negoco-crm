@@ -25,7 +25,7 @@ export function isComercialEditableComparativa(
   return isComercial && comparativa.status === "pending";
 }
 
-export function isStudiedComparativa(
+function isStudiedComparativa(
   comparativa: ComparativaVM | null
 ): boolean {
   return comparativa?.status === "completed";
@@ -43,7 +43,7 @@ export function hasNotesComparativa(
   return (comparativa?.notes?.length ?? 0) > 0;
 }
 
-export function showCommissionsTab(
+function showCommissionsTab(
   comparativa: ComparativaVM | null,
   isSubcomercial: boolean
 ): boolean {
@@ -58,6 +58,6 @@ export function isAdminUser(userRole?: string): boolean {
   return userRole === "admin";
 }
 
-export function isBackOfficeUser(userRole?: string): boolean {
+function isBackOfficeUser(userRole?: string): boolean {
   return userRole === "1";
 }

@@ -38,7 +38,7 @@ export function ComercializadorasFilters({
 
       <div className="flex gap-2">
         {!isComercial && (
-          <button
+          <button type="button"
             onClick={() => onStatusFilterChange("all")}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               statusFilter === "all"
@@ -50,7 +50,7 @@ export function ComercializadorasFilters({
           </button>
         )}
 
-        <button
+        <button type="button"
           onClick={() => onStatusFilterChange("active")}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             statusFilter === "active"
@@ -62,7 +62,7 @@ export function ComercializadorasFilters({
         </button>
 
         {!isComercial && (
-          <button
+          <button type="button"
             onClick={() => onStatusFilterChange("inactive")}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               statusFilter === "inactive"

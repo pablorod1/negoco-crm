@@ -1,6 +1,6 @@
 ﻿import { Client } from "@libsql/client";
 
-export const updateComparativaStatus = async (
+const updateComparativaStatus = async (
   tursoClient: Client,
   comparativa_id: string,
   status: string,
@@ -49,7 +49,7 @@ export const updateComparativaStatus = async (
   }
 };
 
-export const updateComparativaComissions = async (
+const updateComparativaComissions = async (
   tursoClient: Client,
   comparativa_id: string,
   comision_fijo: number | undefined,

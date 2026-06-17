@@ -39,7 +39,7 @@ export function useApiErrorHandler() {
 }
 
 // Alternative hook for specific fetch calls
-export function useAuthenticatedFetch() {
+function useAuthenticatedFetch() {
   const { setShowReauthModal, userData } = useUser();
 
   const authenticatedFetch = async (

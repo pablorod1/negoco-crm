@@ -115,6 +115,7 @@ export default function SearchBar({ recentlyFiles }: SearchBarProps) {
             <Search className="h-5 w-5 text-gray-400 mr-4 flex-shrink-0" />
             <input
               ref={inputRef}
+              aria-label="Buscar"
               type="text"
               placeholder="Buscar documentos..."
               value={filterValue}

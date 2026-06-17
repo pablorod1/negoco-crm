@@ -1,5 +1,5 @@
 ﻿"use client";
-import { createContext, useContext, useCallback, useRef } from "react";
+import { createContext, use, useCallback, useRef } from "react";
 
 interface FotovoltaicasContextType {
   refreshFotovoltaicas: () => Promise<void>;
@@ -11,7 +11,7 @@ const FotovoltaicasContext = createContext<FotovoltaicasContextType>({
   setRefreshFotovoltaicas: () => () => {},
 });
 
-export const useFotovoltaicas = () => useContext(FotovoltaicasContext);
+export const useFotovoltaicas = () => use(FotovoltaicasContext);
 
 export function FotovoltaicasProvider({
   children,

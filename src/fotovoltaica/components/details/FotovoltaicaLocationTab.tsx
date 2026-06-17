@@ -45,6 +45,7 @@ export default function FotovoltaicaLocationTab({ fotovoltaica }: Props) {
         <div className="h-[35vh] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
           {fotovoltaica.coordinates ? (
             <iframe
+              title="Mapa de ubicación"
               src={`https://maps.google.com/maps?q=${fotovoltaica.coordinates.join(",")}&z=16&output=embed`}
               width="100%"
               height="100%"

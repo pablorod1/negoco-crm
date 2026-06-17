@@ -48,7 +48,7 @@ export const ComercializadorasStats = memo(function ComercializadorasStats({
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat, index) => (
         <div
-          key={index}
+          key={stat.label}
           className="bg-white border border-gray-200 rounded-4xl p-4 hover:border-gray-300 transition-colors shadow-2xs"
         >
           <div className="flex items-center space-x-3">

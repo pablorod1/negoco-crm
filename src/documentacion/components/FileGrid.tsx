@@ -230,7 +230,7 @@ export function FileGrid({
             >
               {folders.map((folder: string, index) => (
                 <FolderCard
-                  key={`folder-${index}`}
+                  key={folder}
                   name={folder}
                   currentPath={currentPath}
                   userData={userData as User}

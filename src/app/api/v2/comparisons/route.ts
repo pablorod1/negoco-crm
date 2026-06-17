@@ -121,8 +121,8 @@ const ComparativaFileSchema = z.object({
   size: z.number().min(0, "File size must be positive or zero"),
   extension: z.string().min(1, "File extension is required"),
   upload_date: z.string().min(1, "Upload date is required"),
-  download_url: z.string().url("Invalid download URL"),
-  preview_url: z.string().url("Invalid preview URL").nullable(),
+  download_url: z.url("Invalid download URL"),
+  preview_url: z.url("Invalid preview URL").nullable(),
 });
 
 // Zod schema for GET endpoint pagination

@@ -165,7 +165,7 @@ export default function SelectionStep({
             Estado:
           </span>
           {Array.from(statusCounts.entries()).map(([status, count]) => (
-            <button
+            <button type="button"
               key={status}
               onClick={() =>
                 setStatusFilter(statusFilter === status ? null : status)
@@ -188,7 +188,7 @@ export default function SelectionStep({
             Liquidez:
           </span>
           {Array.from(liquidezCounts.entries()).map(([status, count]) => (
-            <button
+            <button type="button"
               key={status}
               onClick={() =>
                 setLiquidezFilter(liquidezFilter === status ? null : status)

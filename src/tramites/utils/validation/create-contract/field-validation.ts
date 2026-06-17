@@ -40,7 +40,7 @@ export const validatePostalCode = (
   };
 };
 
-export const validateCUPSField = (field: string): FieldValidationResult => {
+const validateCUPSField = (field: string): FieldValidationResult => {
   if (!isStringValueInformed(field)) {
     return {
       succeeded: false,

@@ -1,5 +1,5 @@
 ﻿"use client";
-import { createContext, useContext, useCallback, useRef } from "react";
+import { createContext, use, useCallback, useRef } from "react";
 
 interface UsersContextType {
   refreshUsers: () => void;
@@ -11,7 +11,7 @@ const UsersContext = createContext<UsersContextType>({
   setRefreshUsers: () => () => {},
 });
 
-export const useUsers = () => useContext(UsersContext);
+export const useUsers = () => use(UsersContext);
 
 export function UsersProvider({ children }: { children: React.ReactNode }) {
   const refreshCallbacks = useRef<Set<() => void>>(new Set());

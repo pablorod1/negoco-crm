@@ -9,7 +9,7 @@ const SignerSchema = z.object({
   id: z.string().min(1, "Signer ID is required"),
   name: z.string().min(1, "Name is required"),
   last_name: z.string().min(1, "Last name is required"),
-  email: z.string().email("Valid email is required"),
+  email: z.email("Valid email is required"),
   phone: z.string().min(1, "Phone is required"),
   document_number: z.string().min(1, "Document number is required"),
   cargo: z.string().nullable().optional(),

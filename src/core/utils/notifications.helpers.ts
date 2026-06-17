@@ -2,7 +2,7 @@
 import { Notification } from "@/core/types";
 import { formatUUID } from "./format";
 
-export const getColorPriority = (priority: number) => {
+const getColorPriority = (priority: number) => {
   switch (priority) {
     case 1:
       return "danger";
@@ -53,7 +53,7 @@ export const getLinkContext = (context: string, link: string): string => {
   }
 };
 
-export const generateTramitesNotificationMessage = (
+const generateTramitesNotificationMessage = (
   changes?: UpdatedFields | undefined,
   uploadedFiles?: File[] | undefined
 ): string => {
@@ -135,7 +135,7 @@ export const generateTramiteUpdatedNotification = ({
   user_id: user_id,
 });
 
-export const generateComparativaNotificationMessage = (
+const generateComparativaNotificationMessage = (
   notes: boolean | undefined,
   status: string | undefined,
   files: boolean | undefined,
@@ -226,7 +226,7 @@ interface FotovoltaicaNotification {
   files?: boolean;
 }
 
-export const generateFotovoltaicaNotificationMessage = (
+const generateFotovoltaicaNotificationMessage = (
   notes: boolean | undefined,
   status: string | undefined,
   files: boolean | undefined
@@ -297,7 +297,7 @@ interface TicketReplyNotification {
   author_name?: string;
 }
 
-export const generateTicketCreatedNotificationMessage = (
+const generateTicketCreatedNotificationMessage = (
   context: string,
   subject: string,
   created_by_name?: string
@@ -315,7 +315,7 @@ export const generateTicketCreatedNotificationMessage = (
   return `Se ha creado un nuevo ticket en tu ${contextName}${creatorInfo}: "${subject}"`;
 };
 
-export const generateTicketReplyNotificationMessage = (
+const generateTicketReplyNotificationMessage = (
   subject: string,
   author_name?: string
 ): string => {

@@ -179,7 +179,7 @@ const ClientSchema = z.object({
   id: z.string().min(1, "Client ID is required"),
   name: z.string().min(1, "Client name is required"),
   last_name: z.string().optional().default(""),
-  email: z.string().email("Invalid email format"),
+  email: z.email("Invalid email format"),
   type: z.string().min(1, "Client type is required"),
   phone: z.string().min(1, "Phone is required"),
   address: z.string().min(1, "Address is required"),
@@ -253,7 +253,7 @@ const SignerSchema = z
     id: z.string().min(1, "Signer ID is required"),
     name: z.string().min(1, "Signer name is required"),
     last_name: z.string().min(1, "Last name is required"),
-    email: z.string().email("Invalid email format"),
+    email: z.email("Invalid email format"),
     phone: z.string().min(1, "Phone is required"),
     document_number: z.string().min(1, "Document number is required"),
     cargo: z.string().nullable(),
@@ -288,14 +288,14 @@ const TramiteFileSchema = z.object({
   size: z.coerce.number().min(0, "File size must be positive"),
   extension: z.string().min(1, "Extension is required"),
   upload_date: z.string().min(1, "Upload date is required"),
-  download_url: z.string().url("Invalid download URL"),
-  preview_url: z.string().url("Invalid preview URL").nullable(),
+  download_url: z.url("Invalid download URL"),
+  preview_url: z.url("Invalid preview URL").nullable(),
 });
 
 const UserSchema = z.object({
   id: z.string().min(1, "User ID is required"),
   name: z.string().min(1, "User name is required"),
-  email: z.string().email("Invalid email format"),
+  email: z.email("Invalid email format"),
   role: z.string().min(1, "User role is required"),
   image: z.string().nullable().optional().default(null),
 });

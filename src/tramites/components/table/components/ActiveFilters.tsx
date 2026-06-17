@@ -224,7 +224,7 @@ export function ActiveFilters({
                 >
                   <span className="text-xs font-medium">Proveedor:</span>
                   <span className="text-xs">{provider}</span>
-                  <button
+                  <button type="button"
                     onClick={() => onRemoveProvider(provider)}
                     className="ml-1 hover:text-red-600 transition-colors"
                   >

@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react";
 
-export function AnimatedListItem({ children }: { children: React.ReactNode }) {
+function AnimatedListItem({ children }: { children: React.ReactNode }) {
   const animations = {
     initial: { scale: 0, opacity: 0 },
     animate: { scale: 1, opacity: 1, originY: 0 },

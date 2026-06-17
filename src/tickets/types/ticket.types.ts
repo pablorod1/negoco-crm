@@ -148,7 +148,7 @@ export const TICKET_PRIORITIES = {
   urgent: { value: "urgent", label: "Urgente", color: "text-red-600" },
 } as const;
 
-export const TICKET_CONTEXTS = {
+const TICKET_CONTEXTS = {
   tramite: { value: "tramite", label: "Trámite" },
   cliente: { value: "cliente", label: "Cliente" },
   fotovoltaica: { value: "fotovoltaica", label: "Fotovoltaica" },

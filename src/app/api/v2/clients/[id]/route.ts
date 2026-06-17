@@ -12,7 +12,7 @@ const ClientSchema = z.object({
   id: z.string().min(1, "Client ID is required"),
   name: z.string().min(1, "Name is required"),
   last_name: z.string().optional().default(""),
-  email: z.string().email("Valid email is required"),
+  email: z.email("Valid email is required"),
   type: z.string().min(1, "Client type is required"),
   phone: z.string().min(1, "Phone is required"),
   address: z.string().min(1, "Address is required"),

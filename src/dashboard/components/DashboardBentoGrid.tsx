@@ -31,11 +31,10 @@ export default function DashboardBentoGrid() {
     fetchTicketsStats();
   }, [fetchData, fetchTicketsStats]);
 
-  useEffect(() => {
-    if (!canAccessMetrics && currentView === "metrics") {
-      setCurrentView("main");
-    }
-  }, [canAccessMetrics, currentView]);
+  const handleViewChange = (view: ViewType) => {
+    if (view === "metrics" && !canAccessMetrics) return;
+    setCurrentView(view);
+  };
 
   const handleRefreshData = () => {
     refreshData();
@@ -108,7 +107,7 @@ export default function DashboardBentoGrid() {
       <DashboardViewToggle
         getPlan={getPlan}
         currentView={visibleCurrentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         isDireccion={canAccessMetrics}
       />
 

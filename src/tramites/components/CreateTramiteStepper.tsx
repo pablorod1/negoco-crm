@@ -181,7 +181,15 @@ export const CreateTramiteStepper: React.FC<StepperProps> = ({
                       ? "bg-gray-50 border border-gray-200 opacity-60"
                       : "bg-gray-50 border border-gray-200"
               )}
+              role="button"
+              tabIndex={isClickable ? 0 : -1}
               onClick={() => isClickable && setActiveStep(i)}
+              onKeyDown={(e) => {
+                if (isClickable && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  setActiveStep(i);
+                }
+              }}
             >
               <div
                 className={cn(

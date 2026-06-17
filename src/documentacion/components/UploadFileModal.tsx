@@ -200,7 +200,10 @@ export default function UploadFileModal() {
     onClose();
   };
 
-  const toggleFolder = (path: string, e: React.MouseEvent) => {
+  const toggleFolder = (
+    path: string,
+    e: React.MouseEvent | React.KeyboardEvent,
+  ) => {
     e.stopPropagation();
     setExpandedFolders((prev) => {
       const next = new Set(prev);
@@ -219,7 +222,7 @@ export default function UploadFileModal() {
   ) => {
     return subfolders.map((subfolder) => (
       <div key={subfolder.path}>
-        <button
+        <button type="button"
           onClick={() => setSelectedFolder(subfolder.path)}
           className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
             selectedFolder === subfolder.path ? "bg-blue-50 text-blue-600" : ""
@@ -230,7 +233,15 @@ export default function UploadFileModal() {
           <span>{subfolder.displayName}</span>
           {subfolder.subfolders.length > 0 ? (
             <div
+              role="button"
+              tabIndex={0}
               onClick={(e) => toggleFolder(subfolder.path, e)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggleFolder(subfolder.path, e);
+                }
+              }}
               className="hover:bg-gray-200 rounded p-0.5"
             >
               {expandedFolders.has(subfolder.path) ? (
@@ -334,7 +345,7 @@ export default function UploadFileModal() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Carpeta destino</label>
               <div className="space-y-1">
-                <button
+                <button type="button"
                   onClick={() => setSelectedFolder("/")}
                   className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
                     selectedFolder === "/" ? "bg-blue-50 text-blue-600" : ""
@@ -348,7 +359,7 @@ export default function UploadFileModal() {
                     (group) =>
                       group.path && (
                         <div key={group.path} className="space-y-1 ps-6">
-                          <button
+                          <button type="button"
                             onClick={() => setSelectedFolder(group.path)}
                             className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
                               selectedFolder === group.path
@@ -359,7 +370,15 @@ export default function UploadFileModal() {
                             <Folder size={16} />
                             <span>{group.name}</span>
                             <div
+                              role="button"
+                              tabIndex={0}
                               onClick={(e) => toggleFolder(group.path, e)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  toggleFolder(group.path, e);
+                                }
+                              }}
                               className="hover:bg-gray-200 rounded p-0.5"
                             >
                               {group.subfolders.length > 0 &&
@@ -385,7 +404,7 @@ export default function UploadFileModal() {
                       )
                   )}
                 </div>
-                <button
+                <button type="button"
                   onClick={() => setCreateFolder(true)}
                   className="w-full px-3 py-2 text-left text-blue-600 hover:bg-gray-100 rounded"
                 >

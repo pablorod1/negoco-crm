@@ -7,7 +7,7 @@ export const COMPARATIVA_STATUS_TYPES = [
   { value: "rechazado_cliente", label: "Rechazado Cliente" },
 ];
 
-export const PLAIN_COMPARATIVA_STATUS_TYPES = [
+const PLAIN_COMPARATIVA_STATUS_TYPES = [
   "pending",
   "awaiting_review",
   "completed",

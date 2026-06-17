@@ -153,7 +153,7 @@ export default function ValidationStep({
       {/* Unmatched detail */}
       {notFoundCups.length > 0 && (
         <div className="border rounded-lg overflow-hidden">
-          <button
+          <button type="button"
             onClick={() => setShowUnmatched(!showUnmatched)}
             className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
@@ -215,7 +215,7 @@ export default function ValidationStep({
       {hasCommissionData && hasResults && (
         <div className="border rounded-lg overflow-hidden border-emerald-200">
           {/* Header with progress bar */}
-          <button
+          <button type="button"
             onClick={() => setShowCommissionTable(!showCommissionTable)}
             className="flex flex-col gap-2.5 w-full px-4 py-3 text-left bg-emerald-50 hover:bg-emerald-100/70 transition-colors"
           >

@@ -224,7 +224,7 @@ export default function AddComparativaDialog({
               <span>Nueva Comparativa</span>
             </Button>
           ) : (
-            <button
+            <button type="button"
               onClick={() => setIsOpen(true)}
               className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200"
             >

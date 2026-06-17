@@ -172,6 +172,7 @@ export default function UploadAvatar({ userData, refreshUserData }: Props) {
           <div className="flex flex-wrap gap-3 pt-2">
             <input
               type="file"
+              aria-label="Subir avatar"
               accept="image/*"
               id="avatar-upload"
               className="hidden"

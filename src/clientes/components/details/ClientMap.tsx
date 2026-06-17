@@ -41,6 +41,7 @@ const ClientMap = ({
   }
   return (
     <iframe
+      title="Mapa de ubicación"
       src={`https://maps.google.com/maps?q=${coordinates.join(",")}&z=${zoom}&output=embed`}
       width={width}
       height={height}

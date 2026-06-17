@@ -30,7 +30,15 @@ export function ClientCard({ client }: { client: ClientListItem }) {
     <Card className="group cursor-pointer hover:shadow-md transition-all duration-200 border-gray-200 bg-white">
       <div
         className="p-6"
+        role="button"
+        tabIndex={0}
         onClick={() => router.push(`/clientes/${client.id}`)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            router.push(`/clientes/${client.id}`);
+          }
+        }}
       >
         {/* Header with avatar and name */}
         <div className="flex items-start gap-4 mb-4">

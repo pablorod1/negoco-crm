@@ -49,8 +49,8 @@ const ContractDocumentFileSchema = z.object({
   size: z.number().positive("File size must be positive"),
   extension: z.string().min(1, "File extension is required"),
   upload_date: z.string().min(1, "Upload date is required"),
-  download_url: z.string().url("Download URL must be valid"),
-  preview_url: z.string().url().nullable().optional(),
+  download_url: z.url("Download URL must be valid"),
+  preview_url: z.url().nullable().optional(),
 });
 
 /**

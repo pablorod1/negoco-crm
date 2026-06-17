@@ -87,7 +87,7 @@ export function isComercialUser(userRole?: string): boolean {
  * Verifica si el usuario es backoffice
  * Lógica extraída exactamente del componente TramiteDetails
  */
-export function isBackofficeUser(userRole?: string): boolean {
+function isBackofficeUser(userRole?: string): boolean {
   if (!userRole) return false;
   return userRole === "1";
 }

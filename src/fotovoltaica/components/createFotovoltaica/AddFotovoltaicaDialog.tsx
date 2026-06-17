@@ -297,7 +297,7 @@ export default function AddFotovoltaicaDialog({
             <span>Solicita Estudio Placas Solares</span>
           </Button>
         ) : (
-          <button
+          <button type="button"
             onClick={onOpen}
             className="group cursor-pointer w-full flex items-start gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-orange-50 hover:shadow-sm border border-transparent hover:border-orange-200"
           >

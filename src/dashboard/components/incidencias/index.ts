@@ -1,1 +1,0 @@
-export { IncidenciasView } from "./IncidenciasView";

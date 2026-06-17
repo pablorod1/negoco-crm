@@ -76,12 +76,9 @@ export default function ColaboradoresPage() {
     }
   }, [userData]);
 
-  // Efecto para la carga inicial
   useEffect(() => {
-    if (!state.initialized && userData) {
-      fetchData();
-    }
-  }, [userData, state.initialized, fetchData]);
+    fetchData();
+  }, [fetchData]);
 
   // Registrar la función fetchData con el contexto
   useEffect(() => {
@@ -145,7 +142,7 @@ export default function ColaboradoresPage() {
       </div>
 
       {/* Contenido principal */}
-      <div className="container mx-auto px-6 py-6">
+      <div className="container mx-auto space-y-6 px-6 py-6">
         {isAdmin && <UserLimitBar onLimitReached={handleLimitCheck} />}
         <UsersGridTable users={state.users} loading={state.loading} />
       </div>

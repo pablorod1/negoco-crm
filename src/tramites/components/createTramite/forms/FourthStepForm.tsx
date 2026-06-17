@@ -151,7 +151,7 @@ export default function FourthStepForm({
                   <ul className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-2 bg-gray-50">
                     {existingFiles.map((file, index) => (
                       <li
-                        key={index}
+                        key={file.id}
                         className={`flex items-center justify-between px-3 py-2 rounded transition-colors ${
                           selectedExistingFiles?.some(
                             (selectedFile) => selectedFile.id === file.id
@@ -214,7 +214,7 @@ export default function FourthStepForm({
                   <ul className="space-y-2 max-h-32 overflow-y-auto border rounded-lg p-2 bg-gray-50">
                     {comparativaFiles.map((file, index) => (
                       <li
-                        key={index}
+                        key={file.id}
                         className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100"
                       >
                         <FileIcon

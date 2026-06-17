@@ -94,7 +94,7 @@ export default function DocumentsForm({
                     ({(file.size / 1024).toFixed(1)} KB)
                   </span>
                 </div>
-                <button
+                <button type="button"
                   onClick={(e) => handleRemoveFile(e, file)}
                   className="hover:bg-primary-100 p-1 rounded-full transition-colors"
                   title="Eliminar archivo"

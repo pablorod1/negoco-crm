@@ -2,7 +2,7 @@
 
 import {
   createContext,
-  useContext,
+  use,
   useEffect,
   useCallback,
   useState,
@@ -130,7 +130,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useUser() {
-  const context = useContext(UserContext);
+  const context = use(UserContext);
 
   if (context === undefined) {
     throw new Error("useUser debe usarse dentro de UserProvider");

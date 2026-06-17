@@ -1,7 +1,7 @@
 ﻿import { storage } from "@/core/firebase/firebaseConfig";
 import { listAll, ref } from "firebase/storage";
 
-export const getFoldersFromDocumentacion = async (
+const getFoldersFromDocumentacion = async (
   organization_id: string
 ): Promise<{
   success: boolean;
@@ -127,7 +127,7 @@ export async function getSubFoldersFromFolder(
   }
 }
 
-export const getItemsCountFromFolder = async (
+const getItemsCountFromFolder = async (
   folder: string,
   organization_id: string
 ): Promise<{ success: boolean; items: number }> => {

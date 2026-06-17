@@ -1,4 +1,4 @@
-import { sendTramiteStatusUpdatedNotification } from "@/tramites/hooks/update-tramite-status-notification-email";
+import { sendTramiteStatusUpdatedNotification } from "@/tramites/server/tramite-status-email";
 import { sendComparativaStatusUpdatedNotification } from "@/comparativas/hooks/update-comparativa-status-notification-email";
 import { sendFotovoltaicaStatusUpdatedNotification } from "@/fotovoltaica/hooks/update-fotovoltaica-status-notification-email";
 import { NextRequest, NextResponse } from "next/server";
@@ -8,7 +8,7 @@ import { z } from "zod";
  * Base user schema for email notifications
  */
 const UserToSchema = z.object({
-  email: z.string().email("Invalid email format"),
+  email: z.email("Invalid email format"),
   name: z.string().min(1, "Name is required"),
   org_logo: z.string().optional().nullable(),
 });

@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 // Role enum aligned with the app's role system
-export const UserRoleEnum = z.enum(["admin", "1", "2"], {
+const UserRoleEnum = z.enum(["admin", "1", "2"], {
   message: "El rol es obligatorio",
 });
 
 // Organization role enum for membership
-export const OrganizationRoleEnum = z.enum(["member", "admin", "owner"], {
+const OrganizationRoleEnum = z.enum(["member", "admin", "owner"], {
   message: "El rol de organización es obligatorio",
 });
 
@@ -16,7 +16,7 @@ export const CreateUserSchema = z.object({
     .string()
     .min(1, "El nombre es obligatorio")
     .max(100, "El nombre es demasiado largo"),
-  email: z.string().email("El email debe ser válido"),
+  email: z.email("El email debe ser válido"),
   password: z
     .string()
     .min(8, "La contraseña debe tener al menos 8 caracteres")
@@ -46,7 +46,7 @@ export const CompanyAssignmentSchema = z.object({
 // Email notification schema
 export const WelcomeEmailSchema = z.object({
   user_to: z.object({
-    email: z.string().email("Email inválido"),
+    email: z.email("Email inválido"),
     name: z.string().min(1, "Nombre requerido"),
     org_logo: z.string().optional(),
     super_id: z.string().optional(),

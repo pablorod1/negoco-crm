@@ -5,7 +5,7 @@ import { User } from "@/core/types";
 import { Table } from "@tanstack/react-table";
 import { motion } from "framer-motion";
 import { Download, Filter, Search, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ExportTableModal from "@/core/components/ExportTableModal";
 import MultipleSelector from "@/core/components/ui/multiselect";
 import { Label } from "@/core/components/ui/label";
@@ -76,7 +76,6 @@ const FotovoltaicasHeader = <TData,>({
   typeFilter,
   setTypeFilter,
 }: Props<TData>) => {
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   const isComercial = userData?.role === "2";
@@ -84,15 +83,15 @@ const FotovoltaicasHeader = <TData,>({
   const { convertToOptions, convertFromOptions, getSelectedOptions } =
     useMultipleSelector();
 
-  useEffect(() => {
-    const filters = [];
+  const activeFilters = useMemo(() => {
+    const filters: string[] = [];
     if (statusFilter && statusFilter.length > 0) filters.push("Estado");
     if (creationDateRange) filters.push("Fecha de Creación");
     if (activationDateRange) filters.push("Fecha de Activación");
     if (typeFilter && typeFilter.length > 0) filters.push("Tipo");
     if (userFilter && userFilter.length > 0 && !isComercial)
       filters.push("Comercial");
-    setActiveFilters(filters);
+    return filters;
   }, [
     statusFilter,
     creationDateRange,
@@ -149,7 +148,7 @@ const FotovoltaicasHeader = <TData,>({
                 startContent={<Search className="h-4 w-4" />}
                 endContent={
                   filterValue && (
-                    <button
+                    <button type="button"
                       onClick={handleClearSearch}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
@@ -295,7 +294,7 @@ const FotovoltaicasHeader = <TData,>({
             <div className="flex gap-1.5">
               {activeFilters.map((filter, index) => (
                 <Badge
-                  key={index}
+                  key={filter}
                   variant="secondary"
                   className="bg-gray-100 text-gray-700 gap-1.5"
                 >

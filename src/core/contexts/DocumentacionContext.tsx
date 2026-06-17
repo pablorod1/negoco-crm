@@ -1,7 +1,7 @@
 ﻿"use client";
 import {
   createContext,
-  useContext,
+  use,
   useCallback,
   useRef,
   useState,
@@ -54,5 +54,5 @@ export function DocumentacionProvider({
   );
 }
 
-export const useDocumentacion = () => useContext(DocumentacionContext);
+export const useDocumentacion = () => use(DocumentacionContext);
 

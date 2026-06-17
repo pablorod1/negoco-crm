@@ -276,7 +276,7 @@ export default function RenewableTramitesCalendar({
 
         {/* Calendar Navigation */}
         <div className="flex items-center justify-between">
-          <button
+          <button type="button"
             onClick={goToPreviousMonth}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -287,7 +287,7 @@ export default function RenewableTramitesCalendar({
             {format(currentDate, "MMMM yyyy", { locale: es })}
           </h2>
 
-          <button
+          <button type="button"
             onClick={goToNextMonth}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -326,7 +326,7 @@ export default function RenewableTramitesCalendar({
                 onOpenChange={setPopoverOpen}
               >
                 <PopoverTrigger asChild>
-                  <button
+                  <button type="button"
                     onClick={() => handleDateClick(day)}
                     className={cn(
                       "relative p-2 h-12 text-sm font-medium rounded-lg transition-all duration-200",

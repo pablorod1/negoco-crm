@@ -301,7 +301,15 @@ export const TicketItem: React.FC<TicketItemProps> = ({
               "text-gray-700 leading-relaxed cursor-pointer transition-all duration-200",
               !isExpanded ? "line-clamp-3" : ""
             )}
+            role="button"
+            tabIndex={0}
             onClick={() => setIsExpanded(!isExpanded)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsExpanded(!isExpanded);
+              }
+            }}
           >
             {ticket.message}
           </div>

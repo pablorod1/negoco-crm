@@ -640,7 +640,7 @@ export default function AddTramiteDialog({
             {getButtonText()}
           </Button>
         ) : (
-          <button
+          <button type="button"
             onClick={handleOpen}
             className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:shadow-sm border border-transparent hover:border-blue-200"
           >

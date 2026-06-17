@@ -35,7 +35,7 @@ export const formatDateTime = (dateString: string): string => {
   });
 };
 
-export const formatDateTimeShort = (dateString: string): string => {
+const formatDateTimeShort = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();
   const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
@@ -59,7 +59,7 @@ export const formatDateTimeShort = (dateString: string): string => {
   }
 };
 
-export const truncateText = (text: string, maxLength: number = 100): string => {
+const truncateText = (text: string, maxLength: number = 100): string => {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + "...";
 };

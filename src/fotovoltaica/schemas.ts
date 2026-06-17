@@ -1,18 +1,18 @@
 import { z } from "zod";
 
 // Enums aligned with current app usage
-export const FotovoltaicaTypeEnum = z.enum(["PPA", "renting", "cubierta", ""], {
+const FotovoltaicaTypeEnum = z.enum(["PPA", "renting", "cubierta", ""], {
   message: "El tipo es obligatorio",
 });
 
-export const FotovoltaicaClientTypeEnum = z.enum(
+const FotovoltaicaClientTypeEnum = z.enum(
   ["company", "public_org", "community"],
   {
     message: "El tipo de cliente es obligatorio",
   }
 );
 
-export const FotovoltaicaStatusEnum = z.enum(
+const FotovoltaicaStatusEnum = z.enum(
   ["pending", "processing", "completed", "rejected"],
   {
     message: "El estado es obligatorio",
@@ -40,8 +40,8 @@ export const FotovoltaicaFileSchema = z.object({
   size: z.number().nonnegative(),
   extension: z.string().min(0),
   upload_date: z.string().min(1),
-  download_url: z.string().url(),
-  preview_url: z.string().url().nullable().optional(),
+  download_url: z.url(),
+  preview_url: z.url().nullable().optional(),
 });
 
 export const FotovoltaicaSchema = z.object({

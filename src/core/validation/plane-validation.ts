@@ -7,7 +7,7 @@ export const isPhoneNumberWellFormed = (phoneNumber: string) =>
 
 export const isStringValueInformed = (field: string): boolean => field !== "";
 
-export const isValueNotNullOrUndefined = <T>(value: T): boolean =>
+const isValueNotNullOrUndefined = <T>(value: T): boolean =>
   value !== null && value !== undefined;
 
 export const isIBANWellFormed = (iban: string) => validator.isIBAN(iban);

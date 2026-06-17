@@ -109,7 +109,7 @@ export const IncidenciasView: React.FC<IncidenciasViewProps> = ({
               className="pl-10 pr-10 bg-white border-gray-200 focus:border-blue-400 focus:ring-blue-400"
             />
             {searchTerm && (
-              <button
+              <button type="button"
                 onClick={handleClearSearch}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >

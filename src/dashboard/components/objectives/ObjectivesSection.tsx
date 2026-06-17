@@ -325,7 +325,7 @@ const ViewToggleButton: React.FC<ViewToggleButtonProps> = ({
   icon,
   label,
 }) => (
-  <button
+  <button type="button"
     onClick={onClick}
     className={`relative z-10 flex flex-col items-center justify-center w-1/2 px-3 py-2 rounded-sm transition-all duration-200 ${
       isActive ? "text-gray-900" : "text-gray-600 hover:text-gray-800"

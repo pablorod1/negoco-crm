@@ -180,7 +180,7 @@ export function AbarcaPanel({
           </DialogHeader>
           <div className="flex flex-col gap-2 mt-2">
             {pdfFiles.map((file) => (
-              <button
+              <button type="button"
                 key={file.id ?? file.download_url}
                 onClick={() => handleFileSelect(file.download_url!)}
                 className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

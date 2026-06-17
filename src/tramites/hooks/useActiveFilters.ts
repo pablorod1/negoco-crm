@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { DateRange } from "react-day-picker";
 
 interface UseActiveFiltersParams {
@@ -30,10 +30,8 @@ export function useActiveFilters({
   providerFilter,
   isComercial,
 }: UseActiveFiltersParams) {
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-
-  useEffect(() => {
-    const filters = [];
+  return useMemo(() => {
+    const filters: string[] = [];
 
     if (companyFilter && companyFilter.length > 0) filters.push("Compañía");
     if (statusFilter && statusFilter.length > 0) filters.push("Estado");
@@ -67,7 +65,7 @@ export function useActiveFilters({
 
     if (providerFilter && providerFilter.length > 0) filters.push("Proveedor");
 
-    setActiveFilters(filters);
+    return filters;
   }, [
     companyFilter,
     statusFilter,
@@ -82,6 +80,4 @@ export function useActiveFilters({
     isComercial,
     providerFilter,
   ]);
-
-  return activeFilters;
 }

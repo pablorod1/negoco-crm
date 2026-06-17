@@ -16,6 +16,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
       <div className="flex items-center justify-center">
         <input
           type="checkbox"
+          aria-label="Seleccionar todas las filas"
           className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 focus:ring-2 focus:ring-offset-1"
           onChange={table.getToggleAllRowsSelectedHandler()}
           checked={table.getIsAllRowsSelected()}
@@ -26,6 +27,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
       <div className="flex items-center justify-center">
         <input
           type="checkbox"
+          aria-label="Seleccionar fila"
           className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 focus:ring-2 focus:ring-offset-1"
           onChange={row.getToggleSelectedHandler()}
           checked={row.getIsSelected()}
@@ -255,7 +257,15 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
         <div className="flex flex-col space-y-1">
           {row.original.CUPS.map((CUPS) => (
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => copyLink(CUPS)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  copyLink(CUPS);
+                }
+              }}
               key={CUPS}
               className="flex items-center gap-2 group cursor-pointer p-1 rounded hover:bg-gray-50 transition-colors"
             >

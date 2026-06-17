@@ -105,7 +105,7 @@ const CupsCell = ({ row }: { row: { original: TramiteRow } }) => (
   <div className="flex flex-col space-y-1">
     {row.original.CUPS.map((CUPS: string, index: number) => (
       <TooltipComponent
-        key={index}
+        key={CUPS}
         content={
           <div className="flex items-center gap-2">
             <span className="text-white font-mono">{CUPS}</span>
@@ -114,7 +114,15 @@ const CupsCell = ({ row }: { row: { original: TramiteRow } }) => (
         }
       >
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => copyLink(CUPS)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              copyLink(CUPS);
+            }
+          }}
           className="flex items-center gap-2 group cursor-pointer p-1 rounded hover:bg-gray-50 transition-colors"
         >
           <span className="text-gray-700 text-sm font-mono block max-w-36 w-full overflow-hidden text-ellipsis whitespace-nowrap">

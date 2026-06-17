@@ -100,7 +100,7 @@ const checkClientExists = async (
   }
 };
 
-export const addSigner = async (
+const addSigner = async (
   signer: SignerDB,
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string }> => {
@@ -161,7 +161,7 @@ const checkSignerExists = async (id: string, tursoClient: Client) => {
   }
 };
 
-export const addTramite = async (
+const addTramite = async (
   tramite: TramiteDB,
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string }> => {
@@ -266,7 +266,7 @@ export const addContracts = async (
   }
 };
 
-export const addContract = async (
+const addContract = async (
   contract: ContractDB,
   tramite_id: string,
   tursoClient: Client

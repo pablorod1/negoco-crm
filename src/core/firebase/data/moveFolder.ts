@@ -10,7 +10,7 @@ import { storage } from "../firebaseConfig";
 import { ComparativaFile } from "@/comparativas/types";
 
 // Función para mover archivos en Firebase Storage
-export const moveFilesInFirebaseStorage = async (
+const moveFilesInFirebaseStorage = async (
   organization_id: string,
   comparativa_id: string,
   tramite_id: string

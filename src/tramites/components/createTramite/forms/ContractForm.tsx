@@ -282,7 +282,7 @@ export default function ContractForm({
             <div className="flex items-stretch gap-4 w-full">
               {POTS.map((pot, index) => (
                 <InputComponent
-                  key={index}
+                  key={pot}
                   onChange={handleFieldChange}
                   name={`pot${index + 1}`}
                   label={pot}

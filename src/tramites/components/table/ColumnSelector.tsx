@@ -111,6 +111,7 @@ export function ColumnSelector<TData>({
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  aria-label="Mostrar columna"
                   checked={column.getIsVisible()}
                   onChange={() => {}}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"

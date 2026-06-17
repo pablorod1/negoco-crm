@@ -26,7 +26,7 @@ export const getUserRolePermissions = (
   };
 };
 
-export const getRoleComponent = (permissions: RolePermissions) => {
+const getRoleComponent = (permissions: RolePermissions) => {
   if (permissions.isComercial) return "comercial";
   if (permissions.isBackOffice) return "backoffice";
   if (permissions.isDireccion) return "direccion";

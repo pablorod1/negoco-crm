@@ -87,7 +87,7 @@ export const POTS = [
   "Pot. 6",
 ];
 
-export const COMPANIES = [
+const COMPANIES = [
   { label: "Acciona", value: "Acciona" },
   { label: "Aletteo", value: "Aletteo" },
   { label: "APOLO", value: "APOLO" },
@@ -110,7 +110,7 @@ export const COMPANIES = [
   { label: "Otra", value: "Otra" },
 ];
 
-export const PLAIN_COMPANIES = [
+const PLAIN_COMPANIES = [
   "Acciona",
   "Aletteo",
   "APOLO",

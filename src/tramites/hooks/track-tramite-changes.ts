@@ -14,7 +14,7 @@ export interface UpdatedFields {
   contracts?: Partial<ContractDB>[];
 }
 
-export function trackChanges(
+function trackChanges(
   original: EditTramiteFormData,
   updated: EditTramiteFormData
 ): UpdatedFields {

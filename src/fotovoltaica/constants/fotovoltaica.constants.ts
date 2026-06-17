@@ -5,7 +5,7 @@ export const FOTOVOLTAICA_STATUS_TYPES = [
   { value: "rejected", label: "Rechazada" },
 ];
 
-export const PLAIN_FOTOVOLTAICA_STATUS_TYPES = [
+const PLAIN_FOTOVOLTAICA_STATUS_TYPES = [
   "pending",
   "processing",
   "completed",

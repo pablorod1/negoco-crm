@@ -337,7 +337,7 @@ const MultipleSelector = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchTerm, groupBy, open, triggerSearchOnFocus]);
 
-  const CreatableItem = () => {
+  const renderCreatableItem = () => {
     if (!creatable) return undefined;
     if (
       isOptionsExist(options, [{ value: inputValue, label: inputValue }]) ||
@@ -464,7 +464,7 @@ const MultipleSelector = ({
                 data-disabled={disabled || undefined}
               >
                 {option.label}
-                <button
+                <button type="button"
                   className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute -inset-y-px -end-px flex size-7 items-center justify-center rounded-e-4xl border border-transparent p-0 outline-hidden transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -568,7 +568,7 @@ const MultipleSelector = ({
               ) : (
                 <>
                   {EmptyItem()}
-                  {CreatableItem()}
+                  {renderCreatableItem()}
                   {!selectFirstItem && (
                     <CommandItem value="-" className="hidden" />
                   )}

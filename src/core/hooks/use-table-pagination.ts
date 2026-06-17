@@ -4,7 +4,7 @@ const DEFAULT_PAGE_SIZE = 15;
 const MAX_PAGE_SIZE = 400;
 const ALLOWED_PAGE_SIZES = [5, 10, 15, 20, 30, 40, 50, 100, 200, 400];
 
-export const normalizeTablePageSize = (value: unknown): number => {
+const normalizeTablePageSize = (value: unknown): number => {
   if (value === "Sin Límite") return MAX_PAGE_SIZE;
 
   const numericValue =

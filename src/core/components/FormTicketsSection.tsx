@@ -169,7 +169,7 @@ const TicketItem: React.FC<{
           </div>
 
           {ticket.message.length > 150 && (
-            <button
+            <button type="button"
               onClick={() => setIsExpanded(!isExpanded)}
               className="text-xs text-blue-600 hover:text-blue-800 font-medium"
             >

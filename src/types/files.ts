@@ -171,7 +171,7 @@ export interface ConversionResponse {
 }
 
 // Utility type guards
-export const isImageFile = (
+const isImageFile = (
   extension: string
 ): extension is SupportedImageExtensions => {
   const imageExtensions: SupportedImageExtensions[] = [
@@ -190,13 +190,13 @@ export const isImageFile = (
   );
 };
 
-export const isPdfFile = (
+const isPdfFile = (
   extension: string
 ): extension is SupportedPdfExtensions => {
   return extension.toLowerCase() === ".pdf";
 };
 
-export const isOfficeFile = (
+const isOfficeFile = (
   extension: string
 ): extension is SupportedOfficeExtensions => {
   const officeExtensions: SupportedOfficeExtensions[] = [
@@ -212,7 +212,7 @@ export const isOfficeFile = (
   );
 };
 
-export const isTextFile = (
+const isTextFile = (
   extension: string
 ): extension is SupportedTextExtensions => {
   const textExtensions: SupportedTextExtensions[] = [
@@ -267,12 +267,12 @@ export const detectFileType = (file: FileData): FileTypeDetection => {
 };
 
 // Constants
-export const MAX_FILE_SIZE_MB = 100;
-export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_FILE_SIZE_MB = 100;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0] as const;
 export type ZoomLevel = (typeof ZOOM_LEVELS)[number];
 
 export const DEFAULT_ZOOM = 1.0;
-export const MIN_ZOOM = 0.25;
-export const MAX_ZOOM = 2.0;
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 2.0;

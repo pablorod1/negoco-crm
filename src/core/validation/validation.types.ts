@@ -6,7 +6,7 @@ export type FirstForm = {
   user_id: string;
 };
 
-export const createEmptyFirstForm = (
+const createEmptyFirstForm = (
   userData: User,
   comparativa?: ComparativaVM,
 ): FirstForm => ({
@@ -128,7 +128,7 @@ export interface ContractForm {
   new_company: string;
 }
 
-export const createEmptyContract = (): ContractForm => ({
+const createEmptyContract = (): ContractForm => ({
   type: "",
   postal_code: "",
   province: "",

@@ -5,7 +5,7 @@
 /**
  * Calculates the total balance from an array of balance objects
  */
-export const calculateTotalBalance = (
+const calculateTotalBalance = (
   balance: Array<{ total: number }>
 ): number => {
   return balance.reduce((acc: number, { total }) => acc + total, 0);

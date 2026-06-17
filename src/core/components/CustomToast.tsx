@@ -149,7 +149,7 @@ export const showCustomToast = ({
 export default CustomToast;
 
 // Funciones utilitarias para toasts básicos con animaciones iOS
-export const showToast = {
+const showToast = {
   success: (message: string, duration = 3000) => {
     return toast.custom(
       (t) => (
@@ -179,7 +179,8 @@ export const showToast = {
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium text-gray-900">{message}</p>
                 </div>
-                <button
+                <button type="button"
+                  aria-label="Cerrar notificación"
                   onClick={() => toast.dismiss(t.id)}
                   className="ml-4 flex-shrink-0 flex text-gray-400 hover:text-gray-600"
                 >
@@ -233,7 +234,8 @@ export const showToast = {
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium text-gray-900">{message}</p>
                 </div>
-                <button
+                <button type="button"
+                  aria-label="Cerrar notificación"
                   onClick={() => toast.dismiss(t.id)}
                   className="ml-4 flex-shrink-0 flex text-gray-400 hover:text-gray-600"
                 >
@@ -287,7 +289,8 @@ export const showToast = {
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium text-gray-900">{message}</p>
                 </div>
-                <button
+                <button type="button"
+                  aria-label="Cerrar notificación"
                   onClick={() => toast.dismiss(t.id)}
                   className="ml-4 flex-shrink-0 flex text-gray-400 hover:text-gray-600"
                 >

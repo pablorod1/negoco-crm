@@ -7,7 +7,7 @@ import { z } from "zod";
  */
 const WelcomeEmailSchema = z.object({
   user_to: z.object({
-    email: z.string().email("Invalid email format"),
+    email: z.email("Invalid email format"),
     name: z.string().min(1, "Name is required"),
     org_logo: z.string().optional().nullable(),
   }),

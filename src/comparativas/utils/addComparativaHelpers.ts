@@ -1,7 +1,7 @@
 ﻿import { Client } from "@libsql/client";
 import { ComparativaDB, ComparativaFile } from "../types";
 
-export const addComparativa = async (
+const addComparativa = async (
   comparativa: ComparativaDB,
   tursoClient: Client
 ): Promise<{ success: boolean; error?: string }> => {

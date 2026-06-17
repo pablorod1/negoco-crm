@@ -130,7 +130,7 @@ export async function createComparativaChange(
 /**
  * Registra la creación de una comparativa
  */
-export async function recordComparativaCreation(
+async function recordComparativaCreation(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -200,7 +200,7 @@ export async function recordClientChange(
 /**
  * Registra cambios de servicio
  */
-export async function recordServiceChange(
+async function recordServiceChange(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -225,7 +225,7 @@ export async function recordServiceChange(
 /**
  * Registra cambios de plan
  */
-export async function recordPlanChange(
+async function recordPlanChange(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -305,7 +305,7 @@ export async function recordAssignmentChange(
 /**
  * Registra subida de documentos
  */
-export async function recordDocumentUpload(
+async function recordDocumentUpload(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -325,7 +325,7 @@ export async function recordDocumentUpload(
 /**
  * Registra eliminación de documentos
  */
-export async function recordDocumentDelete(
+async function recordDocumentDelete(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -345,7 +345,7 @@ export async function recordDocumentDelete(
 /**
  * Registra adición de notas
  */
-export async function recordNoteAdded(
+async function recordNoteAdded(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -370,7 +370,7 @@ export async function recordNoteAdded(
 /**
  * Registra eliminación de notas
  */
-export async function recordNoteDeleted(
+async function recordNoteDeleted(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -415,7 +415,7 @@ export async function recordConvertedToContract(
 /**
  * Registra actualizaciones generales con múltiples campos
  */
-export async function recordGeneralUpdate(
+async function recordGeneralUpdate(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -448,7 +448,7 @@ export async function recordGeneralUpdate(
 /**
  * Registra eliminación de comparativa
  */
-export async function recordComparativaDeleted(
+async function recordComparativaDeleted(
   db: DBExecutor,
   comparativa_id: string,
   user_id: string | null,
@@ -503,7 +503,7 @@ export async function getComparativaChanges(
 /**
  * Convierte nombres de campo técnicos a nombres amigables para el usuario
  */
-export function getFieldDisplayName(fieldName: string): string {
+function getFieldDisplayName(fieldName: string): string {
   const fieldMap: Record<string, string> = {
     // Campos básicos
     client: "Cliente",

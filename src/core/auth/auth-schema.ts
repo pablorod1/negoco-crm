@@ -85,7 +85,7 @@ export const userCompanyCommissions = sqliteTable(
   ],
 );
 
-export const userDefaultNotes = sqliteTable(
+const userDefaultNotes = sqliteTable(
   "user_default_notes",
   {
     id: text("id").primaryKey(),
