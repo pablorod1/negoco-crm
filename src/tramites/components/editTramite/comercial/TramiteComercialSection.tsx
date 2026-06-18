@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { SelectComponent } from "../../createTramite/InputComponent";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { copyLink } from "@/core/utils";
+import { getErrorMessage } from "@/core/utils/error";
 import TooltipComponent from "@/core/components/TooltipComponent";
 
 interface Props {
@@ -91,7 +92,10 @@ export default function TramiteComercialSection({
       if (!success) {
         showCustomToast({
           title: "Error al guardar los cambios",
-          message: error as string,
+          message: getErrorMessage(
+            error,
+            "No se ha podido reasignar el comercial"
+          ),
           iconColor: "var(--danger-color)",
           iconSize: 24,
           icon: CircleX,
@@ -113,7 +117,7 @@ export default function TramiteComercialSection({
       console.error(error);
       showCustomToast({
         title: "Error al guardar los cambios",
-        message: error as string,
+        message: getErrorMessage(error, "No se ha podido reasignar el comercial"),
         iconColor: "var(--danger-color)",
         iconSize: 24,
         icon: CircleX,
