@@ -119,6 +119,12 @@ export interface ClientDB {
   document_number: string;
   IBAN: string;
   coordinates: [number, number] | null | undefined;
+  tipo_via_cnmc?: string | null;
+  calle?: string | null;
+  numero_finca?: string | null;
+  aclarador_finca?: string | null;
+  phone_prefix?: string | null;
+  cnae?: string | null;
 }
 
 export interface SignerDB {
@@ -130,6 +136,8 @@ export interface SignerDB {
   document_number: string;
   cargo: string | null;
   client_id: string;
+  document_type?: string | null;
+  phone_prefix?: string | null;
 }
 
 export interface ContractDB {
@@ -152,6 +160,22 @@ export interface ContractDB {
   pot6: number;
   description: string;
   tramite_id: string;
+  rate_id?: string | null;
+  tipo_via_cnmc?: string | null;
+  calle?: string | null;
+  numero_finca?: string | null;
+  aclarador_finca?: string | null;
+  tipo_autoconsumo_cnmc?: string | null;
+  signature_channel?: "sms" | "email" | "email_otp" | string | null;
+  es_alta_nueva?: number | boolean | null;
+  mismo_titular?: number | boolean | null;
+  misma_potencia?: number | boolean | null;
+  imagina_contract_id?: string | null;
+  imagina_contract_code?: string | null;
+  imagina_request_id?: string | null;
+  imagina_status?: string | null;
+  imagina_substatus?: string | null;
+  imagina_synced_at?: string | null;
 }
 
 // Enhanced contract interface supporting both string and ID-based companies

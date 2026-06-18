@@ -1,7 +1,13 @@
 "use client";
 import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import { Notification, User } from "@/core/types";
-import { ClientDB, LiquidezStatus, Status, TramiteVM } from "@/tramites/types";
+import {
+  ClientDB,
+  ContractDB,
+  LiquidezStatus,
+  Status,
+  TramiteVM,
+} from "@/tramites/types";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
 
 import {
@@ -15,7 +21,7 @@ import {
   PLAIN_STATUS_TYPES,
 } from "@/tramites/constants";
 import { NOW_DATE, RENOVATION_DATE } from "@/dashboard/constants";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   CalendarIcon,
   AlertCircleIcon,
@@ -27,6 +33,7 @@ import { formatDate, formatUUID } from "@/core/utils/format";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { Textarea } from "@/core/components/ui/textarea";
 import { Checkbox } from "@/core/components/ui/checkbox";
+import { Switch } from "@/core/components/ui/switch";
 import { generateTramiteUpdatedNotification } from "@/core/utils/notifications.helpers";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import {
@@ -52,6 +59,7 @@ interface Props {
   userData: User;
   onUpdate: () => void;
   client: ClientDB;
+  contracts: ContractDB[];
 }
 
 interface FormData {
@@ -74,6 +82,7 @@ export default function UpdateTramiteStatusModal({
   userData,
   onUpdate,
   client,
+  contracts,
 }: Props) {
   const [formData, setFormData] = useState<FormData>({
     status: tramite.status,
@@ -103,9 +112,75 @@ export default function UpdateTramiteStatusModal({
   const isActivo = formData.status === "Activo";
   const isVerificado = formData.status === "Verificado";
   const [loading, setLoading] = useState(false);
+  const [sendToImagina, setSendToImagina] = useState(false);
+  const [imaginaStatus, setImaginaStatus] = useState<{
+    enabled: boolean;
+    configured: boolean;
+  } | null>(null);
 
   // Estado para controlar si podemos actualizar
   const [canUpdate, setCanUpdate] = useState(isTramitable || isBorrador);
+
+  const normalizeSupplier = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .trim();
+
+  const imaginaContract = useMemo(() => {
+    const imaginaName = normalizeSupplier("Imagina Energía");
+    return contracts.find((contract) => {
+      const supplier = activeSuppliers.find(
+        (item) =>
+          item.id === contract.new_company ||
+          normalizeSupplier(item.name) === normalizeSupplier(contract.new_company),
+      );
+      const supplierName = supplier?.name || contract.new_company;
+      return normalizeSupplier(supplierName) === imaginaName;
+    });
+  }, [activeSuppliers, contracts]);
+
+  const canShowImaginaSwitch =
+    isVerificado &&
+    Boolean(imaginaContract) &&
+    Boolean(imaginaStatus?.enabled && imaginaStatus.configured);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const controller = new AbortController();
+    const loadImaginaStatus = async () => {
+      try {
+        const response = await fetch(
+          "/api/v2/integrations/imagina-energia/status",
+          { signal: controller.signal },
+        );
+        const result = (await response.json()) as {
+          success?: boolean;
+          data?: { enabled: boolean; configured: boolean };
+        };
+        setImaginaStatus(
+          result.success && result.data
+            ? result.data
+            : { enabled: false, configured: false },
+        );
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setImaginaStatus({ enabled: false, configured: false });
+        }
+      }
+    };
+
+    loadImaginaStatus();
+    return () => controller.abort();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!canShowImaginaSwitch) {
+      setSendToImagina(false);
+    }
+  }, [canShowImaginaSwitch]);
 
   useEffect(() => {
     if (salesCommissionTouched) return;
@@ -310,6 +385,45 @@ export default function UpdateTramiteStatusModal({
           icon: CircleX,
         });
         return;
+      }
+
+      if (sendToImagina && imaginaContract) {
+        const imaginaRes = await fetch(
+          "/api/v2/integrations/imagina-energia/contracts/submit",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tramite_id: tramite.id,
+              contract_id: imaginaContract.id,
+            }),
+          },
+        );
+        const imaginaResult = (await imaginaRes.json()) as {
+          success?: boolean;
+          error?: string;
+          missing?: Array<{ field: string; message: string }>;
+        };
+
+        if (!imaginaResult.success) {
+          const missing = imaginaResult.missing
+            ?.map((item) => `${item.field}: ${item.message}`)
+            .join("\n");
+          showCustomToast({
+            title: "Estado guardado; Imagina no enviado",
+            message:
+              missing ||
+              imaginaResult.error ||
+              "No se ha podido enviar el contrato a Imagina Energía.",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          onUpdate();
+          return;
+        }
       }
 
       const notification: Notification = generateTramiteUpdatedNotification({
@@ -578,15 +692,37 @@ export default function UpdateTramiteStatusModal({
                 </div>
               )}
               {isVerificado && tramite.status === "Tramitable" && (
-                <div className="space-y-1 w-full">
-                  <Label htmlFor="renovation_date">Fecha de Tramitación</Label>
-                  <DatePicker
-                    date={formData.tramitation_date as Date}
-                    setDate={(value) =>
-                      handleDateChange(value as Date, "tramitation_date")
-                    }
-                  />
-                </div>
+                <>
+                  <div className="space-y-1 w-full">
+                    <Label htmlFor="renovation_date">
+                      Fecha de Tramitación
+                    </Label>
+                    <DatePicker
+                      date={formData.tramitation_date as Date}
+                      setDate={(value) =>
+                        handleDateChange(value as Date, "tramitation_date")
+                      }
+                    />
+                  </div>
+
+                  {canShowImaginaSwitch ? (
+                    <div className="flex items-center justify-between rounded-md border border-primary-100 bg-primary-50 p-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="send-to-imagina">
+                          Enviar contrato a Imagina Energía
+                        </Label>
+                        <p className="text-xs text-primary-500">
+                          Se enviará tras guardar el estado Verificado.
+                        </p>
+                      </div>
+                      <Switch
+                        id="send-to-imagina"
+                        checked={sendToImagina}
+                        onCheckedChange={setSendToImagina}
+                      />
+                    </div>
+                  ) : null}
+                </>
               )}
 
               {/* Notas */}

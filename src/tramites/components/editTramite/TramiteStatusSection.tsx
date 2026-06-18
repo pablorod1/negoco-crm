@@ -3,7 +3,7 @@ import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import UpdateTramiteStatusModal from "./UpdateTramiteStatusModal";
 import RenewTramiteConfirmationDialog from "../RenewTramiteConfirmationDialog";
 import RejectTramiteModal from "./RejectTramiteModal";
-import { ClientDB, TramiteVM } from "@/tramites/types";
+import { ClientDB, ContractDB, TramiteVM } from "@/tramites/types";
 import { formatDate } from "@/core/utils/format";
 import { InfoIcon, RefreshCcw } from "lucide-react";
 import TooltipComponent from "@/core/components/TooltipComponent";
@@ -11,6 +11,7 @@ import TooltipComponent from "@/core/components/TooltipComponent";
 interface Props {
   tramite: TramiteVM;
   client: ClientDB;
+  contracts: ContractDB[];
   userData: User;
   onUpdate: () => void;
   isEditable: boolean | null;
@@ -29,6 +30,7 @@ export default function TramiteStatusSection({
   isRenewable,
   onRenew,
   client,
+  contracts,
   isActive,
   showLiquidez = false,
   mode = "full",
@@ -190,6 +192,7 @@ export default function TramiteStatusSection({
                 userData={userData}
                 onUpdate={onUpdate}
                 client={client}
+                contracts={contracts}
               />
             )}
 

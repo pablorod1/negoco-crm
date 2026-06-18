@@ -145,6 +145,7 @@ export default function MainView({
           isEditable={isEditable}
           isRenewable={isRenewable}
           client={client}
+          contracts={contracts}
           isActive={isActive}
           mode="actions"
         />

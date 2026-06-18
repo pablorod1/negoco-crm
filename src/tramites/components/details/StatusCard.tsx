@@ -4,7 +4,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/core/components/ui/card";
-import { TramiteVM, ClientDB } from "@/tramites/types/tramite.types";
+import {
+  TramiteVM,
+  ClientDB,
+  ContractDB,
+} from "@/tramites/types/tramite.types";
 import { User } from "@/core/types";
 import TramiteStatusSection from "@/tramites/components/editTramite/TramiteStatusSection";
 
@@ -15,6 +19,7 @@ interface StatusCardProps {
   isEditable: boolean | null;
   isRenewable: boolean;
   client: ClientDB;
+  contracts: ContractDB[];
   isActive: boolean;
   mode?: "full" | "actions";
 }
@@ -26,6 +31,7 @@ export default function StatusCard({
   isEditable,
   isRenewable,
   client,
+  contracts,
   isActive,
   mode = "full",
 }: StatusCardProps) {
@@ -48,6 +54,7 @@ export default function StatusCard({
           isRenewable={isRenewable}
           onRenew={onUpdate}
           client={client}
+          contracts={contracts}
           isActive={isActive}
           showLiquidez={showLiquidez}
           mode={mode}

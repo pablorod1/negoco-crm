@@ -1,0 +1,2878 @@
+openapi: 3.0.3
+info:
+  title: API Completa - Contratos, Documentos y Autenticación
+  description: |
+    API unificada para la gestión de contratos, documentos y autenticación.
+
+    ## Autenticación
+
+    Todas las solicitudes requieren autenticación mediante JWT Bearer token.
+
+    ### Obtener un Token JWT
+
+    Para obtener su token JWT, debe iniciar sesión con sus credenciales en:
+
+    POST https://oezimzeqmtmncuipqgwd.supabase.co/functions/v1/initiateauthcommand
+
+    **Cuerpo de la solicitud:**
+    ```json
+    {
+      "email": "su_usuario@ejemplo.com",
+      "password": "su_contraseña"
+    }
+    ```
+
+    **Respuesta exitosa:**
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expires_in": 3600
+    }
+    ```
+
+    ### Usar el Token
+
+    Incluya el token en el encabezado Authorization de todas sus solicitudes:
+
+    Authorization: Bearer <su_token_jwt>
+
+    ### Impersonación de Canal (Opcional)
+
+    Si su cuenta tiene permisos de impersonación de canal, puede actuar en nombre de otro canal
+    incluyendo el encabezado X-Canal con el ID del permiso que le proporcionó el administrador.
+
+    ## Guía de Autenticación
+
+    La autenticación se basa en el estándar JSON Web Token (JWT). Cada solicitud debe incluir
+    un token JWT válido en el encabezado de autorización para acceder a los recursos protegidos.
+
+    ### Impersonación de Canal
+
+    Si su cuenta tiene permisos de impersonación de canal, puede actuar en nombre de diferentes canales.
+    La impersonación de canal le permite realizar operaciones en nombre de un canal específico en
+    lugar de usar su canal por defecto.
+
+    **Requisitos:**
+    - El permiso impersonar_canal asignado a su usuario
+    - Un ID de permiso específico proporcionado por el administrador para cada canal que puede impersonar
+
+    **Uso:**
+    Incluya el encabezado X-Canal en su solicitud con el ID de permiso. El valor de X-Canal debe ser
+    el ID del permiso específico que le proporcionó el administrador, no el ID del canal directamente.
+
+    **Comportamiento:**
+    - Si NO incluye el encabezado X-Canal: Las operaciones se realizarán usando su canal por defecto
+    - Si incluye X-Canal con un ID válido: Las operaciones se realizarán en nombre del canal impersonado
+    - Si incluye X-Canal pero no tiene permisos: Recibirá un error de autorización
+
+    ### Códigos de Error de Autenticación
+
+    | Código | Descripción |
+    |--------|-------------|
+    | 401 Unauthorized | Token JWT inválido, expirado o ausente |
+    | 401 Unauthorized | Error en la autorización de impersonación de canal |
+    | 403 Forbidden | No tiene permisos para realizar esta operación |
+
+    ### Mejores Prácticas de Seguridad
+
+    - Nunca comparta su token JWT con otras personas
+    - No incluya el token en URLs o logs públicos
+    - Almacene el token de forma segura en variables de entorno
+    - Renueve el token periódicamente si está próximo a expirar
+
+  version: 1.2.0
+  contact:
+    email: serviciosistemas@imaginaenergia.com
+
+servers:
+  - url: https://oezimzeqmtmncuipqgwd.supabase.co/functions/v1
+    description: Servidor de PRE (Auth)
+  - url: https://pre-webhooks.imaginaenergia.com
+    description: Servidor PRE para APIs
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Endpoint de autenticación
+  /initiateauthcommand:
+    post:
+      tags: [Autenticación]
+      summary: Obtener token JWT
+      description: Endpoint de autenticación para obtener un JWT válido.
+      servers:
+        - url: https://oezimzeqmtmncuipqgwd.supabase.co/functions/v1
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: su_usuario@ejemplo.com
+                password:
+                  type: string
+                  format: password
+                  example: su_contraseña
+            examples:
+              login_ejemplo:
+                value:
+                  email: su_usuario@ejemplo.com
+                  password: su_contraseña
+      responses:
+        '200':
+          description: Token emitido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT emitido
+                  expires_in:
+                    type: integer
+                    description: Tiempo de validez en segundos
+              examples:
+                token_exitoso:
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    expires_in: 3600
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Endpoint de Clave Pública
+  /public_key:
+    get:
+      summary: Obtener clave pública RSA
+      description: |
+        Devuelve la clave pública RSA del servidor en formato PEM.
+        Los clientes deben usar esta clave para cifrar información sensible antes de enviarla a la API.
+      operationId: getPublicKey
+      tags:
+        - Seguridad
+      security: []
+      responses:
+        '200':
+          description: Clave pública devuelta correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  public_key:
+                    type: string
+                    description: Clave pública RSA en formato PEM.
+                    example: |
+                      -----BEGIN PUBLIC KEY-----
+                      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv6pB...
+                      -----END PUBLIC KEY-----
+        '500':
+          description: Error interno del servidor
+
+  # API de Contratos
+  /contrato/{id_contrato}:
+    get:
+      summary: Consultar contrato por ID
+      description: |
+        Obtiene la información completa de un contrato de suministro específico.
+
+        **Permisos requeridos:**
+        - El contrato debe existir y pertenecer al canal autenticado
+        - Si se usa impersonación de canal, debe tener los permisos adecuados
+
+        **Nota:** Solo se devuelve información del contrato si el canal tiene permisos sobre él.
+
+      operationId: getContrato
+      tags:
+        - Contratos
+
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+        - name: id_contrato
+          in: path
+          description: |
+            Identificador único del contrato que se desea consultar.
+
+            **Importante:** Solo se puede consultar un contrato si pertenece al canal autenticado
+            o al canal impersonado (si se está usando impersonación).
+          required: true
+          schema:
+            type: integer
+          example: 346663
+
+      responses:
+        '200':
+          description: Contrato encontrado y devuelto exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                    description: ID único de la solicitud para seguimiento
+                    example: 159
+
+                  contrato:
+                    $ref: '#/components/schemas/ContratoInfo'
+
+              example:
+                request_id: 159
+                contrato:
+                  id: 346663
+                  codigo: "00028517"
+                  alias_externo: "C00050803"
+                  estado:
+                    id: 5
+                    estado: "finalizado"
+                    descripcion: "Finalizado"
+                  subestado:
+                    id: 19
+                    id_estado: 5
+                    subestado: "finalizado"
+                    descripcion: "Finalizado"
+                  fecha_inicio: "2023-04-01"
+                  fecha_fin: "2023-04-17"
+                  fecha_firma: "2023-03-16"
+                  consumo_anual_estimado: "3280000"
+                  atributos:
+                    potencia_contratada: "[\"4400\",\"4400\",0,0,0,0]"
+                  cliente:
+                    identificador: "02536092C"
+                    nombre_completo: "Cristina Moron Blanco"
+                    correo_electronico: "cliente@ejemplo.com"
+                    telefono_1: "667435899"
+                  punto_suministro:
+                    cups: "ES0133000002012018ZM"
+                  tarifa_precio:
+                    id: 8252
+                    alias_externo: "0223 - PLAN SIN HORAS (10346)"
+
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ContratoNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Listado de Contratos
+  /contratos:
+    get:
+      summary: Listar contratos
+      description: |
+        Obtiene un listado paginado de contratos de suministro del canal autenticado.
+
+        **Paginación:**
+        - Usa los parámetros `pagina` y `por_pagina` para controlar la paginación
+        - La respuesta incluye `num_contratos` indicando cuántos contratos se devuelven en la página
+
+        **Permisos requeridos:**
+        - Solo se devuelven contratos que pertenezcan al canal autenticado
+        - Si se usa impersonación de canal (header X-Canal), se devuelven los contratos del canal impersonado
+
+        **Nota:** Este endpoint es síncrono y devuelve los resultados inmediatamente.
+
+      operationId: listarContratos
+      tags:
+        - Contratos
+
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+        - name: pagina
+          in: query
+          description: |
+            Número de página a recuperar (comienza en 1).
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: por_pagina
+          in: query
+          description: |
+            Número de contratos por página.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          example: 100
+
+      responses:
+        '200':
+          description: Listado de contratos devuelto exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaContratosResponse'
+              example:
+                request_id: 158
+                pagina: 1
+                num_contratos: 5
+                contratos:
+                  - id: 346663
+                    codigo: "00028517"
+                    alias_externo: "C00050803"
+                    estado:
+                      id: 5
+                      estado: "finalizado"
+                      descripcion: "Finalizado"
+                    subestado:
+                      id: 19
+                      id_estado: 5
+                      subestado: "finalizado"
+                      descripcion: "Finalizado"
+                    fecha_inicio: "2023-04-01"
+                    fecha_fin: "2023-04-17"
+                    fecha_firma: "2023-03-16"
+                    consumo_anual_estimado: "3280000"
+                    atributos:
+                      potencia_contratada: "[\"4400\",\"4400\",0,0,0,0]"
+                    cliente:
+                      identificador: "02536092C"
+                      nombre_completo: "Cristina Moron Blanco"
+                      correo_electronico: "cliente@ejemplo.com"
+                      telefono_1: "667435899"
+                    punto_suministro:
+                      cups: "ES0133000002012018ZM"
+                    tarifa_precio:
+                      id: 8252
+                      alias_externo: "0223 - PLAN SIN HORAS (10346)"
+
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Contrato Empresa
+  /contrato/empresa:
+    post:
+      summary: Alta de contrato empresa (Modelos C2, A3 y C1)
+      description: |
+        Orquesta validaciones (maestras + esquema), credit check y envío a firma electrónica para empresas (personas jurídicas).
+
+        Soporta los modelos C2 y A3, además del modelo tradicional C1.
+
+        - Si se incluye callback_url, la petición se encola y se devuelve 202 inmediatamente.
+        - Es obligatorio indicar canal_envio (valores permitidos: sms, email, email_otp).
+        - Requiere datos del titular (empresa) y del firmante (persona física que firma por la empresa).
+
+        El procesado del request primero hace el credit check, luego la contratación y
+        finalmente el envío a firma (no activado en entorno PRE).
+      operationId: postContratoEmpresa
+      tags:
+        - Contratos
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/X-Canal'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContratoEmpresaRequest'
+      responses:
+        '202':
+          description: Solicitud aceptada para procesamiento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContratoEmpresaResponseSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Contrato Empresa C1 (Backward Compatibility)
+  /contrato/empresa/c1:
+    post:
+      summary: Alta de contrato empresa C1 (Backward Compatibility)
+      description: |
+        **Nota:** Este endpoint se mantiene por compatibilidad hacia atrás. Se recomienda usar `/contrato/empresa`.
+
+        Orquesta validaciones, credit check y envío a firma electrónica para empresas.
+      operationId: postContratoEmpresaC1
+      tags:
+        - Contratos (Legacy)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/X-Canal'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContratoEmpresaRequest'
+            examples:
+              ejemplo_basico:
+                summary: Ejemplo válido mínimo
+                value:
+                  cups: "ES0026000010979933FW"
+                  provincia: "Madrid"
+                  municipio: "Madrid"
+                  cod_postal: "28001"
+                  calle: "Calle de Alcalá"
+                  numero_finca: "1"
+                  tipo_via_cnmc: "Calle"
+                  aclarador_finca: "Oficina 2B"
+                  potencia_contratada: [4600, 4600, 0, 0, 0, 0]
+                  id_tarifa: 10350
+                  id_cnae: "Actividades de los hogares como productores de servicios para uso propio"
+                  iban: "ES9121000418450200051332"
+                  razon_social_titular: "ACME CORPORATION S.L."
+                  numero_documento_titular: "B12345678"
+                  telefono_titular: "910000000"
+                  prefijo_telefono_titular: "34"
+                  email_titular: "admin@acme.com"
+                  provincia_titular: "Madrid"
+                  municipio_titular: "Madrid"
+                  cod_postal_titular: "28001"
+                  calle_titular: "Calle de Alcalá"
+                  numero_finca_titular: "1"
+                  tipo_via_titular_cnmc: "Calle"
+                  aclarador_finca_titular: "Oficina 2B"
+                  nombre_firmante: "Juan"
+                  primer_apellido_firmante: "Pérez"
+                  tipo_documento_firmante: "NIF"
+                  numero_documento_firmante: "12345678A"
+                  telefono_firmante: "600000000"
+                  prefijo_telefono_firmante: "34"
+                  email_firmante: "juan.perez@acme.com"
+                  canal_envio: "email_otp"
+              asincrono_con_callback:
+                summary: Procesamiento asíncrono (devuelve 202)
+                value:
+                  cups: "ES1234567890123456AB"
+                  provincia: "Barcelona"
+                  municipio: "Barcelona"
+                  cod_postal: "08001"
+                  calle: "La Rambla"
+                  numero_finca: "99"
+                  tipo_via_cnmc: "Avenida"
+                  potencia_contratada: [3450, 3450, 0, 0, 0, 0]
+                  id_tarifa: 10350
+                  id_cnae: "Instalaciones eléctricas"
+                  iban: "ES7921000813610123456789"
+                  razon_social_titular: "INNOVATECH SOLUTIONS S.A."
+                  numero_documento_titular: "A98765432"
+                  telefono_titular: "933334444"
+                  prefijo_telefono_titular: "34"
+                  email_titular: "contacto@innovatech.es"
+                  provincia_titular: "Barcelona"
+                  municipio_titular: "Barcelona"
+                  cod_postal_titular: "08001"
+                  calle_titular: "La Rambla"
+                  numero_finca_titular: "99"
+                  tipo_via_titular_cnmc: "Avenida"
+                  nombre_firmante: "María"
+                  primer_apellido_firmante: "García"
+                  tipo_documento_firmante: "NIE"
+                  numero_documento_firmante: "X1234567T"
+                  telefono_firmante: "611223344"
+                  prefijo_telefono_firmante: "34"
+                  email_firmante: "maria.garcia@innovatech.es"
+                  canal_envio: "email_otp"
+                  callback_url: "https://miapp.example.com/webhooks/contrata"
+
+      responses:
+        '200':
+          description: Operación completada (validación + credit check + alta + envío a firma)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContratoEmpresaResponseSuccess'
+        '202':
+          description: Petición aceptada para procesamiento asíncrono
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Request is being processed asynchronously"
+                  request_id:
+                    type: integer
+              examples:
+                accepted:
+                  value:
+                    message: "Request is being processed asynchronously"
+                    request_id: 12345
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Contrato Residencial
+  /contrato/residencial:
+    post:
+      summary: Alta de contrato residencial (Modelos C2, A3 y C1)
+      description: |
+        Orquesta validaciones (maestras + esquema), credit check y envío a firma electrónica para personas físicas.
+
+        Soporta los modelos C2 y A3, además del modelo tradicional C1.
+
+        - Si se incluye callback_url, la petición se encola y se devuelve 202 inmediatamente.
+        - Es obligatorio indicar canal_envio (valores permitidos: sms, email, email_otp).
+
+        El procesado del request primero hace el credit check, luego la contratación y
+        finalmente el envío a firma (no activado en entorno PRE).
+      operationId: postContratoResidencial
+      tags:
+        - Contratos
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/X-Canal'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContratoResidencialRequest'
+      responses:
+        '202':
+          description: Solicitud aceptada para procesamiento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContratoResidencialResponseSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Contrato Residencial C1 (Backward Compatibility)
+  /contrato/residencial/c1:
+    post:
+      summary: Alta de contrato residencial C1 (Backward Compatibility)
+      description: |
+        **Nota:** Este endpoint se mantiene por compatibilidad hacia atrás. Se recomienda usar `/contrato/residencial`.
+
+        Orquesta validaciones, credit check y envío a firma electrónica.
+      operationId: postContratoResidencialC1
+      tags:
+        - Contratos (Legacy)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/X-Canal'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContratoResidencialRequest'
+            examples:
+              ejemplo_basico:
+                summary: Ejemplo válido mínimo
+                value:
+                  cups: "ES0026000010979933FW"
+                  provincia: "Madrid"
+                  municipio: "Madrid"
+                  cod_postal: "28001"
+                  calle: "Calle de Alcalá"
+                  numero_finca: "1"
+                  tipo_via_cnmc: "Calle"
+                  aclarador_finca: "2ºB"
+                  potencia_contratada: [4600, 4600, 0, 0, 0, 0]
+                  id_tarifa: 10350
+                  iban: "ES9121000418450200051332"
+                  nombre_titular: "Juan"
+                  primer_apellido_titular: "Pérez"
+                  tipo_documento_titular: "NIF"
+                  numero_documento_titular: "12345678A"
+                  telefono_titular: "600000000"
+                  prefijo_telefono_titular: "34"
+                  email_titular: "juan@example.com"
+                  provincia_titular: "Madrid"
+                  municipio_titular: "Madrid"
+                  cod_postal_titular: "28001"
+                  calle_titular: "Calle de Alcalá"
+                  numero_finca_titular: "1"
+                  tipo_via_titular_cnmc: "Calle"
+                  aclarador_finca_titular: "2ºB"
+                  telefono_firmante: "600000000"
+                  email_firmante: "juan.firmante@example.com"
+                  canal_envio: "email_otp"
+              asincrono_con_callback:
+                summary: Procesamiento asíncrono (devuelve 202)
+                value:
+                  cups: "ES1234567890123456AB"
+                  provincia: "Barcelona"
+                  municipio: "Barcelona"
+                  cod_postal: "08001"
+                  calle: "La Rambla"
+                  numero_finca: "99"
+                  tipo_via_cnmc: "Avenida"
+                  potencia_contratada: [3450, 3450, 0, 0, 0, 0]
+                  id_tarifa: 10350
+                  iban: "ES7921000813610123456789"
+                  nombre_titular: "María"
+                  primer_apellido_titular: "García"
+                  tipo_documento_titular: "NIE"
+                  numero_documento_titular: "X1234567T"
+                  telefono_titular: "611223344"
+                  prefijo_telefono_titular: "34"
+                  email_titular: "maria@example.com"
+                  provincia_titular: "Barcelona"
+                  municipio_titular: "Barcelona"
+                  cod_postal_titular: "08001"
+                  calle_titular: "La Rambla"
+                  numero_finca_titular: "99"
+                  tipo_via_titular_cnmc: "Avenida"
+                  telefono_firmante: "611223344"
+                  email_firmante: "maria.firmante@example.com"
+                  canal_envio: "email_otp"
+                  callback_url: "https://miapp.example.com/webhooks/contrata"
+
+      responses:
+        '200':
+          description: Operación completada (validación + credit check + alta + envío a firma)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContratoResidencialResponseSuccess'
+        '202':
+          description: Petición aceptada para procesamiento asíncrono
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Request is being processed asynchronously"
+                  request_id:
+                    type: integer
+              examples:
+                accepted:
+                  value:
+                    message: "Request is being processed asynchronously"
+                    request_id: 12345
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Documentos
+  /documento:
+    post:
+      summary: Cargar documento de contrato
+      description: |
+        Carga un documento asociado a un contrato existente. El documento se envía
+        como multipart/form-data junto con los metadatos necesarios.
+
+        **Permisos requeridos:**
+        - El contrato debe existir y pertenecer al canal autenticado
+        - Si se usa impersonación de canal, debe tener los permisos adecuados
+
+      operationId: uploadDocumento
+      tags:
+        - Documentos
+
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - id_contrato
+                - fichero
+                - tipo_fichero
+              properties:
+                id_contrato:
+                  type: string
+                  description: Identificador único del contrato al que se asocia el documento
+                  example: "12345"
+
+                fichero:
+                  type: string
+                  format: binary
+                  description: Archivo del documento a cargar
+
+                tipo_fichero:
+                  type: string
+                  description: |
+                    Tipo de documento que se está cargando.
+                    Los valores permitidos se obtienen de la maestra 'tipos_documento' de la base de datos.
+                  enum:
+                    - "Acta de Inspección"
+                    - "Acta de Puesta en Marcha"
+                    - "Acuerdo reparto"
+                    - "Alta sum. obras"
+                    - "Alta sum. temporal"
+                    - "Anexo contrato"
+                    - "Anexo modificación administrativa"
+                    - "Anexo modificación precios"
+                    - "Anexo modificación técnica"
+                    - "Baja"
+                    - "Baja voluntaria definitiva"
+                    - "Bono Social"
+                    - "Cambio a TPV"
+                    - "Cambio domiciliación"
+                    - "Cambio potencia"
+                    - "Cambio tarifa"
+                    - "Cambio titularidad"
+                    - "Cancelación contrato"
+                    - "CIE consumo"
+                    - "CIE generación"
+                    - "Contrato"
+                    - "Costes"
+                    - "Desistimiento"
+                    - "Devolución Fianza"
+                    - "Facturas"
+                    - "Fianza"
+                    - "Identificador Cliente"
+                    - "Mandato"
+                    - "Oferta"
+                    - "Otra documentación del cliente"
+                    - "Otros"
+                    - "Reclamación"
+                    - "Respuesta a reclamación"
+                    - "Socio"
+                  example: "Contrato"
+
+                fecha_firma:
+                  type: string
+                  format: date
+                  description: Fecha de firma del documento (formato ISO 8601)
+                  example: "2025-11-06"
+                  nullable: true
+
+                fecha_documento:
+                  type: string
+                  format: date
+                  description: Fecha del documento (formato ISO 8601)
+                  example: "2025-11-06"
+                  nullable: true
+
+                cups:
+                  type: string
+                  description: Código CUPS asociado al documento (si aplica)
+                  pattern: '^ES[0-9]{16}[A-Z]{2}[0-9A-Z]{0,2}$'
+                  example: "ES0031406882695001JN0F"
+                  nullable: true
+
+            encoding:
+              fichero:
+                contentType: application/pdf, image/png, image/jpeg, image/jpg, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+
+      responses:
+        '200':
+          description: Documento cargado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                    description: ID único de la solicitud para seguimiento
+                    example: 12345
+
+                  result_operation:
+                    type: object
+                    description: Resultado de la operación devuelto por el sistema de gestión
+                    properties:
+                      id_documento:
+                        type: string
+                        description: Identificador del documento cargado
+                        example: "doc_abc123"
+
+                      url:
+                        type: string
+                        format: uri
+                        description: URL de acceso al documento
+                        example: "https://storage.example.com/documents/doc_abc123.pdf"
+
+                      status:
+                        type: string
+                        description: Estado del documento
+                        example: "uploaded"
+
+              example:
+                request_id: 12345
+                result_operation:
+                  id_documento: "doc_abc123"
+                  url: "https://storage.example.com/documents/doc_abc123.pdf"
+                  status: "uploaded"
+
+        '400':
+          $ref: '#/components/responses/DocumentoBadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Tarifas
+  /tarifas:
+    get:
+      summary: Listar tarifas del canal
+      description: |
+        Obtiene el listado de tarifas disponibles para el canal autenticado.
+
+        La petición se procesa de forma síncrona y devuelve:
+        - content: Array con las tarifas disponibles
+        - request_id: Identificador único de la petición para seguimiento
+
+        **Nota sobre tarifas indexadas**: Las tarifas indexadas tienen `energia_pX_formula` en `null`
+        porque su precio de energía varía según el mercado. Los valores de potencia y los límites
+        (max/min) sí están informados.
+
+        **Permisos requeridos:**
+        - Token JWT válido
+        - Si se usa impersonación de canal (header X-Canal), debe tener los permisos adecuados
+
+        **Comportamiento:**
+        - Sin X-Canal: Devuelve tarifas del canal por defecto del usuario autenticado
+        - Con X-Canal: Devuelve tarifas del canal impersonado (requiere permisos)
+
+      operationId: getTarifas
+      tags:
+        - Tarifas
+
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+
+      responses:
+        '200':
+          description: Tarifas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - content
+                  - request_id
+                properties:
+                  content:
+                    type: array
+                    description: Array con las tarifas disponibles para el canal
+                    items:
+                      $ref: '#/components/schemas/Tarifa'
+                  request_id:
+                    type: integer
+                    description: Identificador único de la petición para seguimiento y auditoría
+                    example: 18
+
+              examples:
+                tarifas_exitosas:
+                  summary: Ejemplo de respuesta exitosa con tarifas indexadas y fijas
+                  value:
+                    content:
+                      - id_tarifa_precios: 11001
+                        alias_externo: "REGANTES - FLEX INDEX 2.0TD"
+                        descripcion: "2.0TD"
+                        codigo_atr: "018"
+                        tipo_tarifa_precio: "indexado"
+                        precio_potencia_boe: "S"
+                        precio_excedentes: null
+                        potencia_p1_formula: null
+                        potencia_p2_formula: null
+                        potencia_p3_formula: null
+                        energia_p1_formula: null
+                        energia_p2_formula: null
+                        energia_p3_formula: null
+                        valor_p1_max_fee_energia: "30"
+                        valor_p1_max_precio_potencia: "14.6"
+                        valor_p1_min_fee_energia: "0"
+                        valor_p1_min_precio_potencia: "0"
+                      - id_tarifa_precios: 11505
+                        alias_externo: "RESI - OMEGA SIN HORAS SVA AXA"
+                        descripcion: "2.0TD"
+                        codigo_atr: "018"
+                        tipo_tarifa_precio: "fijo"
+                        precio_potencia_boe: "N"
+                        precio_excedentes: "0.05"
+                        potencia_p1_formula: "37.74319"
+                        potencia_p2_formula: "17.61636"
+                        potencia_p3_formula: "0"
+                        energia_p1_formula: "0.13181"
+                        energia_p2_formula: "0.13181"
+                        energia_p3_formula: "0.13181"
+                        valor_p1_max_fee_energia: "0"
+                        valor_p1_max_precio_potencia: "0"
+                    request_id: 18
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+        '403':
+          description: Sin permisos para acceder al recurso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                sin_permisos:
+                  summary: Sin permisos de impersonación
+                  value:
+                    error: "Forbidden: No tiene permisos para impersonar este canal"
+                    request_id: 12345
+
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+        '504':
+          description: Timeout al consultar el servicio de tarifas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                timeout:
+                  summary: Timeout en la consulta
+                  value:
+                    error: "Timeout al consultar el servicio de tarifas"
+                    request_id: 12345
+
+  # API de Scoring / Credit Check
+  /creditcheck:
+    post:
+      summary: Realizar Credit Check
+      description: |
+        Ejecuta una validación de riesgo para un cliente potencial de forma independiente.
+
+        Este proceso es síncrono y devuelve el resultado de la validación inmediatamente.
+        Útil para pre-validar clientes antes de iniciar el flujo de contratación completo.
+      tags:
+        - Scoring
+      operationId: postCreditCheck
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identificador, tipo_identificador, postal_code]
+              properties:
+                company_name:
+                  type: string
+                  description: Nombre de la empresa o nombre completo si es autónomo
+                  example: "ACME S.L."
+                identificador:
+                  type: string
+                  description: NIF, NIE o CIF del cliente
+                  example: "B12345678"
+                tipo_identificador:
+                  type: string
+                  description: Tipo de documento (NIF, NIE, CIF)
+                  example: "CIF"
+                autonomo:
+                  type: boolean
+                  description: Indica si el cliente es un trabajador autónomo
+                  example: false
+                postal_code:
+                  type: string
+                  description: Código postal
+                  example: "28001"
+                cups:
+                  type: string
+                  description: CUPS del punto de suministro (opcional)
+                  example: "ES0000000000000000XXXX"
+                town:
+                  type: string
+                  description: Localidad
+                  example: "Madrid"
+                address:
+                  type: string
+                  description: Dirección completa
+                  example: "Calle Alcalá 1"
+                province:
+                  type: string
+                  description: Nombre de la provincia para traducción
+                  example: "Madrid"
+      responses:
+        '200':
+          description: Resultado del credit check obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    description: Resultado de la validación (ACCEPT, REJECT, MANUAL_REVIEW)
+                    example: "ACCEPT"
+                  score:
+                    type: integer
+                    description: Puntuación obtenida
+                    example: 85
+                  message:
+                    type: string
+                    description: Mensaje informativo sobre el resultado
+                    example: "Validación completada correctamente"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # API de Firma Digital
+  /firma:
+    post:
+      summary: Enviar Contrato a Firma Digital
+      description: |
+        Envía un contrato existente para firma digital del cliente mediante email, SMS, o email con OTP.
+
+        El contrato debe haber sido creado previamente. Este endpoint dispara el proceso de firma, enviando la comunicación al cliente por el canal especificado.
+
+        **Flujo de uso típico:**
+        1. Crear contrato con `no_enviar_firma: true`
+        2. Obtener el `contrato_id` de la respuesta
+        3. Llamar a `/firma` con el `contrato_id` y canal deseado
+        4. El cliente recibe el email/SMS con el enlace de firma
+
+        **Comportamiento:**
+        - ✅ Operación síncrona (respuesta inmediata < 1s)
+        - ✅ Reenvío permitido (útil si el cliente no recibió la comunicación)
+        - ✅ Trazabilidad completa con `request_id` y `referencia_externa`
+
+      tags:
+        - Firma Digital
+      operationId: postFirma
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - contrato_id
+                - canal_envio
+                - direcciones_firma
+              properties:
+                contrato_id:
+                  type: integer
+                  description: |
+                    ID del contrato en el sistema. Se obtiene del campo `contrato_result.id` en la respuesta del endpoint de contratación.
+                  example: 369877
+                canal_envio:
+                  type: string
+                  description: |
+                    Canal por el cual enviar la firma digital:
+                    - **email**: Envío por correo electrónico (más común)
+                    - **sms**: Envío por mensaje de texto
+                    - **email_otp**: Envío dual (email + SMS con código OTP)
+                  enum:
+                    - email
+                    - sms
+                    - email_otp
+                  example: "email"
+                direcciones_firma:
+                  type: string
+                  description: |
+                    Dirección(es) de destino según el canal:
+                    - **Para email**: email del cliente (ej: "cliente@example.com")
+                    - **Para sms**: teléfono del cliente (ej: "606123456" o "+34606123456")
+                    - **Para email_otp**: email;teléfono separados por ; (ej: "cliente@example.com;606123456")
+
+                    **Validaciones:**
+                    - Email: formato RFC estándar (nombre@dominio.tld)
+                    - Teléfono: 8-15 dígitos, opcional prefijo internacional +
+                  example: "cliente@example.com"
+                  pattern: '^[\w\.-]+@[\w\.-]+\.\w+|[\+]?[0-9]{8,15}|[\w\.-]+@[\w\.-]+\.\w+;[\+]?[0-9]{8,15}$'
+                referencia_externa:
+                  type: string
+                  description: |
+                    Referencia opcional para vincular con sistemas externos (CRM, tickets, etc.).
+                    Útil para tracking y auditoría.
+                  example: "CRM-DEAL-12345"
+                  nullable: true
+            examples:
+              email_simple:
+                summary: Envío por email (caso más común)
+                value:
+                  contrato_id: 369877
+                  canal_envio: "email"
+                  direcciones_firma: "cliente@example.com"
+                  referencia_externa: "CRM-DEAL-12345"
+              sms:
+                summary: Envío por SMS
+                value:
+                  contrato_id: 369877
+                  canal_envio: "sms"
+                  direcciones_firma: "606123456"
+              email_otp:
+                summary: Email con OTP (doble factor)
+                value:
+                  contrato_id: 369877
+                  canal_envio: "email_otp"
+                  direcciones_firma: "cliente@example.com;606123456"
+                  referencia_externa: "CONTRATO-ALTO-VALOR"
+              reenvio:
+                summary: Reenvío (cliente no recibió)
+                value:
+                  contrato_id: 369877
+                  canal_envio: "email"
+                  direcciones_firma: "cliente@example.com"
+                  referencia_externa: "REENVIO-001"
+      responses:
+        '200':
+          description: Firma enviada correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                    description: ID único del request en `webhooks.request_firma`. Úsalo para auditoría y troubleshooting.
+                    example: 12345
+                  firma_result:
+                    type: object
+                    description: Respuesta completa del sistema de gestión
+                    properties:
+                      status:
+                        type: string
+                        example: "success"
+                      message:
+                        type: string
+                        example: "Contrato enviado para firma digital"
+                  referencia_externa:
+                    type: string
+                    description: Referencia externa proporcionada en el request (si se envió)
+                    nullable: true
+                    example: "CRM-DEAL-12345"
+              example:
+                request_id: 12345
+                firma_result:
+                  status: "success"
+                  message: "Contrato enviado para firma digital"
+                referencia_externa: "CRM-DEAL-12345"
+        '400':
+          description: Error de validación de parámetros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                falta_contrato_id:
+                  summary: Falta parámetro contrato_id
+                  value:
+                    error: "Error de validación: El parámetro 'contrato_id' es requerido"
+                    request_id: 12345
+                falta_canal_envio:
+                  summary: Falta parámetro canal_envio
+                  value:
+                    error: "Error de validación: El parámetro 'canal_envio' es requerido"
+                    request_id: 12345
+                falta_direcciones:
+                  summary: Falta parámetro direcciones_firma
+                  value:
+                    error: "Error de validación: El parámetro 'direcciones_firma' es requerido"
+                    request_id: 12345
+                contrato_id_invalido:
+                  summary: contrato_id no es un número
+                  value:
+                    error: "Error de validación: 'contrato_id' debe ser un número entero"
+                    request_id: 12345
+                canal_invalido:
+                  summary: Canal de envío no válido
+                  value:
+                    error: "Error de validación: canal_envio debe ser 'email', 'sms' o 'email_otp'"
+                    request_id: 12345
+                email_invalido:
+                  summary: Formato de email incorrecto
+                  value:
+                    error: "Error de validación: El email en 'direcciones_firma' es inválido"
+                    request_id: 12345
+                telefono_invalido:
+                  summary: Formato de teléfono incorrecto
+                  value:
+                    error: "Error de validación: El teléfono en 'direcciones_firma' es inválido"
+                    request_id: 12345
+                json_malformado:
+                  summary: JSON malformado en el body
+                  value:
+                    error: "Error de request, no se reconoce el cuerpo JSON"
+                    request_id: 12345
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Contrato no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Error en firma digital: Error sending contract for signature: 404 Client Error: Not Found"
+                request_id: 12345
+        '500':
+          description: Error interno del servidor o error en el sistema de gestión
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                api_error:
+                  summary: Error en el sistema de gestión
+                  value:
+                    error: "Error en firma digital: Error sending contract for signature: 502 Bad Gateway"
+                    request_id: 12345
+                api_timeout:
+                  summary: Timeout en el sistema
+                  value:
+                    error: "Error en firma digital: Timeout connecting to backend API"
+                    request_id: 12345
+                config_error:
+                  summary: Error de configuración del servidor
+                  value:
+                    error: "Error de servidor, por favor contacte con serviciosistemas@imaginaenergia.com"
+                    request_id: 12345
+
+  /firma/reenviar:
+    post:
+      summary: Reenviar Solicitud de Firma
+      description: |
+        Reenvía una solicitud de firma existente al cliente. Útil para recordatorios o cuando el cliente no recibió la comunicación inicial.
+
+        **Validación de permisos:** El sistema verifica que tu canal JWT tenga autorización sobre el contrato asociado al circuito_id.
+
+        **Comportamiento:**
+        - ✅ Operación síncrona (respuesta inmediata < 2s)
+        - ✅ Sin límite de reenvíos
+        - ⚠️ Buenas prácticas: Evitar reenvíos muy frecuentes (mín. 1 hora)
+
+      tags:
+        - Gestión de Firma
+      operationId: postReenviarFirma
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - circuito_id
+              properties:
+                circuito_id:
+                  type: string
+                  description: ID de la solicitud de firma (obtenido de POST /firma)
+                  example: "123456"
+                mode:
+                  type: string
+                  enum: [ds, os, ud]
+                  default: ds
+                  description: Modo de firma (ds=drawing signature, os=one-time certificate, ud=upload & draw)
+                  example: "ds"
+                referencia_externa:
+                  type: string
+                  maxLength: 100
+                  description: Tu referencia interna para tracking
+                  example: "REENVIO-2024-001"
+      responses:
+        '200':
+          description: Solicitud reenviada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                  firma_result:
+                    type: object
+                  referencia_externa:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin permisos sobre el circuito_id
+        '404':
+          description: Circuito_id no encontrado
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /firma/{circuito_id}:
+    get:
+      summary: Consultar Estado de Firma
+      description: |
+        Obtiene información detallada del estado actual de una solicitud de firma, incluyendo datos de todos los firmantes.
+
+        **Información incluida:**
+        - Estado general de la solicitud
+        - Listado completo de firmantes con estado individual
+        - Fecha/hora de firma e IP (para auditoría)
+        - Porcentaje de progreso
+
+        **Notificación automática:** Cuando todos los firmantes completan, el contrato cambia a Estado: 1, Subestado: 50 (Firmado) y se envía webhook automático.
+
+      tags:
+        - Gestión de Firma
+      operationId: getEstadoFirma
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/X-Canal'
+        - name: circuito_id
+          in: path
+          required: true
+          description: ID de la solicitud de firma
+          schema:
+            type: string
+          example: "123456"
+        - name: referencia_externa
+          in: query
+          required: false
+          description: Tu referencia interna para tracking
+          schema:
+            type: string
+            maxLength: 100
+          example: "CONSULTA-001"
+      responses:
+        '200':
+          description: Estado obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                  solicitud:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      estado:
+                        type: string
+                        enum: [en_proceso, completado, cancelado]
+                      created_at:
+                        type: string
+                        format: date-time
+                  firmantes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        nombre:
+                          type: string
+                        email:
+                          type: string
+                        telefono:
+                          type: string
+                        completado:
+                          type: boolean
+                        fecha_firma:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        ip_firma:
+                          type: string
+                          nullable: true
+                  progreso:
+                    type: object
+                    properties:
+                      total_firmantes:
+                        type: integer
+                      firmantes_completados:
+                        type: integer
+                      porcentaje_completado:
+                        type: number
+                      estado_general:
+                        type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin permisos sobre el circuito_id
+        '404':
+          description: Circuito_id no encontrado
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /firma-health:
+    get:
+      summary: Health Check del Endpoint de Firma
+      description: |
+        Endpoint de verificación de salud para monitoreo del servicio de firma digital.
+        No requiere autenticación.
+      tags:
+        - Firma Digital
+      operationId: getFirmaHealth
+      responses:
+        '200':
+          description: Servicio operativo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  service:
+                    type: string
+                    example: "firma_endpoint"
+              example:
+                status: "healthy"
+                service: "firma_endpoint"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token JWT de autenticación
+
+        Para obtener un token JWT válido:
+
+        1. Realice una solicitud POST al endpoint de autenticación
+        2. Recibirá una respuesta con el token
+        3. Use el token en todas las solicitudes: Authorization: Bearer <token>
+
+        **Importante:**
+        - El token tiene un tiempo de expiración limitado
+        - Debe renovar el token antes de que expire
+        - No comparta su token con terceros
+        - Almacene el token de forma segura
+
+  parameters:
+    Authorization:
+      name: Authorization
+      in: header
+      description: |
+        Token JWT de autenticación en formato Bearer.
+
+        **Formato:** Bearer <token>
+
+        **Ejemplo:** Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Para obtener el token, autentíquese en el endpoint /initiateauthcommand.
+      required: true
+      schema:
+        type: string
+        pattern: '^Bearer [A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$'
+      example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    X-Canal:
+      name: X-Canal
+      in: header
+      description: |
+        **Impersonación de Canal (Opcional)**
+
+        ID del permiso de impersonación de canal.
+        Solo necesario si desea actuar en nombre de otro canal.
+
+        **Requisitos:**
+        - Su usuario debe tener el permiso impersonar_canal
+        - Debe usar el UUID del permiso específico, no el ID del canal
+        - El permiso debe haber sido asignado por el administrador
+
+        **Comportamiento:**
+        - Si NO se incluye: operaciones se realizan con su canal por defecto
+        - Si se incluye con valor válido: operaciones se realizan en nombre del canal impersonado
+        - Si se incluye sin permisos: se devolverá error 401
+
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+  responses:
+    BadRequest:
+      description: Error de validación en la solicitud
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            falta_parametro:
+              summary: Falta parámetro requerido
+              value:
+                error: "Falta el parámetro contrato_id en la solicitud"
+                request_id: 12345
+
+            request_invalido:
+              summary: Request inválido
+              value:
+                error: "Error de request, no se reconoce el cuerpo JSON"
+                request_id: 12345
+
+    DocumentoBadRequest:
+      description: Error de validación en la solicitud de documento
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validacion_error:
+              summary: Error de validación
+              value:
+                error: "Error de validación: el campo 'tipo_fichero' es obligatorio"
+                request_id: 12345
+
+            sin_permiso:
+              summary: Sin permisos sobre el contrato
+              value:
+                error: "El contrato (12345) no existe o no tiene permisos"
+                request_id: 12345
+
+    Unauthorized:
+      description: Error de autenticación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            token_invalido:
+              summary: Token JWT inválido o expirado
+              value:
+                error: "Authentication failed"
+
+            sin_token:
+              summary: Token no proporcionado
+              value:
+                error: "Authorization header missing"
+
+            token_expirado:
+              summary: Token expirado
+              value:
+                error: "Token has expired"
+
+            impersonacion_no_autorizada:
+              summary: Impersonación no autorizada
+              value:
+                error: "Error en la autorización de impersonación de canal"
+
+    Forbidden:
+      description: Acceso prohibido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "No tiene permisos para realizar esta operación"
+
+    ContratoNotFound:
+      description: Contrato no encontrado o sin permisos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            no_encontrado:
+              summary: Contrato no encontrado
+              value:
+                error: "Contrato con id 12345 no encontrado"
+                request_id: 12345
+
+    InternalServerError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Error de servidor, por favor contacte con serviciosistemas@imaginaenergia.com"
+            request_id: 12345
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Mensaje descriptivo del error
+
+        request_id:
+          type: integer
+          description: ID de la solicitud (si está disponible)
+          nullable: true
+
+      required:
+        - error
+
+    Tarifa:
+      type: object
+      description: |
+        Información completa de una tarifa de suministro eléctrico.
+
+        **Tipos de tarifa:**
+        - **indexado**: Tarifas con precio variable vinculado a mercados. Los campos energia_pX_formula serán null.
+        - **fijo**: Tarifas con precios fijos. Los campos energia_pX_formula tendrán valores numéricos.
+
+        **Periodos de facturación (P1-P6):**
+        Los precios están divididos en hasta 6 periodos horarios según la tarifa ATR (Acceso de Terceros a Redes).
+        No todos los periodos aplican a todas las tarifas.
+      properties:
+        id_tarifa_precios:
+          type: integer
+          description: Identificador único interno de la tarifa
+          example: 11001
+
+        alias_externo:
+          type: string
+          description: Nombre comercial de la tarifa mostrado al cliente
+          example: "REGANTES - FLEX INDEX 2.0TD"
+          nullable: true
+
+        nombre:
+          type: string
+          description: Nombre oficial o interno de la tarifa
+          example: "TARIFA 2.0TD INDEX"
+          nullable: true
+
+        descripcion:
+          type: string
+          description: Código de la tarifa de acceso (ej. 2.0TD, 3.0TD, 6.1TD)
+          example: "2.0TD"
+          nullable: true
+
+        codigo_atr:
+          type: string
+          description: Código ATR oficial de la tarifa según normativa
+          example: "018"
+          nullable: true
+
+        tipo_tarifa_precio:
+          type: string
+          description: Tipo de tarifa según modalidad de precio
+          enum:
+            - indexado
+            - fijo
+          example: "indexado"
+          nullable: true
+
+        precio_potencia_boe:
+          type: string
+          description: Indica si el precio de potencia es el del BOE (S) o tiene precio especial (N)
+          enum:
+            - S
+            - N
+          example: "S"
+          nullable: true
+
+        precio_excedentes:
+          type: string
+          description: Precio de compra de excedentes de autoconsumo en €/kWh
+          example: "0.05"
+          nullable: true
+
+        # Fórmulas de potencia para cada periodo (€/kW/año)
+        potencia_p1_formula:
+          type: string
+          description: Precio de término de potencia para periodo P1 en €/kW/año
+          example: "37.74319"
+          nullable: true
+
+        potencia_p2_formula:
+          type: string
+          description: Precio de término de potencia para periodo P2 en €/kW/año
+          example: "17.61636"
+          nullable: true
+
+        potencia_p3_formula:
+          type: string
+          description: Precio de término de potencia para periodo P3 en €/kW/año
+          nullable: true
+
+        potencia_p4_formula:
+          type: string
+          description: Precio de término de potencia para periodo P4 en €/kW/año
+          nullable: true
+
+        potencia_p5_formula:
+          type: string
+          description: Precio de término de potencia para periodo P5 en €/kW/año
+          nullable: true
+
+        potencia_p6_formula:
+          type: string
+          description: Precio de término de potencia para periodo P6 en €/kW/año
+          nullable: true
+
+        # Fórmulas de energía para cada periodo (€/kWh)
+        energia_p1_formula:
+          type: string
+          description: |
+            Precio de término de energía para periodo P1 en €/kWh.
+            Para tarifas indexadas este valor es null (precio variable según mercado).
+          example: "0.13181"
+          nullable: true
+
+        energia_p2_formula:
+          type: string
+          description: |
+            Precio de término de energía para periodo P2 en €/kWh.
+            Para tarifas indexadas este valor es null (precio variable según mercado).
+          example: "0.13181"
+          nullable: true
+
+        energia_p3_formula:
+          type: string
+          description: |
+            Precio de término de energía para periodo P3 en €/kWh.
+            Para tarifas indexadas este valor es null (precio variable según mercado).
+          example: "0.13181"
+          nullable: true
+
+        energia_p4_formula:
+          type: string
+          description: Precio de término de energía para periodo P4 en €/kWh
+          nullable: true
+
+        energia_p5_formula:
+          type: string
+          description: Precio de término de energía para periodo P5 en €/kWh
+          nullable: true
+
+        energia_p6_formula:
+          type: string
+          description: Precio de término de energía para periodo P6 en €/kWh
+          nullable: true
+
+        # Valores máximos y mínimos para autoconsumo P1-P6
+        valor_p1_max_fee_autoconsumo:
+          type: string
+          description: Fee máximo de autoconsumo para periodo P1 en €/kWh
+          nullable: true
+
+        valor_p1_min_fee_autoconsumo:
+          type: string
+          description: Fee mínimo de autoconsumo para periodo P1 en €/kWh
+          nullable: true
+
+        valor_p2_max_fee_autoconsumo:
+          type: string
+          description: Fee máximo de autoconsumo para periodo P2 en €/kWh
+          nullable: true
+
+        valor_p2_min_fee_autoconsumo:
+          type: string
+          description: Fee mínimo de autoconsumo para periodo P2 en €/kWh
+          nullable: true
+
+        valor_p3_max_fee_autoconsumo:
+          type: string
+          description: Fee máximo de autoconsumo para periodo P3 en €/kWh
+          nullable: true
+
+        valor_p3_min_fee_autoconsumo:
+          type: string
+          description: Fee mínimo de autoconsumo para periodo P3 en €/kWh
+          nullable: true
+
+        valor_p4_max_fee_autoconsumo:
+          type: string
+          description: Fee máximo de autoconsumo para periodo P4 en €/kWh
+          nullable: true
+
+        valor_p4_min_fee_autoconsumo:
+          type: string
+          description: Fee mínimo de autoconsumo para periodo P4 en €/kWh
+          nullable: true
+
+        valor_p5_max_fee_autoconsumo:
+          type: string
+          description: Fee máximo de autoconsumo para periodo P5 en €/kWh
+          nullable: true
+
+        valor_p5_min_fee_autoconsumo:
+          type: string
+          description: Fee mínimo de autoconsumo para periodo P5 en €/kWh
+          nullable: true
+
+        valor_p6_max_fee_autoconsumo:
+          type: string
+          description: Fee máximo de autoconsumo para periodo P6 en €/kWh
+          nullable: true
+
+        valor_p6_min_fee_autoconsumo:
+          type: string
+          description: Fee mínimo de autoconsumo para periodo P6 en €/kWh
+          nullable: true
+
+        # Valores máximos y mínimos para energía P1-P6
+        valor_p1_max_fee_energia:
+          type: string
+          description: Fee máximo de energía para periodo P1 en €/kWh
+          example: "30"
+          nullable: true
+
+        valor_p1_min_fee_energia:
+          type: string
+          description: Fee mínimo de energía para periodo P1 en €/kWh
+          example: "0"
+          nullable: true
+
+        valor_p2_max_fee_energia:
+          type: string
+          description: Fee máximo de energía para periodo P2 en €/kWh
+          nullable: true
+
+        valor_p2_min_fee_energia:
+          type: string
+          description: Fee mínimo de energía para periodo P2 en €/kWh
+          nullable: true
+
+        valor_p3_max_fee_energia:
+          type: string
+          description: Fee máximo de energía para periodo P3 en €/kWh
+          nullable: true
+
+        valor_p3_min_fee_energia:
+          type: string
+          description: Fee mínimo de energía para periodo P3 en €/kWh
+          nullable: true
+
+        valor_p4_max_fee_energia:
+          type: string
+          description: Fee máximo de energía para periodo P4 en €/kWh
+          nullable: true
+
+        valor_p4_min_fee_energia:
+          type: string
+          description: Fee mínimo de energía para periodo P4 en €/kWh
+          nullable: true
+
+        valor_p5_max_fee_energia:
+          type: string
+          description: Fee máximo de energía para periodo P5 en €/kWh
+          nullable: true
+
+        valor_p5_min_fee_energia:
+          type: string
+          description: Fee mínimo de energía para periodo P5 en €/kWh
+          nullable: true
+
+        valor_p6_max_fee_energia:
+          type: string
+          description: Fee máximo de energía para periodo P6 en €/kWh
+          nullable: true
+
+        valor_p6_min_fee_energia:
+          type: string
+          description: Fee mínimo de energía para periodo P6 en €/kWh
+          nullable: true
+
+        # Valores máximos y mínimos para precio de potencia P1-P6
+        valor_p1_max_precio_potencia:
+          type: string
+          description: Precio máximo de potencia para periodo P1 en €/kW/año
+          example: "14.6"
+          nullable: true
+
+        valor_p1_min_precio_potencia:
+          type: string
+          description: Precio mínimo de potencia para periodo P1 en €/kW/año
+          example: "0"
+          nullable: true
+
+        valor_p2_max_precio_potencia:
+          type: string
+          description: Precio máximo de potencia para periodo P2 en €/kW/año
+          nullable: true
+
+        valor_p2_min_precio_potencia:
+          type: string
+          description: Precio mínimo de potencia para periodo P2 en €/kW/año
+          nullable: true
+
+        valor_p3_max_precio_potencia:
+          type: string
+          description: Precio máximo de potencia para periodo P3 en €/kW/año
+          nullable: true
+
+        valor_p3_min_precio_potencia:
+          type: string
+          description: Precio mínimo de potencia para periodo P3 en €/kW/año
+          nullable: true
+
+        valor_p4_max_precio_potencia:
+          type: string
+          description: Precio máximo de potencia para periodo P4 en €/kW/año
+          nullable: true
+
+        valor_p4_min_precio_potencia:
+          type: string
+          description: Precio mínimo de potencia para periodo P4 en €/kW/año
+          nullable: true
+
+        valor_p5_max_precio_potencia:
+          type: string
+          description: Precio máximo de potencia para periodo P5 en €/kW/año
+          nullable: true
+
+        valor_p5_min_precio_potencia:
+          type: string
+          description: Precio mínimo de potencia para periodo P5 en €/kW/año
+          nullable: true
+
+        valor_p6_max_precio_potencia:
+          type: string
+          description: Precio máximo de potencia para periodo P6 en €/kW/año
+          nullable: true
+
+        valor_p6_min_precio_potencia:
+          type: string
+          description: Precio mínimo de potencia para periodo P6 en €/kW/año
+          nullable: true
+
+      required:
+        - id_tarifa_precios
+
+    ListaContratosResponse:
+      type: object
+      description: |
+        Respuesta con listado de contratos del canal.
+      properties:
+        request_id:
+          type: integer
+          description: ID único de la solicitud para seguimiento
+          example: 158
+
+        pagina:
+          type: integer
+          description: Número de página actual
+          example: 1
+
+        num_contratos:
+          type: integer
+          description: Número de contratos devueltos en esta página
+          example: 5
+
+        contratos:
+          type: array
+          description: Lista de contratos en la página actual
+          items:
+            $ref: '#/components/schemas/ContratoInfo'
+
+      required:
+        - request_id
+        - pagina
+        - num_contratos
+        - contratos
+
+    ContratoInfo:
+      type: object
+      description: |
+        Información del contrato de suministro devuelta en el listado.
+      properties:
+        id:
+          type: integer
+          description: Identificador único del contrato
+          example: 346663
+
+        codigo:
+          type: string
+          description: Código del contrato
+          example: "00028517"
+
+        alias_externo:
+          type: string
+          description: Alias externo del contrato (referencia del canal)
+          example: "C00050803"
+
+        estado:
+          type: object
+          description: Estado actual del contrato
+          properties:
+            id:
+              type: integer
+              example: 5
+            estado:
+              type: string
+              example: "finalizado"
+            descripcion:
+              type: string
+              example: "Finalizado"
+
+        subestado:
+          type: object
+          description: Subestado del contrato
+          properties:
+            id:
+              type: integer
+              example: 19
+            id_estado:
+              type: integer
+              example: 5
+            subestado:
+              type: string
+              example: "finalizado"
+            descripcion:
+              type: string
+              example: "Finalizado"
+
+        fecha_inicio:
+          type: string
+          format: date
+          description: Fecha de inicio del suministro
+          example: "2023-04-01"
+
+        fecha_fin:
+          type: string
+          format: date
+          description: Fecha de fin del contrato
+          example: "2023-04-17"
+
+        fecha_firma:
+          type: string
+          format: date
+          description: Fecha de firma del contrato
+          example: "2023-03-16"
+
+        consumo_anual_estimado:
+          type: string
+          description: Consumo anual estimado en Wh
+          example: "3280000"
+
+        atributos:
+          type: object
+          description: Atributos adicionales del contrato
+          properties:
+            potencia_contratada:
+              type: string
+              description: Potencias contratadas por periodo (JSON string)
+              example: "[\"4400\",\"4400\",0,0,0,0]"
+
+        cliente:
+          type: object
+          description: Información del titular del contrato
+          properties:
+            identificador:
+              type: string
+              description: DNI/NIE/CIF del titular
+              example: "02536092C"
+            nombre_completo:
+              type: string
+              description: Nombre completo del titular
+              example: "Cristina Moron Blanco"
+            correo_electronico:
+              type: string
+              format: email
+              description: Email del titular
+              example: "cliente@ejemplo.com"
+            telefono_1:
+              type: string
+              description: Teléfono principal del titular
+              example: "667435899"
+            tipo_persona:
+              type: object
+              description: Tipo de persona (física/jurídica)
+              properties:
+                id:
+                  type: integer
+                codigo:
+                  type: string
+                  example: "F"
+                descripcion:
+                  type: string
+                  example: "Física"
+            tabla_direcciones:
+              type: object
+              description: Dirección del cliente
+              properties:
+                direccion_completa:
+                  type: string
+                  example: "Calle Alonsario 34 Puerta 9 21730"
+                cod_postal:
+                  type: string
+                  example: "21730"
+                municipio_provincia:
+                  type: string
+                  example: "Almonte (Huelva)"
+
+        punto_suministro:
+          type: object
+          description: Información del punto de suministro
+          properties:
+            cups:
+              type: string
+              description: Código CUPS
+              example: "ES0133000002012018ZM"
+            direccion:
+              type: object
+              description: Dirección del punto de suministro
+              properties:
+                direccion_completa:
+                  type: string
+                  example: "Calle Alonsario 34 Puerta 9 21730"
+                cod_postal:
+                  type: string
+                  example: "21730"
+                municipio_provincia:
+                  type: string
+                  example: "Almonte (Huelva)"
+
+        tarifa_precio:
+          type: object
+          description: Información de la tarifa
+          properties:
+            id:
+              type: integer
+              description: ID de la tarifa
+              example: 8252
+            alias_externo:
+              type: string
+              description: Nombre/alias de la tarifa
+              example: "0223 - PLAN SIN HORAS (10346)"
+
+    ContratoResidencialRequest:
+      type: object
+      description: |
+        Payload para alta de contrato residencial (Universal). Soporta modelos C1, C2 y A3.
+        Los valores se validan contra tablas maestras.
+      properties:
+        # Punto de suministro
+        cups:
+          type: string
+          description: CUPS del punto de suministro (se recortará a 20 caracteres si excede)
+          example: ES0026000010979933FW
+        provincia:
+          $ref: '#/components/schemas/Provincia'
+        municipio:
+          $ref: '#/components/schemas/Municipio'
+        cod_postal:
+          type: string
+          pattern: '^\d{5}$'
+          description: Código postal (5 dígitos)
+          example: "28001"
+        calle:
+          type: string
+          example: "Calle de Alcalá"
+        numero_finca:
+          type: string
+          example: "1"
+        tipo_via_cnmc:
+          $ref: '#/components/schemas/TipoViaCnmc'
+        aclarador_finca:
+          type: string
+          nullable: true
+          description: Portal, escalera, piso, letra, etc.
+          example: "2ºB"
+
+        # Contrato y facturación
+        potencia_contratada:
+          type: array
+          minItems: 6
+          maxItems: 6
+          items:
+            type: number
+            description: Potencia en W para cada periodo (P1..P6). Acepta valores null.
+          example: [4600, 4600, 0, 0, 0, 0]
+        id_tarifa:
+          type: integer
+          description: Identificador interno de la tarifa/precio
+          example: 10350
+        iban:
+          type: string
+          description: IBAN para domiciliación
+          example: ES9121000418450200051332
+
+        # Datos del titular
+        nombre_titular:
+          type: string
+          example: Juan
+        primer_apellido_titular:
+          type: string
+          example: Pérez
+        tipo_documento_titular:
+          type: string
+          description: Tipo de documento del titular
+          enum: [NIF, NIE, CIF, Pasaporte]
+          example: NIF
+        numero_documento_titular:
+          type: string
+          example: 12345678A
+        telefono_titular:
+          type: string
+          example: "600000000"
+        prefijo_telefono_titular:
+          type: string
+          description: Prefijo internacional sin signo '+'
+          example: "34"
+        email_titular:
+          type: string
+          format: email
+          example: juan@example.com
+
+        # Datos del firmante (firma electronica)
+        telefono_firmante:
+          type: string
+          description: Telefono del firmante (opcional). Si no se informa, se usa telefono_titular. Aplica para sms o email_otp.
+          example: "600000000"
+        email_firmante:
+          type: string
+          format: email
+          description: Email del firmante (opcional). Si no se informa, se usa email_titular. Aplica para email o email_otp.
+          example: firmante@ejemplo.com
+
+        # Dirección titular
+        provincia_titular:
+          $ref: '#/components/schemas/Provincia'
+        municipio_titular:
+          $ref: '#/components/schemas/Municipio'
+        cod_postal_titular:
+          type: string
+          pattern: '^\d{5}$'
+          example: "28001"
+        calle_titular:
+          type: string
+          example: "Calle de Alcalá"
+        numero_finca_titular:
+          type: string
+          example: "1"
+        tipo_via_titular_cnmc:
+          $ref: '#/components/schemas/TipoViaCnmc'
+        aclarador_finca_titular:
+          type: string
+          nullable: true
+          example: "2ºB"
+
+        # Autoconsumo (opcional)
+        tipo_autoconsumo_cnmc:
+          $ref: '#/components/schemas/TipoAutoconsumoCnmc'
+
+        # Operación y opciones
+        no_credit_check:
+          type: boolean
+          description: Si true, salta el credit check
+          default: false
+        no_enviar_firma:
+          type: boolean
+          description: Si true, elude enviar el contrato a firma y espera que se rellene el campo fecha_firma_datos
+          default: false
+        canal_envio:
+          type: string
+          description: Canal de envio para firma. Si telefono_firmante/email_firmante no se informan, se usan los del titular.
+          enum: [sms, email, email_otp]
+          example: email
+        callback_url:
+          type: string
+          format: uri
+          description: URL para callback; si se informa, el procesamiento será asíncrono
+          example: https://miapp.example.com/webhooks/contrata
+        referencia_externa:
+          type: string
+          description: Referencia externa opcional proporcionada por el cliente para identificar su propia petición. Se devolverá en la respuesta y en los callbacks para facilitar la trazabilidad.
+          example: "REF-2026-001234"
+
+        # Opción de inicio de contrato
+        inicio_contrato:
+          type: string
+          description: Indica cuándo se ha de iniciar el contrato.
+          enum: [cuanto_antes, fecha_fija]
+          default: cuanto_antes
+          example: cuanto_antes
+        fecha_inicio:
+          type: string
+          format: date
+          nullable: true
+          description: 'Fecha en la que se ha de iniciar el contrato (formato YYYY-MM-DD). Es obligatorio informarlo si inicio_contrato es "fecha_fija".'
+          example: "2026-03-01"
+
+        # Fecha de firma (opcional)
+        fecha_firma_datos:
+          type: string
+          format: date
+          nullable: true
+          description: 'Fecha en la que el cliente ha firmado el contrato (formato YYYY-MM-DD). Es obligatorio informarlo si no se envía a firma el contrato "no_enviar_firma": true.'
+          example: "2026-01-28"
+
+        # Tipo de Operación
+        es_alta_nueva:
+          type: boolean
+          description: Si true, indica que es una nueva alta (modelo A3). Si false o nulo, es un cambio de comercializadora (C1/C2).
+          default: false
+          example: false
+        mismo_titular:
+          type: boolean
+          description: Si true, el titular es el mismo. Si false, se trata de un cambio de titular (modelo C2).
+          default: true
+          example: true
+        misma_potencia:
+          type: boolean
+          description: Si true, no hay cambios de potencia. Si false, hay cambios técnicos (modelo C2).
+          default: true
+          example: true
+
+      required:
+        - cups
+        - provincia
+        - municipio
+        - cod_postal
+        - calle
+        - numero_finca
+        - tipo_via_cnmc
+        - potencia_contratada
+        - id_tarifa
+        - iban
+        - nombre_titular
+        - tipo_documento_titular
+        - numero_documento_titular
+        - telefono_titular
+        - prefijo_telefono_titular
+        - email_titular
+        - provincia_titular
+        - municipio_titular
+        - cod_postal_titular
+        - calle_titular
+        - numero_finca_titular
+        - tipo_via_titular_cnmc
+        - canal_envio
+
+    ContratoEmpresaRequest:
+      type: object
+      description: |
+        Payload para alta de contrato empresa (Universal). Soporta modelos C1, C2 y A3.
+        Los valores se validan contra tablas maestras. Este endpoint está diseñado para personas jurídicas (empresas).
+      properties:
+        # Punto de suministro
+        cups:
+          type: string
+          description: CUPS del punto de suministro (se recortará a 20 caracteres si excede)
+          example: ES0026000010979933FW
+        provincia:
+          $ref: '#/components/schemas/Provincia'
+        municipio:
+          $ref: '#/components/schemas/Municipio'
+        cod_postal:
+          type: string
+          pattern: '^\d{5}$'
+          description: Código postal (5 dígitos)
+          example: "28001"
+        calle:
+          type: string
+          example: "Calle de Alcalá"
+        numero_finca:
+          type: string
+          example: "1"
+        tipo_via_cnmc:
+          $ref: '#/components/schemas/TipoViaCnmc'
+        aclarador_finca:
+          type: string
+          nullable: true
+          description: Portal, escalera, piso, letra, oficina, etc.
+          example: "Oficina 2B"
+
+        # Contrato y facturación
+        potencia_contratada:
+          type: array
+          minItems: 6
+          maxItems: 6
+          items:
+            type: number
+            description: Potencia en W para cada periodo (P1..P6). Acepta valores null.
+          example: [4600, 4600, 0, 0, 0, 0]
+        id_tarifa:
+          type: integer
+          description: Identificador interno de la tarifa/precio
+          example: 10350
+        id_cnae:
+          type: string
+          description: Código CNAE de la actividad económica de la empresa (obligatorio para empresas)
+          example: "Actividades de los hogares como productores de servicios para uso propio"
+        iban:
+          type: string
+          description: IBAN para domiciliación
+          example: ES9121000418450200051332
+
+        # Datos del titular (empresa/persona jurídica)
+        razon_social_titular:
+          type: string
+          description: Razón social de la empresa
+          example: ACME CORPORATION S.L.
+        numero_documento_titular:
+          type: string
+          description: NIF de la empresa (antes llamado CIF)
+          example: B12345678
+        telefono_titular:
+          type: string
+          description: Teléfono de contacto de la empresa
+          example: "910000000"
+        prefijo_telefono_titular:
+          type: string
+          description: Prefijo internacional sin signo '+' (obligatorio)
+          example: "34"
+        email_titular:
+          type: string
+          format: email
+          description: Email de contacto de la empresa
+          example: admin@acme.com
+
+        # Dirección del titular (empresa)
+        provincia_titular:
+          $ref: '#/components/schemas/Provincia'
+        municipio_titular:
+          $ref: '#/components/schemas/Municipio'
+        cod_postal_titular:
+          type: string
+          pattern: '^\d{5}$'
+          example: "28001"
+        calle_titular:
+          type: string
+          example: "Calle de Alcalá"
+        numero_finca_titular:
+          type: string
+          example: "1"
+        tipo_via_titular_cnmc:
+          $ref: '#/components/schemas/TipoViaCnmc'
+        aclarador_finca_titular:
+          type: string
+          nullable: true
+          example: "Oficina 2B"
+
+        # Datos del firmante (persona física que firma por la empresa)
+        nombre_firmante:
+          type: string
+          description: Nombre de la persona física que firma el contrato
+          example: Juan
+        primer_apellido_firmante:
+          type: string
+          description: Primer apellido del firmante
+          example: Pérez
+        tipo_documento_firmante:
+          type: string
+          description: Tipo de documento del firmante (persona física)
+          enum: [NIF, NIE, Pasaporte]
+          example: NIF
+        numero_documento_firmante:
+          type: string
+          description: Número de documento del firmante
+          example: 12345678A
+        telefono_firmante:
+          type: string
+          description: Telefono del firmante (opcional). Si no se informa, se usa telefono_titular. Aplica para sms o email_otp.
+          example: "600000000"
+        prefijo_telefono_firmante:
+          type: string
+          description: Prefijo internacional del firmante sin signo '+' (obligatorio)
+          example: "34"
+        email_firmante:
+          type: string
+          format: email
+          description: Email del firmante (opcional). Si no se informa, se usa email_titular. Aplica para email o email_otp.
+          example: juan.perez@acme.com
+
+        # Autoconsumo (opcional)
+        tipo_autoconsumo_cnmc:
+          $ref: '#/components/schemas/TipoAutoconsumoCnmc'
+
+        # Operación y opciones
+        no_credit_check:
+          type: boolean
+          description: Si true, salta el credit check
+          default: false
+        no_enviar_firma:
+          type: boolean
+          description: Si true, elude enviar el contrato a firma y espera que se rellene el campo fecha_firma_datos
+          default: false
+        canal_envio:
+          type: string
+          description: Canal de envio para firma. Si telefono_firmante/email_firmante no se informan, se usan los del titular.
+          enum: [sms, email, email_otp]
+          example: email
+        callback_url:
+          type: string
+          format: uri
+          description: URL para callback; si se informa, el procesamiento será asíncrono
+          example: https://miapp.example.com/webhooks/contrata
+        referencia_externa:
+          type: string
+          description: Referencia externa opcional proporcionada por el cliente para identificar su propia petición. Se devolverá en la respuesta y en los callbacks para facilitar la trazabilidad.
+          example: "REF-2026-001234"
+
+        # Opción de inicio de contrato
+        inicio_contrato:
+          type: string
+          description: Indica cuándo se ha de iniciar el contrato.
+          enum: [cuanto_antes, fecha_fija]
+          default: cuanto_antes
+          example: cuanto_antes
+        fecha_inicio:
+          type: string
+          format: date
+          nullable: true
+          description: 'Fecha en la que se ha de iniciar el contrato (formato YYYY-MM-DD). Es obligatorio informarlo si inicio_contrato es "fecha_fija".'
+          example: "2026-03-01"
+
+        # Fecha de firma (opcional)
+        fecha_firma_datos:
+          type: string
+          format: date
+          nullable: true
+          description: 'Fecha en la que el cliente ha firmado el contrato (formato YYYY-MM-DD). Es obligatorio informarlo si no se envía a firma el contrato "no_enviar_firma": true.'
+          example: "2026-01-28"
+
+        # Tipo de Operación
+        es_alta_nueva:
+          type: boolean
+          description: Si true, indica que es una nueva alta (modelo A3). Si false o nulo, es un cambio de comercializadora (C1/C2).
+          default: false
+          example: false
+        mismo_titular:
+          type: boolean
+          description: Si true, el titular es el mismo. Si false, se trata de un cambio de titular (modelo C2).
+          default: true
+          example: true
+        misma_potencia:
+          type: boolean
+          description: Si true, no hay cambios de potencia. Si false, hay cambios técnicos (modelo C2).
+          default: true
+          example: true
+
+      required:
+        - cups
+        - provincia
+        - municipio
+        - cod_postal
+        - calle
+        - numero_finca
+        - tipo_via_cnmc
+        - potencia_contratada
+        - id_tarifa
+        - id_cnae
+        - iban
+        - razon_social_titular
+        - numero_documento_titular
+        - telefono_titular
+        - prefijo_telefono_titular
+        - email_titular
+        - provincia_titular
+        - municipio_titular
+        - cod_postal_titular
+        - calle_titular
+        - numero_finca_titular
+        - tipo_via_titular_cnmc
+        - nombre_firmante
+        - primer_apellido_firmante
+        - tipo_documento_firmante
+        - numero_documento_firmante
+        - prefijo_telefono_firmante
+        - canal_envio
+
+    ContratoResidencialResponseSuccess:
+      type: object
+      properties:
+        request_id:
+          type: integer
+          description: ID único de la petición
+          example: 408
+        credit_result:
+          $ref: '#/components/schemas/CreditResult'
+        contrato_result:
+          $ref: '#/components/schemas/ContratoResult'
+        firma_result:
+          $ref: '#/components/schemas/FirmaResult'
+        referencia_externa:
+          type: string
+          nullable: true
+          description: Referencia externa proporcionada en el request original
+          example: "REF-2026-001234"
+
+    ContratoEmpresaResponseSuccess:
+      type: object
+      properties:
+        request_id:
+          type: integer
+          description: ID único de la petición
+          example: 408
+        credit_result:
+          $ref: '#/components/schemas/CreditResult'
+        contrato_result:
+          $ref: '#/components/schemas/ContratoResult'
+        firma_result:
+          $ref: '#/components/schemas/FirmaResult'
+        referencia_externa:
+          type: string
+          nullable: true
+          description: Referencia externa proporcionada en el request original
+          example: "REF-2026-001234"
+
+    CreditResult:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          description: Código de estado de la operación de credit check
+          example: 200
+        result_operation:
+          type: string
+          description: Resultado textual del credit check
+          example: Aprobado
+
+    ContratoResult:
+      type: object
+      properties:
+        result_operation:
+          type: string
+          description: Resultado de la operación de alta de contrato
+          example: OK
+        content:
+          type: object
+          description: Datos completos del contrato creado
+          properties:
+            id:
+              type: integer
+              description: ID del contrato
+            codigo:
+              type: string
+              description: Código del contrato
+            estado:
+              type: object
+              properties:
+                descripcion:
+                  type: string
+            iban:
+              type: string
+            bic_swift:
+              type: string
+            codigo_mandato:
+              type: string
+
+    FirmaResult:
+      type: object
+      properties:
+        result_code:
+          type: integer
+          nullable: true
+          description: Código de resultado del envío a firma
+        result_operation:
+          type: string
+          description: Mensaje o error del proceso de firma
+
+    Provincia:
+      type: string
+      description: Provincias españolas según códigos oficiales
+      example: Madrid
+      enum:
+        - Albacete
+        - Alicante/Alacant
+        - Almería
+        - Araba/Álava
+        - Asturias
+        - Badajoz
+        - Balears, Illes
+        - Barcelona
+        - Bizkaia
+        - Burgos
+        - Cantabria
+        - Castellón/Castelló
+        - Ceuta
+        - Ciudad Real
+        - Coruña, A
+        - Cuenca
+        - Cáceres
+        - Cádiz
+        - Córdoba
+        - Gipuzkoa
+        - Girona
+        - Granada
+        - Guadalajara
+        - Huelva
+        - Huesca
+        - Jaén
+        - León
+        - Lleida
+        - Lugo
+        - Madrid
+        - Melilla
+        - Murcia
+        - Málaga
+        - Navarra
+        - Otro
+        - Ourense
+        - Palencia
+        - Palmas, Las
+        - Pontevedra
+        - Rioja, La
+        - Salamanca
+        - Santa Cruz de Tenerife
+        - Segovia
+        - Sevilla
+        - Soria
+        - Tarragona
+        - Teruel
+        - Toledo
+        - Valencia/València
+        - Valladolid
+        - Zamora
+        - Zaragoza
+        - Ávila
+
+    Municipio:
+      type: string
+      description: Municipios españoles (catálogo completo disponible)
+      example: Madrid
+
+    TipoViaCnmc:
+      type: string
+      description: Tipos de vía según nomenclatura ATR 12
+      example: Calle
+      enum:
+        - Acceso
+        - Afueras
+        - Agrupación
+        - Alameda
+        - Aldea
+        - Arrabal
+        - Autopista / Autovía
+        - Avenida
+        - Barranco
+        - Barriada
+        - Barrio
+        - Bloque
+        - Calle
+        - Calleja
+        - Callejón
+        - Camino
+        - Carretera
+        - Carril
+        - Casa
+        - Chalet
+        - Colonia
+        - Complejo
+        - Cooperativa
+        - Cuesta
+        - Diseminado extrarradio
+        - Edificio
+        - Entrada
+        - Ficticio
+        - Finca
+        - Glorieta
+        - Grupo
+        - Lugar
+        - Manzana
+        - Masía
+        - Muelle
+        - Núcleo
+        - Otros
+        - Pantalan
+        - Paraje
+        - Parque
+        - Partida
+        - Pasaje
+        - Paseo
+        - Playa
+        - Plaza
+        - Plazoleta
+        - Poblado
+        - Políg.industrial
+        - Polígono
+        - Prolongación
+        - Rambla
+        - Residencial
+        - Ronda
+        - Senda
+        - Travesía
+        - Urbanización
+        - Vial
+        - Zona
+
+    TipoAutoconsumoCnmc:
+      type: string
+      description: Tipos de autoconsumo según ATR 113
+      example: '00'
+      enum:
+        - '00'
+        - '01'
+        - '0C'
+        - '11'
+        - '12'
+        - '2A'
+        - '2B'
+        - '2G'
+        - '31'
+        - '32'
+        - '33'
+        - '41'
+        - '42'
+        - '43'
+        - '51'
+        - '52'
+        - '53'
+        - '54'
+        - '55'
+        - '56'
+        - '57'
+        - '58'
+        - '61'
+        - '62'
+        - '63'
+        - '64'
+        - '71'
+        - '72'
+        - '73'
+        - '74'
+
+tags:
+  - name: Autenticación
+    description: Operaciones de autenticación y obtención de tokens JWT
+  - name: Contratos
+    description: Operaciones relacionadas con la consulta y alta de contratos de suministro
+  - name: Documentos
+    description: Operaciones relacionadas con la carga y gestión de documentos de contratos

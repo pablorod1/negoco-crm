@@ -17,9 +17,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Subdominio de tenant: bloquear acceso a webhooks (solo vía api.negococloud.es)
+  const isTenantScopedWebhook = path.startsWith(
+    "/api/webhooks/imagina-energia/",
+  );
+
+  // Subdominio de tenant: bloquear webhooks legacy, permitir Imagina porque
+  // su firma HMAC incluye la URL pública con subdominio tenant.
   // En desarrollo (localhost) se permite el acceso para testing
-  if (path.startsWith("/api/webhooks/") && !isDev) {
+  if (path.startsWith("/api/webhooks/") && !isDev && !isTenantScopedWebhook) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
