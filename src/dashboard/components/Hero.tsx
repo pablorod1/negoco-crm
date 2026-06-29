@@ -76,12 +76,12 @@ export default function HeroDashboard({
           </MotionAvatar>
           <div className="flex items-center gap-4">
             <motion.h1
-              className="text-xl font-bold text-gray-900"
+              className="text-xl font-bold text-[var(--hero-foreground)]"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
             >
-              Bienvenido, {userData.name}
+              Hola, {userData.name}
             </motion.h1>
             {userData.notifications && userData.notifications > 0 ? (
               <motion.div
@@ -99,7 +99,7 @@ export default function HeroDashboard({
               </motion.div>
             ) : (
               <motion.div
-                className="flex items-center text-gray-600 text-xs bg-gray-50 px-3 py-1 rounded-full w-fit"
+                className="flex items-center text-gray-600 text-xs bg-gray-50 px-3 py-1.5 rounded-full w-fit"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, duration: 0.3 }}
@@ -112,7 +112,7 @@ export default function HeroDashboard({
         </div>
         <div className="flex flex-col md:flex-row items-center gap-3">
           <motion.button
-            className="cursor-pointer flex items-center gap-2 text-sm text-gray-600 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="cursor-pointer flex items-center gap-2 text-sm text-[var(--hero-muted-foreground)] px-3 py-2 rounded-full hover:bg-white/20 transition-colors"
             onClick={refreshData}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -130,7 +130,7 @@ export default function HeroDashboard({
           // Incidencias Stats Cards
           <motion.div
             key="incidencias-stats"
-            className={cn("grid grid-cols-1 gap-6 mt-6 lg:grid-cols-4")}
+            className={cn("grid grid-cols-1 gap-4 mt-6 lg:grid-cols-4")}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -174,7 +174,7 @@ export default function HeroDashboard({
           <motion.div
             key="dashboard-stats"
             className={cn(
-              "grid grid-cols-1 gap-6 mt-6",
+              "grid grid-cols-1 gap-4 mt-6",
               isPlanStarter
                 ? isAdmin
                   ? "lg:grid-cols-4"
@@ -244,7 +244,7 @@ export default function HeroDashboard({
 
             <div
               className={cn(
-                "grid grid-cols-1 gap-6",
+                "grid grid-cols-1 gap-4",
                 isPlanStarter
                   ? !isAdmin
                     ? "lg:grid-cols-1 lg:col-span-1"
@@ -307,7 +307,7 @@ function StatCard({
 }: StatCardProps) {
   return (
     <motion.div
-      className="bg-white/30 hero-card rounded-4xl shadow-2xs p-6 relative overflow-hidden"
+      className="hero-card rounded-4xl shadow-2xs p-6 relative overflow-hidden backdrop-blur-sm"
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.98 }}
@@ -326,9 +326,11 @@ function StatCard({
     >
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
-          <h3 className="text-sm font-medium text-gray-600 mb-1">{title}</h3>
+          <h3 className="text-sm font-medium text-[var(--hero-card-muted-foreground)] mb-1">
+            {title}
+          </h3>
           <motion.p
-            className="text-2xl font-bold text-gray-900"
+            className="text-2xl font-bold text-[var(--hero-card-foreground)]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: delay + 0.1, duration: 0.3 }}
@@ -343,7 +345,7 @@ function StatCard({
         <div className="flex items-center gap-2">
           {type === "chart" && (
             <motion.div
-              className="text-gray-400"
+              className="text-[var(--hero-card-muted-foreground)]"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
@@ -357,7 +359,7 @@ function StatCard({
           )}
           {type === "consumption" && (
             <motion.div
-              className="text-gray-400"
+              className="text-[var(--hero-card-muted-foreground)]"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
@@ -408,7 +410,9 @@ function StatCard({
       </div>
 
       <div className="flex justify-between items-center">
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-xs text-[var(--hero-card-muted-foreground)]">
+          {description}
+        </p>
         {trendValue !== undefined && (
           <TooltipComponent
             color="bg-white shadow-md border border-gray-200"
@@ -432,7 +436,16 @@ function StatCard({
                   </div>
                   <div className="flex justify-between items-center mt-2 pt-2 border-t">
                     <span className="text-xs text-gray-600">Variación:</span>
-                    <span className={`font-medium text-xs text-white`}>
+                    <span
+                      className={cn(
+                        "font-medium text-xs",
+                        trendValue > 0
+                          ? "text-success-600"
+                          : trendValue < 0
+                            ? "text-danger"
+                            : "text-secondary-600",
+                      )}
+                    >
                       {trendValue > 0 ? "+" : ""}
                       {trendValue.toFixed(1)}%
                     </span>
@@ -444,7 +457,7 @@ function StatCard({
             <div className="flex items-center cursor-help">
               <InfoIcon
                 size={12}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-[var(--hero-card-muted-foreground)] hover:text-[var(--hero-card-foreground)] transition-colors"
                 strokeWidth={2}
               />
             </div>

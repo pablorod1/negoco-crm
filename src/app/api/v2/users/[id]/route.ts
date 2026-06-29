@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
 import { z } from "zod";
+import { getTenantFromHost } from "@/core/branding/tenant";
+import { resolveBrandingFromOrganization } from "@/core/branding/metadata";
+import type { ResolvedBranding } from "@/core/branding/types";
 
 // Request Validation Schema
 const GetUserParamsSchema = z.object({
@@ -30,6 +33,7 @@ interface UserResponse {
       logo: string | null;
       plan: string | null;
       abarca_user_id?: number;
+      branding: ResolvedBranding;
     };
     company_commissions: {
       id: string;
@@ -101,6 +105,7 @@ export async function GET(
         o.id as org_id,
         o.name as org_name,
         o.logo as org_logo,
+        o.metadata as org_metadata,
         o.plan as org_plan,
         o.abarca_user_id as org_abarca_user_id,
         LOWER(p.name) as plan_name,
@@ -111,7 +116,7 @@ export async function GET(
       LEFT JOIN plans p ON o.plan = p.id
       LEFT JOIN notifications n ON u.id = n.user_id
       WHERE u.id = ?
-      GROUP BY u.id, o.id, o.name, o.logo, o.plan, p.name`,
+      GROUP BY u.id, o.id, o.name, o.logo, o.metadata, o.plan, p.name`,
       args: [id],
     });
 
@@ -126,6 +131,18 @@ export async function GET(
     }
 
     const row = response.rows[0];
+    const tenant = getTenantFromHost(request.headers.get("host"));
+    const planName = row.plan_name ? String(row.plan_name) : null;
+    const orgName = row.org_name ? String(row.org_name) : "";
+    const orgLogo = row.org_logo ? String(row.org_logo) : null;
+    const orgMetadata = row.org_metadata ? String(row.org_metadata) : null;
+    const branding = resolveBrandingFromOrganization({
+      tenant,
+      name: orgName,
+      logo: orgLogo,
+      plan: planName,
+      metadata: orgMetadata,
+    });
     const [commissionsResponse, notesResponse] = await Promise.all([
       tursoClient.execute({
         sql: `SELECT
@@ -170,13 +187,15 @@ export async function GET(
         company: row.company ? String(row.company) : null,
         organization: {
           id: row.org_id ? String(row.org_id) : "",
-          name: row.org_name ? String(row.org_name) : "",
-          logo: row.org_logo ? String(row.org_logo) : null,
-          plan: row.plan_name ? String(row.plan_name) : null,
+          name: orgName,
+          logo: orgLogo,
+          plan: planName,
           abarca_user_id:
-            row.org_abarca_user_id !== null
+            row.org_abarca_user_id !== null &&
+            row.org_abarca_user_id !== undefined
               ? Number(row.org_abarca_user_id)
               : undefined,
+          branding,
         },
         company_commissions: commissionsResponse.rows.map((commission) => ({
           id: String(commission.id),

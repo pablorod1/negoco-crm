@@ -16,6 +16,12 @@ import {
   Tailwind,
   render,
 } from "@react-email/components";
+import {
+  getEmailFrom,
+  getEmailTransportConfig,
+  resolveEmailBranding,
+} from "@/core/branding/email";
+import type { EmailBrandingTheme } from "@/core/branding/types";
 
 export async function sendTramiteStatusUpdatedNotification({
   user_to,
@@ -32,32 +38,14 @@ export async function sendTramiteStatusUpdatedNotification({
   req: NextRequest;
   client: { name: string; last_name?: string | undefined };
 }) {
-  // Configurar el transporter de nodemailer
-  const host = req.headers.get("host");
-  if (!host) {
-    throw new Error("No host found in request headers");
-  }
-
-  // Extraer el subdominio (client1, client2, etc.)
-  const subdomain = host.split(".")[0];
-  const email =
-    subdomain === "beenergy"
-      ? process.env.EMAIL_BEENERGY
-      : process.env.EMAIL_NOREPLY;
-  const password =
-    subdomain === "beenergy"
-      ? process.env.EMAIL_PASS_BEENERGY
-      : process.env.EMAIL_PASS_NOREPLY;
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: 465,
-    secure: true,
-    auth: {
-      user: email,
-      pass: password,
-    },
+  const emailBranding = await resolveEmailBranding({
+    req,
+    logoUrl: user_to.org_logo,
   });
+
+  const transporter = nodemailer.createTransport(
+    getEmailTransportConfig(emailBranding),
+  );
 
   const tramiteLink = `${link}/tramites/${tramite_id}`;
 
@@ -66,17 +54,15 @@ export async function sendTramiteStatusUpdatedNotification({
       name={user_to.name}
       tramiteLink={tramiteLink}
       status={status}
-      org_logo={user_to.org_logo}
-      subdomain={subdomain}
       client={client}
+      displayName={emailBranding.branding.displayName}
+      logoUrl={emailBranding.logoUrl}
+      theme={emailBranding.theme}
     />
   );
 
   const mailOptions = {
-    from: {
-      address: email as string,
-      name: subdomain === "beenergy" ? "BEENERGY" : "Negoco Cloud",
-    },
+    from: getEmailFrom(emailBranding),
     to: user_to.email,
     subject: `Actualización de Trámite - ${client.name} ${client.last_name}`,
     html: emailHtml,
@@ -95,17 +81,21 @@ const TramiteStatusUpdateEmail = ({
   name,
   tramiteLink,
   status,
-  org_logo,
-  subdomain,
   client,
+  displayName,
+  logoUrl,
+  theme,
 }: {
   name: string;
   tramiteLink: string;
   status: { old: string; new: string };
-  org_logo: string | undefined;
-  subdomain: string;
   client: { name: string; last_name?: string | undefined };
+  displayName: string;
+  logoUrl: string;
+  theme: EmailBrandingTheme;
 }) => {
+  const currentYear = new Date().getFullYear();
+
   return (
     <Html lang="es">
       <Head>
@@ -118,23 +108,26 @@ const TramiteStatusUpdateEmail = ({
       </Preview>
       <Tailwind>
         <Body
-          className={`${subdomain === "beenergy" ? "bg-[#fffdeb]" : "bg-[#f7f9fc]"} py-[40px] font-sans text-[#333333]`}
+          className="py-[40px] font-sans text-[#333333]"
+          style={{ backgroundColor: theme.bodyBg }}
         >
           <Container className="mx-auto bg-white rounded-[10px] shadow-lg overflow-hidden max-w-[600px]">
             <Section
-              className={`${subdomain === "beenergy" ? "bg-[#f7d43a]" : "bg-[#f0f6ff]"} py-[30px] text-center`}
+              className="py-[30px] text-center"
+              style={{ backgroundColor: theme.headerBg }}
             >
               <Img
-                alt="Logo"
+                alt={`${displayName} Logo`}
                 className="mx-auto"
                 height={50}
-                src={org_logo ? org_logo : "https://negococloud.es/favicon.png"}
+                src={logoUrl}
               />
             </Section>
 
             <Section className="px-[50px] py-[40px] text-center">
               <Heading
-                className={`${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"} text-[24px] font-semibold m-0 mb-[20px]`}
+                className="text-[24px] font-semibold m-0 mb-[20px]"
+                style={{ color: theme.heading }}
               >
                 Actualización de Trámite - {client.name}{" "}
                 {client.last_name ?? ""}
@@ -152,7 +145,8 @@ const TramiteStatusUpdateEmail = ({
               <Section className="my-[30px]">
                 <Button
                   href={tramiteLink}
-                  className={`${subdomain === "beenergy" ? "bg-[#f7d43a]" : "bg-[#3b82f6]"} text-white py-[14px] px-[26px] rounded-[6px] font-semibold text-[16px] no-underline inline-block shadow-md box-border`}
+                  className="text-white py-[14px] px-[26px] rounded-[6px] font-semibold text-[16px] no-underline inline-block shadow-md box-border"
+                  style={{ backgroundColor: theme.buttonBg }}
                 >
                   Ver Trámite
                 </Button>
@@ -164,7 +158,11 @@ const TramiteStatusUpdateEmail = ({
               </Text>
 
               <Text
-                className={`my-[10px] mb-[20px] py-[12px] px-[15px] ${subdomain === "beenergy" ? "bg-[#fdf7c8] border-[#f7d43a]" : "bg-[#f5f7fa] border-[#0066cc]"} rounded-[6px] text-[14px] border-l-4  text-[#666666] text-left`}
+                className="my-[10px] mb-[20px] py-[12px] px-[15px] rounded-[6px] text-[14px] border-l-4 text-[#666666] text-left"
+                style={{
+                  backgroundColor: theme.mutedBg,
+                  borderColor: theme.buttonBg,
+                }}
               >
                 {tramiteLink}
               </Text>
@@ -172,18 +170,23 @@ const TramiteStatusUpdateEmail = ({
               <Text className="text-[16px] leading-[26px] mt-[25px] mb-[10px]">
                 Saludos,
                 <br />
-                El equipo de Negoco Cloud
+                El equipo de {displayName}
               </Text>
             </Section>
 
             <Section
-              className={`${subdomain === "beenergy" ? "bg-[#fdf7c8] border-[#fdf7c8]" : "bg-[#f0f5fc] border-[#e5ebf5]"} px-[50px] py-[30px] text-center border-t `}
+              className="px-[50px] py-[30px] text-center border-t"
+              style={{
+                backgroundColor: theme.subtleBg,
+                borderColor: theme.border,
+              }}
             >
               <Text className="text-[#758195] text-[14px] m-0 mb-[15px]">
                 Si tienes alguna duda, contáctanos en{" "}
                 <Link
                   href="mailto:soporte@negococloud.es"
-                  className={`${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"} no-underline`}
+                  className="no-underline"
+                  style={{ color: theme.link }}
                 >
                   soporte@negococloud.es
                 </Link>
@@ -195,7 +198,7 @@ const TramiteStatusUpdateEmail = ({
               </Text>
 
               <Text className="text-[#758195] text-[13px] mt-[15px] mb-0 m-0">
-                &copy; {new Date().getFullYear()} Negoco Cloud. Todos los
+                &copy; {currentYear} {displayName}. Todos los
                 derechos reservados.
               </Text>
             </Section>

@@ -8,6 +8,7 @@ import { cn } from "@/core/utils/utils";
 import SmartBreadcrumb from "./SmartBreadcrumbFixed";
 import { useUser } from "../contexts/UserContext";
 import NotificationsMenu from "./NotificationsMenu";
+import { getOrganizationLogo } from "@/core/branding/client";
 
 interface ImprovedHeaderProps {
   className?: string;
@@ -18,12 +19,8 @@ export default function Header({ className }: ImprovedHeaderProps) {
   const isComparadorPlan = getPlan() === "comparador";
 
   const organization = userData && userData.organization;
-  const { logo, name } = organization
-    ? organization
-    : { logo: null, name: null };
-
-  const beenergyLogo = "/beenergy.png";
-  const isBeenergy = organization?.name?.toLowerCase() === "beenergy";
+  const { name } = organization ? organization : { name: null };
+  const organizationLogo = getOrganizationLogo(organization);
 
   return (
     <header
@@ -61,11 +58,11 @@ export default function Header({ className }: ImprovedHeaderProps) {
           {!loading && userData ? (
             <div className="relative">
               <Image
-                src={isBeenergy ? beenergyLogo : logo || "/favicon.ico"}
-                alt={name || "Negoco Cloud"}
+                src={organizationLogo.defaultUrl}
+                alt={organizationLogo.alt || name || "Negoco Cloud"}
                 className="h-full w-auto max-w-32 object-contain transition-opacity hover:opacity-80"
-                width={isBeenergy ? 700 : 128}
-                height={isBeenergy ? 300 : 128}
+                width={organizationLogo.width}
+                height={organizationLogo.height}
                 priority
               />
             </div>

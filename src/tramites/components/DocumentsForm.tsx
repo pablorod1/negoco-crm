@@ -3,6 +3,7 @@ import { XIcon, UploadCloud, FileIcon } from "lucide-react";
 import Image from "next/image";
 import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
+import { getOrganizationLogo } from "@/core/branding/client";
 
 interface DocumentsSectionProps {
   uploadedFiles: File[];
@@ -21,7 +22,7 @@ export default function DocumentsForm({
     [setUploadedFiles]
   );
 
-  const isBeenergy = userData && userData.organization.name === "Beenergy";
+  const organizationLogo = getOrganizationLogo(userData?.organization);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -50,10 +51,10 @@ export default function DocumentsForm({
         <input {...getInputProps()} />
         <div className="absolute top-3 left-3 opacity-30 pointer-events-none">
           <Image
-            src={isBeenergy ? "/beenergy.png" : "/logo_inline.png"}
-            width={160}
-            height={160}
-            alt="Logo"
+            src={organizationLogo.defaultUrl}
+            width={organizationLogo.width}
+            height={organizationLogo.height}
+            alt={organizationLogo.alt}
             className="rounded"
           />
         </div>
@@ -109,4 +110,3 @@ export default function DocumentsForm({
     </div>
   );
 }
-

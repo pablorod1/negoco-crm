@@ -1,4 +1,6 @@
-﻿export interface User {
+﻿import type { ResolvedBranding } from "@/core/branding/types";
+
+export interface User {
   id: string;
   email: string;
   email_verified: boolean;
@@ -47,6 +49,7 @@ export interface Organization {
   logo: string | null;
   plan: string | null;
   abarca_user_id?: number;
+  branding?: ResolvedBranding;
 }
 
 export interface Notification {
