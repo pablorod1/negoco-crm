@@ -54,56 +54,24 @@ export default function TramiteStatusSection({
       !isComercial);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       {mode === "actions" ? (
-        <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Resto de información
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0">
-              <p className="mb-1 text-xs text-gray-500">Estado</p>
-              <div className="flex items-center gap-2">
-                {getStatusBadge(tramite.status, "general")}
-              </div>
-            </div>
-            {showLiquidez ? (
-              <div className="min-w-0">
-                <p className="mb-1 text-xs text-gray-500">Liquidez</p>
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(displayLiquidezStatus, "liquidez")}
-                </div>
-              </div>
-            ) : null}
-            <div className="min-w-0">
-              <p className="mb-1 text-xs text-gray-500">Cliente</p>
-              <p className="truncate text-sm font-medium text-gray-900">
-                {clientName || "—"}
-              </p>
-            </div>
-            <div>
-              <p className="mb-1 text-xs text-gray-500">Creación</p>
-              <p className="text-sm font-medium text-gray-900">
-                {tramite.creation_date ? formatDate(tramite.creation_date) : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="mb-1 text-xs text-gray-500">Tramitación</p>
-              <p className="text-sm font-medium text-gray-900">
-                {tramite.tramitation_date
-                  ? formatDate(tramite.tramitation_date)
-                  : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="mb-1 text-xs text-gray-500">Renovación</p>
-              <p className="text-sm font-medium text-gray-900">
-                {tramite.renovation_date
-                  ? formatDate(tramite.renovation_date)
-                  : "—"}
-              </p>
+        <div className="flex items-start justify-between w-full gap-3">
+          <div className="min-w-0">
+            <p className="mb-1 text-xs text-gray-500">Estado</p>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(tramite.status, "general")}
             </div>
           </div>
+          {showLiquidez ? (
+            <div className="min-w-0">
+              <p className="mb-1 text-xs text-gray-500">Liquidez</p>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(displayLiquidezStatus, "liquidez")}
+              </div>
+            </div>
+          ) : null}
+
         </div>
       ) : null}
 
@@ -149,7 +117,7 @@ export default function TramiteStatusSection({
               </div>
               <div className="flex items-center justify-center">
                 {isComercial &&
-                tramite.liquidez_status === "Cobrado por Comercializadora" ? (
+                  tramite.liquidez_status === "Cobrado por Comercializadora" ? (
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-xs text-gray-500 text-center">
                       Estado actual de liquidez
@@ -179,16 +147,24 @@ export default function TramiteStatusSection({
 
       {/* Action Buttons */}
       {hasActions ? (
-        <div className="space-y-3">
+        <div className="space-y-3 border rounded-2xl border-gray-200 p-4">
           <h4 className="text-sm font-medium text-gray-700">
             Acciones Disponibles
           </h4>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {(isEditable || isBaja) && (
               <UpdateTramiteStatusModal
                 tramite={tramite}
                 userData={userData}
                 onUpdate={onUpdate}
+                client={client}
+              />
+            )}
+
+            {isRenewable && (isAdmin || isBackoffice) && (
+              <RenewTramiteConfirmationDialog
+                tramite={tramite}
+                onRenew={onRenew}
                 client={client}
               />
             )}
@@ -201,13 +177,7 @@ export default function TramiteStatusSection({
               />
             )}
 
-            {isRenewable && (isAdmin || isBackoffice) && (
-              <RenewTramiteConfirmationDialog
-                tramite={tramite}
-                onRenew={onRenew}
-                client={client}
-              />
-            )}
+
           </div>
         </div>
       ) : mode === "actions" ? (
