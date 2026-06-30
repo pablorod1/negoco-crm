@@ -62,7 +62,7 @@ const useNavigationAccess = () => {
 
   return useMemo(() => {
     const userPlan = getPlan() as PlanType;
-    const isAdmin = userData?.role === "admin" || userData?.role === "1";
+    const isAdmin = userData?.role === "admin";
     const isElite = userPlan === "elite";
     const isPro = userPlan === "pro";
     const isStarter = userPlan === "starter";
