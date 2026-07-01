@@ -77,6 +77,22 @@ interface FormData {
   tramitation_date: Date | null;
 }
 
+const normalizeSupplier = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+
+const formatImaginaMissing = (
+  missing?: Array<{ field?: string; source?: string; message?: string }>,
+) =>
+  missing
+    ?.map((item) =>
+      [item.source, item.field, item.message].filter(Boolean).join(" · "),
+    )
+    .join("\n");
+
 export default function UpdateTramiteStatusModal({
   tramite,
   userData,
@@ -120,13 +136,6 @@ export default function UpdateTramiteStatusModal({
 
   // Estado para controlar si podemos actualizar
   const [canUpdate, setCanUpdate] = useState(isTramitable || isBorrador);
-
-  const normalizeSupplier = (value: string) =>
-    value
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase()
-      .trim();
 
   const imaginaContract = useMemo(() => {
     const imaginaName = normalizeSupplier("Imagina Energía");
@@ -175,12 +184,6 @@ export default function UpdateTramiteStatusModal({
     loadImaginaStatus();
     return () => controller.abort();
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!canShowImaginaSwitch) {
-      setSendToImagina(false);
-    }
-  }, [canShowImaginaSwitch]);
 
   useEffect(() => {
     if (salesCommissionTouched) return;
@@ -339,6 +342,45 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
+      if (canShowImaginaSwitch && sendToImagina && imaginaContract) {
+        const preflightRes = await fetch(
+          "/api/v2/integrations/imagina-energia/contracts/preflight",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tramite_id: tramite.id,
+              contract_id: imaginaContract.id,
+            }),
+          },
+        );
+        const preflightResult = (await preflightRes.json()) as {
+          success?: boolean;
+          error?: string;
+          missing?: Array<{
+            field?: string;
+            source?: string;
+            message?: string;
+          }>;
+        };
+
+        if (!preflightResult.success) {
+          showCustomToast({
+            title: "Faltan datos para Imagina",
+            message:
+              formatImaginaMissing(preflightResult.missing) ||
+              preflightResult.error ||
+              "Completa los datos obligatorios antes de enviar.",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+      }
+
       const res = await fetch(`/api/v2/contracts/${tramite.id}/status`, {
         method: "PATCH",
         headers: {
@@ -387,7 +429,7 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
-      if (sendToImagina && imaginaContract) {
+      if (canShowImaginaSwitch && sendToImagina && imaginaContract) {
         const imaginaRes = await fetch(
           "/api/v2/integrations/imagina-energia/contracts/submit",
           {
@@ -717,7 +759,7 @@ export default function UpdateTramiteStatusModal({
                       </div>
                       <Switch
                         id="send-to-imagina"
-                        checked={sendToImagina}
+                        checked={canShowImaginaSwitch && sendToImagina}
                         onCheckedChange={setSendToImagina}
                       />
                     </div>

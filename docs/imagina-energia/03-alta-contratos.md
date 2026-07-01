@@ -94,7 +94,7 @@ Campos opcionales relevantes:
 - `no_enviar_firma`.
 - `inicio_contrato`, `fecha_inicio`.
 - `fecha_firma_datos`.
-- `es_alta_nueva`, `mismo_titular`, `misma_potencia`.
+- `mismo_titular`, `misma_potencia`.
 
 ## Prevalidacion del mapper
 
@@ -123,8 +123,8 @@ Esta prevalidacion no es la misma que la elegibilidad para mostrar el switch. La
 | Direccion titular | `clients.address`, `postal_code`, `province`, `city` | Igual que suministro: falta estructura CNMC y `numero_finca_titular` si no se puede extraer con seguridad |
 | Empresa | `clients.name`, `document_number`, `phone`, `email`, `IBAN` | Falta `id_cnae`; razon social probablemente sera `clients.name`, pero hay que validarlo por tipo de cliente |
 | Firmante empresa | Tabla `signers`: nombre, apellidos, email, telefono, documento, cargo | Falta `tipo_documento_firmante` y prefijo; podemos inferir NIF/NIE solo si validamos formato, pero es mejor guardarlo |
-| Firma | `email`/`phone` de titular o firmante | Decidir `canal_envio` por defecto. Recomendado: `email` |
-| Tipo de operacion | `contracts.type` | Mapear a flags `es_alta_nueva`, `mismo_titular`, `misma_potencia` |
+| Firma | `email`/`phone` de titular o firmante | `canal_envio` por defecto: `sms` |
+| Tipo de operacion | `contracts.type` | `es_alta_nueva` se deriva de `Alta Nueva`; `mismo_titular` y `misma_potencia` se guardan como flags del contrato |
 
 ### Resultado de validacion recomendado
 

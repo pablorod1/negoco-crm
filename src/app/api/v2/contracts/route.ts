@@ -198,6 +198,12 @@ const ClientSchema = z.object({
   document_type: DocumentTypeSchema,
   document_number: z.string().min(1, "Document number is required"),
   IBAN: z.string().min(1, "IBAN is required"),
+  tipo_via_cnmc: z.string().nullable().optional(),
+  calle: z.string().nullable().optional(),
+  numero_finca: z.string().nullable().optional(),
+  aclarador_finca: z.string().nullable().optional(),
+  phone_prefix: z.string().optional().default("34"),
+  cnae: z.string().nullable().optional(),
   coordinates: z
     .union([
       z.tuple([z.number(), z.number()]),
@@ -255,6 +261,18 @@ const ContractSchema = z.object({
   pot6: z.coerce.number().optional().default(0),
   description: z.string().default(""),
   tramite_id: z.string().min(1, "Tramite ID is required"),
+  rate_id: z.string().nullable().optional(),
+  tipo_via_cnmc: z.string().nullable().optional(),
+  calle: z.string().nullable().optional(),
+  numero_finca: z.string().nullable().optional(),
+  aclarador_finca: z.string().nullable().optional(),
+  tipo_autoconsumo_cnmc: z.string().nullable().optional(),
+  signature_channel: z
+    .enum(["sms", "email", "email_otp"])
+    .optional()
+    .default("sms"),
+  mismo_titular: z.union([z.boolean(), z.number()]).nullable().optional(),
+  misma_potencia: z.union([z.boolean(), z.number()]).nullable().optional(),
 });
 
 const SignerSchema = z
@@ -264,7 +282,9 @@ const SignerSchema = z
     last_name: z.string().min(1, "Last name is required"),
     email: OptionalEmailSchema,
     phone: z.string().min(1, "Phone is required"),
+    document_type: DocumentTypeSchema.optional().default("DNI"),
     document_number: z.string().min(1, "Document number is required"),
+    phone_prefix: z.string().optional().default("34"),
     cargo: z.string().nullable(),
     client_id: z
       .string()
@@ -475,8 +495,9 @@ const addClientOptimized = async (
       sql: `
         INSERT INTO clients (
           id, name, last_name, email, phone, address, document_number, 
-          document_type, type, IBAN, postal_code, province, city, coordinates
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          document_type, type, IBAN, postal_code, province, city, coordinates,
+          tipo_via_cnmc, calle, numero_finca, aclarador_finca, phone_prefix, cnae
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         client.id,
@@ -493,6 +514,12 @@ const addClientOptimized = async (
         client.province,
         client.city,
         precomputedCoordinates ? JSON.stringify(precomputedCoordinates) : null,
+        client.tipo_via_cnmc || null,
+        client.calle || null,
+        client.numero_finca || null,
+        client.aclarador_finca || null,
+        client.phone_prefix || "34",
+        client.cnae || null,
       ],
     });
 
@@ -520,8 +547,9 @@ const addSignerOptimized = async (
     await db.execute({
       sql: `
         INSERT INTO signers (
-          id, name, last_name, email, phone, document_number, cargo, client_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          id, name, last_name, email, phone, document_number, cargo, client_id,
+          document_type, phone_prefix
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         signer.id,
@@ -532,6 +560,8 @@ const addSignerOptimized = async (
         signer.document_number,
         signer.cargo,
         signer.client_id,
+        signer.document_type || null,
+        signer.phone_prefix || "34",
       ],
     });
 
@@ -601,7 +631,9 @@ const addContractsOptimized = async (
 
     // Use batch insert for better performance - include both legacy and ID fields
     const placeholders = contracts
-      .map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .map(() =>
+        "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      )
       .join(", ");
 
     const values = contracts.flatMap((contract) => [
@@ -624,6 +656,15 @@ const addContractsOptimized = async (
       contract.pot6 || 0,
       contract.description || "",
       contract.tramite_id,
+      contract.rate_id || null,
+      contract.tipo_via_cnmc || null,
+      contract.calle || null,
+      contract.numero_finca || null,
+      contract.aclarador_finca || null,
+      contract.tipo_autoconsumo_cnmc || null,
+      contract.signature_channel || "sms",
+      contract.mismo_titular == null ? 1 : Number(Boolean(contract.mismo_titular)),
+      contract.misma_potencia == null ? 1 : Number(Boolean(contract.misma_potencia)),
     ]);
 
     await db.execute({
@@ -632,7 +673,9 @@ const addContractsOptimized = async (
           id, type, province, city, address, postal_code, 
           old_company, new_company, plan, consumption, CUPS, 
           pot1, pot2, pot3, pot4, pot5, pot6, 
-          description, tramite_id
+          description, tramite_id, rate_id, tipo_via_cnmc, calle, numero_finca,
+          aclarador_finca, tipo_autoconsumo_cnmc, signature_channel,
+          mismo_titular, misma_potencia
         ) VALUES ${placeholders}
       `,
       args: values,

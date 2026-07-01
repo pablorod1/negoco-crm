@@ -22,6 +22,12 @@ const ClientSchema = z.object({
   document_type: DocumentTypeSchema,
   document_number: z.string().min(1, "Document number is required"),
   IBAN: z.string().min(1, "IBAN is required"),
+  tipo_via_cnmc: z.string().nullable().optional(),
+  calle: z.string().nullable().optional(),
+  numero_finca: z.string().nullable().optional(),
+  aclarador_finca: z.string().nullable().optional(),
+  phone_prefix: z.string().optional().default("34"),
+  cnae: z.string().nullable().optional(),
 });
 
 // Response Types

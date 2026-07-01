@@ -51,7 +51,9 @@ describe("PUT /api/v2/clients", () => {
           last_name: "Garcia",
           email: "ana@acme.test",
           phone: "611111111",
+          document_type: "DNI",
           document_number: "12345678Z",
+          phone_prefix: "34",
         },
       }),
     } as NextRequest;
@@ -73,8 +75,10 @@ describe("PUT /api/v2/clients", () => {
     expect(signerStatement?.sql).toContain(
       "id, name, last_name, email, phone, document_number, cargo, client_id",
     );
-    expect(signerStatement?.args).toHaveLength(8);
+    expect(signerStatement?.args).toHaveLength(10);
     expect(signerStatement?.args[6]).toBeNull();
     expect(signerStatement?.args[7]).toBe("CLI-1");
+    expect(signerStatement?.args[8]).toBe("DNI");
+    expect(signerStatement?.args[9]).toBe("34");
   });
 });

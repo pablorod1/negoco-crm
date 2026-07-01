@@ -18,6 +18,7 @@ import {
 } from "../../createTramite/InputComponent";
 import { Label } from "@/core/components/ui/label";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import ImaginaContractFields from "../../createTramite/forms/ImaginaContractFields";
 
 interface Props {
   onSavingContract: (contract: ContractDB) => void;
@@ -124,6 +125,19 @@ export default function EditContractForm({
   const newCompanyText = supplierOptions.find(
     (option) => option.value === formData.new_company,
   )?.label;
+  const isImaginaContract = React.useMemo(() => {
+    const selectedSupplier = activeSuppliers.find(
+      (supplier) => supplier.id === formData.new_company,
+    );
+    const supplierName = selectedSupplier?.name || formData.new_company;
+    return (
+      supplierName
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLowerCase()
+        .trim() === "imagina energia"
+    );
+  }, [activeSuppliers, formData.new_company]);
 
   return (
     <FormWrapper>
@@ -245,6 +259,12 @@ export default function EditContractForm({
               />
             ))}
           </div>
+          {isImaginaContract && (
+            <ImaginaContractFields
+              formData={formData}
+              setFormData={setFormData}
+            />
+          )}
           <div className="space-y-2 w-full">
             <Label>Descripción</Label>
             <Textarea

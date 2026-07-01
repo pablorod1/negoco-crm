@@ -10,7 +10,7 @@ import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import ContractPreview from "../ContractPreview";
 import { InputComponent, SelectComponent } from "../InputComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CheckComisionModal from "../CheckComisionModal";
 import EmptyComisionModal from "../EmptyComisionModal";
 import { Euro, FileX2, Pencil } from "lucide-react";
@@ -21,6 +21,8 @@ import { ComparativaVM } from "@/comparativas/types";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { Switch } from "@/core/components/ui/switch";
+import { Label } from "@/core/components/ui/label";
 
 interface Props {
   onBack: () => void;
@@ -32,7 +34,17 @@ interface Props {
   setContracts: React.Dispatch<React.SetStateAction<ContractDB[]>>;
   userData: User;
   comparativa?: ComparativaVM;
+  sendToImagina?: boolean;
+  setSendToImagina?: React.Dispatch<React.SetStateAction<boolean>>;
+  setImaginaContractIdToSend?: React.Dispatch<React.SetStateAction<string | null>>;
 }
+
+const normalizeSupplier = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
 
 export default function ThirdStepForm({
   onBack,
@@ -44,6 +56,9 @@ export default function ThirdStepForm({
   setContracts,
   userData,
   comparativa,
+  sendToImagina = false,
+  setSendToImagina,
+  setImaginaContractIdToSend,
 }: Props) {
   const [showContractForm, setShowContractForm] = useState(
     !!comparativa?.abarca_estudio,
@@ -70,6 +85,23 @@ export default function ThirdStepForm({
   const supplierId =
     comparativa?.company_id || providerSupplierId || contractSupplierId;
   const supplierName = tramite.provider || firstContract?.new_company;
+  const imaginaContract = useMemo(() => {
+    const imaginaName = normalizeSupplier("Imagina Energía");
+    return contracts.find((contract) => {
+      const supplier = activeSuppliers.find(
+        (item) =>
+          item.id === contract.new_company ||
+          normalizeSupplier(item.name) === normalizeSupplier(contract.new_company),
+      );
+      const supplierName = supplier?.name || contract.new_company;
+      return normalizeSupplier(supplierName) === imaginaName;
+    });
+  }, [activeSuppliers, contracts]);
+
+  const canShowImaginaSwitch =
+    tramite.status === "Verificado" &&
+    Boolean(imaginaContract) &&
+    (userData.role === "admin" || userData.role === "1");
 
   useEffect(() => {
     if (salesCommissionTouched) return;
@@ -166,6 +198,11 @@ export default function ThirdStepForm({
   const handleSelectChange = (value: string, name: string) => {
     setTramite((prevState) => {
       if (name === "status") {
+        if (value !== "Verificado") {
+          setSendToImagina?.(false);
+          setImaginaContractIdToSend?.(null);
+        }
+
         return {
           ...prevState,
           status: value as Status,
@@ -261,6 +298,23 @@ export default function ThirdStepForm({
               )}
           </div>
         </div>
+        {canShowImaginaSwitch && (
+          <div className="flex items-center justify-between rounded-md border border-primary-100 bg-primary-50 px-4 py-3">
+            <Label htmlFor="send-to-imagina-create" className="font-medium">
+              Enviar contrato a Imagina
+            </Label>
+            <Switch
+              id="send-to-imagina-create"
+              checked={sendToImagina}
+              onCheckedChange={(checked) => {
+                setSendToImagina?.(checked);
+                setImaginaContractIdToSend?.(
+                  checked ? imaginaContract?.id || null : null,
+                );
+              }}
+            />
+          </div>
+        )}
         <Separator className="my-8" />
         <div className="flex items-center gap-4 mb-4">
           <h3 className="text-xl font-semibold text-primary-500 ">Contratos</h3>

@@ -43,8 +43,12 @@ export const addClient = async (
     }
 
     const query = `
-      INSERT INTO clients (id, name, last_name, email, phone, address, document_number, document_type, type, IBAN, postal_code, province, city, coordinates)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO clients (
+        id, name, last_name, email, phone, address, document_number,
+        document_type, type, IBAN, postal_code, province, city, coordinates,
+        tipo_via_cnmc, calle, numero_finca, aclarador_finca, phone_prefix, cnae
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // Ejecutamos la consulta
@@ -65,6 +69,12 @@ export const addClient = async (
         client.province,
         client.city,
         coordinates ? JSON.stringify(coordinates) : null,
+        client.tipo_via_cnmc || null,
+        client.calle || null,
+        client.numero_finca || null,
+        client.aclarador_finca || null,
+        client.phone_prefix || "34",
+        client.cnae || null,
       ],
     });
 
@@ -114,8 +124,11 @@ export const addSigner = async (
     }
 
     const query = `
-      INSERT INTO signers (id, name, last_name, email, phone, document_number, cargo, client_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO signers (
+        id, name, last_name, email, phone, document_number, cargo, client_id,
+        document_type, phone_prefix
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // Ejecutamos la consulta
@@ -130,6 +143,8 @@ export const addSigner = async (
         signer.document_number,
         signer.cargo || null,
         signer.client_id,
+        signer.document_type || null,
+        signer.phone_prefix || "34",
       ],
     });
 
@@ -212,7 +227,9 @@ export const addContracts = async (
   try {
     // Construimos la consulta para inserción múltiple
     const placeholders = contracts
-      .map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .map(() =>
+        "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      )
       .join(", ");
 
     const query = `
@@ -220,7 +237,9 @@ export const addContracts = async (
         id, type, province, city, address, postal_code, 
         old_company, new_company, plan, consumption, CUPS, 
         pot1, pot2, pot3, pot4, pot5, pot6, 
-        description, tramite_id
+        description, tramite_id, rate_id, tipo_via_cnmc, calle, numero_finca,
+        aclarador_finca, tipo_autoconsumo_cnmc, signature_channel,
+        mismo_titular, misma_potencia
       )
       VALUES ${placeholders}
     `;
@@ -246,6 +265,15 @@ export const addContracts = async (
       contract.pot6 || 0,
       contract.description,
       contract.tramite_id,
+      contract.rate_id || null,
+      contract.tipo_via_cnmc || null,
+      contract.calle || null,
+      contract.numero_finca || null,
+      contract.aclarador_finca || null,
+      contract.tipo_autoconsumo_cnmc || null,
+      contract.signature_channel || "sms",
+      contract.mismo_titular == null ? 1 : Number(Boolean(contract.mismo_titular)),
+      contract.misma_potencia == null ? 1 : Number(Boolean(contract.misma_potencia)),
     ]);
 
     // Ejecutamos la consulta
@@ -276,12 +304,14 @@ export const addContract = async (
 
     const query = `
       INSERT INTO contracts (
-        id, type, province, city, address, postal_code, 
-        old_company, new_company, plan, consumption, CUPS, 
-        pot1, pot2, pot3, pot4, pot5, pot6, 
-        description, tramite_id
+        id, type, province, city, address, postal_code,
+        old_company, new_company, plan, consumption, CUPS,
+        pot1, pot2, pot3, pot4, pot5, pot6,
+        description, tramite_id, rate_id, tipo_via_cnmc, calle, numero_finca,
+        aclarador_finca, tipo_autoconsumo_cnmc, signature_channel,
+        mismo_titular, misma_potencia
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // Ejecutamos la consulta
@@ -307,6 +337,15 @@ export const addContract = async (
         contract.pot6 || 0,
         contract.description,
         tramite_id,
+        contract.rate_id || null,
+        contract.tipo_via_cnmc || null,
+        contract.calle || null,
+        contract.numero_finca || null,
+        contract.aclarador_finca || null,
+        contract.tipo_autoconsumo_cnmc || null,
+        contract.signature_channel || "sms",
+        contract.mismo_titular == null ? 1 : Number(Boolean(contract.mismo_titular)),
+        contract.misma_potencia == null ? 1 : Number(Boolean(contract.misma_potencia)),
       ],
     });
 

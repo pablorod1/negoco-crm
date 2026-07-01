@@ -74,9 +74,11 @@ export const updateClient = async (
 
     const setClause = entries.map(([key]) => `${key} = ?`).join(", "); // Usamos `?`
 
-    const values = entries.map(([, value]) =>
-      typeof value === "string" ? value : JSON.stringify(value)
-    );
+    const values = entries.map(([, value]) => {
+      if (value == null) return null;
+      if (typeof value === "object") return JSON.stringify(value);
+      return value;
+    });
 
     const sql = `UPDATE clients SET ${setClause} WHERE id = ?`;
 

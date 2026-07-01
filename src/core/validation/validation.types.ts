@@ -37,6 +37,12 @@ export interface SecondForm {
   postal_code: string;
   province: string;
   city: string;
+  tipo_via_cnmc?: string | null;
+  calle?: string | null;
+  numero_finca?: string | null;
+  aclarador_finca?: string | null;
+  phone_prefix?: string | null;
+  cnae?: string | null;
 }
 
 export const createEmptySecondForm = (
@@ -60,6 +66,12 @@ export const createEmptySecondForm = (
     postal_code: abarca?.codpostal || "",
     province: "",
     city: abarca?.localidad || "",
+    tipo_via_cnmc: null,
+    calle: abarca?.calle || null,
+    numero_finca: abarca?.numero || null,
+    aclarador_finca: null,
+    phone_prefix: "34",
+    cnae: null,
   };
 };
 
@@ -88,7 +100,9 @@ export interface SignerForm {
   last_name: string;
   email: string;
   phone: string;
+  document_type?: string | null;
   document_number: string;
+  phone_prefix?: string | null;
   cargo: string;
 }
 
@@ -97,7 +111,9 @@ export const createEmptySignerForm = (): SignerForm => ({
   last_name: "",
   email: "",
   phone: "",
+  document_type: "DNI",
   document_number: "",
+  phone_prefix: "34",
   cargo: "",
 });
 

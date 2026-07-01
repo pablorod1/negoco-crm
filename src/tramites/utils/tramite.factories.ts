@@ -112,6 +112,12 @@ export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => {
     document_number: abarca?.dni || "",
     IBAN: abarca?.iban || "",
     coordinates: null,
+    tipo_via_cnmc: null,
+    calle: abarca?.calle || null,
+    numero_finca: abarca?.numero || null,
+    aclarador_finca: null,
+    phone_prefix: "34",
+    cnae: null,
   };
 };
 
@@ -122,6 +128,8 @@ export const createEmptySignerDB = (): SignerDB => ({
   email: "",
   phone: "",
   document_number: "",
+  document_type: "DNI",
+  phone_prefix: "34",
   cargo: null,
   client_id: "",
 });
@@ -181,6 +189,15 @@ export const createEmptyContractDB = (
     pot6: 0,
     description: "",
     tramite_id: "",
+    rate_id: null,
+    tipo_via_cnmc: null,
+    calle: abarca?.calle_cups || null,
+    numero_finca: abarca?.numero_cups || null,
+    aclarador_finca: null,
+    tipo_autoconsumo_cnmc: null,
+    signature_channel: "sms",
+    mismo_titular: true,
+    misma_potencia: true,
   };
 };
 

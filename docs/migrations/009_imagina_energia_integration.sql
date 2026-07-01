@@ -32,20 +32,47 @@ ALTER TABLE contracts ADD COLUMN calle TEXT;
 ALTER TABLE contracts ADD COLUMN numero_finca TEXT;
 ALTER TABLE contracts ADD COLUMN aclarador_finca TEXT;
 ALTER TABLE contracts ADD COLUMN tipo_autoconsumo_cnmc TEXT;
-ALTER TABLE contracts ADD COLUMN signature_channel TEXT NOT NULL DEFAULT 'email';
-ALTER TABLE contracts ADD COLUMN es_alta_nueva INTEGER;
+ALTER TABLE contracts ADD COLUMN signature_channel TEXT NOT NULL DEFAULT 'sms';
 ALTER TABLE contracts ADD COLUMN mismo_titular INTEGER;
 ALTER TABLE contracts ADD COLUMN misma_potencia INTEGER;
-ALTER TABLE contracts ADD COLUMN imagina_contract_id TEXT;
-ALTER TABLE contracts ADD COLUMN imagina_contract_code TEXT;
-ALTER TABLE contracts ADD COLUMN imagina_request_id TEXT;
-ALTER TABLE contracts ADD COLUMN imagina_status TEXT;
-ALTER TABLE contracts ADD COLUMN imagina_substatus TEXT;
-ALTER TABLE contracts ADD COLUMN imagina_synced_at TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_contracts_rate_id ON contracts(rate_id);
-CREATE INDEX IF NOT EXISTS idx_contracts_imagina_contract_id ON contracts(imagina_contract_id);
-CREATE INDEX IF NOT EXISTS idx_contracts_imagina_request_id ON contracts(imagina_request_id);
+
+CREATE TABLE IF NOT EXISTS contract_integration_refs (
+  id TEXT PRIMARY KEY NOT NULL,
+  provider TEXT NOT NULL,
+  tramite_id TEXT NOT NULL,
+  contract_id TEXT NOT NULL,
+  external_contract_id TEXT,
+  external_contract_code TEXT,
+  external_reference TEXT,
+  request_id TEXT,
+  status TEXT,
+  substatus TEXT,
+  synced_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (tramite_id) REFERENCES tramites(id) ON DELETE CASCADE,
+  FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contract_integration_refs_provider_contract
+ON contract_integration_refs(provider, contract_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contract_integration_refs_provider_external_id
+ON contract_integration_refs(provider, external_contract_id)
+WHERE external_contract_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contract_integration_refs_provider_external_code
+ON contract_integration_refs(provider, external_contract_code)
+WHERE external_contract_code IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_contract_integration_refs_provider_request
+ON contract_integration_refs(provider, request_id)
+WHERE request_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_contract_integration_refs_provider_status
+ON contract_integration_refs(provider, status, substatus);
 
 ALTER TABLE clients ADD COLUMN tipo_via_cnmc TEXT;
 ALTER TABLE clients ADD COLUMN calle TEXT;

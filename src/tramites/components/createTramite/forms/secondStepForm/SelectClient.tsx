@@ -163,6 +163,12 @@ export default function SelectClient({
         province: cachedClient.province,
         city: cachedClient.city,
         type: cachedClient.type,
+        tipo_via_cnmc: cachedClient.tipo_via_cnmc || null,
+        calle: cachedClient.calle || null,
+        numero_finca: cachedClient.numero_finca || null,
+        aclarador_finca: cachedClient.aclarador_finca || null,
+        phone_prefix: cachedClient.phone_prefix || "34",
+        cnae: cachedClient.cnae || null,
       }));
       if (cachedSigner) {
         setSignerData((prev) => ({
@@ -171,7 +177,9 @@ export default function SelectClient({
           last_name: cachedSigner.last_name,
           email: cachedSigner.email,
           phone: cachedSigner.phone,
+          document_type: cachedSigner.document_type || "DNI",
           document_number: cachedSigner.document_number,
+          phone_prefix: cachedSigner.phone_prefix || "34",
           cargo: cachedSigner.cargo || "",
           client_id: cachedClient.id,
         }));

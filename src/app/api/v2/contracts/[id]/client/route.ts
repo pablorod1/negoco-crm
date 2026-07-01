@@ -29,6 +29,12 @@ const ClientSchema = z.object({
   document_type: DocumentTypeSchema,
   document_number: z.string().min(1, "Document number is required"),
   IBAN: z.string().min(1, "IBAN is required"),
+  tipo_via_cnmc: z.string().nullable().optional(),
+  calle: z.string().nullable().optional(),
+  numero_finca: z.string().nullable().optional(),
+  aclarador_finca: z.string().nullable().optional(),
+  phone_prefix: z.string().optional().default("34"),
+  cnae: z.string().nullable().optional(),
   coordinates: z
     .union([
       z.tuple([z.number(), z.number()]),
@@ -66,7 +72,9 @@ const SignerSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
   phone: z.string().min(1, "Phone is required"),
+  document_type: DocumentTypeSchema.optional().default("DNI"),
   document_number: z.string().min(1, "Document number is required"),
+  phone_prefix: z.string().optional().default("34"),
   cargo: z.string().nullable().optional(),
   client_id: z.string().min(1, "Client ID is required"),
 });
@@ -349,14 +357,20 @@ export async function PATCH(
         "last_name",
         "email",
         "phone",
+        "phone_prefix",
         "address",
         "postal_code",
         "province",
         "city",
+        "tipo_via_cnmc",
+        "calle",
+        "numero_finca",
+        "aclarador_finca",
         "document_number",
         "document_type",
         "IBAN",
         "type",
+        "cnae",
       ];
 
       for (const field of clientFields) {
@@ -413,8 +427,10 @@ export async function PATCH(
           "last_name",
           "email",
           "phone",
+          "phone_prefix",
           "document_number",
           "document_type",
+          "cargo",
         ];
 
         for (const field of signerFields) {

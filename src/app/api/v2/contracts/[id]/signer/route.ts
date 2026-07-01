@@ -11,7 +11,9 @@ const SignerSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
   phone: z.string().min(1, "Phone is required"),
+  document_type: z.string().optional(),
   document_number: z.string().min(1, "Document number is required"),
+  phone_prefix: z.string().optional().default("34"),
   cargo: z.string().nullable().optional(),
   client_id: z.string().min(1, "Client ID is required"),
 });
@@ -101,7 +103,9 @@ export async function PATCH(
         "last_name",
         "email",
         "phone",
+        "document_type",
         "document_number",
+        "phone_prefix",
         "cargo",
       ];
 

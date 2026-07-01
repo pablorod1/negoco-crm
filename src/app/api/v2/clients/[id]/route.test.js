@@ -57,6 +57,11 @@ const baseClient = {
   IBAN: "ES9121000418450200051332",
 };
 
+const normalizedBaseClient = {
+  ...baseClient,
+  phone_prefix: "34",
+};
+
 const CLIENT_REQUEST = (client = baseClient) =>
   new Request("https://x/api/v2/clients/c1", {
     method: "PATCH",
@@ -86,7 +91,7 @@ describe("PATCH /clients/[id]", () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(mocks.updateClient).toHaveBeenCalledWith(
-      baseClient,
+      normalizedBaseClient,
       "c1",
       expect.objectContaining({ execute: mocks.execute }),
     );

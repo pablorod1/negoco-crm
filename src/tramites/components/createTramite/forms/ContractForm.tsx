@@ -19,6 +19,7 @@ import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { ComparativaVM } from "@/comparativas/types";
+import ImaginaContractFields from "./ImaginaContractFields";
 
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
@@ -59,6 +60,20 @@ export default function ContractForm({
       })),
     [activeSuppliers],
   );
+
+  const isImaginaContract = React.useMemo(() => {
+    const selectedSupplier = activeSuppliers.find(
+      (supplier) => supplier.id === formData.new_company,
+    );
+    const supplierName = selectedSupplier?.name || formData.new_company;
+    return (
+      supplierName
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLowerCase()
+        .trim() === "imagina energia"
+    );
+  }, [activeSuppliers, formData.new_company]);
 
   // Auto-match old_company from Abarca empresa_cliente
   React.useEffect(() => {
@@ -301,6 +316,12 @@ export default function ContractForm({
                 />
               ))}
             </div>
+            {isImaginaContract && (
+              <ImaginaContractFields
+                formData={formData}
+                setFormData={setFormData}
+              />
+            )}
             <div className="space-y-1">
               <Label htmlFor="description" className="text-sm font-semibold">
                 Descripción

@@ -18,12 +18,15 @@ import {
   ImaginaTarifasResponseSchema,
 } from "./schemas";
 import {
+  findContractByIntegrationRef,
   findSubmissionByCorrelation,
   getImaginaComercializadora,
   getImaginaIntegration,
+  getSelectedImaginaRate,
   getSubmissionBundle,
   insertContractSubmission,
   persistContractSnapshot,
+  upsertContractIntegrationRef,
   updateCrmStatusFromImagina,
 } from "./persistence";
 import {
@@ -46,6 +49,11 @@ interface ServiceResult<T> {
   error?: string;
   missing?: unknown;
   status?: number;
+}
+
+interface ImaginaPreflightResult {
+  endpoint: string;
+  referenciaExterna: string;
 }
 
 const getClient = (context: ServiceContext): ImaginaEnergiaClient =>
@@ -222,17 +230,107 @@ export const submitImaginaContract = async (
     status: "accepted",
   });
 
-  await context.db.execute({
-    sql: `UPDATE contracts
-          SET imagina_request_id = ?, imagina_synced_at = ?
-          WHERE id = ?`,
-    args: [String(parsed.request_id), new Date().toISOString(), bundle.contract.id],
+  await upsertContractIntegrationRef(context.db, {
+    provider: IMAGINA_PROVIDER,
+    tramiteId: bundle.tramite.id,
+    contractId: bundle.contract.id,
+    externalReference: built.referenciaExterna,
+    requestId: parsed.request_id,
+    syncedAt: new Date().toISOString(),
   });
 
   return {
     success: true,
     data: {
       requestId: parsed.request_id,
+      referenciaExterna: built.referenciaExterna,
+    },
+  };
+};
+
+export const preflightImaginaContract = async (
+  context: ServiceContext,
+  params: { tramiteId: string; contractId?: string | null },
+): Promise<ServiceResult<ImaginaPreflightResult>> => {
+  await requireChannel(context.db);
+  const bundle = await getSubmissionBundle(
+    context.db,
+    params.tramiteId,
+    params.contractId,
+  );
+
+  if (!bundle) {
+    return {
+      success: false,
+      status: 404,
+      error: "No se ha encontrado el trámite, contrato, cliente o firmante",
+    };
+  }
+
+  const config = readImaginaEnergiaConfig();
+  const built = validateAndBuildImaginaContractPayload({
+    tenant: context.tenant,
+    webhookRootDomain: config.webhookPublicRootDomain,
+    tramite: bundle.tramite,
+    client: bundle.client,
+    contract: bundle.contract,
+    signer: bundle.signer,
+    rate: bundle.rate,
+  });
+
+  if (!built.ok) {
+    return {
+      success: false,
+      status: 422,
+      error: built.error,
+      missing: built.missing,
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      endpoint: built.endpoint,
+      referenciaExterna: built.referenciaExterna,
+    },
+  };
+};
+
+export const preflightImaginaContractDraft = async (
+  context: ServiceContext,
+  input: {
+    tramite: Parameters<typeof validateAndBuildImaginaContractPayload>[0]["tramite"];
+    client: Parameters<typeof validateAndBuildImaginaContractPayload>[0]["client"];
+    contract: Parameters<typeof validateAndBuildImaginaContractPayload>[0]["contract"];
+    signer?: Parameters<typeof validateAndBuildImaginaContractPayload>[0]["signer"];
+  },
+): Promise<ServiceResult<ImaginaPreflightResult>> => {
+  await requireChannel(context.db);
+  const config = readImaginaEnergiaConfig();
+  const rate = await getSelectedImaginaRate(context.db, input.contract);
+  const built = validateAndBuildImaginaContractPayload({
+    tenant: context.tenant,
+    webhookRootDomain: config.webhookPublicRootDomain,
+    tramite: input.tramite,
+    client: input.client,
+    contract: input.contract,
+    signer: input.signer,
+    rate,
+  });
+
+  if (!built.ok) {
+    return {
+      success: false,
+      status: 422,
+      error: built.error,
+      missing: built.missing,
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      endpoint: built.endpoint,
       referenciaExterna: built.referenciaExterna,
     },
   };
@@ -464,19 +562,15 @@ const persistImaginaContractInfo = async (
   },
 ): Promise<void> => {
   const imaginaId = String(contract.id);
-  const local = await db.execute({
-    sql: `SELECT id, tramite_id FROM contracts
-          WHERE imagina_contract_id = ?
-             OR imagina_contract_code = ?
-          LIMIT 1`,
-    args: [imaginaId, contract.codigo || ""],
+  const localContract = await findContractByIntegrationRef(db, IMAGINA_PROVIDER, {
+    externalContractId: imaginaId,
+    externalContractCode: contract.codigo || null,
   });
-  const localContract = local.rows[0];
   const mapping = mapContractInfoToNegoco(contract);
 
   await persistContractSnapshot(db, {
-    contractId: localContract ? String(localContract.id) : null,
-    tramiteId: localContract ? String(localContract.tramite_id) : null,
+    contractId: localContract?.id || null,
+    tramiteId: localContract?.tramite_id || null,
     imaginaContractId: imaginaId,
     imaginaContractCode: contract.codigo || null,
     externalReference: contract.alias_externo || null,
@@ -491,22 +585,23 @@ const persistImaginaContractInfo = async (
   });
 
   if (localContract) {
-    await db.execute({
-      sql: `UPDATE contracts
-            SET imagina_status = ?, imagina_substatus = ?, imagina_synced_at = ?
-            WHERE id = ?`,
-      args: [
-        contract.estado?.descripcion || contract.estado?.estado || null,
+    await upsertContractIntegrationRef(db, {
+      provider: IMAGINA_PROVIDER,
+      tramiteId: localContract.tramite_id,
+      contractId: localContract.id,
+      externalContractId: imaginaId,
+      externalContractCode: contract.codigo || null,
+      externalReference: contract.alias_externo || null,
+      status: contract.estado?.descripcion || contract.estado?.estado || null,
+      substatus:
         contract.subestado?.descripcion || contract.subestado?.subestado || null,
-        new Date().toISOString(),
-        String(localContract.id),
-      ],
+      syncedAt: new Date().toISOString(),
     });
 
     if (options.applyStatus) {
       await updateCrmStatusFromImagina(
         db,
-        String(localContract.tramite_id),
+        localContract.tramite_id,
         mapping.status,
         mapping.reason,
       );
@@ -541,19 +636,18 @@ export const processImaginaContractCallback = async (
       }
     ).punto_suministro;
 
-    await context.db.execute({
-      sql: `UPDATE contracts
-            SET imagina_contract_id = ?, imagina_contract_code = ?,
-                imagina_status = ?, imagina_substatus = ?, imagina_synced_at = ?
-            WHERE id = ?`,
-      args: [
-        String(content.id),
-        content.codigo || null,
-        content.estado?.descripcion || content.estado?.estado || null,
+    await upsertContractIntegrationRef(context.db, {
+      provider: IMAGINA_PROVIDER,
+      tramiteId: String(submission.tramite_id),
+      contractId: String(submission.contract_id),
+      externalContractId: content.id,
+      externalContractCode: content.codigo || null,
+      externalReference: callback.referencia_externa || null,
+      requestId: callback.request_id,
+      status: content.estado?.descripcion || content.estado?.estado || null,
+      substatus:
         content.subestado?.descripcion || content.subestado?.subestado || null,
-        new Date().toISOString(),
-        String(submission.contract_id),
-      ],
+      syncedAt: new Date().toISOString(),
     });
 
     await persistContractSnapshot(context.db, {
@@ -617,20 +711,16 @@ export const processImaginaContractChangeWebhook = async (
     };
   }
 
-  const local = await context.db.execute({
-    sql: `SELECT id, tramite_id FROM contracts
-          WHERE (? IS NOT NULL AND imagina_contract_id = ?)
-             OR (? IS NOT NULL AND imagina_contract_code = ?)
-          LIMIT 1`,
-    args: [
-      imaginaContractId == null ? null : String(imaginaContractId),
-      imaginaContractId == null ? null : String(imaginaContractId),
-      imaginaContractCode || null,
-      imaginaContractCode || null,
-    ],
-  });
+  const localContract = await findContractByIntegrationRef(
+    context.db,
+    IMAGINA_PROVIDER,
+    {
+      externalContractId: imaginaContractId == null ? null : imaginaContractId,
+      externalContractCode: imaginaContractCode || null,
+    },
+  );
 
-  if (!local.rows[0]) {
+  if (!localContract) {
     return {
       success: false,
       status: 404,
@@ -650,21 +740,20 @@ export const processImaginaContractChangeWebhook = async (
       change.campo_tecnico?.toLowerCase() === "id_subestado",
   );
 
-  await context.db.execute({
-    sql: `UPDATE contracts
-          SET imagina_status = ?, imagina_substatus = ?, imagina_synced_at = ?
-          WHERE id = ?`,
-    args: [
-      estadoChange?.descripcion_nueva || null,
-      subestadoChange?.descripcion_nueva || null,
-      new Date().toISOString(),
-      String(local.rows[0].id),
-    ],
+  await upsertContractIntegrationRef(context.db, {
+    provider: IMAGINA_PROVIDER,
+    tramiteId: localContract.tramite_id,
+    contractId: localContract.id,
+    externalContractId: imaginaContractId == null ? null : imaginaContractId,
+    externalContractCode: imaginaContractCode || null,
+    status: estadoChange?.descripcion_nueva || null,
+    substatus: subestadoChange?.descripcion_nueva || null,
+    syncedAt: new Date().toISOString(),
   });
 
   await persistContractSnapshot(context.db, {
-    contractId: String(local.rows[0].id),
-    tramiteId: String(local.rows[0].tramite_id),
+    contractId: localContract.id,
+    tramiteId: localContract.tramite_id,
     imaginaContractId: String(imaginaContractId || imaginaContractCode),
     imaginaContractCode: imaginaContractCode || null,
     estadoId:
@@ -684,7 +773,7 @@ export const processImaginaContractChangeWebhook = async (
 
   await updateCrmStatusFromImagina(
     context.db,
-    String(local.rows[0].tramite_id),
+    localContract.tramite_id,
     mapping.status,
     mapping.reason,
   );

@@ -74,6 +74,10 @@ export default function AddTramiteDialog({
   const [loadingStep, setLoadingStep] = useState<number>(0);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
+  const [sendToImaginaOnCreate, setSendToImaginaOnCreate] = useState(false);
+  const [imaginaContractIdToSend, setImaginaContractIdToSend] = useState<
+    string | null
+  >(null);
   const { refreshTramites } = useTramites();
 
   const comparativaFiles = comparativa
@@ -98,6 +102,8 @@ export default function AddTramiteDialog({
       setContracts([]);
       setDocuments([]);
       setSelectedExistingFiles(null);
+      setSendToImaginaOnCreate(false);
+      setImaginaContractIdToSend(null);
     },
     [comparativa, savedClient, userData],
   );
@@ -268,6 +274,71 @@ export default function AddTramiteDialog({
   const handleSubmit = useCallback(async () => {
     setLoading(true);
     try {
+      const imaginaContract = imaginaContractIdToSend
+        ? contracts.find((contract) => contract.id === imaginaContractIdToSend)
+        : null;
+
+      if (sendToImaginaOnCreate && tramite.status === "Verificado") {
+        if (!imaginaContract) {
+          showCustomToast({
+            title: "Contrato Imagina no seleccionado",
+            message: "Selecciona el contrato de Imagina antes de enviar.",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+
+        setLoadingStep(1);
+        setLoadingMessage("Validando datos Imagina");
+        const preflightRes = await fetch(
+          "/api/v2/integrations/imagina-energia/contracts/preflight",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tramite,
+              client,
+              contract: imaginaContract,
+              signer,
+            }),
+          },
+        );
+        const preflightResult = (await preflightRes.json()) as {
+          success?: boolean;
+          error?: string;
+          missing?: Array<{
+            field?: string;
+            source?: string;
+            message?: string;
+          }>;
+        };
+
+        if (!preflightResult.success) {
+          const missing = preflightResult.missing
+            ?.map((item) =>
+              [item.source, item.field, item.message]
+                .filter(Boolean)
+                .join(" · "),
+            )
+            .join("\n");
+          showCustomToast({
+            title: "Faltan datos para Imagina",
+            message:
+              missing ||
+              preflightResult.error ||
+              "Completa los datos obligatorios antes de enviar.",
+            iconColor: "var(--danger-color)",
+            iconSize: 24,
+            icon: CircleX,
+          });
+          return;
+        }
+      }
+
       const uploadedFilePaths: string[] = [];
 
       // Upload new documents
@@ -356,15 +427,45 @@ export default function AddTramiteDialog({
         return;
       }
 
+      let imaginaSubmitWarning: string | null = null;
+      if (sendToImaginaOnCreate && imaginaContract) {
+        setLoadingStep(4);
+        setLoadingMessage("Enviando contrato a Imagina");
+        const imaginaRes = await fetch(
+          "/api/v2/integrations/imagina-energia/contracts/submit",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tramite_id: tramite.id,
+              contract_id: imaginaContract.id,
+            }),
+          },
+        );
+        const imaginaResult = await imaginaRes.json();
+        if (!imaginaResult.success) {
+          imaginaSubmitWarning =
+            imaginaResult.error ||
+            "No se ha podido enviar el contrato a Imagina Energía.";
+        }
+      }
+
       // Show success toast
       setLoadingStep(4);
       setLoadingMessage("Finalizando trámite");
       showCustomToast({
-        title: "Trámite añadido",
-        message: "El trámite ha sido añadido correctamente",
-        iconColor: "var(--success-color)",
+        title: imaginaSubmitWarning
+          ? "Trámite creado; Imagina no enviado"
+          : "Trámite añadido",
+        message:
+          imaginaSubmitWarning || "El trámite ha sido añadido correctamente",
+        iconColor: imaginaSubmitWarning
+          ? "var(--warning-color)"
+          : "var(--success-color)",
         iconSize: 24,
-        icon: CheckCircle,
+        icon: imaginaSubmitWarning ? CircleX : CheckCircle,
         buttonLinkText: "Ver Trámite",
         buttonLink: `/tramites/${tramite.id}`,
       });
@@ -423,6 +524,8 @@ export default function AddTramiteDialog({
     processComparativaUpdate,
     refreshTramites,
     handleClose,
+    imaginaContractIdToSend,
+    sendToImaginaOnCreate,
   ]);
 
   // Render form elements based on current step
@@ -470,6 +573,9 @@ export default function AddTramiteDialog({
         setContracts={setContracts}
         userData={userData as User}
         comparativa={comparativa as ComparativaVM}
+        sendToImagina={sendToImaginaOnCreate}
+        setSendToImagina={setSendToImaginaOnCreate}
+        setImaginaContractIdToSend={setImaginaContractIdToSend}
       />,
       <FourthStepForm
         key={4}
@@ -536,6 +642,9 @@ export default function AddTramiteDialog({
         contracts={contracts}
         setContracts={setContracts}
         userData={userData as User}
+        sendToImagina={sendToImaginaOnCreate}
+        setSendToImagina={setSendToImaginaOnCreate}
+        setImaginaContractIdToSend={setImaginaContractIdToSend}
       />,
       <FourthStepForm
         key={4}
@@ -599,6 +708,7 @@ export default function AddTramiteDialog({
     setContracts,
     setDocuments,
     setSelectedExistingFiles,
+    sendToImaginaOnCreate,
   ]);
 
   // Get button text based on context

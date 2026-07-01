@@ -2,7 +2,11 @@
   FieldValidationResult,
   FormValidationResult,
 } from "@/core/validation/validation.model";
-import { validateField, validatePostalCode } from "./field-validation";
+import {
+  validateCUPSField,
+  validateField,
+  validatePostalCode,
+} from "./field-validation";
 import {
   ContractError,
   ContractForm,
@@ -17,7 +21,7 @@ export const validateContract = (
     validateField(contract.province),
     validateField(contract.city),
     validateField(contract.address),
-    validateField(contract.CUPS),
+    validateCUPSField(contract.CUPS),
     validateField(contract.plan),
     validateField(contract.new_company),
   ];

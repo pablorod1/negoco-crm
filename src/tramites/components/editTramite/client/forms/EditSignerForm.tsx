@@ -55,7 +55,7 @@ export default function EditSignerForm({
         return;
       }
 
-      const res = await fetch(`/api/v2/clients/${formData.id}`, {
+      const res = await fetch(`/api/v2/clients/${formData.client_id}/signature`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -125,11 +125,25 @@ export default function EditSignerForm({
           type="email"
         />
         <div className="flex items-stretch gap-4">
+          <SelectComponent
+            name="document_type"
+            label="Tipo documento"
+            selectedKey={formData.document_type || "DNI"}
+            onChange={(value) => handleSelectChange(value, "document_type")}
+            items={["DNI", "NIE", "Otro"]}
+          />
           <InputComponent
             name="phone"
             label="Teléfono"
             value={formData.phone}
             isRequired
+            onChange={handleFieldChange}
+            type="text"
+          />
+          <InputComponent
+            name="phone_prefix"
+            label="Prefijo"
+            value={formData.phone_prefix || "34"}
             onChange={handleFieldChange}
             type="text"
           />

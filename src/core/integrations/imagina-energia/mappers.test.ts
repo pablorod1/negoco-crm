@@ -73,7 +73,6 @@ const contract: ContractDB = {
   tipo_via_cnmc: "Calle",
   calle: "Alcala",
   numero_finca: "1",
-  signature_channel: "email",
 };
 
 const rate = {
@@ -116,9 +115,27 @@ describe("Imagina contract mapper", () => {
       expect(result.payload.potencia_contratada).toEqual([
         4600, 4600, 0, 0, 0, 0,
       ]);
+      expect(result.payload.canal_envio).toBe("sms");
+      expect(result.payload.es_alta_nueva).toBe(false);
       expect(result.payload.callback_url).toBe(
         "https://tenant.negoco.test/api/webhooks/imagina-energia/contratacion",
       );
+    }
+  });
+
+  test("derives new supply flag from contract type", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: residentialClient,
+      contract: { ...contract, type: "Alta Nueva" },
+      rate,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload.es_alta_nueva).toBe(true);
     }
   });
 

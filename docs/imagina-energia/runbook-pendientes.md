@@ -112,7 +112,7 @@ Para cada contrato a enviar, completar:
 - direccion CNMC del titular en `clients`
 - potencias P1..P6 en kW en CRM
 - `clients.phone_prefix`
-- `contracts.signature_channel`
+- `contracts.signature_channel` si se quiere sobrescribir el defecto `sms`
 - `clients.cnae` para empresas
 - firmante empresa con `signers.document_type` y `signers.phone_prefix`
 

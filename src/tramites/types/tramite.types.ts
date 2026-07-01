@@ -167,15 +167,8 @@ export interface ContractDB {
   aclarador_finca?: string | null;
   tipo_autoconsumo_cnmc?: string | null;
   signature_channel?: "sms" | "email" | "email_otp" | string | null;
-  es_alta_nueva?: number | boolean | null;
   mismo_titular?: number | boolean | null;
   misma_potencia?: number | boolean | null;
-  imagina_contract_id?: string | null;
-  imagina_contract_code?: string | null;
-  imagina_request_id?: string | null;
-  imagina_status?: string | null;
-  imagina_substatus?: string | null;
-  imagina_synced_at?: string | null;
 }
 
 // Enhanced contract interface supporting both string and ID-based companies

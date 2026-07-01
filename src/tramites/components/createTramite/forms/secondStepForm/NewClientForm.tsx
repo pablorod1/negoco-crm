@@ -9,6 +9,19 @@ import { InputComponent, SelectComponent } from "../../InputComponent";
 import { Separator } from "@/core/components/ui/separator";
 import { CARGOS, CLIENT_TYPES, DOCUMENT_TYPES } from "@/tramites/constants";
 
+const TIPO_VIA_CNMC = [
+  "Calle",
+  "Avenida",
+  "Plaza",
+  "Paseo",
+  "Camino",
+  "Carretera",
+  "Ronda",
+  "Travesía",
+  "Urbanización",
+  "Polígono",
+];
+
 interface Props {
   formData: SecondForm;
   errors: SecondFormError;
@@ -196,6 +209,14 @@ export default function NewClientForm({
           />
 
           <InputComponent
+            name="phone_prefix"
+            label="Prefijo"
+            onChange={handleFieldChange}
+            type="text"
+            value={formData.phone_prefix || "34"}
+          />
+
+          <InputComponent
             name="IBAN"
             label="Número de cuenta"
             onChange={handleFieldChange}
@@ -205,6 +226,17 @@ export default function NewClientForm({
             value={formData.IBAN}
           />
         </div>
+
+        {(formData.type === "Empresa" ||
+          formData.type === "Comunidad de Propietarios") && (
+          <InputComponent
+            name="cnae"
+            label="CNAE"
+            onChange={handleFieldChange}
+            type="text"
+            value={formData.cnae || ""}
+          />
+        )}
 
         <div className="flex items-stretch gap-8 w-full">
           <InputComponent
@@ -241,6 +273,37 @@ export default function NewClientForm({
             type="text"
           />
         </div>
+
+        <div className="flex items-stretch gap-8 w-full">
+          <SelectComponent
+            name="tipo_via_cnmc"
+            items={TIPO_VIA_CNMC}
+            onChange={(value) => handleSelectChange("tipo_via_cnmc", value)}
+            label="Tipo vía fiscal"
+            selectedKey={formData.tipo_via_cnmc || ""}
+          />
+          <InputComponent
+            name="calle"
+            label="Calle fiscal"
+            onChange={handleFieldChange}
+            type="text"
+            value={formData.calle || ""}
+          />
+          <InputComponent
+            name="numero_finca"
+            label="Número fiscal"
+            onChange={handleFieldChange}
+            type="text"
+            value={formData.numero_finca || ""}
+          />
+          <InputComponent
+            name="aclarador_finca"
+            label="Aclarador fiscal"
+            onChange={handleFieldChange}
+            type="text"
+            value={formData.aclarador_finca || ""}
+          />
+        </div>
       </div>
 
       {showSignerForm && (
@@ -251,6 +314,15 @@ export default function NewClientForm({
               Datos de la persona firmante
             </h2>
             <div className="flex items-stretch gap-8 w-full">
+              <SelectComponent
+                name="signer.document_type"
+                items={["DNI", "NIE", "Otro"]}
+                onChange={(value) =>
+                  handleSelectChange("signer.document_type", value)
+                }
+                label="Tipo documento"
+                selectedKey={signerData.document_type || "DNI"}
+              />
               <InputComponent
                 name="signer.document_number"
                 label="Número de documento"
@@ -259,6 +331,13 @@ export default function NewClientForm({
                 type="text"
                 errors={signerErrors.document_number}
                 isRequired
+              />
+              <InputComponent
+                name="signer.phone_prefix"
+                label="Prefijo"
+                value={signerData.phone_prefix || "34"}
+                onChange={handleFieldChange}
+                type="text"
               />
 
               <InputComponent

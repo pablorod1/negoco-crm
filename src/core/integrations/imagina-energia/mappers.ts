@@ -5,6 +5,12 @@ import type {
   TramiteDB,
 } from "@/tramites/types/tramite.types";
 import {
+  isCUPSWellFormed,
+  isEmailWellFormed,
+  isIBANWellFormed,
+  isPhoneNumberWellFormed,
+} from "@/core/validation/plane-validation";
+import {
   buildTenantWebhookUrl,
   IMAGINA_SUPPLIER_NAME,
 } from "./config";
@@ -77,6 +83,9 @@ export const isImaginaSupplierName = (name?: string | null): boolean =>
 const hasValue = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
+const normalizeCups = (cups?: string | null): string =>
+  (cups || "").replace(/\s+/g, "").toUpperCase();
+
 const addMissing = (
   missing: ImaginaValidationError[],
   field: string,
@@ -94,6 +103,9 @@ const parseBooleanish = (
   if (typeof value === "number") return value === 1;
   return fallback;
 };
+
+const isAltaNuevaContract = (contract: ContractDB): boolean =>
+  normalizeText(contract.type) === "alta nueva";
 
 const normalizePhonePrefix = (prefix?: string | null): string =>
   hasValue(prefix) ? prefix.replace(/^\+/, "").trim() : "34";
@@ -291,7 +303,7 @@ export const validateAndBuildImaginaContractPayload = (
   const holderAddress = getHolderAddress(client, missing);
   const powerArray = buildPowerArray(contract, missing);
   const titularDocumentType = mapDocumentType(client.document_type);
-  const signatureChannel = contract.signature_channel || "email";
+  const signatureChannel = contract.signature_channel || "sms";
 
   if (!titularDocumentType) {
     addMissing(
@@ -335,6 +347,38 @@ export const validateAndBuildImaginaContractPayload = (
     }
   }
 
+  const cups = normalizeCups(contract.CUPS);
+  if (hasValue(contract.CUPS) && !isCUPSWellFormed(cups)) {
+    addMissing(
+      missing,
+      "cups",
+      "contracts",
+      "El CUPS debe tener 20 caracteres alfanuméricos",
+    );
+  }
+
+  if (hasValue(client.IBAN) && !isIBANWellFormed(client.IBAN.trim())) {
+    addMissing(missing, "iban", "clients", "El IBAN no tiene un formato válido");
+  }
+
+  if (hasValue(client.email) && !isEmailWellFormed(client.email.trim())) {
+    addMissing(
+      missing,
+      "email_titular",
+      "clients",
+      "El email del titular no tiene un formato válido",
+    );
+  }
+
+  if (hasValue(client.phone) && !isPhoneNumberWellFormed(client.phone.trim())) {
+    addMissing(
+      missing,
+      "telefono_titular",
+      "clients",
+      "El teléfono del titular debe ser un móvil español válido",
+    );
+  }
+
   const referenciaExterna = buildReferenciaExterna(
     tramite.id,
     contract.id,
@@ -352,7 +396,7 @@ export const validateAndBuildImaginaContractPayload = (
   );
 
   const commonPayload: Record<string, unknown> = {
-    cups: contract.CUPS ? contract.CUPS.slice(0, 20) : contract.CUPS,
+    cups: cups ? cups.slice(0, 20) : contract.CUPS,
     provincia: contract.province,
     municipio: contract.city,
     cod_postal: contract.postal_code,
@@ -372,7 +416,7 @@ export const validateAndBuildImaginaContractPayload = (
     url_notificaciones_cambios_contrato: changesUrl,
     referencia_externa: referenciaExterna,
     inicio_contrato: "cuanto_antes",
-    es_alta_nueva: parseBooleanish(contract.es_alta_nueva, false),
+    es_alta_nueva: isAltaNuevaContract(contract),
     mismo_titular: parseBooleanish(contract.mismo_titular, true),
     misma_potencia: parseBooleanish(contract.misma_potencia, true),
   };

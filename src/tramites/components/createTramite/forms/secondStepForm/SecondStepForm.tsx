@@ -120,6 +120,12 @@ export default function SecondStepForm({
         city: formData.city,
         document_type: formData.document_type,
         document_number: formData.document_number,
+        tipo_via_cnmc: formData.tipo_via_cnmc || null,
+        calle: formData.calle || null,
+        numero_finca: formData.numero_finca || null,
+        aclarador_finca: formData.aclarador_finca || null,
+        phone_prefix: formData.phone_prefix || "34",
+        cnae: formData.cnae || null,
       });
 
       // Update tramite with client ID
@@ -136,7 +142,9 @@ export default function SecondStepForm({
           last_name: signerData.last_name,
           email: signerData.email,
           phone: signerData.phone,
+          document_type: signerData.document_type || "DNI",
           document_number: signerData.document_number,
+          phone_prefix: signerData.phone_prefix || "34",
           cargo: signerData.cargo || null,
           client_id: client.id,
         });

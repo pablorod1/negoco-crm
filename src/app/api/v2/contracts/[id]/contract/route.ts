@@ -42,6 +42,18 @@ const ContractSchema = z.object({
   pot6: optionalNumericField,
   description: z.string().optional(),
   tramite_id: z.string().min(1, "Contract ID is required"),
+  rate_id: z.string().nullable().optional(),
+  tipo_via_cnmc: z.string().nullable().optional(),
+  calle: z.string().nullable().optional(),
+  numero_finca: z.string().nullable().optional(),
+  aclarador_finca: z.string().nullable().optional(),
+  tipo_autoconsumo_cnmc: z.string().nullable().optional(),
+  signature_channel: z
+    .enum(["sms", "email", "email_otp"])
+    .optional()
+    .default("sms"),
+  mismo_titular: z.union([z.boolean(), z.number()]).nullable().optional(),
+  misma_potencia: z.union([z.boolean(), z.number()]).nullable().optional(),
 });
 
 const UpdateContractRequestSchema = z.object({

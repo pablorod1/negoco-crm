@@ -127,6 +127,12 @@ const ClientUpdateSchema = z.object({
   postal_code: z.string().optional(),
   province: z.string().optional(),
   city: z.string().optional(),
+  tipo_via_cnmc: z.string().nullable().optional(),
+  calle: z.string().nullable().optional(),
+  numero_finca: z.string().nullable().optional(),
+  aclarador_finca: z.string().nullable().optional(),
+  phone_prefix: z.string().optional(),
+  cnae: z.string().nullable().optional(),
 });
 
 const SignerUpdateSchema = z.object({
@@ -135,7 +141,9 @@ const SignerUpdateSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
   phone: z.string().min(1, "Phone is required"),
+  document_type: z.string().optional(),
   document_number: z.string().min(1, "Document number is required"),
+  phone_prefix: z.string().optional(),
   cargo: z.string().nullable().optional(),
 });
 
@@ -229,7 +237,16 @@ export async function PATCH(
         const setClauses: string[] = [];
         const args: (string | null)[] = [];
 
-        const signerFields = ["name", "last_name", "email", "phone", "document_number", "cargo"] as const;
+        const signerFields = [
+          "name",
+          "last_name",
+          "email",
+          "phone",
+          "document_type",
+          "document_number",
+          "phone_prefix",
+          "cargo",
+        ] as const;
         for (const field of signerFields) {
           const value = signerUpdates[field];
           if (value !== undefined) {
@@ -248,7 +265,10 @@ export async function PATCH(
       } else {
         const newSignerId = crypto.randomUUID();
         await tursoClient.execute({
-          sql: `INSERT INTO signers (id, name, last_name, email, phone, document_number, cargo, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          sql: `INSERT INTO signers (
+                  id, name, last_name, email, phone, document_number, cargo,
+                  client_id, document_type, phone_prefix
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             newSignerId,
             signerUpdates.name,
@@ -258,6 +278,8 @@ export async function PATCH(
             signerUpdates.document_number,
             signerUpdates.cargo ?? null,
             id,
+            signerUpdates.document_type ?? null,
+            signerUpdates.phone_prefix ?? "34",
           ],
         });
       }

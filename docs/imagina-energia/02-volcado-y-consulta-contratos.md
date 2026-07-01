@@ -76,7 +76,7 @@ Campos principales de `ContratoInfo`:
 ## Estrategia de volcado
 
 1. Ejecutar `GET /contratos` con `por_pagina=500`.
-2. Persistir cada contrato con upsert por `imagina_contract_id`.
+2. Persistir la relacion externa en `contract_integration_refs` con `provider = imagina_energia`.
 3. Guardar `raw_payload` para diagnostico, al menos durante las primeras iteraciones de la integracion.
 4. Enriquecer bajo demanda con `GET /contrato/{id_contrato}` si el listado no trae todos los campos necesarios.
 5. Registrar `request_id` por pagina para trazabilidad.
@@ -86,9 +86,9 @@ Campos principales de `ContratoInfo`:
 
 Claves recomendadas:
 
-- `imagina_contract_id`: `ContratoInfo.id`.
-- `imagina_contract_code`: `ContratoInfo.codigo`.
-- `external_reference`: `alias_externo` o nuestra `referencia_externa` cuando venga por callback.
+- `contract_integration_refs.external_contract_id`: `ContratoInfo.id`.
+- `contract_integration_refs.external_contract_code`: `ContratoInfo.codigo`.
+- `contract_integration_refs.external_reference`: `alias_externo` o nuestra `referencia_externa` cuando venga por callback.
 
 Para reconciliacion, priorizar `id` sobre `codigo`. El codigo es util para soporte y usuarios, pero el ID es el path parameter de consulta.
 

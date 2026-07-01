@@ -204,6 +204,12 @@ export async function PUT(
       province: client.province,
       city: client.city,
       coordinates: null, // Will be populated by addClient helper
+      tipo_via_cnmc: client.tipo_via_cnmc || null,
+      calle: client.calle || null,
+      numero_finca: client.numero_finca || null,
+      aclarador_finca: client.aclarador_finca || null,
+      phone_prefix: client.phone_prefix || "34",
+      cnae: client.cnae || null,
     };
 
     // Add client to database
@@ -231,13 +237,18 @@ export async function PUT(
         last_name: signer.last_name,
         email: signer.email,
         phone: signer.phone,
+        document_type: signer.document_type || null,
         document_number: signer.document_number,
+        phone_prefix: signer.phone_prefix || "34",
       };
 
       // Add signer (using the same pattern as in contracts endpoint)
       const signerQuery = `
-        INSERT INTO signers (id, name, last_name, email, phone, document_number, cargo, client_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO signers (
+          id, name, last_name, email, phone, document_number, cargo, client_id,
+          document_type, phone_prefix
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       await tursoClient.execute({
@@ -251,6 +262,8 @@ export async function PUT(
           signerDB.document_number,
           null,
           signerDB.client_id,
+          signerDB.document_type,
+          signerDB.phone_prefix,
         ],
       });
     }

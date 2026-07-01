@@ -48,3 +48,9 @@ next-env.d.ts
 # Sentry Config File
 .env.sentry-build-plugin
 /docs
+
+# Keep database migrations versioned even though docs are ignored.
+!/docs/
+/docs/*
+!/docs/migrations/
+!/docs/migrations/*.sql

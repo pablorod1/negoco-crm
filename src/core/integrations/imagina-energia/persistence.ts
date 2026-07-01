@@ -26,6 +26,13 @@ export interface ImaginaSubmissionBundle {
   rate: ImaginaRateRow | null;
 }
 
+export interface LocalContractRef {
+  id: string;
+  tramite_id: string;
+}
+
+type DbArg = string | number | null;
+
 const parseJsonObject = (value: unknown): Record<string, unknown> => {
   if (typeof value !== "string" || !value.trim()) return {};
   try {
@@ -96,13 +103,150 @@ export const getSelectedImaginaRate = async (
 
   const result = await db.execute({
     sql: `SELECT * FROM comercializadora_rates
-          WHERE id = ?
-             OR (provider = ? AND external_rate_id = ?)
+          WHERE provider = ?
+            AND enabled = 1
+            AND (id = ? OR external_rate_id = ?)
           LIMIT 1`,
-    args: [rateId, IMAGINA_PROVIDER, rateId],
+    args: [IMAGINA_PROVIDER, rateId, rateId],
   });
 
   return (result.rows[0] as unknown as ImaginaRateRow | undefined) || null;
+};
+
+const hasOwn = <T extends object, K extends PropertyKey>(
+  target: T,
+  key: K,
+): boolean => Object.prototype.hasOwnProperty.call(target, key);
+
+const optionalString = (value: unknown): string | null =>
+  value == null ? null : String(value);
+
+export const upsertContractIntegrationRef = async (
+  db: Client,
+  params: {
+    provider: string;
+    tramiteId: string;
+    contractId: string;
+    externalContractId?: string | number | null;
+    externalContractCode?: string | number | null;
+    externalReference?: string | number | null;
+    requestId?: string | number | null;
+    status?: string | null;
+    substatus?: string | null;
+    syncedAt?: string | null;
+  },
+): Promise<void> => {
+  const now = new Date().toISOString();
+
+  await db.execute({
+    sql: `INSERT INTO contract_integration_refs (
+            id, provider, tramite_id, contract_id, external_contract_id,
+            external_contract_code, external_reference, request_id, status,
+            substatus, synced_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(provider, contract_id) DO NOTHING`,
+    args: [
+      crypto.randomUUID(),
+      params.provider,
+      params.tramiteId,
+      params.contractId,
+      optionalString(params.externalContractId),
+      optionalString(params.externalContractCode),
+      optionalString(params.externalReference),
+      optionalString(params.requestId),
+      params.status ?? null,
+      params.substatus ?? null,
+      params.syncedAt ?? now,
+      now,
+      now,
+    ],
+  });
+
+  const fields = ["tramite_id = ?", "updated_at = ?"];
+  const args: DbArg[] = [params.tramiteId, now];
+
+  const appendOptional = (
+    key: keyof typeof params,
+    column: string,
+    value: DbArg,
+  ) => {
+    if (hasOwn(params, key)) {
+      fields.push(`${column} = ?`);
+      args.push(value);
+    }
+  };
+
+  appendOptional(
+    "externalContractId",
+    "external_contract_id",
+    optionalString(params.externalContractId),
+  );
+  appendOptional(
+    "externalContractCode",
+    "external_contract_code",
+    optionalString(params.externalContractCode),
+  );
+  appendOptional(
+    "externalReference",
+    "external_reference",
+    optionalString(params.externalReference),
+  );
+  appendOptional("requestId", "request_id", optionalString(params.requestId));
+  appendOptional("status", "status", params.status ?? null);
+  appendOptional("substatus", "substatus", params.substatus ?? null);
+  appendOptional("syncedAt", "synced_at", params.syncedAt ?? now);
+
+  args.push(params.provider, params.contractId);
+
+  await db.execute({
+    sql: `UPDATE contract_integration_refs
+          SET ${fields.join(", ")}
+          WHERE provider = ? AND contract_id = ?`,
+    args,
+  });
+};
+
+export const findContractByIntegrationRef = async (
+  db: Client,
+  provider: string,
+  params: {
+    externalContractId?: string | number | null;
+    externalContractCode?: string | number | null;
+  },
+): Promise<LocalContractRef | null> => {
+  const externalContractId = optionalString(params.externalContractId);
+  const externalContractCode = optionalString(params.externalContractCode);
+
+  if (!externalContractId && !externalContractCode) {
+    return null;
+  }
+
+  const result = await db.execute({
+    sql: `SELECT c.id, c.tramite_id
+          FROM contract_integration_refs ref
+          INNER JOIN contracts c ON c.id = ref.contract_id
+          WHERE ref.provider = ?
+            AND (
+              (? IS NOT NULL AND ref.external_contract_id = ?)
+              OR (? IS NOT NULL AND ref.external_contract_code = ?)
+            )
+          LIMIT 1`,
+    args: [
+      provider,
+      externalContractId,
+      externalContractId,
+      externalContractCode,
+      externalContractCode,
+    ],
+  });
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    id: String(row.id),
+    tramite_id: String(row.tramite_id),
+  };
 };
 
 export const getSubmissionBundle = async (

@@ -15,6 +15,19 @@ import { User } from "@/core/types";
 
 type ClientType = keyof typeof DOCUMENT_TYPES;
 
+const TIPO_VIA_CNMC = [
+  "Calle",
+  "Avenida",
+  "Plaza",
+  "Paseo",
+  "Camino",
+  "Carretera",
+  "Ronda",
+  "Travesía",
+  "Urbanización",
+  "Polígono",
+];
+
 const clientRequiresSigner = (clientType: string) =>
   clientType === "Empresa" || clientType === "Comunidad de Propietarios";
 
@@ -368,6 +381,13 @@ export default function EditClientForm({
           type="text"
         />
         <InputComponent
+          name="phone_prefix"
+          label="Prefijo"
+          value={formData.phone_prefix || "34"}
+          onChange={handleFieldChange}
+          type="text"
+        />
+        <InputComponent
           name="email"
           label="Email"
           value={formData.email}
@@ -411,6 +431,46 @@ export default function EditClientForm({
           label="IBAN"
           value={formData.IBAN}
           isRequired
+          onChange={handleFieldChange}
+          type="text"
+        />
+        {(formData.type === "Empresa" ||
+          formData.type === "Comunidad de Propietarios") && (
+          <InputComponent
+            name="cnae"
+            label="CNAE"
+            value={formData.cnae || ""}
+            onChange={handleFieldChange}
+            type="text"
+          />
+        )}
+        <div className="flex items-stretch gap-4">
+          <SelectComponent
+            name="tipo_via_cnmc"
+            label="Tipo vía fiscal"
+            selectedKey={formData.tipo_via_cnmc || ""}
+            onChange={(value) => handleSelectChange(value, "tipo_via_cnmc")}
+            items={TIPO_VIA_CNMC}
+          />
+          <InputComponent
+            name="calle"
+            label="Calle fiscal"
+            value={formData.calle || ""}
+            onChange={handleFieldChange}
+            type="text"
+          />
+          <InputComponent
+            name="numero_finca"
+            label="Número fiscal"
+            value={formData.numero_finca || ""}
+            onChange={handleFieldChange}
+            type="text"
+          />
+        </div>
+        <InputComponent
+          name="aclarador_finca"
+          label="Aclarador fiscal"
+          value={formData.aclarador_finca || ""}
           onChange={handleFieldChange}
           type="text"
         />
