@@ -21,6 +21,17 @@ interface DocumentLibraryPostResponse {
   error?: string;
 }
 
+interface DocumentLibraryCreateRequest {
+  folder_name: string;
+  files: Array<{
+    name: string;
+    size: number;
+    extension: string;
+    download_url: string;
+    preview_url?: string | null;
+  }>;
+}
+
 interface DocumentLibraryDeleteRequest {
   files: Array<{
     folder_path: string;
@@ -43,6 +54,21 @@ const GetQuerySchema = z.object({
   folder_name: z.string().min(1, "folder_name is required"),
 });
 
+const CreateBodySchema = z.object({
+  folder_name: z.string().min(1, "folder_name is required"),
+  files: z
+    .array(
+      z.object({
+        name: z.string().min(1, "name is required"),
+        size: z.number().int().nonnegative("size must be a positive number"),
+        extension: z.string(),
+        download_url: z.string().min(1, "download_url is required"),
+        preview_url: z.string().min(1).nullable().optional(),
+      })
+    )
+    .min(1, "At least one file must be specified"),
+});
+
 const DeleteBodySchema = z.object({
   files: z
     .array(
@@ -55,6 +81,41 @@ const DeleteBodySchema = z.object({
     )
     .min(1, "At least one file must be specified"),
 });
+
+type TursoClient = ReturnType<typeof getTursoClient>;
+
+function hasFilesField(
+  body: unknown
+): body is DocumentLibraryCreateRequest {
+  return typeof body === "object" && body !== null && "files" in body;
+}
+
+async function insertDocumentacionFiles(
+  tursoClient: TursoClient,
+  documentacionFiles: DocumentacionFile[]
+) {
+  const query = `
+    INSERT INTO documentacion_files (id, name, size, extension, upload_date, download_url, preview_url, folder_name, type)
+    VALUES ${documentacionFiles.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
+  `;
+
+  const params = documentacionFiles.flatMap((file) => [
+    file.id,
+    file.name,
+    file.size,
+    file.extension,
+    file.upload_date,
+    file.download_url,
+    file.preview_url,
+    file.folder_name,
+    file.type,
+  ]);
+
+  await tursoClient.execute({
+    sql: query,
+    args: params,
+  });
+}
 
 /**
  * Retrieves document library files by folder name
@@ -158,8 +219,14 @@ export async function POST(
       return await handleFileUpload(request, startTime);
     }
 
+    const body = await request.json();
+
+    if (hasFilesField(body)) {
+      return await handleFileMetadataCreate(request, startTime, body);
+    }
+
     // Handle JSON for file listing (from /api/documentacion/get/files)
-    return await handleFileListing(request, startTime);
+    return await handleFileListing(request, startTime, body);
   } catch (error) {
     const totalTime = performance.now() - startTime;
     console.error(
@@ -187,7 +254,7 @@ async function handleFileUpload(
     const folder_name = formData.get("folder_name") as string;
     const organization_id = formData.get("organization_id") as string;
 
-    if (!files || !folder_name || !organization_id) {
+    if (files.length === 0 || !folder_name || !organization_id) {
       return NextResponse.json(
         { success: false, error: "Missing parameters" },
         { status: 400 }
@@ -227,28 +294,7 @@ async function handleFileUpload(
       };
     });
 
-    // Optimized batch insert using prepared statements
-    const query = `
-      INSERT INTO documentacion_files (id, name, size, extension, upload_date, download_url, preview_url, folder_name, type)
-      VALUES ${documentacionFiles.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
-    `;
-
-    const params = documentacionFiles.flatMap((file) => [
-      file.id,
-      file.name,
-      file.size,
-      file.extension,
-      file.upload_date,
-      file.download_url,
-      file.preview_url,
-      folder_name,
-      file.type,
-    ]);
-
-    await tursoClient.execute({
-      sql: query,
-      args: params,
-    });
+    await insertDocumentacionFiles(tursoClient, documentacionFiles);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -266,14 +312,73 @@ async function handleFileUpload(
 }
 
 /**
+ * Persists metadata for files already uploaded directly to Firebase Storage.
+ */
+async function handleFileMetadataCreate(
+  request: NextRequest,
+  startTime: number,
+  body: DocumentLibraryCreateRequest
+): Promise<NextResponse<DocumentLibraryPostResponse>> {
+  try {
+    const validationResult = CreateBodySchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { success: false, error: "Parámetros de archivo inválidos" },
+        { status: 400 }
+      );
+    }
+
+    const tursoClient = getTursoClient(request);
+
+    if (!tursoClient) {
+      return NextResponse.json(
+        { success: false, error: "Database client not initialized" },
+        { status: 500 }
+      );
+    }
+
+    const { folder_name, files } = validationResult.data;
+    const uploadDate = new Date().toISOString();
+    const documentacionFiles: DocumentacionFile[] = files.map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name,
+      size: file.size,
+      extension: file.extension,
+      upload_date: uploadDate,
+      download_url: file.download_url,
+      preview_url: file.preview_url || null,
+      folder_name,
+      type: "file",
+    }));
+
+    await insertDocumentacionFiles(tursoClient, documentacionFiles);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const totalTime = performance.now() - startTime;
+    console.error(
+      `[DOCUMENT-LIBRARY-METADATA-CREATE] Error after ${totalTime.toFixed(2)}ms:`,
+      error
+    );
+
+    return NextResponse.json(
+      { success: false, error: "Error registrando archivos en el servidor" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * Handles file listing operations (maintains compatibility with /api/documentacion/get/files)
  */
 async function handleFileListing(
   request: NextRequest,
-  startTime: number
+  startTime: number,
+  body: unknown
 ): Promise<NextResponse<DocumentLibraryGetResponse>> {
   try {
-    const { folder_name }: DocumentLibraryGetRequest = await request.json();
+    const { folder_name }: DocumentLibraryGetRequest =
+      body as DocumentLibraryGetRequest;
 
     if (!folder_name) {
       return NextResponse.json(

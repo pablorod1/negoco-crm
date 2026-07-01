@@ -11,6 +11,7 @@ import Image from "next/image";
 import { downloadFile } from "@/core/firebase/data/downloadFile";
 import { showCustomToast } from "@/core/components/CustomToast";
 import UploadComercializadoraFilesDialog from "./UploadComercializadoraFilesDialog";
+import { uploadDocumentLibraryFiles } from "@/documentacion/lib/uploadDocumentLibraryFiles";
 
 interface ComercializadoraDocumentsListProps {
   files: DocumentacionFile[];
@@ -128,29 +129,11 @@ export function ComercializadoraDocumentsList({
   const handleUploadFile = async () => {
     setLoading(true);
     try {
-      const formData = new FormData();
-      uploadedFiles.forEach((file) => {
-        formData.append("files", file);
+      await uploadDocumentLibraryFiles({
+        files: uploadedFiles,
+        folderName: comercializadora.name,
+        organizationId: userData?.organization.id as string,
       });
-      formData.append("folder_name", comercializadora.name);
-      formData.append("organization_id", userData?.organization.id as string);
-      const response = await fetch("/api/v2/document-library", {
-        method: "POST",
-        body: formData,
-      });
-      const { success, error } = await response.json();
-
-      if (!success) {
-        console.error("Error uploading files:", error);
-        showCustomToast({
-          title: "Error al subir documentos",
-          message: error || "No se pudieron subir los documentos.",
-          icon: CloudAlert,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-        });
-        return;
-      }
 
       showCustomToast({
         title: "Documentos subidos",

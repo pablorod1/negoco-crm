@@ -16,6 +16,7 @@ import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
 import { useUser } from "@/core/contexts/UserContext";
 import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
+import { uploadDocumentLibraryFiles } from "@/documentacion/lib/uploadDocumentLibraryFiles";
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -168,20 +169,11 @@ export default function UploadFileModal() {
   const handleUpload = async () => {
     try {
       setIsUploading(true);
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append("files", file);
+      await uploadDocumentLibraryFiles({
+        files,
+        folderName: getUploadFilePath(),
+        organizationId: userData?.organization.id as string,
       });
-      formData.append("folder_name", getUploadFilePath());
-      formData.append("organization_id", userData?.organization.id as string);
-      const response = await fetch("/api/v2/document-library", {
-        method: "POST",
-        body: formData,
-      });
-      const { success, error } = await response.json();
-      if (!success) {
-        throw new Error(error);
-      }
       setFiles([]);
       handleClose();
       refreshDocumentacion();
