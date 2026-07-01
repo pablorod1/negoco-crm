@@ -207,18 +207,29 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
         // Step 6: Send welcome email
         setLoadingStep(6);
         setLoadingMessage("Enviando email de bienvenida");
-        await sendWelcomeEmail(
-          formData.email,
-          formData.name,
-          userData.organization?.logo || undefined
-        ); // Success
+        let welcomeEmailSent = true;
+        try {
+          await sendWelcomeEmail(
+            formData.email,
+            formData.name,
+            userData.organization?.logo || undefined
+          );
+        } catch (error) {
+          welcomeEmailSent = false;
+          console.info("Welcome email was not sent after user creation", error);
+        }
+
         setLoadingStep(7);
         setLoadingMessage("Completado");
+        const roleLabel =
+          ROLES[parseInt(formData.role === "admin" ? "0" : formData.role)];
+        const successMessage = `${formData.name} ha sido creado con el rol de ${roleLabel}`;
+        const emailStatusMessage = welcomeEmailSent
+          ? ""
+          : ". El email de bienvenida no se ha enviado";
         showCustomToast({
           title: "Usuario creado exitosamente",
-          message: `${formData.name} ha sido creado con el rol de ${
-            ROLES[parseInt(formData.role === "admin" ? "0" : formData.role)]
-          }`,
+          message: `${successMessage}${emailStatusMessage}`,
           icon: UserRoundCheck,
           iconColor: "green",
           iconSize: 24,
