@@ -49,13 +49,13 @@ export default function DocumentsForm({
         `}
       >
         <input {...getInputProps()} />
-        <div className="absolute top-3 left-3 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center opacity-10 pointer-events-none">
           <Image
             src={organizationLogo.defaultUrl}
             width={organizationLogo.width}
             height={organizationLogo.height}
             alt={organizationLogo.alt}
-            className="rounded"
+            className="max-w-80 w-full h-auto"
           />
         </div>
         <div className="flex flex-col items-center justify-center z-10">
