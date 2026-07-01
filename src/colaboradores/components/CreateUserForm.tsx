@@ -2,7 +2,10 @@
 import React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/core/components/ui/button";
-import { ROLES } from "@/colaboradores/constants/colaborador.constants";
+import {
+  ROLES,
+  SELECT_ROLES,
+} from "@/colaboradores/constants/colaborador.constants";
 import { useUser } from "@/core/contexts/UserContext";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { Info, UserRoundX } from "lucide-react";
@@ -89,12 +92,7 @@ export default function CreateUserForm({
     }));
   };
 
-  const handleSelectChange = (
-    value: string,
-    e: React.ChangeEvent<HTMLSelectElement>,
-    name: string
-  ) => {
-    if (e) e.preventDefault();
+  const handleSelectChange = (value: string, name: "role") => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -200,20 +198,13 @@ export default function CreateUserForm({
           <SelectComponent
             name="role"
             isRequired
-            selectedKey={
-              formData.role === "admin"
-                ? "Dirección"
-                : ROLES[parseInt(formData.role)]
-            }
-            onChange={(value, e) =>
-              handleSelectChange(
-                ROLES.indexOf(value as (typeof ROLES)[number]).toString(),
-                e as React.ChangeEvent<HTMLSelectElement>,
-                "role"
-              )
-            }
+            selectedKey={formData.role}
+            onChange={(value) => handleSelectChange(value, "role")}
             label="Rol del usuario"
-            items={[...ROLES]}
+            items={SELECT_ROLES}
+            textValue={
+              SELECT_ROLES.find((role) => role.value === formData.role)?.label
+            }
           />
 
           {!isStarterPlan && formData.role === "2" && (
