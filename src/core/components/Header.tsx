@@ -34,7 +34,7 @@ export default function Header({ className }: ImprovedHeaderProps) {
         className
       )}
     >
-      <div className="flex h-12 items-center justify-between gap-4">
+      <div className="flex h-12 items-center justify-between gap-4 w-full pr-12">
         {/* Left section - Navigation */}
         <div className="flex items-center gap-4 ">
           <div className="flex items-center gap-3">

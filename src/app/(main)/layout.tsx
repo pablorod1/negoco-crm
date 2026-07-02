@@ -37,7 +37,7 @@ export default function MainLayout({
       <SidebarProvider defaultOpen={false}>
         <SidebarComponent />
         <SidebarInset>
-          <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden">
+          <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden max-w-dvw">
             <Header />
             <main
               className="main-content flex-1 overflow-auto pt-12"
