@@ -27,7 +27,7 @@ export default function MainLayout({
   return (
     <Providers>
       <PlanRedirectGuard />
-      <SidebarProvider defaultOpen={false}>
+      <SidebarProvider defaultOpen>
         <SidebarComponent />
         <SidebarInset>
           <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden">
