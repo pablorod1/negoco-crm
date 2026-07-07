@@ -21,8 +21,8 @@ export default function LiquidezDataAuthorization() {
 
   useEffect(() => {
     let isActive = true;
-    const isComercial = userData && userData.role === "2";
-    if (isComercial && isMounted.current) {
+    const isAdmin = userData && userData.role === "admin";
+    if (!isAdmin && isMounted.current) {
       showCustomToast({
         title: "No autorizado",
         message: "No tienes permisos para acceder a esta sección",

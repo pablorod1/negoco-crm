@@ -60,7 +60,6 @@ interface SidebarSection {
 
 interface SidebarAccess {
   isAdmin: boolean;
-  isDireccion: boolean;
   userPlan: PlanType;
   isCollapsed: boolean;
   isComparador: boolean;
@@ -81,7 +80,6 @@ const useNavigationAccess = () => {
     return {
       userPlan,
       isAdmin,
-      isDireccion,
       isElite,
       isPro,
       isStarter,
@@ -185,7 +183,7 @@ const getMenuSections = (): SidebarSection[] => [
         url: "/difusiones",
         icon: Megaphone,
         description: "Cartel destacado del dashboard",
-        requiresDireccion: true,
+        requiresAdmin: true,
         plans: ["starter", "pro", "elite"],
       },
     ]
@@ -286,8 +284,7 @@ const SidebarSectionComponent: React.FC<{
 }> = ({ section, access }) => {
   const visibleItems = section.items.filter(
     (item) =>
-      (!item.requiresAdmin || access.isAdmin) &&
-      (!item.requiresDireccion || access.isDireccion)
+      (!item.requiresAdmin || access.isAdmin)
   );
 
   if (visibleItems.length === 0) return null;
@@ -320,7 +317,7 @@ const SidebarSectionComponent: React.FC<{
 
 export function SidebarComponent() {
   const { open } = useSidebar();
-  const { userPlan, isAdmin, isDireccion, isElite, isComparador } =
+  const { userPlan, isAdmin, isElite, isComparador } =
     useNavigationAccess();
 
   const menuSections = useMemo(() => getMenuSections(), []);
@@ -336,13 +333,12 @@ export function SidebarComponent() {
 
       <SidebarContent className={cn("py-4", open ? "px-4" : "px-0 ")}>
         <div className="space-y-6">
-          {menuSections.map((section, index) => (
+          {menuSections.map((section) => (
             <SidebarSectionComponent
               key={section.title}
               section={section}
               access={{
                 isAdmin,
-                isDireccion,
                 userPlan,
                 isCollapsed: !open,
                 isComparador,

@@ -97,7 +97,7 @@ export async function POST(req: Request) {
       { status: 404 },
     );
   }
-  const apoloSipsPromise = fetchAbarcaApoloSipsSummary(payload.cups);
+  const apoloSipsPromise = fetchAbarcaApoloSipsSummary(payload.cups ?? undefined);
 
   // 7. Upload files to Firebase
   const storagePath = `${organizationId}/comparativas/${comparativaId}`;

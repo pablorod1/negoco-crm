@@ -34,7 +34,6 @@ export default function MainLayout({
             <Header />
             <main
               className="main-content flex-1 overflow-auto pt-12"
-              data-client={activeOrganization}
             >
               {isAllowedForComparador ? (
                 children
