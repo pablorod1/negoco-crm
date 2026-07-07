@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useUser } from "@/core/contexts/UserContext";
 import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
@@ -50,6 +50,48 @@ type StatusFilter = "all" | ForumTopicStatus;
 
 const getTopicStatusLabel = (status: ForumTopicStatus) =>
   status === "open" ? "Abierto" : "Cerrado";
+
+const fetchForumTopics = async () => {
+  const response = await fetch("/api/v2/forum/topics");
+  const result = (await response.json()) as ApiResponse<ForumTopic[]>;
+  if (!result.success || !result.data) {
+    throw new Error(result.error || "Error al cargar el foro");
+  }
+  return result.data;
+};
+
+const fetchForumTopicDetail = async (topicId: string) => {
+  const response = await fetch(`/api/v2/forum/topics/${topicId}`);
+  const result = (await response.json()) as ApiResponse<ForumTopicDetail>;
+  if (!result.success || !result.data) {
+    throw new Error(result.error || "Error al cargar el debate");
+  }
+  return result.data;
+};
+
+const getNextSelectedTopicId = (
+  forumTopics: ForumTopic[],
+  currentTopicId: string | null,
+) =>
+  currentTopicId && forumTopics.some((topic) => topic.id === currentTopicId)
+    ? currentTopicId
+    : forumTopics[0]?.id ?? null;
+
+const scrollCommentsToBottom = (
+  scrollRoot: HTMLDivElement | null,
+  smooth = false,
+) => {
+  const viewport = scrollRoot?.querySelector<HTMLElement>(
+    "[data-radix-scroll-area-viewport]",
+  );
+  if (!viewport) {
+    return;
+  }
+  viewport.scrollTo({
+    top: viewport.scrollHeight,
+    behavior: smooth ? "smooth" : "auto",
+  });
+};
 
 export default function ForumPageClient() {
   const { userData } = useUser();
@@ -101,16 +143,132 @@ export default function ForumPageClient() {
     });
   }, [topics, searchQuery, statusFilter]);
 
-  const fetchTopics = useCallback(async () => {
+  useEffect(() => {
+    let ignoreResult = false;
+
+    const loadInitialTopics = async () => {
+      try {
+        if (ignoreResult) {
+          return;
+        }
+        const forumTopics = await fetchForumTopics();
+        if (!ignoreResult) {
+          const nextSelectedTopicId = getNextSelectedTopicId(forumTopics, null);
+          setTopics(forumTopics);
+          if (nextSelectedTopicId) {
+            setDetailLoading(true);
+          }
+          setSelectedTopicId(nextSelectedTopicId);
+        }
+      } catch (error) {
+        if (ignoreResult) {
+          return;
+        }
+        showCustomToast({
+          title: "Error al cargar el foro",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Inténtalo de nuevo más tarde",
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+      } finally {
+        if (!ignoreResult) {
+          setTopicsLoading(false);
+        }
+      }
+    };
+
+    void loadInitialTopics();
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTopicId) {
+      return;
+    }
+
+    let ignoreResult = false;
+
+    const loadTopicDetail = async () => {
+      try {
+        if (ignoreResult) {
+          return;
+        }
+        const topicDetail = await fetchForumTopicDetail(selectedTopicId);
+        if (!ignoreResult) {
+          setDetail(topicDetail);
+        }
+      } catch (error) {
+        if (ignoreResult) {
+          return;
+        }
+        showCustomToast({
+          title: "Error al cargar el debate",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Inténtalo de nuevo más tarde",
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        setDetail(null);
+      } finally {
+        if (!ignoreResult) {
+          setDetailLoading(false);
+        }
+      }
+    };
+
+    void loadTopicDetail();
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, [selectedTopicId]);
+
+  const activeTopicId = detail?.topic.id;
+  const commentCount = detail?.comments.length ?? 0;
+  useEffect(() => {
+    if (!activeTopicId) {
+      return;
+    }
+    const frame = requestAnimationFrame(() =>
+      scrollCommentsToBottom(scrollRootRef.current),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [activeTopicId, commentCount]);
+
+  const resetTopicDialog = () => {
+    setNewTopicTitle("");
+    setNewTopicDescription("");
+  };
+
+  const handleRefreshTopics = async () => {
     setTopicsLoading(true);
     try {
-      const response = await fetch("/api/v2/forum/topics");
-      const result = (await response.json()) as ApiResponse<ForumTopic[]>;
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Error al cargar el foro");
+      const forumTopics = await fetchForumTopics();
+      const nextSelectedTopicId = getNextSelectedTopicId(
+        forumTopics,
+        selectedTopicId,
+      );
+      setTopics(forumTopics);
+
+      if (nextSelectedTopicId !== selectedTopicId) {
+        if (nextSelectedTopicId) {
+          setDetailLoading(true);
+        } else {
+          setDetail(null);
+          setDetailLoading(false);
+        }
+        setSelectedTopicId(nextSelectedTopicId);
       }
-      setTopics(result.data);
-      setSelectedTopicId((current) => current || result.data?.[0]?.id || null);
     } catch (error) {
       showCustomToast({
         title: "Error al cargar el foro",
@@ -123,75 +281,13 @@ export default function ForumPageClient() {
     } finally {
       setTopicsLoading(false);
     }
-  }, []);
-
-  const fetchTopicDetail = useCallback(async (topicId: string) => {
-    setDetailLoading(true);
-    try {
-      const response = await fetch(`/api/v2/forum/topics/${topicId}`);
-      const result = (await response.json()) as ApiResponse<ForumTopicDetail>;
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Error al cargar el debate");
-      }
-      setDetail(result.data);
-    } catch (error) {
-      showCustomToast({
-        title: "Error al cargar el debate",
-        message:
-          error instanceof Error ? error.message : "Inténtalo de nuevo más tarde",
-        icon: CircleX,
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-      });
-      setDetail(null);
-    } finally {
-      setDetailLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTopics();
-  }, [fetchTopics]);
-
-  useEffect(() => {
-    if (selectedTopicId) {
-      fetchTopicDetail(selectedTopicId);
-    } else {
-      setDetail(null);
-    }
-  }, [fetchTopicDetail, selectedTopicId]);
-
-  // Auto-scroll al comentario más reciente al abrir un debate o publicar.
-  const scrollCommentsToBottom = useCallback((smooth = false) => {
-    const viewport = scrollRootRef.current?.querySelector<HTMLElement>(
-      "[data-radix-scroll-area-viewport]",
-    );
-    if (!viewport) {
-      return;
-    }
-    viewport.scrollTo({
-      top: viewport.scrollHeight,
-      behavior: smooth ? "smooth" : "auto",
-    });
-  }, []);
-
-  const activeTopicId = detail?.topic.id;
-  const commentCount = detail?.comments.length ?? 0;
-  useEffect(() => {
-    if (!activeTopicId) {
-      return;
-    }
-    const frame = requestAnimationFrame(() => scrollCommentsToBottom());
-    return () => cancelAnimationFrame(frame);
-  }, [activeTopicId, commentCount, scrollCommentsToBottom]);
-
-  const resetTopicDialog = () => {
-    setNewTopicTitle("");
-    setNewTopicDescription("");
   };
 
   const handleSelectTopic = (topicId: string) => {
-    setSelectedTopicId(topicId);
+    if (topicId !== selectedTopicId) {
+      setDetailLoading(true);
+      setSelectedTopicId(topicId);
+    }
     setMobileView("detail");
   };
 
@@ -223,6 +319,7 @@ export default function ForumPageClient() {
       }
 
       setTopics((current) => [result.data!, ...current]);
+      setDetailLoading(true);
       setSelectedTopicId(result.data.id);
       setMobileView("detail");
       resetTopicDialog();
@@ -322,7 +419,9 @@ export default function ForumPageClient() {
         ),
       );
       setCommentMessage("");
-      requestAnimationFrame(() => scrollCommentsToBottom(true));
+      requestAnimationFrame(() =>
+        scrollCommentsToBottom(scrollRootRef.current, true),
+      );
     } catch (error) {
       showCustomToast({
         title: "Error al publicar",
@@ -409,7 +508,7 @@ export default function ForumPageClient() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={fetchTopics}
+            onClick={handleRefreshTopics}
             disabled={topicsLoading}
           >
             <RefreshCw className={cn("size-4", topicsLoading && "animate-spin")} />

@@ -32,6 +32,13 @@ type ApoloConsumptionFeedback = {
   message: string;
 };
 
+type ApoloConsumptionState = {
+  cups: string | null;
+  requestId: number;
+  status: "idle" | "pending" | "success" | "warning";
+  feedback: ApoloConsumptionFeedback | null;
+};
+
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
   tramite_id: string;
@@ -41,6 +48,38 @@ interface Props {
   lastStep?: boolean;
   comparativa?: ComparativaVM;
 }
+
+const createIdleApoloConsumptionState = (
+  requestId = 0,
+): ApoloConsumptionState => ({
+  cups: null,
+  requestId,
+  status: "idle",
+  feedback: null,
+});
+
+const createPendingApoloConsumptionState = (
+  cups: string,
+  requestId: number,
+): ApoloConsumptionState => ({
+  cups,
+  requestId,
+  status: "pending",
+  feedback: null,
+});
+
+const createInitialApoloConsumptionState = (
+  contract: ContractDB | null | undefined,
+  comparativa: ComparativaVM | undefined,
+): ApoloConsumptionState => {
+  const cups = sanitizeCups(
+    contract?.CUPS || comparativa?.abarca_estudio?.cups || "",
+  );
+
+  return isValidApoloSipsCups(cups)
+    ? createPendingApoloConsumptionState(cups, 1)
+    : createIdleApoloConsumptionState();
+};
 
 export default function ContractForm({
   onCreateContract,
@@ -57,15 +96,18 @@ export default function ContractForm({
     createEmptyContractError,
   );
   const [formData, setFormData] = React.useState<ContractDB>(
-    contract ? contract : createEmptyContractDB(comparativa),
+    () => (contract ? contract : createEmptyContractDB(comparativa)),
   );
-  const [isCalculatingConsumption, setIsCalculatingConsumption] =
-    React.useState(false);
-  const [apoloConsumptionFeedback, setApoloConsumptionFeedback] =
-    React.useState<ApoloConsumptionFeedback | null>(null);
-  const lastRequestedCupsRef = React.useRef<string | null>(null);
-  const apoloRequestIdRef = React.useRef(0);
+  const [apoloConsumption, setApoloConsumption] =
+    React.useState<ApoloConsumptionState>(() =>
+      createInitialApoloConsumptionState(contract, comparativa),
+    );
   const isConsumptionReadOnly = userData?.role === "2";
+  const apoloConsumptionStatus = apoloConsumption.status;
+  const apoloConsumptionCups = apoloConsumption.cups;
+  const apoloConsumptionRequestId = apoloConsumption.requestId;
+  const isCalculatingConsumption = apoloConsumptionStatus === "pending";
+  const apoloConsumptionFeedback = apoloConsumption.feedback;
 
   // Load active energy suppliers
   const { activeSuppliers, loading: suppliersLoading } =
@@ -81,99 +123,144 @@ export default function ContractForm({
     [activeSuppliers],
   );
 
-  // Auto-match old_company from Abarca empresa_cliente
-  React.useEffect(() => {
-    if (formData.old_company || activeSuppliers.length === 0) return;
+  const autoMatchedOldCompanyId = React.useMemo(() => {
+    if (formData.old_company || activeSuppliers.length === 0) return "";
     const empresaCliente = comparativa?.abarca_estudio?.empresa_cliente;
-    if (!empresaCliente) return;
+    if (!empresaCliente) return "";
 
     const name = empresaCliente.split(" - ")[0].trim().toLowerCase();
-    if (!name) return;
+    if (!name) return "";
 
     const match = activeSuppliers.find((s) =>
       s.name.toLowerCase().includes(name),
     );
-    if (match) {
-      setFormData((prev) => ({ ...prev, old_company: match.id }));
-    }
+    return match?.id ?? "";
   }, [activeSuppliers, comparativa, formData.old_company]);
+  const selectedOldCompanyId = formData.old_company || autoMatchedOldCompanyId;
+
+  const queueApoloConsumptionLookup = (rawCups: string) => {
+    const cups = sanitizeCups(rawCups);
+
+    setApoloConsumption((prev) => {
+      if (!isValidApoloSipsCups(cups)) {
+        return prev.status === "idle" && prev.cups === null
+          ? prev
+          : createIdleApoloConsumptionState(prev.requestId + 1);
+      }
+
+      return prev.cups === cups && prev.status !== "idle"
+        ? prev
+        : createPendingApoloConsumptionState(cups, prev.requestId + 1);
+    });
+  };
 
   React.useEffect(() => {
-    const cups = sanitizeCups(formData.CUPS || "");
-
-    if (!isValidApoloSipsCups(cups)) {
-      apoloRequestIdRef.current += 1;
-      lastRequestedCupsRef.current = null;
-      setIsCalculatingConsumption(false);
-      setApoloConsumptionFeedback(null);
+    if (apoloConsumptionStatus !== "pending" || !apoloConsumptionCups) {
       return;
     }
 
-    if (lastRequestedCupsRef.current === cups) return;
+    const cups = apoloConsumptionCups;
+    const requestId = apoloConsumptionRequestId;
+    let ignoreResult = false;
 
-    const requestId = apoloRequestIdRef.current + 1;
-    apoloRequestIdRef.current = requestId;
-    lastRequestedCupsRef.current = cups;
-    setIsCalculatingConsumption(true);
-    setApoloConsumptionFeedback(null);
-
-    void (async () => {
+    const loadConsumption = async () => {
       try {
+        if (ignoreResult) return;
+
         const data = await fetchConsumptions({
           cups,
           tipoSuministro: "ELECTRICIDAD",
         });
 
-        if (apoloRequestIdRef.current !== requestId) return;
+        if (!ignoreResult) {
+          if (
+            !data ||
+            data.tipoSuministro !== "ELECTRICIDAD" ||
+            !data.consumos
+          ) {
+            setApoloConsumption((prev) => {
+              if (prev.requestId !== requestId) return prev;
+              return {
+                cups,
+                requestId,
+                status: "warning",
+                feedback: {
+                  type: "warning",
+                  message:
+                    "No se pudo obtener consumo de SIPS. Puedes guardar el contrato igualmente.",
+                },
+              };
+            });
+            return;
+          }
 
-        if (
-          !data ||
-          data.tipoSuministro !== "ELECTRICIDAD" ||
-          !data.consumos
-        ) {
-          setApoloConsumptionFeedback({
-            type: "warning",
-            message:
-              "No se pudo obtener consumo de SIPS. Puedes guardar el contrato igualmente.",
+          const summary = summarizeElectricityConsumption(data.consumos.rows);
+
+          if (summary.rows.length === 0) {
+            setApoloConsumption((prev) => {
+              if (prev.requestId !== requestId) return prev;
+              return {
+                cups,
+                requestId,
+                status: "warning",
+                feedback: {
+                  type: "warning",
+                  message:
+                    "SIPS no devolvio consumos para este CUPS. Puedes guardar el contrato igualmente.",
+                },
+              };
+            });
+            return;
+          }
+
+          setFormData((prev) => ({
+            ...prev,
+            CUPS: cups,
+            consumption: summary.totalActiveEnergyKwh,
+          }));
+          setApoloConsumption((prev) => {
+            if (prev.requestId !== requestId) return prev;
+            return {
+              cups,
+              requestId,
+              status: "success",
+              feedback: {
+                type: "success",
+                message: "Consumo obtenido desde SIPS (ult. 12 meses).",
+              },
+            };
           });
-          return;
         }
-
-        const summary = summarizeElectricityConsumption(data.consumos.rows);
-
-        if (summary.rows.length === 0) {
-          setApoloConsumptionFeedback({
-            type: "warning",
-            message:
-              "SIPS no devolvio consumos para este CUPS. Puedes guardar el contrato igualmente.",
-          });
-          return;
-        }
-
-        setFormData((prev) => ({
-          ...prev,
-          CUPS: cups,
-          consumption: summary.totalActiveEnergyKwh,
-        }));
-        setApoloConsumptionFeedback({
-          type: "success",
-          message: `Consumo obtenido desde SIPS (ult. 12 meses).`,
-        });
       } catch {
-        if (apoloRequestIdRef.current !== requestId) return;
-
-        setApoloConsumptionFeedback({
-          type: "warning",
-          message:
-            "No se pudo obtener consumo. Puedes guardar el contrato igualmente.",
-        });
-      } finally {
-        if (apoloRequestIdRef.current === requestId) {
-          setIsCalculatingConsumption(false);
+        if (!ignoreResult) {
+          setApoloConsumption((prev) => {
+            if (prev.requestId !== requestId) return prev;
+            return {
+              cups,
+              requestId,
+              status: "warning",
+              feedback: {
+                type: "warning",
+                message:
+                  "No se pudo obtener consumo. Puedes guardar el contrato igualmente.",
+              },
+            };
+          });
         }
       }
-    })();
-  }, [fetchConsumptions, formData.CUPS]);
+    };
+
+    void loadConsumption();
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, [
+    apoloConsumptionCups,
+    apoloConsumptionRequestId,
+    apoloConsumptionStatus,
+    fetchConsumptions,
+  ]);
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -205,6 +292,10 @@ export default function ContractForm({
       ...prev,
       [name]: processedValue,
     }));
+
+    if (name === "CUPS") {
+      queueApoloConsumptionLookup(value);
+    }
   };
 
   const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -243,6 +334,7 @@ export default function ContractForm({
 
     onCreateContract({
       ...formData,
+      old_company: selectedOldCompanyId,
       tramite_id: tramite_id,
     });
   };
@@ -339,10 +431,10 @@ export default function ContractForm({
                   label="Compañía Antigua"
                   items={supplierOptions}
                   onChange={(value) => handleSelectChange(value, "old_company")}
-                  selectedKey={formData.old_company || ""}
+                  selectedKey={selectedOldCompanyId}
                   textValue={
                     supplierOptions.find(
-                      (s) => s.value === formData.old_company,
+                      (s) => s.value === selectedOldCompanyId,
                     )?.label
                   }
                 />
@@ -393,7 +485,7 @@ export default function ContractForm({
             <div className="flex items-stretch gap-4 w-full">
               {POTS.map((pot, index) => (
                 <InputComponent
-                  key={index}
+                  key={pot}
                   onChange={handleFieldChange}
                   name={`pot${index + 1}`}
                   label={pot}
