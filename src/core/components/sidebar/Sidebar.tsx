@@ -31,6 +31,7 @@ import {
   UserCheck,
   Megaphone,
   HelpCircle,
+  MessageSquareText,
 } from "lucide-react";
 import { cn } from "@/core/utils";
 import ShortcutsMenu from "../ShortcutsMenu";
@@ -47,6 +48,7 @@ interface SidebarItem {
   icon?: React.ComponentType<{ className?: string }>;
   description?: string;
   requiresAdmin?: boolean;
+  requiresDireccion?: boolean;
   comingSoon?: boolean;
   plans: PlanType[];
 }
@@ -54,6 +56,14 @@ interface SidebarItem {
 interface SidebarSection {
   title: string;
   items: SidebarItem[];
+}
+
+interface SidebarAccess {
+  isAdmin: boolean;
+  isDireccion: boolean;
+  userPlan: PlanType;
+  isCollapsed: boolean;
+  isComparador: boolean;
 }
 
 // Custom hooks
@@ -68,7 +78,15 @@ const useNavigationAccess = () => {
     const isStarter = userPlan === "starter";
     const isComparador = userPlan === "comparador";
 
-    return { userPlan, isAdmin, isElite, isPro, isStarter, isComparador };
+    return {
+      userPlan,
+      isAdmin,
+      isDireccion,
+      isElite,
+      isPro,
+      isStarter,
+      isComparador,
+    };
   }, [userData?.role, getPlan]);
 };
 
@@ -82,6 +100,7 @@ const getMenuSections = (): SidebarSection[] => [
         icon: LayoutDashboard,
         plans: ["starter", "pro", "elite"],
       },
+
     ],
   },
   {
@@ -149,17 +168,28 @@ const getMenuSections = (): SidebarSection[] => [
         description: "Control de usuarios y colaboradores",
         plans: ["starter", "pro", "elite"],
       },
+    ],
+  },
+  {
+    title: "Comunicaciones",
+    items: [
+      {
+        title: "Foro",
+        url: "/foro",
+        icon: MessageSquareText,
+        description: "Debates internos del equipo",
+        plans: ["starter", "pro", "elite"],
+      },
       {
         title: "Difusiones",
         url: "/difusiones",
         icon: Megaphone,
-        description: "Comunicaciones y campañas informativas",
-        requiresAdmin: true,
-        comingSoon: true,
-        plans: ["pro", "elite"],
+        description: "Cartel destacado del dashboard",
+        requiresDireccion: true,
+        plans: ["starter", "pro", "elite"],
       },
-    ],
-  },
+    ]
+  }
 ];
 
 const SidebarItemComponent: React.FC<{
@@ -252,20 +282,19 @@ const SidebarItemComponent: React.FC<{
 
 const SidebarSectionComponent: React.FC<{
   section: SidebarSection;
-  isAdmin: boolean;
-  userPlan: PlanType;
-  isCollapsed: boolean;
-  isComparador: boolean;
-}> = ({ section, isAdmin, userPlan, isCollapsed, isComparador }) => {
+  access: SidebarAccess;
+}> = ({ section, access }) => {
   const visibleItems = section.items.filter(
-    (item) => !item.requiresAdmin || isAdmin
+    (item) =>
+      (!item.requiresAdmin || access.isAdmin) &&
+      (!item.requiresDireccion || access.isDireccion)
   );
 
   if (visibleItems.length === 0) return null;
 
   return (
     <SidebarGroup>
-      {!isCollapsed && !isComparador && (
+      {!access.isCollapsed && !access.isComparador && (
         <div className="mb-2">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
             {section.title}
@@ -274,13 +303,13 @@ const SidebarSectionComponent: React.FC<{
       )}
       <SidebarGroupContent>
         <SidebarMenu className="gap-1">
-          {visibleItems.map((item, index) => (
+          {visibleItems.map((item) => (
             <SidebarItemComponent
-              key={index}
+              key={item.url}
               item={item}
-              userPlan={userPlan}
-              isCollapsed={isCollapsed}
-              isComparador={isComparador}
+              userPlan={access.userPlan}
+              isCollapsed={access.isCollapsed}
+              isComparador={access.isComparador}
             />
           ))}
         </SidebarMenu>
@@ -291,7 +320,8 @@ const SidebarSectionComponent: React.FC<{
 
 export function SidebarComponent() {
   const { open } = useSidebar();
-  const { userPlan, isAdmin, isElite, isComparador } = useNavigationAccess();
+  const { userPlan, isAdmin, isDireccion, isElite, isComparador } =
+    useNavigationAccess();
 
   const menuSections = useMemo(() => getMenuSections(), []);
 
@@ -308,12 +338,15 @@ export function SidebarComponent() {
         <div className="space-y-6">
           {menuSections.map((section, index) => (
             <SidebarSectionComponent
-              key={index}
+              key={section.title}
               section={section}
-              isAdmin={isAdmin}
-              userPlan={userPlan}
-              isCollapsed={!open}
-              isComparador={isComparador}
+              access={{
+                isAdmin,
+                isDireccion,
+                userPlan,
+                isCollapsed: !open,
+                isComparador,
+              }}
             />
           ))}
         </div>

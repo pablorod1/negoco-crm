@@ -20,6 +20,7 @@ export const createEmptyTramiteVM = (): TramiteVM => ({
   collection_date: null,
   payment_date: null,
   rejected_date: null,
+  processing_date: null,
   sales_name: "",
   comision_sales_person: 0,
   comision: 0,
@@ -65,6 +66,7 @@ export const createEmptyTramiteDB = (
   payment_date: null,
   collection_date: null,
   rejected_date: null,
+  processing_date: null,
   sales_name: comparativa
     ? (comparativa.user.name as string)
     : userData

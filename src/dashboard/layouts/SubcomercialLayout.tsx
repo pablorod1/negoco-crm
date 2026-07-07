@@ -7,7 +7,7 @@ import type { Transition } from "framer-motion";
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 import type { DashboardView } from "../components/ViewToggle";
 
-type NonAdminDashboardView = Exclude<DashboardView, "metrics">;
+type NonAdminDashboardView = Exclude<DashboardView, "metrics" | "sips">;
 
 interface SubcomercialLayoutProps {
   userData: User;

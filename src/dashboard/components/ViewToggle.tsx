@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import { BarChart3, TrendingUp, TriangleAlert } from "lucide-react";
+import { BarChart3, Search, TrendingUp, TriangleAlert } from "lucide-react";
 import GenericViewToggle, { ViewOption } from "@/core/components/ViewToggle";
 
-export type DashboardView = "main" | "metrics" | "incidencias";
+export type DashboardView = "main" | "metrics" | "incidencias" | "sips";
 
 interface Props {
   currentView: DashboardView;
@@ -37,6 +37,12 @@ export const DashboardViewToggle = ({
       label: "Incidencias",
       shortLabel: "Inc",
       icon: TriangleAlert,
+    },
+    {
+      value: "sips",
+      label: "SIPS",
+      shortLabel: "SIPS",
+      icon: Search,
     },
   ];
 

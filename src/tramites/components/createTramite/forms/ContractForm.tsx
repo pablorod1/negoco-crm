@@ -19,6 +19,18 @@ import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { ComparativaVM } from "@/comparativas/types";
+import { useUser } from "@/core/contexts/UserContext";
+import {
+  isValidApoloSipsCups,
+  sanitizeCups,
+  summarizeElectricityConsumption,
+  useApoloSips,
+} from "@/integrations/apolo-sips";
+
+type ApoloConsumptionFeedback = {
+  type: "success" | "warning";
+  message: string;
+};
 
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
@@ -39,12 +51,21 @@ export default function ContractForm({
   lastStep,
   comparativa,
 }: Props) {
+  const { userData } = useUser();
+  const { fetchConsumptions } = useApoloSips();
   const [errors, setErrors] = React.useState<ContractError>(
     createEmptyContractError,
   );
   const [formData, setFormData] = React.useState<ContractDB>(
     contract ? contract : createEmptyContractDB(comparativa),
   );
+  const [isCalculatingConsumption, setIsCalculatingConsumption] =
+    React.useState(false);
+  const [apoloConsumptionFeedback, setApoloConsumptionFeedback] =
+    React.useState<ApoloConsumptionFeedback | null>(null);
+  const lastRequestedCupsRef = React.useRef<string | null>(null);
+  const apoloRequestIdRef = React.useRef(0);
+  const isConsumptionReadOnly = userData?.role === "2";
 
   // Load active energy suppliers
   const { activeSuppliers, loading: suppliersLoading } =
@@ -76,6 +97,83 @@ export default function ContractForm({
       setFormData((prev) => ({ ...prev, old_company: match.id }));
     }
   }, [activeSuppliers, comparativa, formData.old_company]);
+
+  React.useEffect(() => {
+    const cups = sanitizeCups(formData.CUPS || "");
+
+    if (!isValidApoloSipsCups(cups)) {
+      apoloRequestIdRef.current += 1;
+      lastRequestedCupsRef.current = null;
+      setIsCalculatingConsumption(false);
+      setApoloConsumptionFeedback(null);
+      return;
+    }
+
+    if (lastRequestedCupsRef.current === cups) return;
+
+    const requestId = apoloRequestIdRef.current + 1;
+    apoloRequestIdRef.current = requestId;
+    lastRequestedCupsRef.current = cups;
+    setIsCalculatingConsumption(true);
+    setApoloConsumptionFeedback(null);
+
+    void (async () => {
+      try {
+        const data = await fetchConsumptions({
+          cups,
+          tipoSuministro: "ELECTRICIDAD",
+        });
+
+        if (apoloRequestIdRef.current !== requestId) return;
+
+        if (
+          !data ||
+          data.tipoSuministro !== "ELECTRICIDAD" ||
+          !data.consumos
+        ) {
+          setApoloConsumptionFeedback({
+            type: "warning",
+            message:
+              "No se pudo obtener consumo de SIPS. Puedes guardar el contrato igualmente.",
+          });
+          return;
+        }
+
+        const summary = summarizeElectricityConsumption(data.consumos.rows);
+
+        if (summary.rows.length === 0) {
+          setApoloConsumptionFeedback({
+            type: "warning",
+            message:
+              "SIPS no devolvio consumos para este CUPS. Puedes guardar el contrato igualmente.",
+          });
+          return;
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          CUPS: cups,
+          consumption: summary.totalActiveEnergyKwh,
+        }));
+        setApoloConsumptionFeedback({
+          type: "success",
+          message: `Consumo obtenido desde SIPS (ult. 12 meses).`,
+        });
+      } catch {
+        if (apoloRequestIdRef.current !== requestId) return;
+
+        setApoloConsumptionFeedback({
+          type: "warning",
+          message:
+            "No se pudo obtener consumo. Puedes guardar el contrato igualmente.",
+        });
+      } finally {
+        if (apoloRequestIdRef.current === requestId) {
+          setIsCalculatingConsumption(false);
+        }
+      }
+    })();
+  }, [fetchConsumptions, formData.CUPS]);
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -267,17 +365,30 @@ export default function ContractForm({
                   }
                 />
               )}
-              <InputComponent
-                name="consumption"
-                label="Consumo"
-                value={
-                  typeof formData.consumption === "number"
-                    ? formData.consumption.toString()
-                    : formData.consumption || ""
-                }
-                onChange={handleFieldChange}
-                type="number"
-              />
+              <div className="w-full space-y-1.5">
+                <InputComponent
+                  name="consumption"
+                  label="Consumo"
+                  value={
+                    typeof formData.consumption === "number"
+                      ? formData.consumption.toString()
+                      : formData.consumption || ""
+                  }
+                  onChange={handleFieldChange}
+                  type="number"
+                  readOnly={isConsumptionReadOnly}
+                />
+                {apoloConsumptionFeedback && (
+                  <p
+                    className={`ml-2 text-xs ${apoloConsumptionFeedback.type === "success"
+                      ? "text-emerald-700"
+                      : "text-amber-700"
+                      }`}
+                  >
+                    {apoloConsumptionFeedback.message}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex items-stretch gap-4 w-full">
               {POTS.map((pot, index) => (
@@ -289,12 +400,12 @@ export default function ContractForm({
                   type="number"
                   value={
                     formData[`pot${index + 1}` as keyof ContractDB] !==
-                    undefined
+                      undefined
                       ? (
-                          formData[
-                            `pot${index + 1}` as keyof ContractDB
-                          ] as number
-                        ).toString()
+                        formData[
+                        `pot${index + 1}` as keyof ContractDB
+                        ] as number
+                      ).toString()
                       : "0"
                   }
                   startContent={<Zap size={16} stroke="#333" />}
@@ -319,6 +430,10 @@ export default function ContractForm({
         onSubmit={handleAddContract}
         onCancel={onCancel}
         lastStep={lastStep}
+        submitDisabled={isCalculatingConsumption}
+        submitLabel={
+          isCalculatingConsumption ? "Calculando consumo..." : undefined
+        }
       />
     </>
   );

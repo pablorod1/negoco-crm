@@ -1,0 +1,73 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "SIPS API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/GetSIPS": {
+      "post": {
+        "tags": ["SIPS"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SIPSRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SIPSRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SIPSRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SIPSRequestDto": {
+        "type": "object",
+        "properties": {
+          "Procedimiento": {
+            "type": "string",
+            "nullable": true
+          },
+          "TipoSuministro": {
+            "type": "string",
+            "nullable": true
+          },
+          "CUPS": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyScheme": {
+        "type": "apiKey",
+        "description": "Introduce tu API Key (GUID u otra cadena) en el header X-API-KEY",
+        "name": "X-API-KEY",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyScheme": []
+    }
+  ]
+}

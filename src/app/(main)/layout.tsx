@@ -30,10 +30,11 @@ export default function MainLayout({
       <SidebarProvider defaultOpen>
         <SidebarComponent />
         <SidebarInset>
-          <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden">
+          <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden max-w-dvw">
             <Header />
             <main
-              className="main-content flex-1 overflow-auto"
+              className="main-content flex-1 overflow-auto pt-12"
+              data-client={activeOrganization}
             >
               {isAllowedForComparador ? (
                 children

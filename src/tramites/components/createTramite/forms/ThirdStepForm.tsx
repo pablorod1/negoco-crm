@@ -10,7 +10,7 @@ import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
 import FormWrapper from "../FormWrapper";
 import ContractPreview from "../ContractPreview";
 import { InputComponent, SelectComponent } from "../InputComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CheckComisionModal from "../CheckComisionModal";
 import EmptyComisionModal from "../EmptyComisionModal";
 import { Euro, FileX2, Pencil } from "lucide-react";
@@ -21,6 +21,17 @@ import { ComparativaVM } from "@/comparativas/types";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { useCrmSettings } from "@/crm-settings/hooks/useCrmSettings";
+import { Label } from "@/core/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/core/components/ui/select";
+
+const NO_PROVIDER_VALUE = "__none__";
 
 interface Props {
   onBack: () => void;
@@ -54,9 +65,21 @@ export default function ThirdStepForm({
   );
   const [salesCommissionTouched, setSalesCommissionTouched] = useState(false);
   const { activeSuppliers } = useActiveEnergySuppliers();
+  const { settings } = useCrmSettings();
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
     tramite.user_id,
   );
+  const configuredProviders = useMemo(
+    () => settings?.providers.map((provider) => provider.name) ?? [],
+    [settings],
+  );
+  const providerOptions = useMemo(() => {
+    if (!tramite.provider || configuredProviders.includes(tramite.provider)) {
+      return configuredProviders;
+    }
+
+    return [tramite.provider, ...configuredProviders];
+  }, [configuredProviders, tramite.provider]);
 
   const firstContract = contracts[0];
   const contractSupplierId = activeSuppliers.find(
@@ -249,14 +272,42 @@ export default function ThirdStepForm({
                     isRequired={tramite.status === "Activo"}
                     endContent={<Euro size={16} />}
                   />
-                  <InputComponent
-                    type="text"
-                    label="Proveedor"
-                    name="provider"
-                    value={tramite.provider || ""}
-                    onChange={handleProviderChange}
-                    isRequired={false}
-                  />
+                  {configuredProviders.length > 0 ? (
+                    <div className="flex w-full flex-col gap-2">
+                      <Label htmlFor="provider">Proveedor</Label>
+                      <Select
+                        value={tramite.provider || NO_PROVIDER_VALUE}
+                        onValueChange={(value) =>
+                          handleProviderChange(
+                            value === NO_PROVIDER_VALUE ? "" : value,
+                          )
+                        }
+                      >
+                        <SelectTrigger id="provider" className="rounded-md">
+                          <SelectValue placeholder="Seleccionar proveedor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_PROVIDER_VALUE}>
+                            Sin proveedor
+                          </SelectItem>
+                          {providerOptions.map((provider) => (
+                            <SelectItem key={provider} value={provider}>
+                              {provider}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <InputComponent
+                      type="text"
+                      label="Proveedor"
+                      name="provider"
+                      value={tramite.provider || ""}
+                      onChange={handleProviderChange}
+                      isRequired={false}
+                    />
+                  )}
                 </>
               )}
           </div>

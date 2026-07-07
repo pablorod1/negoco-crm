@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de importación de datos · Negoco CRM</title>
+<style>
+  :root{
+    --brand:#2563eb;
+    --brand-dark:#1e40af;
+    --ink:#1f2937;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+    --bg:#f6f7f9;
+    --card:#ffffff;
+    --code-bg:#f3f4f6;
+    --ok:#16a34a;
+    --warn-bg:#fffbeb;
+    --warn-border:#f59e0b;
+    --info-bg:#eff6ff;
+    --info-border:#3b82f6;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.6;
+    font-size:16px;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px 80px;}
+
+  /* Header */
+  header.hero{
+    background:linear-gradient(135deg,var(--brand-dark),var(--brand));
+    color:#fff;
+    padding:48px 0 40px;
+    margin-bottom:32px;
+  }
+  header.hero .wrap{padding-bottom:0;}
+  .badge-top{
+    display:inline-block;
+    background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.35);
+    padding:4px 12px;
+    border-radius:999px;
+    font-size:13px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    margin-bottom:16px;
+  }
+  header.hero h1{margin:0 0 10px;font-size:32px;line-height:1.2;}
+  header.hero p{margin:0;max-width:680px;font-size:17px;color:rgba(255,255,255,.92);}
+
+  /* Cards / sections */
+  section{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:28px 32px;
+    margin-bottom:24px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  section h2{
+    margin:0 0 8px;
+    font-size:22px;
+    color:var(--brand-dark);
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  section h2 .num{
+    color:var(--brand);
+    font-variant-numeric:tabular-nums;
+    font-weight:800;
+  }
+  section h3{margin:24px 0 8px;font-size:17px;color:var(--ink);}
+  section h3 code{font-size:15px;}
+  p{margin:10px 0;}
+  a{color:var(--brand);}
+
+  code{
+    background:var(--code-bg);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:1px 6px;
+    font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.88em;
+    color:#b91c1c;
+    white-space:nowrap;
+  }
+  /* keep allowed-value pills neutral, not red */
+  .vals code{color:var(--ink);}
+
+  /* TOC */
+  nav.toc{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 28px;
+    margin-bottom:24px;
+  }
+  nav.toc h2{font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 12px;}
+  nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:32px;}
+  nav.toc li{margin:5px 0;break-inside:avoid;}
+  nav.toc a{text-decoration:none;color:var(--ink);}
+  nav.toc a:hover{color:var(--brand);text-decoration:underline;}
+
+  /* Tables */
+  .table-scroll{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:10px;}
+  table{border-collapse:collapse;width:100%;font-size:14px;}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+  thead th{background:#f9fafb;color:var(--ink);font-weight:600;border-bottom:2px solid var(--line);position:sticky;top:0;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:nth-child(even){background:#fcfcfd;}
+  td code,th code{white-space:normal;}
+
+  /* Obligatorio badges */
+  .ob{display:inline-block;font-weight:700;font-size:13px;text-align:center;width:22px;}
+  .req{color:#dc2626;}
+  .rec{color:#d97706;}
+  .opt{color:#9ca3af;}
+
+  /* Legend */
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin:6px 0 0;font-size:14px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+
+  /* Callouts */
+  .note,.warn{
+    border-radius:10px;
+    padding:14px 16px 14px 18px;
+    margin:16px 0;
+    font-size:14.5px;
+  }
+  .note{background:var(--info-bg);border:1px solid #bfdbfe;border-left:4px solid var(--info-border);}
+  .warn{background:var(--warn-bg);border:1px solid #fde68a;border-left:4px solid var(--warn-border);}
+  .note strong,.warn strong{color:var(--ink);}
+  .note p,.warn p{margin:6px 0;}
+  .note p:first-child,.warn p:first-child{margin-top:0;}
+  .note p:last-child,.warn p:last-child{margin-bottom:0;}
+
+  /* Files overview cards */
+  .files{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:16px 0 4px;}
+  .file-card{border:1px solid var(--line);border-radius:10px;padding:16px;background:#fafafa;}
+  .file-card .fname{font-family:"SF Mono",ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--brand-dark);margin-bottom:6px;}
+  .file-card .fdesc{font-size:13.5px;color:var(--muted);}
+  .file-card .frow{display:inline-block;margin-top:10px;font-size:12px;background:#eef2ff;color:var(--brand-dark);padding:2px 9px;border-radius:999px;font-weight:600;}
+
+  /* Allowed values list */
+  .vals{list-style:none;padding:0;margin:8px 0;}
+  .vals>li{padding:10px 0;border-bottom:1px solid var(--line);}
+  .vals>li:last-child{border-bottom:none;}
+  .vals .k{font-weight:600;color:var(--ink);display:block;margin-bottom:6px;}
+  .vals .pills{display:flex;flex-wrap:wrap;gap:6px;}
+  .vals .pills code{background:#fff;}
+
+  /* Steps */
+  ol.steps{counter-reset:step;list-style:none;padding:0;margin:8px 0;}
+  ol.steps li{position:relative;padding:6px 0 6px 42px;margin:6px 0;}
+  ol.steps li::before{
+    counter-increment:step;content:counter(step);
+    position:absolute;left:0;top:4px;
+    width:28px;height:28px;border-radius:50%;
+    background:var(--brand);color:#fff;font-weight:700;font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Checklist */
+  ul.check{list-style:none;padding:0;margin:8px 0;}
+  ul.check li{padding:8px 0 8px 34px;position:relative;border-bottom:1px solid var(--line);font-size:15px;}
+  ul.check li:last-child{border-bottom:none;}
+  ul.check li::before{
+    content:"";position:absolute;left:0;top:11px;
+    width:18px;height:18px;border:2px solid var(--brand);border-radius:5px;
+  }
+
+  /* Misc */
+  hr{border:none;border-top:1px solid var(--line);margin:28px 0;}
+  .lead{font-size:17px;color:var(--ink);}
+  .muted{color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:40px;}
+  .pill-dot{display:inline-block;width:9px;height:9px;border-radius:50%;}
+
+  @media (max-width:640px){
+    nav.toc ol{columns:1;}
+    section{padding:22px 18px;}
+    header.hero h1{font-size:26px;}
+  }
+  @media print{
+    body{background:#fff;font-size:12px;}
+    header.hero{background:var(--brand-dark)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    section,nav.toc{box-shadow:none;break-inside:avoid;}
+    .table-scroll{overflow:visible;}
+    a{color:var(--ink);text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge-top">Negoco CRM · Importación de datos</span>
+    <h1>Guía para preparar tus datos desde Google Sheets</h1>
+    <p>Cómo rellenar los 4 ficheros con los que importaremos tus <strong>clientes, contratos, firmantes y documentos</strong> al CRM. Tú aportas los datos; nosotros hacemos la importación.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <p class="lead">Rellena las plantillas <strong>solo con datos reales que ya tienes</strong> y nos las devuelves. <strong>Nosotros nos encargamos de la importación</strong>: generamos los identificadores internos, relacionamos las tablas entre sí y subimos los documentos.</p>
+    <p>Cuanto más se respeten los formatos y valores de esta guía, menos filas se rechazarán. Ante cualquier duda con tu caso concreto, escríbenos y lo vemos juntos.</p>
+  </section>
+
+  <nav class="toc">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#s1">Los 4 ficheros</a></li>
+      <li><a href="#s2">Cómo se enlazan los ficheros</a></li>
+      <li><a href="#s3">Reglas de formato</a></li>
+      <li><a href="#s4">Orden recomendado</a></li>
+      <li><a href="#s5">Diccionario de datos</a></li>
+      <li><a href="#s6">Valores permitidos</a></li>
+      <li><a href="#s7">Validaciones que aplicaremos</a></li>
+      <li><a href="#s8">Casos especiales</a></li>
+      <li><a href="#s9">Lo que necesitamos aparte</a></li>
+      <li><a href="#s10">Checklist antes de enviar</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section id="s1">
+    <h2><span class="num">1.</span> Los 4 ficheros</h2>
+    <div class="files">
+      <div class="file-card">
+        <div class="fname">clientes.csv</div>
+        <div class="fdesc">Titulares del contrato (personas o empresas).</div>
+        <span class="frow">1 fila = 1 cliente</span>
+      </div>
+      <div class="file-card">
+        <div class="fname">firmantes.csv</div>
+        <div class="fdesc">Representante que firma (solo Empresas / Comunidades).</div>
+        <span class="frow">1 fila = 1 firmante</span>
+      </div>
+      <div class="file-card">
+        <div class="fname">contratos.csv</div>
+        <div class="fdesc">Cada suministro de luz o gas, con su expediente.</div>
+        <span class="frow">1 fila = 1 suministro (1 CUPS)</span>
+      </div>
+      <div class="file-card">
+        <div class="fname">documentos.csv</div>
+        <div class="fdesc">Documentos (facturas, contratos, DNI…) por enlace de Drive.</div>
+        <span class="frow">1 fila = 1 documento</span>
+      </div>
+    </div>
+    <div class="note">
+      <p>En la carpeta <code>plantillas/</code> están <strong>vacíos</strong> (solo la cabecera) — son los que tienes que rellenar y devolver. En <code>ejemplos/</code> están los <strong>mismos ficheros con filas de ejemplo</strong> para que veas cómo se rellenan.</p>
+      <p>👉 <strong>No rellenes los de <code>ejemplos/</code></strong>; trabaja sobre los de <code>plantillas/</code>.</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2">
+    <h2><span class="num">2.</span> Cómo se enlazan los ficheros (sin códigos raros)</h2>
+    <p>No tienes que inventar ningún código de referencia. Los ficheros se enlazan con <strong>datos reales que ya conoces</strong>:</p>
+    <ul>
+      <li><strong>Un contrato se enlaza a su titular por el NIF/CIF.</strong> En <code>contratos.csv</code> pones el <code>numero_documento_titular</code> (el DNI/NIE/CIF del cliente), que debe coincidir con el <code>numero_documento</code> de ese cliente en <code>clientes.csv</code>.</li>
+      <li><strong>Un firmante se enlaza a su empresa por el CIF.</strong> En <code>firmantes.csv</code>, <code>cif_cliente</code> es el CIF de la Empresa/Comunidad a la que representa.</li>
+      <li><strong>Un documento se enlaza por el NIF/CIF del titular</strong> (<code>numero_documento_titular</code>) y, si pertenece a un suministro concreto, por su <strong>CUPS</strong>.</li>
+    </ul>
+    <div class="note">
+      <p>Los identificadores internos del CRM, las relaciones entre tablas y la <strong>agrupación de expedientes</strong> (por ejemplo unir luz + gas) los generamos <strong>nosotros</strong> al importar. Tú solo rellenas los datos.</p>
+      <p>Por eso es <strong>imprescindible</strong> que el <code>numero_documento</code> de cada cliente sea <strong>correcto y único</strong>: es la pieza con la que enlazamos todo.</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3">
+    <h2><span class="num">3.</span> Reglas de formato <span class="muted" style="font-size:14px;font-weight:400;">(léelo antes de empezar)</span></h2>
+    <p>Vas a trabajar en <strong>Google Sheets</strong>, así que:</p>
+    <ol class="steps">
+      <li><strong>Una pestaña/fichero por plantilla.</strong> No mezcles clientes y contratos en la misma hoja.</li>
+      <li><strong>No cambies, borres ni reordenes la fila de cabecera</strong> (la primera, con los nombres de columna). La importación se guía por esos nombres.</li>
+      <li><strong>Separador de columnas: coma <code>,</code></strong> (es lo que Google Sheets exporta por defecto con <em>Archivo → Descargar → CSV</em>).</li>
+      <li><strong>Decimales con punto:</strong> escribe <code>4.6</code>, <strong>no</strong> <code>4,6</code> (la coma separa columnas). Los importes/potencias sin decimales pueden ir como entero (<code>15</code>, <code>3500</code>).</li>
+      <li><strong>Fechas en formato <code>DD/MM/YYYY</code></strong> (p. ej. <code>01/02/2025</code>). Formatea esas columnas como <strong>texto</strong> para que Sheets no las reconvierta.</li>
+      <li><strong>Deja la celda vacía</strong> si un dato no aplica. <strong>No escribas</strong> <code>N/A</code>, <code>-</code>, <code>pendiente</code>, <code>0</code> (salvo que el 0 sea real).</li>
+      <li>Si un texto contiene una coma (p. ej. <code>Calle Mayor 12, 3º B</code>), Google Sheets lo entrecomilla solo al exportar — no tienes que hacer nada especial.</li>
+      <li><strong>No repitas cabeceras ni dejes filas en blanco</strong> en medio de los datos.</li>
+    </ol>
+    <div class="note">
+      <p>Si lo prefieres, puedes <strong>compartirnos el Google Sheet</strong> (con acceso de lectura) y lo exportamos nosotros.</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4">
+    <h2><span class="num">4.</span> Orden recomendado para rellenar</h2>
+    <ol class="steps">
+      <li><strong><code>clientes.csv</code></strong> primero (define los NIF/CIF de cada cliente).</li>
+      <li><strong><code>firmantes.csv</code></strong> (solo para los clientes Empresa / Comunidad).</li>
+      <li><strong><code>contratos.csv</code></strong> (cada suministro, con el NIF/CIF del titular).</li>
+      <li><strong><code>documentos.csv</code></strong> al final.</li>
+    </ol>
+  </section>
+
+  <!-- 5 -->
+  <section id="s5">
+    <h2><span class="num">5.</span> Diccionario de datos</h2>
+    <p>Leyenda de la columna <strong>Obl.</strong>:</p>
+    <div class="legend">
+      <span><span class="ob req">✅</span> obligatorio</span>
+      <span><span class="ob rec">🟡</span> recomendado</span>
+      <span><span class="ob opt">⬜</span> opcional</span>
+    </div>
+
+    <h3>5.1 · <code>clientes.csv</code></h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Columna</th><th>Obl.</th><th>Descripción</th><th>Valores / formato</th></tr></thead>
+        <tbody>
+          <tr><td><code>tipo</code></td><td><span class="ob req">✅</span></td><td>Tipo de titular</td><td><code>Particular</code>, <code>Autónomo</code>, <code>Empresa</code>, <code>Comunidad de Propietarios</code></td></tr>
+          <tr><td><code>nombre</code></td><td><span class="ob req">✅</span></td><td>Nombre de pila (Particular/Autónomo) o <strong>razón social</strong> (Empresa/Comunidad)</td><td>Texto</td></tr>
+          <tr><td><code>apellidos</code></td><td><span class="ob req">✅*</span></td><td>Apellidos. *Obligatorio para Particular/Autónomo; <strong>vacío</strong> para Empresa/Comunidad</td><td>Texto</td></tr>
+          <tr><td><code>tipo_documento</code></td><td><span class="ob req">✅</span></td><td>Tipo de documento de identidad</td><td><code>DNI</code>, <code>NIE</code>, <code>CIF</code>, <code>Otro</code> (coherente con <code>tipo</code>, ver §6)</td></tr>
+          <tr><td><code>numero_documento</code></td><td><span class="ob req">✅</span></td><td><strong>Clave que enlaza todo.</strong> Documento con dígito de control válido y <strong>único</strong> por cliente</td><td>p. ej. <code>12345678Z</code>, <code>B66758616</code></td></tr>
+          <tr><td><code>email</code></td><td><span class="ob req">✅</span></td><td>Email de contacto</td><td>Email válido</td></tr>
+          <tr><td><code>telefono</code></td><td><span class="ob req">✅</span></td><td>Móvil español</td><td>9 dígitos, empieza por 6 o 7 (p. ej. <code>612345678</code>)</td></tr>
+          <tr><td><code>iban</code></td><td><span class="ob req">✅</span></td><td>IBAN para domiciliación</td><td>IBAN válido (España: <code>ES</code> + 22 caracteres)</td></tr>
+          <tr><td><code>direccion</code></td><td><span class="ob req">✅</span></td><td>Dirección fiscal del titular (calle y número)</td><td>Texto</td></tr>
+          <tr><td><code>codigo_postal</code></td><td><span class="ob req">✅</span></td><td>Código postal</td><td>5 dígitos</td></tr>
+          <tr><td><code>provincia</code></td><td><span class="ob rec">🟡</span></td><td>Provincia</td><td>Texto</td></tr>
+          <tr><td><code>localidad</code></td><td><span class="ob rec">🟡</span></td><td>Localidad / municipio</td><td>Texto</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.2 · <code>firmantes.csv</code> <span class="muted" style="font-weight:400;font-size:14px;">(solo Empresa / Comunidad)</span></h3>
+    <p>Una fila por cada <strong>representante que firma</strong> en nombre de una Empresa o Comunidad de Propietarios. Los clientes Particular/Autónomo <strong>no necesitan</strong> firmante.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Columna</th><th>Obl.</th><th>Descripción</th><th>Valores / formato</th></tr></thead>
+        <tbody>
+          <tr><td><code>cif_cliente</code></td><td><span class="ob req">✅</span></td><td>CIF de la Empresa/Comunidad a la que representa (debe existir en <code>clientes.csv</code>)</td><td>p. ej. <code>B66758616</code></td></tr>
+          <tr><td><code>nombre</code></td><td><span class="ob req">✅</span></td><td>Nombre del firmante</td><td>Texto</td></tr>
+          <tr><td><code>apellidos</code></td><td><span class="ob req">✅</span></td><td>Apellidos del firmante</td><td>Texto</td></tr>
+          <tr><td><code>numero_documento</code></td><td><span class="ob req">✅</span></td><td>DNI/NIE <strong>del firmante</strong> (persona física), con dígito de control válido</td><td>p. ej. <code>11111111H</code></td></tr>
+          <tr><td><code>email</code></td><td><span class="ob req">✅</span></td><td>Email del firmante</td><td>Email válido</td></tr>
+          <tr><td><code>telefono</code></td><td><span class="ob req">✅</span></td><td>Móvil del firmante</td><td>9 dígitos, empieza por 6 o 7</td></tr>
+          <tr><td><code>cargo</code></td><td><span class="ob opt">⬜</span></td><td>Cargo del firmante</td><td>Texto libre. Comunidades: <code>Presidente de la Comunidad</code> o <code>Administrador de Fincas</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.3 · <code>contratos.csv</code></h3>
+    <p><strong>Una fila = un suministro (un CUPS).</strong> Cada fila genera un expediente (trámite) + su contrato de suministro. Nivel de detalle <strong>Completo</strong>: incluye comisiones y liquidez.</p>
+    <p class="muted" style="font-weight:600;color:var(--brand-dark);">Enlace y datos del expediente</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Columna</th><th>Obl.</th><th>Descripción</th><th>Valores / formato</th></tr></thead>
+        <tbody>
+          <tr><td><code>numero_documento_titular</code></td><td><span class="ob req">✅</span></td><td>NIF/CIF del titular del suministro (debe existir en <code>clientes.csv</code>)</td><td>p. ej. <code>12345678Z</code></td></tr>
+          <tr><td><code>comercial</code></td><td><span class="ob req">✅</span></td><td>Nombre del comercial responsable</td><td>Texto (lo mapeamos a un usuario del CRM, ver §9)</td></tr>
+          <tr><td><code>estado</code></td><td><span class="ob req">✅</span></td><td>Estado del expediente. Para contratos activos usa <code>Activo</code></td><td>Ver §6 (10 estados)</td></tr>
+          <tr><td><code>tipo_plan</code></td><td><span class="ob rec">🟡</span></td><td>Tipo de plan/precio</td><td><code>fijo</code> o <code>indexado</code></td></tr>
+          <tr><td><code>fecha_creacion</code></td><td><span class="ob rec">🟡</span></td><td>Fecha de alta del expediente. Si no la conoces, déjala vacía (usaremos la de activación)</td><td><code>DD/MM/YYYY</code></td></tr>
+          <tr><td><code>fecha_tramitacion</code></td><td><span class="ob rec">🟡</span></td><td>Fecha de tramitación. Si no la conoces, déjala vacía</td><td><code>DD/MM/YYYY</code></td></tr>
+          <tr><td><code>fecha_activacion</code></td><td><span class="ob req">✅</span></td><td>Fecha en que el suministro se activó/empezó</td><td><code>DD/MM/YYYY</code></td></tr>
+          <tr><td><code>fecha_renovacion</code></td><td><span class="ob req">✅</span></td><td><strong>Fecha de renovación/vencimiento.</strong> Crítica para los avisos de renovación</td><td><code>DD/MM/YYYY</code></td></tr>
+          <tr><td><code>comision_empresa</code></td><td><span class="ob req">✅</span></td><td>Comisión de la empresa (importe). Pon <code>0</code> si no aplica</td><td>Número (punto decimal)</td></tr>
+          <tr><td><code>comision_comercial</code></td><td><span class="ob req">✅</span></td><td>Comisión del comercial (importe). Pon <code>0</code> si no aplica</td><td>Número (punto decimal)</td></tr>
+          <tr><td><code>estado_liquidez</code></td><td><span class="ob rec">🟡</span></td><td>Estado de cobro/pago</td><td>Ver §6 (estados de liquidez)</td></tr>
+          <tr><td><code>fecha_cobro</code></td><td><span class="ob opt">⬜</span></td><td>Fecha de cobro de la comercializadora</td><td><code>DD/MM/YYYY</code></td></tr>
+          <tr><td><code>fecha_pago</code></td><td><span class="ob opt">⬜</span></td><td>Fecha de pago al comercial</td><td><code>DD/MM/YYYY</code></td></tr>
+          <tr><td><code>proveedor</code></td><td><span class="ob opt">⬜</span></td><td>Proveedor/gestor intermediario, si lo usáis</td><td>Texto</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-weight:600;color:var(--brand-dark);">Datos del suministro</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Columna</th><th>Obl.</th><th>Descripción</th><th>Valores / formato</th></tr></thead>
+        <tbody>
+          <tr><td><code>tipo_contrato</code></td><td><span class="ob req">✅</span></td><td>Tipo de operación</td><td>Ver §6 (tipos de contrato)</td></tr>
+          <tr><td><code>servicio</code></td><td><span class="ob rec">🟡</span></td><td>Tipo de suministro (ayuda a validar la tarifa)</td><td><code>Luz</code> o <code>Gas</code></td></tr>
+          <tr><td><code>cups</code></td><td><span class="ob req">✅</span></td><td>Código CUPS del punto de suministro (único)</td><td>20 caracteres, empieza por <code>ES</code> (ver §7)</td></tr>
+          <tr><td><code>comercializadora</code></td><td><span class="ob req">✅</span></td><td>Comercializadora <strong>actual</strong> del suministro (con la que está contratado)</td><td>Ver §6 (comercializadoras)</td></tr>
+          <tr><td><code>comercializadora_anterior</code></td><td><span class="ob opt">⬜</span></td><td>Comercializadora anterior, si hubo cambio</td><td>Ver §6</td></tr>
+          <tr><td><code>tarifa</code></td><td><span class="ob req">✅</span></td><td>Tarifa de acceso</td><td>Luz: <code>2.0TD</code>,<code>3.0TD</code>,<code>6.1TD</code>,<code>1TD</code> · Gas: <code>RL-1</code>…<code>RL-7</code></td></tr>
+          <tr><td><code>consumo_anual</code></td><td><span class="ob rec">🟡</span></td><td>Consumo anual en kWh</td><td>Número entero</td></tr>
+          <tr><td><code>potencia_p1</code>…<code>potencia_p6</code></td><td><span class="ob rec">🟡</span></td><td>Potencia contratada por periodo (kW)</td><td>Número (punto decimal). Solo los periodos que apliquen (ver §8)</td></tr>
+          <tr><td><code>direccion_suministro</code></td><td><span class="ob req">✅</span></td><td>Dirección del punto de suministro (puede diferir de la del titular)</td><td>Texto</td></tr>
+          <tr><td><code>codigo_postal_suministro</code></td><td><span class="ob req">✅</span></td><td>Código postal del suministro</td><td>5 dígitos</td></tr>
+          <tr><td><code>provincia_suministro</code></td><td><span class="ob req">✅</span></td><td>Provincia del suministro</td><td>Texto</td></tr>
+          <tr><td><code>localidad_suministro</code></td><td><span class="ob req">✅</span></td><td>Localidad del suministro</td><td>Texto</td></tr>
+          <tr><td><code>observaciones</code></td><td><span class="ob opt">⬜</span></td><td>Notas libres sobre el suministro</td><td>Texto</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.4 · <code>documentos.csv</code></h3>
+    <p>Un CSV no puede contener los ficheros, así que los enlazas por <strong>URL de Google Drive</strong>. En la importación, <strong>nosotros descargamos cada fichero de tu Drive y lo subimos a vuestro almacenamiento (Firebase)</strong>, de modo que dentro del CRM se comporta como un documento nativo (vista previa y descarga). Esto se hace <strong>una sola vez</strong>.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Columna</th><th>Obl.</th><th>Descripción</th><th>Valores / formato</th></tr></thead>
+        <tbody>
+          <tr><td><code>numero_documento_titular</code></td><td><span class="ob req">✅</span></td><td>NIF/CIF del cliente al que pertenece el documento</td><td>p. ej. <code>12345678Z</code></td></tr>
+          <tr><td><code>cups</code></td><td><span class="ob opt">⬜</span></td><td>CUPS del suministro al que pertenece. Si lo dejas vacío, se asocia al expediente principal del cliente</td><td>p. ej. <code>ES0031405935606823DF</code></td></tr>
+          <tr><td><code>tipo_documento</code></td><td><span class="ob rec">🟡</span></td><td>Tipo de documento</td><td><code>Factura</code>, <code>Contrato firmado</code>, <code>Documento identidad (DNI/CIF)</code>, <code>Certificado</code>, <code>Otro</code></td></tr>
+          <tr><td><code>nombre_archivo</code></td><td><span class="ob req">✅</span></td><td>Nombre del fichero con extensión</td><td>p. ej. <code>factura_enero2025.pdf</code></td></tr>
+          <tr><td><code>url</code></td><td><span class="ob req">✅</span></td><td>Enlace <strong>con acceso de lectura</strong> al fichero en Drive</td><td>p. ej. <code>https://drive.google.com/file/d/.../view</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="warn">
+      <p>⚠️ <strong>Permisos de los enlaces:</strong> cada URL debe ser accesible (Drive: «Cualquiera con el enlace → Lector»), o bien compártenos la carpeta de Drive completa. Si el enlace pide permiso, no podremos descargar el fichero.</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="s6">
+    <h2><span class="num">6.</span> Valores permitidos (listas cerradas)</h2>
+    <p>Copia estos valores <strong>exactamente</strong> (respetando tildes y mayúsculas).</p>
+    <ul class="vals">
+      <li>
+        <span class="k"><code>tipo</code> de cliente</span>
+        <div class="pills"><code>Particular</code><code>Autónomo</code><code>Empresa</code><code>Comunidad de Propietarios</code></div>
+      </li>
+      <li>
+        <span class="k"><code>tipo_documento</code> según el tipo de cliente</span>
+        <div class="table-scroll" style="margin-top:6px;">
+          <table>
+            <thead><tr><th>Tipo de cliente</th><th>Documentos válidos</th></tr></thead>
+            <tbody>
+              <tr><td>Particular</td><td><code>DNI</code>, <code>NIE</code>, <code>Otro</code></td></tr>
+              <tr><td>Autónomo</td><td><code>DNI</code>, <code>CIF</code>, <code>NIE</code></td></tr>
+              <tr><td>Empresa</td><td><code>CIF</code></td></tr>
+              <tr><td>Comunidad de Propietarios</td><td><code>CIF</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </li>
+      <li>
+        <span class="k"><code>estado</code> del expediente</span>
+        <div class="pills"><code>Borrador</code><code>Tramitable</code><code>Verificado</code><code>Pendiente de Firma</code><code>Procesando</code><code>Activo</code><code>Baja</code><code>Scoring</code><code>Incidencia</code><code>KO</code></div>
+        <p class="muted" style="margin:8px 0 0;font-size:13.5px;">Para tu cartera actual de contratos vivos, usa normalmente <code>Activo</code>.</p>
+      </li>
+      <li>
+        <span class="k"><code>estado_liquidez</code></span>
+        <div class="pills"><code>Pendiente de Cobro</code><code>Cobrado por Comercializadora</code><code>Pagado al Comercial</code><code>Adelantado</code><code>Pendiente de Descontar</code><code>Descontado</code></div>
+      </li>
+      <li>
+        <span class="k"><code>tipo_contrato</code></span>
+        <div class="pills"><code>Cambio Compañía</code><code>Cambio Compañía + Cambio Técnico</code><code>Cambio Compañía + Cambio Titular</code><code>Renovación</code><code>Alta Nueva</code></div>
+      </li>
+      <li>
+        <span class="k"><code>tipo_plan</code></span>
+        <div class="pills"><code>fijo</code><code>indexado</code></div>
+      </li>
+      <li>
+        <span class="k"><code>servicio</code></span>
+        <div class="pills"><code>Luz</code><code>Gas</code></div>
+      </li>
+      <li>
+        <span class="k"><code>tarifa</code></span>
+        <div class="pills"><span class="muted" style="font-size:13px;align-self:center;">Luz:</span><code>2.0TD</code><code>3.0TD</code><code>6.1TD</code><code>1TD</code></div>
+        <div class="pills" style="margin-top:6px;"><span class="muted" style="font-size:13px;align-self:center;">Gas:</span><code>RL-1</code><code>RL-2</code><code>RL-3</code><code>RL-4</code><code>RL-5</code><code>RL-6</code><code>RL-7</code></div>
+      </li>
+      <li>
+        <span class="k"><code>comercializadora</code> / <code>comercializadora_anterior</code></span>
+        <div class="pills"><code>Acciona</code><code>Aletteo</code><code>APOLO</code><code>Audax</code><code>Chc</code><code>Eleia</code><code>Endesa</code><code>Gana Energía</code><code>Iberdrola</code><code>Ignis</code><code>Logos</code><code>Naturgy</code><code>Octopus</code><code>Repsol</code><code>Totalenergies</code><code>UniElectrica</code><code>VM</code><code>YaLuz</code><code>Zima Energia</code></div>
+        <p class="muted" style="margin:8px 0 0;font-size:13.5px;">Si tu comercializadora no está en la lista, escribe su nombre real igualmente y nosotros la daremos de alta.</p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- 7 -->
+  <section id="s7">
+    <h2><span class="num">7.</span> Validaciones que aplicaremos al importar</h2>
+    <p>Estas comprobaciones son las mismas que el CRM hace en sus formularios. Las filas que no las pasen se te devolverán para corregir:</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Dato</th><th>Regla</th></tr></thead>
+        <tbody>
+          <tr><td><code>email</code></td><td>Formato de email válido</td></tr>
+          <tr><td><code>telefono</code></td><td>Móvil español (9 dígitos, empieza por 6 o 7)</td></tr>
+          <tr><td><code>iban</code></td><td>IBAN válido (con dígito de control)</td></tr>
+          <tr><td><code>numero_documento</code> (DNI)</td><td>8 dígitos + letra correcta</td></tr>
+          <tr><td><code>numero_documento</code> (NIE)</td><td><code>X/Y/Z</code> + 7 dígitos + letra correcta</td></tr>
+          <tr><td><code>numero_documento</code> (CIF)</td><td>Letra + 7 dígitos + dígito/letra de control correcto</td></tr>
+          <tr><td><code>codigo_postal</code></td><td>5 dígitos (código postal español)</td></tr>
+          <tr><td><code>cups</code></td><td>20 caracteres alfanuméricos, formato <code>ES</code> + 16 dígitos + 2 letras</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <p>Si una parte de tus datos no cumple (p. ej. un teléfono fijo en vez de móvil, o un IBAN incompleto), avísanos: decidimos juntos si se corrige, se deja vacío o se importa igualmente como excepción.</p>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="s8">
+    <h2><span class="num">8.</span> Casos especiales</h2>
+
+    <h3>Cliente con varios suministros (p. ej. luz + gas, o varias direcciones)</h3>
+    <p>Crea <strong>una fila por cada CUPS</strong> en <code>contratos.csv</code>, todas con el mismo <code>numero_documento_titular</code>.</p>
+    <ul>
+      <li>Por defecto, cada fila (cada CUPS) será <strong>su propio expediente</strong>.</li>
+      <li>Si varios suministros deben ir como <strong>un único expediente</strong> (típico dual luz+gas), basta con que esas filas tengan el <strong>mismo titular, la misma <code>fecha_activacion</code> y el mismo <code>comercial</code></strong>: las agrupamos nosotros al importar. (Si hay alguna excepción, indícalo en <code>observaciones</code>.)</li>
+    </ul>
+
+    <h3>Potencias por tarifa</h3>
+    <ul>
+      <li>Luz <code>2.0TD</code> → normalmente solo <code>potencia_p1</code> y <code>potencia_p2</code>.</li>
+      <li>Luz <code>3.0TD</code> / <code>6.1TD</code> → los 6 periodos (<code>potencia_p1</code>…<code>potencia_p6</code>).</li>
+      <li>Gas (<code>RL-x</code>) → sin potencias (déjalas vacías).</li>
+    </ul>
+
+    <h3>Documento a nivel de cliente (no de un suministro concreto)</h3>
+    <p>P. ej. el DNI/CIF del titular: rellena <code>numero_documento_titular</code> y deja <code>cups</code> <strong>vacío</strong>; lo asociaremos al expediente principal del cliente.</p>
+
+    <h3>Dirección de suministro = dirección del titular</h3>
+    <p>Si coinciden, copia los mismos valores en las columnas <code>*_suministro</code>.</p>
+  </section>
+
+  <!-- 9 -->
+  <section id="s9">
+    <h2><span class="num">9.</span> Lo que necesitamos que nos envíes aparte</h2>
+    <ol class="steps">
+      <li>
+        <strong>Mapa de comerciales <code>nombre → email</code>.</strong> En <code>contratos.csv</code> pones el <strong>nombre</strong> del comercial; para enlazarlo con su usuario del CRM necesitamos una lista que relacione cada nombre exacto que uses con el <strong>email del usuario ya creado en el CRM</strong>. Ejemplo:
+        <div class="table-scroll" style="margin-top:10px;">
+          <table>
+            <thead><tr><th>comercial (como aparece en el CSV)</th><th>email del usuario en el CRM</th></tr></thead>
+            <tbody>
+              <tr><td>Laura Fernández</td><td>laura.fernandez@tuempresa.com</td></tr>
+              <tr><td>…</td><td>…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="warn" style="margin-top:10px;">
+          <p>Importante: esos usuarios (comerciales) deben <strong>existir ya en el CRM</strong> antes de importar. El comercial que no tenga match se asignará a un usuario <strong>admin</strong>.</p>
+        </div>
+      </li>
+      <li><strong>Acceso a los documentos.</strong> Que las URLs de <code>documentos.csv</code> tengan permiso de lectura, o bien compártenos la carpeta de Drive completa.</li>
+    </ol>
+  </section>
+
+  <!-- 10 -->
+  <section id="s10">
+    <h2><span class="num">10.</span> Checklist antes de enviárnoslo</h2>
+    <ul class="check">
+      <li>Trabajado sobre <code>plantillas/</code> (no sobre <code>ejemplos/</code>).</li>
+      <li>Cabeceras intactas (sin renombrar ni reordenar columnas).</li>
+      <li><code>numero_documento</code> único y correcto en <code>clientes.csv</code> (es la clave de enlace).</li>
+      <li>Cada <code>numero_documento_titular</code> de <code>contratos.csv</code> y <code>documentos.csv</code> existe en <code>clientes.csv</code>.</li>
+      <li>Cada <code>cif_cliente</code> de <code>firmantes.csv</code> existe en <code>clientes.csv</code> (y es Empresa/Comunidad).</li>
+      <li>Cada <code>cups</code> es único.</li>
+      <li>Fechas en <code>DD/MM/YYYY</code>; decimales con punto.</li>
+      <li>Valores de las listas cerradas escritos tal cual (§6).</li>
+      <li>Empresas/Comunidades tienen su fila en <code>firmantes.csv</code>.</li>
+      <li>URLs de documentos accesibles.</li>
+      <li>Adjuntado el mapa de comerciales <code>nombre → email</code>.</li>
+    </ul>
+    <p style="margin-top:20px;font-size:16px;">¿Dudas al rellenar? <strong>Escríbenos y te ayudamos con tu caso concreto.</strong></p>
+  </section>
+
+  <footer>
+    Negoco CRM · Guía de importación de datos
+  </footer>
+
+</div>
+</body>
+</html>
