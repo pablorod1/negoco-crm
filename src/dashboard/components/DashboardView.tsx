@@ -9,6 +9,7 @@ import {
   SubcomercialLayout,
 } from "../layouts";
 import { useCallback, useEffect, useState } from "react";
+import { SipsConsultorView } from "./sips/SipsConsultorView";
 
 interface DashboardViewProps {
   userData: User;
@@ -53,6 +54,10 @@ export const DashboardView = ({
   useEffect(() => {
     checkSubComerciales();
   }, [checkSubComerciales]);
+
+  if (currentView === "sips") {
+    return <SipsConsultorView />;
+  }
 
   const commonProps = {
     userData,

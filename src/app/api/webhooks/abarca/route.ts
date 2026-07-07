@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { getTursoClientByTenant } from "@/core/libsql/client";
 import { AbarcaWebhookSchema } from "@/comparativas/types/abarca.types";
 import { uploadBase64File } from "@/core/firebase/data/uploadBase64File";
+import {
+  attachApoloSipsToRawPayload,
+  createAbarcaApoloSipsSummary,
+} from "@/comparativas/utils/abarca-apolo-sips";
+import { isValidApoloSipsCups, sanitizeCups } from "@/integrations/apolo-sips/cups";
+import { fetchApoloSipsProcedure } from "@/integrations/apolo-sips/server";
+import type { ApoloSipsElectricityConsumptionRow } from "@/integrations/apolo-sips/types";
 
 export async function POST(req: Request) {
   // 1. Auth: solo x-api-key
@@ -90,6 +97,7 @@ export async function POST(req: Request) {
       { status: 404 },
     );
   }
+  const apoloSipsPromise = fetchAbarcaApoloSipsSummary(payload.cups);
 
   // 7. Upload files to Firebase
   const storagePath = `${organizationId}/comparativas/${comparativaId}`;
@@ -185,6 +193,8 @@ export async function POST(req: Request) {
     sql: "SELECT id FROM abarca_estudios WHERE comparativa_id = ?",
     args: [comparativaId],
   });
+  const apoloSips = await apoloSipsPromise;
+  const rawPayload = attachApoloSipsToRawPayload(body, apoloSips);
 
   const estudioArgs = [
     payload.crm_id,
@@ -228,7 +238,7 @@ export async function POST(req: Request) {
     payload.observaciones ?? null,
     payload.servicios ?? null,
     payload.permanencia ?? 0,
-    JSON.stringify(body),
+    rawPayload,
   ];
 
   if (existingEstudio.rows.length > 0) {
@@ -275,4 +285,42 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ success: true });
+}
+
+async function fetchAbarcaApoloSipsSummary(cups: string | undefined) {
+  if (!cups) return null;
+
+  const apiKey = process.env.APOLO_SIPS_API_KEY;
+  if (!apiKey) {
+    console.warn("[abarca-webhook] APOLO_SIPS_API_KEY is not configured");
+    return null;
+  }
+
+  const sanitizedCups = sanitizeCups(cups);
+  if (!isValidApoloSipsCups(sanitizedCups)) {
+    console.warn("[abarca-webhook] invalid CUPS for Apolo SIPS", {
+      cups: sanitizedCups,
+    });
+    return null;
+  }
+
+  try {
+    const consumptions = await fetchApoloSipsProcedure({
+      apiKey,
+      cups: sanitizedCups,
+      procedure: "CONSUMOS",
+      supplyType: "ELECTRICIDAD",
+    });
+
+    return createAbarcaApoloSipsSummary(
+      sanitizedCups,
+      consumptions.rows as ApoloSipsElectricityConsumptionRow[],
+    );
+  } catch (error) {
+    console.warn(
+      "[abarca-webhook] unable to fetch Apolo SIPS demand power",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
 }

@@ -1,0 +1,4 @@
+tipo,nombre,apellidos,tipo_documento,numero_documento,email,telefono,iban,direccion,codigo_postal,provincia,localidad
+Particular,María,García López,DNI,12345678Z,maria.garcia@example.com,612345678,ES9121000418450200051332,"Calle Mayor 12, 3º B",28013,Madrid,Madrid
+Empresa,Panadería La Espiga S.L.,,CIF,B66758616,administracion@laespiga.example,600112233,ES6000491500051234567892,"Polígono Industrial El Prado, Nave 7",46930,Valencia,Quart de Poblet
+Comunidad de Propietarios,C.P. Residencial Los Olivos,,CIF,A58818501,fincaslosolivos@example.com,722556677,ES8023100001180000012345,Av. de la Constitución 45,41001,Sevilla,Sevilla

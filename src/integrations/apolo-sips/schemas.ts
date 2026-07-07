@@ -1,17 +1,9 @@
 import { z } from "zod";
+import { APOLO_SIPS_CUPS_REGEX, sanitizeCups } from "./cups";
 
 export const ApoloSipsProcedureSchema = z.enum(["PS", "CONSUMOS"]);
 
 export const ApoloSipsSupplyTypeSchema = z.enum(["ELECTRICIDAD", "GAS"]);
-
-const CUPS_REGEX = /^ES\d{16}[A-Z]{2}[A-Z0-9]{0,2}$/;
-
-export function sanitizeCups(raw: string): string {
-  return raw
-    .trim()
-    .replace(/[\s\-_.]/g, "")
-    .toUpperCase();
-}
 
 export const ApoloSipsRequestSchema = z
   .object({
@@ -19,7 +11,10 @@ export const ApoloSipsRequestSchema = z
       .string()
       .min(1, "El CUPS es obligatorio.")
       .transform(sanitizeCups)
-      .refine((cups) => CUPS_REGEX.test(cups), "El CUPS no es válido."),
+      .refine(
+        (cups) => APOLO_SIPS_CUPS_REGEX.test(cups),
+        "El CUPS no es válido.",
+      ),
     tipoSuministro: ApoloSipsSupplyTypeSchema,
     procedimientos: z
       .array(ApoloSipsProcedureSchema)

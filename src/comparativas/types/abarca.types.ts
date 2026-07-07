@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ApoloSipsPeriodValues } from "@/integrations/apolo-sips/summary";
 
 // --- Zod Schema ---
 
@@ -74,6 +75,14 @@ export type AbarcaWebhookPayload = z.infer<typeof AbarcaWebhookSchema>;
 
 // --- DB Types ---
 
+export interface AbarcaApoloSipsSummary {
+  cups: string;
+  fetched_at: string;
+  months: number;
+  has_data: boolean;
+  max_demand_power_kw_by_period: ApoloSipsPeriodValues;
+}
+
 export interface AbarcaEstudio {
   id: string;
   comparativa_id: string;
@@ -134,6 +143,7 @@ export interface AbarcaEstudio {
   observaciones: string | null;
   servicios: string | null;
   permanencia: number;
+  apolo_sips: AbarcaApoloSipsSummary | null;
 
   raw_payload: string;
   created_at: string;
