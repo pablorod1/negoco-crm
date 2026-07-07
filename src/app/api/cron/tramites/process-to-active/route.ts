@@ -16,7 +16,7 @@ import {
   addOneYear,
   getOriginFromHost,
 } from "@/crm-settings/utils";
-import { sendTramiteStatusUpdatedNotificationForHost } from "@/tramites/server/tramite-status-email";
+import { POST as sendStatusUpdateEmail } from "@/app/api/v2/communications/emails/status-updates/route";
 
 const MAX_ATTEMPTS = 3;
 const JOB_LIMIT = 50;
@@ -153,21 +153,45 @@ async function sendAutomaticEmail(
 ) {
   if (!tramite.user_email) return;
 
-  await sendTramiteStatusUpdatedNotificationForHost({
-    user_to: {
-      name: tramite.user_name || "Usuario",
-      email: tramite.user_email,
-      org_logo: tramite.org_logo || undefined,
+  const origin = getOriginFromHost(job.tenant_host);
+  const request = new Request(
+    `${origin}/api/v2/communications/emails/status-updates`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        host: job.tenant_host,
+        origin,
+      },
+      body: JSON.stringify({
+        type: "tramite",
+        user_to: {
+          name: tramite.user_name || "Usuario",
+          email: tramite.user_email,
+          org_logo: tramite.org_logo || undefined,
+        },
+        tramite_id: job.tramite_id,
+        status: { old: "Procesando", new: "Activo" },
+        client: {
+          name: tramite.client_name || "Cliente",
+          last_name: tramite.client_last_name || undefined,
+        },
+      }),
     },
-    tramite_id: job.tramite_id,
-    status: { old: "Procesando", new: "Activo" },
-    link: getOriginFromHost(job.tenant_host),
-    host: job.tenant_host,
-    client: {
-      name: tramite.client_name || "Cliente",
-      last_name: tramite.client_last_name || undefined,
-    },
-  });
+  ) as NextRequest;
+
+  const response = await sendStatusUpdateEmail(request);
+  const result = (await response.json()) as {
+    success?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.error ||
+        `No se pudo enviar el email de cambio de estado (${response.status}).`,
+    );
+  }
 }
 
 async function processJob(

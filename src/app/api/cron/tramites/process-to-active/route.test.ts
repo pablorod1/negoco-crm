@@ -32,7 +32,7 @@ const mocks = vi.hoisted(() => ({
   claimProcessingJob: vi.fn(),
   updateProcessingJobStatus: vi.fn(),
   createNotification: vi.fn(),
-  sendEmail: vi.fn(),
+  sendStatusUpdateEmail: vi.fn(),
 }));
 
 vi.mock("@/core/libsql/client", () => ({
@@ -53,8 +53,8 @@ vi.mock("@/core/services/serverNotificationsService", () => ({
     create: mocks.createNotification,
   },
 }));
-vi.mock("@/tramites/server/tramite-status-email", () => ({
-  sendTramiteStatusUpdatedNotificationForHost: mocks.sendEmail,
+vi.mock("@/app/api/v2/communications/emails/status-updates/route", () => ({
+  POST: mocks.sendStatusUpdateEmail,
 }));
 
 const route = await import("./route");
@@ -79,8 +79,13 @@ beforeEach(() => {
   mocks.updateProcessingJobStatus.mockReset();
   mocks.createNotification.mockReset();
   mocks.createNotification.mockResolvedValue({ success: true });
-  mocks.sendEmail.mockReset();
-  mocks.sendEmail.mockResolvedValue(undefined);
+  mocks.sendStatusUpdateEmail.mockReset();
+  mocks.sendStatusUpdateEmail.mockResolvedValue(
+    new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
   mocks.tenantExecute.mockClear();
   mocks.tenantExecuteImpl = async (statement) => {
     if (statement.sql.includes("FROM tramites")) {
@@ -142,7 +147,7 @@ describe("GET /api/cron/tramites/process-to-active", () => {
         status: "completed",
       }),
     );
-    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.sendStatusUpdateEmail).toHaveBeenCalledTimes(1);
   });
 
   test("skips stale jobs when status or processing_date no longer matches", async () => {
@@ -171,6 +176,6 @@ describe("GET /api/cron/tramites/process-to-active", () => {
       jobId: "job-1",
       status: "skipped",
     });
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.sendStatusUpdateEmail).not.toHaveBeenCalled();
   });
 });
