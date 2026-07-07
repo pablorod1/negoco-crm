@@ -33,13 +33,12 @@ export const DashboardView = ({
   const [hasSubComerciales, setComercialHasSubComerciales] = useState(false);
   const isSubcomercial = userData.role === "2" && userData.super_id !== null;
   const canAccessMetrics = permissions.isDireccion;
-
-  if (currentView === "sips") {
-    return <SipsConsultorView />;
-  }
+  const isSipsView = currentView === "sips";
 
   const visibleView: Exclude<ViewType, "sips"> =
-    canAccessMetrics || currentView !== "metrics" ? currentView : "main";
+    !isSipsView && (canAccessMetrics || currentView !== "metrics")
+      ? currentView
+      : "main";
   const nonAdminView: Exclude<ViewType, "metrics" | "sips"> =
     visibleView === "incidencias" ? "incidencias" : "main";
 
@@ -64,6 +63,10 @@ export const DashboardView = ({
   useEffect(() => {
     checkSubComerciales();
   }, [checkSubComerciales]);
+
+  if (isSipsView) {
+    return <SipsConsultorView />;
+  }
 
   const commonProps = {
     userData,
