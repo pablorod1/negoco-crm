@@ -21,6 +21,7 @@ import {
   useApoloSips,
 } from "@/integrations/apolo-sips";
 import type {
+  ApoloSipsElectricityConsumptionRow,
   ApoloSipsPeriod,
   ApoloSipsPeriodValues,
 } from "@/integrations/apolo-sips";
@@ -36,6 +37,12 @@ const NUMBER_FORMAT = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: 2,
 });
 
+const TARIFF_TYPE_BY_ATR_CODE: Record<string, string> = {
+  "018": "2.0TD",
+  "019": "3.0TD",
+  "020": "6.1TD",
+};
+
 export function SipsConsultorView() {
   const [cups, setCups] = React.useState("");
   const [lastConsultedCups, setLastConsultedCups] = React.useState("");
@@ -44,6 +51,7 @@ export function SipsConsultorView() {
   > | null>(null);
   const [message, setMessage] = React.useState<SipsMessage | null>(null);
   const { fetchConsumptions, loading } = useApoloSips();
+  const tariffType = summary ? getTariffType(summary.rows) : null;
 
   const handleSubmit = React.useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -184,6 +192,16 @@ export function SipsConsultorView() {
                 Ultimos {summary.rows.length} meses
               </CardDescription>
             </CardHeader>
+            <CardContent className="pt-0">
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-sm font-medium text-gray-500">
+                  Tipo de tarifa
+                </p>
+                <p className="mt-1 text-xl font-bold text-gray-950">
+                  {tariffType || "-"}
+                </p>
+              </div>
+            </CardContent>
           </Card>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -273,4 +291,16 @@ function SipsLoadingState() {
 
 function formatValue(value: number): string {
   return NUMBER_FORMAT.format(value);
+}
+
+function getTariffType(
+  rows: ApoloSipsElectricityConsumptionRow[],
+): string | null {
+  const rawCode = rows
+    .find((row) => row.codigoTarifaATR?.trim())
+    ?.codigoTarifaATR?.trim();
+
+  if (!rawCode) return null;
+
+  return TARIFF_TYPE_BY_ATR_CODE[rawCode] ?? rawCode;
 }
