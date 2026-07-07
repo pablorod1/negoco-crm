@@ -9,6 +9,7 @@ import {
   SubcomercialLayout,
 } from "../layouts";
 import { useCallback, useEffect, useState } from "react";
+import { SipsConsultorView } from "./sips/SipsConsultorView";
 
 interface DashboardViewProps {
   userData: User;
@@ -32,9 +33,14 @@ export const DashboardView = ({
   const [hasSubComerciales, setComercialHasSubComerciales] = useState(false);
   const isSubcomercial = userData.role === "2" && userData.super_id !== null;
   const canAccessMetrics = permissions.isDireccion;
-  const visibleView: ViewType =
+
+  if (currentView === "sips") {
+    return <SipsConsultorView />;
+  }
+
+  const visibleView: Exclude<ViewType, "sips"> =
     canAccessMetrics || currentView !== "metrics" ? currentView : "main";
-  const nonAdminView: Exclude<ViewType, "metrics"> =
+  const nonAdminView: Exclude<ViewType, "metrics" | "sips"> =
     visibleView === "incidencias" ? "incidencias" : "main";
 
   const checkSubComerciales = useCallback(async () => {

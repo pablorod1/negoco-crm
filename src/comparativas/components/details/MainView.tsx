@@ -26,6 +26,7 @@ import {
   Zap,
   AlertTriangle,
   Clock,
+  Gauge,
 } from "lucide-react";
 import UpdateComparativaStatusModal from "@/comparativas/components/editComparativa/UpdateComparativaStatusModal";
 import CompletarEstudioModal from "@/comparativas/components/editComparativa/CompletarEstudioModal";
@@ -50,6 +51,27 @@ interface MainViewProps {
   isProcessed: boolean;
 }
 
+const PERIODS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+const ABARCA_POWER_FIELDS = [
+  "potencia_contratada",
+  "potencia_contratada_p2",
+  "potencia_contratada_p3",
+  "potencia_contratada_p4",
+  "potencia_contratada_p5",
+  "potencia_contratada_p6",
+] as const;
+const ABARCA_CONSUMPTION_FIELDS = [
+  "consumo_p1",
+  "consumo_p2",
+  "consumo_p3",
+  "consumo_p4",
+  "consumo_p5",
+  "consumo_p6",
+] as const;
+const NUMBER_FORMAT = new Intl.NumberFormat("es-ES", {
+  maximumFractionDigits: 2,
+});
+
 export default function MainView({
   comparativa,
   userData,
@@ -67,6 +89,35 @@ export default function MainView({
   // Los admins pueden editar comisiones cuando la comparativa está estudiada
   const canEditComissions = isAdmin && isStudied;
   const hasPrioritySummary = !isSubcomercial || isStudied;
+  const abarcaEstudio = comparativa.abarca_estudio;
+  const contractedPowers = abarcaEstudio
+    ? PERIODS.map((period, index) => ({
+      period,
+      value: abarcaEstudio[ABARCA_POWER_FIELDS[index]],
+    }))
+    : [];
+  const abarcaConsumption = abarcaEstudio
+    ? PERIODS.map((period, index) => ({
+      period,
+      value: abarcaEstudio[ABARCA_CONSUMPTION_FIELDS[index]],
+    }))
+    : [];
+  const totalAbarcaConsumption = getNullableTotal(
+    abarcaConsumption.map((item) => item.value),
+  );
+  const apoloDemandPower = abarcaEstudio?.apolo_sips
+    ? PERIODS.map((period) => ({
+      period,
+      value:
+        abarcaEstudio.apolo_sips?.max_demand_power_kw_by_period[period] ??
+        null,
+    }))
+    : [];
+  const maxApoloDemandPower = getNullableTotal(
+    apoloDemandPower.length
+      ? [Math.max(...apoloDemandPower.map((item) => item.value ?? 0))]
+      : [],
+  );
 
   // Fetch supplier information if company_id is available
   const { supplier, loading: isLoadingSupplier } = useEnergySupplierById(
@@ -567,48 +618,95 @@ export default function MainView({
       </div>
 
       {/* Estudio Abarca Section */}
-      {comparativa.abarca_estudio && (
+      {abarcaEstudio && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" />
               Estudio Negoco Cloud IA
             </CardTitle>
-            <CardDescription className="text-gray-500">
+            <CardDescription className="text-gray-500 hidden">
               Datos recibidos del comparador energético
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Titular */}
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-                  Titular
-                </p>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs text-gray-500">Nombre completo</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.nombre_completo || "—"}
-                    </p>
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+                    Titular
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 gap-y-8">
+                    <div>
+                      <p className="text-xs text-gray-500">Nombre completo</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {abarcaEstudio.nombre_completo || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">DNI / NIF</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {abarcaEstudio.dni || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Email</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {abarcaEstudio.email || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Teléfono</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {abarcaEstudio.movil || "—"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500">DNI / NIF</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.dni || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Email</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.email || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Teléfono</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.movil || "—"}
-                    </p>
+                </div>
+                {/* Dirección y Contacto */}
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+                    Dirección del suministro
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Dirección</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {[
+                          abarcaEstudio.calle_cups,
+                          abarcaEstudio.numero_cups,
+                        ]
+                          .filter(Boolean)
+                          .join(" ") || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Localidad</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {abarcaEstudio.localidad_cups || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Código Postal</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {abarcaEstudio.codpostal_cups || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">IBAN</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {abarcaEstudio.iban || "—"}
+                      </p>
+                    </div>
+                    {abarcaEstudio.observaciones && (
+                      <div>
+                        <p className="text-xs text-gray-500">Observaciones</p>
+                        <p className="text-sm text-gray-700">
+                          {abarcaEstudio.observaciones}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -618,128 +716,132 @@ export default function MainView({
                 <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
                   Suministro
                 </p>
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4 gap-y-8">
                   <div>
                     <p className="text-xs text-gray-500">CUPS</p>
                     <p className="text-sm font-medium text-gray-900 break-all">
-                      {comparativa.abarca_estudio.cups}
+                      {abarcaEstudio.cups}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Tarifa</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.tipo_tarifa || "—"}
+                      {abarcaEstudio.tipo_tarifa || "—"}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-start gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500">Potencia P1</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.abarca_estudio.potencia_contratada != null
-                          ? `${comparativa.abarca_estudio.potencia_contratada} kW`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Potencia P2</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.abarca_estudio.potencia_contratada_p2 !=
-                          null
-                          ? `${comparativa.abarca_estudio.potencia_contratada_p2} kW`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Potencia P3</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.abarca_estudio.potencia_contratada_p3 !=
-                          null
-                          ? `${comparativa.abarca_estudio.potencia_contratada_p3} kW`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Potencia P4</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.abarca_estudio.potencia_contratada_p4 !=
-                          null
-                          ? `${comparativa.abarca_estudio.potencia_contratada_p4} kW`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Potencia P5</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.abarca_estudio.potencia_contratada_p5 !=
-                          null
-                          ? `${comparativa.abarca_estudio.potencia_contratada_p5} kW`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Potencia P6</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {comparativa.abarca_estudio.potencia_contratada_p6 !=
-                          null
-                          ? `${comparativa.abarca_estudio.potencia_contratada_p6} kW`
-                          : "—"}
-                      </p>
-                    </div>
+                  <div className="flex flex-wrap items-start gap-4 col-span-2">
+                    {contractedPowers.map(({ period, value }) => (
+                      <div key={period}>
+                        <p className="text-xs text-gray-500">
+                          Potencia {period}
+                        </p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatNullableUnit(value, "kW")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-start gap-4 col-span-2">
+                    {abarcaConsumption.map(({ period, value }) => (
+                      <div key={period}>
+                        <p className="text-xs text-gray-500">
+                          Consumo {period}
+                        </p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatNullableUnit(value, "kWh")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Consumo total</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatNullableUnit(totalAbarcaConsumption, "kWh")}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Compañía actual</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.empresa_cliente || "—"}
+                      {abarcaEstudio.empresa_cliente || "—"}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Dirección y Contacto */}
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-                  Dirección del suministro
-                </p>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs text-gray-500">Dirección</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {[
-                        comparativa.abarca_estudio.calle_cups,
-                        comparativa.abarca_estudio.numero_cups,
-                      ]
-                        .filter(Boolean)
-                        .join(" ") || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Localidad</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.localidad_cups || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Código Postal</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.codpostal_cups || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">IBAN</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {comparativa.abarca_estudio.iban || "—"}
-                    </p>
-                  </div>
-                  {comparativa.abarca_estudio.observaciones && (
+              {/* Potencia Demandada APOLO */}
+              {abarcaEstudio.apolo_sips && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+                    Potencia máxima demandada (Apolo SIPS)
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 gap-y-8">
+                    {apoloDemandPower.map(({ period, value }) => (
+                      <div key={period}>
+                        <p className="text-xs text-gray-500">
+                          Potencia {period}
+                        </p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatNullableUnit(value, "kW")}
+                        </p>
+                      </div>
+                    ))}
                     <div>
-                      <p className="text-xs text-gray-500">Observaciones</p>
-                      <p className="text-sm text-gray-700">
-                        {comparativa.abarca_estudio.observaciones}
+                      <p className="text-xs text-gray-500">Máximo registrado</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {formatNullableUnit(maxApoloDemandPower, "kW")}
                       </p>
                     </div>
-                  )}
+                  </div>
                 </div>
+              )}
+
+            </div>
+
+          </CardContent>
+        </Card>
+      )}
+
+      {abarcaEstudio?.apolo_sips && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-primary-600" />
+              Potencia máxima demandada
+            </CardTitle>
+            <CardDescription className="text-gray-500">
+              Datos de Apolo SIPS para los últimos{" "}
+              {abarcaEstudio.apolo_sips.months} meses disponibles
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex flex-col gap-2 rounded-xl border border-primary-100 bg-primary-50/40 p-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs text-gray-500">CUPS consultado</p>
+                <p className="font-mono text-sm font-semibold text-gray-900">
+                  {abarcaEstudio.apolo_sips.cups}
+                </p>
               </div>
+              <div className="text-left md:text-right">
+                <p className="text-xs text-gray-500">Máximo registrado</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {formatNullableUnit(maxApoloDemandPower, "kW")}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+              {apoloDemandPower.map(({ period, value }) => (
+                <div
+                  key={period}
+                  className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                >
+                  <p className="text-xs font-semibold text-primary-700">
+                    {period}
+                  </p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formatNullableUnit(value, "kW")}
+                  </p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -781,4 +883,17 @@ export default function MainView({
       </Card>
     </div>
   );
+}
+
+function getNullableTotal(values: Array<number | null>): number | null {
+  if (!values.some((value) => value !== null)) return null;
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0);
+}
+
+function formatNullableUnit(
+  value: number | null | undefined,
+  unit: "kW" | "kWh",
+): string {
+  if (value === null || value === undefined) return "—";
+  return `${NUMBER_FORMAT.format(value)} ${unit}`;
 }

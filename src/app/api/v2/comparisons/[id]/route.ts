@@ -8,6 +8,7 @@ import { updateComparativaGeneral } from "@/comparativas/utils/updateComparativa
 import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
 import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 import { AbarcaEstudio } from "@/comparativas/types/abarca.types";
+import { parseAbarcaApoloSipsSummary } from "@/comparativas/utils/abarca-apolo-sips";
 
 /**
  * Database row interfaces for type safety
@@ -860,6 +861,7 @@ export async function POST(
       });
       if (abarcaResult.rows.length > 0) {
         const row = abarcaResult.rows[0];
+        const rawPayload = String(row.raw_payload);
         abarcaEstudio = {
           id: String(row.id),
           comparativa_id: String(row.comparativa_id),
@@ -867,30 +869,18 @@ export async function POST(
           ide: Number(row.ide),
           cups: String(row.cups),
           tipo_tarifa: row.tipo_tarifa ? String(row.tipo_tarifa) : null,
-          potencia_contratada: row.potencia_contratada
-            ? Number(row.potencia_contratada)
-            : null,
-          potencia_contratada_p2: row.potencia_contratada_p2
-            ? Number(row.potencia_contratada_p2)
-            : null,
-          potencia_contratada_p3: row.potencia_contratada_p3
-            ? Number(row.potencia_contratada_p3)
-            : null,
-          potencia_contratada_p4: row.potencia_contratada_p4
-            ? Number(row.potencia_contratada_p4)
-            : null,
-          potencia_contratada_p5: row.potencia_contratada_p5
-            ? Number(row.potencia_contratada_p5)
-            : null,
-          potencia_contratada_p6: row.potencia_contratada_p6
-            ? Number(row.potencia_contratada_p6)
-            : null,
-          consumo_p1: row.consumo_p1 ? Number(row.consumo_p1) : null,
-          consumo_p2: row.consumo_p2 ? Number(row.consumo_p2) : null,
-          consumo_p3: row.consumo_p3 ? Number(row.consumo_p3) : null,
-          consumo_p4: row.consumo_p4 ? Number(row.consumo_p4) : null,
-          consumo_p5: row.consumo_p5 ? Number(row.consumo_p5) : null,
-          consumo_p6: row.consumo_p6 ? Number(row.consumo_p6) : null,
+          potencia_contratada: toNullableNumber(row.potencia_contratada),
+          potencia_contratada_p2: toNullableNumber(row.potencia_contratada_p2),
+          potencia_contratada_p3: toNullableNumber(row.potencia_contratada_p3),
+          potencia_contratada_p4: toNullableNumber(row.potencia_contratada_p4),
+          potencia_contratada_p5: toNullableNumber(row.potencia_contratada_p5),
+          potencia_contratada_p6: toNullableNumber(row.potencia_contratada_p6),
+          consumo_p1: toNullableNumber(row.consumo_p1),
+          consumo_p2: toNullableNumber(row.consumo_p2),
+          consumo_p3: toNullableNumber(row.consumo_p3),
+          consumo_p4: toNullableNumber(row.consumo_p4),
+          consumo_p5: toNullableNumber(row.consumo_p5),
+          consumo_p6: toNullableNumber(row.consumo_p6),
           empresa_cliente: row.empresa_cliente
             ? String(row.empresa_cliente)
             : null,
@@ -924,7 +914,8 @@ export async function POST(
           observaciones: row.observaciones ? String(row.observaciones) : null,
           servicios: row.servicios ? String(row.servicios) : null,
           permanencia: Number(row.permanencia ?? 0),
-          raw_payload: String(row.raw_payload),
+          apolo_sips: parseAbarcaApoloSipsSummary(rawPayload),
+          raw_payload: rawPayload,
           created_at: String(row.created_at),
         };
       }
@@ -958,6 +949,13 @@ export async function POST(
       { status: 500 },
     );
   }
+}
+
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
 }
 
 // ==================== DELETE METHOD ====================
