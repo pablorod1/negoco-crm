@@ -305,13 +305,13 @@ export default function ForumPageClient() {
       setDetail((current) =>
         current
           ? {
-              ...current,
-              comments: [...current.comments, result.data!],
-              topic: {
-                ...current.topic,
-                comments_count: current.topic.comments_count + 1,
-              },
-            }
+            ...current,
+            comments: [...current.comments, result.data!],
+            topic: {
+              ...current.topic,
+              comments_count: current.topic.comments_count + 1,
+            },
+          }
           : current,
       );
       setTopics((current) =>
@@ -356,11 +356,11 @@ export default function ForumPageClient() {
       setDetail((current) =>
         current
           ? {
-              ...current,
-              comments: current.comments.map((item) =>
-                item.id === result.data!.id ? result.data! : item,
-              ),
-            }
+            ...current,
+            comments: current.comments.map((item) =>
+              item.id === result.data!.id ? result.data! : item,
+            ),
+          }
           : current,
       );
     } catch (error) {
@@ -393,9 +393,7 @@ export default function ForumPageClient() {
     <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="hidden size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 sm:flex">
-            <MessagesSquare className="size-5" />
-          </div>
+
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
               Foro

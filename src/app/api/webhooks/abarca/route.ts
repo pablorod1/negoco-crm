@@ -292,13 +292,13 @@ async function fetchAbarcaApoloSipsSummary(cups: string | undefined) {
 
   const apiKey = process.env.APOLO_SIPS_API_KEY;
   if (!apiKey) {
-    console.warn("[abarca-webhook] APOLO_SIPS_API_KEY is not configured");
+    console.warn("[abarca-webhook] Missing SIPS API key");
     return null;
   }
 
   const sanitizedCups = sanitizeCups(cups);
   if (!isValidApoloSipsCups(sanitizedCups)) {
-    console.warn("[abarca-webhook] invalid CUPS for Apolo SIPS", {
+    console.warn("[abarca-webhook] invalid CUPS for SIPS", {
       cups: sanitizedCups,
     });
     return null;
@@ -318,7 +318,7 @@ async function fetchAbarcaApoloSipsSummary(cups: string | undefined) {
     );
   } catch (error) {
     console.warn(
-      "[abarca-webhook] unable to fetch Apolo SIPS demand power",
+      "[abarca-webhook] unable to fetch SIPS demand power",
       error instanceof Error ? error.message : error,
     );
     return null;

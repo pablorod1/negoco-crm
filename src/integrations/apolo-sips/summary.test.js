@@ -45,7 +45,7 @@ const row = ({
   codigoTipoLectura: null,
 });
 
-describe("Apolo SIPS electricity consumption summary", () => {
+describe("SIPS electricity consumption summary", () => {
   test("sums active energy P1-P6 and converts Wh to kWh", () => {
     const summary = summarizeElectricityConsumption([
       row({

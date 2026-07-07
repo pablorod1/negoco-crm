@@ -134,7 +134,7 @@ export default function ContractForm({
           setApoloConsumptionFeedback({
             type: "warning",
             message:
-              "No se pudo obtener consumo de Apolo SIPS. Puedes guardar el contrato igualmente.",
+              "No se pudo obtener consumo de SIPS. Puedes guardar el contrato igualmente.",
           });
           return;
         }
@@ -145,7 +145,7 @@ export default function ContractForm({
           setApoloConsumptionFeedback({
             type: "warning",
             message:
-              "Apolo SIPS no devolvio consumos para este CUPS. Puedes guardar el contrato igualmente.",
+              "SIPS no devolvio consumos para este CUPS. Puedes guardar el contrato igualmente.",
           });
           return;
         }
@@ -157,7 +157,7 @@ export default function ContractForm({
         }));
         setApoloConsumptionFeedback({
           type: "success",
-          message: `Consumo actualizado desde Apolo SIPS (${summary.rows.length} meses).`,
+          message: `Consumo obtenido desde SIPS (ult. 12 meses).`,
         });
       } catch {
         if (apoloRequestIdRef.current !== requestId) return;
@@ -165,7 +165,7 @@ export default function ContractForm({
         setApoloConsumptionFeedback({
           type: "warning",
           message:
-            "No se pudo obtener consumo de Apolo SIPS. Puedes guardar el contrato igualmente.",
+            "No se pudo obtener consumo. Puedes guardar el contrato igualmente.",
         });
       } finally {
         if (apoloRequestIdRef.current === requestId) {
@@ -365,30 +365,31 @@ export default function ContractForm({
                   }
                 />
               )}
-              <InputComponent
-                name="consumption"
-                label="Consumo"
-                value={
-                  typeof formData.consumption === "number"
-                    ? formData.consumption.toString()
-                    : formData.consumption || ""
-                }
-                onChange={handleFieldChange}
-                type="number"
-                readOnly={isConsumptionReadOnly}
-              />
+              <div className="w-full space-y-1.5">
+                <InputComponent
+                  name="consumption"
+                  label="Consumo"
+                  value={
+                    typeof formData.consumption === "number"
+                      ? formData.consumption.toString()
+                      : formData.consumption || ""
+                  }
+                  onChange={handleFieldChange}
+                  type="number"
+                  readOnly={isConsumptionReadOnly}
+                />
+                {apoloConsumptionFeedback && (
+                  <p
+                    className={`ml-2 text-xs ${apoloConsumptionFeedback.type === "success"
+                      ? "text-emerald-700"
+                      : "text-amber-700"
+                      }`}
+                  >
+                    {apoloConsumptionFeedback.message}
+                  </p>
+                )}
+              </div>
             </div>
-            {apoloConsumptionFeedback && (
-              <p
-                className={`text-sm ${
-                  apoloConsumptionFeedback.type === "success"
-                    ? "text-emerald-700"
-                    : "text-amber-700"
-                }`}
-              >
-                {apoloConsumptionFeedback.message}
-              </p>
-            )}
             <div className="flex items-stretch gap-4 w-full">
               {POTS.map((pot, index) => (
                 <InputComponent
@@ -399,12 +400,12 @@ export default function ContractForm({
                   type="number"
                   value={
                     formData[`pot${index + 1}` as keyof ContractDB] !==
-                    undefined
+                      undefined
                       ? (
-                          formData[
-                            `pot${index + 1}` as keyof ContractDB
-                          ] as number
-                        ).toString()
+                        formData[
+                        `pot${index + 1}` as keyof ContractDB
+                        ] as number
+                      ).toString()
                       : "0"
                   }
                   startContent={<Zap size={16} stroke="#333" />}

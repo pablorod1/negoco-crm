@@ -54,7 +54,7 @@ export async function POST(
     const apiKey = process.env.APOLO_SIPS_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { success: false, error: "Falta la configuración de Apolo SIPS." },
+        { success: false, error: "Missing API key." },
         { status: 500 },
       );
     }

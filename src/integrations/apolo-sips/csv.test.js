@@ -3,7 +3,7 @@ import { GAS_CONSUMPTION_COLUMNS } from "./columns.ts";
 import { parseCsv } from "./csv.ts";
 import { normalizeApoloSipsCsv } from "./normalize.ts";
 
-describe("Apolo SIPS CSV parser", () => {
+describe("SIPS CSV parser", () => {
   test("parses header-only CSV as no data rows", () => {
     const parsed = parseCsv("cups,fechaInicioMesConsumo\n");
 

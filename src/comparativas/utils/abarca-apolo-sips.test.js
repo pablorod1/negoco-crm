@@ -32,7 +32,7 @@ const consumptionRow = {
   codigoTipoLectura: null,
 };
 
-describe("Abarca Apolo SIPS payload helpers", () => {
+describe("Abarca SIPS payload helpers", () => {
   test("creates max demand summary in kW", () => {
     const summary = createAbarcaApoloSipsSummary(
       " es0222120028021251aw ",
@@ -56,7 +56,7 @@ describe("Abarca Apolo SIPS payload helpers", () => {
     });
   });
 
-  test("attaches and parses Apolo summary from raw payload", () => {
+  test("attaches and parses SIPS summary from raw payload", () => {
     const summary = createAbarcaApoloSipsSummary(
       "ES0222120028021251AW",
       [consumptionRow],

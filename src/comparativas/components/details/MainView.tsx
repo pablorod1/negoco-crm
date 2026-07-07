@@ -768,11 +768,11 @@ export default function MainView({
                 </div>
               </div>
 
-              {/* Potencia Demandada APOLO */}
+              {/* Potencia Demandada SIPS */}
               {abarcaEstudio.apolo_sips && (
                 <div className="space-y-3">
                   <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-                    Potencia máxima demandada (Apolo SIPS)
+                    Potencia máxima demandada (SIPS)
                   </p>
                   <div className="grid grid-cols-2 gap-4 gap-y-8">
                     {apoloDemandPower.map(({ period, value }) => (
@@ -809,7 +809,7 @@ export default function MainView({
               Potencia máxima demandada
             </CardTitle>
             <CardDescription className="text-gray-500">
-              Datos de Apolo SIPS para los últimos{" "}
+              Datos de SIPS para los últimos{" "}
               {abarcaEstudio.apolo_sips.months} meses disponibles
             </CardDescription>
           </CardHeader>

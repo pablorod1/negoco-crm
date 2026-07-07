@@ -51,14 +51,14 @@ export async function fetchApoloSipsProcedure({
       }),
     });
   } catch {
-    throw new ApoloSipsUpstreamError("No se pudo contactar con Apolo SIPS.");
+    throw new ApoloSipsUpstreamError("No se pudo contactar con SIPS.");
   }
 
   const rawText = await response.text();
 
   if (!response.ok) {
     throw new ApoloSipsUpstreamError(
-      "Apolo SIPS ha rechazado la consulta.",
+      "SIPS ha rechazado la consulta.",
       response.status,
     );
   }
@@ -71,7 +71,7 @@ export async function fetchApoloSipsProcedure({
       error instanceof ApoloSipsParseError
     ) {
       throw new ApoloSipsUpstreamError(
-        "Apolo SIPS ha devuelto una respuesta inválida.",
+        "SIPS ha devuelto una respuesta inválida.",
         response.status,
       );
     }

@@ -68,7 +68,7 @@ export function useApoloSips(): UseApoloSipsReturn {
         const result = (await response.json()) as ApoloSipsApiResponse;
 
         if (!result.success) {
-          const error = result.error || "Error al consultar Apolo SIPS.";
+          const error = result.error || "Error al consultar SIPS.";
           setState((previous) => ({
             ...previous,
             data: null,
@@ -90,7 +90,7 @@ export function useApoloSips(): UseApoloSipsReturn {
         const message =
           error instanceof Error
             ? error.message
-            : "Error de conexión al consultar Apolo SIPS.";
+            : "Error de conexión al consultar SIPS.";
 
         setState((previous) => ({
           ...previous,

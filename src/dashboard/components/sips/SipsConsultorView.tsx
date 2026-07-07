@@ -63,7 +63,7 @@ export function SipsConsultorView() {
         setLastConsultedCups("");
         setMessage({
           type: "warning",
-          text: "El CUPS no tiene un formato valido para Apolo SIPS.",
+          text: "El CUPS no tiene un formato valido para SIPS.",
         });
         return;
       }
@@ -81,7 +81,7 @@ export function SipsConsultorView() {
       if (!data || data.tipoSuministro !== "ELECTRICIDAD" || !data.consumos) {
         setMessage({
           type: "warning",
-          text: "No se pudo obtener consumo de Apolo SIPS.",
+          text: "No se pudo obtener consumo de SIPS.",
         });
         return;
       }
@@ -90,7 +90,7 @@ export function SipsConsultorView() {
       if (nextSummary.rows.length === 0) {
         setMessage({
           type: "warning",
-          text: "Apolo SIPS no devolvio consumos para este CUPS.",
+          text: "SIPS no devolvio consumos para este CUPS.",
         });
         return;
       }
@@ -113,7 +113,6 @@ export function SipsConsultorView() {
               <CardTitle className="text-xl text-gray-900">
                 Consultor SIPS
               </CardTitle>
-              <CardDescription>Apolo SIPS</CardDescription>
             </div>
             {lastConsultedCups ? (
               <Badge variant="secondary" className="w-fit font-mono">
@@ -160,11 +159,10 @@ export function SipsConsultorView() {
 
           {message ? (
             <div
-              className={`mt-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                message.type === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-amber-200 bg-amber-50 text-amber-800"
-              }`}
+              className={`mt-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${message.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+                }`}
             >
               <AlertCircle className="h-4 w-4" />
               <span>{message.text}</span>
