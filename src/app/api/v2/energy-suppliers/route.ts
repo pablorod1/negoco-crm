@@ -4,6 +4,7 @@ import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { ComercializadoraVM } from "@/comercializadoras/types";
 import { Row } from "@libsql/client";
+import { getNormalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
 
 // Request validation schema
 const EnergySupplierRequestSchema = z.object({
@@ -112,7 +113,7 @@ export async function POST(
         c.name,
         c.logo,
         c.active,
-        (SELECT COUNT(*) FROM documentacion_files WHERE folder_name LIKE '%' || c.name || '%') as num_files,
+        (SELECT COUNT(*) FROM documentacion_files WHERE ${getNormalizedDocumentLibraryFolderNameSql()} LIKE '%' || c.name || '%') as num_files,
         (
           SELECT COUNT(DISTINCT con.tramite_id)
           FROM contracts con

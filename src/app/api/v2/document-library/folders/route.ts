@@ -4,7 +4,7 @@ import {
   DOCUMENT_LIBRARY_ROOT_FOLDER,
   normalizeDocumentLibraryFolderPath,
 } from "@/core/utils/document-library-path";
-import { normalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
+import { getNormalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -95,7 +95,7 @@ export async function DELETE(
       WHERE folder_name = ?
         OR trim(folder_name) = ?
         OR rtrim(trim(folder_name), '/') = ?
-        OR ${normalizedDocumentLibraryFolderNameSql} = ?
+        OR ${getNormalizedDocumentLibraryFolderNameSql()} = ?
     `;
     await tursoClient.execute({
       sql: query,
@@ -192,7 +192,7 @@ export async function POST(
       WHERE folder_name = ?
         OR trim(folder_name) = ?
         OR rtrim(trim(folder_name), '/') = ?
-        OR ${normalizedDocumentLibraryFolderNameSql} = ?
+        OR ${getNormalizedDocumentLibraryFolderNameSql()} = ?
     `;
     await tursoClient.execute({
       sql: query,

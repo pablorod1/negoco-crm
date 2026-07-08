@@ -1,10 +1,13 @@
-export const normalizedDocumentLibraryFolderNameSql = `
+export function getNormalizedDocumentLibraryFolderNameSql(
+  column: string = "folder_name"
+) {
+  return `
   rtrim(
     trim(
       replace(
         replace(
           replace(
-            replace(folder_name, ' /', '/'),
+            replace(${column}, ' /', '/'),
             '/ ',
             '/'
           ),
@@ -18,3 +21,4 @@ export const normalizedDocumentLibraryFolderNameSql = `
     '/'
   )
 `;
+}

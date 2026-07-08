@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  getFirebaseStoragePathFromDownloadUrl,
   getDocumentLibraryStorageFolderName,
   normalizeDocumentLibraryFolderPath,
   normalizeDocumentLibraryFolderPaths,
@@ -42,5 +43,14 @@ describe("document library folder path normalization", () => {
         "Naturgy",
       ])
     ).toEqual(["TOTALENERGIES", "Naturgy"]);
+  });
+
+  test("extracts exact Firebase Storage paths from download URLs", () => {
+    expect(
+      getFirebaseStoragePathFromDownloadUrl(
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/org%2Fdocumentacion%2FTOTALENERGIES%20%2FOferta%2Bv1.pdf?alt=media&token=abc"
+      )
+    ).toBe("org/documentacion/TOTALENERGIES /Oferta+v1.pdf");
+    expect(getFirebaseStoragePathFromDownloadUrl("not a url")).toBeUndefined();
   });
 });

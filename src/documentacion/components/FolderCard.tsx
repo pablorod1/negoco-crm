@@ -44,7 +44,7 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          folder_path: `${currentPath ? `${currentPath}/` : ""}${name}`,
+          folder_path: folderPath,
           organization_id: userData.organization.id,
         }),
       });

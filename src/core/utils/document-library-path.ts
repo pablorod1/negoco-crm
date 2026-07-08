@@ -34,3 +34,24 @@ export function normalizeDocumentLibraryFolderPaths(paths: string[]): string[] {
 
   return Array.from(normalizedPaths);
 }
+
+export function getFirebaseStoragePathFromDownloadUrl(
+  downloadUrl?: string | null
+): string | undefined {
+  if (!downloadUrl) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(downloadUrl);
+    const encodedPath = url.pathname.split("/o/")[1];
+
+    if (!encodedPath) {
+      return undefined;
+    }
+
+    return decodeURIComponent(encodedPath);
+  } catch {
+    return undefined;
+  }
+}

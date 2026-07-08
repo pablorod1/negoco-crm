@@ -82,6 +82,7 @@ export default function DeleteFileConfirmationModal({
             file_name: file.name,
             file_id: file.id,
             organization_id: userData.organization.id,
+            download_url: file.download_url,
           })),
         }),
       });
@@ -151,7 +152,7 @@ export default function DeleteFileConfirmationModal({
           Eliminar
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg border-0 shadow-xl">
+      <DialogContent className="max-w-3xl border-0 shadow-xl">
         {loading && (
           <LoadingStateModal
             title={getLoadingMessage().title}
@@ -188,10 +189,10 @@ export default function DeleteFileConfirmationModal({
                   className="flex items-center justify-between py-2 px-3 bg-white rounded border"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-gray-900 truncate max-w-lg">
                       {file.name}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 truncate max-w-lg">
                       {file.folder_name || "Raíz"}
                     </p>
                   </div>
@@ -204,13 +205,13 @@ export default function DeleteFileConfirmationModal({
                 <span className="text-sm font-medium text-gray-700">
                   Archivo:
                 </span>
-                <span className="text-sm text-gray-900">{files[0]?.name}</span>
+                <span className="text-sm text-gray-900 truncate max-w-lg">{files[0]?.name}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700">
                   Ubicación:
                 </span>
-                <span className="text-sm text-gray-900">
+                <span className="text-sm text-gray-900 truncate max-w-lg">
                   {files[0]?.folder_name || "Raíz"}
                 </span>
               </div>
@@ -218,7 +219,7 @@ export default function DeleteFileConfirmationModal({
           )}
         </div>
 
-        <DialogFooter className="gap-3">
+        <DialogFooter className="gap-0">
           <Button
             variant="outline"
             onClick={onClose}
@@ -229,7 +230,6 @@ export default function DeleteFileConfirmationModal({
           <Button
             variant="destructive"
             onClick={handleDelete}
-            className="bg-red-600 hover:bg-red-700"
           >
             {files.length > 1 ? "Eliminar archivos" : "Eliminar archivo"}
           </Button>

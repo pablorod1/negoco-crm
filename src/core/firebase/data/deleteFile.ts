@@ -11,7 +11,8 @@ export const deleteFileFromStorage = async (
   parent_folder: string,
   folderPath: string,
   fileName: string,
-  organization_id: string
+  organization_id: string,
+  exactStoragePath?: string
 ): Promise<{
   success: boolean;
   error?: string;
@@ -24,21 +25,45 @@ export const deleteFileFromStorage = async (
             organization_id
           )
         : [buildStoragePath([organization_id, parent_folder, folderPath])];
+    const storagePaths = new Set<string>();
+
+    if (exactStoragePath) {
+      storagePaths.add(exactStoragePath);
+    }
+
+    folderPaths.forEach((storageFolderPath) => {
+      storagePaths.add(buildStoragePath([storageFolderPath, fileName]));
+    });
 
     let lastError: unknown;
+    let sawObjectNotFound = false;
 
-    for (const storageFolderPath of folderPaths) {
+    for (const storagePath of storagePaths) {
       try {
-        await deleteObject(
-          ref(storage, buildStoragePath([storageFolderPath, fileName]))
-        );
+        await deleteObject(ref(storage, storagePath));
 
         return {
           success: true,
         };
       } catch (error) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "storage/object-not-found"
+        ) {
+          sawObjectNotFound = true;
+          continue;
+        }
+
         lastError = error;
       }
+    }
+
+    if (sawObjectNotFound && !lastError) {
+      return {
+        success: true,
+      };
     }
 
     console.error("Error deleting file:", lastError);

@@ -3,10 +3,11 @@ import { uploadFiles } from "@/core/firebase/data/uploadFiles";
 import { deleteFileFromStorage } from "@/core/firebase/data/deleteFile";
 import { getTursoClient } from "@/core/libsql/client";
 import {
+  getFirebaseStoragePathFromDownloadUrl,
   getDocumentLibraryStorageFolderName,
   normalizeDocumentLibraryFolderPath,
 } from "@/core/utils/document-library-path";
-import { normalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
+import { getNormalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -43,6 +44,7 @@ interface DocumentLibraryDeleteRequest {
     file_name: string;
     file_id: string;
     organization_id: string;
+    download_url?: string;
   }>;
 }
 
@@ -82,6 +84,7 @@ const DeleteBodySchema = z.object({
         file_name: z.string().min(1, "file_name is required"),
         file_id: z.string().min(1, "file_id is required"),
         organization_id: z.string().min(1, "organization_id is required"),
+        download_url: z.string().min(1).optional(),
       })
     )
     .min(1, "At least one file must be specified"),
@@ -134,7 +137,7 @@ async function getDocumentacionFilesByFolder(
       WHERE folder_name = ?
         OR trim(folder_name) = ?
         OR rtrim(trim(folder_name), '/') = ?
-        OR ${normalizedDocumentLibraryFolderNameSql} = ?
+        OR ${getNormalizedDocumentLibraryFolderNameSql()} = ?
       ORDER BY upload_date DESC
     `,
     args: [
@@ -187,6 +190,31 @@ async function getDocumentacionFilesByFolder(
   }
 
   return files;
+}
+
+async function getDocumentacionFileForDelete(
+  tursoClient: TursoClient,
+  fileId: string
+) {
+  const response = await tursoClient.execute({
+    sql: `
+      SELECT name, folder_name, download_url
+      FROM documentacion_files
+      WHERE id = ?
+    `,
+    args: [fileId],
+  });
+
+  const row = response.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    name: row[0] as string,
+    folderName: normalizeDocumentLibraryFolderPath(row[1] as string),
+    downloadUrl: row[2] as string | null,
+  };
 }
 
 /**
@@ -524,9 +552,25 @@ export async function DELETE(
 
     // Process each file with optimized error handling
     for (const file of files) {
-      const { folder_path, file_name, file_id, organization_id } = file;
+      const { folder_path, file_name, file_id, organization_id, download_url } =
+        file;
+      const storedFile = await getDocumentacionFileForDelete(
+        tursoClient,
+        file_id
+      );
+
+      if (!storedFile) {
+        results.push({ file_id, success: true });
+        continue;
+      }
+
+      const fileName = storedFile.name || file_name;
       const normalizedFolderPath =
+        storedFile.folderName ||
         normalizeDocumentLibraryFolderPath(folder_path);
+      const exactStoragePath = getFirebaseStoragePathFromDownloadUrl(
+        storedFile.downloadUrl || download_url
+      );
 
       try {
         // Delete from Firebase storage first (atomic operation design)
@@ -534,13 +578,14 @@ export async function DELETE(
           await deleteFileFromStorage(
             "documentacion",
             normalizedFolderPath,
-            file_name,
-            organization_id
+            fileName,
+            organization_id,
+            exactStoragePath
           );
 
         if (!firebaseSuccess) {
           errors.push(
-            `Firebase deletion failed for ${file_name}: ${firebaseError}`
+            `Firebase deletion failed for ${fileName}: ${firebaseError}`
           );
           continue;
         }
@@ -555,10 +600,10 @@ export async function DELETE(
         results.push({ file_id, success: true });
       } catch (error) {
         console.error(
-          `[DOCUMENT-LIBRARY-DELETE] Error processing file ${file_name}:`,
+          `[DOCUMENT-LIBRARY-DELETE] Error processing file ${fileName}:`,
           error
         );
-        errors.push(`Failed to delete ${file_name}`);
+        errors.push(`Failed to delete ${fileName}`);
       }
     }
 
