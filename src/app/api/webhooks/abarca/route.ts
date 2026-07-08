@@ -6,7 +6,11 @@ import {
   attachApoloSipsToRawPayload,
   createAbarcaApoloSipsSummary,
 } from "@/comparativas/utils/abarca-apolo-sips";
-import { isValidApoloSipsCups, sanitizeCups } from "@/integrations/apolo-sips/cups";
+import {
+  getApoloSipsBaseCups,
+  isValidApoloSipsCups,
+  sanitizeCups,
+} from "@/integrations/apolo-sips/cups";
 import { fetchApoloSipsProcedure } from "@/integrations/apolo-sips/server";
 import type { ApoloSipsElectricityConsumptionRow } from "@/integrations/apolo-sips/types";
 
@@ -304,16 +308,18 @@ async function fetchAbarcaApoloSipsSummary(cups: string | undefined) {
     return null;
   }
 
+  const apoloSipsCups = getApoloSipsBaseCups(sanitizedCups);
+
   try {
     const consumptions = await fetchApoloSipsProcedure({
       apiKey,
-      cups: sanitizedCups,
+      cups: apoloSipsCups,
       procedure: "CONSUMOS",
       supplyType: "ELECTRICIDAD",
     });
 
     return createAbarcaApoloSipsSummary(
-      sanitizedCups,
+      apoloSipsCups,
       consumptions.rows as ApoloSipsElectricityConsumptionRow[],
     );
   } catch (error) {

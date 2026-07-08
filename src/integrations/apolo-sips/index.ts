@@ -1,11 +1,20 @@
 export { useApoloSips } from "./useApoloSips";
-export { isValidApoloSipsCups, sanitizeCups } from "./cups";
+export {
+  getApoloSipsBaseCups,
+  isValidApoloSipsCups,
+  sanitizeCups,
+} from "./cups";
 export {
   selectLatestElectricityConsumptionRows,
+  selectLatestGasConsumptionRows,
   summarizeElectricityConsumption,
+  summarizeGasConsumption,
 } from "./summary";
 export type {
   ApoloSipsElectricityConsumptionSummary,
+  ApoloSipsGasConsumptionSummary,
+  ApoloSipsGasPeriod,
+  ApoloSipsGasPeriodValues,
   ApoloSipsPeriod,
   ApoloSipsPeriodValues,
 } from "./summary";

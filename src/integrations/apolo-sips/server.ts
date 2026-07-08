@@ -1,4 +1,5 @@
 import { parseCsv, ApoloSipsCsvError } from "./csv";
+import { getApoloSipsBaseCups } from "./cups";
 import { normalizeApoloSipsCsv, ApoloSipsParseError } from "./normalize";
 import type {
   ApoloSipsProcedure,
@@ -47,7 +48,7 @@ export async function fetchApoloSipsProcedure({
       body: JSON.stringify({
         Procedimiento: procedure,
         TipoSuministro: supplyType,
-        CUPS: cups,
+        CUPS: getApoloSipsBaseCups(cups),
       }),
     });
   } catch {
