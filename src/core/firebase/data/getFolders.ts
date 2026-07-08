@@ -1,4 +1,8 @@
 ﻿import { storage } from "@/core/firebase/firebaseConfig";
+import {
+  normalizeDocumentLibraryFolderPath,
+  normalizeDocumentLibraryFolderPaths,
+} from "@/core/utils/document-library-path";
 import { listAll, ref } from "firebase/storage";
 
 export const getFoldersFromDocumentacion = async (
@@ -22,7 +26,9 @@ export const getFoldersFromDocumentacion = async (
 
     return {
       success: true,
-      data: folders.prefixes.map((folder) => folder.name),
+      data: normalizeDocumentLibraryFolderPaths(
+        folders.prefixes.map((folder) => folder.name)
+      ),
     };
   } catch (error) {
     console.error("Error obteniendo carpetas:", error);
@@ -40,10 +46,12 @@ export async function getAllFoldersWithPaths(organization_id: string) {
     );
 
     // Convertimos las rutas para que sean relativas a la carpeta documentacion
-    const relativePaths = paths.map((path) =>
-      path.startsWith(`${organization_id}/documentacion/`)
-        ? path.slice((organization_id + "/documentacion").length + 1)
-        : ""
+    const relativePaths = normalizeDocumentLibraryFolderPaths(
+      paths.map((path) =>
+        path.startsWith(`${organization_id}/documentacion/`)
+          ? path.slice((organization_id + "/documentacion").length + 1)
+          : ""
+      )
     );
 
     // Ordenamos las rutas
@@ -97,22 +105,57 @@ async function traverseFolder(
   }
 }
 
+export async function resolveDocumentacionStorageFolderPaths(
+  folderPath: string,
+  organization_id: string
+) {
+  const rootPath = `${organization_id}/documentacion`;
+  const normalizedFolderPath = normalizeDocumentLibraryFolderPath(folderPath);
+
+  if (normalizedFolderPath === "/") {
+    return [rootPath];
+  }
+
+  let currentPaths = [rootPath];
+
+  for (const segment of normalizedFolderPath.split("/")) {
+    const nextPaths = new Set<string>();
+
+    for (const currentPath of currentPaths) {
+      const result = await listAll(ref(storage, currentPath));
+      const matchingPrefixes = result.prefixes.filter(
+        (prefix) => normalizeDocumentLibraryFolderPath(prefix.name) === segment
+      );
+
+      if (matchingPrefixes.length > 0) {
+        matchingPrefixes.forEach((prefix) => nextPaths.add(prefix.fullPath));
+      } else {
+        nextPaths.add(`${currentPath}/${segment}`);
+      }
+    }
+
+    currentPaths = Array.from(nextPaths);
+  }
+
+  return currentPaths;
+}
+
 export async function getSubFoldersFromFolder(
   folderPath: string = "",
   organization_id: string
 ) {
   try {
-    const fullPath = folderPath
-      ? `${organization_id}/documentacion/${folderPath}`
-      : `${organization_id}/documentacion`;
-    const folderRef = ref(storage, fullPath);
-    const result = await listAll(folderRef);
+    const fullPaths = await resolveDocumentacionStorageFolderPaths(
+      folderPath,
+      organization_id
+    );
+    const results = await Promise.all(
+      fullPaths.map((fullPath) => listAll(ref(storage, fullPath)))
+    );
 
-    // Extraemos solo los nombres de las subcarpetas directas
-    const subfolders = result.prefixes.map((prefix) => {
-      const parts = prefix.fullPath.split("/");
-      return parts[parts.length - 1];
-    });
+    const subfolders = normalizeDocumentLibraryFolderPaths(
+      results.flatMap((result) => result.prefixes.map((prefix) => prefix.name))
+    );
 
     return {
       success: true,
@@ -132,13 +175,19 @@ export const getItemsCountFromFolder = async (
   organization_id: string
 ): Promise<{ success: boolean; items: number }> => {
   try {
-    const folderRef = ref(
-      storage,
-      `${organization_id}/documentacion/${folder}/`
+    const fullPaths = await resolveDocumentacionStorageFolderPaths(
+      folder,
+      organization_id
     );
-    const items = await listAll(folderRef);
+    const results = await Promise.all(
+      fullPaths.map((fullPath) => listAll(ref(storage, fullPath)))
+    );
+    const itemCount = results.reduce(
+      (count, items) => count + items.items.length + items.prefixes.length,
+      0
+    );
 
-    if (items.items.length === 0) {
+    if (itemCount === 0) {
       return {
         success: false,
         items: 0,
@@ -147,7 +196,7 @@ export const getItemsCountFromFolder = async (
 
     return {
       success: true,
-      items: items.items.length + items.prefixes.length,
+      items: itemCount,
     };
   } catch (error) {
     console.error("Error obteniendo cantidad de items:", error);

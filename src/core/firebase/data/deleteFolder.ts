@@ -1,5 +1,11 @@
 ﻿import { storage } from "@/core/firebase/firebaseConfig";
+import { resolveDocumentacionStorageFolderPaths } from "@/core/firebase/data/getFolders";
 import { deleteObject, listAll, ref } from "firebase/storage";
+
+const buildStoragePath = (segments: Array<string | undefined>) =>
+  segments
+    .filter((segment): segment is string => Boolean(segment) && segment !== "/")
+    .join("/");
 
 export const deleteFolderFromStorage = async (
   parent_folder: string,
@@ -9,20 +15,20 @@ export const deleteFolderFromStorage = async (
   success: boolean;
   errors?: string;
 }> => {
-  const folderRef = ref(
-    storage,
-    `${organization_id}/${parent_folder}/${folderPath}`
-  );
+  const folderPaths =
+    parent_folder === "documentacion"
+      ? await resolveDocumentacionStorageFolderPaths(folderPath, organization_id)
+      : [buildStoragePath([organization_id, parent_folder, folderPath])];
 
-  // 1. Get all files in folder
-  const files = await listAll(folderRef);
+  for (const storageFolderPath of folderPaths) {
+    const files = await listAll(ref(storage, storageFolderPath));
 
-  // 2. Delete all files in folder
-  await Promise.all(
-    files.items.map(async (file) => {
-      await deleteObject(file);
-    })
-  );
+    await Promise.all(
+      files.items.map(async (file) => {
+        await deleteObject(file);
+      })
+    );
+  }
 
   return {
     success: true,

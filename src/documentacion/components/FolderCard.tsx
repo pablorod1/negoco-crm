@@ -19,6 +19,7 @@ import {
 import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { User } from "@/core/types";
+import { normalizeDocumentLibraryFolderPath } from "@/core/utils/document-library-path";
 
 interface FolderCardProps {
   name: string;
@@ -29,6 +30,11 @@ interface FolderCardProps {
 export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
   const { refreshDocumentacion } = useDocumentacion();
   const isComercial = userData && userData.role === "2";
+  const folderPath = normalizeDocumentLibraryFolderPath(
+    `${currentPath}/${name}`
+  );
+  const href =
+    folderPath === "/" ? "/documentacion" : `/documentacion/${folderPath}`;
 
   const handleDelete = async () => {
     try {
@@ -90,7 +96,7 @@ export function FolderCard({ name, currentPath, userData }: FolderCardProps) {
           {/* Folder Content */}
           <div className="flex-1 min-w-0">
             <Link
-              href={`/documentacion/${currentPath}/${name}`}
+              href={href}
               className="block group/link"
             >
               <h3 className="font-semibold text-gray-900 truncate group-hover/link:text-blue-600 transition-colors">

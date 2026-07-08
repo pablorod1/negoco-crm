@@ -17,6 +17,7 @@ import { useUser } from "@/core/contexts/UserContext";
 import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import { uploadDocumentLibraryFiles } from "@/documentacion/lib/uploadDocumentLibraryFiles";
+import { normalizeDocumentLibraryFolderPath } from "@/core/utils/document-library-path";
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -36,14 +37,24 @@ interface FolderGroup {
   subfolders: FolderStructure[];
 }
 
-export default function UploadFileModal() {
+interface UploadFileModalProps {
+  initialFolderPath?: string;
+}
+
+export default function UploadFileModal({
+  initialFolderPath = "/",
+}: UploadFileModalProps) {
+  const normalizedInitialFolderPath =
+    normalizeDocumentLibraryFolderPath(initialFolderPath);
   const [isOpen, setIsOpen] = useState(false);
   const { userData } = useUser();
   const { refreshDocumentacion } = useDocumentacion();
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<string>("/");
+  const [selectedFolder, setSelectedFolder] = useState<string>(
+    normalizedInitialFolderPath
+  );
   const [createFolder, setCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
@@ -79,13 +90,18 @@ export default function UploadFileModal() {
 
         // First pass: create all folder objects
         folders.forEach((path) => {
-          const parts = path.split("/");
+          const normalizedPath = normalizeDocumentLibraryFolderPath(path);
+          if (normalizedPath === "/") {
+            return;
+          }
+
+          const parts = normalizedPath.split("/");
           const level = parts.length;
           const name = parts[parts.length - 1];
           const parent = parts.slice(0, -1).join("/");
 
-          folderMap[path] = {
-            path,
+          folderMap[normalizedPath] = {
+            path: normalizedPath,
             displayName: name,
             level,
             parent,
@@ -93,9 +109,9 @@ export default function UploadFileModal() {
           };
 
           if (level === 1) {
-            groups[path] = {
+            groups[normalizedPath] = {
               name,
-              path,
+              path: normalizedPath,
               subfolders: [],
             };
           }
@@ -141,6 +157,12 @@ export default function UploadFileModal() {
     fetchAllFolders();
   }, [userData]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedFolder(normalizedInitialFolderPath);
+    }
+  }, [isOpen, normalizedInitialFolderPath]);
+
   const removeFile = (index: number) => {
     setFiles((prev) => {
       const newFiles = [...prev];
@@ -154,16 +176,18 @@ export default function UploadFileModal() {
 
   const getUploadFilePath = () => {
     if (selectedFolder === "/" && !createFolder) {
-      return selectedFolder;
+      return normalizeDocumentLibraryFolderPath(selectedFolder);
     } else if (selectedFolder === "/" && createFolder) {
-      return newFolderName;
+      return normalizeDocumentLibraryFolderPath(newFolderName);
     } else if (selectedFolder !== "/" && !createFolder) {
-      return selectedFolder;
+      return normalizeDocumentLibraryFolderPath(selectedFolder);
     } else if (selectedFolder !== "/" && createFolder) {
-      return `${selectedFolder}/${newFolderName}`;
+      return normalizeDocumentLibraryFolderPath(
+        `${selectedFolder}/${newFolderName}`
+      );
     }
 
-    return selectedFolder;
+    return normalizeDocumentLibraryFolderPath(selectedFolder);
   };
 
   const handleUpload = async () => {
@@ -188,7 +212,7 @@ export default function UploadFileModal() {
     setFiles([]);
     setCreateFolder(false);
     setNewFolderName("");
-    setSelectedFolder("/");
+    setSelectedFolder(normalizedInitialFolderPath);
     onClose();
   };
 

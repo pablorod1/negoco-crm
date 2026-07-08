@@ -2,6 +2,11 @@ import { DocumentacionFile } from "@/core/types";
 import { uploadFiles } from "@/core/firebase/data/uploadFiles";
 import { deleteFileFromStorage } from "@/core/firebase/data/deleteFile";
 import { getTursoClient } from "@/core/libsql/client";
+import {
+  getDocumentLibraryStorageFolderName,
+  normalizeDocumentLibraryFolderPath,
+} from "@/core/utils/document-library-path";
+import { normalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -117,6 +122,73 @@ async function insertDocumentacionFiles(
   });
 }
 
+async function getDocumentacionFilesByFolder(
+  tursoClient: TursoClient,
+  folderName: string
+): Promise<DocumentacionFile[]> {
+  const normalizedFolderName = normalizeDocumentLibraryFolderPath(folderName);
+  const response = await tursoClient.execute({
+    sql: `
+      SELECT id, name, size, extension, upload_date, download_url, preview_url, type, folder_name
+      FROM documentacion_files
+      WHERE folder_name = ?
+        OR trim(folder_name) = ?
+        OR rtrim(trim(folder_name), '/') = ?
+        OR ${normalizedDocumentLibraryFolderNameSql} = ?
+      ORDER BY upload_date DESC
+    `,
+    args: [
+      normalizedFolderName,
+      normalizedFolderName,
+      normalizedFolderName,
+      normalizedFolderName,
+    ],
+  });
+
+  const files: DocumentacionFile[] = [];
+  const rowsToNormalize: Array<{ id: string; folderName: string }> = [];
+
+  response.rows.forEach((row) => {
+    const fileFolderName = normalizeDocumentLibraryFolderPath(row[8] as string);
+
+    if (fileFolderName !== normalizedFolderName) {
+      return;
+    }
+
+    const id = row[0] as string;
+    const persistedFolderName = row[8] as string;
+
+    if (persistedFolderName !== normalizedFolderName) {
+      rowsToNormalize.push({ id, folderName: normalizedFolderName });
+    }
+
+    files.push({
+      id,
+      name: row[1] as string,
+      size: row[2] as number,
+      extension: row[3] as string,
+      upload_date: row[4] as string,
+      download_url: row[5] as string,
+      preview_url: row[6] as string | null,
+      folder_name: normalizedFolderName,
+      type: row[7] as string as "file" | "folder",
+    });
+  });
+
+  if (rowsToNormalize.length > 0) {
+    await Promise.all(
+      rowsToNormalize.map((row) =>
+        tursoClient.execute({
+          sql: "UPDATE documentacion_files SET folder_name = ? WHERE id = ?",
+          args: [row.folderName, row.id],
+        })
+      )
+    );
+  }
+
+  return files;
+}
+
 /**
  * Retrieves document library files by folder name
  * Maintains backward compatibility with original POST /api/documentacion/get/files
@@ -158,27 +230,7 @@ export async function GET(
       );
     }
 
-    const response = await tursoClient.execute({
-      sql: `
-        SELECT id, name, size, extension, upload_date, download_url, preview_url, type
-        FROM documentacion_files
-        WHERE folder_name = ?
-        ORDER BY upload_date DESC
-      `,
-      args: [folder_name],
-    });
-
-    const files: DocumentacionFile[] = response.rows.map((row) => ({
-      id: row[0] as string,
-      name: row[1] as string,
-      size: row[2] as number,
-      extension: row[3] as string,
-      upload_date: row[4] as string,
-      download_url: row[5] as string,
-      preview_url: row[6] as string | null,
-      folder_name,
-      type: row[7] as string as "file" | "folder",
-    }));
+    const files = await getDocumentacionFilesByFolder(tursoClient, folder_name);
 
     return NextResponse.json({
       success: true,
@@ -271,10 +323,13 @@ async function handleFileUpload(
     }
 
     // Upload files to Firebase Storage
+    const normalizedFolderName =
+      normalizeDocumentLibraryFolderPath(folder_name);
+
     const uploadedFiles = await uploadFiles(
       files,
       `${organization_id}/documentacion`,
-      folder_name
+      getDocumentLibraryStorageFolderName(normalizedFolderName)
     );
 
     // Prepare database records with optimized batch insert
@@ -289,7 +344,7 @@ async function handleFileUpload(
         upload_date: new Date().toISOString(),
         download_url: uploadedFiles[index].downloadURL,
         preview_url: uploadedFiles[index].previewURL || null,
-        folder_name,
+        folder_name: normalizedFolderName,
         type: "file",
       };
     });
@@ -338,6 +393,8 @@ async function handleFileMetadataCreate(
     }
 
     const { folder_name, files } = validationResult.data;
+    const normalizedFolderName =
+      normalizeDocumentLibraryFolderPath(folder_name);
     const uploadDate = new Date().toISOString();
     const documentacionFiles: DocumentacionFile[] = files.map((file) => ({
       id: crypto.randomUUID(),
@@ -347,7 +404,7 @@ async function handleFileMetadataCreate(
       upload_date: uploadDate,
       download_url: file.download_url,
       preview_url: file.preview_url || null,
-      folder_name,
+      folder_name: normalizedFolderName,
       type: "file",
     }));
 
@@ -405,27 +462,7 @@ async function handleFileListing(
       );
     }
 
-    const response = await tursoClient.execute({
-      sql: `
-        SELECT id, name, size, extension, upload_date, download_url, preview_url, type
-        FROM documentacion_files
-        WHERE folder_name = ?
-        ORDER BY upload_date DESC
-      `,
-      args: [folder_name],
-    });
-
-    const files: DocumentacionFile[] = response.rows.map((row) => ({
-      id: row[0] as string,
-      name: row[1] as string,
-      size: row[2] as number,
-      extension: row[3] as string,
-      upload_date: row[4] as string,
-      download_url: row[5] as string,
-      preview_url: row[6] as string | null,
-      folder_name,
-      type: row[7] as string as "file" | "folder",
-    }));
+    const files = await getDocumentacionFilesByFolder(tursoClient, folder_name);
 
     return NextResponse.json({
       success: true,
@@ -488,13 +525,15 @@ export async function DELETE(
     // Process each file with optimized error handling
     for (const file of files) {
       const { folder_path, file_name, file_id, organization_id } = file;
+      const normalizedFolderPath =
+        normalizeDocumentLibraryFolderPath(folder_path);
 
       try {
         // Delete from Firebase storage first (atomic operation design)
         const { success: firebaseSuccess, error: firebaseError } =
           await deleteFileFromStorage(
             "documentacion",
-            folder_path,
+            normalizedFolderPath,
             file_name,
             organization_id
           );

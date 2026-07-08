@@ -12,16 +12,27 @@ import { CircleX } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { useTransitionRouter } from "next-view-transitions";
+import { normalizeDocumentLibraryFolderPath } from "@/core/utils/document-library-path";
 
-const formatFolderPath = (rawPath: string): string[] => {
-  return decodeURIComponent(rawPath).split(",").filter(Boolean);
+const formatFolderPath = (rawPath: string | string[]): string[] => {
+  const decodedPath = Array.isArray(rawPath)
+    ? rawPath.map((segment) => decodeURIComponent(segment)).join("/")
+    : decodeURIComponent(rawPath);
+  const pathWithSlashSeparators = decodedPath.includes("/")
+    ? decodedPath
+    : decodedPath.replaceAll(",", "/");
+  const normalizedPath = normalizeDocumentLibraryFolderPath(
+    pathWithSlashSeparators
+  );
+
+  return normalizedPath === "/" ? [] : normalizedPath.split("/");
 };
 
 const getParentPath = (currentPath: string[]): string => {
   if (currentPath.length <= 1) {
     return "/documentacion";
   }
-  return `/documentacion/${currentPath.slice(0, -1).join(",")}`;
+  return `/documentacion/${currentPath.slice(0, -1).join("/")}`;
 };
 
 export default function FolderPage() {
@@ -32,7 +43,10 @@ export default function FolderPage() {
     useDocumentacion();
 
   // Memoize the folderPath array to prevent recreating it on every render
-  const folderPath = useMemo(() => formatFolderPath(path as string), [path]);
+  const folderPath = useMemo(
+    () => formatFolderPath(path as string | string[]),
+    [path]
+  );
   // Memoize the joined path string to use as a dependency
   const currentPath = useMemo(() => folderPath.join("/"), [folderPath]);
   const [files, setFiles] = useState<DocumentacionFile[]>([]);

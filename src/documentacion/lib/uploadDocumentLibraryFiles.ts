@@ -1,5 +1,9 @@
 import { uploadFiles } from "@/core/firebase/data/uploadFiles";
 import { deleteFiles } from "@/core/firebase/data/deleteFile";
+import {
+  getDocumentLibraryStorageFolderName,
+  normalizeDocumentLibraryFolderPath,
+} from "@/core/utils/document-library-path";
 
 interface UploadDocumentLibraryFilesParams {
   files: File[];
@@ -33,10 +37,11 @@ export async function uploadDocumentLibraryFiles({
     throw new Error("No se pudo identificar la organización");
   }
 
+  const normalizedFolderName = normalizeDocumentLibraryFolderPath(folderName);
   const uploadedFiles = await uploadFiles(
     files,
     `${organizationId}/documentacion`,
-    folderName
+    getDocumentLibraryStorageFolderName(normalizedFolderName)
   );
   const uploadedFilePaths = uploadedFiles
     .map((file) => file.file_path)
@@ -59,7 +64,7 @@ export async function uploadDocumentLibraryFiles({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        folder_name: folderName,
+        folder_name: normalizedFolderName,
         files: fileMetadata,
       }),
     });

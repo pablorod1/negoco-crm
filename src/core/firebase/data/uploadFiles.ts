@@ -19,11 +19,12 @@ export async function uploadFile(
   folder_name?: string
 ): Promise<UploadedFileResult> {
   try {
-    // Subir el archivo original
-    const storageRef = ref(
-      storage,
-      `${parent_folder_name}/${folder_name}/${file.name}`
-    );
+    const file_path = [parent_folder_name, folder_name, file.name]
+      .filter(
+        (segment): segment is string => Boolean(segment) && segment !== "/"
+      )
+      .join("/");
+    const storageRef = ref(storage, file_path);
     await uploadBytes(storageRef, file);
     const downloadURL = await getDownloadURL(storageRef);
 
@@ -34,8 +35,6 @@ export async function uploadFile(
     if (file.type.startsWith("image/")) {
       previewURL = downloadURL;
     }
-
-    const file_path = `${parent_folder_name}/${folder_name}/${file.name}`;
 
     return { downloadURL, previewURL, file_path };
   } catch (error) {

@@ -1,5 +1,6 @@
 import { DocumentacionFile } from "@/core/types";
 import { getTursoClient } from "@/core/libsql/client";
+import { normalizeDocumentLibraryFolderPath } from "@/core/utils/document-library-path";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -83,7 +84,7 @@ export async function GET(
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
       type: row[7] as string as "file" | "folder",
-      folder_name: row[8] as string,
+      folder_name: normalizeDocumentLibraryFolderPath(row[8] as string),
     }));
 
     return NextResponse.json({
@@ -155,7 +156,7 @@ export async function POST(
       download_url: row[5] as string,
       preview_url: row[6] as string | null,
       type: row[7] as string as "file" | "folder",
-      folder_name: row[8] as string,
+      folder_name: normalizeDocumentLibraryFolderPath(row[8] as string),
     }));
 
     return NextResponse.json({

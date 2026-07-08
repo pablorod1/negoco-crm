@@ -1,5 +1,10 @@
 import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
 import { getTursoClient } from "@/core/libsql/client";
+import {
+  DOCUMENT_LIBRARY_ROOT_FOLDER,
+  normalizeDocumentLibraryFolderPath,
+} from "@/core/utils/document-library-path";
+import { normalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -44,6 +49,15 @@ export async function DELETE(
     }
 
     const { folder_path, organization_id } = validationResult.data;
+    const normalizedFolderPath =
+      normalizeDocumentLibraryFolderPath(folder_path);
+
+    if (normalizedFolderPath === DOCUMENT_LIBRARY_ROOT_FOLDER) {
+      return NextResponse.json(
+        { success: false, error: "No se puede eliminar la carpeta raíz" },
+        { status: 400 }
+      );
+    }
 
     const tursoClient = getTursoClient(request);
 
@@ -59,7 +73,7 @@ export async function DELETE(
     const { success: firebaseSuccess, errors: firebaseErrors } =
       await deleteFolderFromStorage(
         "documentacion",
-        folder_path,
+        normalizedFolderPath,
         organization_id
       );
     const storageDeleteTime = performance.now() - storageDeleteStartTime;
@@ -76,10 +90,21 @@ export async function DELETE(
     }
 
     // Delete folder from database only after successful storage deletion
-    const query = `DELETE FROM documentacion_files WHERE folder_name = ?`;
+    const query = `
+      DELETE FROM documentacion_files
+      WHERE folder_name = ?
+        OR trim(folder_name) = ?
+        OR rtrim(trim(folder_name), '/') = ?
+        OR ${normalizedDocumentLibraryFolderNameSql} = ?
+    `;
     await tursoClient.execute({
       sql: query,
-      args: [folder_path],
+      args: [
+        normalizedFolderPath,
+        normalizedFolderPath,
+        normalizedFolderPath,
+        normalizedFolderPath,
+      ],
     });
 
     return NextResponse.json({ success: true });
@@ -121,6 +146,15 @@ export async function POST(
     }
 
     const { folder_path, organization_id } = validationResult.data;
+    const normalizedFolderPath =
+      normalizeDocumentLibraryFolderPath(folder_path);
+
+    if (normalizedFolderPath === DOCUMENT_LIBRARY_ROOT_FOLDER) {
+      return NextResponse.json(
+        { success: false, error: "No se puede eliminar la carpeta raíz" },
+        { status: 400 }
+      );
+    }
 
     const tursoClient = getTursoClient(request);
 
@@ -136,7 +170,7 @@ export async function POST(
     const { success: firebaseSuccess, errors: firebaseErrors } =
       await deleteFolderFromStorage(
         "documentacion",
-        folder_path,
+        normalizedFolderPath,
         organization_id
       );
     const storageDeleteTime = performance.now() - storageDeleteStartTime;
@@ -153,10 +187,21 @@ export async function POST(
     }
 
     // Delete folder from database only after successful storage deletion
-    const query = `DELETE FROM documentacion_files WHERE folder_name = ?`;
+    const query = `
+      DELETE FROM documentacion_files
+      WHERE folder_name = ?
+        OR trim(folder_name) = ?
+        OR rtrim(trim(folder_name), '/') = ?
+        OR ${normalizedDocumentLibraryFolderNameSql} = ?
+    `;
     await tursoClient.execute({
       sql: query,
-      args: [folder_path],
+      args: [
+        normalizedFolderPath,
+        normalizedFolderPath,
+        normalizedFolderPath,
+        normalizedFolderPath,
+      ],
     });
 
     return NextResponse.json({ success: true });
