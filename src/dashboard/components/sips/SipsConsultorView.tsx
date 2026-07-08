@@ -68,13 +68,15 @@ export function SipsConsultorView() {
         return;
       }
 
+      const apoloSipsCups = sanitizedCups.slice(0, 20);
+
       setMessage(null);
       setSummary(null);
-      setLastConsultedCups(sanitizedCups);
-      setCups(sanitizedCups);
+      setLastConsultedCups(apoloSipsCups);
+      setCups(apoloSipsCups);
 
       const data = await fetchConsumptions({
-        cups: sanitizedCups,
+        cups: apoloSipsCups,
         tipoSuministro: "ELECTRICIDAD",
       });
 
