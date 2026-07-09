@@ -801,51 +801,7 @@ export default function MainView({
         </Card>
       )}
 
-      {abarcaEstudio?.apolo_sips && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
-              <Gauge className="h-4 w-4 text-primary-600" />
-              Potencia máxima demandada
-            </CardTitle>
-            <CardDescription className="text-gray-500">
-              Datos de SIPS para los últimos{" "}
-              {abarcaEstudio.apolo_sips.months} meses disponibles
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 flex flex-col gap-2 rounded-xl border border-primary-100 bg-primary-50/40 p-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-xs text-gray-500">CUPS consultado</p>
-                <p className="font-mono text-sm font-semibold text-gray-900">
-                  {abarcaEstudio.apolo_sips.cups}
-                </p>
-              </div>
-              <div className="text-left md:text-right">
-                <p className="text-xs text-gray-500">Máximo registrado</p>
-                <p className="text-lg font-semibold text-gray-900">
-                  {formatNullableUnit(maxApoloDemandPower, "kW")}
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
-              {apoloDemandPower.map(({ period, value }) => (
-                <div
-                  key={period}
-                  className="rounded-lg border border-gray-100 bg-gray-50 p-3"
-                >
-                  <p className="text-xs font-semibold text-primary-700">
-                    {period}
-                  </p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {formatNullableUnit(value, "kW")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Documentos Section */}
       <Card>

@@ -31,7 +31,7 @@ const configUpdateSchema = z.object({
 });
 
 function isConfigEditor(role: string | null | undefined) {
-  return role === "admin" || role === "1";
+  return role === "admin";
 }
 
 async function requireConfigEditor(request: NextRequest) {
