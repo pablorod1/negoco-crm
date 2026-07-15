@@ -52,14 +52,14 @@ export function TableContent<TData, TValue>({
   const bottomPadding =
     virtualRows.length > 0
       ? rowVirtualizer.getTotalSize() -
-        virtualRows[virtualRows.length - 1].end
+      virtualRows[virtualRows.length - 1].end
       : 0;
 
   return (
     <CardContent className="p-0 overflow-hidden w-full">
       <div
         ref={scrollContainerRef}
-        className="max-h-[65vh] overflow-auto"
+        className="max-h-[calc(100dvh-15rem)] overflow-auto"
       >
         <Table>
           <TableHeader className="bg-gray-50/60 border-b border-gray-100">
@@ -74,9 +74,9 @@ export function TableContent<TData, TValue>({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                     </div>
                   </TableHead>
                 ))}
@@ -99,24 +99,24 @@ export function TableContent<TData, TValue>({
                   const row = rows[virtualRow.index];
 
                   return (
-                  <TableRow
-                    key={row.id}
-                    ref={rowVirtualizer.measureElement}
-                    data-index={virtualRow.index}
-                    className="group cursor-default border-b border-gray-50 bg-white transition-colors duration-150 hover:bg-gray-50/30"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className="py-3 px-4 text-sm text-gray-800 first:pl-6 last:pr-6"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                    <TableRow
+                      key={row.id}
+                      ref={rowVirtualizer.measureElement}
+                      data-index={virtualRow.index}
+                      className="group cursor-default border-b border-gray-50 bg-white transition-colors duration-150 hover:bg-gray-50/30"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className="py-3 px-4 text-sm text-gray-800 first:pl-6 last:pr-6"
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
                   );
                 })}
                 {bottomPadding > 0 && (
