@@ -17,9 +17,14 @@ import { Textarea } from "@/core/components/ui/textarea";
 import { Label } from "@/core/components/ui/label";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useImaginaRates } from "@/comercializadoras/hooks/useImaginaRates";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { ComparativaVM } from "@/comparativas/types";
 import ImaginaContractFields from "./ImaginaContractFields";
+import {
+  resolveSupplierSelection,
+  validateImaginaRate,
+} from "@/tramites/utils/validation/create-contract/rate-validation";
 
 interface Props {
   onCreateContract: (contract: ContractDB) => void;
@@ -46,10 +51,16 @@ export default function ContractForm({
   const [formData, setFormData] = React.useState<ContractDB>(
     contract ? contract : createEmptyContractDB(comparativa),
   );
+  const [historicalRateId] = React.useState(
+    () => contract?.rate_id?.trim() || undefined,
+  );
 
   // Load active energy suppliers
-  const { activeSuppliers, loading: suppliersLoading } =
-    useActiveEnergySuppliers();
+  const {
+    activeSuppliers,
+    loading: suppliersLoading,
+    error: suppliersError,
+  } = useActiveEnergySuppliers();
 
   // Convert suppliers to dropdown format
   const supplierOptions = React.useMemo(
@@ -61,19 +72,17 @@ export default function ContractForm({
     [activeSuppliers],
   );
 
-  const isImaginaContract = React.useMemo(() => {
-    const selectedSupplier = activeSuppliers.find(
-      (supplier) => supplier.id === formData.new_company,
-    );
-    const supplierName = selectedSupplier?.name || formData.new_company;
-    return (
-      supplierName
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .toLowerCase()
-        .trim() === "imagina energia"
-    );
-  }, [activeSuppliers, formData.new_company]);
+  const supplierResolution = resolveSupplierSelection(
+    formData.new_company,
+    activeSuppliers,
+    suppliersLoading,
+    suppliersError,
+  );
+  const isImaginaContract = supplierResolution.isImagina;
+  const imaginaRates = useImaginaRates({
+    enabled: isImaginaContract,
+    historicalRateId,
+  });
 
   // Auto-match old_company from Abarca empresa_cliente
   React.useEffect(() => {
@@ -145,8 +154,20 @@ export default function ContractForm({
       plan: formData.plan,
       new_company: formData.new_company,
     });
+    const rateValidation = validateImaginaRate({
+      isImaginaContract,
+      rateId: formData.rate_id,
+      integration: imaginaRates.integration,
+      rates: imaginaRates.rates,
+      loading: imaginaRates.loading,
+      error: imaginaRates.error,
+    });
 
-    if (!validation.succeeded) {
+    if (
+      !validation.succeeded ||
+      !rateValidation.succeeded ||
+      supplierResolution.blocked
+    ) {
       showCustomToast({
         title: "Error",
         message: "Por favor, rellena todos los campos obligatorios",
@@ -154,7 +175,12 @@ export default function ContractForm({
         iconSize: 24,
         icon: CircleX,
       });
-      setErrors(validation.errors);
+      setErrors({
+        ...validation.errors,
+        new_company:
+          supplierResolution.errorMessage || validation.errors.new_company,
+        rate_id: rateValidation.errorMessage || "",
+      });
       return;
     }
 
@@ -165,13 +191,35 @@ export default function ContractForm({
   };
 
   const handleSelectChange = (value: string, name: string) => {
+    const changesNewCompany =
+      name === "new_company" && value !== formData.new_company;
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      ...(changesNewCompany ? { rate_id: null } : {}),
     }));
     setErrors((prev) => ({
       ...prev,
       [name]: validateField(value).errorMessage || "",
+      ...(changesNewCompany ? { rate_id: "" } : {}),
+    }));
+  };
+
+  const handleRateChange = (rateId: string) => {
+    const rateValidation = validateImaginaRate({
+      isImaginaContract: true,
+      rateId,
+      integration: imaginaRates.integration,
+      rates: imaginaRates.rates,
+      loading: imaginaRates.loading,
+      error: imaginaRates.error,
+    });
+
+    setFormData((prev) => ({ ...prev, rate_id: rateId }));
+    setErrors((prev) => ({
+      ...prev,
+      rate_id: rateValidation.errorMessage || "",
     }));
   };
 
@@ -265,14 +313,23 @@ export default function ContractForm({
                 />
               )}
               {suppliersLoading ? (
-                <Skeleton className="h-10 w-full rounded-md" />
+                <div className="flex w-full flex-col gap-2">
+                  <Skeleton className="h-10 w-full rounded-md" />
+                  {supplierResolution.blocked ? (
+                    <p role="status" className="ms-1 text-sm text-amber-700">
+                      {supplierResolution.errorMessage}
+                    </p>
+                  ) : null}
+                </div>
               ) : (
                 <SelectComponent
                   name="new_company"
                   label="Compañía Nueva"
                   items={supplierOptions}
                   onChange={(value) => handleSelectChange(value, "new_company")}
-                  errors={errors.new_company}
+                  errors={
+                    errors.new_company || supplierResolution.errorMessage
+                  }
                   isRequired
                   selectedKey={formData.new_company || ""}
                   textValue={
@@ -320,6 +377,16 @@ export default function ContractForm({
               <ImaginaContractFields
                 formData={formData}
                 setFormData={setFormData}
+                integration={imaginaRates.integration}
+                rates={imaginaRates.rates}
+                unavailableSelectedRate={
+                  imaginaRates.unavailableSelectedRate
+                }
+                ratesLoading={imaginaRates.loading}
+                ratesError={imaginaRates.error}
+                historicalRateId={historicalRateId}
+                rateError={errors.rate_id}
+                onRateChange={handleRateChange}
               />
             )}
             <div className="space-y-1">
@@ -337,6 +404,13 @@ export default function ContractForm({
       </form>
       <ButtonGroupComponent
         loading={loading}
+        submitDisabled={
+          supplierResolution.blocked ||
+          (isImaginaContract &&
+            (imaginaRates.loading ||
+              Boolean(imaginaRates.error) ||
+              imaginaRates.integration === null))
+        }
         onSubmit={handleAddContract}
         onCancel={onCancel}
         lastStep={lastStep}

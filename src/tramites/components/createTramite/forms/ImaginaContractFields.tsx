@@ -2,13 +2,17 @@
 
 import React from "react";
 import { Search } from "lucide-react";
-import type { Rate } from "@/comercializadoras/types";
+import type {
+  ImaginaIntegrationStatus,
+  ImaginaRate,
+} from "@/comercializadoras/types";
 import { Button } from "@/core/components/ui/button";
 import { Checkbox } from "@/core/components/ui/checkbox";
 import { Label } from "@/core/components/ui/label";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { ContractDB } from "@/tramites/types";
 import { InputComponent, SelectComponent } from "../InputComponent";
+import ImaginaRateSelector from "./ImaginaRateSelector";
 
 const TIPO_VIA_CNMC = [
   "Calle",
@@ -43,6 +47,14 @@ interface CartoCiudadCandidate {
 interface Props {
   formData: ContractDB;
   setFormData: React.Dispatch<React.SetStateAction<ContractDB>>;
+  integration: ImaginaIntegrationStatus | null;
+  rates: ImaginaRate[];
+  unavailableSelectedRate: ImaginaRate | null;
+  ratesLoading: boolean;
+  ratesError: string | null;
+  historicalRateId?: string;
+  rateError?: string;
+  onRateChange: (rateId: string) => void;
 }
 
 const boolValue = (value: unknown, fallback: boolean) => {
@@ -51,52 +63,23 @@ const boolValue = (value: unknown, fallback: boolean) => {
   return fallback;
 };
 
-export default function ImaginaContractFields({ formData, setFormData }: Props) {
-  const [rates, setRates] = React.useState<Rate[]>([]);
-  const [ratesLoading, setRatesLoading] = React.useState(false);
+export default function ImaginaContractFields({
+  formData,
+  setFormData,
+  integration,
+  rates,
+  unavailableSelectedRate,
+  ratesLoading,
+  ratesError,
+  historicalRateId,
+  rateError,
+  onRateChange,
+}: Props) {
   const [addressQuery, setAddressQuery] = React.useState("");
   const [addressLoading, setAddressLoading] = React.useState(false);
   const [candidates, setCandidates] = React.useState<CartoCiudadCandidate[]>(
     [],
   );
-
-  React.useEffect(() => {
-    let cancelled = false;
-    const loadRates = async () => {
-      setRatesLoading(true);
-      try {
-        const response = await fetch(
-          "/api/v2/integrations/imagina-energia/tarifas/list",
-        );
-        const result = (await response.json()) as {
-          success?: boolean;
-          data?: Rate[];
-          error?: string;
-        };
-        if (!result.success) {
-          throw new Error(result.error || "No se han podido cargar tarifas");
-        }
-        if (!cancelled) setRates(result.data || []);
-      } catch (error) {
-        if (!cancelled) {
-          showCustomToast({
-            title: "Error tarifas Imagina",
-            message: error instanceof Error ? error.message : String(error),
-            icon: Search,
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-          });
-        }
-      } finally {
-        if (!cancelled) setRatesLoading(false);
-      }
-    };
-
-    loadRates();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const updateField = (
     name: keyof ContractDB,
@@ -168,28 +151,38 @@ export default function ImaginaContractFields({ formData, setFormData }: Props) 
     setAddressQuery(candidate.label);
   };
 
-  const rateOptions = rates.map((rate) => ({
-    value: rate.id,
-    label:
-      rate.alias_externo ||
-      [rate.codigo_atr, rate.descripcion || rate.name].filter(Boolean).join(" · "),
-  }));
+  const rateStatusMessage = rateError
+    ? rateError
+    : ratesError
+      ? `No se han podido cargar las tarifas de Imagina. ${ratesError}`
+      : ratesLoading
+        ? "Cargando tarifas de Imagina…"
+        : "Comprobando la configuración de tarifas de Imagina…";
 
   return (
     <div className="space-y-4 rounded-md border border-primary-100 bg-primary-50/40 p-4">
       <div className="grid gap-4 md:grid-cols-2">
-        <SelectComponent
-          name="rate_id"
-          label="Tarifa Imagina"
-          items={rateOptions}
-          onChange={(value) => updateField("rate_id", value)}
-          selectedKey={formData.rate_id || ""}
-          textValue={
-            rateOptions.find((option) => option.value === formData.rate_id)
-              ?.label
-          }
-          disabled={ratesLoading}
-        />
+        {integration?.configured ? (
+          <ImaginaRateSelector
+            rates={rates}
+            selectedRateId={formData.rate_id}
+            historicalRateId={historicalRateId}
+            unavailableSelectedRate={unavailableSelectedRate}
+            onChange={onRateChange}
+            error={rateError}
+          />
+        ) : integration === null ? (
+          <div
+            role={ratesError || rateError ? "alert" : "status"}
+            className={`flex min-h-16 items-center rounded-xl border px-3 py-2 text-sm ${
+              ratesError || rateError
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-primary-100 bg-white text-muted-foreground"
+            }`}
+          >
+            {rateStatusMessage}
+          </div>
+        ) : null}
         <SelectComponent
           name="signature_channel"
           label="Canal firma"

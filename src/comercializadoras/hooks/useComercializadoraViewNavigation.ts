@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
-export type ComercializadoraView = "main" | "tramites" | "documentos";
+export type ComercializadoraView =
+  | "main"
+  | "tramites"
+  | "documentos"
+  | "tarifas";
 
 interface UseComercializadoraViewNavigationReturn {
   currentView: ComercializadoraView;
@@ -11,9 +15,9 @@ interface UseComercializadoraViewNavigationReturn {
 export function useComercializadoraViewNavigation(): UseComercializadoraViewNavigationReturn {
   const [currentView, setCurrentView] = useState<ComercializadoraView>("main");
 
-  const resetToMain = () => {
+  const resetToMain = useCallback(() => {
     setCurrentView("main");
-  };
+  }, []);
 
   return {
     currentView,

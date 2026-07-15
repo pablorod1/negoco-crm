@@ -37,6 +37,7 @@ export const validateContract = (
       CUPS: fieldValidationResults[5].errorMessage || "",
       plan: fieldValidationResults[6].errorMessage || "",
       new_company: fieldValidationResults[7].errorMessage || "",
+      rate_id: "",
     },
   };
 

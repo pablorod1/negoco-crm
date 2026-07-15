@@ -1,134 +1,160 @@
 "use client";
 
-import { Plus, TrendingUp, Calendar, Zap } from "lucide-react";
-import { Button } from "@/core/components/ui/button";
+import { Database, Tag } from "lucide-react";
+
+import type { ImaginaRate } from "@/comercializadoras/types";
 import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from "@/core/components/ui/card";
 import { formatDate } from "@/core/utils/format";
-import { Rate } from "@/comercializadoras/types";
 
 interface ComercializadoraRatesSectionProps {
-  rates: Rate[];
+  rates: ImaginaRate[];
 }
 
-function RateCard({ tarifa }: { tarifa: Rate }) {
-  return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500 bg-gradient-to-br from-white to-blue-50/30">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
-                {tarifa.name}
-              </h4>
-              <p className="text-sm text-gray-500">{tarifa.type}</p>
-            </div>
-          </div>
-        </div>
+const getRateDisplayName = (rate: ImaginaRate): string =>
+  rate.alias_externo?.trim() ||
+  rate.name.trim() ||
+  rate.external_rate_id?.trim() ||
+  "Tarifa sin identificar";
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-lg p-4 border border-blue-100">
-            <div className="flex items-baseline justify-between">
-              <div className="flex items-baseline space-x-2">
-                <span className="text-3xl font-bold text-blue-600">
-                  {tarifa.price}
-                </span>
-                <span className="text-sm text-gray-500 font-medium">€/kWh</span>
-              </div>
-              <div className="flex items-center gap-1 text-green-600">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm font-medium">Activa</span>
-              </div>
-            </div>
-          </div>
+const getSyncedAtLabel = (syncedAt: string | null): string | null => {
+  if (!syncedAt || Number.isNaN(new Date(syncedAt).getTime())) return null;
 
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <Calendar className="h-3 w-3" />
-              <span>Creada: {formatDate(tarifa.created_at)}</span>
-            </div>
-            {tarifa.updated_at && (
-              <div className="text-xs text-gray-500">
-                Actualizada: {formatDate(tarifa.updated_at)}
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+  return formatDate(syncedAt);
+};
 
 export function ComercializadoraRatesSection({
   rates,
 }: ComercializadoraRatesSectionProps) {
-  return (
-    <Card className="overflow-hidden bg-white shadow-lg border-0">
-      <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Tarifas y Precios
-          </CardTitle>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Tarifa
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="p-8">
-        {rates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-24 h-24 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-              <TrendingUp className="h-12 w-12 text-blue-500" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              No hay tarifas creadas
-            </h3>
-            <p className="text-gray-500 mb-8 max-w-md">
-              Crea tu primera tarifa para comenzar a gestionar los precios de
-              esta comercializadora y ofrecer opciones competitivas a tus
-              clientes.
-            </p>
-            <Button size="lg" className="gap-2 bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-5 w-5" />
-              Crear Primera Tarifa
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Tarifas Disponibles
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {rates.length} tarifa
-                  {rates.length !== 1 ? "s" : ""} configurada
-                  {rates.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-            </div>
+  const totalLabel = `${rates.length} ${
+    rates.length === 1 ? "tarifa" : "tarifas"
+  }`;
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rates.map((tarifa) => (
-                <RateCard key={tarifa.id} tarifa={tarifa} />
-              ))}
+  return (
+    <Card className="overflow-hidden bg-white shadow-xs">
+      <section aria-labelledby="imagina-rates-heading">
+        <CardHeader className="gap-4 border-b border-gray-100 bg-gray-50/70 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary-100 bg-primary-50 text-primary-600">
+              <Tag className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <h2
+                id="imagina-rates-heading"
+                className="text-lg font-semibold text-gray-950"
+              >
+                Tarifas sincronizadas
+              </h2>
+              <p className="text-sm text-gray-500">
+                Catálogo de Imagina Energía disponible para contratación.
+              </p>
             </div>
           </div>
-        )}
-      </CardContent>
+          <span className="w-fit rounded-full border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-2xs">
+            {totalLabel}
+          </span>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {rates.length === 0 ? (
+            <div className="flex flex-col items-center px-6 py-14 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
+                <Database className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900">
+                Aún no hay tarifas sincronizadas
+              </h3>
+              <p className="mt-2 max-w-lg text-sm leading-6 text-gray-500">
+                La integración está configurada, pero todavía no hay tarifas
+                disponibles en el catálogo.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-hidden">
+              <div
+                aria-hidden="true"
+                className="hidden grid-cols-[minmax(0,1fr)_minmax(6rem,0.55fr)_minmax(0,1.2fr)_minmax(8rem,0.7fr)] gap-5 border-b border-gray-100 bg-white px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 md:grid"
+              >
+                <span>Tarifa</span>
+                <span>Código ATR</span>
+                <span>Descripción</span>
+                <span>Sincronización</span>
+              </div>
+
+              <ul
+                className="divide-y divide-gray-100"
+                aria-label="Tarifas de Imagina Energía"
+              >
+                {rates.map((rate) => {
+                  const displayName = getRateDisplayName(rate);
+                  const syncedAtLabel = getSyncedAtLabel(rate.synced_at);
+
+                  return (
+                    <li
+                      key={rate.id}
+                      className="px-5 py-5 md:px-6"
+                    >
+                      <dl className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(6rem,0.55fr)_minmax(0,1.2fr)_minmax(8rem,0.7fr)] md:items-start md:gap-5">
+                        <div className="min-w-0">
+                          <dt className="text-xs font-medium text-gray-500 md:sr-only">
+                            Tarifa
+                          </dt>
+                          <dd className="mt-1 md:mt-0">
+                            <h3
+                              title={displayName}
+                              className="break-words text-sm font-semibold text-gray-950"
+                            >
+                              {displayName}
+                            </h3>
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500 md:sr-only">
+                            Código ATR
+                          </dt>
+                          <dd className="mt-1 text-sm font-medium text-gray-800 md:mt-0">
+                            {rate.codigo_atr?.trim() || "Sin código ATR"}
+                          </dd>
+                        </div>
+
+                        <div className="min-w-0">
+                          <dt className="text-xs font-medium text-gray-500 md:sr-only">
+                            Descripción
+                          </dt>
+                          <dd className="mt-1 text-sm leading-5 text-gray-600 md:mt-0">
+                            {rate.descripcion?.trim() || "Sin descripción"}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500 md:sr-only">
+                            Sincronización
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-600 md:mt-0">
+                            {syncedAtLabel && rate.synced_at ? (
+                              <time dateTime={rate.synced_at}>
+                                {syncedAtLabel}
+                              </time>
+                            ) : (
+                              <span className="text-gray-500">
+                                Sin fecha de sincronización
+                              </span>
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </section>
     </Card>
   );
 }

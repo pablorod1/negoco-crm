@@ -1,17 +1,22 @@
 ﻿"use client";
 
-import { ArrowLeft } from "lucide-react";
+import { useEffect } from "react";
+import { ArrowLeft, CloudAlert } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import { Link } from "next-view-transitions";
 import { useParams } from "next/navigation";
 
 import { useComercializadora } from "@/comercializadoras/hooks/useComercializadora";
 import { useComercializadoraViewNavigation } from "@/comercializadoras/hooks/useComercializadoraViewNavigation";
+import { useImaginaRates } from "@/comercializadoras/hooks/useImaginaRates";
+import { isImaginaSupplierName } from "@/comercializadoras/utils/supplier-name";
 import { ComercializadoraNavigation } from "./ComercializadoraNavigation";
 import { ComercializadoraMainView } from "./ComercializadoraMainView";
 import { ComercializadoraTramitesTable } from "./ComercializadoraTramitesTable";
 import { ComercializadoraDocumentsList } from "./ComercializadoraDocumentsList";
+import { ComercializadoraRatesSection } from "./ComercializadoraRatesSection";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
+import { showCustomToast } from "@/core/components/CustomToast";
 import { User } from "@/core/types";
 import { useUser } from "@/core/contexts/UserContext";
 
@@ -41,7 +46,40 @@ export default function ComercializadoraDetails() {
     id,
     userData as User
   );
-  const { currentView, setCurrentView } = useComercializadoraViewNavigation();
+  const isImaginaSupplier = comercializadora
+    ? isImaginaSupplierName(comercializadora.name)
+    : isImaginaSupplierName(id);
+  const {
+    integration,
+    rates,
+    loading: ratesLoading,
+    error: ratesError,
+  } = useImaginaRates({ enabled: isImaginaSupplier });
+  const { currentView, setCurrentView, resetToMain } =
+    useComercializadoraViewNavigation();
+  const showRates =
+    isImaginaSupplier &&
+    !ratesLoading &&
+    !ratesError &&
+    integration?.configured === true;
+
+  useEffect(() => {
+    if (!ratesError || !isImaginaSupplier) return;
+
+    showCustomToast({
+      title: "No se han podido cargar las tarifas",
+      message: "Inténtalo de nuevo más tarde.",
+      icon: CloudAlert,
+      iconColor: "var(--danger-color)",
+      iconSize: 24,
+    });
+  }, [isImaginaSupplier, ratesError]);
+
+  useEffect(() => {
+    if (currentView === "tarifas" && !showRates) {
+      resetToMain();
+    }
+  }, [currentView, resetToMain, showRates]);
 
   if (loading) {
     return (
@@ -86,6 +124,7 @@ export default function ComercializadoraDetails() {
         <ComercializadoraNavigation
           currentView={currentView}
           onViewChange={setCurrentView}
+          showRates={showRates}
         />
 
         {/* Content based on current view */}
@@ -111,6 +150,10 @@ export default function ComercializadoraDetails() {
               refetch={refetch}
             />
           </div>
+        )}
+
+        {currentView === "tarifas" && showRates && (
+          <ComercializadoraRatesSection rates={rates} />
         )}
       </div>
     </div>

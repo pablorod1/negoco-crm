@@ -164,6 +164,7 @@ export interface ContractError {
   CUPS: string;
   plan: string;
   new_company: string;
+  rate_id: string;
 }
 
 export const createEmptyContractError = (): ContractError => ({
@@ -175,4 +176,5 @@ export const createEmptyContractError = (): ContractError => ({
   CUPS: "",
   plan: "",
   new_company: "",
+  rate_id: "",
 });

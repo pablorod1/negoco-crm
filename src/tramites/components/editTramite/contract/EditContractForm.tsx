@@ -18,7 +18,12 @@ import {
 } from "../../createTramite/InputComponent";
 import { Label } from "@/core/components/ui/label";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useImaginaRates } from "@/comercializadoras/hooks/useImaginaRates";
 import ImaginaContractFields from "../../createTramite/forms/ImaginaContractFields";
+import {
+  resolveSupplierSelection,
+  validateImaginaRate,
+} from "@/tramites/utils/validation/create-contract/rate-validation";
 
 interface Props {
   onSavingContract: (contract: ContractDB) => void;
@@ -39,9 +44,16 @@ export default function EditContractForm({
     createEmptyContractError,
   );
   const [formData, setFormData] = React.useState<ContractDB>(contract);
+  const [historicalRateId] = React.useState(
+    () => contract.rate_id?.trim() || undefined,
+  );
 
   // Load active energy suppliers
-  const { activeSuppliers } = useActiveEnergySuppliers();
+  const {
+    activeSuppliers,
+    loading: suppliersLoading,
+    error: suppliersError,
+  } = useActiveEnergySuppliers();
 
   // Convert suppliers to dropdown format
   const supplierOptions = React.useMemo(
@@ -90,14 +102,19 @@ export default function EditContractForm({
   };
 
   const handleSelectChange = (value: string, name: string) => {
+    const changesNewCompany =
+      name === "new_company" && value !== formData.new_company;
+
     setErrors((prev) => ({
       ...prev,
       [name]: validateField(value).errorMessage || "",
+      ...(changesNewCompany ? { rate_id: "" } : {}),
     }));
 
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      ...(changesNewCompany ? { rate_id: null } : {}),
     }));
   };
 
@@ -112,10 +129,28 @@ export default function EditContractForm({
       plan: formData.plan,
       new_company: formData.new_company,
     });
-    if (validation.succeeded) {
+    const rateValidation = validateImaginaRate({
+      isImaginaContract,
+      rateId: formData.rate_id,
+      integration: imaginaRates.integration,
+      rates: imaginaRates.rates,
+      loading: imaginaRates.loading,
+      error: imaginaRates.error,
+    });
+
+    if (
+      validation.succeeded &&
+      rateValidation.succeeded &&
+      !supplierResolution.blocked
+    ) {
       onSavingContract(formData);
     } else {
-      setErrors(validation.errors);
+      setErrors({
+        ...validation.errors,
+        new_company:
+          supplierResolution.errorMessage || validation.errors.new_company,
+        rate_id: rateValidation.errorMessage || "",
+      });
     }
   };
 
@@ -125,19 +160,34 @@ export default function EditContractForm({
   const newCompanyText = supplierOptions.find(
     (option) => option.value === formData.new_company,
   )?.label;
-  const isImaginaContract = React.useMemo(() => {
-    const selectedSupplier = activeSuppliers.find(
-      (supplier) => supplier.id === formData.new_company,
-    );
-    const supplierName = selectedSupplier?.name || formData.new_company;
-    return (
-      supplierName
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .toLowerCase()
-        .trim() === "imagina energia"
-    );
-  }, [activeSuppliers, formData.new_company]);
+  const supplierResolution = resolveSupplierSelection(
+    formData.new_company,
+    activeSuppliers,
+    suppliersLoading,
+    suppliersError,
+  );
+  const isImaginaContract = supplierResolution.isImagina;
+  const imaginaRates = useImaginaRates({
+    enabled: isImaginaContract,
+    historicalRateId,
+  });
+
+  const handleRateChange = (rateId: string) => {
+    const rateValidation = validateImaginaRate({
+      isImaginaContract: true,
+      rateId,
+      integration: imaginaRates.integration,
+      rates: imaginaRates.rates,
+      loading: imaginaRates.loading,
+      error: imaginaRates.error,
+    });
+
+    setFormData((prev) => ({ ...prev, rate_id: rateId }));
+    setErrors((prev) => ({
+      ...prev,
+      rate_id: rateValidation.errorMessage || "",
+    }));
+  };
 
   return (
     <FormWrapper>
@@ -226,7 +276,7 @@ export default function EditContractForm({
               label="Compañía Nueva"
               items={supplierOptions}
               onChange={(value) => handleSelectChange(value, "new_company")}
-              errors={errors.new_company}
+              errors={errors.new_company || supplierResolution.errorMessage}
               isRequired
               selectedKey={formData.new_company || ""}
               textValue={newCompanyText || formData.new_company || ""}
@@ -263,6 +313,14 @@ export default function EditContractForm({
             <ImaginaContractFields
               formData={formData}
               setFormData={setFormData}
+              integration={imaginaRates.integration}
+              rates={imaginaRates.rates}
+              unavailableSelectedRate={imaginaRates.unavailableSelectedRate}
+              ratesLoading={imaginaRates.loading}
+              ratesError={imaginaRates.error}
+              historicalRateId={historicalRateId}
+              rateError={errors.rate_id}
+              onRateChange={handleRateChange}
             />
           )}
           <div className="space-y-2 w-full">
@@ -277,6 +335,13 @@ export default function EditContractForm({
       </form>
       <ButtonGroupComponent
         loading={loading}
+        submitDisabled={
+          supplierResolution.blocked ||
+          (isImaginaContract &&
+            (imaginaRates.loading ||
+              Boolean(imaginaRates.error) ||
+              imaginaRates.integration === null))
+        }
         lastStep={lastStep}
         onSubmit={handleAddContract}
         onCancel={onCancel}

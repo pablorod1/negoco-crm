@@ -140,15 +140,6 @@ Pendiente una pantalla interna o herramienta segura para:
 - introducir `config.x_canal_id`
 - validar configuracion sin exponer el valor al frontend
 
-### 2. Completar UI de seleccion de tarifa Imagina
-
-Ahora el backend exige `contracts.rate_id`, pero falta una experiencia completa para:
-
-- listar tarifas sincronizadas de Imagina
-- seleccionar tarifa en contrato
-- mostrar `alias_externo`, `codigo_atr`, `descripcion`
-- evitar seleccionar tarifas no sincronizadas o deshabilitadas
-
 ### 3. Completar formularios de datos CNMC
 
 Falta UI para editar de forma estructurada:
@@ -222,3 +213,18 @@ El soporte documental esta contemplado, pero falta cerrar:
 - UI de captura de margenes
 - validacion local completa contra limites de `raw`
 - envio de `margenes_tarifa_precios` en alta cuando proceda
+
+## Tareas de Codigo Resueltas
+
+### 2. Completar UI de seleccion de tarifa Imagina
+
+El backend exige `contracts.rate_id`. La experiencia completa permite:
+
+- listar tarifas sincronizadas de Imagina
+- seleccionar tarifa en contrato
+- mostrar `alias_externo`, `codigo_atr`, `descripcion`
+- evitar seleccionar tarifas no sincronizadas o deshabilitadas
+
+Nota de cierre: la UI incluye el selector de tarifa en contrato y una pestana de
+solo lectura en el detalle de Imagina Energia, visible unicamente cuando la
+integracion del tenant esta configurada.
