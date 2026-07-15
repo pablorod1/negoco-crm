@@ -13,7 +13,7 @@ import {
   signerFormValidation,
 } from "@/tramites/utils/validation/form-validation";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ClientDB, TramiteDB, SignerDB } from "@/tramites/types";
 import { createEmptyClientDB } from "@/tramites/utils/tramite.factories";
 import { ComparativaVM } from "@/comparativas/types";
@@ -52,21 +52,32 @@ export default function SecondStepForm({
   comparativa,
   savedClient,
 }: Props) {
+  const userId = userData.id;
+  const userRole = userData.role;
+
   // State for client management
   const [clients, setClients] = useState<ClientDB[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMoreClients, setLoadingMoreClients] = useState(false);
+  const initialClientSearch = comparativa?.abarca_estudio?.dni ?? "";
+  const [clientSearch, setClientSearch] = useState(initialClientSearch);
+  const [debouncedClientSearch, setDebouncedClientSearch] =
+    useState(initialClientSearch);
+  const [clientPage, setClientPage] = useState(1);
+  const [hasMoreClients, setHasMoreClients] = useState(false);
+  const [clientsLoaded, setClientsLoaded] = useState(false);
   const [selectedClient, setSelectedClient] = useState<string | null>(
     savedClient ? savedClient.id : null,
   );
   const hasAbarcaData = !!comparativa?.abarca_estudio;
   const [newClientState, setNewClientState] = useState<boolean>(false);
-  const [abarcaAutoApplied, setAbarcaAutoApplied] = useState(false);
+  const abarcaAutoApplied = useRef(false);
 
   // Form state
   const [errors, setErrors] = useState<SecondFormError>(
     createEmptySecondFormError,
   );
-  const [formData, setFormData] = useState<SecondForm>(
+  const [formData, setFormData] = useState<SecondForm>(() =>
     createEmptySecondForm(comparativa),
   );
   const [signerData, setSignerData] = useState<SignerForm | null>(null);
@@ -74,15 +85,25 @@ export default function SecondStepForm({
     createEmptySignerFormError,
   );
 
-  // Get cached client/signer data from localStorage
-  const cachedClientData = useMemo(() => {
-    const stored = localStorage.getItem("client");
-    return stored ? JSON.parse(stored) : null;
-  }, []);
+  const [cachedClientData, setCachedClientData] = useState<ClientDB | null>(
+    null,
+  );
+  const [cachedSignerData, setCachedSignerData] = useState<SignerDB | null>(
+    null,
+  );
 
-  const cachedSignerData = useMemo(() => {
-    const stored = localStorage.getItem("signer");
-    return stored ? JSON.parse(stored) : null;
+  // Browser storage is read after hydration so server rendering stays safe.
+  useEffect(() => {
+    try {
+      const storedClient = localStorage.getItem("client");
+      const storedSigner = localStorage.getItem("signer");
+      setCachedClientData(storedClient ? JSON.parse(storedClient) : null);
+      setCachedSignerData(storedSigner ? JSON.parse(storedSigner) : null);
+    } catch (error) {
+      console.error("Error loading cached client data:", error);
+      setCachedClientData(null);
+      setCachedSignerData(null);
+    }
   }, []);
 
   // Validate form and handle submit for new client creation
@@ -196,30 +217,50 @@ export default function SecondStepForm({
     onBack();
   };
 
-  // Fetch clients when component mounts
   useEffect(() => {
-    if (!userData || !userData.id) return;
+    const timeoutId = window.setTimeout(() => {
+      setClientPage(1);
+      setDebouncedClientSearch(clientSearch.trim());
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [clientSearch]);
+
+  // Fetch only the visible page and cancel requests superseded by a new search.
+  useEffect(() => {
+    if (!userId) return;
+
+    const controller = new AbortController();
+    const isFirstPage = clientPage === 1;
 
     const fetchClients = async () => {
-      setLoading(true);
+      if (isFirstPage) {
+        setLoading(true);
+      } else {
+        setLoadingMoreClients(true);
+      }
+
       try {
-        const res = await fetch(`/api/v2/clients`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: userData.id,
-            role: userData.role,
-          }),
+        const params = new URLSearchParams({
+          id: userId,
+          role: String(userRole),
+          page: String(clientPage),
+          limit: "50",
+        });
+        if (debouncedClientSearch) {
+          params.set("search", debouncedClientSearch);
+        }
+
+        const res = await fetch(`/api/v2/clients?${params.toString()}`, {
+          signal: controller.signal,
         });
 
-        const { success, data, error } = await res.json();
+        const { success, data, error, message, pagination } = await res.json();
 
         if (!success) {
           showCustomToast({
             title: "Error",
-            message: error || "Error desconocido",
+            message: error || message || "Error desconocido",
             icon: CircleX,
             iconColor: "var(--danger-color)",
             iconSize: 24,
@@ -227,14 +268,26 @@ export default function SecondStepForm({
           return;
         }
 
-        if (data) {
-          // Sort clients alphabetically by name
-          const sortedClients = (data as ClientDB[]).sort((a, b) =>
-            a.name.localeCompare(b.name),
+        const nextClients = (data ?? []) as ClientDB[];
+        setClients((currentClients) => {
+          if (isFirstPage) return nextClients;
+
+          const clientsById = new Map(
+            currentClients.map((currentClient) => [
+              currentClient.id,
+              currentClient,
+            ]),
           );
-          setClients(sortedClients);
-        }
+          nextClients.forEach((nextClient) =>
+            clientsById.set(nextClient.id, nextClient),
+          );
+          return Array.from(clientsById.values());
+        });
+        setHasMoreClients(Boolean(pagination?.hasMore));
+        setClientsLoaded(true);
       } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+
         showCustomToast({
           title: "Error",
           message: (error as Error).message || "Error desconocido",
@@ -244,22 +297,43 @@ export default function SecondStepForm({
         });
         console.error("Error fetching clients:", error);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setLoadingMoreClients(false);
+        }
       }
     };
 
-    fetchClients();
-  }, [userData]);
+    void fetchClients();
+
+    return () => controller.abort();
+  }, [
+    clientPage,
+    debouncedClientSearch,
+    userId,
+    userRole,
+  ]);
+
+  const loadMoreClients = useCallback(() => {
+    if (!loadingMoreClients && hasMoreClients) {
+      setClientPage((currentPage) => currentPage + 1);
+    }
+  }, [hasMoreClients, loadingMoreClients]);
 
   // Auto-select existing client by DNI or auto-open new client form with Abarca data
   useEffect(() => {
-    if (!hasAbarcaData || abarcaAutoApplied || loading || clients.length === 0)
+    if (
+      !hasAbarcaData ||
+      abarcaAutoApplied.current ||
+      loading ||
+      !clientsLoaded
+    )
       return;
 
     const abarcaDni = comparativa?.abarca_estudio?.dni;
     if (!abarcaDni) {
       setNewClientState(true);
-      setAbarcaAutoApplied(true);
+      abarcaAutoApplied.current = true;
       return;
     }
 
@@ -275,11 +349,11 @@ export default function SecondStepForm({
       setNewClientState(true);
     }
 
-    setAbarcaAutoApplied(true);
+    abarcaAutoApplied.current = true;
   }, [
     hasAbarcaData,
-    abarcaAutoApplied,
     loading,
+    clientsLoaded,
     clients,
     comparativa,
     setClient,
@@ -323,9 +397,15 @@ export default function SecondStepForm({
             setTramite={setTramite}
             clients={clients}
             loading={loading}
+            loadingMore={loadingMoreClients}
+            hasMore={hasMoreClients}
+            onLoadMore={loadMoreClients}
+            searchValue={clientSearch}
+            onSearchChange={setClientSearch}
             cachedClient={cachedClientData}
             cachedSigner={cachedSignerData}
             selectedClient={selectedClient}
+            selectedClientData={client}
             setSelectedClient={setSelectedClient}
             setFormData={setFormData}
             setSignerData={setSignerData}

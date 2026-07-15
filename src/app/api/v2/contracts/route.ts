@@ -73,7 +73,7 @@ const DateRangeSchema = z
 
 const PaginatedContractsRequestSchema = z.object({
   page: z.number().min(1, "Page must be at least 1"),
-  rowsPerPage: z.union([z.number().min(1), z.literal("Sin Límite")]),
+  rowsPerPage: z.number().int().min(1).max(100),
   user_id: z.string().min(1, "User ID is required"),
   user_role: z.string().min(1, "User role is required"),
   filterValue: z.string().optional(),
@@ -1011,8 +1011,11 @@ export async function GET(
       page: parseInt(searchParams.get("page") || "1"),
       rowsPerPage:
         searchParams.get("rowsPerPage") === "Sin Límite"
-          ? 400
-          : parseInt(searchParams.get("rowsPerPage") || "15"),
+          ? 100
+          : Math.min(
+              parseInt(searchParams.get("rowsPerPage") || "50"),
+              100,
+            ),
       user_id: searchParams.get("user_id") || "",
       user_role: searchParams.get("user_role") || "",
       filterValue: searchParams.get("filterValue") || undefined,
@@ -1089,8 +1092,7 @@ export async function GET(
     }
 
     // Calculate pagination offset
-    const offset =
-      (page - 1) * (typeof rowsPerPage === "number" ? rowsPerPage : 0);
+    const offset = (page - 1) * rowsPerPage;
 
     // Build dynamic filters and parameters (exact original logic)
     const filters: string[] = [];
@@ -1223,19 +1225,17 @@ export async function GET(
 
         toExclusiveDate.setDate(toExclusiveDate.getDate() + 1);
 
-        filters.push(
-          `(datetime(${column}) >= datetime(?) AND datetime(${column}) < datetime(?))`,
-        );
+        filters.push(`(${column} >= ? AND ${column} < ?)`);
         params.push(fromDate.toISOString(), toExclusiveDate.toISOString());
       }
     };
 
     // Apply date range filters
-    addDateRangeFilter("activation_date", activationDateRange);
-    addDateRangeFilter("creation_date", creationDateRange);
-    addDateRangeFilter("renovation_date", renovationDateRange);
-    addDateRangeFilter("collection_date", collectionDateRange);
-    addDateRangeFilter("payment_date", paymentDateRange);
+    addDateRangeFilter("t.activation_date", activationDateRange);
+    addDateRangeFilter("t.creation_date", creationDateRange);
+    addDateRangeFilter("t.renovation_date", renovationDateRange);
+    addDateRangeFilter("t.collection_date", collectionDateRange);
+    addDateRangeFilter("t.payment_date", paymentDateRange);
 
     // Determine which JOINs are required by the active filters. This lets
     // the count + pagination phase avoid the expensive contracts/comercializadoras
@@ -1243,17 +1243,21 @@ export async function GET(
     const needsContractsJoin =
       Boolean(filterValue) ||
       (contractTypeFilter?.length ?? 0) > 0 ||
-      (companyFilter?.length ?? 0) > 0;
+      ((companyFilter?.length ?? 0) > 0 && !excludeCompany);
+    const needsClientsJoin = Boolean(filterValue) || Boolean(clientFilter);
 
     // Construct base query for the pagination/count phase.
-    // We keep the clients join because text search and clientFilter use it
-    // and it's a 1:1 relation (no row explosion).
     let baseQuery = `
       FROM
           tramites t
+    `;
+
+    if (needsClientsJoin) {
+      baseQuery += `
       LEFT JOIN
           clients c ON t.client_id = c.id
-    `;
+      `;
+    }
 
     if (needsContractsJoin) {
       baseQuery += `
@@ -1282,8 +1286,8 @@ export async function GET(
     const idsQuery = `
       SELECT t.id, t.creation_date
       ${baseQuery}
-      GROUP BY t.id
-      ORDER BY t.creation_date DESC
+      ${needsContractsJoin ? "GROUP BY t.id" : ""}
+      ORDER BY t.creation_date DESC, t.id DESC
       LIMIT ? OFFSET ?
     `;
 
@@ -1337,7 +1341,7 @@ export async function GET(
         LEFT JOIN comercializadoras com ON com.id = con.new_company
         WHERE t.id IN (${idPlaceholders})
         GROUP BY t.id
-        ORDER BY t.creation_date DESC
+        ORDER BY t.creation_date DESC, t.id DESC
       `;
 
       const dataResult = await executeReadWithRetry(tursoClient, {

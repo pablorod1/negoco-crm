@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect, useCallback } from "react";
 
-const DEFAULT_PAGE_SIZE = 15;
-const MAX_PAGE_SIZE = 400;
-const ALLOWED_PAGE_SIZES = [5, 10, 15, 20, 30, 40, 50, 100, 200, 400];
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
+const ALLOWED_PAGE_SIZES = [5, 10, 15, 20, 30, 40, 50, 100];
 
 export const normalizeTablePageSize = (value: unknown): number => {
   if (value === "Sin Límite") return MAX_PAGE_SIZE;
@@ -17,8 +17,8 @@ export const normalizeTablePageSize = (value: unknown): number => {
   if (!Number.isFinite(numericValue)) return DEFAULT_PAGE_SIZE;
 
   const pageSize = Math.trunc(numericValue);
+  if (pageSize >= MAX_PAGE_SIZE) return MAX_PAGE_SIZE;
   if (ALLOWED_PAGE_SIZES.includes(pageSize)) return pageSize;
-  if (pageSize > MAX_PAGE_SIZE) return MAX_PAGE_SIZE;
 
   return DEFAULT_PAGE_SIZE;
 };
@@ -27,11 +27,12 @@ export function useTablePagination(id?: string) {
   const storageKey = `table-pagination-${id || "default"}`;
 
   const [pageIndex, setPageIndex] = useState(1);
-  const [pageSize, setPageSize] = useState<number | string>(DEFAULT_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Save page size to localStorage whenever it changes
   const savePageSizeToStorage = useCallback(
-    (newPageSize: number | string) => {
+    (newPageSize: number) => {
       if (typeof window === "undefined") return;
 
       try {
@@ -43,7 +44,7 @@ export function useTablePagination(id?: string) {
         console.error("Error saving page size to localStorage:", error);
       }
     },
-    [storageKey]
+    [storageKey],
   );
 
   // Load page size from localStorage on initial render
@@ -63,20 +64,19 @@ export function useTablePagination(id?: string) {
       return DEFAULT_PAGE_SIZE;
     };
 
-    const savedPageSize = getInitialPageSize();
-    setPageSize(savedPageSize);
-    savePageSizeToStorage(savedPageSize);
-  }, [savePageSizeToStorage, storageKey]);
+    setPageSize(getInitialPageSize());
+    setIsInitialized(true);
+  }, [storageKey]);
 
   // Custom setter that also saves to localStorage
   const handleSetPageSize = useCallback(
-    (newPageSize: number | string) => {
+    (newPageSize: number) => {
       const normalizedPageSize = normalizeTablePageSize(newPageSize);
       setPageSize(normalizedPageSize);
       savePageSizeToStorage(normalizedPageSize);
       setPageIndex(1); // Reset to first page when changing page size
     },
-    [savePageSizeToStorage]
+    [savePageSizeToStorage],
   );
 
   return {
@@ -84,5 +84,6 @@ export function useTablePagination(id?: string) {
     pageSize,
     setPageIndex,
     setPageSize: handleSetPageSize,
+    isInitialized,
   };
 }

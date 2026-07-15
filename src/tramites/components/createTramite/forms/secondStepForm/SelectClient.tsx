@@ -1,14 +1,14 @@
 ﻿"use client";
 import { ClientDB, DocumentType, SignerDB, TramiteDB } from "@/tramites/types";
 import { createEmptyClientDB } from "@/tramites/utils/tramite.factories";
-import { useState, useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { CircleX, UserPlus, Search } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
-import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { Badge } from "@/core/components/ui/badge";
 import { Input } from "@/core/components/ui/input";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   createEmptySecondForm,
   SecondForm,
@@ -22,9 +22,15 @@ interface Props {
   setTramite: React.Dispatch<React.SetStateAction<TramiteDB>>;
   clients: ClientDB[];
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
   cachedClient: ClientDB | null;
   cachedSigner: SignerDB | null;
   selectedClient: string | null;
+  selectedClientData: ClientDB;
   setSelectedClient: React.Dispatch<React.SetStateAction<string | null>>;
   setFormData: React.Dispatch<React.SetStateAction<SecondForm>>;
   setSignerData: React.Dispatch<React.SetStateAction<SignerForm | null>>;
@@ -37,48 +43,34 @@ export default function SelectClient({
   setTramite,
   clients,
   loading,
+  loadingMore,
+  hasMore,
+  onLoadMore,
+  searchValue,
+  onSearchChange,
   cachedClient,
   cachedSigner,
   selectedClient,
+  selectedClientData,
   setSelectedClient,
   setFormData,
   setSignerData,
 }: Props) {
-  const [filterValue, setFilterValue] = useState<string>("");
-
-  // Normalized filtered clients for efficient search
-  const filteredClients = useMemo(() => {
-    if (!filterValue.trim()) return clients;
-
-    const normalizedFilterValue = filterValue
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-
-    return clients.filter((client) => {
-      // Create a normalized searchable string from client data
-      const searchableFields = [
-        client.name,
-        client.last_name || "",
-        client.email,
-        client.document_number,
-        `${client.name} ${client.last_name || ""}`,
-      ];
-
-      // Normalize all fields for consistent comparison
-      const normalizedFields = searchableFields.map((field) =>
-        field
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-      );
-
-      // Return true if any field matches the filter
-      return normalizedFields.some((field) =>
-        field.includes(normalizedFilterValue)
-      );
-    });
-  }, [clients, filterValue]);
+  const clientListRef = useRef<HTMLDivElement>(null);
+  const clientsById = useMemo(
+    () => new Map(clients.map((currentClient) => [currentClient.id, currentClient])),
+    [clients],
+  );
+  const selectedClientPreview = selectedClient
+    ? clientsById.get(selectedClient) ?? selectedClientData
+    : null;
+  const virtualRows = Math.ceil(clients.length / 2);
+  const clientVirtualizer = useVirtualizer({
+    count: virtualRows,
+    getScrollElement: () => clientListRef.current,
+    estimateSize: () => 112,
+    overscan: 3,
+  });
 
   // Fetch signer data for a client
   const fetchSigner = useCallback(
@@ -116,34 +108,31 @@ export default function SelectClient({
 
   // Handle client selection
   const handleSelectClient = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
-      e.preventDefault();
-      const selectedClient = clients.find((c) => c.id === id);
-      if (!selectedClient) return;
+    async (clientToSelect: ClientDB) => {
 
       // Update client selection state
-      setSelectedClient(selectedClient.id);
-      setClient(selectedClient);
+      setSelectedClient(clientToSelect.id);
+      setClient(clientToSelect);
 
       // Update tramite with the selected client
       setTramite((prevState) => ({
         ...prevState,
-        client_id: selectedClient.id,
+        client_id: clientToSelect.id,
       }));
 
       // Check if we need to fetch a signer for this client type
       const needsSigner = ["Empresa", "Comunidad de Propietarios"].includes(
-        selectedClient.type
+        clientToSelect.type,
       );
 
       if (needsSigner) {
-        const signerData = await fetchSigner(selectedClient.id);
+        const signerData = await fetchSigner(clientToSelect.id);
         setSigner(signerData);
       } else {
         setSigner(null);
       }
     },
-    [clients, setClient, setSelectedClient, setTramite, setSigner, fetchSigner]
+    [setClient, setSelectedClient, setTramite, setSigner, fetchSigner],
   );
 
   // Handle selecting the last created client
@@ -213,17 +202,6 @@ export default function SelectClient({
     setFormData,
     setSignerData,
   ]);
-  // Wrapper function for client selection that matches the expected signature
-  const handleClientClick = useCallback(
-    (client: ClientDB) => {
-      const mockEvent = {
-        preventDefault: () => {},
-      } as React.MouseEvent<HTMLButtonElement>;
-      handleSelectClient(mockEvent, client.id);
-    },
-    [handleSelectClient]
-  );
-
   // If loading, show loading state
   if (loading) {
     return (
@@ -250,8 +228,8 @@ export default function SelectClient({
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Buscar por nombre, email o documento..."
-                value={filterValue}
-                onChange={(e) => setFilterValue(e.target.value)}
+                value={searchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
                 className="pl-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
               />
             </div>
@@ -266,26 +244,23 @@ export default function SelectClient({
           </div>
 
           {/* Selected Client Preview */}
-          {selectedClient && (
+          {selectedClientPreview && (
             <div className="p-4 bg-primary-50  rounded-4xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  {(() => {
-                    const client = clients.find((c) => c.id === selectedClient);
-                    return client ? (
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <p>
-                          <strong>
-                            {client.name} {client.last_name}
-                          </strong>
-                        </p>
-                        <p>•</p>
-                        <p>
-                          {client.email} • {client.document_number}
-                        </p>
-                      </div>
-                    ) : null;
-                  })()}
+                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <p>
+                      <strong>
+                        {selectedClientPreview.name}{" "}
+                        {selectedClientPreview.last_name}
+                      </strong>
+                    </p>
+                    <p>•</p>
+                    <p>
+                      {selectedClientPreview.email} •{" "}
+                      {selectedClientPreview.document_number}
+                    </p>
+                  </div>
                 </div>
                 <Badge variant="successShadow">Seleccionado</Badge>
               </div>
@@ -294,19 +269,43 @@ export default function SelectClient({
 
           {/* Client List */}
           <div className="space-y-3">
-            {filteredClients.length > 0 ? (
-              <ScrollArea className="h-full w-full max-h-[320px] overflow-y-auto py-2">
-                <div className="grid grid-cols-2 gap-6 p-1">
-                  {filteredClients.map((client) => (
-                    <div
-                      key={client.id}
-                      className={`p-4 border rounded-4xl shadow-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
-                        selectedClient === client.id
-                          ? "ring-2 ring-primary-200 bg-primary-50 border-primary-200"
-                          : "hover:bg-gray-50 hover:border-gray-300"
-                      }`}
-                      onClick={() => handleClientClick(client)}
-                    >
+            {clients.length > 0 ? (
+              <>
+                <div
+                  ref={clientListRef}
+                  className="h-[320px] w-full overflow-y-auto py-2"
+                >
+                  <div
+                    className="relative w-full"
+                    style={{ height: `${clientVirtualizer.getTotalSize()}px` }}
+                  >
+                    {clientVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const rowClients = clients.slice(
+                        virtualRow.index * 2,
+                        virtualRow.index * 2 + 2,
+                      );
+
+                      return (
+                        <div
+                          key={virtualRow.key}
+                          ref={clientVirtualizer.measureElement}
+                          data-index={virtualRow.index}
+                          className="absolute left-0 top-0 grid w-full grid-cols-2 gap-6 p-1 pb-5"
+                          style={{
+                            transform: `translateY(${virtualRow.start}px)`,
+                          }}
+                        >
+                          {rowClients.map((client) => (
+                            <button
+                              type="button"
+                              key={client.id}
+                              className={`cursor-pointer rounded-4xl border p-4 text-left shadow-xs transition-all duration-200 hover:shadow-md ${
+                                selectedClient === client.id
+                                  ? "border-primary-200 bg-primary-50 ring-2 ring-primary-200"
+                                  : "hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                              onClick={() => void handleSelectClient(client)}
+                            >
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -346,10 +345,26 @@ export default function SelectClient({
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </ScrollArea>
+                {hasMore && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onLoadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? "Cargando…" : "Cargar más clientes"}
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
@@ -359,7 +374,7 @@ export default function SelectClient({
                   No se encontraron clientes
                 </p>
                 <p className="text-sm text-gray-600 mb-4">
-                  {filterValue
+                  {searchValue
                     ? "Intenta con un término diferente"
                     : "No hay clientes disponibles"}
                 </p>

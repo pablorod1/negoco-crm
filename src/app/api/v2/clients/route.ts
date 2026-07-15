@@ -4,13 +4,30 @@ import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { Row } from "@libsql/client";
 import { addClient } from "@/tramites/utils/addTramiteHelpers";
 import { ClientDB } from "@/tramites/types";
+import { executeReadWithRetry } from "@/core/libsql/executeWithRetry";
+import { z } from "zod";
 
 // Response Types
 interface ClientsResponse {
   success: boolean;
   message?: string;
   data?: Row[]; // Using Row[] to match original behavior with clients.*
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasMore: boolean;
+  };
 }
+
+const clientsCollectionSchema = z.object({
+  id: z.string().min(1),
+  role: z.string().min(1),
+  search: z.string().trim().max(120).default(""),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(50),
+});
 
 interface ClientCreateResponse {
   success: boolean;
@@ -129,25 +146,135 @@ export async function GET(
 ): Promise<NextResponse<ClientsResponse>> {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const role = searchParams.get("role");
+    const parsedParams = clientsCollectionSchema.safeParse({
+      id: searchParams.get("id"),
+      role: searchParams.get("role"),
+      search: searchParams.get("search") ?? "",
+      page: searchParams.get("page") ?? 1,
+      limit: searchParams.get("limit") ?? 50,
+    });
 
-    if (!id || !role) {
+    if (!parsedParams.success) {
       return NextResponse.json(
-        { success: false, message: "Missing Parameters" },
+        { success: false, message: "Invalid parameters" },
         { status: 400 },
       );
     }
 
-    // Reuse the POST logic by creating a mock request with body
-    const mockRequest = {
-      ...request,
-      json: async () => ({ id, role }),
-    } as NextRequest;
+    const { id, role, search, page, limit } = parsedParams.data;
+    const tursoClient = getTursoClient(request);
 
-    return await POST(mockRequest);
+    if (!tursoClient) {
+      return NextResponse.json(
+        { success: false, message: "Database not initialized" },
+        { status: 500 },
+      );
+    }
+
+    const whereClauses: string[] = [];
+    const whereArgs: string[] = [];
+
+    if (role === "2") {
+      const subcomercialesRes = await getSubcomerciales(tursoClient, id);
+      const visibleUserIds = [
+        id,
+        ...(subcomercialesRes.success && subcomercialesRes.ids
+          ? subcomercialesRes.ids
+          : []),
+      ];
+
+      whereClauses.push(`
+        EXISTS (
+          SELECT 1
+          FROM tramites visible_tramites
+          WHERE visible_tramites.client_id = clients.id
+            AND visible_tramites.user_id IN (${visibleUserIds.map(() => "?").join(",")})
+        )
+      `);
+      whereArgs.push(...visibleUserIds);
+    }
+
+    if (search) {
+      const searchPattern = `%${search.toLocaleLowerCase("es")}%`;
+      whereClauses.push(`
+        (
+          LOWER(clients.name) LIKE ?
+          OR LOWER(COALESCE(clients.last_name, '')) LIKE ?
+          OR LOWER(COALESCE(clients.email, '')) LIKE ?
+          OR LOWER(COALESCE(clients.document_number, '')) LIKE ?
+          OR LOWER(clients.name || ' ' || COALESCE(clients.last_name, '')) LIKE ?
+        )
+      `);
+      whereArgs.push(
+        searchPattern,
+        searchPattern,
+        searchPattern,
+        searchPattern,
+        searchPattern,
+      );
+    }
+
+    const whereSql =
+      whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+    const offset = (page - 1) * limit;
+
+    const clientsQuery = `
+      SELECT
+        clients.id,
+        clients.name,
+        clients.last_name,
+        clients.email,
+        clients.type,
+        clients.phone,
+        clients.address,
+        clients.postal_code,
+        clients.province,
+        clients.city,
+        clients.document_type,
+        clients.document_number,
+        clients.IBAN,
+        clients.coordinates
+      FROM clients
+      ${whereSql}
+      ORDER BY clients.name COLLATE NOCASE, clients.last_name COLLATE NOCASE, clients.id
+      LIMIT ? OFFSET ?
+    `;
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM clients
+      ${whereSql}
+    `;
+
+    const [countResult, clientsResult] = await Promise.all([
+      executeReadWithRetry(tursoClient, {
+        sql: countQuery,
+        args: whereArgs,
+      }),
+      executeReadWithRetry(tursoClient, {
+        sql: clientsQuery,
+        args: [...whereArgs, limit, offset],
+      }),
+    ]);
+
+    const total = Number(countResult.rows[0]?.total ?? 0);
+    const pages = Math.ceil(total / limit);
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: clientsResult.rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages,
+          hasMore: page < pages,
+        },
+      },
+      { status: 200 },
+    );
   } catch (error) {
-    console.error("Error in GET /new_api/clients:", error);
+    console.error("Error in GET /api/v2/clients:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 },

@@ -30,7 +30,8 @@ function useTramites(
   name: string,
   userData: User,
   pageIndex: number,
-  pageSize: number | string
+  pageSize: number,
+  paginationReady: boolean,
 ) {
   const [state, setState] = useState<{
     tramites: TramiteRow[];
@@ -46,17 +47,14 @@ function useTramites(
 
   // Fetch tramites
   const fetchTramites = useCallback(async () => {
-    if (!userData) return;
+    if (!userData || !paginationReady) return;
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       const params = new URLSearchParams();
       params.append("page", pageIndex.toString());
-      params.append(
-        "rowsPerPage",
-        typeof pageSize === "number" ? pageSize.toString() : "Sin Límite"
-      );
+      params.append("rowsPerPage", pageSize.toString());
       params.append("user_id", userData.id);
       params.append("user_role", userData.role);
       params.append("companyFilter", JSON.stringify([name]));
@@ -101,14 +99,14 @@ function useTramites(
         iconColor: "var(--danger-color)",
       });
     }
-  }, [userData, pageIndex, pageSize, name]);
+  }, [userData, paginationReady, pageIndex, pageSize, name]);
 
   // Effect to fetch data when dependencies change
   useEffect(() => {
-    if (userData) {
-      fetchTramites();
+    if (userData && paginationReady) {
+      void fetchTramites();
     }
-  }, [fetchTramites, userData]);
+  }, [fetchTramites, paginationReady, userData]);
 
   return {
     ...state,
@@ -142,9 +140,8 @@ const ErrorState = ({
 );
 
 export function ComercializadoraTramitesTable({ name, userData }: Props) {
-  const { pageIndex, pageSize, setPageIndex, setPageSize } = useTablePagination(
-    `comercializadora-tramites-${name}`
-  );
+  const { pageIndex, pageSize, setPageIndex, setPageSize, isInitialized } =
+    useTablePagination(`comercializadora-tramites-${name}`);
 
   // Get columns based on user role
   const columns = useMemo(() => {
@@ -165,7 +162,8 @@ export function ComercializadoraTramitesTable({ name, userData }: Props) {
     name,
     userData as User,
     pageIndex,
-    pageSize
+    pageSize,
+    isInitialized,
   );
 
   // Table configuration

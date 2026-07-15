@@ -33,7 +33,7 @@ export default function FotovoltaicasTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [loading, setLoading] = useState(false);
 
-  const { pageIndex, pageSize, setPageIndex, setPageSize } =
+  const { pageIndex, pageSize, setPageIndex, setPageSize, isInitialized } =
     useTablePagination("fotovoltaicas");
 
   const {
@@ -55,6 +55,7 @@ export default function FotovoltaicasTable<TData, TValue>({
 
   const fetchFotovoltaicas = useCallback(
     async (isMounted = true) => {
+      if (!isInitialized) return;
       setLoading(true);
       if (userData) {
         try {
@@ -65,8 +66,7 @@ export default function FotovoltaicasTable<TData, TValue>({
             },
             body: JSON.stringify({
               page: pageIndex,
-              rowsPerPage:
-                typeof pageSize === "number" ? pageSize : "Sin Límite",
+              rowsPerPage: pageSize,
               user_id: userData.id,
               user_role: userData.role,
               filterValue,
@@ -117,11 +117,14 @@ export default function FotovoltaicasTable<TData, TValue>({
       userFilter,
       activationDateRange,
       typeFilter,
+      isInitialized,
     ],
   );
 
   // Consolidated useEffect for data fetching and refresh
   useEffect(() => {
+    if (!isInitialized) return;
+
     let isMounted = true;
 
     const refresh = async () => {
@@ -129,15 +132,16 @@ export default function FotovoltaicasTable<TData, TValue>({
       await fetchFotovoltaicas(true);
     };
 
-    setRefreshFotovoltaicas(refresh);
+    const unregisterRefresh = setRefreshFotovoltaicas(refresh);
 
     // Initial fetch
-    fetchFotovoltaicas(isMounted);
+    void fetchFotovoltaicas(isMounted);
 
     return () => {
       isMounted = false;
+      unregisterRefresh();
     };
-  }, [fetchFotovoltaicas, setRefreshFotovoltaicas]);
+  }, [fetchFotovoltaicas, isInitialized, setRefreshFotovoltaicas]);
 
   const tableConfig = useMemo(
     () => ({

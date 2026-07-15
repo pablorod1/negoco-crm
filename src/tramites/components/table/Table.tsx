@@ -26,7 +26,7 @@ export function DataTable<TData, TValue>({
   const isLiquidezTable = title === "Liquidez";
 
   const tableId = isLiquidezTable ? "liquidez" : "tramites";
-  const { pageIndex, pageSize, setPageIndex, setPageSize } =
+  const { pageIndex, pageSize, setPageIndex, setPageSize, isInitialized } =
     useTablePagination(tableId);
 
   const {
@@ -82,6 +82,7 @@ export function DataTable<TData, TValue>({
     excludeUser,
     isTramitesTable,
     isLiquidezTable,
+    paginationReady: isInitialized,
   });
 
   const { table } = useTableConfig({

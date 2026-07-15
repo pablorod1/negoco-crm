@@ -128,7 +128,7 @@ const ComparativaFileSchema = z.object({
 // Zod schema for GET endpoint pagination
 const PaginationQuerySchema = z.object({
   page: z.coerce.number().min(1),
-  rowsPerPage: z.union([z.coerce.number().min(1), z.string()]),
+  rowsPerPage: z.coerce.number().int().min(1).max(100),
   user_id: z.string().min(1),
   user_role: z.string().min(1),
   filterValue: z.string().optional(),
@@ -289,12 +289,12 @@ export async function GET(
 
     // Parse query parameters (convert from URL params to original format)
     const rowsParam = searchParams.get("rowsPerPage");
-    const rowsPerPageParsed: number | string =
+    const rowsPerPageParsed: number =
       rowsParam === null
-        ? 10
+        ? 50
         : rowsParam === "Sin Límite"
-          ? 200
-          : Number(rowsParam);
+          ? 100
+          : Math.min(Number(rowsParam), 100);
 
     const requestData: PaginatedComparisonsRequest = {
       page: parseInt(searchParams.get("page") || "1"),
@@ -349,8 +349,7 @@ export async function GET(
     }
 
     // Calculate pagination offset
-    const offset =
-      typeof rowsPerPage === "number" ? (page - 1) * rowsPerPage : 0;
+    const offset = (page - 1) * rowsPerPage;
 
     // Base query (exactly matching original structure)
     let query = `SELECT 
@@ -420,17 +419,11 @@ export async function GET(
     // Apply date range filtering (exact original logic)
     if (dateRange && dateRange.from && dateRange.to) {
       const fromDate = new Date(dateRange.from);
-      const toDate = new Date(dateRange.to);
+      const toExclusiveDate = new Date(dateRange.to);
+      toExclusiveDate.setDate(toExclusiveDate.getDate() + 1);
 
-      // Maintain original date adjustment logic
-      fromDate.setDate(fromDate.getDate() + 1);
-      toDate.setDate(toDate.getDate() + 1);
-
-      filters.push(`date(creation_date) BETWEEN date(?) AND date(?)`);
-      params.push(
-        fromDate.toISOString().split("T")[0],
-        toDate.toISOString().split("T")[0],
-      );
+      filters.push(`c.creation_date >= ? AND c.creation_date < ?`);
+      params.push(fromDate.toISOString(), toExclusiveDate.toISOString());
     }
 
     // Apply status and user filters
@@ -462,9 +455,11 @@ export async function GET(
     let countQuery = `
       SELECT COUNT(*) AS total
       FROM comparativas c
-      JOIN user u ON c.user_id = u.id
-      LEFT JOIN comercializadoras com ON c.company_id = com.id
     `;
+
+    if (filterValue) {
+      countQuery += ` JOIN user u ON c.user_id = u.id`;
+    }
 
     // Apply filters to both queries
     if (filters.length > 0) {
@@ -474,15 +469,13 @@ export async function GET(
     }
 
     // Complete the data query before executing (no GROUP BY needed: JOINs are 1:1)
-    query += ` ORDER BY c.creation_date DESC`;
+    query += ` ORDER BY c.creation_date DESC, c.id DESC`;
 
     // Snapshot params for count before adding pagination params
     const countParams = [...params];
 
-    if (typeof rowsPerPage === "number") {
-      query += ` LIMIT ? OFFSET ?`;
-      params.push(rowsPerPage, offset);
-    }
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(rowsPerPage, offset);
 
     // Execute count and data queries in parallel
     const [countResult, rs] = await Promise.all([

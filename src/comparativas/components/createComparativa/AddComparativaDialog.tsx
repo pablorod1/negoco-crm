@@ -43,7 +43,7 @@ export default function AddComparativaDialog({
   const isStarterPlan = userPlan === "starter";
 
   const [comparativa, setComparativa] = useState<ComparativaDB>(
-    createEmptyComparativaDB(userData as User)
+    () => createEmptyComparativaDB(userData as User),
   );
   const [documents, setDocuments] = useState<File[]>([]);
 
@@ -88,37 +88,38 @@ export default function AddComparativaDialog({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const comparativaFiles: ComparativaFile[] = [];
+      let comparativaFiles: ComparativaFile[];
+      try {
+        comparativaFiles = await Promise.all(
+          documents.map(async (file) => {
+            const { downloadURL, previewURL } = await uploadFile(
+              file,
+              `${userData?.organization.id}/comparativas`,
+              comparativa.id,
+            );
 
-      for (const file of documents) {
-        try {
-          const { downloadURL, previewURL } = await uploadFile(
-            file,
-            `${userData?.organization.id}/comparativas`,
-            comparativa.id
-          );
-
-          comparativaFiles.push({
-            id: crypto.randomUUID(),
-            comparativa_id: comparativa.id,
-            filename: file.name,
-            size: file.size,
-            extension: file.name.split(".").pop() || "",
-            upload_date: new Date().toISOString(),
-            download_url: downloadURL,
-            preview_url: previewURL || null,
-          });
-        } catch (error) {
-          showCustomToast({
-            title: "Error al subir el archivo",
-            message: "Inténtalo de nuevo más tarde",
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          console.error("Error uploading file:", error);
-          return;
-        }
+            return {
+              id: crypto.randomUUID(),
+              comparativa_id: comparativa.id,
+              filename: file.name,
+              size: file.size,
+              extension: file.name.split(".").pop() || "",
+              upload_date: new Date().toISOString(),
+              download_url: downloadURL,
+              preview_url: previewURL || null,
+            };
+          }),
+        );
+      } catch (error) {
+        showCustomToast({
+          title: "Error al subir el archivo",
+          message: "Inténtalo de nuevo más tarde",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        console.error("Error uploading file:", error);
+        return;
       }
       const formData = new FormData();
       formData.append("comparativa", JSON.stringify(comparativa));
@@ -150,20 +151,10 @@ export default function AddComparativaDialog({
         buttonLink: `/comparativas/${comparativa.id}`,
         buttonLinkText: "Ver comparativa",
       });
-      try {
-        await refreshComparativas();
-        onClose(true); // Skip cleanup on successful creation
-      } catch (error) {
+      void onClose(true);
+      void refreshComparativas().catch((error) => {
         console.error("Error al refrescar las comparativas:", error);
-        showCustomToast({
-          title: "Error al refrescar las comparativas",
-          message: "Inténtalo de nuevo más tarde",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        onClose(true); // Skip cleanup even on refresh error since comparativa was created
-      }
+      });
     } catch (error) {
       showCustomToast({
         title: "Error al crear la comparativa",
@@ -225,6 +216,7 @@ export default function AddComparativaDialog({
             </Button>
           ) : (
             <button
+              type="button"
               onClick={() => setIsOpen(true)}
               className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200"
             >

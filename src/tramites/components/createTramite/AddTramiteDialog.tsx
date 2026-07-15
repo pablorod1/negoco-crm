@@ -374,7 +374,6 @@ export default function AddTramiteDialog({
         const updated = await processComparativaUpdate();
         if (updated && onComparativaUpdated) {
           onComparativaUpdated();
-          handleClose(true); // Skip cleanup on successful creation
         }
       }
 
@@ -382,20 +381,10 @@ export default function AddTramiteDialog({
       localStorage.removeItem("signer");
       localStorage.removeItem("client");
 
-      try {
-        await refreshTramites();
-        handleClose(true); // Skip cleanup on successful creation
-      } catch (error) {
+      void handleClose(true);
+      void refreshTramites().catch((error) => {
         console.error("Error al refrescar los trámites:", error);
-        showCustomToast({
-          title: "Error al refrescar los trámites",
-          message: "Inténtalo de nuevo más tarde",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        handleClose(true); // Skip cleanup even on refresh error since tramite was created
-      }
+      });
     } catch (error) {
       console.error("Submission error:", error);
       showCustomToast({
@@ -641,6 +630,7 @@ export default function AddTramiteDialog({
           </Button>
         ) : (
           <button
+            type="button"
             onClick={handleOpen}
             className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:shadow-sm border border-transparent hover:border-blue-200"
           >
