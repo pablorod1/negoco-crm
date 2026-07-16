@@ -21,6 +21,7 @@ import TooltipComponent from "@/core/components/TooltipComponent";
 import { Badge } from "@/core/components/ui/badge";
 import { cn } from "@/core/utils";
 import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
+import AddComparativaDialog from "@/comparativas/components/createComparativa/AddComparativaDialog";
 import { TicketsData } from "../hooks/useTicketsData";
 import { DashboardView as ViewType } from "./ViewToggle";
 
@@ -122,6 +123,7 @@ export default function HeroDashboard({
             <span>Actualizar</span>
           </motion.button>
           <AddTramiteDialog variant="default" />
+          <AddComparativaDialog variant="default" />
         </div>
       </div>
 
