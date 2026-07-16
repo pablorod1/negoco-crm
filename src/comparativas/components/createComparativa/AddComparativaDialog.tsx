@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/core/components/ui/dialog";
-import { BarChart3, CheckCircle, CircleX, Plus, Rocket } from "lucide-react";
+import { BarChart3, CheckCircle, CircleX, Plus, PlusCircle, Rocket } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
 import { Button } from "@/core/components/ui/button";
 import { CreateComparativaStepper } from "./CreateComparativaStepper";
@@ -208,10 +208,10 @@ export default function AddComparativaDialog({
                   ? (variant as VariantProps<typeof buttonVariants>["variant"])
                   : "default"
               }
-              className="h-9 px-4 text-sm font-medium"
+              size={"sm"}
               onClick={() => setIsOpen(true)}
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <PlusCircle className="w-4 h-4" />
               <span>Nueva Comparativa</span>
             </Button>
           ) : (
@@ -220,7 +220,7 @@ export default function AddComparativaDialog({
               onClick={() => setIsOpen(true)}
               className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200"
             >
-              <div className="flex-shrink-0 p-2 rounded-md bg-gray-100 group-hover:bg-gray-200 text-gray-600 transition-colors duration-200">
+              <div className="shrink-0 p-2 rounded-md bg-gray-100 group-hover:bg-gray-200 text-gray-600 transition-colors duration-200">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div className="flex-1 text-left min-w-0">
