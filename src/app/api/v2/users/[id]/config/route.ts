@@ -2,6 +2,11 @@ import { getTursoClient } from "@/core/libsql/client";
 import { hashPassword } from "@/core/auth/auth-utils";
 import { NextRequest, NextResponse } from "next/server";
 import { validateUserSession } from "@/core/auth/session-utils";
+import {
+  getDefaultCommissions,
+  getUserCommissionOverrides,
+  mergeCommissions,
+} from "@/core/libsql/commissions/companyCommissions";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -59,23 +64,9 @@ async function getConfigData(
   tursoClient: NonNullable<ReturnType<typeof getTursoClient>>,
   userId: string,
 ) {
-  const [commissionsResponse, notesResponse] = await Promise.all([
-    tursoClient.execute({
-      sql: `SELECT
-        ucc.id,
-        ucc.user_id,
-        ucc.comercializadora_id,
-        c.name as comercializadora_name,
-        ucc.commission_type,
-        ucc.commission_value,
-        ucc.created_at,
-        ucc.updated_at
-      FROM user_company_commissions ucc
-      LEFT JOIN comercializadoras c ON c.id = ucc.comercializadora_id
-      WHERE ucc.user_id = ?
-      ORDER BY c.name ASC`,
-      args: [userId],
-    }),
+  const [overrides, defaults, notesResponse] = await Promise.all([
+    getUserCommissionOverrides(tursoClient, userId),
+    getDefaultCommissions(tursoClient),
     tursoClient.execute({
       sql: `SELECT id, user_id, target, note, created_at, updated_at
       FROM user_default_notes
@@ -86,18 +77,12 @@ async function getConfigData(
   ]);
 
   return {
-    company_commissions: commissionsResponse.rows.map((row) => ({
-      id: String(row.id),
-      user_id: String(row.user_id),
-      comercializadora_id: String(row.comercializadora_id),
-      comercializadora_name: row.comercializadora_name
-        ? String(row.comercializadora_name)
-        : null,
-      commission_type: String(row.commission_type),
-      commission_value: Number(row.commission_value) || 0,
-      created_at: row.created_at ? String(row.created_at) : null,
-      updated_at: row.updated_at ? String(row.updated_at) : null,
-    })),
+    // Solo los overrides propios del colaborador: lo que el modal edita.
+    company_commissions: overrides,
+    // Valores heredados de la asesoría, para mostrar qué se aplica si no hay override.
+    default_commissions: defaults,
+    // Lo que realmente se aplica al calcular comisiones.
+    effective_commissions: mergeCommissions(userId, overrides, defaults),
     targeted_notes: notesResponse.rows.map((row) => ({
       id: String(row.id),
       user_id: String(row.user_id),
@@ -220,30 +205,36 @@ export async function PATCH(
     }
 
     if (company_commissions !== undefined) {
-      await tursoClient.execute({
-        sql: "DELETE FROM user_company_commissions WHERE user_id = ?",
-        args: [id],
-      });
-      for (const commission of company_commissions) {
-        await tursoClient.execute({
-          sql: `INSERT INTO user_company_commissions (
-            id,
-            user_id,
-            comercializadora_id,
-            commission_type,
-            commission_value,
-            created_at,
-            updated_at
-          ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-          args: [
-            crypto.randomUUID(),
-            id,
-            commission.comercializadora_id,
-            commission.commission_type,
-            commission.commission_value,
-          ],
-        });
-      }
+      // La lista recibida es el conjunto completo de overrides del colaborador:
+      // las comercializadoras que no vengan pasan a heredar el valor por defecto
+      // de la asesoría.
+      await tursoClient.batch(
+        [
+          {
+            sql: "DELETE FROM user_company_commissions WHERE user_id = ?",
+            args: [id],
+          },
+          ...company_commissions.map((commission) => ({
+            sql: `INSERT INTO user_company_commissions (
+              id,
+              user_id,
+              comercializadora_id,
+              commission_type,
+              commission_value,
+              created_at,
+              updated_at
+            ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            args: [
+              crypto.randomUUID(),
+              id,
+              commission.comercializadora_id,
+              commission.commission_type,
+              commission.commission_value,
+            ],
+          })),
+        ],
+        "write",
+      );
     }
 
     if (targeted_notes !== undefined) {

@@ -18,13 +18,15 @@ export function useUserCompanyCommissions(userId?: string | null) {
 
       setLoading(true);
       try {
-        const response = await fetch(`/api/v2/users/${userId}/config`);
+        // Comisiones ya resueltas: override del colaborador o, si no tiene,
+        // el valor por defecto de la asesoría.
+        const response = await fetch(
+          `/api/v2/users/${userId}/effective-commissions`,
+        );
         const result = await response.json();
 
         if (!cancelled) {
-          setCommissions(
-            result.success ? (result.data?.company_commissions ?? []) : [],
-          );
+          setCommissions(result.success ? (result.data ?? []) : []);
         }
       } catch (error) {
         console.error("Error fetching user company commissions:", error);

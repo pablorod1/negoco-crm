@@ -85,6 +85,27 @@ export const userCompanyCommissions = sqliteTable(
   ],
 );
 
+export const defaultCompanyCommissions = sqliteTable(
+  "default_company_commissions",
+  {
+    id: text("id").primaryKey(),
+    comercializadoraId: text("comercializadora_id").notNull(),
+    commissionType: text("commission_type").notNull(),
+    commissionValue: real("commission_value").notNull().default(0),
+    createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("default_company_commissions_company_unique").on(
+      table.comercializadoraId,
+    ),
+    check(
+      "default_company_commissions_type_check",
+      sql`${table.commissionType} IN ('percent', 'fixed')`,
+    ),
+  ],
+);
+
 export const userDefaultNotes = sqliteTable(
   "user_default_notes",
   {

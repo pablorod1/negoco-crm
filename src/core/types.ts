@@ -23,9 +23,24 @@ export interface User {
 export type CommissionType = "percent" | "fixed";
 export type UserDefaultNoteTarget = "global" | "tramites" | "comparativas";
 
+/** De dónde sale una comisión: del override del colaborador o del valor por defecto de la asesoría. */
+export type CommissionSource = "user" | "default";
+
 export interface UserCompanyCommission {
   id: string;
   user_id: string;
+  comercializadora_id: string;
+  comercializadora_name?: string | null;
+  commission_type: CommissionType;
+  commission_value: number;
+  created_at: string | null;
+  updated_at: string | null;
+  /** Presente en las comisiones efectivas (resueltas con herencia). */
+  source?: CommissionSource;
+}
+
+export interface DefaultCompanyCommission {
+  id: string;
   comercializadora_id: string;
   comercializadora_name?: string | null;
   commission_type: CommissionType;

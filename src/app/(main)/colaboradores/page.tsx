@@ -1,5 +1,7 @@
 ﻿"use client";
 import { useCallback, useEffect, useState } from "react";
+import BulkCommissionsModal from "@/colaboradores/components/BulkCommissionsModal";
+import CommissionDefaultsModal from "@/colaboradores/components/CommissionDefaultsModal";
 import CreateUserModal from "@/colaboradores/components/CreateUserModal";
 import UsersGridTable from "@/colaboradores/components/UsersGrid";
 import UserLimitBar from "@/colaboradores/components/UserLimitBar";
@@ -135,10 +137,14 @@ export default function ColaboradoresPage() {
               </p>
             </div>
             {isAdmin && (
-              <CreateUserModal
-                onUserCreated={handleUserCreated}
-                disabled={!canAddUsers}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <CommissionDefaultsModal />
+                <BulkCommissionsModal users={state.users} />
+                <CreateUserModal
+                  onUserCreated={handleUserCreated}
+                  disabled={!canAddUsers}
+                />
+              </div>
             )}
           </div>
         </div>
