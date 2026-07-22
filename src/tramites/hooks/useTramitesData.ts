@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTramites } from "@/core/contexts/TramitesContext";
 import { TramiteRow } from "@/tramites/types";
 import { User } from "@/core/types";
 import { DateRange } from "react-day-picker";
+import {
+  buildContractsQueryParams,
+  type ContractsQueryFilters,
+} from "@/tramites/utils/buildContractsQueryParams";
 
 interface UseTramitesDataParams {
   userData: User | null;
@@ -56,6 +60,47 @@ export function useTramitesData({
 
   const { setRefreshTramites } = useTramites();
 
+  // Single source of truth for "what is currently filtered", consumed both by
+  // the paginated fetch below and by the Excel export.
+  const filterBundle = useMemo<ContractsQueryFilters>(
+    () => ({
+      filterValue,
+      companyFilter,
+      statusFilter,
+      liquidezStatusFilter,
+      contractTypeFilter,
+      activationDateRange,
+      creationDateRange,
+      renovationDateRange,
+      collectionDateRange,
+      paymentDateRange,
+      userFilter,
+      providerFilter,
+      excludeCompany,
+      excludeUser,
+      isTramitesTable,
+      isLiquidezTable,
+    }),
+    [
+      filterValue,
+      companyFilter,
+      statusFilter,
+      liquidezStatusFilter,
+      contractTypeFilter,
+      activationDateRange,
+      creationDateRange,
+      renovationDateRange,
+      collectionDateRange,
+      paymentDateRange,
+      userFilter,
+      providerFilter,
+      excludeCompany,
+      excludeUser,
+      isTramitesTable,
+      isLiquidezTable,
+    ],
+  );
+
   const fetchTramites = useCallback(
     async (signal?: AbortSignal) => {
       if (!userData || !paginationReady) return;
@@ -66,72 +111,12 @@ export function useTramitesData({
       try {
         setLoading(true);
 
-        // Build query parameters
-        const params = new URLSearchParams();
+        // Build query parameters (shared with the Excel export)
+        const params = buildContractsQueryParams(filterBundle);
         params.append("page", pageIndex.toString());
         params.append("rowsPerPage", pageSize.toString());
         params.append("user_id", userData.id);
         params.append("user_role", userData.role);
-
-        if (filterValue) params.append("filterValue", filterValue);
-        if (companyFilter && companyFilter.length > 0) {
-          params.append("companyFilter", JSON.stringify(companyFilter));
-          if (excludeCompany) params.append("excludeCompany", "true");
-        }
-
-        const statusToSend = isTramitesTable
-          ? statusFilter
-          : isLiquidezTable && statusFilter
-            ? statusFilter
-            : ["Activo", "Baja"];
-        if (statusToSend && statusToSend.length > 0) {
-          params.append("statusFilter", JSON.stringify(statusToSend));
-        }
-
-        if (liquidezStatusFilter && liquidezStatusFilter.length > 0) {
-          params.append(
-            "liquidezStatusFilter",
-            JSON.stringify(liquidezStatusFilter)
-          );
-        }
-        if (contractTypeFilter && contractTypeFilter.length > 0) {
-          params.append(
-            "contractTypeFilter",
-            JSON.stringify(contractTypeFilter)
-          );
-        }
-        if (activationDateRange) {
-          params.append(
-            "activationDateRange",
-            JSON.stringify(activationDateRange)
-          );
-        }
-        if (creationDateRange) {
-          params.append("creationDateRange", JSON.stringify(creationDateRange));
-        }
-        if (renovationDateRange) {
-          params.append(
-            "renovationDateRange",
-            JSON.stringify(renovationDateRange)
-          );
-        }
-        if (isLiquidezTable && collectionDateRange) {
-          params.append(
-            "collectionDateRange",
-            JSON.stringify(collectionDateRange)
-          );
-        }
-        if (isLiquidezTable && paymentDateRange) {
-          params.append("paymentDateRange", JSON.stringify(paymentDateRange));
-        }
-        if (userFilter && userFilter.length > 0) {
-          params.append("userFilter", JSON.stringify(userFilter));
-          if (excludeUser) params.append("excludeUser", "true");
-        }
-
-        if (isLiquidezTable && providerFilter && providerFilter.length > 0) {
-          params.append("providerFilter", JSON.stringify(providerFilter));
-        }
 
         const res = await fetch(`/api/v2/contracts?${params.toString()}`, {
           method: "GET",
@@ -162,28 +147,7 @@ export function useTramitesData({
         if (isCurrentRequest()) setLoading(false);
       }
     },
-    [
-      pageIndex,
-      pageSize,
-      filterValue,
-      companyFilter,
-      statusFilter,
-      liquidezStatusFilter,
-      contractTypeFilter,
-      userData,
-      isTramitesTable,
-      isLiquidezTable,
-      activationDateRange,
-      creationDateRange,
-      renovationDateRange,
-      collectionDateRange,
-      paymentDateRange,
-      userFilter,
-      providerFilter,
-      excludeCompany,
-      excludeUser,
-      paginationReady,
-    ]
+    [pageIndex, pageSize, userData, filterBundle, paginationReady]
   );
 
   useEffect(() => {
@@ -213,5 +177,6 @@ export function useTramitesData({
     loading,
     totalTramites,
     fetchTramites,
+    filterBundle,
   };
 }

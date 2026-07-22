@@ -10,6 +10,7 @@ import { useUser } from "@/core/contexts/UserContext";
 import { TableContent } from "@/core/components/table/TableContent";
 import { useTramitesData } from "@/tramites/hooks/useTramitesData";
 import { useTableConfig } from "@/tramites/hooks/useTableConfig";
+import { useContractsExport } from "@/tramites/hooks/useContractsExport";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -62,7 +63,7 @@ export function DataTable<TData, TValue>({
     setExcludeUser,
   } = useTableFilters(isLiquidezTable ? "liquidez" : "tramites");
 
-  const { tramites, loading, totalTramites } = useTramitesData({
+  const { tramites, loading, totalTramites, filterBundle } = useTramitesData({
     userData,
     pageIndex,
     pageSize,
@@ -89,6 +90,9 @@ export function DataTable<TData, TValue>({
     data: tramites as TData[],
     columns,
   });
+
+  // Exports every filtered tramite, not just the page on screen.
+  const serverExport = useContractsExport(filterBundle);
 
   // Función personalizada para manejar el reseteo de filtros
   const handleResetFilters = useCallback(() => {
@@ -130,6 +134,7 @@ export function DataTable<TData, TValue>({
       setExcludeCompany,
       excludeUser,
       setExcludeUser,
+      serverExport,
     }),
     [
       filterValue,
@@ -165,6 +170,7 @@ export function DataTable<TData, TValue>({
       setExcludeCompany,
       excludeUser,
       setExcludeUser,
+      serverExport,
     ],
   );
 
