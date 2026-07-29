@@ -12,7 +12,7 @@ interface ComparisonCommissionsUpdateResponse {
 
 type WriteTransaction = Pick<
   Transaction,
-  "execute" | "commit" | "rollback"
+  "execute" | "commit" | "rollback" | "close"
 >;
 
 const SafeResourceIdSchema = z
@@ -23,8 +23,9 @@ const SafeResourceIdSchema = z
   .regex(/^[A-Za-z0-9_-]+$/);
 
 const optionalCommissionNumber = z.preprocess((value) => {
-  if (value === undefined || value === "") return undefined;
-  if (value === null) return 0;
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
   if (typeof value === "string") {
     const numberValue = Number(value.replace(",", "."));
     return Number.isFinite(numberValue) ? numberValue : Number.NaN;
@@ -137,7 +138,17 @@ function normalizeStoredCommission(
   value: unknown,
   field: CommissionField,
 ): number {
-  if (value === null || value === undefined) return 0;
+  if (value === null) return 0;
+  if (typeof value === "string" && value.trim() === "") {
+    throw new Error(`Invalid stored commission value for ${field}`);
+  }
+  if (
+    typeof value !== "number" &&
+    typeof value !== "string" &&
+    typeof value !== "bigint"
+  ) {
+    throw new Error(`Invalid stored commission value for ${field}`);
+  }
 
   const commission = Number(value);
   if (!Number.isFinite(commission)) {
@@ -210,126 +221,143 @@ export async function PATCH(
       await tursoClient.transaction("write");
 
     try {
-      const currentResult = await transaction.execute({
-        sql: `SELECT
-          status,
-          plan,
-          comision_fijo,
-          comision_indexado,
-          comision_sales_person_fijo,
-          comision_sales_person_indexado
-        FROM comparativas
-        WHERE id = ?`,
-        args: [comparisonId],
-      });
-
-      if (currentResult.rows.length === 0) {
-        throw new TransactionResponseError(
-          404,
-          "Comparativa no encontrada",
-        );
-      }
-
-      const currentRow = currentResult.rows[0];
-      const currentComparison: CurrentComparison = {
-        status: currentRow.status,
-        plan: currentRow.plan,
-        comision_fijo: currentRow.comision_fijo,
-        comision_indexado: currentRow.comision_indexado,
-        comision_sales_person_fijo:
-          currentRow.comision_sales_person_fijo,
-        comision_sales_person_indexado:
-          currentRow.comision_sales_person_indexado,
-      };
-      if (currentComparison.status !== "completed") {
-        throw new TransactionResponseError(
-          409,
-          "Comparison status changed",
-        );
-      }
-
-      const activePlans = new Set(
-        parseStoredPlan(currentComparison.plan),
-      );
-      const submittedFields = commissionFields.filter(
-        ({ field }) => commissions[field] !== undefined,
-      );
-
-      if (
-        submittedFields.some(({ plan }) => !activePlans.has(plan))
-      ) {
-        throw new TransactionResponseError(
-          409,
-          "Comparison status changed",
-        );
-      }
-
-      const updateValues = submittedFields.map(
-        ({ field }) => commissions[field] as number,
-      );
-      const updateResult = await transaction.execute({
-        sql: `UPDATE comparativas
-          SET ${submittedFields
-            .map(({ field }) => `${field} = ?`)
-            .join(", ")}
+      try {
+        const currentResult = await transaction.execute({
+          sql: `SELECT
+            status,
+            plan,
+            comision_fijo,
+            comision_indexado,
+            comision_sales_person_fijo,
+            comision_sales_person_indexado
+          FROM comparativas
           WHERE id = ?`,
-        args: [...updateValues, comparisonId],
-      });
+          args: [comparisonId],
+        });
 
-      if (updateResult.rowsAffected === 0) {
-        throw new TransactionResponseError(
-          409,
-          "Comparison status changed",
-        );
-      }
-      if (updateResult.rowsAffected !== 1) {
-        throw new Error(
-          "Comparison commission update affected multiple rows",
-        );
-      }
+        if (currentResult.rows.length === 0) {
+          throw new TransactionResponseError(
+            404,
+            "Comparativa no encontrada",
+          );
+        }
 
-      for (const definition of submittedFields) {
-        const { field, description } = definition;
-        const oldValue = normalizeStoredCommission(
-          currentComparison[field],
-          field,
-        );
-        const newValue = commissions[field] as number;
-        if (oldValue === newValue) continue;
+        const currentRow = currentResult.rows[0];
+        const currentComparison: CurrentComparison = {
+          status: currentRow.status,
+          plan: currentRow.plan,
+          comision_fijo: currentRow.comision_fijo,
+          comision_indexado: currentRow.comision_indexado,
+          comision_sales_person_fijo:
+            currentRow.comision_sales_person_fijo,
+          comision_sales_person_indexado:
+            currentRow.comision_sales_person_indexado,
+        };
+        if (currentComparison.status !== "completed") {
+          throw new TransactionResponseError(
+            409,
+            "Comparison status changed",
+          );
+        }
 
-        const auditRecorded = await createComparativaChange(
-          transaction,
-          {
-            comparativa_id: comparisonId,
-            user_id: authenticatedUser.id,
-            change_type: "commission_update",
-            field_name: field,
-            old_value: oldValue.toString(),
-            new_value: newValue.toString(),
-            description: `${description} actualizada de ${oldValue}€ a ${newValue}€`,
+        const activePlans = new Set(
+          parseStoredPlan(currentComparison.plan),
+        );
+        const submittedFields = commissionFields.filter(
+          ({ field }) => commissions[field] !== undefined,
+        );
+
+        if (
+          submittedFields.some(({ plan }) => !activePlans.has(plan))
+        ) {
+          throw new TransactionResponseError(
+            409,
+            "Comparison status changed",
+          );
+        }
+
+        const auditChanges = submittedFields.flatMap(
+          ({ field, description }) => {
+            const oldValue = normalizeStoredCommission(
+              currentComparison[field],
+              field,
+            );
+            const newValue = commissions[field] as number;
+            if (oldValue === newValue) return [];
+
+            return [
+              {
+                field,
+                oldValue,
+                newValue,
+                description,
+              },
+            ];
           },
         );
-        if (!auditRecorded) {
-          throw new Error("Comparison audit could not be recorded");
+        const updateValues = submittedFields.map(
+          ({ field }) => commissions[field] as number,
+        );
+        const updateResult = await transaction.execute({
+          sql: `UPDATE comparativas
+            SET ${submittedFields
+              .map(({ field }) => `${field} = ?`)
+              .join(", ")}
+            WHERE id = ?`,
+          args: [...updateValues, comparisonId],
+        });
+
+        if (updateResult.rowsAffected === 0) {
+          throw new TransactionResponseError(
+            409,
+            "Comparison status changed",
+          );
         }
-      }
+        if (updateResult.rowsAffected !== 1) {
+          throw new Error(
+            "Comparison commission update affected multiple rows",
+          );
+        }
 
-      await transaction.commit();
-      return NextResponse.json({ success: true });
-    } catch (error) {
-      const rolledBack = await rollbackTransaction(transaction);
-      if (
-        rolledBack &&
-        error instanceof TransactionResponseError
-      ) {
-        return errorResponse(error.status, error.responseError);
-      }
+        for (const change of auditChanges) {
+          const auditRecorded = await createComparativaChange(
+            transaction,
+            {
+              comparativa_id: comparisonId,
+              user_id: authenticatedUser.id,
+              change_type: "commission_update",
+              field_name: change.field,
+              old_value: change.oldValue.toString(),
+              new_value: change.newValue.toString(),
+              description: `${change.description} actualizada de ${change.oldValue}€ a ${change.newValue}€`,
+            },
+          );
+          if (!auditRecorded) {
+            throw new Error(
+              "Comparison audit could not be recorded",
+            );
+          }
+        }
 
-      console.error(
-        "[comparison-commissions] transaction failed",
-        error,
-      );
-      return errorResponse(500, "Internal server error");
+        await transaction.commit();
+        return NextResponse.json({ success: true });
+      } catch (error) {
+        const rolledBack = await rollbackTransaction(transaction);
+        if (
+          rolledBack &&
+          error instanceof TransactionResponseError
+        ) {
+          return errorResponse(error.status, error.responseError);
+        }
+
+        console.error(
+          "[comparison-commissions] transaction failed",
+          error,
+        );
+        return errorResponse(500, "Internal server error");
+      }
+    } finally {
+      await transaction.close();
     }
   } catch (error) {
     console.error("[comparison-commissions] unexpected error", error);

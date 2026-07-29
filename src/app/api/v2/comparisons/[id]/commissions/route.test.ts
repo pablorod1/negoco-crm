@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  close: vi.fn(),
   commit: vi.fn(),
   createComparativaChange: vi.fn(),
   execute: vi.fn(),
@@ -26,10 +27,10 @@ const route = await import("./route");
 type ComparisonRow = {
   status: string;
   plan: string;
-  comision_fijo: number | null;
-  comision_indexado: number | null;
-  comision_sales_person_fijo: number | null;
-  comision_sales_person_indexado: number | null;
+  comision_fijo: unknown;
+  comision_indexado: unknown;
+  comision_sales_person_fijo: unknown;
+  comision_sales_person_indexado: unknown;
 };
 
 type Statement = {
@@ -48,6 +49,7 @@ const transaction = {
   execute: mocks.execute,
   commit: mocks.commit,
   rollback: mocks.rollback,
+  close: mocks.close,
 };
 
 let currentComparison: ComparisonRow | undefined;
@@ -118,6 +120,7 @@ beforeEach(() => {
     transaction: mocks.transaction,
   });
   mocks.transaction.mockResolvedValue(transaction);
+  mocks.close.mockResolvedValue(undefined);
   mocks.commit.mockResolvedValue(undefined);
   mocks.rollback.mockResolvedValue(undefined);
   mocks.createComparativaChange.mockResolvedValue(true);
@@ -233,6 +236,21 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
         request({ comissions: { comision_fijo: "" } }),
     },
     {
+      name: "only null commission values",
+      request: () =>
+        request({ comissions: { comision_fijo: null } }),
+    },
+    {
+      name: "only null and empty commission values",
+      request: () =>
+        request({
+          comissions: {
+            comision_fijo: null,
+            comision_indexado: "",
+          },
+        }),
+    },
+    {
       name: "non-finite numeric text",
       request: () =>
         request({ comissions: { comision_fijo: "Infinity" } }),
@@ -271,6 +289,10 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
 
     expect(response.status).toBe(404);
     expect(mocks.rollback).toHaveBeenCalledTimes(1);
+    expect(mocks.close).toHaveBeenCalledTimes(1);
+    expect(mocks.rollback.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.close.mock.invocationCallOrder[0],
+    );
     expect(mocks.commit).not.toHaveBeenCalled();
     expect(mocks.createComparativaChange).not.toHaveBeenCalled();
   });
@@ -447,10 +469,10 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
   });
 
   test.each([
+    { input: 0, expected: 0 },
     { input: 42.25, expected: 42.25 },
     { input: "42.25", expected: 42.25 },
     { input: "42,25", expected: 42.25 },
-    { input: null, expected: 0 },
   ])(
     "retains numeric compatibility for $input",
     async ({ input, expected }) => {
@@ -463,6 +485,83 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
         expected,
         "comparison-1",
       ]);
+    },
+  );
+
+  test("treats null and empty values as omitted when another field is valid", async () => {
+    const response = await patch({
+      comissions: {
+        comision_fijo: null,
+        comision_indexado: "",
+        comision_sales_person_fijo: 15,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const update = findUpdateStatement();
+    expect(update.sql).not.toContain("comision_fijo = ?");
+    expect(update.sql).not.toContain("comision_indexado = ?");
+    expect(update.sql).toContain("comision_sales_person_fijo = ?");
+    expect(update.args).toEqual([15, "comparison-1"]);
+    expect(mocks.createComparativaChange).toHaveBeenCalledTimes(1);
+    expect(mocks.createComparativaChange).toHaveBeenCalledWith(
+      transaction,
+      expect.objectContaining({
+        field_name: "comision_sales_person_fijo",
+        old_value: "5",
+        new_value: "15",
+      }),
+    );
+  });
+
+  test.each(["", "   ", "not-a-number"])(
+    "rolls back on malformed persisted commission text %j",
+    async (storedValue) => {
+      currentComparison = {
+        ...currentComparison!,
+        comision_fijo: storedValue,
+      };
+
+      const response = await patch({
+        comissions: { comision_fijo: 15 },
+      });
+
+      expect(response.status).toBe(500);
+      expect(mocks.rollback).toHaveBeenCalledTimes(1);
+      expect(mocks.close).toHaveBeenCalledTimes(1);
+      expect(mocks.createComparativaChange).not.toHaveBeenCalled();
+      expect(mocks.commit).not.toHaveBeenCalled();
+      expect(mocks.execute).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  test.each([
+    { storedValue: 12.5, expectedOldValue: "12.5" },
+    { storedValue: "12.5", expectedOldValue: "12.5" },
+    { storedValue: null, expectedOldValue: "0" },
+  ])(
+    "supports persisted commission value $storedValue",
+    async ({ storedValue, expectedOldValue }) => {
+      currentComparison = {
+        ...currentComparison!,
+        comision_fijo: storedValue,
+      };
+
+      const response = await patch({
+        comissions: { comision_fijo: 15 },
+      });
+
+      expect(response.status).toBe(200);
+      expect(mocks.createComparativaChange).toHaveBeenCalledWith(
+        transaction,
+        expect.objectContaining({
+          field_name: "comision_fijo",
+          old_value: expectedOldValue,
+          new_value: "15",
+        }),
+      );
+      expect(mocks.commit).toHaveBeenCalledTimes(1);
+      expect(mocks.close).toHaveBeenCalledTimes(1);
     },
   );
 
@@ -514,7 +613,38 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
 
     expect(response.status).toBe(500);
     expect(mocks.rollback).toHaveBeenCalledTimes(1);
+    expect(mocks.close).toHaveBeenCalledTimes(1);
     expect(mocks.createComparativaChange).not.toHaveBeenCalled();
+    expect(mocks.commit).not.toHaveBeenCalled();
+  });
+
+  test("rolls back, closes, and returns 500 when commit rejects", async () => {
+    mocks.commit.mockRejectedValue(new Error("commit failed"));
+
+    const response = await patch({
+      comissions: { comision_fijo: 15 },
+    });
+
+    expect(response.status).toBe(500);
+    expect(mocks.commit).toHaveBeenCalledTimes(1);
+    expect(mocks.rollback).toHaveBeenCalledTimes(1);
+    expect(mocks.close).toHaveBeenCalledTimes(1);
+    expect(mocks.rollback.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.close.mock.invocationCallOrder[0],
+    );
+  });
+
+  test("closes without retrying when rollback rejects", async () => {
+    currentComparison = undefined;
+    mocks.rollback.mockRejectedValue(new Error("rollback failed"));
+
+    const response = await patch({
+      comissions: { comision_fijo: 15 },
+    });
+
+    expect(response.status).toBe(500);
+    expect(mocks.rollback).toHaveBeenCalledTimes(1);
+    expect(mocks.close).toHaveBeenCalledTimes(1);
     expect(mocks.commit).not.toHaveBeenCalled();
   });
 
@@ -544,5 +674,9 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
     expect(mocks.transaction).toHaveBeenCalledWith("write");
     expect(mocks.commit).toHaveBeenCalledTimes(1);
     expect(mocks.rollback).not.toHaveBeenCalled();
+    expect(mocks.close).toHaveBeenCalledTimes(1);
+    expect(mocks.commit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.close.mock.invocationCallOrder[0],
+    );
   });
 });
