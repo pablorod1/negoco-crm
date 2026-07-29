@@ -37,7 +37,9 @@ interface Props {
   comparativa: ComparativaVM;
   onUpdate: () => void;
   userData: User;
-  mode?: "manual" | "abarca";
+  mode?: "manual" | "ai_review";
+  canCompleteStudies: boolean;
+  canReviewStudies?: boolean;
 }
 
 type ActionType = "complete" | "reject" | null;
@@ -47,6 +49,8 @@ export default function CompletarEstudioModal({
   onUpdate,
   userData,
   mode = "manual",
+  canCompleteStudies,
+  canReviewStudies = false,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [actionType, setActionType] = useState<ActionType>(null);
@@ -62,9 +66,13 @@ export default function CompletarEstudioModal({
     comparativa.user.id,
   );
 
-  // Auto-match supplier from Abarca estudio empresa field
+  // Auto-match the supplier returned by the AI study.
   useEffect(() => {
-    if (mode !== "abarca" || selectedSupplierId || activeSuppliers.length === 0)
+    if (
+      mode !== "ai_review" ||
+      selectedSupplierId ||
+      activeSuppliers.length === 0
+    )
       return;
 
     const empresa = comparativa.abarca_estudio?.empresa;
@@ -552,22 +560,20 @@ export default function CompletarEstudioModal({
     return uuid.slice(-8).toUpperCase();
   };
 
-  // Guard: modo manual requiere pending, modo abarca requiere awaiting_review
-  const allowedStatus = mode === "abarca" ? "awaiting_review" : "pending";
+  const allowedStatus = mode === "ai_review" ? "awaiting_review" : "pending";
   if (comparativa.status !== allowedStatus) {
     return null;
   }
 
-  // Solo mostrar para usuarios backoffice y admin
-  const isAdmin = userData.role === "admin";
-  const isBackoffice = userData.role === "1";
-
-  if (!isAdmin && !isBackoffice) {
+  if (
+    (mode === "ai_review" && !canReviewStudies) ||
+    (mode === "manual" && !canCompleteStudies)
+  ) {
     return null;
   }
 
-  // Modo abarca: solo mostrar el modal simplificado (sin upload, sin rechazo)
-  if (mode === "abarca") {
+  // AI review does not upload files or allow rejection.
+  if (mode === "ai_review") {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
@@ -587,10 +593,10 @@ export default function CompletarEstudioModal({
         >
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-primary-800">
-              Revisión de Estudio Abarca · {comparativa.client}
+              Revisión de estudio · {comparativa.client}
             </DialogTitle>
             <DialogDescription>
-              El estudio de Abarca se ha recibido correctamente. Asigna la
+              El estudio con IA se ha recibido correctamente. Asigna la
               comercializadora ganadora y las comisiones para completar la
               comparativa.
             </DialogDescription>
@@ -612,7 +618,7 @@ export default function CompletarEstudioModal({
               </h3>
               <div className="space-y-2">
                 <Label
-                  htmlFor="supplier-select-abarca"
+                  htmlFor="supplier-select-ai-review"
                   className="text-sm text-gray-600"
                 >
                   Selecciona la comercializadora que ganó la comparativa
@@ -621,7 +627,10 @@ export default function CompletarEstudioModal({
                   value={selectedSupplierId}
                   onValueChange={setSelectedSupplierId}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    id="supplier-select-ai-review"
+                    className="w-full"
+                  >
                     <SelectValue placeholder="Seleccionar comercializadora..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -730,7 +739,7 @@ export default function CompletarEstudioModal({
             className="w-full"
           >
             <CheckCircle className="h-4 w-4" />
-            Completar Estudio Manual
+            Estudio manual
           </Button>
         </DialogTrigger>
         <DialogContent
@@ -792,7 +801,7 @@ export default function CompletarEstudioModal({
                   value={selectedSupplierId}
                   onValueChange={setSelectedSupplierId}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="supplier-select" className="w-full">
                     <SelectValue placeholder="Seleccionar comercializadora..." />
                   </SelectTrigger>
                   <SelectContent>

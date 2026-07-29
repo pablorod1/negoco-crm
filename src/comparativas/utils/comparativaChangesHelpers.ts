@@ -1,4 +1,4 @@
-import { Client } from "@libsql/client";
+import type { Client } from "@libsql/client";
 import { formatDateTime } from "@/core/utils/format";
 
 export type ComparativaChangeType =
@@ -31,7 +31,7 @@ export interface ComparativaChange {
   user_name?: string;
 }
 
-type DBExecutor = Client;
+type DBExecutor = Pick<Client, "execute">;
 
 /**
  * Formatea valores para mostrar en las descripciones de cambios
@@ -156,12 +156,12 @@ export async function recordStatusChange(
   user_id: string | null,
   old_status: string | null,
   new_status: string
-): Promise<void> {
+): Promise<boolean> {
   const oldFormatted = formatChangeValue(old_status, "status");
   const newFormatted = formatChangeValue(new_status, "status");
   const description = `Estado actualizado de ${oldFormatted} a ${newFormatted}`;
 
-  await createComparativaChange(db, {
+  return createComparativaChange(db, {
     comparativa_id,
     user_id,
     change_type: "status_change",
@@ -257,12 +257,12 @@ export async function recordCommissionChange(
   field_name: string,
   old_value: number | null,
   new_value: number
-): Promise<void> {
+): Promise<boolean> {
   const oldFormatted = formatChangeValue(old_value, field_name);
   const newFormatted = formatChangeValue(new_value, field_name);
   const description = `${getFieldDisplayName(field_name)} actualizada de ${oldFormatted} a ${newFormatted}`;
 
-  await createComparativaChange(db, {
+  return createComparativaChange(db, {
     comparativa_id,
     user_id,
     change_type: "commission_update",
@@ -400,8 +400,8 @@ export async function recordConvertedToContract(
   comparativa_id: string,
   user_id: string | null,
   tramite_id: string
-): Promise<void> {
-  await createComparativaChange(db, {
+): Promise<boolean> {
+  return createComparativaChange(db, {
     comparativa_id,
     user_id,
     change_type: "converted_to_contract",

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateUserSession } from "@/core/auth/session-utils";
 import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { z } from "zod";
@@ -52,31 +53,54 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<UsersResponse | ErrorResponse>> {
   try {
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const authenticatedUser = authResult.user;
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const { role } = GetAllUsersQuerySchema.parse({
+    const queryValidation = GetAllUsersQuerySchema.safeParse({
       role: searchParams.get("role"),
     });
 
-    // Validate path param
     const paramsValidation = GetAllUsersParamsSchema.safeParse({ id });
-    if (!paramsValidation.success) {
+    if (!paramsValidation.success || !queryValidation.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Missing parameters",
-        },
+        { success: false, error: "Invalid parameters" },
         { status: 400 },
+      );
+    }
+
+    if (
+      paramsValidation.data.id !== authenticatedUser.id ||
+      queryValidation.data.role !== authenticatedUser.role
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
+      );
+    }
+
+    if (
+      authenticatedUser.role !== "admin" &&
+      authenticatedUser.role !== "1" &&
+      authenticatedUser.role !== "2"
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
       );
     }
 
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Database client not initialized",
-        },
+        { success: false, error: "Internal server error" },
         { status: 500 },
       );
     }
@@ -105,16 +129,19 @@ export async function GET(
 
     const queryParams: (string | number)[] = [];
 
-    if (role === "2") {
-      const subcomerciales = await getSubcomerciales(tursoClient, id);
+    if (authenticatedUser.role === "2") {
+      const subcomerciales = await getSubcomerciales(
+        tursoClient,
+        authenticatedUser.id,
+      );
       if (subcomerciales.success && subcomerciales.ids.length > 0) {
         query += ` WHERE u.id = ? OR u.id IN (${subcomerciales.ids
           .map(() => "?")
           .join(", ")})`;
-        queryParams.push(id, ...subcomerciales.ids);
+        queryParams.push(authenticatedUser.id, ...subcomerciales.ids);
       } else {
         query += ` WHERE u.id = ?`;
-        queryParams.push(id);
+        queryParams.push(authenticatedUser.id);
       }
     }
 
@@ -153,7 +180,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: "Error fetching users",
+        error: "Internal server error",
       },
       { status: 500 },
     );

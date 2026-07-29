@@ -24,6 +24,7 @@ interface FetchApoloSipsProcedureParams {
   apiKey: string;
   cups: string;
   procedure: ApoloSipsProcedure;
+  signal?: AbortSignal;
   supplyType: ApoloSipsSupplyType;
 }
 
@@ -31,6 +32,7 @@ export async function fetchApoloSipsProcedure({
   apiKey,
   cups,
   procedure,
+  signal,
   supplyType,
 }: FetchApoloSipsProcedureParams): Promise<
   ApoloSipsProcedureResult<ApoloSipsProcedureRow>
@@ -40,6 +42,7 @@ export async function fetchApoloSipsProcedure({
   try {
     response = await fetch(APOLO_SIPS_ENDPOINT, {
       method: "POST",
+      signal,
       headers: {
         accept: "*/*",
         "X-API-KEY": apiKey,

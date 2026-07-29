@@ -23,14 +23,12 @@ import { ComparativaFile } from "@/comparativas/types";
 
 interface AbarcaPanelProps {
   comparativaId: string;
-  abarcaUserId: number;
   onStudyCompleted: () => void;
   files: Partial<ComparativaFile>[];
 }
 
 export function AbarcaPanel({
   comparativaId,
-  abarcaUserId,
   onStudyCompleted,
   files,
 }: AbarcaPanelProps) {
@@ -44,7 +42,7 @@ export function AbarcaPanel({
   const { userData } = useUser();
 
   const pdfFiles = files.filter(
-    (f) => f.extension?.toLowerCase() === "pdf" && f.download_url,
+    (file) => file.extension?.toLowerCase() === "pdf",
   );
 
   // Poll comparativa status while the panel is open
@@ -92,7 +90,7 @@ export function AbarcaPanel({
   }, [isOpen, iframeUrl, comparativaId, onStudyCompleted, userData]);
 
   const fetchLoginUrl = useCallback(
-    async (fileUrl?: string) => {
+    async (fileId?: string) => {
       setIsLoading(true);
       setError(null);
       try {
@@ -100,16 +98,13 @@ export function AbarcaPanel({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ide: 100,
-            idcm: abarcaUserId,
             comparativa_id: comparativaId,
-            ...(fileUrl ? { file_url: fileUrl } : {}),
+            ...(fileId ? { file_id: fileId } : {}),
           }),
         });
 
         if (!res.ok) {
-          console.error("Error fetching Abarca login URL:", await res.text());
-          setError("No se pudo conectar con Abarca");
+          setError("No se pudo conectar con el comparador");
           return;
         }
 
@@ -118,12 +113,12 @@ export function AbarcaPanel({
         setIsIframeLoading(true);
         setIsOpen(true);
       } catch {
-        setError("Error de conexión con Abarca");
+        setError("No se pudo conectar con el comparador");
       } finally {
         setIsLoading(false);
       }
     },
-    [abarcaUserId, comparativaId],
+    [comparativaId],
   );
 
   const handleOpen = useCallback(() => {
@@ -134,15 +129,32 @@ export function AbarcaPanel({
 
     if (pdfFiles.length > 1) {
       setIsFileModalOpen(true);
-    } else {
-      fetchLoginUrl(pdfFiles[0]?.download_url ?? undefined);
+      return;
     }
+
+    const fileId = pdfFiles[0]?.id?.trim();
+    if (pdfFiles.length === 1 && !fileId) {
+      setError(
+        "El PDF disponible no tiene un identificador válido y no se puede enviar.",
+      );
+      return;
+    }
+
+    fetchLoginUrl(fileId);
   }, [iframeUrl, pdfFiles, fetchLoginUrl]);
 
   const handleFileSelect = useCallback(
-    (fileUrl: string) => {
+    (fileId?: string) => {
+      const validFileId = fileId?.trim();
+      if (!validFileId) {
+        setError(
+          "El PDF seleccionado no tiene un identificador válido y no se puede enviar.",
+        );
+        return;
+      }
+
       setIsFileModalOpen(false);
-      fetchLoginUrl(fileUrl);
+      fetchLoginUrl(validFileId);
     },
     [fetchLoginUrl],
   );
@@ -164,10 +176,15 @@ export function AbarcaPanel({
         ) : (
           <span className="flex items-center gap-2">
             <Stars className="h-4 w-4" />
-            Realizar estudio con IA
+            Estudio con IA
           </span>
         )}
       </Button>
+      {error && !isOpen && !isFileModalOpen && (
+        <p role="alert" className="mt-2 text-xs text-red-600">
+          {error}
+        </p>
+      )}
 
       {/* File selection modal */}
       <Dialog open={isFileModalOpen} onOpenChange={setIsFileModalOpen}>
@@ -179,18 +196,36 @@ export function AbarcaPanel({
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 mt-2">
-            {pdfFiles.map((file) => (
-              <button
-                key={file.id ?? file.download_url}
-                onClick={() => handleFileSelect(file.download_url!)}
-                className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <FileText className="h-5 w-5 shrink-0 text-gray-400" />
-                <span className="truncate text-sm font-medium text-gray-800">
-                  {file.filename ?? "Documento PDF"}
-                </span>
-              </button>
-            ))}
+            {pdfFiles.map((file) => {
+              const fileId = file.id?.trim();
+
+              return (
+                <button
+                  type="button"
+                  key={file.id ?? file.download_url ?? file.filename}
+                  onClick={() => handleFileSelect(fileId)}
+                  disabled={!fileId}
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <FileText className="h-5 w-5 shrink-0 text-gray-400" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-gray-800">
+                      {file.filename ?? "Documento PDF"}
+                    </span>
+                    {!fileId && (
+                      <span className="block text-xs text-red-600">
+                        Archivo sin identificador
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+            {pdfFiles.some((file) => !file.id?.trim()) && (
+              <p role="alert" className="text-xs text-red-600">
+                Los archivos sin identificador válido no se pueden seleccionar.
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -213,7 +248,7 @@ export function AbarcaPanel({
                 </div>
                 <div>
                   <SheetTitle className="text-base">
-                    Comparador Energético
+                    Comparador energético con IA
                   </SheetTitle>
                   <SheetDescription className="text-xs">
                     Negoco Cloud AI
@@ -264,7 +299,8 @@ export function AbarcaPanel({
                 <iframe
                   id="abarca-panel"
                   src={iframeUrl}
-                  title="Comparador Energético Abarca"
+                  title="Comparador energético con IA"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
                   className="abarca-panel w-full h-full border-0"
                   onLoad={() => setIsIframeLoading(false)}
                 />

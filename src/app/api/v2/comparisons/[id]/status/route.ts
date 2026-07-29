@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
-import { Client } from "@libsql/client";
+import type { Client, Transaction } from "@libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { validateUserSession } from "@/core/auth/session-utils";
+import { getEffectivePermission } from "@/core/access-control/server";
 import {
   recordStatusChange,
   recordCommissionChange,
@@ -25,10 +26,24 @@ const optionalCommissionNumber = z.preprocess((val) => {
   return val;
 }, z.number().finite().optional());
 
+const SafeResourceIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9_-]+$/);
+
 const ComparisonStatusUpdateSchema = z.object({
-  status: z.string().min(1, "Status is required"),
-  tramite_id: z.string().optional(),
-  company_id: z.string().optional(), // For completed comparisons
+  status: z.enum([
+    "pending",
+    "awaiting_review",
+    "completed",
+    "processed",
+    "rejected",
+    "rechazado_cliente",
+  ]),
+  tramite_id: SafeResourceIdSchema.optional(),
+  company_id: SafeResourceIdSchema.optional(), // For completed comparisons
   comissions: z
     .object({
       comision_fijo: optionalCommissionNumber,
@@ -39,6 +54,10 @@ const ComparisonStatusUpdateSchema = z.object({
     .optional(),
 });
 
+const ComparisonPlanSchema = z
+  .array(z.enum(["fijo", "indexado"]))
+  .min(1);
+
 /**
  * Response interface for comparison status update
  */
@@ -47,23 +66,165 @@ interface ComparisonStatusUpdateResponse {
   error?: string;
 }
 
-/**
- * Query metrics for performance monitoring
- */
-interface QueryMetrics {
-  queryTime: number;
-  fieldsUpdated: number;
-  optimizationApplied: string[];
+type QueryClient = Pick<Client, "execute">;
+type WriteTransaction = Pick<
+  Transaction,
+  "execute" | "commit" | "rollback"
+>;
+
+interface AccessibleComparison {
+  status: string;
+  tramiteId: string | null;
+  companyId: string | null;
+  plan: string;
+  commissions: {
+    comision_fijo: number | null;
+    comision_indexado: number | null;
+    comision_sales_person_fijo: number | null;
+    comision_sales_person_indexado: number | null;
+  };
 }
 
-async function canUpdateComparison(
-  client: Client,
+type StudyPermission =
+  | "comparisons.study.complete"
+  | "comparisons.study.review";
+
+type StatusTransitionValidation =
+  | {
+      allowed: true;
+      requiredPermission: StudyPermission | null;
+      tramiteId: string | undefined;
+      tramiteIdToValidate: string | undefined;
+    }
+  | { allowed: false };
+
+function validateStatusTransition(
+  currentComparison: AccessibleComparison,
+  nextStatus: string,
+  userRole: string,
+  fields: {
+    tramiteId: string | undefined;
+    companyId: string | undefined;
+    commissions:
+      | {
+          comision_fijo?: number;
+          comision_indexado?: number;
+          comision_sales_person_fijo?: number;
+          comision_sales_person_indexado?: number;
+        }
+      | undefined;
+  },
+): StatusTransitionValidation {
+  const currentStatus = currentComparison.status;
+  if (currentStatus === nextStatus) return { allowed: false };
+
+  if (
+    nextStatus !== "completed" &&
+    (fields.companyId !== undefined || fields.commissions !== undefined)
+  ) {
+    return { allowed: false };
+  }
+
+  if (nextStatus !== "processed" && fields.tramiteId !== undefined) {
+    return { allowed: false };
+  }
+
+  let requiredPermission: StudyPermission | null = null;
+  switch (currentStatus) {
+    case "pending":
+      if (nextStatus !== "completed" && nextStatus !== "rejected") {
+        return { allowed: false };
+      }
+      requiredPermission = "comparisons.study.complete";
+      break;
+    case "awaiting_review":
+      if (nextStatus !== "completed") return { allowed: false };
+      requiredPermission = "comparisons.study.review";
+      break;
+    case "completed":
+      if (
+        nextStatus !== "processed" &&
+        nextStatus !== "rechazado_cliente"
+      ) {
+        return { allowed: false };
+      }
+      break;
+    case "rejected":
+    case "rechazado_cliente":
+      if (
+        (userRole !== "admin" && userRole !== "1") ||
+        ![
+          "pending",
+          "completed",
+          "rejected",
+          "rechazado_cliente",
+        ].includes(nextStatus)
+      ) {
+        return { allowed: false };
+      }
+      if (nextStatus === "completed") {
+        requiredPermission = "comparisons.study.complete";
+      }
+      break;
+    case "processed":
+    default:
+      return { allowed: false };
+  }
+
+  if (nextStatus !== "processed") {
+    return {
+      allowed: true,
+      requiredPermission,
+      tramiteId: undefined,
+      tramiteIdToValidate: undefined,
+    };
+  }
+
+  const submittedTramiteId = fields.tramiteId;
+  if (currentComparison.tramiteId !== null) {
+    if (
+      submittedTramiteId !== undefined &&
+      submittedTramiteId !== currentComparison.tramiteId
+    ) {
+      return { allowed: false };
+    }
+
+    return {
+      allowed: true,
+      requiredPermission,
+      tramiteId: undefined,
+      tramiteIdToValidate: undefined,
+    };
+  }
+
+  if (submittedTramiteId === undefined) return { allowed: false };
+
+  return {
+    allowed: true,
+    requiredPermission,
+    tramiteId: submittedTramiteId,
+    tramiteIdToValidate: submittedTramiteId,
+  };
+}
+
+async function getAccessibleComparison(
+  client: QueryClient,
   comparativaId: string,
   userId: string,
   userRole: string,
-): Promise<boolean> {
+): Promise<AccessibleComparison | null> {
   const args: string[] = [comparativaId];
-  let sql = "SELECT id FROM comparativas WHERE id = ?";
+  let sql = `SELECT
+    status,
+    tramite_id,
+    company_id,
+    plan,
+    comision_fijo,
+    comision_indexado,
+    comision_sales_person_fijo,
+    comision_sales_person_indexado
+    FROM comparativas
+    WHERE id = ?`;
 
   if (userRole === "2") {
     const subcomerciales = await getSubcomerciales(client, userId);
@@ -75,277 +236,276 @@ async function canUpdateComparison(
 
     sql += ` AND user_id IN (${allowedUserIds.map(() => "?").join(", ")})`;
     args.push(...allowedUserIds);
+  } else if (userRole !== "admin" && userRole !== "1") {
+    return null;
+  }
+
+  const result = await client.execute({ sql, args });
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    status: String(row.status),
+    plan: String(row.plan),
+    tramiteId:
+      row.tramite_id === null || row.tramite_id === undefined
+        ? null
+        : String(row.tramite_id),
+    companyId:
+      row.company_id === null || row.company_id === undefined
+        ? null
+        : String(row.company_id),
+    commissions: {
+      comision_fijo:
+        row.comision_fijo === null || row.comision_fijo === undefined
+          ? null
+          : Number(row.comision_fijo),
+      comision_indexado:
+        row.comision_indexado === null || row.comision_indexado === undefined
+          ? null
+          : Number(row.comision_indexado),
+      comision_sales_person_fijo:
+        row.comision_sales_person_fijo === null ||
+        row.comision_sales_person_fijo === undefined
+          ? null
+          : Number(row.comision_sales_person_fijo),
+      comision_sales_person_indexado:
+        row.comision_sales_person_indexado === null ||
+        row.comision_sales_person_indexado === undefined
+          ? null
+          : Number(row.comision_sales_person_indexado),
+    },
+  };
+}
+
+async function hasValidCompletionState(
+  client: QueryClient,
+  currentComparison: AccessibleComparison,
+  companyId: string | undefined,
+  commissions:
+    | {
+        comision_fijo?: number;
+        comision_indexado?: number;
+        comision_sales_person_fijo?: number;
+        comision_sales_person_indexado?: number;
+      }
+    | undefined,
+): Promise<boolean> {
+  let planData: unknown;
+  try {
+    planData = JSON.parse(currentComparison.plan);
+  } catch {
+    return false;
+  }
+  const plan = ComparisonPlanSchema.safeParse(planData);
+  if (!plan.success) return false;
+
+  const finalCommissions = { ...currentComparison.commissions };
+  if (commissions) {
+    for (const [field, value] of Object.entries(commissions) as Array<
+      [
+        keyof AccessibleComparison["commissions"],
+        number | undefined,
+      ]
+    >) {
+      if (value !== undefined) finalCommissions[field] = value;
+    }
+  }
+  const requiredCommissionFields: Array<
+    keyof AccessibleComparison["commissions"]
+  > = [];
+  if (plan.data.includes("fijo")) {
+    requiredCommissionFields.push(
+      "comision_fijo",
+      "comision_sales_person_fijo",
+    );
+  }
+  if (plan.data.includes("indexado")) {
+    requiredCommissionFields.push(
+      "comision_indexado",
+      "comision_sales_person_indexado",
+    );
+  }
+  if (
+    requiredCommissionFields.some(
+      (field) =>
+        finalCommissions[field] === null ||
+        !Number.isFinite(finalCommissions[field]),
+    )
+  ) {
+    return false;
+  }
+
+  const finalCompanyId = companyId ?? currentComparison.companyId;
+  if (finalCompanyId === null) return false;
+
+  const supplier = await client.execute({
+    sql: `SELECT id
+      FROM comercializadoras
+      WHERE id = ? AND active = true
+      LIMIT 1`,
+    args: [finalCompanyId],
+  });
+  return supplier.rows.length > 0;
+}
+
+async function hasAccessibleTramite(
+  client: QueryClient,
+  tramiteId: string,
+  userId: string,
+  userRole: string,
+): Promise<boolean> {
+  const args = [tramiteId];
+  let sql = "SELECT id FROM tramites WHERE id = ?";
+
+  if (userRole === "2") {
+    const subcomerciales = await getSubcomerciales(client, userId);
+    const allowedUserIds = [userId];
+
+    if (subcomerciales.success && subcomerciales.ids.length > 0) {
+      allowedUserIds.push(...subcomerciales.ids);
+    }
+
+    sql += ` AND user_id IN (${allowedUserIds.map(() => "?").join(", ")})`;
+    args.push(...allowedUserIds);
+  } else if (userRole !== "admin" && userRole !== "1") {
+    return false;
   }
 
   const result = await client.execute({ sql, args });
   return result.rows.length > 0;
 }
 
-/**
- * Enhanced database operation with performance monitoring and change tracking
- */
-async function executeStatusUpdate(
-  client: Client,
-  comparativaId: string,
-  status: string,
-  tramiteId?: string,
-  userId?: string,
-  companyId?: string
-): Promise<{ success: boolean; error?: string; metrics: QueryMetrics }> {
-  const startTime = performance.now();
-  const optimizations: string[] = [];
-
-  try {
-    // Get current status before update for change tracking
-    const currentResult = await client.execute({
-      sql: "SELECT status, tramite_id FROM comparativas WHERE id = ?",
-      args: [comparativaId],
-    });
-
-    if (currentResult.rows.length === 0) {
-      return {
-        success: false,
-        error: "Comparativa no encontrada",
-        metrics: {
-          queryTime: 0,
-          fieldsUpdated: 0,
-          optimizationApplied: optimizations,
-        },
-      };
-    }
-
-    const currentData = currentResult.rows[0];
-    const oldStatus = currentData.status as string;
-    const oldTramiteId = currentData.tramite_id as string | null;
-
-    // Optimized query building with prepared statements
-    let query = `UPDATE comparativas SET status = ?`;
-    const args: (string | null)[] = [status];
-    let fieldsUpdated = 1;
-
-    // Conditional tramite_id update for efficiency
-    if (tramiteId !== undefined) {
-      query += `, tramite_id = ?`;
-      args.push(tramiteId);
-      fieldsUpdated++;
-      optimizations.push("conditional_tramite_update");
-    }
-
-    // Conditional company_id update for completed comparisons
-    if (companyId !== undefined) {
-      query += `, company_id = ?`;
-      args.push(companyId);
-      fieldsUpdated++;
-      optimizations.push("conditional_company_update");
-    }
-
-    query += ` WHERE id = ?`;
-    args.push(comparativaId);
-
-    // Execute with optimized prepared statement
-    const response = await client.execute({
-      sql: query,
-      args: args,
-    });
-
-    const endTime = performance.now();
-    const queryTime = endTime - startTime;
-
-    // Performance optimization tracking
-    if (queryTime < 50) optimizations.push("fast_execution");
-    if (fieldsUpdated === 1) optimizations.push("minimal_field_update");
-
-    if (response.rowsAffected === 0) {
-      return {
-        success: false,
-        error: "Comparativa no encontrada",
-        metrics: {
-          queryTime,
-          fieldsUpdated,
-          optimizationApplied: optimizations,
-        },
-      };
-    }
-
-    // Record status change
-    if (oldStatus !== status) {
-      await recordStatusChange(
-        client,
-        comparativaId,
-        userId || null,
-        oldStatus,
-        status
-      );
-    }
-
-    // Record conversion to contract if tramite_id was set
-    if (tramiteId && !oldTramiteId) {
-      await recordConvertedToContract(
-        client,
-        comparativaId,
-        userId || null,
-        tramiteId
-      );
-    }
-
-    return {
-      success: true,
-      metrics: { queryTime, fieldsUpdated, optimizationApplied: optimizations },
-    };
-  } catch (error) {
-    const endTime = performance.now();
-    console.error("[DB Error] Status update failed:", error);
-
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
-      metrics: {
-        queryTime: endTime - startTime,
-        fieldsUpdated: 0,
-        optimizationApplied: optimizations,
-      },
-    };
+class ComparisonConflictError extends Error {
+  constructor() {
+    super("Comparison status changed concurrently");
+    this.name = "ComparisonConflictError";
   }
 }
 
-/**
- * Enhanced commission update with performance monitoring and change tracking
- */
-async function executeCommissionUpdate(
-  client: Client,
+async function executeStatusUpdate(
+  client: QueryClient,
   comparativaId: string,
+  currentComparison: AccessibleComparison,
+  status: string,
+  tramiteId?: string,
+  userId?: string,
+  companyId?: string,
+): Promise<void> {
+  let query = "UPDATE comparativas SET status = ?";
+  const args: (string | null)[] = [status];
+
+  if (tramiteId !== undefined) {
+    query += ", tramite_id = ?";
+    args.push(tramiteId);
+  }
+
+  if (companyId !== undefined) {
+    query += ", company_id = ?";
+    args.push(companyId);
+  }
+
+  query += " WHERE id = ? AND status = ?";
+  args.push(comparativaId, currentComparison.status);
+  if (status === "processed") {
+    if (currentComparison.tramiteId === null) {
+      query += " AND tramite_id IS NULL";
+    } else {
+      query += " AND tramite_id = ?";
+      args.push(currentComparison.tramiteId);
+    }
+  }
+
+  const response = await client.execute({ sql: query, args });
+  if (response.rowsAffected === 0) {
+    throw new ComparisonConflictError();
+  }
+
+  if (currentComparison.status !== status) {
+    const auditRecorded = await recordStatusChange(
+      client,
+      comparativaId,
+      userId || null,
+      currentComparison.status,
+      status,
+    );
+    if (!auditRecorded) {
+      throw new Error("Status audit could not be recorded");
+    }
+  }
+
+  if (tramiteId && !currentComparison.tramiteId) {
+    const auditRecorded = await recordConvertedToContract(
+      client,
+      comparativaId,
+      userId || null,
+      tramiteId,
+    );
+    if (!auditRecorded) {
+      throw new Error("Conversion audit could not be recorded");
+    }
+  }
+}
+
+async function executeCommissionUpdate(
+  client: QueryClient,
+  comparativaId: string,
+  currentCommissions: AccessibleComparison["commissions"],
   commissions: {
     comision_fijo?: number;
     comision_indexado?: number;
     comision_sales_person_fijo?: number;
     comision_sales_person_indexado?: number;
   },
-  userId?: string
-): Promise<{ success: boolean; error?: string; metrics: QueryMetrics }> {
-  const startTime = performance.now();
-  const optimizations: string[] = [];
+  userId?: string,
+): Promise<void> {
+  const updates: string[] = [];
+  const params: (number | string)[] = [];
+  const changes: Array<{
+    field: keyof AccessibleComparison["commissions"];
+    oldValue: number | null;
+    newValue: number;
+  }> = [];
 
-  try {
-    // Get current commissions before update for change tracking
-    const currentResult = await client.execute({
-      sql: "SELECT comision_fijo, comision_indexado, comision_sales_person_fijo, comision_sales_person_indexado FROM comparativas WHERE id = ?",
-      args: [comparativaId],
-    });
+  for (const [field, value] of Object.entries(commissions) as Array<
+    [keyof AccessibleComparison["commissions"], number | undefined]
+  >) {
+    if (value === undefined) continue;
 
-    if (currentResult.rows.length === 0) {
-      return {
-        success: false,
-        error: "Comparativa no encontrada",
-        metrics: {
-          queryTime: 0,
-          fieldsUpdated: 0,
-          optimizationApplied: optimizations,
-        },
-      };
+    updates.push(`${field} = ?`);
+    params.push(value);
+    if (currentCommissions[field] !== value) {
+      changes.push({
+        field,
+        oldValue: currentCommissions[field],
+        newValue: value,
+      });
     }
+  }
 
-    const currentData = currentResult.rows[0];
+  if (updates.length === 0) return;
 
-    // Dynamic query building for efficiency - only update provided fields
-    const updates: string[] = [];
-    const params: (number | string)[] = [];
-    const changeTracker: Array<{
-      field: string;
-      oldValue: number | null;
-      newValue: number;
-    }> = [];
+  params.push(comparativaId);
+  const response = await client.execute({
+    sql: `UPDATE comparativas SET ${updates.join(", ")} WHERE id = ?`,
+    args: params,
+  });
+  if (response.rowsAffected === 0) {
+    throw new Error("Comparison commissions could not be updated");
+  }
 
-    // Build query dynamically to avoid unnecessary field updates
-    Object.entries(commissions).forEach(([field, value]) => {
-      if (value !== undefined) {
-        const currentValue = currentData[field] as number | null;
-        updates.push(`${field} = ?`);
-        params.push(value);
-
-        // Track changes for history
-        if (currentValue !== value) {
-          changeTracker.push({
-            field,
-            oldValue: currentValue,
-            newValue: value,
-          });
-        }
-      }
-    });
-
-    if (updates.length === 0) {
-      optimizations.push("no_commission_updates_needed");
-      return {
-        success: true,
-        metrics: {
-          queryTime: 0,
-          fieldsUpdated: 0,
-          optimizationApplied: optimizations,
-        },
-      };
+  for (const change of changes) {
+    const auditRecorded = await recordCommissionChange(
+      client,
+      comparativaId,
+      userId || null,
+      change.field,
+      change.oldValue,
+      change.newValue,
+    );
+    if (!auditRecorded) {
+      throw new Error("Commission audit could not be recorded");
     }
-
-    const query = `UPDATE comparativas SET ${updates.join(", ")} WHERE id = ?`;
-    params.push(comparativaId);
-
-    optimizations.push("dynamic_field_update");
-    if (updates.length <= 2) optimizations.push("minimal_field_count");
-
-    const response = await client.execute({
-      sql: query,
-      args: params,
-    });
-
-    const endTime = performance.now();
-    const queryTime = endTime - startTime;
-
-    if (queryTime < 30) optimizations.push("fast_commission_update");
-
-    if (response.rowsAffected === 0) {
-      return {
-        success: false,
-        error: "Comparativa no encontrada",
-        metrics: {
-          queryTime,
-          fieldsUpdated: updates.length,
-          optimizationApplied: optimizations,
-        },
-      };
-    }
-
-    // Record commission changes
-    for (const change of changeTracker) {
-      await recordCommissionChange(
-        client,
-        comparativaId,
-        userId || null,
-        change.field,
-        change.oldValue,
-        change.newValue
-      );
-    }
-
-    return {
-      success: true,
-      metrics: {
-        queryTime,
-        fieldsUpdated: updates.length,
-        optimizationApplied: optimizations,
-      },
-    };
-  } catch (error) {
-    const endTime = performance.now();
-    console.error("[DB Error] Commission update failed:", error);
-
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
-      metrics: {
-        queryTime: endTime - startTime,
-        fieldsUpdated: 0,
-        optimizationApplied: optimizations,
-      },
-    };
   }
 }
 
@@ -377,14 +537,10 @@ async function executeCommissionUpdate(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ComparisonStatusUpdateResponse>> {
-  const requestStartTime = performance.now();
-
   try {
-    // Await params resolution for Next.js 15 compatibility
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const { id } = await params;
 
     const authResult = await validateUserSession(req);
     if (!authResult.success || !authResult.user) {
@@ -393,140 +549,226 @@ export async function PATCH(
           success: false,
           error: "Unauthorized",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const authenticatedUser = authResult.user;
 
-    // Parse and validate request body with Zod
-    const body = await req.json();
-    const validation = ComparisonStatusUpdateSchema.safeParse(body);
-
-    if (!validation.success) {
-      console.warn(
-        "[Validation Warning] Invalid request parameters:",
-        validation.error.issues
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid JSON",
+        },
+        { status: 400 },
       );
+    }
+
+    const validation = ComparisonStatusUpdateSchema.safeParse(body);
+    const comparisonIdValidation = SafeResourceIdSchema.safeParse(id);
+
+    if (!validation.success || !comparisonIdValidation.success) {
       return NextResponse.json(
         {
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const { status, tramite_id, comissions, company_id } = validation.data;
+    const comparisonId = comparisonIdValidation.data;
 
-    // Validate required parameters (maintaining original validation logic)
-    if (!id || !status) {
+    if (!status) {
       return NextResponse.json(
         {
           success: false,
           error: "Missing parameters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Initialize database client
     const tursoClient = getTursoClient(req);
     if (!tursoClient) {
-      console.error("[Database Error] Failed to initialize Turso client");
+      console.error("[comparison-status] database client not initialized");
       return NextResponse.json(
         {
           success: false,
-          error: "Database client not initialized",
+          error: "Internal server error",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    const hasAccess = await canUpdateComparison(
-      tursoClient,
-      id,
-      authenticatedUser.id,
-      authenticatedUser.role
-    );
+    const transaction: WriteTransaction =
+      await tursoClient.transaction("write");
 
-    if (!hasAccess) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Comparativa no encontrada",
-        },
-        { status: 404 }
-      );
-    }
-
-    // Execute status update with enhanced performance monitoring
-    const statusResult = await executeStatusUpdate(
-      tursoClient,
-      id,
-      status,
-      tramite_id,
-      authenticatedUser.id,
-      company_id // Pass company_id for completed comparisons
-    );
-
-    if (!statusResult.success) {
-      console.error("[Status Update Error]", statusResult.error);
-      return NextResponse.json(
-        {
-          success: false,
-          error: statusResult.error,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Execute commission updates if provided (maintaining original logic)
-    let commissionResult: {
-      success: boolean;
-      error?: string;
-      metrics?: QueryMetrics;
-    } = { success: true };
-
-    if (comissions) {
-      commissionResult = await executeCommissionUpdate(
-        tursoClient,
-        id,
-        comissions,
-        authenticatedUser.id
+    try {
+      const accessibleComparison = await getAccessibleComparison(
+        transaction,
+        comparisonId,
+        authenticatedUser.id,
+        authenticatedUser.role,
       );
 
-      if (!commissionResult.success) {
-        console.error("[Commission Update Error]", commissionResult.error);
+      if (!accessibleComparison) {
+        await transaction.rollback();
         return NextResponse.json(
           {
             success: false,
-            error: commissionResult.error,
+            error: "Comparativa no encontrada",
           },
-          { status: 400 }
+          { status: 404 },
         );
       }
+
+      const transition = validateStatusTransition(
+        accessibleComparison,
+        status,
+        authenticatedUser.role,
+        {
+          tramiteId: tramite_id,
+          companyId: company_id,
+          commissions: comissions,
+        },
+      );
+      if (!transition.allowed) {
+        await transaction.rollback();
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Comparison status changed",
+          },
+          { status: 409 },
+        );
+      }
+
+      if (transition.requiredPermission) {
+        const hasRequiredPermission = await getEffectivePermission(
+          transaction,
+          authenticatedUser,
+          transition.requiredPermission,
+        );
+        if (!hasRequiredPermission) {
+          await transaction.rollback();
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Forbidden",
+            },
+            { status: 403 },
+          );
+        }
+      }
+
+      if (
+        transition.tramiteIdToValidate &&
+        !(await hasAccessibleTramite(
+          transaction,
+          transition.tramiteIdToValidate,
+          authenticatedUser.id,
+          authenticatedUser.role,
+        ))
+      ) {
+        await transaction.rollback();
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Comparison status changed",
+          },
+          { status: 409 },
+        );
+      }
+
+      if (
+        status === "completed" &&
+        !(await hasValidCompletionState(
+          transaction,
+          accessibleComparison,
+          company_id,
+          comissions,
+        ))
+      ) {
+        await transaction.rollback();
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Comparison status changed",
+          },
+          { status: 409 },
+        );
+      }
+
+      await executeStatusUpdate(
+        transaction,
+        comparisonId,
+        accessibleComparison,
+        status,
+        transition.tramiteId,
+        authenticatedUser.id,
+        company_id,
+      );
+
+      if (comissions) {
+        await executeCommissionUpdate(
+          transaction,
+          comparisonId,
+          accessibleComparison.commissions,
+          comissions,
+          authenticatedUser.id,
+        );
+      }
+
+      await transaction.commit();
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      try {
+        await transaction.rollback();
+      } catch {
+        console.error("[comparison-status] transaction rollback failed");
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Internal server error",
+          },
+          { status: 500 },
+        );
+      }
+
+      if (error instanceof ComparisonConflictError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Comparison status changed",
+          },
+          { status: 409 },
+        );
+      }
+
+      console.error("[comparison-status] transaction failed");
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Internal server error",
+        },
+        { status: 500 },
+      );
     }
-
-    // Performance metrics logging
-
-    // Return identical response format to original endpoint
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    const requestEndTime = performance.now();
-    const totalTime = requestEndTime - requestStartTime;
-
-    console.error(
-      `[API Error] Status update failed after ${totalTime.toFixed(2)}ms:`,
-      error
-    );
+  } catch {
+    console.error("[comparison-status] unexpected error");
 
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

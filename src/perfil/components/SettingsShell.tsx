@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  KeyRound,
   ShieldCheck,
   UserRound,
   Zap,
@@ -21,11 +22,17 @@ import { useCrmSettings } from "@/crm-settings/hooks/useCrmSettings";
 import ProvidersSettings from "@/crm-settings/components/ProvidersSettings";
 import AutoActivationSettings from "@/crm-settings/components/AutoActivationSettings";
 import ProfileSection from "@/perfil/components/ProfileSection";
+import PermissionsSection from "@/perfil/components/PermissionsSection";
 import SecuritySection from "@/perfil/components/SecuritySection";
 import { useSignOut } from "@/perfil/hooks/useSignOut";
 import { getRoleLabel } from "@/perfil/utils";
 
-type SectionId = "perfil" | "seguridad" | "proveedores" | "activacion";
+type SectionId =
+  | "perfil"
+  | "seguridad"
+  | "proveedores"
+  | "activacion"
+  | "permisos";
 
 interface SectionItem {
   id: SectionId;
@@ -53,6 +60,10 @@ const sectionGroups: SectionGroup[] = [
       { id: "activacion", label: "Activación automática", icon: Zap },
     ],
   },
+  {
+    label: "Administración",
+    items: [{ id: "permisos", label: "Permisos", icon: KeyRound }],
+  },
 ];
 
 interface Props {
@@ -65,6 +76,10 @@ export default function SettingsShell({ userData, refreshUserData }: Props) {
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const { settings, loading, error, saveSettings } = useCrmSettings();
   const { signOut, signingOut } = useSignOut();
+  const visibleSectionGroups =
+    userData.role === "admin"
+      ? sectionGroups
+      : sectionGroups.filter((group) => group.label !== "Administración");
 
   const selectSection = (id: SectionId) => {
     setActiveSection(id);
@@ -119,6 +134,10 @@ export default function SettingsShell({ userData, refreshUserData }: Props) {
         return renderCrmSection(ProvidersSettings);
       case "activacion":
         return renderCrmSection(AutoActivationSettings);
+      case "permisos":
+        return userData.role === "admin" ? (
+          <PermissionsSection userData={userData} />
+        ) : null;
     }
   })();
 
@@ -172,7 +191,7 @@ export default function SettingsShell({ userData, refreshUserData }: Props) {
 
               {/* Navegación de secciones */}
               <nav className="space-y-4 px-3 py-4">
-                {sectionGroups.map((group) => (
+                {visibleSectionGroups.map((group) => (
                   <div key={group.label} className="space-y-1">
                     <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
                       {group.label}

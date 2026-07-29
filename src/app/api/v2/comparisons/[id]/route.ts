@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { validateUserSession } from "@/core/auth/session-utils";
 import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { ComparativaPlan } from "@/comparativas/types";
-import { Client } from "@libsql/client";
-import { updateComparativaGeneral } from "@/comparativas/utils/updateComparativaHelpers";
+import type { Client, Transaction } from "@libsql/client";
 import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
 import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
 import { AbarcaEstudio } from "@/comparativas/types/abarca.types";
@@ -55,26 +55,33 @@ const ComparisonByIdSchema = z.object({
   user_role: z.string().min(1, "User role is required"),
 });
 
-/**
- * Comprehensive PATCH request validation schema for comparison updates
- */
-const ComparisonPatchSchema = z.object({
-  client: z.string().min(1).optional(),
-  service: z.enum(["Luz", "Gas"]).optional(),
-  plan: z.array(z.enum(["fijo", "indexado"])).optional(),
-  status: z.string().optional(),
-  tramite_id: z.string().nullable().optional(),
-  comisions: z
-    .object({
-      comision_fijo: z.number().optional(),
-      comision_indexado: z.number().optional(),
-      comision_sales_person_fijo: z.number().optional(),
-      comision_sales_person_indexado: z.number().optional(),
-    })
-    .optional(),
-  notes: z.array(z.string()).optional(),
-  user_id: z.string().optional(), // Allow reassignment
-});
+const SafeResourceIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9_-]+$/);
+
+const ComparisonPatchSchema = z
+  .strictObject({
+    client: z.string().min(1).optional(),
+    service: z.enum(["Luz", "Gas"]).optional(),
+    plan: z
+      .array(z.enum(["fijo", "indexado"]))
+      .min(1)
+      .refine((plans) => new Set(plans).size === plans.length)
+      .optional(),
+    notes: z.array(z.string()).optional(),
+  })
+  .refine((updates) =>
+    Object.values(updates).some((value) => value !== undefined),
+  );
+
+type QueryClient = Pick<Client, "execute">;
+type WriteTransaction = Pick<
+  Transaction,
+  "execute" | "commit" | "rollback"
+>;
 
 /**
  * Response interface for comparison by ID
@@ -127,7 +134,7 @@ interface ComparisonByIdResponse {
 async function executeQuery<
   T extends Record<string, unknown> = Record<string, unknown>,
 >(
-  client: Client,
+  client: QueryClient,
   sql: string,
   args: (string | number)[],
   queryName: string,
@@ -159,7 +166,7 @@ async function executeQuery<
  * Fetch comparison data with user authorization
  */
 async function fetchComparisonData(
-  client: Client,
+  client: QueryClient,
   id: string,
   user_id: string,
   user_role: string,
@@ -218,7 +225,7 @@ async function fetchComparisonData(
  * Fetch comparison files
  */
 async function fetchComparisonFiles(
-  client: Client,
+  client: QueryClient,
   comparativaId: string,
 ): Promise<{
   success: boolean;
@@ -324,111 +331,62 @@ function transformComparisonData(
   };
 }
 
-/**
- * PATCH /new_api/comparisons/[id]
- *
- * COMPREHENSIVE GENERAL UPDATE ROUTE for comparisons
- *
- * This endpoint handles complete comparison updates including:
- * - Client name changes
- * - Service type updates (Luz/Gas)
- * - Plan modifications (fijo/indexado combinations)
- * - Status transitions
- * - Commission adjustments
- * - Notes management
- * - User reassignment
- * - Contract linking (tramite_id)
- *
- * @param req - Next.js request object containing update data
- * @param params - URL parameters containing comparison ID
- * @returns Promise<NextResponse<ComparisonByIdResponse>>
- *
- * @example
- * PATCH /new_api/comparisons/comp123
- * Body: {
- *   "client": "Updated Client Name",
- *   "service": "Gas",
- *   "plan": ["fijo", "indexado"],
- *   "status": "completed",
- *   "comisions": {
- *     "comision_fijo": 75.0,
- *     "comision_indexado": 85.0,
- *     "comision_sales_person_fijo": 35.0,
- *     "comision_sales_person_indexado": 45.0
- *   },
- *   "notes": ["Updated note 1", "New note 2"],
- *   "tramite_id": "tramite789"
- * }
- *
- * Response: {
- *   "success": true,
- *   "data": { ...updated comparison object... }
- * }
- */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ComparisonByIdResponse>> {
-  const startTime = performance.now();
-
   try {
-    // Await params resolution
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
-
-    if (!id) {
+    const authResult = await validateUserSession(req);
+    if (!authResult.success || !authResult.user) {
       return NextResponse.json(
-        { success: false, error: "Missing comparison ID" },
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const authenticatedUser = authResult.user;
+    const { id: rawComparisonId } = await params;
+    const idValidation = SafeResourceIdSchema.safeParse(rawComparisonId);
+    if (!idValidation.success) {
+      return NextResponse.json(
+        { success: false, error: "Invalid parameters" },
+        { status: 400 },
+      );
+    }
+    const comparisonId = idValidation.data;
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid parameters" },
         { status: 400 },
       );
     }
 
-    // Parse and validate request body
-    const body = await req.json();
     const validation = ComparisonPatchSchema.safeParse(body);
-
     if (!validation.success) {
-      console.warn(
-        "[Validation Warning] Invalid update parameters:",
-        validation.error.issues,
-      );
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Invalid parameters: " +
-            validation.error.issues.map((e) => e.message).join(", "),
-        },
+        { success: false, error: "Invalid parameters" },
         { status: 400 },
       );
     }
-
     const updates = validation.data;
 
-    // Extract user_id from body for tracking changes
-    const { user_id: requestUserId } = body;
-
-    // Initialize database client
     const tursoClient = getTursoClient(req);
     if (!tursoClient) {
-      console.error("[Database Error] Failed to initialize Turso client");
+      console.error("[comparison-patch] database client not initialized");
       return NextResponse.json(
-        { success: false, error: "Database client not initialized" },
+        { success: false, error: "Internal server error" },
         { status: 500 },
       );
     }
 
-    // Check if comparison exists before updating
-    const existingComparison = await fetchComparisonData(
-      tursoClient,
-      id,
-      "admin",
-      "admin",
-    );
     if (
-      !existingComparison.success ||
-      !existingComparison.data ||
-      existingComparison.data.length === 0
+      authenticatedUser.role !== "admin" &&
+      authenticatedUser.role !== "1" &&
+      authenticatedUser.role !== "2"
     ) {
       return NextResponse.json(
         { success: false, error: "Comparativa not found" },
@@ -436,113 +394,112 @@ export async function PATCH(
       );
     }
 
-    // Prepare update object for the general update function
-    const updateData: {
-      client?: string;
-      service?: "Luz" | "Gas";
-      plan?: string;
-      status?: string;
-      tramite_id?: string | null;
-      comision_fijo?: number;
-      comision_indexado?: number;
-      comision_sales_person_fijo?: number;
-      comision_sales_person_indexado?: number;
-      notes?: string;
-      user_id?: string;
-    } = {};
-
-    // Map request data to database format
-    if (updates.client !== undefined) updateData.client = updates.client;
-    if (updates.service !== undefined) updateData.service = updates.service;
-    if (updates.plan !== undefined)
-      updateData.plan = JSON.stringify(updates.plan);
-    if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.tramite_id !== undefined)
-      updateData.tramite_id = updates.tramite_id;
-    if (updates.notes !== undefined)
-      updateData.notes = JSON.stringify(updates.notes);
-    if (updates.user_id !== undefined) updateData.user_id = updates.user_id;
-
-    // Handle commission updates
-    if (updates.comisions) {
-      if (updates.comisions.comision_fijo !== undefined) {
-        updateData.comision_fijo = updates.comisions.comision_fijo;
-      }
-      if (updates.comisions.comision_indexado !== undefined) {
-        updateData.comision_indexado = updates.comisions.comision_indexado;
-      }
-      if (updates.comisions.comision_sales_person_fijo !== undefined) {
-        updateData.comision_sales_person_fijo =
-          updates.comisions.comision_sales_person_fijo;
-      }
-      if (updates.comisions.comision_sales_person_indexado !== undefined) {
-        updateData.comision_sales_person_indexado =
-          updates.comisions.comision_sales_person_indexado;
-      }
-    }
-
-    // Execute the general update
-    const updateResult = await updateComparativaGeneral(
-      tursoClient,
-      id,
-      updateData,
-    );
-
-    if (!updateResult.success) {
-      console.error(
-        "[Database Error] Failed to update comparison:",
-        updateResult.error,
+    const transaction: WriteTransaction =
+      await tursoClient.transaction("write");
+    try {
+      const existingComparison = await fetchComparisonData(
+        transaction,
+        comparisonId,
+        authenticatedUser.id,
+        authenticatedUser.role,
       );
-      return NextResponse.json(
-        { success: false, error: updateResult.error },
-        { status: 400 },
-      );
-    }
+      if (!existingComparison.success) {
+        throw new Error("Comparison lookup failed");
+      }
+      if (
+        !existingComparison.data ||
+        existingComparison.data.length === 0
+      ) {
+        await transaction.rollback();
+        return NextResponse.json(
+          { success: false, error: "Comparativa not found" },
+          { status: 404 },
+        );
+      }
 
-    // Track changes made to the comparativa
-    if (requestUserId) {
+      const updateFields: string[] = [];
+      const updateArgs: string[] = [];
+      if (updates.client !== undefined) {
+        updateFields.push("client = ?");
+        updateArgs.push(updates.client);
+      }
+      if (updates.service !== undefined) {
+        updateFields.push("service = ?");
+        updateArgs.push(updates.service);
+      }
+      if (updates.plan !== undefined) {
+        updateFields.push("plan = ?");
+        updateArgs.push(JSON.stringify(updates.plan));
+      }
+      if (updates.notes !== undefined) {
+        updateFields.push("notes = ?");
+        updateArgs.push(JSON.stringify(updates.notes));
+      }
+
+      let updateSql = `UPDATE comparativas
+        SET ${updateFields.join(", ")}
+        WHERE id = ?`;
+      updateArgs.push(comparisonId);
+      if (authenticatedUser.role === "2") {
+        const subcomerciales = await getSubcomerciales(
+          transaction,
+          authenticatedUser.id,
+        );
+        const allowedUserIds = [authenticatedUser.id];
+        if (subcomerciales.success) {
+          allowedUserIds.push(...subcomerciales.ids);
+        }
+        updateSql += ` AND user_id IN (${allowedUserIds
+          .map(() => "?")
+          .join(", ")})`;
+        updateArgs.push(...allowedUserIds);
+      }
+
+      const updateResult = await transaction.execute({
+        sql: updateSql,
+        args: updateArgs,
+      });
+      if (updateResult.rowsAffected === 0) {
+        await transaction.rollback();
+        return NextResponse.json(
+          { success: false, error: "Comparativa not found" },
+          { status: 404 },
+        );
+      }
+
       const previousData = existingComparison.data[0];
-
-      // Track client update
+      const auditChanges = [];
       if (
         updates.client !== undefined &&
         updates.client !== previousData.client
       ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: id,
-          user_id: requestUserId,
-          change_type: "client_update",
+        auditChanges.push({
+          change_type: "client_update" as const,
           field_name: "client",
           old_value: previousData.client,
           new_value: updates.client,
           description: `Cliente actualizado de "${previousData.client}" a "${updates.client}"`,
         });
       }
-
-      // Track service update
       if (
         updates.service !== undefined &&
         updates.service !== previousData.service
       ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: id,
-          user_id: requestUserId,
-          change_type: "service_update",
+        auditChanges.push({
+          change_type: "service_update" as const,
           field_name: "service",
           old_value: previousData.service,
           new_value: updates.service,
           description: `Servicio actualizado de "${previousData.service}" a "${updates.service}"`,
         });
       }
-
-      // Track plan update
       if (updates.plan !== undefined) {
-        const previousPlan = JSON.parse(previousData.plan as string);
+        const previousPlan = JSON.parse(
+          String(previousData.plan),
+        ) as string[];
         if (JSON.stringify(previousPlan) !== JSON.stringify(updates.plan)) {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "plan_update",
+          auditChanges.push({
+            change_type: "plan_update" as const,
             field_name: "plan",
             old_value: JSON.stringify(previousPlan),
             new_value: JSON.stringify(updates.plan),
@@ -550,201 +507,78 @@ export async function PATCH(
           });
         }
       }
-
-      // Track status update
-      if (
-        updates.status !== undefined &&
-        updates.status !== previousData.status
-      ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: id,
-          user_id: requestUserId,
-          change_type: "status_change",
-          field_name: "status",
-          old_value: previousData.status,
-          new_value: updates.status,
-          description: `Estado actualizado de "${previousData.status}" a "${updates.status}"`,
-        });
-      }
-
-      // Track commission updates
-      if (updates.comisions) {
-        if (
-          updates.comisions.comision_fijo !== undefined &&
-          updates.comisions.comision_fijo !== previousData.comision_fijo
-        ) {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "commission_update",
-            field_name: "comision_fijo",
-            old_value: previousData.comision_fijo.toString(),
-            new_value: updates.comisions.comision_fijo.toString(),
-            description: `Comisión fija actualizada de ${previousData.comision_fijo}€ a ${updates.comisions.comision_fijo}€`,
-          });
-        }
-
-        if (
-          updates.comisions.comision_indexado !== undefined &&
-          updates.comisions.comision_indexado !== previousData.comision_indexado
-        ) {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "commission_update",
-            field_name: "comision_indexado",
-            old_value: previousData.comision_indexado.toString(),
-            new_value: updates.comisions.comision_indexado.toString(),
-            description: `Comisión indexada actualizada de ${previousData.comision_indexado}€ a ${updates.comisions.comision_indexado}€`,
-          });
-        }
-
-        if (
-          updates.comisions.comision_sales_person_fijo !== undefined &&
-          updates.comisions.comision_sales_person_fijo !==
-            previousData.comision_sales_person_fijo
-        ) {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "commission_update",
-            field_name: "comision_sales_person_fijo",
-            old_value: previousData.comision_sales_person_fijo.toString(),
-            new_value: updates.comisions.comision_sales_person_fijo.toString(),
-            description: `Comisión comercial fija actualizada de ${previousData.comision_sales_person_fijo}€ a ${updates.comisions.comision_sales_person_fijo}€`,
-          });
-        }
-
-        if (
-          updates.comisions.comision_sales_person_indexado !== undefined &&
-          updates.comisions.comision_sales_person_indexado !==
-            previousData.comision_sales_person_indexado
-        ) {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "commission_update",
-            field_name: "comision_sales_person_indexado",
-            old_value: previousData.comision_sales_person_indexado.toString(),
-            new_value:
-              updates.comisions.comision_sales_person_indexado.toString(),
-            description: `Comisión comercial indexada actualizada de ${previousData.comision_sales_person_indexado}€ a ${updates.comisions.comision_sales_person_indexado}€`,
-          });
-        }
-      }
-
-      // Track user assignment change
-      if (
-        updates.user_id !== undefined &&
-        updates.user_id !== previousData.user_id
-      ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: id,
-          user_id: requestUserId,
-          change_type: "assignment_change",
-          field_name: "user_id",
-          old_value: previousData.user_id,
-          new_value: updates.user_id,
-          description: `Comparativa reasignada a otro usuario`,
-        });
-      }
-
-      // Track notes update
       if (updates.notes !== undefined) {
-        const previousNotes = JSON.parse(previousData.notes as string);
-        if (JSON.stringify(previousNotes) !== JSON.stringify(updates.notes)) {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "general_update",
+        const previousNotes = JSON.parse(
+          String(previousData.notes),
+        ) as string[];
+        if (
+          JSON.stringify(previousNotes) !== JSON.stringify(updates.notes)
+        ) {
+          auditChanges.push({
+            change_type: "general_update" as const,
             field_name: "notes",
             old_value: JSON.stringify(previousNotes),
             new_value: JSON.stringify(updates.notes),
-            description: `Notas actualizadas`,
+            description: "Notas actualizadas",
           });
         }
       }
 
-      // Track contract/tramite link
+      for (const change of auditChanges) {
+        const auditRecorded = await createComparativaChange(transaction, {
+          comparativa_id: comparisonId,
+          user_id: authenticatedUser.id,
+          ...change,
+        });
+        if (!auditRecorded) {
+          throw new Error("Comparison audit could not be recorded");
+        }
+      }
+
+      const updatedComparison = await fetchComparisonData(
+        transaction,
+        comparisonId,
+        authenticatedUser.id,
+        authenticatedUser.role,
+      );
       if (
-        updates.tramite_id !== undefined &&
-        updates.tramite_id !== previousData.tramite_id
+        !updatedComparison.success ||
+        !updatedComparison.data ||
+        updatedComparison.data.length === 0
       ) {
-        if (updates.tramite_id === null) {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "general_update",
-            field_name: "tramite_id",
-            old_value: previousData.tramite_id,
-            new_value: null,
-            description: `Enlace con trámite eliminado`,
-          });
-        } else {
-          await createComparativaChange(tursoClient, {
-            comparativa_id: id,
-            user_id: requestUserId,
-            change_type: "converted_to_contract",
-            field_name: "tramite_id",
-            old_value: previousData.tramite_id,
-            new_value: updates.tramite_id,
-            description: `Comparativa convertida a trámite: ${updates.tramite_id}`,
-          });
-        }
+        throw new Error("Updated comparison lookup failed");
       }
-    }
 
-    // Fetch the updated comparison data to return
-    const updatedComparison = await fetchComparisonData(
-      tursoClient,
-      id,
-      "admin",
-      "admin",
-    );
-    if (
-      !updatedComparison.success ||
-      !updatedComparison.data ||
-      updatedComparison.data.length === 0
-    ) {
-      console.error("[Database Error] Failed to fetch updated comparison data");
+      const filesResult = await fetchComparisonFiles(
+        transaction,
+        comparisonId,
+      );
+      if (!filesResult.success) {
+        throw new Error("Comparison files lookup failed");
+      }
+
+      const responseData = transformComparisonData(
+        updatedComparison.data[0],
+        filesResult.data || [],
+      );
+      await transaction.commit();
+
+      return NextResponse.json({
+        success: true,
+        data: responseData,
+      });
+    } catch (error) {
+      await transaction.rollback();
+      console.error("[comparison-patch] transaction failed", error);
       return NextResponse.json(
-        { success: false, error: "Failed to retrieve updated comparison" },
+        { success: false, error: "Internal server error" },
         { status: 500 },
       );
     }
-
-    // Fetch associated files
-    const filesResult = await fetchComparisonFiles(tursoClient, id);
-    if (!filesResult.success) {
-      console.error(
-        "[Database Error] Failed to fetch comparison files:",
-        filesResult.error,
-      );
-      return NextResponse.json(
-        { success: false, error: filesResult.error },
-        { status: 500 },
-      );
-    }
-
-    const files = filesResult.data || [];
-    const responseData = transformComparisonData(
-      updatedComparison.data[0],
-      files,
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: responseData,
-    });
   } catch (error) {
-    const endTime = performance.now();
-    console.error(
-      `[API Error] Failed to update comparison after ${(endTime - startTime).toFixed(2)}ms:`,
-      error,
-    );
-
+    console.error("[comparison-patch] unexpected error", error);
     return NextResponse.json(
-      { success: false, error: "Error updating comparativa" },
+      { success: false, error: "Internal server error" },
       { status: 500 },
     );
   }

@@ -6,6 +6,7 @@ export interface AuthenticatedUser {
   role: string;
   email: string;
   name: string;
+  activeOrganizationId?: string;
 }
 
 export interface AuthValidationResult {
@@ -28,7 +29,7 @@ export async function validateUserSession(
       headers: request.headers,
     });
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session.user.role) {
       return {
         success: false,
         error: "Unauthorized: No valid session found",
@@ -39,9 +40,13 @@ export async function validateUserSession(
       success: true,
       user: {
         id: session.user.id,
-        role: session.user.role || "2", // Default to comercial role
+        role: session.user.role,
         email: session.user.email,
         name: session.user.name,
+        activeOrganizationId:
+          typeof session.session.activeOrganizationId === "string"
+            ? session.session.activeOrganizationId
+            : undefined,
       },
     };
   } catch (error) {

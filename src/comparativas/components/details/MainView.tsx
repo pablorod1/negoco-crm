@@ -26,7 +26,6 @@ import {
   Zap,
   AlertTriangle,
   Clock,
-  Gauge,
 } from "lucide-react";
 import UpdateComparativaStatusModal from "@/comparativas/components/editComparativa/UpdateComparativaStatusModal";
 import CompletarEstudioModal from "@/comparativas/components/editComparativa/CompletarEstudioModal";
@@ -40,6 +39,8 @@ import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySuppli
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
 import { showCustomToast } from "@/core/components/CustomToast";
+import { hasPermission } from "@/core/access-control/client";
+import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
 
 interface MainViewProps {
   comparativa: ComparativaVM;
@@ -85,6 +86,19 @@ export default function MainView({
   const isStudied = comparativa.status === "completed";
   const isAwaitingReview = comparativa.status === "awaiting_review";
   const isAdmin = userData.role === "admin" || userData.role === "1";
+  const canCompleteStudies = hasPermission(
+    userData.permissions,
+    userData.role,
+    "comparisons.study.complete",
+  );
+  const canReviewStudies = hasPermission(
+    userData.permissions,
+    userData.role,
+    "comparisons.study.review",
+  );
+  const hasAiStudies = hasAiStudiesCapability(
+    userData.organization.abarca_user_id,
+  );
   const assignedCommercialId = comparativa.user.id;
   // Los admins pueden editar comisiones cuando la comparativa está estudiada
   const canEditComissions = isAdmin && isStudied;
@@ -338,53 +352,84 @@ export default function MainView({
                   )}
 
                 {/* Comparativa pendiente */}
-                {comparativa.status === "pending" && !isComercial ? (
-                  <div className="space-y-3">
-                    {/* Primary: Comparador IA (cuando disponible) */}
-                    {userData.organization.abarca_user_id && (
-                      <AbarcaPanel
-                        comparativaId={comparativa.id}
-                        abarcaUserId={userData.organization.abarca_user_id}
-                        onStudyCompleted={onUpdate}
-                        files={comparativa.files}
-                      />
-                    )}
+                {comparativa.status === "pending" ? (
+                  canCompleteStudies ? (
+                    <div className="space-y-3">
+                      {hasAiStudies ? (
+                        <AbarcaPanel
+                          comparativaId={comparativa.id}
+                          onStudyCompleted={onUpdate}
+                          files={comparativa.files}
+                        />
+                      ) : null}
 
-                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4">
+                        <CompletarEstudioModal
+                          comparativa={comparativa}
+                          onUpdate={onUpdate}
+                          userData={userData}
+                          canCompleteStudies={canCompleteStudies}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-sm font-medium text-gray-700">
+                        No hay acciones disponibles
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        No tienes permiso para completar este estudio.
+                      </p>
+                    </div>
+                  )
+                ) : null}
+
+                {/* Estudio con IA recibido — pendiente de revisión */}
+                {isAwaitingReview ? (
+                  canReviewStudies ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <div className="mb-3 flex items-center gap-3">
+                        <div className="rounded-md bg-amber-100 p-1.5">
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-amber-900">
+                            Estudio con IA recibido
+                          </p>
+                          <p className="text-xs text-amber-700">
+                            Asigna la comercializadora y las comisiones para
+                            continuar
+                          </p>
+                        </div>
+                      </div>
                       <CompletarEstudioModal
                         comparativa={comparativa}
                         onUpdate={onUpdate}
                         userData={userData}
+                        mode="ai_review"
+                        canCompleteStudies={canCompleteStudies}
+                        canReviewStudies={canReviewStudies}
                       />
                     </div>
-                  </div>
-                ) : null}
-
-                {/* Estudio de Abarca recibido — pendiente de revisión */}
-                {isAwaitingReview && !isComercial && (
-                  <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-1.5 rounded-md bg-amber-100">
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-amber-900">
-                          Estudio Abarca Recibido
-                        </p>
-                        <p className="text-xs text-amber-700">
-                          Asigna la comercializadora y las comisiones para
-                          continuar
-                        </p>
+                  ) : (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-md bg-blue-100 p-1.5">
+                          <Clock className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-blue-900">
+                            Estudio en revisión
+                          </p>
+                          <p className="text-xs text-blue-700">
+                            Dirección o un usuario autorizado completará la
+                            revisión.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <CompletarEstudioModal
-                      comparativa={comparativa}
-                      onUpdate={onUpdate}
-                      userData={userData}
-                      mode="abarca"
-                    />
-                  </div>
-                )}
+                  )
+                ) : null}
 
                 {/* Comparativa completada — Crear trámite o rechazar */}
                 {isStudied && (
@@ -436,36 +481,12 @@ export default function MainView({
                     </div>
                   )}
 
-                {/* Comercial: estudio en revisión */}
-                {isAwaitingReview && isComercial && (
-                  <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-md bg-amber-100">
-                        <Clock className="h-4 w-4 text-amber-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-amber-900">
-                          Estudio en revisión
-                        </p>
-                        <p className="text-xs text-amber-700">
-                          El backoffice está revisando el estudio. La conversión
-                          a trámite estará disponible una vez completada la
-                          revisión.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Sin acciones disponibles */}
-                {(comparativa.status === "rejected" ||
-                  (isComercial &&
-                    comparativa.status !== "completed" &&
-                    comparativa.status !== "awaiting_review" &&
-                    !(
-                      comparativa.status === "pending" &&
-                      userData.organization.abarca_user_id
-                    ))) && (
+                {isComercial &&
+                  comparativa.status !== "completed" &&
+                  comparativa.status !== "pending" &&
+                  comparativa.status !== "awaiting_review" &&
+                  comparativa.status !== "processed" && (
                     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-center">
                       <p className="text-sm text-gray-500">
                         No hay acciones disponibles
@@ -617,13 +638,13 @@ export default function MainView({
         </Card>
       </div>
 
-      {/* Estudio Abarca Section */}
+      {/* Estudio con IA */}
       {abarcaEstudio && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" />
-              Estudio Negoco Cloud IA
+              Datos del estudio con IA
             </CardTitle>
             <CardDescription className="text-gray-500 hidden">
               Datos recibidos del comparador energético

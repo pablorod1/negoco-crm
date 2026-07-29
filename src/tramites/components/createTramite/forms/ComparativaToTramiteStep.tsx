@@ -197,7 +197,7 @@ export default function ComparativaToTramiteStep({
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" />
               <CardTitle className="text-sm font-medium text-gray-700">
-                Datos del Estudio Abarca
+                Datos del estudio con IA
               </CardTitle>
             </div>
           </CardHeader>

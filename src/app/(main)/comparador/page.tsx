@@ -14,48 +14,53 @@ export default function ComparadorPage() {
   const hasFetchedLogin = useRef(false);
 
   const fetchStandaloneLogin = useCallback(async () => {
-    if (!userData?.organization?.abarca_user_id) {
-      setError("Configuración de comparador no disponible");
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
+    setIframeUrl(null);
     try {
       const res = await fetch("/api/v2/integrations/abarca/standalone-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idcm: userData.organization.abarca_user_id,
-        }),
       });
 
+      if (res.status === 403) {
+        router.replace("/");
+        setIsLoading(false);
+        return;
+      }
+      if (res.status === 409) {
+        setError("Comparador con IA no configurado");
+        setIsLoading(false);
+        return;
+      }
       if (!res.ok) {
         console.error(
-          "Error fetching Abarca standalone login:",
+          "Error fetching standalone comparator login:",
           await res.text(),
         );
         setError("No se pudo conectar con el comparador");
+        setIsLoading(false);
         return;
       }
 
-      const data = await res.json();
+      const data: unknown = await res.json();
+      if (
+        typeof data !== "object" ||
+        data === null ||
+        !("loginUrl" in data) ||
+        typeof data.loginUrl !== "string" ||
+        data.loginUrl.length === 0
+      ) {
+        throw new Error("Invalid comparator login response");
+      }
       setIframeUrl(data.loginUrl);
     } catch {
-      setError("Error de conexión con el comparador");
-    } finally {
+      setError("No se pudo conectar con el comparador");
       setIsLoading(false);
     }
-  }, [userData]);
+  }, [router]);
 
   useEffect(() => {
     if (loading) return;
-
-    if (userData?.organization?.plan !== "comparador") {
-      router.replace("/");
-      return;
-    }
 
     if (userData && !hasFetchedLogin.current) {
       hasFetchedLogin.current = true;
@@ -77,7 +82,9 @@ export default function ComparadorPage() {
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
           <div className="flex flex-col items-center gap-3 text-center">
-            <p className="text-sm text-gray-600">{error}</p>
+            <p role="alert" className="text-sm text-gray-600">
+              {error}
+            </p>
             <button
               onClick={fetchStandaloneLogin}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -92,7 +99,9 @@ export default function ComparadorPage() {
       {iframeUrl && (
         <iframe
           src={iframeUrl}
-          title="Comparador Energético"
+          title="Comparador energético con IA"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
+          referrerPolicy="no-referrer"
           className="w-full h-full border-0"
           onLoad={() => setIsLoading(false)}
         />

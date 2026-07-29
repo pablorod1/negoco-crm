@@ -55,7 +55,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
         disabled={disabled}
         value={selectedKey}
       >
-        <SelectTrigger className="capitalize">
+        <SelectTrigger id={name} className="capitalize">
           <SelectValue placeholder="Seleccione una opción">
             {textValue || selectedKey}
           </SelectValue>

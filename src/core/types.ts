@@ -1,4 +1,5 @@
 ﻿import type { ResolvedBranding } from "@/core/branding/types";
+import type { PermissionMap } from "@/core/access-control/types";
 
 export interface User {
   id: string;
@@ -18,6 +19,7 @@ export interface User {
   last_login?: string | null;
   company_commissions?: UserCompanyCommission[];
   targeted_notes?: UserDefaultNote[];
+  permissions?: PermissionMap;
 }
 
 export type CommissionType = "percent" | "fixed";

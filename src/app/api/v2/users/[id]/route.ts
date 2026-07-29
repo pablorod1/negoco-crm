@@ -4,6 +4,9 @@ import { z } from "zod";
 import { getTenantFromHost } from "@/core/branding/tenant";
 import { resolveBrandingFromOrganization } from "@/core/branding/metadata";
 import type { ResolvedBranding } from "@/core/branding/types";
+import { getEffectivePermissions } from "@/core/access-control/server";
+import type { PermissionMap } from "@/core/access-control/types";
+import { validateUserSession } from "@/core/auth/session-utils";
 
 // Request Validation Schema
 const GetUserParamsSchema = z.object({
@@ -53,6 +56,7 @@ interface UserResponse {
       created_at: string | null;
       updated_at: string | null;
     }[];
+    permissions: PermissionMap;
   };
 }
 
@@ -72,6 +76,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<UserResponse | ErrorResponse>> {
   try {
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     const { id } = await params;
 
     // Validate parameters
@@ -143,7 +155,8 @@ export async function GET(
       plan: planName,
       metadata: orgMetadata,
     });
-    const [commissionsResponse, notesResponse] = await Promise.all([
+    const userRole = String(row.role);
+    const [commissionsResponse, notesResponse, permissions] = await Promise.all([
       tursoClient.execute({
         sql: `SELECT
           ucc.id,
@@ -167,6 +180,7 @@ export async function GET(
         ORDER BY created_at ASC`,
         args: [id],
       }),
+      getEffectivePermissions(tursoClient, { id, role: userRole }),
     ]);
 
     return NextResponse.json({
@@ -180,7 +194,7 @@ export async function GET(
         updated_at: row.updated_at as string,
         banned: Boolean(row.banned),
         image: row.image ? String(row.image) : null,
-        role: String(row.role),
+        role: userRole,
         super_id: row.super_id ? String(row.super_id) : null,
         should_reset_password: Boolean(row.should_reset_password),
         notifications: Number(row.notifications) || 0,
@@ -219,6 +233,7 @@ export async function GET(
           created_at: note.created_at ? String(note.created_at) : null,
           updated_at: note.updated_at ? String(note.updated_at) : null,
         })),
+        permissions,
       },
     });
   } catch (error) {

@@ -19,13 +19,17 @@ import LoadingStateModal from "@/core/components/LoadingStateModal";
 import ComissionsForm, { ComissionFormValues } from "./ComissionsForm";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import { SelectComponent } from "@/tramites/components/createTramite/InputComponent";
-import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
 import { Separator } from "@/core/components/ui/separator";
 import { generateComparativaUpdatedNotification } from "@/core/utils/notifications.helpers";
 import { formatUUID } from "@/core/utils/format";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import {
+  getAllowedStatusOptions,
+  getStatusUpdatePayload,
+  hasMissingCommission,
+} from "./status-options";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -40,7 +44,7 @@ export default function UpdateComparativaStatusModal({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<ComparativaStatus>(
-    comparativa.status
+    comparativa.status,
   );
   const [formDataComissions, setFormDataComissions] = useState<
     Partial<ComissionFormValues>
@@ -62,7 +66,7 @@ export default function UpdateComparativaStatusModal({
             comision_indexado: comparativa.comision.indexado,
             comision_sales_person_indexado:
               comparativa.comision_sales_person.indexado,
-          }
+          },
   );
   const [loading, setLoading] = useState(false);
   const [manualSalesCommissionFields, setManualSalesCommissionFields] =
@@ -70,6 +74,11 @@ export default function UpdateComparativaStatusModal({
   const { activeSuppliers } = useActiveEnergySuppliers();
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
     comparativa.user.id,
+  );
+  const allowedStatusOptions = getAllowedStatusOptions(
+    comparativa.status,
+    userData,
+    Boolean(comparativa.tramite_id),
   );
 
   useEffect(() => {
@@ -142,13 +151,22 @@ export default function UpdateComparativaStatusModal({
     setManualSalesCommissionFields({});
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (loading) return;
+    if (open) {
+      handleOpen();
+    } else {
+      onClose();
+    }
+  };
+
   const handleChange = (value: string) => {
     setNewStatus(value as ComparativaStatus);
   };
 
   const checkEmptyComissions = () => {
     return (
-      Object.values(formDataComissions).some((value) => !value) &&
+      hasMissingCommission(Object.values(formDataComissions)) &&
       newStatus === "completed"
     );
   };
@@ -196,117 +214,145 @@ export default function UpdateComparativaStatusModal({
           icon: CircleX,
         });
         return;
-      } else {
-        const changes = checkComissionsChanged();
-        const res = await fetch(
-          `/api/v2/comparisons/${comparativa.id}/status`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({
-              status: newStatus,
-              comissions: changes ? changes : undefined,
-              tramite_id: comparativa.tramite_id ?? undefined,
-              user_id: userData.id,
-              user_role: userData.role,
-            }),
-            headers: {
-              "Content-Type": "application/json",
-            },
+      }
+
+      const changes = checkComissionsChanged();
+      const res = await fetch(`/api/v2/comparisons/${comparativa.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify(
+          getStatusUpdatePayload({
+            status: newStatus,
+            commissions: changes,
+            tramiteId: comparativa.tramite_id,
+          }),
+        ),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        let errorMessage = "No se pudo actualizar el estado";
+        try {
+          const errorPayload: unknown = await res.json();
+          if (
+            typeof errorPayload === "object" &&
+            errorPayload !== null &&
+            "error" in errorPayload &&
+            typeof errorPayload.error === "string"
+          ) {
+            errorMessage = errorPayload.error;
           }
-        );
-
-        const { success, error } = await res.json();
-
-        if (!success) {
-          showCustomToast({
-            title: "Error al actualizar estado",
-            message: error,
-            icon: CircleX,
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-          });
-          return;
+        } catch {
+          // Keep the generic message when the error response is not JSON.
         }
+        showCustomToast({
+          title: "Error al actualizar estado",
+          message: errorMessage,
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        return;
+      }
 
-        const notification: Notification =
-          generateComparativaUpdatedNotification({
-            comparativa_id: comparativa.id,
-            client: comparativa.client,
-            user_id: comparativa.user.id as string,
-            status: checkStatusChanged() ? newStatus : undefined,
-            comissions: changes ? true : undefined,
-          });
+      const statusResult = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!statusResult.success) {
+        showCustomToast({
+          title: "Error al actualizar estado",
+          message: statusResult.error ?? "No se pudo actualizar el estado",
+          icon: CircleX,
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+        });
+        return;
+      }
 
-        const NotificationResponse = await fetch(`/api/v2/notifications`, {
+      onUpdate();
+      onClose();
+
+      let notificationFailed = false;
+      const notification: Notification = generateComparativaUpdatedNotification(
+        {
+          comparativa_id: comparativa.id,
+          client: comparativa.client,
+          user_id: comparativa.user.id as string,
+          status: newStatus,
+          comissions: changes ? true : undefined,
+        },
+      );
+
+      try {
+        const notificationResponse = await fetch(`/api/v2/notifications`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ notification }),
         });
-        const { success: NotificationSuccess, error: NotificationError } =
-          await NotificationResponse.json();
-
-        if (!NotificationSuccess && NotificationError) {
-          showCustomToast({
-            title: "Error al notificar cambios",
-            message: NotificationError,
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          return;
+        if (!notificationResponse.ok) {
+          notificationFailed = true;
+        } else {
+          const notificationResult = await notificationResponse.json();
+          notificationFailed = !notificationResult.success;
         }
-
-        if (checkStatusChanged()) {
-          const emailRes = await fetch(
-            "/api/v2/communications/emails/status-updates",
-            {
-              method: "POST",
-              body: JSON.stringify({
-                type: "comparativa",
-                user_to: {
-                  email: comparativa.user.email,
-                  name: comparativa.user.name,
-                  org_logo: userData.organization.logo,
-                },
-                comparativa_id: comparativa.id,
-                status: { old: comparativa.status, new: newStatus },
-                comparativa_name: comparativa.client,
-              }),
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          const { success: emailSuccess, error: emailError } =
-            await emailRes.json();
-
-          if (!emailSuccess) {
-            showCustomToast({
-              title: "Error al enviar notificación por email",
-              message: emailError as string,
-              iconColor: "var(--danger-color)",
-              iconSize: 24,
-              icon: CircleX,
-            });
-            return;
-          }
-        }
-
-        showCustomToast({
-          title: "Estado Actualizado",
-          message:
-            "El estado de la comparativa ha sido actualizado correctamente",
-          icon: CircleCheck,
-          iconColor: "var(--success-color)",
-          iconSize: 24,
-        });
+      } catch (error) {
+        notificationFailed = true;
+        console.error("Error sending comparison notification:", error);
       }
-      onUpdate();
-      onClose();
+
+      let emailFailed = false;
+      try {
+        const emailRes = await fetch(
+          "/api/v2/communications/emails/status-updates",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              type: "comparativa",
+              user_to: {
+                email: comparativa.user.email,
+                name: comparativa.user.name,
+                org_logo: userData.organization.logo,
+              },
+              comparativa_id: comparativa.id,
+              status: { old: comparativa.status, new: newStatus },
+              comparativa_name: comparativa.client,
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (!emailRes.ok) {
+          emailFailed = true;
+        } else {
+          const emailResult = await emailRes.json();
+          emailFailed = !emailResult.success;
+        }
+      } catch (error) {
+        emailFailed = true;
+        console.error("Error sending comparison status email:", error);
+      }
+
+      showCustomToast({
+        title: "Estado actualizado",
+        message:
+          notificationFailed || emailFailed
+            ? "El estado se actualizó, pero no se pudieron enviar todos los avisos."
+            : "El estado de la comparativa ha sido actualizado correctamente",
+        icon: CircleCheck,
+        iconColor:
+          notificationFailed || emailFailed
+            ? "var(--warning-color)"
+            : "var(--success-color)",
+        iconSize: 24,
+      });
     } catch (error) {
+      onUpdate();
       showCustomToast({
         title: "Error al actualizar estado",
         message: "Ocurrió un error al actualizar el estado de la comparativa",
@@ -341,11 +387,9 @@ export default function UpdateComparativaStatusModal({
 
   return (
     <>
-      <Dialog open={isOpen}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
-          <Button onClick={handleOpen} variant="outline">
-            Actualizar
-          </Button>
+          <Button variant="outline">Actualizar</Button>
         </DialogTrigger>
         <DialogContent
           aria-describedby={undefined}
@@ -375,7 +419,8 @@ export default function UpdateComparativaStatusModal({
                 selectedKey={newStatus}
                 textValue={formatStatus(newStatus)}
                 onChange={handleChange}
-                items={COMPARATIVA_STATUS_TYPES}
+                items={allowedStatusOptions}
+                disabled={loading || allowedStatusOptions.length === 0}
               />
             </div>
             {newStatus === "completed" && (
@@ -415,10 +460,13 @@ export default function UpdateComparativaStatusModal({
             )}
           </div>
           <DialogFooter>
-            <Button onClick={onClose} variant="destructive">
+            <Button onClick={onClose} variant="destructive" disabled={loading}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button
+              onClick={handleSubmit}
+              disabled={loading || !checkStatusChanged()}
+            >
               {loading ? "Actualizando..." : "Actualizar"}
             </Button>
           </DialogFooter>
