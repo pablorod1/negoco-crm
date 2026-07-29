@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ComparativaPlan,
   ComparativaVM,
@@ -33,13 +33,36 @@ function plansAreEqual(
   selectedPlans: ComparativaPlan[],
   currentPlans: ComparativaPlan[],
 ) {
+  const currentPlanSet = new Set(currentPlans);
+
   return (
     selectedPlans.length === currentPlans.length &&
-    selectedPlans.every((plan) => currentPlans.includes(plan))
+    selectedPlans.every((plan) => currentPlanSet.has(plan))
   );
 }
 
 export default function ComparativaPlanSection({
+  comparativa,
+  canEdit,
+  onUpdate,
+}: ComparativaPlanSectionProps) {
+  const editorRevision = JSON.stringify([
+    comparativa.id,
+    comparativa.plan,
+    canEdit,
+  ]);
+
+  return (
+    <ComparativaPlanSectionContent
+      key={editorRevision}
+      comparativa={comparativa}
+      canEdit={canEdit}
+      onUpdate={onUpdate}
+    />
+  );
+}
+
+function ComparativaPlanSectionContent({
   comparativa,
   canEdit,
   onUpdate,
@@ -49,12 +72,34 @@ export default function ComparativaPlanSection({
   const [selectedPlans, setSelectedPlans] = useState<ComparativaPlan[]>([
     ...comparativa.plan,
   ]);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const firstPlanControlRef = useRef<HTMLButtonElement>(null);
+  const shouldRestoreEditFocusRef = useRef(false);
   const cannotSave =
     selectedPlans.length === 0 ||
     plansAreEqual(selectedPlans, comparativa.plan) ||
     isSaving;
 
+  useEffect(() => {
+    if (canEdit && isEditMode) {
+      firstPlanControlRef.current?.focus();
+      return;
+    }
+
+    if (!isEditMode && shouldRestoreEditFocusRef.current) {
+      editButtonRef.current?.focus();
+      shouldRestoreEditFocusRef.current = false;
+    }
+  }, [canEdit, isEditMode]);
+
+  const closeEditor = () => {
+    setSelectedPlans([...comparativa.plan]);
+    shouldRestoreEditFocusRef.current = canEdit;
+    setIsEditMode(false);
+  };
+
   const startEditing = () => {
+    shouldRestoreEditFocusRef.current = false;
     setSelectedPlans([...comparativa.plan]);
     setIsEditMode(true);
   };
@@ -72,8 +117,7 @@ export default function ComparativaPlanSection({
   };
 
   const handleCancel = () => {
-    setSelectedPlans([...comparativa.plan]);
-    setIsEditMode(false);
+    closeEditor();
   };
 
   const handleSubmit = async () => {
@@ -94,7 +138,7 @@ export default function ComparativaPlanSection({
       );
 
       if (response.status === 409) {
-        setIsEditMode(false);
+        closeEditor();
         showCustomToast({
           title: "La comparativa ha cambiado",
           message:
@@ -117,7 +161,7 @@ export default function ComparativaPlanSection({
         return;
       }
 
-      setIsEditMode(false);
+      closeEditor();
       showCustomToast({
         title: "Planes actualizados",
         message: "Los planes de la comparativa se han guardado correctamente.",
@@ -150,6 +194,7 @@ export default function ComparativaPlanSection({
         </div>
         {canEdit && !isEditMode ? (
           <Button
+            ref={editButtonRef}
             type="button"
             size="sm"
             variant="ghost"
@@ -179,6 +224,11 @@ export default function ComparativaPlanSection({
                     className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/40"
                   >
                     <Checkbox
+                      ref={
+                        option.value === PLAN_OPTIONS[0].value
+                          ? firstPlanControlRef
+                          : undefined
+                      }
                       id={checkboxId}
                       checked={selectedPlans.includes(option.value)}
                       disabled={isSaving}

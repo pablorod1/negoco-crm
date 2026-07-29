@@ -25,23 +25,49 @@ const baseComparativa = {
 };
 
 function renderPlanSection({
+  comparisonId = "comparison-1",
   plan = ["fijo"],
   canEdit = true,
   onUpdate = vi.fn(),
 }: {
+  comparisonId?: string;
   plan?: Array<"fijo" | "indexado">;
   canEdit?: boolean;
   onUpdate?: () => void;
 } = {}) {
-  render(
+  const view = render(
     <ComparativaPlanSection
-      comparativa={{ ...baseComparativa, plan } as never}
+      comparativa={{
+        ...baseComparativa,
+        id: comparisonId,
+        plan,
+      } as never}
       canEdit={canEdit}
       onUpdate={onUpdate}
     />,
   );
 
-  return { onUpdate };
+  const rerenderPlanSection = ({
+    nextComparisonId = comparisonId,
+    nextPlan = plan,
+  }: {
+    nextComparisonId?: string;
+    nextPlan?: Array<"fijo" | "indexado">;
+  }) => {
+    view.rerender(
+      <ComparativaPlanSection
+        comparativa={{
+          ...baseComparativa,
+          id: nextComparisonId,
+          plan: nextPlan,
+        } as never}
+        canEdit={canEdit}
+        onUpdate={onUpdate}
+      />,
+    );
+  };
+
+  return { ...view, onUpdate, rerenderPlanSection };
 }
 
 function startEditing() {
@@ -84,6 +110,72 @@ describe("ComparativaPlanSection", () => {
 
     expect(fijoCheckbox).not.toBeChecked();
     expect(saveButton).toBeDisabled();
+  });
+
+  test("closes and resets a dirty draft when the refreshed plan changes", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerenderPlanSection } = renderPlanSection();
+    startEditing();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Indexado" }));
+
+    rerenderPlanSection({ nextPlan: ["indexado"] });
+
+    expect(
+      screen.queryByRole("button", { name: "Guardar planes" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Indexado")).toBeVisible();
+    expect(screen.queryByText("Fijo")).not.toBeInTheDocument();
+
+    startEditing();
+    expect(
+      screen.getByRole("checkbox", { name: "Indexado" }),
+    ).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Fijo" })).not.toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Guardar planes" }),
+    ).toBeDisabled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("closes and resets a dirty draft when the comparison identity changes", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerenderPlanSection } = renderPlanSection();
+    startEditing();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Indexado" }));
+
+    rerenderPlanSection({ nextComparisonId: "comparison-2" });
+
+    expect(
+      screen.queryByRole("button", { name: "Guardar planes" }),
+    ).not.toBeInTheDocument();
+
+    startEditing();
+    expect(screen.getByRole("checkbox", { name: "Fijo" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Indexado" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Guardar planes" }),
+    ).toBeDisabled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("moves focus into the editor and restores it after cancel", () => {
+    renderPlanSection();
+
+    startEditing();
+
+    expect(screen.getByRole("checkbox", { name: "Fijo" })).toHaveFocus();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar edición de planes" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Editar planes" }),
+    ).toHaveFocus();
   });
 
   test("saves a non-empty plan transition with the exact request body", async () => {
@@ -188,6 +280,9 @@ describe("ComparativaPlanSection", () => {
         title: "Planes actualizados",
       }),
     );
+    expect(
+      screen.getByRole("button", { name: "Editar planes" }),
+    ).toHaveFocus();
   });
 
   test("closes and refreshes after a conflict so the parent can resync", async () => {
@@ -214,6 +309,9 @@ describe("ComparativaPlanSection", () => {
         message: expect.stringContaining("recargado"),
       }),
     );
+    expect(
+      screen.getByRole("button", { name: "Editar planes" }),
+    ).toHaveFocus();
   });
 
   test("keeps the edited selection recoverable after other failures", async () => {
@@ -235,6 +333,33 @@ describe("ComparativaPlanSection", () => {
       expect(showCustomToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "No se pudieron guardar los planes",
+        }),
+      );
+    });
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(indexadoCheckbox).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Guardar planes" }),
+    ).toBeEnabled();
+  });
+
+  test("keeps the edited selection retryable when fetch rejects", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    const onUpdate = vi.fn();
+    renderPlanSection({ onUpdate });
+    startEditing();
+
+    const indexadoCheckbox = screen.getByRole("checkbox", {
+      name: "Indexado",
+    });
+    fireEvent.click(indexadoCheckbox);
+    fireEvent.click(screen.getByRole("button", { name: "Guardar planes" }));
+
+    await waitFor(() => {
+      expect(showCustomToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "No se pudieron guardar los planes",
+          message: expect.stringContaining("conectar"),
         }),
       );
     });
