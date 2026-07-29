@@ -9,7 +9,13 @@ import {
   Euro,
   Pencil,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { ComparativaVM } from "@/comparativas/types/comparativa.types";
@@ -112,7 +118,7 @@ export default function ComparativaComissionsSection({
     [editorRevision],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     currentRevisionRef.current = renderedRevision;
 
     return () => {

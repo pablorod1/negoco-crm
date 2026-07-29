@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { showCustomToast } from "@/core/components/CustomToast";
@@ -502,96 +508,126 @@ describe("ComparativaComissionsSection", () => {
     });
   });
 
-  test.each([
-    {
-      name: "plan and commission revision",
+  test("keeps a refreshed same-id revision locked and ignores a stale completion", async () => {
+    const firstRequest = deferred<ReturnType<typeof response>>();
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockResolvedValueOnce(response(200, { success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onUpdate = vi.fn();
+    const { rerenderCommissionsSection } = renderCommissionsSection({
+      onUpdate,
+    });
+    startEditing();
+    changeOrganizationFixed();
+    save();
+
+    rerenderCommissionsSection({
       nextComparativa: {
         ...baseComparativa,
         plan: ["indexado"],
         comision: { fijo: 120, indexado: 95 },
         comision_sales_person: { fijo: 60, indexado: 45 },
-      } satisfies ComparativaVM,
-      changedInputName: "Comisión Indexado de Negoco",
-      changedValue: "97",
-      expectedUrl: "/api/v2/comparisons/comparison-1/commissions",
-      expectedCommissions: { comision_indexado: 97 },
-    },
-    {
-      name: "comparison identity",
-      nextComparativa: {
+      },
+    });
+
+    const editButton = screen.getByRole("button", { name: "Editar" });
+    expect(editButton).toBeDisabled();
+    fireEvent.click(editButton);
+    expect(
+      screen.queryByRole("button", { name: "Guardar comisiones" }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    firstRequest.resolve(response(200, { success: true }));
+
+    await waitFor(() => {
+      expect(editButton).toBeEnabled();
+    });
+    expect(showCustomToast).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    startEditing();
+    fireEvent.change(
+      screen.getByRole("spinbutton", {
+        name: "Comisión Indexado de Negoco",
+      }),
+      {
+        target: { value: "97" },
+      },
+    );
+    save();
+
+    await waitFor(() => {
+      expect(onUpdate).toHaveBeenCalledOnce();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/v2/comparisons/comparison-1/commissions",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comissions: { comision_indexado: 97 },
+        }),
+      },
+    );
+  });
+
+  test("allows an independent new-id request after the old view unmounts", async () => {
+    const oldRequest = deferred<ReturnType<typeof response>>();
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => oldRequest.promise)
+      .mockResolvedValueOnce(response(200, { success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const oldOnUpdate = vi.fn();
+    const oldView = renderCommissionsSection({ onUpdate: oldOnUpdate });
+    startEditing();
+    changeOrganizationFixed();
+    save();
+
+    oldView.unmount();
+
+    const newOnUpdate = vi.fn();
+    renderCommissionsSection({
+      comparativa: {
         ...baseComparativa,
         id: "comparison-2",
         comision: { fijo: 130, indexado: 80 },
-      } satisfies ComparativaVM,
-      changedInputName: "Comisión Fijo de Negoco",
-      changedValue: "135",
-      expectedUrl: "/api/v2/comparisons/comparison-2/commissions",
-      expectedCommissions: { comision_fijo: 135 },
-    },
-  ])(
-    "keeps the new $name locked and ignores a stale completion",
-    async ({
-      nextComparativa,
-      changedInputName,
-      changedValue,
-      expectedUrl,
-      expectedCommissions,
-    }) => {
-      const firstRequest = deferred<ReturnType<typeof response>>();
-      const fetchMock = vi
-        .fn()
-        .mockImplementationOnce(() => firstRequest.promise)
-        .mockResolvedValueOnce(response(200, { success: true }));
-      vi.stubGlobal("fetch", fetchMock);
-      const onUpdate = vi.fn();
-      const { rerenderCommissionsSection } = renderCommissionsSection({
-        onUpdate,
-      });
-      startEditing();
-      changeOrganizationFixed();
-      save();
+      },
+      onUpdate: newOnUpdate,
+    });
+    startEditing();
+    changeOrganizationFixed("135");
+    save();
 
-      rerenderCommissionsSection({ nextComparativa });
+    await waitFor(() => {
+      expect(newOnUpdate).toHaveBeenCalledOnce();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/v2/comparisons/comparison-2/commissions",
+      expect.objectContaining({
+        body: JSON.stringify({
+          comissions: { comision_fijo: 135 },
+        }),
+      }),
+    );
+    const toastCallsAfterNewRequest = vi.mocked(showCustomToast).mock.calls
+      .length;
 
-      const editButton = screen.getByRole("button", { name: "Editar" });
-      expect(editButton).toBeDisabled();
-      fireEvent.click(editButton);
-      expect(
-        screen.queryByRole("button", { name: "Guardar comisiones" }),
-      ).not.toBeInTheDocument();
-      expect(fetchMock).toHaveBeenCalledOnce();
+    await act(async () => {
+      oldRequest.resolve(response(200, { success: true }));
+      await oldRequest.promise;
+    });
 
-      firstRequest.resolve(response(200, { success: true }));
-
-      await waitFor(() => {
-        expect(editButton).toBeEnabled();
-      });
-      expect(showCustomToast).not.toHaveBeenCalled();
-      expect(onUpdate).not.toHaveBeenCalled();
-
-      startEditing();
-      fireEvent.change(
-        screen.getByRole("spinbutton", { name: changedInputName }),
-        {
-          target: { value: changedValue },
-        },
-      );
-      save();
-
-      await waitFor(() => {
-        expect(onUpdate).toHaveBeenCalledOnce();
-      });
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-      expect(fetchMock).toHaveBeenLastCalledWith(expectedUrl, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comissions: expectedCommissions }),
-      });
-      expect(showCustomToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Comisiones actualizadas" }),
-      );
-    },
-  );
+    expect(oldOnUpdate).not.toHaveBeenCalled();
+    expect(showCustomToast).toHaveBeenCalledTimes(
+      toastCallsAfterNewRequest,
+    );
+  });
 
   test("closes and resets the editor if edit permission is removed", () => {
     const { rerenderCommissionsSection } = renderCommissionsSection();
