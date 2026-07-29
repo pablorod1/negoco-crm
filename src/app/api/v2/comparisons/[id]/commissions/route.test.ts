@@ -514,7 +514,17 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
     );
   });
 
-  test.each(["", "   ", "not-a-number"])(
+  test.each([
+    "",
+    "   ",
+    "not-a-number",
+    "Infinity",
+    "-Infinity",
+    "NaN",
+    "0x10",
+    "0b10",
+    "0o10",
+  ])(
     "rolls back on malformed persisted commission text %j",
     async (storedValue) => {
       currentComparison = {
@@ -538,6 +548,8 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
   test.each([
     { storedValue: 12.5, expectedOldValue: "12.5" },
     { storedValue: "12.5", expectedOldValue: "12.5" },
+    { storedValue: "-12.5", expectedOldValue: "-12.5" },
+    { storedValue: "1.25e2", expectedOldValue: "125" },
     { storedValue: null, expectedOldValue: "0" },
   ])(
     "supports persisted commission value $storedValue",

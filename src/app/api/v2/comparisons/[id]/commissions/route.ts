@@ -60,6 +60,11 @@ const ComparisonPlanSchema = z
   .min(1)
   .refine((plans) => new Set(plans).size === plans.length);
 
+// SQLite may serialize REAL values with an exponent, but radix-prefixed
+// JavaScript literals are not decimal commission values.
+const persistedDecimalCommissionPattern =
+  /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+
 type CommissionUpdates = z.infer<typeof CommissionsSchema>;
 type CommissionField = keyof CommissionUpdates;
 type Plan = z.infer<typeof ComparisonPlanSchema>[number];
@@ -139,7 +144,10 @@ function normalizeStoredCommission(
   field: CommissionField,
 ): number {
   if (value === null) return 0;
-  if (typeof value === "string" && value.trim() === "") {
+  if (
+    typeof value === "string" &&
+    !persistedDecimalCommissionPattern.test(value)
+  ) {
     throw new Error(`Invalid stored commission value for ${field}`);
   }
   if (
