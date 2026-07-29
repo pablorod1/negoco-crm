@@ -65,6 +65,7 @@ const comparisonRow = {
 
 let comparisonVisible: boolean;
 let comparisonStatus: string;
+let storedComparisonRow: typeof comparisonRow;
 let updateRowsAffected: number;
 
 const transaction = {
@@ -72,6 +73,50 @@ const transaction = {
   commit: mocks.commit,
   rollback: mocks.rollback,
 };
+
+const storedPatchColumns = [
+  "client",
+  "service",
+  "plan",
+  "notes",
+] as const;
+
+const planUpdateAudit = {
+  change_type: "plan_update",
+  field_name: "plan",
+  old_value: JSON.stringify(["fijo"]),
+  new_value: JSON.stringify(["fijo", "indexado"]),
+  description: "Plan actualizado de [fijo] a [fijo, indexado]",
+};
+
+function applyStoredComparisonUpdate(statement: {
+  sql: string;
+  args: unknown[];
+}) {
+  let updateArgumentIndex = 0;
+
+  for (const column of storedPatchColumns) {
+    if (statement.sql.includes(`${column} = ?`)) {
+      Object.assign(storedComparisonRow, {
+        [column]: String(statement.args[updateArgumentIndex]),
+      });
+      updateArgumentIndex += 1;
+    }
+  }
+}
+
+function expectAuditChanges(...changes: Array<Record<string, string>>) {
+  expect(mocks.createComparativaChange.mock.calls).toEqual(
+    changes.map((change) => [
+      transaction,
+      {
+        comparativa_id: "comparison-1",
+        user_id: "user-1",
+        ...change,
+      },
+    ]),
+  );
+}
 
 function request(body: unknown) {
   return new NextRequest(
@@ -94,6 +139,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   comparisonVisible = true;
   comparisonStatus = "pending";
+  storedComparisonRow = { ...comparisonRow };
   updateRowsAffected = 1;
 
   mocks.validateUserSession.mockResolvedValue({
@@ -114,7 +160,7 @@ beforeEach(() => {
       if (statement.sql.includes("FROM comparativas c")) {
         return {
           rows: comparisonVisible
-            ? [{ ...comparisonRow, status: comparisonStatus }]
+            ? [{ ...storedComparisonRow, status: comparisonStatus }]
             : [],
         };
       }
@@ -124,6 +170,9 @@ beforeEach(() => {
       if (
         statement.sql.trimStart().startsWith("UPDATE comparativas")
       ) {
+        if (updateRowsAffected > 0) {
+          applyStoredComparisonUpdate(statement);
+        }
         return { rows: [], rowsAffected: updateRowsAffected };
       }
       throw new Error(`Unexpected SQL in test: ${statement.sql}`);
@@ -199,6 +248,9 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
       const response = await patch({ plan: ["fijo", "indexado"] });
 
       expect(response.status).toBe(200);
+      const responseBody = await response.json();
+      expect(responseBody.success).toBe(true);
+      expect(responseBody.data.plan).toEqual(["fijo", "indexado"]);
       expect(mocks.execute).toHaveBeenCalledWith(
         expect.objectContaining({
           sql: expect.stringContaining("UPDATE comparativas"),
@@ -212,19 +264,76 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
             .startsWith("UPDATE comparativas"),
       )?.[0] as { sql: string } | undefined;
       expect(updateStatement?.sql).not.toContain("comision_");
-      expect(mocks.createComparativaChange).toHaveBeenCalledWith(
-        transaction,
-        expect.objectContaining({
-          comparativa_id: "comparison-1",
-          user_id: "user-1",
-          change_type: "plan_update",
-          field_name: "plan",
-        }),
-      );
+      expectAuditChanges(planUpdateAudit);
       expect(mocks.commit).toHaveBeenCalledTimes(1);
       expect(mocks.rollback).not.toHaveBeenCalled();
     },
   );
+
+  test("commits a completed mixed update and all audits atomically", async () => {
+    comparisonStatus = "completed";
+    mocks.validateUserSession.mockResolvedValue({
+      success: true,
+      user: { ...authenticatedUser, role: "admin" },
+    });
+
+    const response = await patch({
+      client: "New client",
+      service: "Gas",
+      plan: ["fijo", "indexado"],
+      notes: ["New note"],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      data: {
+        client: "New client",
+        service: "Gas",
+        plan: ["fijo", "indexado"],
+        notes: ["New note"],
+      },
+    });
+    expect(mocks.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sql: expect.stringContaining("UPDATE comparativas"),
+        args: [
+          "New client",
+          "Gas",
+          JSON.stringify(["fijo", "indexado"]),
+          JSON.stringify(["New note"]),
+          "comparison-1",
+        ],
+      }),
+    );
+    expectAuditChanges(
+      {
+        change_type: "client_update",
+        field_name: "client",
+        old_value: "Old client",
+        new_value: "New client",
+        description:
+          'Cliente actualizado de "Old client" a "New client"',
+      },
+      {
+        change_type: "service_update",
+        field_name: "service",
+        old_value: "Luz",
+        new_value: "Gas",
+        description: 'Servicio actualizado de "Luz" a "Gas"',
+      },
+      planUpdateAudit,
+      {
+        change_type: "general_update",
+        field_name: "notes",
+        old_value: JSON.stringify(["Old note"]),
+        new_value: JSON.stringify(["New note"]),
+        description: "Notas actualizadas",
+      },
+    );
+    expect(mocks.commit).toHaveBeenCalledTimes(1);
+    expect(mocks.rollback).not.toHaveBeenCalled();
+  });
 
   test.each([
     {
@@ -365,12 +474,14 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
 
   test.each([
     {
-      name: "own comparison",
+      name: "pending own comparison",
+      status: "pending",
       subordinateIds: [],
       expectedArgs: ["comparison-1", "commercial-1"],
     },
     {
-      name: "subordinate comparison",
+      name: "pending subordinate comparison",
+      status: "pending",
       subordinateIds: ["subordinate-1"],
       expectedArgs: [
         "comparison-1",
@@ -378,9 +489,16 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
         "subordinate-1",
       ],
     },
+    {
+      name: "completed own comparison",
+      status: "completed",
+      subordinateIds: [],
+      expectedArgs: ["comparison-1", "commercial-1"],
+    },
   ])(
     "allows metadata updates for a role 2 $name",
-    async ({ subordinateIds, expectedArgs }) => {
+    async ({ status, subordinateIds, expectedArgs }) => {
+      comparisonStatus = status;
       mocks.validateUserSession.mockResolvedValue({
         success: true,
         user: {
