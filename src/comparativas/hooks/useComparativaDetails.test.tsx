@@ -216,6 +216,67 @@ describe("useComparativaDetails loading boundaries", () => {
     expect(result.current.comparativa).toEqual(comparisonTwo);
   });
 
+  test("ignores an older route response that resolves after the current one", async () => {
+    const comparisonOneRequest =
+      deferred<ReturnType<typeof comparisonResponse>>();
+    const comparisonTwoRequest =
+      deferred<ReturnType<typeof comparisonResponse>>();
+    const comparisonTwo = {
+      ...comparisonOne,
+      id: "comparison-2",
+      client: "Current comparison",
+    } satisfies ComparativaVM;
+    const staleComparisonOne = {
+      ...comparisonOne,
+      client: "Stale comparison",
+    } satisfies ComparativaVM;
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(comparisonOneRequest.promise)
+      .mockReturnValueOnce(comparisonTwoRequest.promise);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result, rerender } = renderHook(() =>
+      useComparativaDetails({ userData }),
+    );
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    mocks.comparisonId = "comparison-2";
+    rerender();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/v2/comparisons/comparison-2",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(result.current.loading).toBe(true);
+    expect(result.current.loadedData).toBe(false);
+    expect(result.current.comparativa).toBeNull();
+
+    await act(async () => {
+      comparisonTwoRequest.resolve(comparisonResponse(comparisonTwo));
+      await comparisonTwoRequest.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.comparativa).toEqual(comparisonTwo);
+    });
+    expect(result.current.loading).toBe(false);
+    expect(result.current.loadedData).toBe(true);
+
+    await act(async () => {
+      comparisonOneRequest.resolve(
+        comparisonResponse(staleComparisonOne),
+      );
+      await comparisonOneRequest.promise;
+    });
+
+    expect(result.current.comparativa).toEqual(comparisonTwo);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.loadedData).toBe(true);
+    expect(showCustomToast).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+  });
+
   test("preserves a pending commission lock across a same-id refresh", async () => {
     const mutationRequest = deferred<ReturnType<typeof mutationResponse>>();
     const backgroundRequest =
