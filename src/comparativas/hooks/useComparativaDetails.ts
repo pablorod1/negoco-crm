@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useParams } from "next/navigation";
 import { useTransitionRouter } from "next-view-transitions";
 import { CloudAlert, ShieldAlert } from "lucide-react";
@@ -10,29 +16,83 @@ interface UseComparativaDetailsParams {
   userData: User | null;
 }
 
+interface LoadedComparativa {
+  id: string;
+  userId: string;
+  userRole: string;
+  data: ComparativaVM;
+}
+
+interface ActiveRequestContext {
+  routeId: string;
+  userId: string | undefined;
+  userRole: string | undefined;
+}
+
 export function useComparativaDetails({
   userData,
 }: UseComparativaDetailsParams) {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useTransitionRouter();
-  const [comparativa, setComparativa] = useState<ComparativaVM | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadedData, setLoadedData] = useState(false);
+  const userId = userData?.id;
+  const userRole = userData?.role;
+  const [loadedComparativa, setLoadedComparativa] =
+    useState<LoadedComparativa | null>(null);
+  const activeRequestContextRef =
+    useRef<ActiveRequestContext | null>(null);
+  const latestRequestRef = useRef(0);
+  const loadedData =
+    loadedComparativa?.id === id &&
+    loadedComparativa.userId === userId &&
+    loadedComparativa.userRole === userRole;
+  const comparativa = loadedData ? loadedComparativa.data : null;
+
+  useLayoutEffect(() => {
+    const activeContext: ActiveRequestContext = {
+      routeId: id,
+      userId,
+      userRole,
+    };
+    activeRequestContextRef.current = activeContext;
+
+    return () => {
+      if (activeRequestContextRef.current === activeContext) {
+        activeRequestContextRef.current = null;
+      }
+    };
+  }, [id, userId, userRole]);
 
   const fetchComparativa = useCallback(async () => {
-    if (!userData?.id || !userData?.role) return;
+    if (!userId || !userRole) return;
+
+    const requestedId = id;
+    const requestedUserId = userId;
+    const requestedUserRole = userRole;
+    const requestNumber = latestRequestRef.current + 1;
+    latestRequestRef.current = requestNumber;
+    const requestIsCurrent = () => {
+      const activeContext = activeRequestContextRef.current;
+
+      return (
+        activeContext?.routeId === requestedId &&
+        activeContext.userId === requestedUserId &&
+        activeContext.userRole === requestedUserRole &&
+        latestRequestRef.current === requestNumber
+      );
+    };
 
     try {
-      setLoading(true);
-      const rs = await fetch(`/api/v2/comparisons/${id}`, {
+      const rs = await fetch(`/api/v2/comparisons/${requestedId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id,
-          user_id: userData.id,
-          user_role: userData.role,
+          id: requestedId,
+          user_id: requestedUserId,
+          user_role: requestedUserRole,
         }),
       });
+
+      if (!requestIsCurrent()) return;
 
       if (rs.status === 404) {
         showCustomToast({
@@ -49,6 +109,8 @@ export function useComparativaDetails({
 
       if (!rs.ok) {
         const errorData = await rs.json();
+        if (!requestIsCurrent()) return;
+
         showCustomToast({
           title: "Error",
           message: errorData.error || "Error al cargar la comparativa",
@@ -61,9 +123,15 @@ export function useComparativaDetails({
       }
 
       const { success, data } = await rs.json();
+      if (!requestIsCurrent()) return;
+
       if (success && data) {
-        setComparativa(data);
-        setLoadedData(true);
+        setLoadedComparativa({
+          id: requestedId,
+          userId: requestedUserId,
+          userRole: requestedUserRole,
+          data,
+        });
       } else {
         showCustomToast({
           title: "Error",
@@ -76,6 +144,8 @@ export function useComparativaDetails({
         return;
       }
     } catch (error) {
+      if (!requestIsCurrent()) return;
+
       console.error("Error en la solicitud:", error);
       showCustomToast({
         title: "Error",
@@ -86,18 +156,18 @@ export function useComparativaDetails({
       });
       router.push("/comparativas");
       return;
-    } finally {
-      setLoading(false);
     }
-  }, [id, userData?.id, userData?.role, router]);
+  }, [id, userId, userRole, router]);
 
   useEffect(() => {
-    fetchComparativa();
+    // State changes only occur after the awaited comparison response.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchComparativa();
   }, [fetchComparativa]);
 
   return {
     comparativa,
-    loading,
+    loading: !loadedData,
     loadedData,
     fetchComparativa,
   };

@@ -2,8 +2,19 @@
 import { formatComission } from "@/core/utils/format";
 import { User } from "@/core/types";
 import { Button } from "@/core/components/ui/button";
-import { CheckCircle, CircleX, Euro, Pencil } from "lucide-react";
-import { useState } from "react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  CircleX,
+  Euro,
+  Pencil,
+} from "lucide-react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { ComparativaVM } from "@/comparativas/types/comparativa.types";
@@ -29,6 +40,63 @@ interface FormData {
   comision_sales_person_indexado?: number;
 }
 
+interface CommissionsApiResponse {
+  success?: boolean;
+  error?: string;
+}
+
+type SaveResult = "close" | "keep" | "stale" | "ignored";
+
+interface RenderRevision {
+  value: string;
+}
+
+interface ActiveRequest {
+  comparisonId: string;
+  revision: RenderRevision;
+}
+
+interface ActiveRenderContext {
+  comparisonId: string;
+  revision: RenderRevision;
+  onUpdate: () => void;
+}
+
+type ContentProps = Omit<Props, "onUpdate"> & {
+  isSaving: boolean;
+  onSave: (changes: Partial<FormData>) => Promise<SaveResult>;
+};
+
+function getInitialFormData(comparativa: ComparativaVM): FormData {
+  return {
+    comision_fijo: comparativa.comision.fijo,
+    comision_indexado: comparativa.comision.indexado,
+    comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+    comision_sales_person_indexado:
+      comparativa.comision_sales_person.indexado,
+  };
+}
+
+async function readApiResponse(
+  response: Response,
+): Promise<CommissionsApiResponse | null> {
+  try {
+    const payload: unknown = await response.json();
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return null;
+    }
+
+    const record = payload as Record<string, unknown>;
+    return {
+      success:
+        typeof record.success === "boolean" ? record.success : undefined,
+      error: typeof record.error === "string" ? record.error : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function ComparativaComissionsSection({
   userData,
   comparativa,
@@ -36,13 +104,194 @@ export default function ComparativaComissionsSection({
   canEdit,
   embedded = false,
 }: Props) {
+  const editorRevision = JSON.stringify([
+    comparativa.id,
+    comparativa.plan,
+    comparativa.comision.fijo,
+    comparativa.comision.indexado,
+    comparativa.comision_sales_person.fijo,
+    comparativa.comision_sales_person.indexado,
+    canEdit,
+  ]);
+  const [pendingRequest, setPendingRequest] =
+    useState<ActiveRequest | null>(null);
+  const activeRequestRef = useRef<ActiveRequest | null>(null);
+  const activeRenderContextRef =
+    useRef<ActiveRenderContext | null>(null);
+  const renderedRevision = useMemo<RenderRevision>(
+    () => ({ value: editorRevision }),
+    [editorRevision],
+  );
+  const renderedContext = useMemo<ActiveRenderContext>(
+    () => ({
+      comparisonId: comparativa.id,
+      revision: renderedRevision,
+      onUpdate,
+    }),
+    [comparativa.id, onUpdate, renderedRevision],
+  );
+
+  useLayoutEffect(() => {
+    activeRenderContextRef.current = renderedContext;
+
+    return () => {
+      if (activeRenderContextRef.current === renderedContext) {
+        activeRenderContextRef.current = null;
+      }
+    };
+  }, [renderedContext]);
+
+  const saveCommissions = async (
+    changes: Partial<FormData>,
+  ): Promise<SaveResult> => {
+    if (activeRequestRef.current) {
+      return "ignored";
+    }
+
+    const activeRequest: ActiveRequest = {
+      comparisonId: comparativa.id,
+      revision: renderedRevision,
+    };
+    activeRequestRef.current = activeRequest;
+    setPendingRequest(activeRequest);
+
+    const requestIsCurrent = () =>
+      activeRenderContextRef.current?.revision ===
+      activeRequest.revision;
+
+    try {
+      const response = await fetch(
+        `/api/v2/comparisons/${activeRequest.comparisonId}/commissions`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            comissions: changes,
+          }),
+        },
+      );
+      const payload = await readApiResponse(response);
+
+      if (!requestIsCurrent()) {
+        const activeContext = activeRenderContextRef.current;
+        if (
+          response.ok &&
+          payload?.success === true &&
+          activeContext?.comparisonId === activeRequest.comparisonId
+        ) {
+          activeContext.onUpdate();
+        }
+        return "stale";
+      }
+
+      if (response.status === 401) {
+        showCustomToast({
+          title: "Sesión caducada",
+          message:
+            "Vuelve a iniciar sesión para guardar. Tus cambios siguen disponibles.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return "keep";
+      }
+
+      if (response.status === 403) {
+        showCustomToast({
+          title: "Sin permiso para editar",
+          message:
+            "No tienes permiso para modificar estas comisiones. Tus cambios siguen disponibles.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return "keep";
+      }
+
+      if (response.status === 409) {
+        showCustomToast({
+          title: "La comparativa ha cambiado",
+          message:
+            "Hemos recargado los datos para que puedas revisar las comisiones actuales.",
+          iconColor: "var(--warning-color)",
+          iconSize: 24,
+          icon: AlertTriangle,
+        });
+        activeRenderContextRef.current?.onUpdate();
+        return "close";
+      }
+
+      if (!response.ok || payload?.success !== true) {
+        showCustomToast({
+          title: "No se pudieron guardar las comisiones",
+          message:
+            payload?.error?.trim() ||
+            "No se pudieron guardar los cambios. Tus datos siguen disponibles para reintentarlo.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return "keep";
+      }
+
+      showCustomToast({
+        title: "Comisiones actualizadas",
+        message: "Las comisiones se han actualizado correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CheckCircle,
+      });
+      activeRenderContextRef.current?.onUpdate();
+      return "close";
+    } catch {
+      if (!requestIsCurrent()) {
+        return "stale";
+      }
+
+      showCustomToast({
+        title: "No se pudieron guardar las comisiones",
+        message:
+          "No se ha podido conectar. Tus cambios siguen disponibles para reintentarlo.",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return "keep";
+    } finally {
+      if (activeRequestRef.current === activeRequest) {
+        activeRequestRef.current = null;
+        setPendingRequest(null);
+      }
+    }
+  };
+
+  return (
+    <ComparativaComissionsSectionContent
+      key={editorRevision}
+      userData={userData}
+      comparativa={comparativa}
+      canEdit={canEdit}
+      embedded={embedded}
+      isSaving={pendingRequest !== null}
+      onSave={saveCommissions}
+    />
+  );
+}
+
+function ComparativaComissionsSectionContent({
+  userData,
+  comparativa,
+  canEdit,
+  embedded = false,
+  isSaving,
+  onSave,
+}: ContentProps) {
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    comision_fijo: comparativa.comision.fijo,
-    comision_indexado: comparativa.comision.indexado,
-    comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-    comision_sales_person_indexado: comparativa.comision_sales_person.indexado,
-  });
+  const [formData, setFormData] = useState<FormData>(() =>
+    getInitialFormData(comparativa),
+  );
 
   const isComercial = userData && userData.role === "2";
   const isSubcomercial = userData && userData.role === "2" && userData.super_id;
@@ -89,68 +338,33 @@ export default function ComparativaComissionsSection({
     return Object.keys(changes).length > 0 ? changes : null;
   };
 
+  const closeEditor = () => {
+    setFormData(getInitialFormData(comparativa));
+    setIsEditMode(false);
+  };
+
   const handleSubmit = async () => {
-    try {
-      const changes = checkChanges();
+    if (isSaving) {
+      return;
+    }
 
-      if (!changes) {
-        setIsEditMode(false);
-        showCustomToast({
-          title: "No se han realizado cambios",
-          message: "No se han realizado cambios en el formulario",
-          iconColor: "var(--warning-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
-      }
+    const changes = checkChanges();
 
-      const res = await fetch(
-        `/api/v2/comparisons/${comparativa.id}/commissions`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            comissions: changes,
-            user_id: userData.id,
-          }),
-        },
-      );
-
-      const { success, error } = await res.json();
-
-      if (!success) {
-        showCustomToast({
-          title: "Error al guardar los cambios",
-          message: error as string,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
-      }
-
+    if (!changes) {
+      closeEditor();
       showCustomToast({
-        title: "Cambios guardados",
-        message: "Las comisiones se han actualizado correctamente",
-        iconColor: "var(--success-color)",
-        iconSize: 24,
-        icon: CheckCircle,
-      });
-
-      setIsEditMode(false);
-      onUpdate();
-    } catch (error) {
-      console.error(error);
-      showCustomToast({
-        title: "Error al guardar los cambios",
-        message: "Ha ocurrido un error inesperado",
-        iconColor: "var(--danger-color)",
+        title: "No se han realizado cambios",
+        message: "No se han realizado cambios en el formulario",
+        iconColor: "var(--warning-color)",
         iconSize: 24,
         icon: CircleX,
       });
+      return;
+    }
+
+    const result = await onSave(changes);
+    if (result === "close") {
+      closeEditor();
     }
   };
 
@@ -167,14 +381,7 @@ export default function ComparativaComissionsSection({
   };
 
   const handleCancel = () => {
-    setFormData({
-      comision_fijo: comparativa.comision.fijo,
-      comision_indexado: comparativa.comision.indexado,
-      comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-      comision_sales_person_indexado:
-        comparativa.comision_sales_person.indexado,
-    });
-    setIsEditMode(false);
+    closeEditor();
   };
 
   const content = (
@@ -188,8 +395,10 @@ export default function ComparativaComissionsSection({
           </CardTitle>
           {canEdit && !isEditMode ? (
             <Button
+              type="button"
               size="sm"
               variant="ghost"
+              disabled={isSaving}
               onClick={() => setIsEditMode(true)}
             >
               <Pencil className="h-3 w-3 mr-1" />
@@ -273,8 +482,15 @@ export default function ComparativaComissionsSection({
                 <div className="space-y-3">
                   {hasFijo && (
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">
+                      <label
+                        htmlFor="comision_fijo"
+                        className="text-xs text-gray-500 mb-1 block"
+                      >
                         Comisión Fijo
+                        <span className="sr-only">
+                          {" "}
+                          de {userData.organization.name}
+                        </span>
                       </label>
                       <InputComponent
                         label=""
@@ -282,13 +498,21 @@ export default function ComparativaComissionsSection({
                         type="number"
                         value={formData.comision_fijo?.toString() || ""}
                         onChange={handleChange}
+                        disabled={isSaving}
                       />
                     </div>
                   )}
                   {hasIndexado && (
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">
+                      <label
+                        htmlFor="comision_indexado"
+                        className="text-xs text-gray-500 mb-1 block"
+                      >
                         Comisión Indexado
+                        <span className="sr-only">
+                          {" "}
+                          de {userData.organization.name}
+                        </span>
                       </label>
                       <InputComponent
                         label=""
@@ -296,6 +520,7 @@ export default function ComparativaComissionsSection({
                         type="number"
                         value={formData.comision_indexado?.toString() || ""}
                         onChange={handleChange}
+                        disabled={isSaving}
                       />
                     </div>
                   )}
@@ -312,8 +537,15 @@ export default function ComparativaComissionsSection({
                 <div className="space-y-3">
                   {hasFijo && (
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">
+                      <label
+                        htmlFor="comision_sales_person_fijo"
+                        className="text-xs text-gray-500 mb-1 block"
+                      >
                         Comisión Fijo
+                        <span className="sr-only">
+                          {" "}
+                          de {comparativa.user.name}
+                        </span>
                       </label>
                       <InputComponent
                         label=""
@@ -323,13 +555,21 @@ export default function ComparativaComissionsSection({
                           formData.comision_sales_person_fijo?.toString() || ""
                         }
                         onChange={handleChange}
+                        disabled={isSaving}
                       />
                     </div>
                   )}
                   {hasIndexado && (
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">
+                      <label
+                        htmlFor="comision_sales_person_indexado"
+                        className="text-xs text-gray-500 mb-1 block"
+                      >
                         Comisión Indexado
+                        <span className="sr-only">
+                          {" "}
+                          de {comparativa.user.name}
+                        </span>
                       </label>
                       <InputComponent
                         label=""
@@ -340,6 +580,7 @@ export default function ComparativaComissionsSection({
                           ""
                         }
                         onChange={handleChange}
+                        disabled={isSaving}
                       />
                     </div>
                   )}
@@ -349,13 +590,24 @@ export default function ComparativaComissionsSection({
 
             {/* Action Buttons */}
             <div className="flex gap-2 pt-2">
-              <Button size="sm" onClick={handleSubmit} className="flex-1">
+              <Button
+                type="button"
+                size="sm"
+                aria-label="Guardar comisiones"
+                aria-busy={isSaving}
+                disabled={isSaving}
+                onClick={handleSubmit}
+                className="flex-1"
+              >
                 <CheckCircle className="h-3 w-3 mr-1" />
-                Guardar
+                {isSaving ? "Guardando..." : "Guardar"}
               </Button>
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
+                aria-label="Cancelar edición de comisiones"
+                disabled={isSaving}
                 onClick={handleCancel}
                 className="flex-1"
               >
