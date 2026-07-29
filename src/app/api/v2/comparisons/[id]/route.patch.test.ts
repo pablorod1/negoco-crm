@@ -176,6 +176,7 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
   test.each([
     { name: "an empty plan", plan: [] },
     { name: "duplicate plans", plan: ["fijo", "fijo"] },
+    { name: "an invalid plan", plan: ["variable"] },
   ])("rejects $name before database access", async ({ plan }) => {
     const response = await patch({ plan });
 
@@ -183,6 +184,7 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
     expect(mocks.getTursoClient).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.execute).not.toHaveBeenCalled();
+    expect(mocks.createComparativaChange).not.toHaveBeenCalled();
   });
 
   test.each(["admin", "1"])(
@@ -269,6 +271,7 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
     "awaiting_review",
     "processed",
     "rejected",
+    "rechazado_cliente",
   ])("rejects a plan update when status is %s", async (status) => {
     comparisonStatus = status;
 
