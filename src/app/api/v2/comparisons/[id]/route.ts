@@ -374,6 +374,17 @@ export async function PATCH(
     }
     const updates = validation.data;
 
+    if (
+      updates.plan !== undefined &&
+      authenticatedUser.role !== "admin" &&
+      authenticatedUser.role !== "1"
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
+      );
+    }
+
     const tursoClient = getTursoClient(req);
     if (!tursoClient) {
       console.error("[comparison-patch] database client not initialized");
@@ -414,6 +425,21 @@ export async function PATCH(
         return NextResponse.json(
           { success: false, error: "Comparativa not found" },
           { status: 404 },
+        );
+      }
+
+      const previousData = existingComparison.data[0];
+      if (
+        updates.plan !== undefined &&
+        previousData.status !== "completed"
+      ) {
+        await transaction.rollback();
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Comparison status changed",
+          },
+          { status: 409 },
         );
       }
 
@@ -467,7 +493,6 @@ export async function PATCH(
         );
       }
 
-      const previousData = existingComparison.data[0];
       const auditChanges = [];
       if (
         updates.client !== undefined &&

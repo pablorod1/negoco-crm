@@ -64,6 +64,7 @@ const comparisonRow = {
 };
 
 let comparisonVisible: boolean;
+let comparisonStatus: string;
 let updateRowsAffected: number;
 
 const transaction = {
@@ -92,6 +93,7 @@ function patch(body: unknown, comparisonId = "comparison-1") {
 beforeEach(() => {
   vi.clearAllMocks();
   comparisonVisible = true;
+  comparisonStatus = "pending";
   updateRowsAffected = 1;
 
   mocks.validateUserSession.mockResolvedValue({
@@ -110,7 +112,11 @@ beforeEach(() => {
   mocks.execute.mockImplementation(
     async (statement: { sql: string; args: unknown[] }) => {
       if (statement.sql.includes("FROM comparativas c")) {
-        return { rows: comparisonVisible ? [comparisonRow] : [] };
+        return {
+          rows: comparisonVisible
+            ? [{ ...comparisonRow, status: comparisonStatus }]
+            : [],
+        };
       }
       if (statement.sql.includes("FROM comparativa_files")) {
         return { rows: [] };
@@ -179,18 +185,148 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
-  test("accepts a non-empty plan without duplicates", async () => {
+  test.each(["admin", "1"])(
+    "allows a completed plan update for role %s",
+    async (role) => {
+      comparisonStatus = "completed";
+      mocks.validateUserSession.mockResolvedValue({
+        success: true,
+        user: { ...authenticatedUser, role },
+      });
+
+      const response = await patch({ plan: ["fijo", "indexado"] });
+
+      expect(response.status).toBe(200);
+      expect(mocks.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sql: expect.stringContaining("UPDATE comparativas"),
+          args: [JSON.stringify(["fijo", "indexado"]), "comparison-1"],
+        }),
+      );
+      const updateStatement = mocks.execute.mock.calls.find(
+        ([statement]) =>
+          (statement as { sql: string }).sql
+            .trimStart()
+            .startsWith("UPDATE comparativas"),
+      )?.[0] as { sql: string } | undefined;
+      expect(updateStatement?.sql).not.toContain("comision_");
+      expect(mocks.createComparativaChange).toHaveBeenCalledWith(
+        transaction,
+        expect.objectContaining({
+          comparativa_id: "comparison-1",
+          user_id: "user-1",
+          change_type: "plan_update",
+          field_name: "plan",
+        }),
+      );
+      expect(mocks.commit).toHaveBeenCalledTimes(1);
+      expect(mocks.rollback).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each([
+    {
+      name: "role 2 plan update",
+      role: "2",
+      body: { plan: ["fijo", "indexado"] },
+    },
+    {
+      name: "role 2 mixed update",
+      role: "2",
+      body: {
+        client: "New client",
+        plan: ["fijo", "indexado"],
+        notes: ["New note"],
+      },
+    },
+    {
+      name: "unsupported role plan update",
+      role: "3",
+      body: { plan: ["fijo", "indexado"] },
+    },
+  ])("rejects a $name before database access", async ({ role, body }) => {
+    comparisonStatus = "completed";
+    mocks.validateUserSession.mockResolvedValue({
+      success: true,
+      user: { ...authenticatedUser, role },
+    });
+
+    const response = await patch(body);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "Forbidden",
+    });
+    expect(mocks.getTursoClient).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(mocks.createComparativaChange).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    "pending",
+    "awaiting_review",
+    "processed",
+    "rejected",
+  ])("rejects a plan update when status is %s", async (status) => {
+    comparisonStatus = status;
+
     const response = await patch({ plan: ["fijo", "indexado"] });
 
-    expect(response.status).toBe(200);
-    expect(mocks.execute).toHaveBeenCalledWith(
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "Comparison status changed",
+    });
+    expect(mocks.execute).not.toHaveBeenCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining("UPDATE comparativas"),
-        args: [JSON.stringify(["fijo", "indexado"]), "comparison-1"],
       }),
     );
-    expect(mocks.commit).toHaveBeenCalledTimes(1);
-    expect(mocks.rollback).not.toHaveBeenCalled();
+    expect(mocks.createComparativaChange).not.toHaveBeenCalled();
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.rollback).toHaveBeenCalledTimes(1);
+  });
+
+  test("rejects a mixed update atomically when status is not completed", async () => {
+    comparisonStatus = "pending";
+
+    const response = await patch({
+      client: "New client",
+      plan: ["fijo", "indexado"],
+      notes: ["New note"],
+    });
+
+    expect(response.status).toBe(409);
+    expect(mocks.execute).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        sql: expect.stringContaining("UPDATE comparativas"),
+      }),
+    );
+    expect(mocks.createComparativaChange).not.toHaveBeenCalled();
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.rollback).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns 404 when an authorized plan update cannot find the comparison", async () => {
+    comparisonVisible = false;
+
+    const response = await patch({ plan: ["fijo", "indexado"] });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "Comparativa not found",
+    });
+    expect(mocks.execute).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        sql: expect.stringContaining("UPDATE comparativas"),
+      }),
+    );
+    expect(mocks.createComparativaChange).not.toHaveBeenCalled();
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.rollback).toHaveBeenCalledTimes(1);
   });
 
   test("returns 404 for a role 2 user outside the commercial hierarchy", async () => {
@@ -258,7 +394,6 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
       const response = await patch({
         client: "New client",
         service: "Gas",
-        plan: ["fijo", "indexado"],
         notes: ["New note"],
       });
 
@@ -281,7 +416,6 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
           args: [
             "New client",
             "Gas",
-            JSON.stringify(["fijo", "indexado"]),
             JSON.stringify(["New note"]),
             ...expectedArgs,
           ],
