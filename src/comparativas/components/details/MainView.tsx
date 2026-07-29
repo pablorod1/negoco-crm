@@ -35,6 +35,7 @@ import { Link } from "next-view-transitions";
 import { FilesList } from "@/comparativas/components/editComparativa/FilesList";
 import UploadComparativaFilesModal from "@/comparativas/components/editComparativa/UploadComparativaFilesModal";
 import ComparativaComissionsSection from "@/comparativas/components/editComparativa/ComparativaComissionsSection";
+import ComparativaPlanSection from "@/comparativas/components/editComparativa/ComparativaPlanSection";
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
@@ -85,7 +86,6 @@ export default function MainView({
   const isComercial = userData.role === "2";
   const isStudied = comparativa.status === "completed";
   const isAwaitingReview = comparativa.status === "awaiting_review";
-  const isAdmin = userData.role === "admin" || userData.role === "1";
   const canCompleteStudies = hasPermission(
     userData.permissions,
     userData.role,
@@ -100,8 +100,8 @@ export default function MainView({
     userData.organization.abarca_user_id,
   );
   const assignedCommercialId = comparativa.user.id;
-  // Los admins pueden editar comisiones cuando la comparativa está estudiada
-  const canEditComissions = isAdmin && isStudied;
+  const canEditCommercialSummary =
+    (userData.role === "admin" || userData.role === "1") && isStudied;
   const hasPrioritySummary = !isSubcomercial || isStudied;
   const abarcaEstudio = comparativa.abarca_estudio;
   const contractedPowers = abarcaEstudio
@@ -515,6 +515,12 @@ export default function MainView({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <ComparativaPlanSection
+              comparativa={comparativa}
+              onUpdate={onUpdate}
+              canEdit={canEditCommercialSummary}
+            />
+
             <div
               className={
                 hasPrioritySummary
@@ -529,7 +535,7 @@ export default function MainView({
                       userData={userData}
                       comparativa={comparativa}
                       onUpdate={onUpdate}
-                      canEdit={canEditComissions}
+                      canEdit={canEditCommercialSummary}
                       embedded
                     />
                   ) : null}

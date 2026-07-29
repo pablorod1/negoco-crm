@@ -1,5 +1,5 @@
 import type React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import MainView from "./MainView";
 import CompletarEstudioModal from "../editComparativa/CompletarEstudioModal";
@@ -67,13 +67,15 @@ function renderMainView({
   review,
   aiStudiesUserId = 42,
   aiStudyData,
+  isSubcomercial = false,
 }: {
   role: string;
-  status: "pending" | "awaiting_review" | "rejected";
+  status: "pending" | "awaiting_review" | "completed" | "rejected";
   complete: boolean;
   review: boolean;
   aiStudiesUserId?: number | null;
   aiStudyData?: Record<string, unknown>;
+  isSubcomercial?: boolean;
 }) {
   render(
     <MainView
@@ -97,7 +99,7 @@ function renderMainView({
         } as never
       }
       onUpdate={() => {}}
-      isSubcomercial={false}
+      isSubcomercial={isSubcomercial}
       isEditable
       isComercialEditable={false}
       isProcessed={false}
@@ -354,6 +356,121 @@ describe("MainView study permissions", () => {
     expect(screen.queryByText("Actualizar Estado")).not.toBeInTheDocument();
     expect(screen.getByText("No hay acciones disponibles")).toBeInTheDocument();
     expect(screen.getByText("Comparativa rechazada")).toBeInTheDocument();
+  });
+});
+
+describe("MainView commercial summary permissions", () => {
+  test.each([
+    { role: "admin", status: "pending", isSubcomercial: false },
+    { role: "1", status: "awaiting_review", isSubcomercial: false },
+    { role: "2", status: "completed", isSubcomercial: false },
+    { role: "2", status: "pending", isSubcomercial: true },
+    { role: "3", status: "rejected", isSubcomercial: false },
+  ] as const)(
+    "shows readable plans to role $role while status is $status",
+    ({ role, status, isSubcomercial }) => {
+      renderMainView({
+        role,
+        status,
+        complete: false,
+        review: false,
+        isSubcomercial,
+      });
+
+      const plans = screen.getByRole("region", {
+        name: "Planes de la comparativa",
+      });
+      expect(within(plans).getByText("Fijo")).toBeVisible();
+    },
+  );
+
+  test.each([
+    { role: "admin", status: "completed", canEdit: true },
+    { role: "1", status: "completed", canEdit: true },
+    { role: "2", status: "completed", canEdit: false },
+    { role: "3", status: "completed", canEdit: false },
+    { role: "Admin", status: "completed", canEdit: false },
+    { role: "admin", status: "pending", canEdit: false },
+    { role: "1", status: "awaiting_review", canEdit: false },
+  ] as const)(
+    "role $role with status $status has plan and commission editing=$canEdit",
+    ({ role, status, canEdit }) => {
+      renderMainView({
+        role,
+        status,
+        complete: false,
+        review: false,
+      });
+
+      const planEditButton = screen.queryByRole("button", {
+        name: "Editar planes",
+      });
+      const commissionEditButton = screen.queryByRole("button", {
+        name: "Editar",
+      });
+
+      if (canEdit) {
+        expect(planEditButton).toBeVisible();
+        expect(commissionEditButton).toBeVisible();
+      } else {
+        expect(planEditButton).not.toBeInTheDocument();
+        expect(commissionEditButton).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  test("commission fields follow the refreshed comparison plan", () => {
+    const userData = {
+      id: "viewer-1",
+      role: "admin",
+      permissions: {},
+      organization: {
+        id: "organization-1",
+        name: "Negoco",
+        abarca_user_id: null,
+      },
+    };
+    const mainViewProps = {
+      userData: userData as never,
+      onUpdate: vi.fn(),
+      isSubcomercial: false,
+      isEditable: true,
+      isComercialEditable: false,
+      isProcessed: false,
+    };
+    const { rerender } = render(
+      <MainView
+        {...mainViewProps}
+        comparativa={{
+          ...baseComparativa,
+          status: "completed",
+          plan: ["fijo"],
+        } as never}
+      />,
+    );
+
+    expect(
+      within(screen.getByText("Negoco").parentElement as HTMLElement).getByText(
+        "Fijo:",
+      ),
+    ).toBeVisible();
+
+    rerender(
+      <MainView
+        {...mainViewProps}
+        comparativa={{
+          ...baseComparativa,
+          status: "completed",
+          plan: ["indexado"],
+        } as never}
+      />,
+    );
+
+    const organizationCommissions = within(
+      screen.getByText("Negoco").parentElement as HTMLElement,
+    );
+    expect(organizationCommissions.getByText("Indexado:")).toBeVisible();
+    expect(organizationCommissions.queryByText("Fijo:")).not.toBeInTheDocument();
   });
 });
 
