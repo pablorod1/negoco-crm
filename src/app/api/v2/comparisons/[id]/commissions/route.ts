@@ -1,424 +1,338 @@
+import type { Transaction } from "@libsql/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getTursoClient } from "@/core/libsql/client";
-import { Client } from "@libsql/client";
 import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
-
-/**
- * REFACTORED COMPARISON COMMISSIONS UPDATE ENDPOINT
- *
- * Original: /api/comparativas/update/[id]/comissions
- * Refactored: /new_api/comparisons/[id]/commissions
- *
- * This endpoint updates commission information for a comparison (comparativa)
- * with enhanced performance, type safety, and comprehensive error handling.
- */
-
-// ==================== TYPE DEFINITIONS ====================
+import { validateUserSession } from "@/core/auth/session-utils";
+import { getTursoClient } from "@/core/libsql/client";
 
 interface ComparisonCommissionsUpdateResponse {
   success: boolean;
   error?: string;
 }
 
-interface QueryMetrics {
-  queryTime: number;
-  fieldsUpdated: number;
-  optimizationApplied: string[];
+type WriteTransaction = Pick<
+  Transaction,
+  "execute" | "commit" | "rollback"
+>;
+
+const SafeResourceIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9_-]+$/);
+
+const optionalCommissionNumber = z.preprocess((value) => {
+  if (value === undefined || value === "") return undefined;
+  if (value === null) return 0;
+  if (typeof value === "string") {
+    const numberValue = Number(value.replace(",", "."));
+    return Number.isFinite(numberValue) ? numberValue : Number.NaN;
+  }
+  return value;
+}, z.number().finite().optional());
+
+const CommissionsSchema = z
+  .strictObject({
+    comision_fijo: optionalCommissionNumber,
+    comision_indexado: optionalCommissionNumber,
+    comision_sales_person_fijo: optionalCommissionNumber,
+    comision_sales_person_indexado: optionalCommissionNumber,
+  })
+  .refine(
+    (commissions) =>
+      Object.values(commissions).some(
+        (commission) => commission !== undefined,
+      ),
+    { message: "Missing parameters" },
+  );
+
+const ComparisonCommissionsUpdateSchema = z.strictObject({
+  comissions: CommissionsSchema,
+  // Accepted temporarily for old clients, but authorization and auditing
+  // derive exclusively from the authenticated session.
+  user_id: z.unknown().optional(),
+});
+
+const ComparisonPlanSchema = z
+  .array(z.enum(["fijo", "indexado"]))
+  .min(1)
+  .refine((plans) => new Set(plans).size === plans.length);
+
+type CommissionUpdates = z.infer<typeof CommissionsSchema>;
+type CommissionField = keyof CommissionUpdates;
+type Plan = z.infer<typeof ComparisonPlanSchema>[number];
+
+interface CurrentComparison extends Record<string, unknown> {
+  status: unknown;
+  plan: unknown;
+  comision_fijo: unknown;
+  comision_indexado: unknown;
+  comision_sales_person_fijo: unknown;
+  comision_sales_person_indexado: unknown;
 }
 
-// ==================== VALIDATION SCHEMAS ====================
+interface CommissionFieldDefinition {
+  field: CommissionField;
+  plan: Plan;
+  description: string;
+}
 
-/**
- * Zod schema for comparison commission update request body
- * Maintains EXACT compatibility with original endpoint validation logic
- * and adds safe coercion from string inputs (e.g. "75" or "75,5") to numbers.
- */
-const optionalCommissionNumber = z.preprocess(
-  (val) => {
-    // Treat empty values as undefined (field not provided)
-    if (val === undefined || val === null || val === "") return undefined;
-    // Normalize strings, allowing comma decimal separators
-    if (typeof val === "string") {
-      const normalized = val.replace(",", ".");
-      const num = Number(normalized);
-      return Number.isFinite(num) ? num : NaN; // NaN will fail .finite()
-    }
-    return val;
+const commissionFields: readonly CommissionFieldDefinition[] = [
+  {
+    field: "comision_fijo",
+    plan: "fijo",
+    description: "Comisión fija",
   },
-  z.union([z.number().finite(), z.null()]).optional()
-);
+  {
+    field: "comision_indexado",
+    plan: "indexado",
+    description: "Comisión indexada",
+  },
+  {
+    field: "comision_sales_person_fijo",
+    plan: "fijo",
+    description: "Comisión comercial fija",
+  },
+  {
+    field: "comision_sales_person_indexado",
+    plan: "indexado",
+    description: "Comisión comercial indexada",
+  },
+];
 
-const ComparisonCommissionsUpdateSchema = z.object({
-  comissions: z
-    .object({
-      comision_fijo: optionalCommissionNumber,
-      comision_indexado: optionalCommissionNumber,
-      comision_sales_person_fijo: optionalCommissionNumber,
-      comision_sales_person_indexado: optionalCommissionNumber,
-    })
-    .refine(
-      (data) => {
-        // BACKWARD COMPATIBILITY: Match original validation logic exactly
-        // Original validation: requires at least one commission field to be provided
-        // Only fail if ALL fields are undefined (not provided at all)
-        const hasAtLeastOneField = Object.values(data).some(
-          (value) => value !== undefined
-        );
-        return hasAtLeastOneField;
-      },
-      {
-        message: "Missing parameters",
-        path: ["comissions"],
-      }
-    ),
-  user_id: z.string().min(1, "User ID is required for tracking changes"),
-});
+class TransactionResponseError extends Error {
+  constructor(
+    readonly status: 404 | 409,
+    readonly responseError: string,
+  ) {
+    super(responseError);
+  }
+}
 
-/**
- * Schema for URL parameters
- */
-const ParamsSchema = z.object({
-  id: z.string().min(1, "Comparison ID is required"),
-});
+function errorResponse(
+  status: number,
+  error: string,
+): NextResponse<ComparisonCommissionsUpdateResponse> {
+  return NextResponse.json(
+    { success: false, error },
+    { status },
+  );
+}
 
-// ==================== UTILITY FUNCTIONS ====================
+function parseStoredPlan(value: unknown): Plan[] {
+  if (typeof value !== "string") {
+    throw new Error("Comparison plan is not serialized");
+  }
 
-/**
- * Executes a database query with performance monitoring and error handling
- * @param client - Turso database client
- * @param sql - SQL query string
- * @param args - Query parameters
- * @returns Promise with query result and metrics
- */
-async function executeQuery(
-  client: Client,
-  sql: string,
-  args: (string | number)[]
-): Promise<{ result: { rowsAffected: number }; metrics: QueryMetrics }> {
-  const startTime = performance.now();
-  const optimizations: string[] = [];
+  const validation = ComparisonPlanSchema.safeParse(JSON.parse(value));
+  if (!validation.success) {
+    throw new Error("Comparison plan invariant violated");
+  }
 
+  return validation.data;
+}
+
+function normalizeStoredCommission(
+  value: unknown,
+  field: CommissionField,
+): number {
+  if (value === null || value === undefined) return 0;
+
+  const commission = Number(value);
+  if (!Number.isFinite(commission)) {
+    throw new Error(`Invalid stored commission value for ${field}`);
+  }
+
+  return commission;
+}
+
+async function rollbackTransaction(
+  transaction: WriteTransaction,
+): Promise<boolean> {
   try {
-    // Add prepared statement optimization
-    optimizations.push("prepared_statement");
-
-    const result = await client.execute({
-      sql,
-      args,
-    });
-
-    const endTime = performance.now();
-    const queryTime = endTime - startTime;
-
-    // Add performance optimization detection
-    if (queryTime < 5) {
-      optimizations.push("fast_execution");
-    }
-
-    return {
-      result: { rowsAffected: result.rowsAffected },
-      metrics: {
-        queryTime,
-        fieldsUpdated: args.length - 1, // Subtract 1 for the WHERE clause ID
-        optimizationApplied: optimizations,
-      },
-    };
+    await transaction.rollback();
+    return true;
   } catch (error) {
-    const endTime = performance.now();
-    const queryTime = endTime - startTime;
-    console.error(
-      `[Database Error] Query execution failed after ${queryTime.toFixed(2)}ms:`,
-      error
-    );
-    throw error;
+    console.error("[comparison-commissions] rollback failed", error);
+    return false;
   }
 }
 
-/**
- * Builds dynamic UPDATE SQL query with conditional field updates
- * This approach optimizes the query to only update fields that have changed
- * @param commissions - Commission update data
- * @param comparisonId - Comparison ID for WHERE clause
- * @returns Object with SQL query and arguments
- */
-function buildUpdateQuery(
-  commissions: {
-    comision_fijo?: number | null;
-    comision_indexado?: number | null;
-    comision_sales_person_fijo?: number | null;
-    comision_sales_person_indexado?: number | null;
-  },
-  comparisonId: string
-): { sql: string; args: (string | number)[]; updatedFields: string[] } {
-  const updateFields: string[] = [];
-  const queryArgs: (string | number)[] = [];
-  const updatedFieldNames: string[] = [];
-
-  // Conditional field updates for performance optimization
-  if (commissions.comision_fijo !== undefined) {
-    updateFields.push("comision_fijo = ?");
-    queryArgs.push(commissions.comision_fijo ?? 0); // Convert null to 0
-    updatedFieldNames.push("comision_fijo");
-  }
-
-  if (commissions.comision_indexado !== undefined) {
-    updateFields.push("comision_indexado = ?");
-    queryArgs.push(commissions.comision_indexado ?? 0); // Convert null to 0
-    updatedFieldNames.push("comision_indexado");
-  }
-
-  if (commissions.comision_sales_person_fijo !== undefined) {
-    updateFields.push("comision_sales_person_fijo = ?");
-    queryArgs.push(commissions.comision_sales_person_fijo ?? 0); // Convert null to 0
-    updatedFieldNames.push("comision_sales_person_fijo");
-  }
-
-  if (commissions.comision_sales_person_indexado !== undefined) {
-    updateFields.push("comision_sales_person_indexado = ?");
-    queryArgs.push(commissions.comision_sales_person_indexado ?? 0); // Convert null to 0
-    updatedFieldNames.push("comision_sales_person_indexado");
-  }
-
-  // Add comparison ID for WHERE clause
-  queryArgs.push(comparisonId);
-
-  // BACKWARD COMPATIBILITY FIX: Handle edge case where no fields are provided
-  // This matches the original helper function behavior (generates invalid SQL which throws error)
-  const sql = `UPDATE comparativas SET ${updateFields.length === 0 ? "" : updateFields.join(", ")} WHERE id = ?`;
-
-  return { sql, args: queryArgs, updatedFields: updatedFieldNames };
-}
-
-// ==================== MAIN ENDPOINT HANDLER ====================
-
-/**
- * PATCH /new_api/comparisons/[id]/commissions
- *
- * Updates commission information for a comparison (comparativa).
- *
- * @param request - Next.js request object
- * @param params - URL parameters containing comparison ID
- * @returns Promise<NextResponse<ComparisonCommissionsUpdateResponse>>
- *
- * @example
- * PATCH /new_api/comparisons/[id]/commissions
- * Body: {
- *   "comissions": {
- *     "comision_fijo": 75.0,
- *     "comision_indexado": 85.0,
- *     "comision_sales_person_fijo": 35.0,
- *     "comision_sales_person_indexado": 45.0
- *   }
- * }
- *
- * Response: {
- *   "success": true
- * }
- */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ComparisonCommissionsUpdateResponse>> {
-  const startTime = performance.now();
-
   try {
-    // ==================== PARAMETER VALIDATION ====================
-
-    const { id: comparisonId } = await params;
-
-    // Validate URL parameters
-    const paramsValidation = ParamsSchema.safeParse({ id: comparisonId });
-    if (!paramsValidation.success) {
-      const totalRequestTime = performance.now() - startTime;
-      console.error(
-        `[VALIDATION ERROR] Invalid parameters after ${totalRequestTime.toFixed(2)}ms:`,
-        paramsValidation.error.issues
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing parameters",
-        },
-        { status: 400 }
-      );
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return errorResponse(401, "Unauthorized");
     }
 
-    // ==================== REQUEST BODY VALIDATION ====================
-
-    const requestBody = await request.json();
-    const validation = ComparisonCommissionsUpdateSchema.safeParse(requestBody);
-
-    if (!validation.success) {
-      const totalRequestTime = performance.now() - startTime;
-      console.error(
-        `[VALIDATION ERROR] Invalid request body after ${totalRequestTime.toFixed(2)}ms:`,
-        validation.error.issues
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing parameters",
-        },
-        { status: 400 }
-      );
+    const authenticatedUser = authResult.user;
+    if (
+      authenticatedUser.role !== "admin" &&
+      authenticatedUser.role !== "1"
+    ) {
+      return errorResponse(403, "Forbidden");
     }
 
-    const { comissions } = validation.data;
+    const { id } = await params;
+    const comparisonIdValidation = SafeResourceIdSchema.safeParse(id);
+    if (!comparisonIdValidation.success) {
+      return errorResponse(400, "Missing parameters");
+    }
+    const comparisonId = comparisonIdValidation.data;
 
-    // ==================== DATABASE CLIENT INITIALIZATION ====================
+    let requestBody: unknown;
+    try {
+      requestBody = await request.json();
+    } catch {
+      return errorResponse(400, "Missing parameters");
+    }
+
+    const bodyValidation =
+      ComparisonCommissionsUpdateSchema.safeParse(requestBody);
+    if (!bodyValidation.success) {
+      return errorResponse(400, "Missing parameters");
+    }
+    const commissions = bodyValidation.data.comissions;
 
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
-      const totalRequestTime = performance.now() - startTime;
       console.error(
-        `[DATABASE ERROR] Failed to initialize Turso client after ${totalRequestTime.toFixed(2)}ms`
+        "[comparison-commissions] database client not initialized",
       );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Database client not initialized",
-        },
-        { status: 500 }
-      );
+      return errorResponse(500, "Internal server error");
     }
 
-    // ==================== COMMISSION UPDATE EXECUTION ====================
+    const transaction: WriteTransaction =
+      await tursoClient.transaction("write");
 
-    // Get existing commission data for tracking changes
-    const existingDataResult = await tursoClient.execute({
-      sql: `SELECT comision_fijo, comision_indexado, comision_sales_person_fijo, comision_sales_person_indexado 
-            FROM comparativas WHERE id = ?`,
-      args: [comparisonId],
-    });
+    try {
+      const currentResult = await transaction.execute({
+        sql: `SELECT
+          status,
+          plan,
+          comision_fijo,
+          comision_indexado,
+          comision_sales_person_fijo,
+          comision_sales_person_indexado
+        FROM comparativas
+        WHERE id = ?`,
+        args: [comparisonId],
+      });
 
-    if (existingDataResult.rows.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Comparativa no encontrada",
-        },
-        { status: 404 }
+      if (currentResult.rows.length === 0) {
+        throw new TransactionResponseError(
+          404,
+          "Comparativa no encontrada",
+        );
+      }
+
+      const currentRow = currentResult.rows[0];
+      const currentComparison: CurrentComparison = {
+        status: currentRow.status,
+        plan: currentRow.plan,
+        comision_fijo: currentRow.comision_fijo,
+        comision_indexado: currentRow.comision_indexado,
+        comision_sales_person_fijo:
+          currentRow.comision_sales_person_fijo,
+        comision_sales_person_indexado:
+          currentRow.comision_sales_person_indexado,
+      };
+      if (currentComparison.status !== "completed") {
+        throw new TransactionResponseError(
+          409,
+          "Comparison status changed",
+        );
+      }
+
+      const activePlans = new Set(
+        parseStoredPlan(currentComparison.plan),
       );
-    }
-
-    const existingData = existingDataResult.rows[0] as Record<string, unknown>;
-
-    const { sql, args } = buildUpdateQuery(comissions, comparisonId);
-
-    const { result, metrics } = await executeQuery(tursoClient, sql, args);
-
-    // ==================== RESULT VALIDATION ====================
-
-    if (result.rowsAffected === 0) {
-      const totalRequestTime = performance.now() - startTime;
-      console.warn(
-        `[WARNING] Comparison ${comparisonId} not found after ${totalRequestTime.toFixed(2)}ms. ` +
-          `Query time: ${metrics.queryTime.toFixed(2)}ms`
+      const submittedFields = commissionFields.filter(
+        ({ field }) => commissions[field] !== undefined,
       );
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Comparativa no encontrada",
-        },
-        { status: 400 }
+      if (
+        submittedFields.some(({ plan }) => !activePlans.has(plan))
+      ) {
+        throw new TransactionResponseError(
+          409,
+          "Comparison status changed",
+        );
+      }
+
+      const updateValues = submittedFields.map(
+        ({ field }) => commissions[field] as number,
       );
+      const updateResult = await transaction.execute({
+        sql: `UPDATE comparativas
+          SET ${submittedFields
+            .map(({ field }) => `${field} = ?`)
+            .join(", ")}
+          WHERE id = ?`,
+        args: [...updateValues, comparisonId],
+      });
+
+      if (updateResult.rowsAffected === 0) {
+        throw new TransactionResponseError(
+          409,
+          "Comparison status changed",
+        );
+      }
+      if (updateResult.rowsAffected !== 1) {
+        throw new Error(
+          "Comparison commission update affected multiple rows",
+        );
+      }
+
+      for (const definition of submittedFields) {
+        const { field, description } = definition;
+        const oldValue = normalizeStoredCommission(
+          currentComparison[field],
+          field,
+        );
+        const newValue = commissions[field] as number;
+        if (oldValue === newValue) continue;
+
+        const auditRecorded = await createComparativaChange(
+          transaction,
+          {
+            comparativa_id: comparisonId,
+            user_id: authenticatedUser.id,
+            change_type: "commission_update",
+            field_name: field,
+            old_value: oldValue.toString(),
+            new_value: newValue.toString(),
+            description: `${description} actualizada de ${oldValue}€ a ${newValue}€`,
+          },
+        );
+        if (!auditRecorded) {
+          throw new Error("Comparison audit could not be recorded");
+        }
+      }
+
+      await transaction.commit();
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      const rolledBack = await rollbackTransaction(transaction);
+      if (
+        rolledBack &&
+        error instanceof TransactionResponseError
+      ) {
+        return errorResponse(error.status, error.responseError);
+      }
+
+      console.error(
+        "[comparison-commissions] transaction failed",
+        error,
+      );
+      return errorResponse(500, "Internal server error");
     }
-
-    // ==================== TRACK COMMISSION CHANGES ====================
-
-    // Extract user_id from request body for tracking
-    const { user_id } = requestBody;
-
-    if (user_id) {
-      // Track each commission field that was updated
-      if (
-        comissions.comision_fijo !== undefined &&
-        comissions.comision_fijo !== Number(existingData.comision_fijo)
-      ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: comparisonId,
-          user_id: user_id,
-          change_type: "commission_update",
-          field_name: "comision_fijo",
-          old_value: existingData.comision_fijo?.toString() || "0",
-          new_value: comissions.comision_fijo?.toString() || "0",
-          description: `Comisión fija actualizada de ${existingData.comision_fijo || 0}€ a ${comissions.comision_fijo || 0}€`,
-        });
-      }
-
-      if (
-        comissions.comision_indexado !== undefined &&
-        comissions.comision_indexado !== Number(existingData.comision_indexado)
-      ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: comparisonId,
-          user_id: user_id,
-          change_type: "commission_update",
-          field_name: "comision_indexado",
-          old_value: existingData.comision_indexado?.toString() || "0",
-          new_value: comissions.comision_indexado?.toString() || "0",
-          description: `Comisión indexada actualizada de ${existingData.comision_indexado || 0}€ a ${comissions.comision_indexado || 0}€`,
-        });
-      }
-
-      if (
-        comissions.comision_sales_person_fijo !== undefined &&
-        comissions.comision_sales_person_fijo !==
-          Number(existingData.comision_sales_person_fijo)
-      ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: comparisonId,
-          user_id: user_id,
-          change_type: "commission_update",
-          field_name: "comision_sales_person_fijo",
-          old_value: existingData.comision_sales_person_fijo?.toString() || "0",
-          new_value: comissions.comision_sales_person_fijo?.toString() || "0",
-          description: `Comisión comercial fija actualizada de ${existingData.comision_sales_person_fijo || 0}€ a ${comissions.comision_sales_person_fijo || 0}€`,
-        });
-      }
-
-      if (
-        comissions.comision_sales_person_indexado !== undefined &&
-        comissions.comision_sales_person_indexado !==
-          Number(existingData.comision_sales_person_indexado)
-      ) {
-        await createComparativaChange(tursoClient, {
-          comparativa_id: comparisonId,
-          user_id: user_id,
-          change_type: "commission_update",
-          field_name: "comision_sales_person_indexado",
-          old_value:
-            existingData.comision_sales_person_indexado?.toString() || "0",
-          new_value:
-            comissions.comision_sales_person_indexado?.toString() || "0",
-          description: `Comisión comercial indexada actualizada de ${existingData.comision_sales_person_indexado || 0}€ a ${comissions.comision_sales_person_indexado || 0}€`,
-        });
-      }
-    }
-
-    // ==================== SUCCESS RESPONSE ====================
-
-    return NextResponse.json({
-      success: true,
-    });
   } catch (error) {
-    const totalRequestTime = performance.now() - startTime;
-    console.error(
-      `[API ERROR] Commission update failed after ${totalRequestTime.toFixed(2)}ms:`,
-      error
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Error al actualizar comisiones",
-      },
-      { status: 500 }
-    );
+    console.error("[comparison-commissions] unexpected error", error);
+    return errorResponse(500, "Internal server error");
   }
 }
