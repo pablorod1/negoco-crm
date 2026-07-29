@@ -508,7 +508,7 @@ describe("ComparativaComissionsSection", () => {
     });
   });
 
-  test("keeps a refreshed same-id revision locked and ignores a stale completion", async () => {
+  test("silently revalidates a successful stale same-id mutation", async () => {
     const firstRequest = deferred<ReturnType<typeof response>>();
     const fetchMock = vi
       .fn()
@@ -526,9 +526,7 @@ describe("ComparativaComissionsSection", () => {
     rerenderCommissionsSection({
       nextComparativa: {
         ...baseComparativa,
-        plan: ["indexado"],
-        comision: { fijo: 120, indexado: 95 },
-        comision_sales_person: { fijo: 60, indexado: 45 },
+        comision: { fijo: 121, indexado: 80 },
       },
     });
 
@@ -546,21 +544,21 @@ describe("ComparativaComissionsSection", () => {
       expect(editButton).toBeEnabled();
     });
     expect(showCustomToast).not.toHaveBeenCalled();
-    expect(onUpdate).not.toHaveBeenCalled();
+    expect(onUpdate).toHaveBeenCalledOnce();
 
     startEditing();
     fireEvent.change(
       screen.getByRole("spinbutton", {
-        name: "Comisión Indexado de Negoco",
+        name: "Comisión Fijo de Negoco",
       }),
       {
-        target: { value: "97" },
+        target: { value: "127" },
       },
     );
     save();
 
     await waitFor(() => {
-      expect(onUpdate).toHaveBeenCalledOnce();
+      expect(onUpdate).toHaveBeenCalledTimes(2);
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenLastCalledWith(
@@ -569,7 +567,7 @@ describe("ComparativaComissionsSection", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          comissions: { comision_indexado: 97 },
+          comissions: { comision_fijo: 127 },
         }),
       },
     );

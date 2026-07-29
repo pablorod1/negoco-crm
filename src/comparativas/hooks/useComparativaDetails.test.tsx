@@ -135,6 +135,45 @@ describe("useComparativaDetails loading boundaries", () => {
     expect(result.current.comparativa).toEqual(comparisonOne);
   });
 
+  test("invalidates a pending response when the active identity becomes null", async () => {
+    const identityRequest =
+      deferred<ReturnType<typeof comparisonResponse>>();
+    const fetchMock = vi.fn().mockReturnValue(identityRequest.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    let currentUser: User | null = userData;
+
+    const { result, rerender } = renderHook(() =>
+      useComparativaDetails({ userData: currentUser }),
+    );
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    currentUser = null;
+    rerender();
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(result.current.loading).toBe(true);
+    expect(result.current.loadedData).toBe(false);
+    expect(result.current.comparativa).toBeNull();
+
+    await act(async () => {
+      identityRequest.resolve({
+        ok: false,
+        status: 404,
+        json: vi.fn().mockResolvedValue({
+          success: false,
+          error: "Unauthorized",
+        }),
+      });
+      await identityRequest.promise;
+    });
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.loadedData).toBe(false);
+    expect(result.current.comparativa).toBeNull();
+    expect(showCustomToast).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+  });
+
   test("keeps same-id loaded data available during a background refresh", async () => {
     const backgroundRequest =
       deferred<ReturnType<typeof comparisonResponse>>();
@@ -353,9 +392,11 @@ describe("useComparativaDetails loading boundaries", () => {
       deferred<ReturnType<typeof comparisonResponse>>();
     const refreshedComparison = {
       ...comparisonOne,
-      plan: ["indexado"],
-      comision: { fijo: 120, indexado: 95 },
-      comision_sales_person: { fijo: 60, indexado: 45 },
+      comision: { fijo: 121, indexado: 80 },
+    } satisfies ComparativaVM;
+    const committedComparison = {
+      ...comparisonOne,
+      comision: { fijo: 125, indexado: 80 },
     } satisfies ComparativaVM;
     const fetchMock = vi.fn(
       (url: string, init?: { method?: string }) => {
@@ -369,9 +410,17 @@ describe("useComparativaDetails loading boundaries", () => {
               calledUrl === "/api/v2/comparisons/comparison-1",
           ).length;
 
-          return comparisonFetchCount === 1
-            ? Promise.resolve(comparisonResponse(comparisonOne))
-            : backgroundRequest.promise;
+          if (comparisonFetchCount === 1) {
+            return Promise.resolve(comparisonResponse(comparisonOne));
+          }
+          if (comparisonFetchCount === 2) {
+            return backgroundRequest.promise;
+          }
+          if (comparisonFetchCount === 3) {
+            return Promise.resolve(
+              comparisonResponse(committedComparison),
+            );
+          }
         }
 
         throw new Error(`Unexpected request: ${url}`);
@@ -441,6 +490,7 @@ describe("useComparativaDetails loading boundaries", () => {
       name: "Editar",
     });
     expect(editButton).toBeDisabled();
+    expect(screen.getByText("121,00 €")).toBeVisible();
     fireEvent.click(editButton);
     expect(
       screen.queryByRole("button", { name: "Guardar comisiones" }),
@@ -457,13 +507,14 @@ describe("useComparativaDetails loading boundaries", () => {
     });
 
     await waitFor(() => {
-      expect(editButton).toBeEnabled();
+      expect(screen.getByText("125,00 €")).toBeVisible();
     });
+    expect(screen.getByRole("button", { name: "Editar" })).toBeEnabled();
     expect(showCustomToast).not.toHaveBeenCalled();
     expect(
       fetchMock.mock.calls.filter(
         ([, init]) => init?.method === "POST",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 });

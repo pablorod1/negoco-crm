@@ -23,6 +23,12 @@ interface LoadedComparativa {
   data: ComparativaVM;
 }
 
+interface ActiveRequestContext {
+  routeId: string;
+  userId: string | undefined;
+  userRole: string | undefined;
+}
+
 export function useComparativaDetails({
   userData,
 }: UseComparativaDetailsParams) {
@@ -32,7 +38,8 @@ export function useComparativaDetails({
   const userRole = userData?.role;
   const [loadedComparativa, setLoadedComparativa] =
     useState<LoadedComparativa | null>(null);
-  const activeRouteIdRef = useRef<string | null>(null);
+  const activeRequestContextRef =
+    useRef<ActiveRequestContext | null>(null);
   const latestRequestRef = useRef(0);
   const loadedData =
     loadedComparativa?.id === id &&
@@ -41,14 +48,19 @@ export function useComparativaDetails({
   const comparativa = loadedData ? loadedComparativa.data : null;
 
   useLayoutEffect(() => {
-    activeRouteIdRef.current = id;
+    const activeContext: ActiveRequestContext = {
+      routeId: id,
+      userId,
+      userRole,
+    };
+    activeRequestContextRef.current = activeContext;
 
     return () => {
-      if (activeRouteIdRef.current === id) {
-        activeRouteIdRef.current = null;
+      if (activeRequestContextRef.current === activeContext) {
+        activeRequestContextRef.current = null;
       }
     };
-  }, [id]);
+  }, [id, userId, userRole]);
 
   const fetchComparativa = useCallback(async () => {
     if (!userId || !userRole) return;
@@ -58,9 +70,16 @@ export function useComparativaDetails({
     const requestedUserRole = userRole;
     const requestNumber = latestRequestRef.current + 1;
     latestRequestRef.current = requestNumber;
-    const requestIsCurrent = () =>
-      activeRouteIdRef.current === requestedId &&
-      latestRequestRef.current === requestNumber;
+    const requestIsCurrent = () => {
+      const activeContext = activeRequestContextRef.current;
+
+      return (
+        activeContext?.routeId === requestedId &&
+        activeContext.userId === requestedUserId &&
+        activeContext.userRole === requestedUserRole &&
+        latestRequestRef.current === requestNumber
+      );
+    };
 
     try {
       const rs = await fetch(`/api/v2/comparisons/${requestedId}`, {

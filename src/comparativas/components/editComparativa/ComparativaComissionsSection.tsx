@@ -10,7 +10,6 @@ import {
   Pencil,
 } from "lucide-react";
 import {
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -55,6 +54,12 @@ interface RenderRevision {
 interface ActiveRequest {
   comparisonId: string;
   revision: RenderRevision;
+}
+
+interface ActiveRenderContext {
+  comparisonId: string;
+  revision: RenderRevision;
+  onUpdate: () => void;
 }
 
 type ContentProps = Omit<Props, "onUpdate"> & {
@@ -111,26 +116,30 @@ export default function ComparativaComissionsSection({
   const [pendingRequest, setPendingRequest] =
     useState<ActiveRequest | null>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
-  const currentRevisionRef = useRef<RenderRevision | null>(null);
-  const onUpdateRef = useRef(onUpdate);
+  const activeRenderContextRef =
+    useRef<ActiveRenderContext | null>(null);
   const renderedRevision = useMemo<RenderRevision>(
     () => ({ value: editorRevision }),
     [editorRevision],
   );
+  const renderedContext = useMemo<ActiveRenderContext>(
+    () => ({
+      comparisonId: comparativa.id,
+      revision: renderedRevision,
+      onUpdate,
+    }),
+    [comparativa.id, onUpdate, renderedRevision],
+  );
 
   useLayoutEffect(() => {
-    currentRevisionRef.current = renderedRevision;
+    activeRenderContextRef.current = renderedContext;
 
     return () => {
-      if (currentRevisionRef.current === renderedRevision) {
-        currentRevisionRef.current = null;
+      if (activeRenderContextRef.current === renderedContext) {
+        activeRenderContextRef.current = null;
       }
     };
-  }, [renderedRevision]);
-
-  useEffect(() => {
-    onUpdateRef.current = onUpdate;
-  }, [onUpdate]);
+  }, [renderedContext]);
 
   const saveCommissions = async (
     changes: Partial<FormData>,
@@ -147,7 +156,8 @@ export default function ComparativaComissionsSection({
     setPendingRequest(activeRequest);
 
     const requestIsCurrent = () =>
-      currentRevisionRef.current === activeRequest.revision;
+      activeRenderContextRef.current?.revision ===
+      activeRequest.revision;
 
     try {
       const response = await fetch(
@@ -165,6 +175,14 @@ export default function ComparativaComissionsSection({
       const payload = await readApiResponse(response);
 
       if (!requestIsCurrent()) {
+        const activeContext = activeRenderContextRef.current;
+        if (
+          response.ok &&
+          payload?.success === true &&
+          activeContext?.comparisonId === activeRequest.comparisonId
+        ) {
+          activeContext.onUpdate();
+        }
         return "stale";
       }
 
@@ -201,7 +219,7 @@ export default function ComparativaComissionsSection({
           iconSize: 24,
           icon: AlertTriangle,
         });
-        onUpdateRef.current();
+        activeRenderContextRef.current?.onUpdate();
         return "close";
       }
 
@@ -225,7 +243,7 @@ export default function ComparativaComissionsSection({
         iconSize: 24,
         icon: CheckCircle,
       });
-      onUpdateRef.current();
+      activeRenderContextRef.current?.onUpdate();
       return "close";
     } catch {
       if (!requestIsCurrent()) {
