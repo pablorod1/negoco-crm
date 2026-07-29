@@ -9,7 +9,7 @@ import {
   Euro,
   Pencil,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { ComparativaVM } from "@/comparativas/types/comparativa.types";
@@ -39,6 +39,22 @@ interface CommissionsApiResponse {
   success?: boolean;
   error?: string;
 }
+
+type SaveResult = "close" | "keep" | "stale" | "ignored";
+
+interface RenderRevision {
+  value: string;
+}
+
+interface ActiveRequest {
+  comparisonId: string;
+  revision: RenderRevision;
+}
+
+type ContentProps = Omit<Props, "onUpdate"> & {
+  isSaving: boolean;
+  onSave: (changes: Partial<FormData>) => Promise<SaveResult>;
+};
 
 function getInitialFormData(comparativa: ComparativaVM): FormData {
   return {
@@ -86,15 +102,156 @@ export default function ComparativaComissionsSection({
     comparativa.comision_sales_person.indexado,
     canEdit,
   ]);
+  const [pendingRequest, setPendingRequest] =
+    useState<ActiveRequest | null>(null);
+  const activeRequestRef = useRef<ActiveRequest | null>(null);
+  const currentRevisionRef = useRef<RenderRevision | null>(null);
+  const onUpdateRef = useRef(onUpdate);
+  const renderedRevision = useMemo<RenderRevision>(
+    () => ({ value: editorRevision }),
+    [editorRevision],
+  );
+
+  useEffect(() => {
+    currentRevisionRef.current = renderedRevision;
+
+    return () => {
+      if (currentRevisionRef.current === renderedRevision) {
+        currentRevisionRef.current = null;
+      }
+    };
+  }, [renderedRevision]);
+
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+
+  const saveCommissions = async (
+    changes: Partial<FormData>,
+  ): Promise<SaveResult> => {
+    if (activeRequestRef.current) {
+      return "ignored";
+    }
+
+    const activeRequest: ActiveRequest = {
+      comparisonId: comparativa.id,
+      revision: renderedRevision,
+    };
+    activeRequestRef.current = activeRequest;
+    setPendingRequest(activeRequest);
+
+    const requestIsCurrent = () =>
+      currentRevisionRef.current === activeRequest.revision;
+
+    try {
+      const response = await fetch(
+        `/api/v2/comparisons/${activeRequest.comparisonId}/commissions`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            comissions: changes,
+          }),
+        },
+      );
+      const payload = await readApiResponse(response);
+
+      if (!requestIsCurrent()) {
+        return "stale";
+      }
+
+      if (response.status === 401) {
+        showCustomToast({
+          title: "Sesión caducada",
+          message:
+            "Vuelve a iniciar sesión para guardar. Tus cambios siguen disponibles.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return "keep";
+      }
+
+      if (response.status === 403) {
+        showCustomToast({
+          title: "Sin permiso para editar",
+          message:
+            "No tienes permiso para modificar estas comisiones. Tus cambios siguen disponibles.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return "keep";
+      }
+
+      if (response.status === 409) {
+        showCustomToast({
+          title: "La comparativa ha cambiado",
+          message:
+            "Hemos recargado los datos para que puedas revisar las comisiones actuales.",
+          iconColor: "var(--warning-color)",
+          iconSize: 24,
+          icon: AlertTriangle,
+        });
+        onUpdateRef.current();
+        return "close";
+      }
+
+      if (!response.ok || payload?.success !== true) {
+        showCustomToast({
+          title: "No se pudieron guardar las comisiones",
+          message:
+            payload?.error?.trim() ||
+            "No se pudieron guardar los cambios. Tus datos siguen disponibles para reintentarlo.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return "keep";
+      }
+
+      showCustomToast({
+        title: "Comisiones actualizadas",
+        message: "Las comisiones se han actualizado correctamente",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CheckCircle,
+      });
+      onUpdateRef.current();
+      return "close";
+    } catch {
+      if (!requestIsCurrent()) {
+        return "stale";
+      }
+
+      showCustomToast({
+        title: "No se pudieron guardar las comisiones",
+        message:
+          "No se ha podido conectar. Tus cambios siguen disponibles para reintentarlo.",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return "keep";
+    } finally {
+      if (activeRequestRef.current === activeRequest) {
+        activeRequestRef.current = null;
+        setPendingRequest(null);
+      }
+    }
+  };
 
   return (
     <ComparativaComissionsSectionContent
       key={editorRevision}
       userData={userData}
       comparativa={comparativa}
-      onUpdate={onUpdate}
       canEdit={canEdit}
       embedded={embedded}
+      isSaving={pendingRequest !== null}
+      onSave={saveCommissions}
     />
   );
 }
@@ -102,12 +259,12 @@ export default function ComparativaComissionsSection({
 function ComparativaComissionsSectionContent({
   userData,
   comparativa,
-  onUpdate,
   canEdit,
   embedded = false,
-}: Props) {
+  isSaving,
+  onSave,
+}: ContentProps) {
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<FormData>(() =>
     getInitialFormData(comparativa),
   );
@@ -181,95 +338,9 @@ function ComparativaComissionsSectionContent({
       return;
     }
 
-    setIsSaving(true);
-
-    try {
-      const response = await fetch(
-        `/api/v2/comparisons/${comparativa.id}/commissions`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            comissions: changes,
-          }),
-        },
-      );
-      const payload = await readApiResponse(response);
-
-      if (response.status === 401) {
-        showCustomToast({
-          title: "Sesión caducada",
-          message:
-            "Vuelve a iniciar sesión para guardar. Tus cambios siguen disponibles.",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
-      }
-
-      if (response.status === 403) {
-        showCustomToast({
-          title: "Sin permiso para editar",
-          message:
-            "No tienes permiso para modificar estas comisiones. Tus cambios siguen disponibles.",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
-      }
-
-      if (response.status === 409) {
-        closeEditor();
-        showCustomToast({
-          title: "La comparativa ha cambiado",
-          message:
-            "Hemos recargado los datos para que puedas revisar las comisiones actuales.",
-          iconColor: "var(--warning-color)",
-          iconSize: 24,
-          icon: AlertTriangle,
-        });
-        onUpdate();
-        return;
-      }
-
-      if (!response.ok || payload?.success !== true) {
-        showCustomToast({
-          title: "No se pudieron guardar las comisiones",
-          message:
-            payload?.error?.trim() ||
-            "No se pudieron guardar los cambios. Tus datos siguen disponibles para reintentarlo.",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return;
-      }
-
+    const result = await onSave(changes);
+    if (result === "close") {
       closeEditor();
-      showCustomToast({
-        title: "Comisiones actualizadas",
-        message: "Las comisiones se han actualizado correctamente",
-        iconColor: "var(--success-color)",
-        iconSize: 24,
-        icon: CheckCircle,
-      });
-
-      onUpdate();
-    } catch {
-      showCustomToast({
-        title: "No se pudieron guardar las comisiones",
-        message:
-          "No se ha podido conectar. Tus cambios siguen disponibles para reintentarlo.",
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-        icon: CircleX,
-      });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -303,6 +374,7 @@ function ComparativaComissionsSectionContent({
               type="button"
               size="sm"
               variant="ghost"
+              disabled={isSaving}
               onClick={() => setIsEditMode(true)}
             >
               <Pencil className="h-3 w-3 mr-1" />

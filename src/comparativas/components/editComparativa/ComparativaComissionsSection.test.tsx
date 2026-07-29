@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { showCustomToast } from "@/core/components/CustomToast";
+import type { ComparativaVM } from "@/comparativas/types/comparativa.types";
+import type { User } from "@/core/types";
 import ComparativaComissionsSection from "./ComparativaComissionsSection";
 
 vi.mock("@/core/components/CustomToast", () => ({
@@ -26,7 +29,7 @@ const baseUser = {
   role: "1",
   super_id: null,
   should_reset_password: false,
-};
+} satisfies User;
 
 const baseComparativa = {
   id: "comparison-1",
@@ -48,7 +51,7 @@ const baseComparativa = {
   files: [],
   has_permanencia: false,
   has_renovacion: false,
-};
+} satisfies ComparativaVM;
 
 type JsonBody = { success?: boolean; error?: string };
 
@@ -67,12 +70,12 @@ function renderCommissionsSection({
 }: {
   canEdit?: boolean;
   onUpdate?: () => void;
-  comparativa?: typeof baseComparativa;
+  comparativa?: ComparativaVM;
 } = {}) {
   const view = render(
     <ComparativaComissionsSection
       userData={baseUser}
-      comparativa={comparativa as never}
+      comparativa={comparativa}
       canEdit={canEdit}
       onUpdate={onUpdate}
     />,
@@ -83,12 +86,12 @@ function renderCommissionsSection({
     nextComparativa = comparativa,
   }: {
     nextCanEdit?: boolean;
-    nextComparativa?: typeof baseComparativa;
+    nextComparativa?: ComparativaVM;
   }) => {
     view.rerender(
       <ComparativaComissionsSection
         userData={baseUser}
-        comparativa={nextComparativa as never}
+        comparativa={nextComparativa}
         canEdit={nextCanEdit}
         onUpdate={onUpdate}
       />,
@@ -96,6 +99,15 @@ function renderCommissionsSection({
   };
 
   return { ...view, onUpdate, rerenderCommissionsSection };
+}
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
 }
 
 function startEditing() {
@@ -273,7 +285,7 @@ describe("ComparativaComissionsSection", () => {
     ).toBeEnabled();
   });
 
-  test("closes, resets, and refreshes after a stale comparison conflict", async () => {
+  test("closes and uses the refreshed comparison after a stale conflict", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -284,7 +296,32 @@ describe("ComparativaComissionsSection", () => {
       ),
     );
     const onUpdate = vi.fn();
-    renderCommissionsSection({ onUpdate });
+
+    function ConflictHarness() {
+      const [comparativa, setComparativa] =
+        useState<ComparativaVM>(baseComparativa);
+
+      const refreshComparison = () => {
+        onUpdate();
+        setComparativa({
+          ...baseComparativa,
+          plan: ["indexado"],
+          comision: { fijo: 120, indexado: 95 },
+          comision_sales_person: { fijo: 60, indexado: 45 },
+        });
+      };
+
+      return (
+        <ComparativaComissionsSection
+          userData={baseUser}
+          comparativa={comparativa}
+          canEdit
+          onUpdate={refreshComparison}
+        />
+      );
+    }
+
+    render(<ConflictHarness />);
     startEditing();
     changeOrganizationFixed();
     save();
@@ -301,9 +338,20 @@ describe("ComparativaComissionsSection", () => {
         message: expect.stringContaining("recargado"),
       }),
     );
+    expect(screen.getByText("95,00 €")).toBeVisible();
+    expect(screen.queryByText("120,00 €")).not.toBeInTheDocument();
 
     startEditing();
-    expect(organizationFixedInput()).toHaveValue(120);
+    expect(
+      screen.getByRole("spinbutton", {
+        name: "Comisión Indexado de Negoco",
+      }),
+    ).toHaveValue(95);
+    expect(
+      screen.queryByRole("spinbutton", {
+        name: "Comisión Fijo de Negoco",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   test("keeps the draft recoverable after an HTTP error", async () => {
@@ -453,6 +501,97 @@ describe("ComparativaComissionsSection", () => {
       expect(onUpdate).toHaveBeenCalledOnce();
     });
   });
+
+  test.each([
+    {
+      name: "plan and commission revision",
+      nextComparativa: {
+        ...baseComparativa,
+        plan: ["indexado"],
+        comision: { fijo: 120, indexado: 95 },
+        comision_sales_person: { fijo: 60, indexado: 45 },
+      } satisfies ComparativaVM,
+      changedInputName: "Comisión Indexado de Negoco",
+      changedValue: "97",
+      expectedUrl: "/api/v2/comparisons/comparison-1/commissions",
+      expectedCommissions: { comision_indexado: 97 },
+    },
+    {
+      name: "comparison identity",
+      nextComparativa: {
+        ...baseComparativa,
+        id: "comparison-2",
+        comision: { fijo: 130, indexado: 80 },
+      } satisfies ComparativaVM,
+      changedInputName: "Comisión Fijo de Negoco",
+      changedValue: "135",
+      expectedUrl: "/api/v2/comparisons/comparison-2/commissions",
+      expectedCommissions: { comision_fijo: 135 },
+    },
+  ])(
+    "keeps the new $name locked and ignores a stale completion",
+    async ({
+      nextComparativa,
+      changedInputName,
+      changedValue,
+      expectedUrl,
+      expectedCommissions,
+    }) => {
+      const firstRequest = deferred<ReturnType<typeof response>>();
+      const fetchMock = vi
+        .fn()
+        .mockImplementationOnce(() => firstRequest.promise)
+        .mockResolvedValueOnce(response(200, { success: true }));
+      vi.stubGlobal("fetch", fetchMock);
+      const onUpdate = vi.fn();
+      const { rerenderCommissionsSection } = renderCommissionsSection({
+        onUpdate,
+      });
+      startEditing();
+      changeOrganizationFixed();
+      save();
+
+      rerenderCommissionsSection({ nextComparativa });
+
+      const editButton = screen.getByRole("button", { name: "Editar" });
+      expect(editButton).toBeDisabled();
+      fireEvent.click(editButton);
+      expect(
+        screen.queryByRole("button", { name: "Guardar comisiones" }),
+      ).not.toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledOnce();
+
+      firstRequest.resolve(response(200, { success: true }));
+
+      await waitFor(() => {
+        expect(editButton).toBeEnabled();
+      });
+      expect(showCustomToast).not.toHaveBeenCalled();
+      expect(onUpdate).not.toHaveBeenCalled();
+
+      startEditing();
+      fireEvent.change(
+        screen.getByRole("spinbutton", { name: changedInputName }),
+        {
+          target: { value: changedValue },
+        },
+      );
+      save();
+
+      await waitFor(() => {
+        expect(onUpdate).toHaveBeenCalledOnce();
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenLastCalledWith(expectedUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comissions: expectedCommissions }),
+      });
+      expect(showCustomToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Comisiones actualizadas" }),
+      );
+    },
+  );
 
   test("closes and resets the editor if edit permission is removed", () => {
     const { rerenderCommissionsSection } = renderCommissionsSection();
