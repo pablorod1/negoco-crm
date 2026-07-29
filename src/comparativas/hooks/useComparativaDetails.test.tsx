@@ -175,6 +175,76 @@ describe("useComparativaDetails loading boundaries", () => {
     });
   });
 
+  test("ignores an older overlapping same-id refresh that resolves last", async () => {
+    const olderRequest =
+      deferred<ReturnType<typeof comparisonResponse>>();
+    const newerRequest =
+      deferred<ReturnType<typeof comparisonResponse>>();
+    const olderComparison = {
+      ...comparisonOne,
+      client: "Older refresh",
+    } satisfies ComparativaVM;
+    const newerComparison = {
+      ...comparisonOne,
+      client: "Newer refresh",
+    } satisfies ComparativaVM;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(comparisonResponse(comparisonOne))
+      .mockReturnValueOnce(olderRequest.promise)
+      .mockReturnValueOnce(newerRequest.promise);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useComparativaDetails({ userData }),
+    );
+    await waitFor(() => {
+      expect(result.current.comparativa).toEqual(comparisonOne);
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    let olderRefresh: Promise<void> | undefined;
+    let newerRefresh: Promise<void> | undefined;
+    act(() => {
+      olderRefresh = result.current.fetchComparativa();
+      newerRefresh = result.current.fetchComparativa();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.slice(1)).toEqual([
+      [
+        "/api/v2/comparisons/comparison-1",
+        expect.objectContaining({ method: "POST" }),
+      ],
+      [
+        "/api/v2/comparisons/comparison-1",
+        expect.objectContaining({ method: "POST" }),
+      ],
+    ]);
+
+    await act(async () => {
+      newerRequest.resolve(comparisonResponse(newerComparison));
+      await newerRefresh;
+    });
+
+    await waitFor(() => {
+      expect(result.current.comparativa).toEqual(newerComparison);
+    });
+    expect(result.current.loading).toBe(false);
+    expect(result.current.loadedData).toBe(true);
+
+    await act(async () => {
+      olderRequest.resolve(comparisonResponse(olderComparison));
+      await olderRefresh;
+    });
+
+    expect(result.current.comparativa).toEqual(newerComparison);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.loadedData).toBe(true);
+    expect(showCustomToast).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+  });
+
   test("returns to loading without exposing old data when the route id changes", async () => {
     const nextIdRequest =
       deferred<ReturnType<typeof comparisonResponse>>();
