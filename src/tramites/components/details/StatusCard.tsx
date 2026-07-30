@@ -32,7 +32,7 @@ export default function StatusCard({
   const isComercial = userData.role === "2";
   const showLiquidez = isComercial && tramite.status === "Baja" ? false : true;
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <div className="size-2 bg-gray-600 rounded-full"></div>

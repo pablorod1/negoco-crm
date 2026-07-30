@@ -54,7 +54,7 @@ export default function TramiteStatusSection({
       !isComercial);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full">
       {mode === "actions" ? (
         <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -149,7 +149,7 @@ export default function TramiteStatusSection({
               </div>
               <div className="flex items-center justify-center">
                 {isComercial &&
-                tramite.liquidez_status === "Cobrado por Comercializadora" ? (
+                  tramite.liquidez_status === "Cobrado por Comercializadora" ? (
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-xs text-gray-500 text-center">
                       Estado actual de liquidez
@@ -183,7 +183,7 @@ export default function TramiteStatusSection({
           <h4 className="text-sm font-medium text-gray-700">
             Acciones Disponibles
           </h4>
-          <div className="flex items-center gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {(isEditable || isBaja) && (
               <UpdateTramiteStatusModal
                 tramite={tramite}
@@ -202,11 +202,13 @@ export default function TramiteStatusSection({
             )}
 
             {isRenewable && (isAdmin || isBackoffice) && (
-              <RenewTramiteConfirmationDialog
-                tramite={tramite}
-                onRenew={onRenew}
-                client={client}
-              />
+              <div className="col-span-2">
+                <RenewTramiteConfirmationDialog
+                  tramite={tramite}
+                  onRenew={onRenew}
+                  client={client}
+                />
+              </div>
             )}
           </div>
         </div>
