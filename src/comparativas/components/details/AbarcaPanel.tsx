@@ -66,7 +66,13 @@ export function AbarcaPanel({
         };
         const comparativaStatus = responseBody.data?.status;
 
-        if (!comparativaStatus || comparativaStatus === "pending") return;
+        if (
+          !comparativaStatus ||
+          comparativaStatus === "pending" ||
+          comparativaStatus === "processing"
+        ) {
+          return;
+        }
 
         if (pollingRef.current) {
           clearInterval(pollingRef.current);

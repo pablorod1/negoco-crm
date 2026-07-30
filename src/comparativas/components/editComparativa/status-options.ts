@@ -21,7 +21,10 @@ export function getAllowedStatusOptions(
 
   const allowedStatuses: ComparativaStatus[] = [];
 
-  if (currentStatus === "pending" && canCompleteStudy) {
+  if (
+    (currentStatus === "pending" || currentStatus === "processing") &&
+    canCompleteStudy
+  ) {
     allowedStatuses.push("completed", "rejected");
   } else if (currentStatus === "awaiting_review" && canReviewStudy) {
     allowedStatuses.push("completed");

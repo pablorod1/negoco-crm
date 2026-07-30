@@ -4,6 +4,7 @@ import { AbarcaEstudio } from "./abarca.types";
 // Comparativa related types
 export type ComparativaStatus =
   | "pending"
+  | "processing"
   | "awaiting_review"
   | "completed"
   | "processed"

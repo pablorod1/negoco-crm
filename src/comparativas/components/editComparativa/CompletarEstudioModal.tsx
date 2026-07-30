@@ -560,8 +560,12 @@ export default function CompletarEstudioModal({
     return uuid.slice(-8).toUpperCase();
   };
 
-  const allowedStatus = mode === "ai_review" ? "awaiting_review" : "pending";
-  if (comparativa.status !== allowedStatus) {
+  const hasAllowedStatus =
+    mode === "ai_review"
+      ? comparativa.status === "awaiting_review"
+      : comparativa.status === "pending" ||
+        comparativa.status === "processing";
+  if (!hasAllowedStatus) {
     return null;
   }
 

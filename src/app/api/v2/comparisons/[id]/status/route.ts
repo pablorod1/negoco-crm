@@ -36,6 +36,7 @@ const SafeResourceIdSchema = z
 const ComparisonStatusUpdateSchema = z.object({
   status: z.enum([
     "pending",
+    "processing",
     "awaiting_review",
     "completed",
     "processed",
@@ -132,6 +133,18 @@ function validateStatusTransition(
   let requiredPermission: StudyPermission | null = null;
   switch (currentStatus) {
     case "pending":
+      if (nextStatus === "processing") {
+        if (userRole !== "admin" && userRole !== "1") {
+          return { allowed: false };
+        }
+        break;
+      }
+      if (nextStatus !== "completed" && nextStatus !== "rejected") {
+        return { allowed: false };
+      }
+      requiredPermission = "comparisons.study.complete";
+      break;
+    case "processing":
       if (nextStatus !== "completed" && nextStatus !== "rejected") {
         return { allowed: false };
       }

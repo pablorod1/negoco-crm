@@ -292,6 +292,71 @@ describe("PATCH /api/v2/comparisons/[id]/status", () => {
     },
   );
 
+  test("allows backoffice to mark a pending comparison as processing without study permission", async () => {
+    currentComparison = { ...currentComparison!, status: "pending" };
+    mocks.getEffectivePermission.mockResolvedValue(false);
+
+    const response = await patch("processing");
+
+    expect(response.status).toBe(200);
+    expect(mocks.getEffectivePermission).not.toHaveBeenCalled();
+    expect(mocks.recordStatusChange).toHaveBeenCalledWith(
+      transaction,
+      "comparison-1",
+      "user-1",
+      "pending",
+      "processing",
+    );
+    expect(mocks.commit).toHaveBeenCalledTimes(1);
+  });
+
+  test("denies commercial users from marking a pending comparison as processing", async () => {
+    currentComparison = { ...currentComparison!, status: "pending" };
+    mocks.validateUserSession.mockResolvedValue({
+      success: true,
+      user: {
+        id: "commercial-1",
+        role: "2",
+        email: "commercial@example.com",
+        name: "Commercial",
+      },
+    });
+
+    const response = await patch("processing");
+
+    expect(response.status).toBe(409);
+    expect(mocks.recordStatusChange).not.toHaveBeenCalled();
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.rollback).toHaveBeenCalledTimes(1);
+  });
+
+  test.each(["completed", "rejected"])(
+    "requires study completion permission for processing to %s",
+    async (nextStatus) => {
+      currentComparison = { ...currentComparison!, status: "processing" };
+
+      const response = await patch(
+        nextStatus,
+        nextStatus === "completed" ? { comision_fijo: 50 } : undefined,
+      );
+
+      expect(response.status).toBe(200);
+      expect(mocks.getEffectivePermission).toHaveBeenCalledWith(
+        transaction,
+        expect.objectContaining({ id: "user-1", role: "1" }),
+        "comparisons.study.complete",
+      );
+      expect(mocks.recordStatusChange).toHaveBeenCalledWith(
+        transaction,
+        "comparison-1",
+        "user-1",
+        "processing",
+        nextStatus,
+      );
+      expect(mocks.commit).toHaveBeenCalledTimes(1);
+    },
+  );
+
   test.each(["completed", "rejected"])(
     "denies pending to %s before every mutation without study completion permission",
     async (nextStatus) => {

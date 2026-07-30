@@ -124,10 +124,12 @@ export type LiquidezStatus =
 
 export type ComparativaStatus =
   | "pending"
+  | "processing"
   | "awaiting_review"
   | "completed"
   | "processed"
-  | "rejected";
+  | "rejected"
+  | "rechazado_cliente";
 
 export type FotovoltaicaStatus =
   | "pending"

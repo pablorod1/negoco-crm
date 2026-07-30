@@ -20,6 +20,7 @@ import ContractSection from "@/tramites/components/editTramite/contract/Contract
 import ProviderSection from "@/tramites/components/editTramite/ProviderSection";
 import { isComercialUser } from "@/tramites/utils/permissions";
 import { User as UserIcon } from "lucide-react";
+import { PredefinedNote } from "@/core/components/PredefinedNote";
 
 interface MainViewProps {
   tramite: TramiteVM;
@@ -62,7 +63,7 @@ export default function MainView({
   const isLoadingPredefinedNotes =
     loadingPredefinedNotesUserId === assignedCommercialId;
   const predefinedNotesSection = (
-    <section className="space-y-2">
+    <section className="min-w-0 space-y-2">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         Notas predefinidas
       </p>
@@ -73,11 +74,7 @@ export default function MainView({
       ) : predefinedNotes.length > 0 ? (
         <div className="space-y-2">
           {predefinedNotes.map((note) => (
-            <div key={note.id} className="border-l border-gray-200 pl-3">
-              <p className="text-sm leading-relaxed text-gray-700">
-                {note.note}
-              </p>
-            </div>
+            <PredefinedNote key={note.id} note={note} />
           ))}
         </div>
       ) : (
@@ -149,7 +146,7 @@ export default function MainView({
           mode="actions"
         />
 
-        <Card>
+        <Card className="h-full min-w-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <UserIcon className="size-4" />
@@ -162,7 +159,7 @@ export default function MainView({
           <CardContent>
             <div
               className={cn(
-                "grid grid-cols-1 gap-6",
+                "grid min-w-0 grid-cols-1 gap-6",
                 showPrioritySummary ? "xl:grid-cols-2" : "",
               )}
             >
@@ -182,7 +179,7 @@ export default function MainView({
                 </div>
               ) : null}
 
-              <div className="space-y-5">
+              <div className="min-w-0 space-y-5">
                 {showPrioritySummary ? (
                   <ComercialCard
                     tramite={tramite}
@@ -193,8 +190,9 @@ export default function MainView({
                     showProvider={false}
                   />
                 ) : null}
-
-                {!isComercialUser ? predefinedNotesSection : null}
+                {!isComercialUser(userData.role)
+                  ? predefinedNotesSection
+                  : null}
               </div>
             </div>
           </CardContent>

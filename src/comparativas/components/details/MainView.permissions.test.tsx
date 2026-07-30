@@ -1,5 +1,11 @@
 import type React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import MainView from "./MainView";
 import CompletarEstudioModal from "../editComparativa/CompletarEstudioModal";
@@ -68,14 +74,21 @@ function renderMainView({
   aiStudiesUserId = 42,
   aiStudyData,
   isSubcomercial = false,
+  onUpdate = () => {},
 }: {
   role: string;
-  status: "pending" | "awaiting_review" | "completed" | "rejected";
+  status:
+    | "pending"
+    | "processing"
+    | "awaiting_review"
+    | "completed"
+    | "rejected";
   complete: boolean;
   review: boolean;
   aiStudiesUserId?: number | null;
   aiStudyData?: Record<string, unknown>;
   isSubcomercial?: boolean;
+  onUpdate?: () => void;
 }) {
   render(
     <MainView
@@ -98,7 +111,7 @@ function renderMainView({
           },
         } as never
       }
-      onUpdate={() => {}}
+      onUpdate={onUpdate}
       isSubcomercial={isSubcomercial}
       isEditable
       isComercialEditable={false}
@@ -224,7 +237,84 @@ describe("MainView study permissions", () => {
     ).toHaveAttribute("id", "supplier-select");
   });
 
-  test("explicit complete denial removes every pending action from backoffice", () => {
+  test("processing exposes the same study actions as pending", () => {
+    renderMainView({
+      role: "2",
+      status: "processing",
+      complete: true,
+      review: false,
+      aiStudiesUserId: 42,
+    });
+
+    expectPendingActions({ ai: true, manual: true, reject: true });
+  });
+
+  test.each(["admin", "1"])(
+    "role %s can mark a pending comparison as processing",
+    (role) => {
+      renderMainView({
+        role,
+        status: "pending",
+        complete: false,
+        review: false,
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Marcar como Procesando" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  test("marks a pending comparison as processing from MainView", async () => {
+    const onUpdate = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      renderMainView({
+        role: "admin",
+        status: "pending",
+        complete: false,
+        review: false,
+        onUpdate,
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Marcar como Procesando" }),
+      );
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/v2/comparisons/comparison-1/status",
+          expect.objectContaining({
+            method: "PATCH",
+            body: JSON.stringify({ status: "processing" }),
+          }),
+        );
+        expect(onUpdate).toHaveBeenCalledTimes(1);
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  test("commercial users cannot mark a pending comparison as processing", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: true,
+      review: false,
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Marcar como Procesando" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("explicit complete denial leaves only the processing action for backoffice", () => {
     renderMainView({
       role: "1",
       status: "pending",
@@ -233,7 +323,12 @@ describe("MainView study permissions", () => {
     });
 
     expectPendingActions({ ai: false, manual: false, reject: false });
-    expect(screen.getByText("No hay acciones disponibles")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Marcar como Procesando" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No hay acciones disponibles"),
+    ).not.toBeInTheDocument();
   });
 
   test("manual modal independently enforces its explicit complete permission", () => {

@@ -1,5 +1,6 @@
 export const COMPARATIVA_STATUS_TYPES = [
   { value: "pending", label: "Pendiente de Estudio" },
+  { value: "processing", label: "Procesando" },
   { value: "awaiting_review", label: "Pendiente de Revisión" },
   { value: "completed", label: "Estudio Realizado" },
   { value: "processed", label: "Completada" },
@@ -9,6 +10,7 @@ export const COMPARATIVA_STATUS_TYPES = [
 
 export const PLAIN_COMPARATIVA_STATUS_TYPES = [
   "pending",
+  "processing",
   "awaiting_review",
   "completed",
   "processed",

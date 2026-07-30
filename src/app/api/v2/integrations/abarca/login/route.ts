@@ -291,7 +291,9 @@ export async function POST(req: NextRequest) {
         { status: 404 },
       );
     }
-    if (String(comparison.status) !== "pending") {
+    if (
+      !["pending", "processing"].includes(String(comparison.status))
+    ) {
       return NextResponse.json(
         { error: "La comparativa ya no está pendiente" },
         { status: 409 },
@@ -386,7 +388,9 @@ export async function POST(req: NextRequest) {
         { status: 404 },
       );
     }
-    if (String(latestComparison.status) !== "pending") {
+    if (
+      !["pending", "processing"].includes(String(latestComparison.status))
+    ) {
       return NextResponse.json(
         { error: "La comparativa ya no está pendiente" },
         { status: 409 },

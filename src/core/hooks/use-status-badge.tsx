@@ -9,6 +9,7 @@ import {
 
 const COMPARATIVA_STATUS_BADGES = {
   pending: <Badge variant="warning">Pendiente de Estudio</Badge>,
+  processing: <Badge variant="pending">Procesando</Badge>,
   awaiting_review: <Badge variant="info">Pendiente de Revisión</Badge>,
   completed: <Badge variant="pending">Estudio Realizado</Badge>,
   processed: <Badge variant="success">Completada</Badge>,
@@ -144,7 +145,15 @@ export const getStatusBadge = (
 
   // Verificar si el status pertenece a ComparativaStatus
   if (
-    ["pending", "completed", "processed", "rejected"].includes(
+    [
+      "pending",
+      "processing",
+      "awaiting_review",
+      "completed",
+      "processed",
+      "rejected",
+      "rechazado_cliente",
+    ].includes(
       status as ComparativaStatus,
     )
   ) {

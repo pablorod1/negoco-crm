@@ -42,6 +42,7 @@ import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { hasPermission } from "@/core/access-control/client";
 import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
+import { PredefinedNote } from "@/core/components/PredefinedNote";
 
 interface MainViewProps {
   comparativa: ComparativaVM;
@@ -86,6 +87,11 @@ export default function MainView({
   const isComercial = userData.role === "2";
   const isStudied = comparativa.status === "completed";
   const isAwaitingReview = comparativa.status === "awaiting_review";
+  const isPendingStudy =
+    comparativa.status === "pending" || comparativa.status === "processing";
+  const canMarkAsProcessing =
+    comparativa.status === "pending" &&
+    (userData.role === "admin" || userData.role === "1");
   const canCompleteStudies = hasPermission(
     userData.permissions,
     userData.role,
@@ -141,6 +147,7 @@ export default function MainView({
   const handleSidebarClick = useSidebarSlideNavigation();
 
   const [rechazando, setRechazando] = useState(false);
+  const [markingAsProcessing, setMarkingAsProcessing] = useState(false);
   const [updatingFlag, setUpdatingFlag] = useState<
     "has_permanencia" | "has_renovacion" | null
   >(null);
@@ -273,6 +280,56 @@ export default function MainView({
     }
   };
 
+  const handleMarkAsProcessing = async () => {
+    setMarkingAsProcessing(true);
+    try {
+      const res = await fetch(
+        `/api/v2/comparisons/${comparativa.id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "processing" }),
+        },
+      );
+
+      if (!res.ok) {
+        showCustomToast({
+          title: "Error",
+          message: "No se pudo marcar la comparativa como procesando",
+          icon: AlertTriangle,
+          iconColor: "var(--danger-color)",
+        });
+        return;
+      }
+
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!data.success) {
+        showCustomToast({
+          title: "Error",
+          message: data.error ?? "No se pudo actualizar el estado",
+          icon: AlertTriangle,
+          iconColor: "var(--danger-color)",
+        });
+        return;
+      }
+
+      showCustomToast({
+        title: "Comparativa en proceso",
+        message: "La comparativa ha sido marcada como Procesando",
+      });
+      onUpdate();
+    } catch {
+      showCustomToast({
+        title: "Error",
+        message: "Error de conexión al actualizar el estado",
+        icon: AlertTriangle,
+        iconColor: "var(--danger-color)",
+      });
+    } finally {
+      setMarkingAsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Hero Section */}
@@ -351,37 +408,57 @@ export default function MainView({
                     </TooltipComponent>
                   )}
 
-                {/* Comparativa pendiente */}
-                {comparativa.status === "pending" ? (
-                  canCompleteStudies ? (
-                    <div className="space-y-3">
-                      {hasAiStudies ? (
-                        <AbarcaPanel
-                          comparativaId={comparativa.id}
-                          onStudyCompleted={onUpdate}
-                          files={comparativa.files}
+                {/* Comparativa pendiente o en proceso */}
+                {isPendingStudy ? (
+                  <div className="space-y-3">
+                    {canMarkAsProcessing ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={handleMarkAsProcessing}
+                        disabled={markingAsProcessing}
+                      >
+                        <RefreshCw
+                          className={`size-4 ${markingAsProcessing ? "animate-spin" : ""}`}
                         />
-                      ) : null}
+                        {markingAsProcessing
+                          ? "Actualizando..."
+                          : "Marcar como Procesando"}
+                      </Button>
+                    ) : null}
 
-                      <div className="flex items-center gap-4">
-                        <CompletarEstudioModal
-                          comparativa={comparativa}
-                          onUpdate={onUpdate}
-                          userData={userData}
-                          canCompleteStudies={canCompleteStudies}
-                        />
+                    {canCompleteStudies ? (
+                      <div className="space-y-3">
+                        {hasAiStudies ? (
+                          <AbarcaPanel
+                            comparativaId={comparativa.id}
+                            onStudyCompleted={onUpdate}
+                            files={comparativa.files}
+                          />
+                        ) : null}
+
+                        <div className="flex items-center gap-4">
+                          <CompletarEstudioModal
+                            comparativa={comparativa}
+                            onUpdate={onUpdate}
+                            userData={userData}
+                            canCompleteStudies={canCompleteStudies}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                      <p className="text-sm font-medium text-gray-700">
-                        No hay acciones disponibles
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        No tienes permiso para completar este estudio.
-                      </p>
-                    </div>
-                  )
+                    ) : !canMarkAsProcessing ? (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <p className="text-sm font-medium text-gray-700">
+                          No hay acciones disponibles
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          No tienes permiso para completar este estudio.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : null}
 
                 {/* Estudio con IA recibido — pendiente de revisión */}
@@ -457,6 +534,7 @@ export default function MainView({
                 {comparativa.status !== "completed" &&
                   comparativa.status !== "processed" &&
                   comparativa.status !== "pending" &&
+                  comparativa.status !== "processing" &&
                   comparativa.status !== "awaiting_review" &&
                   !isComercial && (
                     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
@@ -485,6 +563,7 @@ export default function MainView({
                 {isComercial &&
                   comparativa.status !== "completed" &&
                   comparativa.status !== "pending" &&
+                  comparativa.status !== "processing" &&
                   comparativa.status !== "awaiting_review" &&
                   comparativa.status !== "processed" && (
                     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-center">
@@ -621,14 +700,7 @@ export default function MainView({
                     ) : visiblePredefinedNotes.length > 0 ? (
                       <div className="space-y-2">
                         {visiblePredefinedNotes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="rounded-lg border border-gray-100 bg-gray-50 p-3"
-                          >
-                            <p className="text-sm leading-relaxed text-gray-700">
-                              {note.note}
-                            </p>
-                          </div>
+                          <PredefinedNote key={note.id} note={note} />
                         ))}
                       </div>
                     ) : (

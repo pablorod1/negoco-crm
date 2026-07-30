@@ -797,7 +797,9 @@ async function finalizeDelivery(
     });
     if (
       comparison.rows.length === 0 ||
-      String(comparison.rows[0].status) !== "pending"
+      !["pending", "processing"].includes(
+        String(comparison.rows[0].status),
+      )
     ) {
       throw new WebhookRaceError();
     }
@@ -833,7 +835,7 @@ async function finalizeDelivery(
     const statusUpdate = await transaction.execute({
       sql: `UPDATE comparativas
         SET status = 'awaiting_review'
-        WHERE id = ? AND status = 'pending'`,
+        WHERE id = ? AND status IN ('pending', 'processing')`,
       args: [comparativaId],
     });
     if (statusUpdate.rowsAffected === 0) {

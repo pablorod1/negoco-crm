@@ -37,6 +37,11 @@ describe("getAllowedStatusOptions", () => {
     expect(values("pending", { complete: false })).toEqual([]);
   });
 
+  test("processing exposes the same study actions as pending", () => {
+    expect(values("processing")).toEqual(["completed", "rejected"]);
+    expect(values("processing", { complete: false })).toEqual([]);
+  });
+
   test("matches review transitions and the review permission", () => {
     expect(values("awaiting_review")).toEqual(["completed"]);
     expect(values("awaiting_review", { review: false })).toEqual([]);

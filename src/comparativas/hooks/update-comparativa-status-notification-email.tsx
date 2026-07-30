@@ -100,6 +100,8 @@ const ComparativaStatusUpdateEmail = ({
     switch (status) {
       case "pending":
         return "Pendiente de Estudio";
+      case "processing":
+        return "Procesando";
       case "completed":
         return "Estudio Realizado";
       case "processed":
