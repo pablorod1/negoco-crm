@@ -8,6 +8,11 @@ describe("getStatusBadge comparativa", () => {
       <>{getStatusBadge("processing", "comparativa")}</>,
     );
     expect(container.textContent).toBe("Procesando");
+    expect(container.firstElementChild).toHaveClass(
+      "border-indigo-300",
+      "bg-indigo-50",
+      "text-indigo-700",
+    );
   });
 
   test("renders 'Rechazado Cliente' for rechazado_cliente status", () => {

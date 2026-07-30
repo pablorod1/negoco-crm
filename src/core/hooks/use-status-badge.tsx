@@ -9,7 +9,11 @@ import {
 
 const COMPARATIVA_STATUS_BADGES = {
   pending: <Badge variant="warning">Pendiente de Estudio</Badge>,
-  processing: <Badge variant="pending">Procesando</Badge>,
+  processing: (
+    <Badge className="border-indigo-300 bg-indigo-50 text-indigo-700">
+      Procesando
+    </Badge>
+  ),
   awaiting_review: <Badge variant="info">Pendiente de Revisión</Badge>,
   completed: <Badge variant="pending">Estudio Realizado</Badge>,
   processed: <Badge variant="success">Completada</Badge>,
