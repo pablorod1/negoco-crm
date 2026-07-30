@@ -372,7 +372,7 @@ function ComparativaComissionsSectionContent({
     if (comission === 0) {
       if (comparativa.status === "awaiting_review") {
         return "Pendiente de revisión";
-      } else if (comparativa.status !== "pending") {
+      } else if (comparativa.status !== "pending" && comparativa.status !== "processing") {
         return "No hay ahorro";
       }
     }
