@@ -81,7 +81,7 @@ describe("AbarcaPanel file contract", () => {
       await screen.findByTitle("Comparador energético con IA"),
     ).toHaveAttribute(
       "sandbox",
-      "allow-same-origin allow-scripts allow-forms allow-downloads allow-popups",
+      "allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox",
     );
     expect(
       screen.getByText("Comparador energético con IA"),

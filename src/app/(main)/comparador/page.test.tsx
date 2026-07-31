@@ -92,7 +92,7 @@ describe("ComparadorPage public copy", () => {
     const iframe = await screen.findByTitle("Comparador energético con IA");
     expect(iframe).toHaveAttribute(
       "sandbox",
-      "allow-same-origin allow-scripts allow-forms allow-downloads allow-popups",
+      "allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox",
     );
     expect(iframe).toHaveAttribute("referrerpolicy", "no-referrer");
     fireEvent.load(iframe);

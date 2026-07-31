@@ -100,7 +100,7 @@ export default function ComparadorPage() {
         <iframe
           src={iframeUrl}
           title="Comparador energético con IA"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
           referrerPolicy="no-referrer"
           className="w-full h-full border-0"
           onLoad={() => setIsLoading(false)}

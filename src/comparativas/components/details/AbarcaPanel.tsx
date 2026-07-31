@@ -306,7 +306,7 @@ export function AbarcaPanel({
                   id="abarca-panel"
                   src={iframeUrl}
                   title="Comparador energético con IA"
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
                   className="abarca-panel w-full h-full border-0"
                   onLoad={() => setIsIframeLoading(false)}
                 />
