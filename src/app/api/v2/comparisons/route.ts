@@ -11,9 +11,11 @@ import {
   ComparativaFile,
   ComparativaPlan,
 } from "@/comparativas/types";
-import { Client } from "@libsql/client";
 import { DateRange } from "react-day-picker";
-import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
+import {
+  ComparativaIdempotencyConflictError,
+  createComparativaIdempotently,
+} from "@/comparativas/server/createComparativa";
 
 /**
  * Types for Paginated Comparisons (GET endpoint)
@@ -112,6 +114,8 @@ const ComparativaSchema = z.object({
   company_id: z.string().nullable().optional(),
   status: ComparativaStatusSchema,
   tramite_id: z.string().optional(),
+  has_permanencia: z.number().optional().default(0),
+  has_renovacion: z.number().optional().default(0),
 });
 
 const ComparativaFileSchema = z.object({
@@ -144,107 +148,6 @@ const PaginationQuerySchema = z.object({
   excludeCompany: z.boolean().optional(),
   excludeUser: z.boolean().optional(),
 });
-
-/**
- * Optimized helper function to add a comparativa to the database
- * Uses prepared statements and performance monitoring
- */
-const addComparativaOptimized = async (
-  comparativa: ComparativaDB,
-  tursoClient: Client,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    await tursoClient.execute({
-      sql: `
-        INSERT INTO comparativas (
-          id, client, service, plan, comision_fijo, comision_indexado, 
-          comision_sales_person_fijo, comision_sales_person_indexado, 
-          notes, user_id, creation_date, status, tramite_id, company_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        comparativa.id,
-        comparativa.client,
-        comparativa.service,
-        JSON.stringify(comparativa.plan),
-        comparativa.comision.fijo,
-        comparativa.comision.indexado,
-        comparativa.comision_sales_person.fijo,
-        comparativa.comision_sales_person.indexado,
-        JSON.stringify(comparativa.notes),
-        comparativa.user_id,
-        comparativa.creation_date,
-        comparativa.status,
-        comparativa.tramite_id || null,
-        null,
-      ],
-    });
-
-    // Track creation of comparativa
-    await createComparativaChange(tursoClient, {
-      comparativa_id: comparativa.id,
-      user_id: comparativa.user_id,
-      change_type: "created",
-      field_name: null,
-      old_value: null,
-      new_value: null,
-      description: `Comparativa creada para el cliente ${comparativa.client}`,
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error adding comparativa:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
-    };
-  }
-};
-
-/**
- * Optimized helper function to add comparativa files to the database
- * Uses batch insert for better performance
- */
-const addComparativaFilesOptimized = async (
-  files: ComparativaFile[],
-  tursoClient: Client,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    if (files.length === 0) {
-      return { success: true };
-    }
-
-    const placeholders = files.map(() => "(?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
-
-    const values = files.flatMap((file) => [
-      file.id,
-      file.comparativa_id,
-      file.filename,
-      file.size,
-      file.extension,
-      file.upload_date,
-      file.download_url,
-      file.preview_url,
-    ]);
-
-    await tursoClient.execute({
-      sql: `
-        INSERT INTO comparativa_files (
-          id, comparativa_id, filename, size, extension, upload_date, download_url, preview_url
-        ) VALUES ${placeholders}
-      `,
-      args: values,
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error adding comparativa files:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
-    };
-  }
-};
 
 /**
  * GET /new_api/comparisons
@@ -635,63 +538,82 @@ async function handleComparisonCreation(
       );
     }
 
-    // Parse JSON data (maintaining original parsing behavior)
-    let comparativa: ComparativaDB;
-    let comparativaFiles: ComparativaFile[];
-
+    let rawComparativa: unknown;
+    let rawComparativaFiles: unknown;
     try {
-      comparativa = JSON.parse(comparativaString);
-      comparativaFiles = JSON.parse(documents);
-
-      // Optional Zod validation for enhanced type safety (non-breaking)
-      try {
-        ComparativaSchema.parse(comparativa);
-        z.array(ComparativaFileSchema).parse(comparativaFiles);
-      } catch (zodError) {
-        // Log validation warnings but don't break backward compatibility
-        console.warn("Data validation warning:", zodError);
-      }
+      rawComparativa = JSON.parse(comparativaString);
+      rawComparativaFiles = JSON.parse(documents);
     } catch (parseError) {
       console.error("JSON parsing error:", parseError);
       return NextResponse.json(
         {
           success: false,
-          error: "Missing parameters", // Use original error message for consistency
+          error: "Invalid data format",
         },
         { status: 400 },
       );
     }
 
-    // Execute database operations (maintaining original logic flow)
-    const comparativaResult = await addComparativaOptimized(
-      comparativa,
-      tursoClient,
-    );
-
-    if (!comparativaResult.success) {
+    const comparativaResult = ComparativaSchema.safeParse(rawComparativa);
+    const filesResult = z
+      .array(ComparativaFileSchema)
+      .safeParse(rawComparativaFiles);
+    if (!comparativaResult.success || !filesResult.success) {
       return NextResponse.json(
         {
           success: false,
-          error: comparativaResult.error,
+          error: "Invalid data format",
         },
         { status: 400 },
       );
     }
 
-    if (comparativaFiles.length > 0) {
-      const insertFilesResult = await addComparativaFilesOptimized(
-        comparativaFiles,
-        tursoClient,
+    const comparativa: ComparativaDB = {
+      ...comparativaResult.data,
+      tramite_id: comparativaResult.data.tramite_id,
+      company_id: comparativaResult.data.company_id ?? undefined,
+    };
+    const comparativaFiles: ComparativaFile[] = filesResult.data;
+
+    if (
+      comparativaFiles.some(
+        (file) => file.comparativa_id !== comparativa.id,
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid comparison file reference",
+        },
+        { status: 400 },
       );
-      if (!insertFilesResult.success) {
+    }
+
+    try {
+      await createComparativaIdempotently(
+        tursoClient,
+        comparativa,
+        comparativaFiles,
+      );
+    } catch (error) {
+      if (error instanceof ComparativaIdempotencyConflictError) {
         return NextResponse.json(
           {
             success: false,
-            error: insertFilesResult.error,
+            error: "Comparison creation conflict",
           },
-          { status: 400 },
+          { status: 409 },
         );
       }
+
+      console.error("Error creating comparison transaction:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No se ha podido crear la comparativa",
+        },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true });

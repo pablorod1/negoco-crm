@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/core/components/ui/dialog";
-import { BarChart3, CheckCircle, CircleX, Plus, PlusCircle, Rocket } from "lucide-react";
+import { BarChart3, CheckCircle, CircleX, PlusCircle, Rocket } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
 import { Button } from "@/core/components/ui/button";
 import { CreateComparativaStepper } from "./CreateComparativaStepper";
@@ -26,6 +26,7 @@ import { uploadFile } from "@/core/firebase/data/uploadFiles";
 import { type VariantProps } from "class-variance-authority";
 import { buttonVariants } from "@/core/components/ui/button";
 import { cn } from "@/core/utils";
+import { createComparativaRequest } from "@/comparativas/utils/createComparativaRequest";
 
 export default function AddComparativaDialog({
   variant,
@@ -39,6 +40,7 @@ export default function AddComparativaDialog({
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const submissionInFlight = useRef(false);
   const userPlan = getPlan();
   const isStarterPlan = userPlan === "starter";
 
@@ -86,6 +88,9 @@ export default function AddComparativaDialog({
   };
 
   const handleSubmit = async () => {
+    if (submissionInFlight.current) return;
+
+    submissionInFlight.current = true;
     setLoading(true);
     try {
       let comparativaFiles: ComparativaFile[];
@@ -124,12 +129,7 @@ export default function AddComparativaDialog({
       const formData = new FormData();
       formData.append("comparativa", JSON.stringify(comparativa));
       formData.append("files", JSON.stringify(comparativaFiles));
-      const response = await fetch(`/api/v2/comparisons`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const { success, error } = await response.json();
+      const { success, error } = await createComparativaRequest(formData);
 
       if (!success) {
         showCustomToast({
@@ -165,6 +165,7 @@ export default function AddComparativaDialog({
       });
       console.error("Error al crear la comparativa:", error);
     } finally {
+      submissionInFlight.current = false;
       setLoading(false);
     }
   };
