@@ -149,9 +149,9 @@ export async function buildContractFilters(
     const subcomerciales = await getSubcomerciales(tursoClient, user_id);
     if (subcomerciales.success && subcomerciales.ids.length > 0) {
       filters.push(
-        `(t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
+        `(t.user_id = ? OR t.user_id IN (${subcomerciales.ids
           .map(() => "?")
-          .join(", ")})))`,
+          .join(", ")}))`,
       );
       params.push(user_id, ...subcomerciales.ids);
     } else {
