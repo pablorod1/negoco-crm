@@ -56,11 +56,11 @@ export default function Header({ className }: ImprovedHeaderProps) {
         {/* Right section - Logo */}
         <div className="flex items-center">
           {!loading && userData ? (
-            <div className="relative">
+            <div className="flex h-10 w-24 items-center justify-center overflow-hidden">
               <Image
                 src={organizationLogo.defaultUrl}
                 alt={organizationLogo.alt || name || "Negoco Cloud"}
-                className="h-full w-auto max-w-32 object-contain transition-opacity hover:opacity-80"
+                className="h-auto w-auto max-h-9 max-w-24 object-contain transition-opacity hover:opacity-80"
                 width={organizationLogo.width}
                 height={organizationLogo.height}
                 priority

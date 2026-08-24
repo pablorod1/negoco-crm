@@ -9,13 +9,13 @@ export default async function LoginWrapper() {
   return (
     <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-gray-50">
       <div className="w-full max-w-lg">
-        <div className="lg:hidden mb-8">
+        <div className="mb-8 flex justify-center lg:hidden">
           <Image
             src={branding.logo.defaultUrl}
             alt={branding.logo.alt}
             width={branding.logo.width}
             height={branding.logo.height}
-            className="w-auto h-auto mx-auto"
+            className="h-auto w-auto max-h-20 max-w-32 object-contain"
           />
         </div>
         <LoginForm />

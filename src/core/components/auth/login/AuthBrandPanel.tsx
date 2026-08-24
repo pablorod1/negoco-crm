@@ -19,13 +19,13 @@ export default function AuthBrandPanel({
 
       <div className="relative z-10 flex flex-col justify-between h-full">
         <div className="overflow-hidden">
-          <div className="animate-slideInFromTop max-w-48 w-full overflow-hidden">
+          <div className="animate-slideInFromTop flex h-20 w-32 items-center justify-start overflow-hidden">
             <Image
               src={branding.logo.defaultUrl}
               alt={branding.logo.alt}
               width={branding.logo.width}
               height={branding.logo.height}
-              className="w-full h-auto"
+              className="h-auto w-auto max-h-20 max-w-32 object-contain"
               priority
             />
           </div>
