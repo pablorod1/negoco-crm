@@ -129,6 +129,77 @@
           }
         }
       }
+    },
+    "eficience": {
+      "tenant": "eficience",
+      "displayName": "Grupo Eficience",
+      "organization": {
+        "name": "Grupo Eficience",
+        "logo": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/F0WdEa3GGQBpaK5QbxGSGGFcCclPlXvn%2Flogo%2Fgrupo-eficience-logo.png?alt=media&token=25fe126c-f503-40a3-af5f-bd707aec60e2"
+      },
+      "assets": {
+        "defaultLogoSource": "public/eficience/grupo-eficience-logo.png",
+        "faviconSource": "public/eficience/favicon.png"
+      },
+      "metadata": {
+        "branding": {
+          "enabled": true,
+          "displayName": "Grupo Eficience",
+          "faviconUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/F0WdEa3GGQBpaK5QbxGSGGFcCclPlXvn%2Flogo%2Ffavicon.png?alt=media&token=4e2be643-9486-4906-88b7-3a5d658592b4",
+          "logo": {
+            "defaultUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/F0WdEa3GGQBpaK5QbxGSGGFcCclPlXvn%2Flogo%2Fgrupo-eficience-logo.png?alt=media&token=25fe126c-f503-40a3-af5f-bd707aec60e2",
+            "emailUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/F0WdEa3GGQBpaK5QbxGSGGFcCclPlXvn%2Flogo%2Fgrupo-eficience-logo.png?alt=media&token=25fe126c-f503-40a3-af5f-bd707aec60e2",
+            "alt": "Grupo Eficience",
+            "width": 1247,
+            "height": 787
+          },
+          "palette": {
+            "primary": {
+              "50": "#ecfeff",
+              "100": "#cffafe",
+              "200": "#a5f3fc",
+              "300": "#67e8f9",
+              "400": "#22d3ee",
+              "500": "#0db9dc",
+              "600": "#087f97",
+              "700": "#0e7490",
+              "800": "#155e75",
+              "900": "#164e63",
+              "950": "#083344",
+              "DEFAULT": "#087f97"
+            },
+            "secondary": {
+              "50": "#f3f6fb",
+              "100": "#e3eaf6",
+              "200": "#cbd8ec",
+              "300": "#a7bcdf",
+              "400": "#7a98cd",
+              "500": "#5574b4",
+              "600": "#3d5a9c",
+              "700": "#24488a",
+              "800": "#203d73",
+              "900": "#1d355f",
+              "950": "#111e38",
+              "DEFAULT": "#24488a"
+            }
+          },
+          "hero": {
+            "background": "linear-gradient(90deg, #24488a 0%, #087f97 100%)",
+            "border": "#67e8f9",
+            "padding": "16px",
+            "foreground": "#ffffff",
+            "mutedForeground": "rgb(255 255 255 / 0.82)",
+            "cardBackground": "rgb(255 255 255 / 0.86)",
+            "cardForeground": "#0f172a",
+            "cardMutedForeground": "#475569",
+            "cardBorder": "transparent"
+          },
+          "email": {
+            "fromName": "Grupo Eficience",
+            "smtpEnvPrefix": "EFICIENCE"
+          }
+        }
+      }
     }
   }
 }
