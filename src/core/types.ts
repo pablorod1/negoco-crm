@@ -15,6 +15,7 @@ export interface User {
   role: string;
   super_id: string | null;
   should_reset_password: boolean;
+  has_abarca_user_id: boolean;
   notifications?: number;
   last_login?: string | null;
   company_commissions?: UserCompanyCommission[];

@@ -129,4 +129,67 @@ describe("GET /api/v2/users/[id]", () => {
       "comparisons.study.review": true,
     });
   });
+
+  test.each([
+    [321, true],
+    ["321", true],
+    [null, false],
+    [0, false],
+    [-1, false],
+    [1.5, false],
+    ["01", false],
+    [String(Number.MAX_SAFE_INTEGER + 1), false],
+  ])(
+    "returns only the Abarca identity capability for %j",
+    async (abarcaUserId, expectedCapability) => {
+      mocks.execute.mockImplementation(({ sql }: { sql: string }) => {
+        if (sql.includes("FROM user u")) {
+          return {
+            rows: [
+              {
+                id: "user-1",
+                email: "user@example.com",
+                email_verified: 1,
+                name: "User",
+                created_at: "2026-01-01",
+                updated_at: "2026-01-02",
+                banned: 0,
+                image: null,
+                role: "2",
+                super_id: null,
+                should_reset_password: 0,
+                notifications: 0,
+                company: null,
+                abarca_user_id: abarcaUserId,
+                org_id: "org-1",
+                org_name: "Organization",
+                org_logo: null,
+                org_metadata: null,
+                org_plan: "plan-1",
+                org_abarca_user_id: 123,
+                plan_name: "premium",
+              },
+            ],
+            rowsAffected: 0,
+          };
+        }
+
+        return { rows: [], rowsAffected: 0 };
+      });
+      const request = new Request(
+        "https://tenant.example.com/api/v2/users/user-1",
+        { headers: { host: "tenant.example.com" } },
+      ) as NextRequest;
+
+      const response = await route.GET(request, {
+        params: Promise.resolve({ id: "user-1" }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.data.has_abarca_user_id).toBe(expectedCapability);
+      expect(body.data).not.toHaveProperty("abarca_user_id");
+      expect(body.data.organization.abarca_user_id).toBe(123);
+    },
+  );
 });

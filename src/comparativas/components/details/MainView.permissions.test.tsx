@@ -72,6 +72,7 @@ function renderMainView({
   complete,
   review,
   aiStudiesUserId = 42,
+  hasAbarcaUserId = aiStudiesUserId !== null,
   aiStudyData,
   isSubcomercial = false,
   onUpdate = () => {},
@@ -86,6 +87,7 @@ function renderMainView({
   complete: boolean;
   review: boolean;
   aiStudiesUserId?: number | null;
+  hasAbarcaUserId?: boolean;
   aiStudyData?: Record<string, unknown>;
   isSubcomercial?: boolean;
   onUpdate?: () => void;
@@ -105,6 +107,7 @@ function renderMainView({
             "comparisons.study.complete": complete,
             "comparisons.study.review": review,
           },
+          has_abarca_user_id: hasAbarcaUserId,
           organization: {
             id: "organization-1",
             abarca_user_id: aiStudiesUserId,
@@ -236,6 +239,90 @@ describe("MainView study permissions", () => {
       ),
     ).toHaveAttribute("id", "supplier-select");
   });
+
+  test("role 2 sees AI studies with an individual identity and no organization identity", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: true,
+      review: false,
+      hasAbarcaUserId: true,
+      aiStudiesUserId: null,
+    });
+
+    expectPendingActions({ ai: true, manual: true, reject: true });
+  });
+
+  test("role 2 without an individual identity hides only AI despite an organization identity", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: true,
+      review: false,
+      hasAbarcaUserId: false,
+      aiStudiesUserId: 42,
+    });
+
+    expectPendingActions({ ai: false, manual: true, reject: true });
+  });
+
+  test("an AI identity does not grant visibility when complete permission is denied", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: false,
+      review: false,
+      hasAbarcaUserId: true,
+      aiStudiesUserId: 42,
+    });
+
+    expectPendingActions({ ai: false, manual: false, reject: false });
+  });
+
+  test.each([
+    {
+      role: "admin",
+      hasAbarcaUserId: true,
+      aiStudiesUserId: null,
+      expectedAi: false,
+    },
+    {
+      role: "admin",
+      hasAbarcaUserId: false,
+      aiStudiesUserId: 42,
+      expectedAi: true,
+    },
+    {
+      role: "1",
+      hasAbarcaUserId: true,
+      aiStudiesUserId: null,
+      expectedAi: false,
+    },
+    {
+      role: "1",
+      hasAbarcaUserId: false,
+      aiStudiesUserId: 42,
+      expectedAi: true,
+    },
+  ])(
+    "role $role uses only the organization AI identity when visibility is $expectedAi",
+    ({ role, hasAbarcaUserId, aiStudiesUserId, expectedAi }) => {
+      renderMainView({
+        role,
+        status: "pending",
+        complete: true,
+        review: false,
+        hasAbarcaUserId,
+        aiStudiesUserId,
+      });
+
+      expectPendingActions({
+        ai: expectedAi,
+        manual: true,
+        reject: true,
+      });
+    },
+  );
 
   test("processing exposes the same study actions as pending", () => {
     renderMainView({

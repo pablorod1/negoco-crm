@@ -105,7 +105,7 @@ const jpegDocument = documentBase64Schema("jpeg", MAX_JPEG_BYTES);
 export const AbarcaWebhookSchema = z.object({
   // Identificación
   ide: z.number(),
-  crm_id: z.number(),
+  crm_id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
 
   // Suministro
   cups: optionalString,

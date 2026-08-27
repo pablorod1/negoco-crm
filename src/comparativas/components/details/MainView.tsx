@@ -102,9 +102,11 @@ export default function MainView({
     userData.role,
     "comparisons.study.review",
   );
-  const hasAiStudies = hasAiStudiesCapability(
-    userData.organization.abarca_user_id,
-  );
+  const canUseAiStudies =
+    canCompleteStudies &&
+    (isComercial
+      ? userData.has_abarca_user_id
+      : hasAiStudiesCapability(userData.organization.abarca_user_id));
   const assignedCommercialId = comparativa.user.id;
   const canEditCommercialSummary =
     (userData.role === "admin" || userData.role === "1") && isStudied;
@@ -431,7 +433,7 @@ export default function MainView({
 
                     {canCompleteStudies ? (
                       <div className="space-y-3">
-                        {hasAiStudies ? (
+                        {canUseAiStudies ? (
                           <AbarcaPanel
                             comparativaId={comparativa.id}
                             onStudyCompleted={onUpdate}

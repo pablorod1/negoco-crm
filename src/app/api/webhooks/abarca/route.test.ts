@@ -65,6 +65,8 @@ let failFinalDatabaseWrite: boolean;
 let failCompletionReadback: boolean;
 let throwAfterFinalCommit: boolean;
 let deniedLeaseToken: string | null;
+let individualAbarcaUserIds: number[];
+let failIdentityLookup: boolean;
 
 const db = {
   execute: mocks.execute,
@@ -404,6 +406,8 @@ beforeEach(() => {
   failCompletionReadback = false;
   throwAfterFinalCommit = false;
   deniedLeaseToken = null;
+  individualAbarcaUserIds = [];
+  failIdentityLookup = false;
 
   mocks.getTursoClientByTenant.mockReturnValue(db);
   mocks.transaction.mockImplementation(async () => makeTransaction());
@@ -429,6 +433,17 @@ beforeEach(() => {
           };
         }
         throw new Error(`Unexpected database SQL: ${statement}`);
+      }
+
+      if (statement.sql.includes("FROM user")) {
+        if (failIdentityLookup) {
+          throw new Error("identity lookup failed");
+        }
+        return {
+          rows: individualAbarcaUserIds.includes(Number(statement.args[0]))
+            ? [{ id: "user-1" }]
+            : [],
+        };
       }
 
       if (
@@ -478,6 +493,84 @@ afterEach(() => {
 });
 
 describe("POST /api/webhooks/abarca", () => {
+  test("accepts the organization Abarca identity", async () => {
+    const response = await route.POST(request({ ide: 100, crm_id: 321 }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.transaction).toHaveBeenCalled();
+  });
+
+  test("accepts an individual user Abarca identity when the organization differs", async () => {
+    individualAbarcaUserIds = [654];
+
+    const response = await route.POST(
+      request({
+        ide: 100,
+        crm_id: 654,
+        comparativa_pdf: validPdfBase64,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.execute).toHaveBeenCalledWith({
+      sql: expect.stringContaining("FROM user"),
+      args: [654],
+    });
+    expect(mocks.uploadBase64File).toHaveBeenCalledWith(
+      validPdfBase64,
+      expect.stringMatching(
+        /^organization-1\/comparativas\/comparison-1\/abarca\//,
+      ),
+      "application/pdf",
+      expect.objectContaining({ timeoutMs: 10 * 60 * 1000 }),
+    );
+  });
+
+  test("rejects an unknown Abarca identity", async () => {
+    const response = await route.POST(request({ ide: 100, crm_id: 999 }));
+
+    expect(response.status).toBe(403);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  test.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid crm_id %s before tenant database access",
+    async (crmId) => {
+      const response = await route.POST(request({ ide: 100, crm_id: crmId }));
+
+      expect(response.status).toBe(400);
+      expect(mocks.getTursoClientByTenant).not.toHaveBeenCalled();
+      expect(mocks.transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  test("returns an internal error when the individual identity lookup fails", async () => {
+    failIdentityLookup = true;
+
+    const response = await route.POST(request({ ide: 100, crm_id: 654 }));
+
+    expect(response.status).toBe(500);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  test("returns not found when the organization is absent", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [] });
+
+    const response = await route.POST(request());
+
+    expect(response.status).toBe(404);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  test("returns an internal error when the organization lookup fails", async () => {
+    mocks.execute.mockRejectedValueOnce(new Error("organization lookup failed"));
+
+    const response = await route.POST(request());
+
+    expect(response.status).toBe(500);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   test("processes the initial callback exactly once", async () => {
     const response = await route.POST(request());
 

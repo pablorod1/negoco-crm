@@ -300,14 +300,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const integrationResponse = await client.execute({
-      sql: `SELECT o.abarca_user_id
-        FROM member m
-        INNER JOIN organization o ON m.organization_id = o.id
-        WHERE m.user_id = ?
-        LIMIT 1`,
-      args: [authResult.user.id],
-    });
+    const integrationResponse = await client.execute(
+      authResult.user.role === "2"
+        ? {
+            sql: `SELECT abarca_user_id
+              FROM user
+              WHERE id = ?
+              LIMIT 1`,
+            args: [authResult.user.id],
+          }
+        : {
+            sql: `SELECT o.abarca_user_id
+              FROM member m
+              INNER JOIN organization o ON m.organization_id = o.id
+              WHERE m.user_id = ?
+              LIMIT 1`,
+            args: [authResult.user.id],
+          },
+    );
     const integrationValue = integrationResponse.rows[0]?.abarca_user_id;
     if (!hasAiStudiesCapability(integrationValue)) {
       return NextResponse.json(

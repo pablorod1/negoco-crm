@@ -7,6 +7,7 @@ import type { ResolvedBranding } from "@/core/branding/types";
 import { getEffectivePermissions } from "@/core/access-control/server";
 import type { PermissionMap } from "@/core/access-control/types";
 import { validateUserSession } from "@/core/auth/session-utils";
+import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
 
 // Request Validation Schema
 const GetUserParamsSchema = z.object({
@@ -28,6 +29,7 @@ interface UserResponse {
     role: string;
     super_id: string | null;
     should_reset_password: boolean;
+    has_abarca_user_id: boolean;
     notifications: number;
     company: string | null;
     organization: {
@@ -197,6 +199,7 @@ export async function GET(
         role: userRole,
         super_id: row.super_id ? String(row.super_id) : null,
         should_reset_password: Boolean(row.should_reset_password),
+        has_abarca_user_id: hasAiStudiesCapability(row.abarca_user_id),
         notifications: Number(row.notifications) || 0,
         company: row.company ? String(row.company) : null,
         organization: {

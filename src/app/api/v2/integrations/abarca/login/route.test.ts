@@ -109,6 +109,10 @@ describe("POST /api/v2/integrations/abarca/login", () => {
   });
 
   test("returns 403 before accessing the comparison or upstream when permission is denied", async () => {
+    mocks.validateUserSession.mockResolvedValue({
+      success: true,
+      user: { ...authenticatedUser, role: "2" },
+    });
     mocks.getEffectivePermission.mockResolvedValue(false);
 
     const response = await route.POST(
@@ -118,9 +122,10 @@ describe("POST /api/v2/integrations/abarca/login", () => {
     expect(response.status).toBe(403);
     expect(mocks.getEffectivePermission).toHaveBeenCalledWith(
       expect.anything(),
-      authenticatedUser,
+      { ...authenticatedUser, role: "2" },
       "comparisons.study.complete",
     );
+    expect(mocks.getSubcomerciales).not.toHaveBeenCalled();
     expect(mocks.execute).not.toHaveBeenCalled();
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
@@ -193,6 +198,168 @@ describe("POST /api/v2/integrations/abarca/login", () => {
         error: "Integración de IA no configurada",
       });
       expect(mocks.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  test("uses the authenticated role-2 user's individual identity for a subordinate comparison", async () => {
+    mocks.validateUserSession.mockResolvedValue({
+      success: true,
+      user: { ...authenticatedUser, role: "2" },
+    });
+    mocks.getSubcomerciales.mockResolvedValue({
+      success: true,
+      ids: ["subordinate-1"],
+    });
+    mocks.execute
+      .mockResolvedValueOnce({
+        rows: [{ id: "comparison-1", status: "pending" }],
+      })
+      .mockResolvedValueOnce({ rows: [{ abarca_user_id: "654" }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: "comparison-1", status: "pending" }],
+      });
+    mocks.fetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ login_url: "https://app.abarcaia.com/login" }),
+        { status: 200 },
+      ),
+    );
+
+    const response = await route.POST(
+      request({ comparativa_id: "comparison-1" }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.execute).toHaveBeenNthCalledWith(1, {
+      sql: expect.stringContaining("user_id IN"),
+      args: ["comparison-1", "user-1", "subordinate-1"],
+    });
+    expect(mocks.execute).toHaveBeenNthCalledWith(2, {
+      sql: expect.stringContaining("FROM user"),
+      args: ["user-1"],
+    });
+    expect(
+      mocks.execute.mock.calls.some(([statement]) =>
+        String(statement.sql).includes("INNER JOIN organization"),
+      ),
+    ).toBe(false);
+    const upstreamInit = mocks.fetch.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(String(upstreamInit.body))).toMatchObject({ idcm: 654 });
+  });
+
+  test("does not fall back to an available organization identity for role 2", async () => {
+    mocks.validateUserSession.mockResolvedValue({
+      success: true,
+      user: { ...authenticatedUser, role: "2" },
+    });
+    mocks.execute.mockImplementation(
+      async (statement: { sql: string; args: unknown[] }) => {
+        if (statement.sql.includes("FROM comparativas WHERE id = ?")) {
+          return {
+            rows: [{ id: "comparison-1", status: "pending" }],
+          };
+        }
+        if (statement.sql.includes("FROM user")) {
+          return { rows: [] };
+        }
+        if (statement.sql.includes("INNER JOIN organization")) {
+          return { rows: [{ abarca_user_id: 999 }] };
+        }
+
+        throw new Error(`Unexpected SQL in test: ${statement.sql}`);
+      },
+    );
+
+    const response = await route.POST(
+      request({ comparativa_id: "comparison-1" }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Integración de IA no configurada",
+    });
+    expect(
+      mocks.execute.mock.calls.some(([statement]) =>
+        String(statement.sql).includes("INNER JOIN organization"),
+      ),
+    ).toBe(false);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  test.each([null, undefined, 0, -1, 1.5, "0", "01", "9007199254740992"])(
+    "returns 409 without organization fallback for an invalid role-2 identity: %p",
+    async (individualId) => {
+      mocks.validateUserSession.mockResolvedValue({
+        success: true,
+        user: { ...authenticatedUser, role: "2" },
+      });
+      mocks.execute
+        .mockResolvedValueOnce({
+          rows: [{ id: "comparison-1", status: "pending" }],
+        })
+        .mockResolvedValueOnce({
+          rows:
+            individualId === undefined
+              ? []
+              : [{ abarca_user_id: individualId }],
+        });
+
+      const response = await route.POST(
+        request({ comparativa_id: "comparison-1" }),
+      );
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "Integración de IA no configurada",
+      });
+      expect(mocks.execute).toHaveBeenCalledTimes(2);
+      expect(mocks.execute).toHaveBeenLastCalledWith({
+        sql: expect.stringContaining("FROM user"),
+        args: ["user-1"],
+      });
+      expect(
+        mocks.execute.mock.calls.some(([statement]) =>
+          String(statement.sql).includes("INNER JOIN organization"),
+        ),
+      ).toBe(false);
+      expect(mocks.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each(["admin", "1"])(
+    "uses the organization identity for role %s",
+    async (role) => {
+      mocks.validateUserSession.mockResolvedValue({
+        success: true,
+        user: { ...authenticatedUser, role },
+      });
+      allowPendingComparison("765");
+      mocks.fetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ login_url: "https://app.abarcaia.com/login" }),
+          { status: 200 },
+        ),
+      );
+
+      const response = await route.POST(
+        request({ comparativa_id: "comparison-1" }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(mocks.execute).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          sql: expect.stringContaining("INNER JOIN organization"),
+          args: ["user-1"],
+        }),
+      );
+      expect(
+        mocks.execute.mock.calls.some(([statement]) =>
+          String(statement.sql).includes("FROM user"),
+        ),
+      ).toBe(false);
+      const upstreamInit = mocks.fetch.mock.calls[0][1] as RequestInit;
+      expect(JSON.parse(String(upstreamInit.body))).toMatchObject({ idcm: 765 });
     },
   );
 

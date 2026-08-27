@@ -35,6 +35,7 @@ const baseUser = {
   role: "1",
   super_id: null,
   should_reset_password: false,
+  has_abarca_user_id: false,
 } satisfies User;
 
 const baseComparativa = {

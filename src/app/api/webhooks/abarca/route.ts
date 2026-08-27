@@ -929,7 +929,16 @@ export async function POST(req: Request) {
       return jsonError("Not found", 404);
     }
     if (Number(organization.rows[0].abarca_user_id) !== payload.crm_id) {
-      return jsonError("Forbidden", 403);
+      const user = await db.execute({
+        sql: `SELECT id
+          FROM user
+          WHERE abarca_user_id = ?
+          LIMIT 1`,
+        args: [payload.crm_id],
+      });
+      if (user.rows.length === 0) {
+        return jsonError("Forbidden", 403);
+      }
     }
     organizationId = String(organization.rows[0].id);
   } catch (error) {

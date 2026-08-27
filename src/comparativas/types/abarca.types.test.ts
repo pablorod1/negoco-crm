@@ -32,6 +32,18 @@ describe("AbarcaWebhookSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  test.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid crm_id %s",
+    (crmId) => {
+      const result = AbarcaWebhookSchema.safeParse({
+        ide: 123,
+        crm_id: crmId,
+      });
+
+      expect(result.success).toBe(false);
+    },
+  );
+
   test.each([
     { name: "empty", value: "" },
     { name: "malformed", value: "not/base64%%%" },
