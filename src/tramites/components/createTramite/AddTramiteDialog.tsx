@@ -154,36 +154,7 @@ export default function AddTramiteDialog({
     if (!comparativa || !userData) return;
 
     try {
-      // Update comparativa status
-      const comparativaRes = await fetch(
-        `/api/v2/comparisons/${comparativa.id}/status`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            status: "processed",
-            tramite_id: tramite.id,
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      const { success: comparativaSuccess, error: comparativaError } =
-        await comparativaRes.json();
-
-      if (!comparativaSuccess) {
-        showCustomToast({
-          title: "Error al actualizar comparativa",
-          message: comparativaError || "Error desconocido",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return false;
-      }
-
-      // Move files
+      // Move files before marking the comparison as processed
       const moveFileRes = await fetch(
         `/api/v2/comparisons/${comparativa.id}/convert-to-contract`,
         {
@@ -199,6 +170,17 @@ export default function AddTramiteDialog({
         },
       );
 
+      if (!moveFileRes.ok) {
+        showCustomToast({
+          title: "Error al mover archivos",
+          message: "El servidor no pudo completar la conversión de archivos",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return false;
+      }
+
       const { success: moveFilesSuccess, error: moveFileError } =
         await moveFileRes.json();
 
@@ -206,6 +188,46 @@ export default function AddTramiteDialog({
         showCustomToast({
           title: "Error al mover archivos",
           message: moveFileError || "Error desconocido",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return false;
+      }
+
+      // Update comparativa status only after its files are safely transferred
+      const comparativaRes = await fetch(
+        `/api/v2/comparisons/${comparativa.id}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: "processed",
+            tramite_id: tramite.id,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!comparativaRes.ok) {
+        showCustomToast({
+          title: "Error al actualizar comparativa",
+          message: "El servidor no pudo actualizar el estado de la comparativa",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return false;
+      }
+
+      const { success: comparativaSuccess, error: comparativaError } =
+        await comparativaRes.json();
+
+      if (!comparativaSuccess) {
+        showCustomToast({
+          title: "Error al actualizar comparativa",
+          message: comparativaError || "Error desconocido",
           iconColor: "var(--danger-color)",
           iconSize: 24,
           icon: CircleX,
