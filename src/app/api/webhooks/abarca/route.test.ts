@@ -1333,4 +1333,22 @@ describe("POST /api/webhooks/abarca", () => {
     expect(response.status).toBe(503);
     expect(state.files).toBe(1);
   });
+
+  test("keeps the Abarca commissions in the stored payload", async () => {
+    const response = await route.POST(
+      request({
+        ide: 100,
+        crm_id: 321,
+        comision_oferta: 120.5,
+        comision_base: 30,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const stored = JSON.parse(storedRawPayload) as Record<string, unknown>;
+    // Todavía no se vuelcan a comparativas.comision_*: solo se guardan.
+    expect(stored.comision_oferta).toBe(120.5);
+    expect(stored.comision_base).toBe(30);
+    expect(state.comparisonStatus).toBe("awaiting_review");
+  });
 });

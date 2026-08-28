@@ -88,4 +88,24 @@ describe("AbarcaWebhookSchema", () => {
 
     expect(result.success).toBe(true);
   });
+
+  test("accepts the commissions Abarca sends with the study", () => {
+    const result = AbarcaWebhookSchema.safeParse({
+      ide: 123,
+      crm_id: 456,
+      comision_oferta: 120.5,
+      comision_base: 30,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.comision_oferta).toBe(120.5);
+    expect(result.data?.comision_base).toBe(30);
+  });
+
+  test("still parses studies sent before the commissions existed", () => {
+    const result = AbarcaWebhookSchema.safeParse({ ide: 123, crm_id: 456 });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.comision_oferta).toBeUndefined();
+  });
 });

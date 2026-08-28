@@ -12,6 +12,7 @@ import {
   AbarcaWebhookDocument,
 } from "@/comparativas/types/abarca.types";
 import { parseAbarcaApoloSipsSummary } from "@/comparativas/utils/abarca-apolo-sips";
+import { parseAbarcaComisiones } from "@/comparativas/utils/abarca-comisiones";
 import { parseAbarcaDocuments } from "@/comparativas/utils/abarca-documents";
 
 /**
@@ -781,6 +782,7 @@ export async function POST(
           servicios: row.servicios ? String(row.servicios) : null,
           permanencia: Number(row.permanencia ?? 0),
           apolo_sips: parseAbarcaApoloSipsSummary(rawPayload),
+          comisiones: parseAbarcaComisiones(rawPayload),
           raw_payload: rawPayload,
           created_at: String(row.created_at),
         };

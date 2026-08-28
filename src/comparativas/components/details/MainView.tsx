@@ -12,7 +12,7 @@ import {
 import { Button } from "@/core/components/ui/button";
 import { Switch } from "@/core/components/ui/switch";
 import { ServiceInfo } from "@/comparativas/components/editComparativa/ServiceInfo";
-import { formatDateTime } from "@/core/utils/format";
+import { formatComission, formatDateTime } from "@/core/utils/format";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import {
@@ -801,6 +801,28 @@ export default function MainView({
                         {abarcaEstudio.iban || "—"}
                       </p>
                     </div>
+                    {abarcaEstudio.comisiones?.oferta !== null &&
+                      abarcaEstudio.comisiones?.oferta !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500">
+                            Comisión de oferta (Abarca)
+                          </p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatComission(abarcaEstudio.comisiones.oferta)}
+                          </p>
+                        </div>
+                      )}
+                    {abarcaEstudio.comisiones?.base !== null &&
+                      abarcaEstudio.comisiones?.base !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500">
+                            Comisión de comercial (Abarca)
+                          </p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatComission(abarcaEstudio.comisiones.base)}
+                          </p>
+                        </div>
+                      )}
                     {abarcaEstudio.observaciones && (
                       <div>
                         <p className="text-xs text-gray-500">Observaciones</p>
