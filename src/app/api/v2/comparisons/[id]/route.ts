@@ -46,15 +46,6 @@ interface ComparativaFileRow extends Record<string, unknown> {
   preview_url: string | null;
 }
 
-/**
- * Request validation schema for comparison by ID
- */
-const ComparisonByIdSchema = z.object({
-  id: z.string().min(1, "ID is required"),
-  user_id: z.string().min(1, "User ID is required"),
-  user_role: z.string().min(1, "User role is required"),
-});
-
 const SafeResourceIdSchema = z
   .string()
   .trim()
@@ -615,32 +606,41 @@ export async function POST(
   const startTime = performance.now();
 
   try {
-    // Await params resolution
-    const resolvedParams = await params;
-    const paramId = resolvedParams.id;
-
-    // Parse and validate request body
-    const body = await request.json();
-    const validation = ComparisonByIdSchema.safeParse({
-      ...body,
-      id: paramId,
-    });
-
-    if (!validation.success) {
-      console.warn(
-        "[Validation Warning] Invalid request parameters:",
-        validation.error.issues,
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
       );
+    }
+
+    // Identity always comes from the session; the request body is ignored.
+    const { id: user_id, role: user_role } = authResult.user;
+
+    const { id: rawComparisonId } = await params;
+    const idValidation = SafeResourceIdSchema.safeParse(rawComparisonId);
+
+    if (!idValidation.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing parameters",
+          error: "Invalid parameters",
         },
         { status: 400 },
       );
     }
 
-    const { id, user_id, user_role } = validation.data;
+    const id = idValidation.data;
+
+    if (user_role !== "admin" && user_role !== "1" && user_role !== "2") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Comparativa not found",
+        },
+        { status: 404 },
+      );
+    }
 
     // Initialize database client
     const tursoClient = getTursoClient(request);
@@ -1007,6 +1007,18 @@ export async function DELETE(
   const startTime = performance.now();
 
   try {
+    // ==================== AUTHENTICATION ====================
+
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Deleting a comparison is an admin-only action, as it is in the UI.
+    if (authResult.user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // ==================== PARAMETER VALIDATION ====================
 
     const { id: comparisonId } = await params;

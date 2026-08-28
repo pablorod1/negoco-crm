@@ -18,7 +18,6 @@ import {
 import { Button } from "@/core/components/ui/button";
 import { Loader2, X, RotateCcw, Stars, FileText } from "lucide-react";
 import Image from "next/image";
-import { useUser } from "@/core/contexts/UserContext";
 import { ComparativaFile } from "@/comparativas/types";
 
 interface AbarcaPanelProps {
@@ -39,7 +38,6 @@ export function AbarcaPanel({
   const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { userData } = useUser();
 
   const pdfFiles = files.filter(
     (file) => file.extension?.toLowerCase() === "pdf",
@@ -47,18 +45,12 @@ export function AbarcaPanel({
 
   // Poll comparativa status while the panel is open
   useEffect(() => {
-    if (!isOpen || !iframeUrl || !userData) return;
+    if (!isOpen || !iframeUrl) return;
 
     pollingRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/v2/comparisons/${comparativaId}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: comparativaId,
-            user_id: userData.id,
-            user_role: userData.role,
-          }),
         });
         if (!res.ok) return;
         const responseBody = (await res.json()) as {
@@ -93,7 +85,7 @@ export function AbarcaPanel({
         pollingRef.current = null;
       }
     };
-  }, [isOpen, iframeUrl, comparativaId, onStudyCompleted, userData]);
+  }, [isOpen, iframeUrl, comparativaId, onStudyCompleted]);
 
   const fetchLoginUrl = useCallback(
     async (fileId?: string) => {

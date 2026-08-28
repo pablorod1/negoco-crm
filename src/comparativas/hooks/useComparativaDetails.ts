@@ -84,12 +84,6 @@ export function useComparativaDetails({
     try {
       const rs = await fetch(`/api/v2/comparisons/${requestedId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: requestedId,
-          user_id: requestedUserId,
-          user_role: requestedUserRole,
-        }),
       });
 
       if (!requestIsCurrent()) return;

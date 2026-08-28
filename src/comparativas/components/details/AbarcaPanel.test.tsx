@@ -7,9 +7,6 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
 }));
 
-vi.mock("@/core/contexts/UserContext", () => ({
-  useUser: () => ({ userData: null }),
-}));
 vi.mock("next/image", () => ({
   default: ({
     alt,
