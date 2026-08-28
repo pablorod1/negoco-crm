@@ -7,8 +7,12 @@ import { ComparativaPlan } from "@/comparativas/types";
 import type { Client, Transaction } from "@libsql/client";
 import { deleteFolderFromStorage } from "@/core/firebase/data/deleteFolder";
 import { createComparativaChange } from "@/comparativas/utils/comparativaChangesHelpers";
-import { AbarcaEstudio } from "@/comparativas/types/abarca.types";
+import {
+  AbarcaEstudio,
+  AbarcaWebhookDocument,
+} from "@/comparativas/types/abarca.types";
 import { parseAbarcaApoloSipsSummary } from "@/comparativas/utils/abarca-apolo-sips";
+import { parseAbarcaDocuments } from "@/comparativas/utils/abarca-documents";
 
 /**
  * Database row interfaces for type safety
@@ -106,6 +110,7 @@ interface ComparisonByIdResponse {
     has_permanencia: boolean;
     has_renovacion: boolean;
     abarca_estudio?: AbarcaEstudio;
+    abarca_documents?: AbarcaWebhookDocument[];
     files: Array<{
       id: string;
       filename: string;
@@ -288,6 +293,7 @@ function transformComparisonData(
     preview_url: string | null;
   }>,
   abarcaEstudio?: AbarcaEstudio,
+  abarcaDocuments?: AbarcaWebhookDocument[],
 ): ComparisonByIdResponse["data"] {
   return {
     id: String(comparativa.id),
@@ -318,6 +324,7 @@ function transformComparisonData(
     has_permanencia: comparativa.has_permanencia === 1,
     has_renovacion: comparativa.has_renovacion === 1,
     abarca_estudio: abarcaEstudio,
+    abarca_documents: abarcaDocuments,
     files,
   };
 }
@@ -782,11 +789,20 @@ export async function POST(
       // abarca_estudios table may not exist yet, ignore
     }
 
+    // Estado de los documentos del webhook de Abarca (qué falta y por qué),
+    // guardado dentro del propio raw_payload junto al resumen de SIPS.
+    const parsedDocuments = abarcaEstudio
+      ? parseAbarcaDocuments(abarcaEstudio.raw_payload)
+      : [];
+    const abarcaDocuments =
+      parsedDocuments.length > 0 ? parsedDocuments : undefined;
+
     // Transform and return data
     const responseData = transformComparisonData(
       comparativa,
       files,
       abarcaEstudio,
+      abarcaDocuments,
     );
 
     return NextResponse.json({

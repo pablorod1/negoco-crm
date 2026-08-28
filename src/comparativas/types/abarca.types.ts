@@ -6,101 +6,21 @@ import type { ApoloSipsPeriodValues } from "@/integrations/apolo-sips/summary";
 const optionalString = z.string().nullish();
 const optionalNumber = z.number().nullish();
 const optionalBoolean = z.boolean().nullish();
-const MAX_PDF_BYTES = 8 * 1024 * 1024;
-const MAX_JPEG_BYTES = 5 * 1024 * 1024;
-const MAX_TOTAL_DOCUMENT_BYTES = 12 * 1024 * 1024;
 
-function isCanonicalBase64(value: string): boolean {
-  if (value.length === 0 || value.length % 4 !== 0) return false;
-
-  const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
-  const contentLength = value.length - padding;
-  for (let index = 0; index < contentLength; index += 1) {
-    const code = value.charCodeAt(index);
-    const allowed =
-      (code >= 0x41 && code <= 0x5a) ||
-      (code >= 0x61 && code <= 0x7a) ||
-      (code >= 0x30 && code <= 0x39) ||
-      code === 0x2b ||
-      code === 0x2f;
-    if (!allowed) return false;
-  }
-  for (let index = contentLength; index < value.length; index += 1) {
-    if (value.charCodeAt(index) !== 0x3d) return false;
-  }
-  return true;
-}
-
-function hasPdfMagic(buffer: Buffer): boolean {
-  return (
-    buffer.length >= 5 &&
-    buffer[0] === 0x25 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x44 &&
-    buffer[3] === 0x46 &&
-    buffer[4] === 0x2d
-  );
-}
-
-function hasJpegMagic(buffer: Buffer): boolean {
-  return (
-    buffer.length >= 5 &&
-    buffer[0] === 0xff &&
-    buffer[1] === 0xd8 &&
-    buffer[2] === 0xff &&
-    buffer.at(-2) === 0xff &&
-    buffer.at(-1) === 0xd9
-  );
-}
-
-function documentBase64Schema(
-  kind: "pdf" | "jpeg",
-  maxDecodedBytes: number,
-) {
-  const maxEncodedLength = 4 * Math.ceil(maxDecodedBytes / 3);
-
-  return z
-    .string()
-    .min(1)
-    .max(maxEncodedLength)
-    .superRefine((value, context) => {
-      if (value.length > maxEncodedLength) return;
-
-      if (!isCanonicalBase64(value)) {
-        context.addIssue({
-          code: "custom",
-          message: "Invalid document encoding",
-        });
-        return;
-      }
-
-      const decoded = Buffer.from(value, "base64");
-      if (
-        decoded.length === 0 ||
-        decoded.length > maxDecodedBytes ||
-        decoded.toString("base64") !== value
-      ) {
-        context.addIssue({
-          code: "custom",
-          message: "Invalid document encoding",
-        });
-        return;
-      }
-
-      const hasExpectedMagic =
-        kind === "pdf" ? hasPdfMagic(decoded) : hasJpegMagic(decoded);
-      if (!hasExpectedMagic) {
-        context.addIssue({
-          code: "custom",
-          message: "Invalid document type",
-        });
-      }
-    })
-    .nullish();
-}
-
-const pdfDocument = documentBase64Schema("pdf", MAX_PDF_BYTES);
-const jpegDocument = documentBase64Schema("jpeg", MAX_JPEG_BYTES);
+/**
+ * Los documentos NO se validan aquí a propósito.
+ *
+ * Cuando iban dentro del objeto, un solo fichero mal formado (un PNG en un
+ * campo declarado JPEG, base64 con saltos de línea, un JPEG con bytes tras el
+ * marcador EOI) tumbaba el payload entero y se perdía también el estudio. El
+ * comparador acepta JPG, PNG y PDF, así que el campo por sí solo no dice qué
+ * tipo llega.
+ *
+ * La resolución real vive en `@/comparativas/utils/abarca-documents`, que
+ * decide fichero a fichero y pone en cuarentena lo que no reconoce en vez de
+ * descartarlo.
+ */
+const documentField = z.unknown().nullish();
 
 export const AbarcaWebhookSchema = z.object({
   // Identificación
@@ -153,11 +73,11 @@ export const AbarcaWebhookSchema = z.object({
   movil: optionalString,
   iban: optionalString,
 
-  // Documentos base64
-  dni_photo_front: jpegDocument,
-  dni_photo_back: jpegDocument,
-  justo_titulo: pdfDocument,
-  comparativa_pdf: pdfDocument,
+  // Documentos: base64 en línea o referencia a Storage puesta por el proxy
+  dni_photo_front: documentField,
+  dni_photo_back: documentField,
+  justo_titulo: documentField,
+  comparativa_pdf: documentField,
 
   // Banderas
   cambio_titularidad: optionalBoolean,
@@ -168,28 +88,6 @@ export const AbarcaWebhookSchema = z.object({
   servicios: optionalString,
   permanencia: optionalNumber,
   datos_crm: z.array(z.unknown()).optional(),
-}).superRefine((payload, context) => {
-  const documentValues = [
-    payload.dni_photo_front,
-    payload.dni_photo_back,
-    payload.justo_titulo,
-    payload.comparativa_pdf,
-  ];
-  const totalBytes = documentValues.reduce((total, value) => {
-    if (typeof value !== "string" || !isCanonicalBase64(value)) {
-      return total;
-    }
-    const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
-    return total + (value.length / 4) * 3 - padding;
-  }, 0);
-
-  if (totalBytes > MAX_TOTAL_DOCUMENT_BYTES) {
-    context.addIssue({
-      code: "custom",
-      message: "Document budget exceeded",
-      path: ["comparativa_pdf"],
-    });
-  }
 });
 
 export type AbarcaWebhookPayload = z.infer<typeof AbarcaWebhookSchema>;
@@ -268,6 +166,18 @@ export interface AbarcaEstudio {
 
   raw_payload: string;
   created_at: string;
+}
+
+/**
+ * Qué documento llegó, cuál falta y cuál no se pudo interpretar. Antes esto no
+ * se registraba: una comparativa sin DNI era indistinguible de una completa.
+ */
+export interface AbarcaWebhookDocument {
+  field: "comparativa_pdf" | "dni_photo_front" | "dni_photo_back" | "justo_titulo";
+  status: "stored" | "quarantined" | "missing" | "invalid";
+  download_url: string | null;
+  reason: string | null;
+  size: number | null;
 }
 
 export interface AbarcaSession {

@@ -32,6 +32,7 @@ import CompletarEstudioModal from "@/comparativas/components/editComparativa/Com
 import AddTramiteDialog from "@/tramites/components/createTramite/AddTramiteDialog";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import { Link } from "next-view-transitions";
+import { AbarcaDocumentsNotice } from "@/comparativas/components/details/AbarcaDocumentsNotice";
 import { FilesList } from "@/comparativas/components/editComparativa/FilesList";
 import UploadComparativaFilesModal from "@/comparativas/components/editComparativa/UploadComparativaFilesModal";
 import ComparativaComissionsSection from "@/comparativas/components/editComparativa/ComparativaComissionsSection";
@@ -918,6 +919,7 @@ export default function MainView({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <AbarcaDocumentsNotice documents={comparativa.abarca_documents} />
           <FilesList
             files={(comparativa.files as ComparativaFile[]) || []}
             comparativa_id={comparativa.id}

@@ -22,5 +22,6 @@ export default [
     "coverage/**",
     "dist/**",
     "public/pdfjs-dist/**",
+    "services/**",
   ]),
 ];

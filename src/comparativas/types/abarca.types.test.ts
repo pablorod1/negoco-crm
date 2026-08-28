@@ -44,6 +44,8 @@ describe("AbarcaWebhookSchema", () => {
     },
   );
 
+  // Los documentos ya no se validan en el schema: un fichero ilegible no debe
+  // tumbar la entrega entera. Los resuelve `abarca-documents` uno a uno.
   test.each([
     { name: "empty", value: "" },
     { name: "malformed", value: "not/base64%%%" },
@@ -51,69 +53,39 @@ describe("AbarcaWebhookSchema", () => {
       name: "non-canonical",
       value: Buffer.from("%PDF-1.7").toString("base64").replace(/=+$/, ""),
     },
-  ])("rejects $name document base64", ({ value }) => {
+    {
+      name: "a PNG in a DNI field",
+      value: Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]).toString("base64"),
+    },
+    {
+      name: "an oversized document",
+      value: Buffer.alloc(64 * 1024).toString("base64"),
+    },
+  ])("keeps the study when a document is $name", ({ value }) => {
     const result = AbarcaWebhookSchema.safeParse({
       ide: 123,
       crm_id: 456,
       comparativa_pdf: value,
+      dni_photo_front: value,
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
-  test.each([
-    {
-      field: "comparativa_pdf",
-      value: Buffer.from("plain text").toString("base64"),
-    },
-    {
-      field: "justo_titulo",
-      value: Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString("base64"),
-    },
-    {
-      field: "dni_photo_front",
-      value: Buffer.from("%PDF-1.7").toString("base64"),
-    },
-    {
-      field: "dni_photo_back",
-      value: Buffer.from("plain image").toString("base64"),
-    },
-  ])("rejects wrong magic bytes for $field", ({ field, value }) => {
+  test("accepts a staged document reference from the ingest proxy", () => {
     const result = AbarcaWebhookSchema.safeParse({
       ide: 123,
       crm_id: 456,
-      [field]: value,
+      dni_photo_back: {
+        path: "abarca-inbox/tenant/comparison-1/delivery-1/dni_photo_back.png",
+        url: "https://storage.example/staged.png",
+        bytes: 2048,
+        content_type: "image/png",
+      },
     });
 
-    expect(result.success).toBe(false);
-  });
-
-  test("rejects a document over its decoded size limit", () => {
-    const oversizedPdf = Buffer.alloc(8 * 1024 * 1024 + 1);
-    oversizedPdf.write("%PDF-");
-
-    const result = AbarcaWebhookSchema.safeParse({
-      ide: 123,
-      crm_id: 456,
-      comparativa_pdf: oversizedPdf.toString("base64"),
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  test("rejects documents that exceed the decoded total budget", () => {
-    const firstPdf = Buffer.alloc(7 * 1024 * 1024);
-    const secondPdf = Buffer.alloc(7 * 1024 * 1024);
-    firstPdf.write("%PDF-");
-    secondPdf.write("%PDF-");
-
-    const result = AbarcaWebhookSchema.safeParse({
-      ide: 123,
-      crm_id: 456,
-      comparativa_pdf: firstPdf.toString("base64"),
-      justo_titulo: secondPdf.toString("base64"),
-    });
-
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });

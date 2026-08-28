@@ -1,5 +1,5 @@
 import { User } from "@/core/types";
-import { AbarcaEstudio } from "./abarca.types";
+import { AbarcaEstudio, AbarcaWebhookDocument } from "./abarca.types";
 
 // Comparativa related types
 export type ComparativaStatus =
@@ -63,6 +63,7 @@ export interface ComparativaVM {
   company_id?: string; // ID reference to comercializadoras table
   company_name?: string; // Resolved name for display purposes
   abarca_estudio?: AbarcaEstudio; // Datos del estudio de Abarca si existe
+  abarca_documents?: AbarcaWebhookDocument[]; // Estado de los documentos del webhook
   has_permanencia: boolean;
   has_renovacion: boolean;
 }

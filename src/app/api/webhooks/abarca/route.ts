@@ -9,6 +9,16 @@ import {
   attachApoloSipsToRawPayload,
   createAbarcaApoloSipsSummary,
 } from "@/comparativas/utils/abarca-apolo-sips";
+import {
+  ABARCA_DOCUMENT_FIELDS,
+  resolveAbarcaDocuments,
+  attachDocumentsToRawPayload,
+  mergeDocumentsIntoRawPayload,
+  parseAbarcaDocuments,
+  type AbarcaDocumentField,
+  type AbarcaDocumentPlan,
+} from "@/comparativas/utils/abarca-documents";
+import type { AbarcaWebhookDocument } from "@/comparativas/types/abarca.types";
 import { deleteFiles } from "@/core/firebase/data/deleteFile";
 import { uploadBase64File } from "@/core/firebase/data/uploadBase64File";
 import { getTursoClientByTenant } from "@/core/libsql/client";
@@ -25,7 +35,14 @@ const CLAIM_HEARTBEAT_MS = 30 * 1000;
 const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 const SIPS_TIMEOUT_MS = 15 * 1000;
 const SAFE_RESOURCE_ID = /^[A-Za-z0-9_-]{1,128}$/;
-const MAX_WEBHOOK_BODY_BYTES = 17 * 1024 * 1024;
+// Vercel corta el cuerpo de la petición en ~4,5MB en el edge, antes de que se
+// ejecute la función, así que el tope de 17MB que había aquí era código muerto.
+// Este se deja deliberadamente POR ENCIMA del de la plataforma: es solo una
+// cota para no bufferizar sin límite, y rechazar antes que Vercel tumbaría
+// entregas que hoy funcionan. Los ficheros grandes ya no viajan por aquí: los
+// sube el proxy de ingesta (services/abarca-ingest) a Storage.
+const MAX_WEBHOOK_BODY_BYTES = 5 * 1024 * 1024;
+const STAGED_FETCH_TIMEOUT_MS = 2 * 60 * 1000;
 
 type QueryClient = Pick<Client, "execute">;
 type WriteTransaction = Pick<
@@ -47,10 +64,7 @@ type ClaimCompletion =
   | { kind: "unknown" };
 
 interface PlannedUpload {
-  base64: string;
-  contentType: "application/pdf" | "image/jpeg";
-  extension: "pdf" | "jpg";
-  filename: string;
+  plan: AbarcaDocumentPlan;
   storagePath: string;
 }
 
@@ -58,6 +72,8 @@ interface UploadedFile extends PlannedUpload {
   downloadURL: string;
   size: number;
 }
+
+type DocumentStatus = AbarcaWebhookDocument["status"];
 
 interface LeaseGuard {
   cancelNetwork: () => void;
@@ -449,64 +465,111 @@ async function acquireClaim(
   }
 }
 
-function sanitizeFileSegment(value: string | null | undefined): string {
-  const sanitized = (value ?? "comparativa")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9_-]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 64);
-  return sanitized || "comparativa";
-}
-
-function planUploads(
+/**
+ * Un documento ilegible ya no invalida la entrega: se resuelve fichero a
+ * fichero y lo que no llega (o no se entiende) queda registrado en vez de
+ * desaparecer sin rastro.
+ */
+function planDocuments(
   payload: AbarcaWebhookPayload,
   organizationId: string,
   comparativaId: string,
   claimToken: string,
-): PlannedUpload[] {
+): { unavailable: AbarcaWebhookDocument[]; uploads: PlannedUpload[] } {
   const storagePath = `${organizationId}/comparativas/${comparativaId}/abarca/${claimToken}`;
+  const outcomes = resolveAbarcaDocuments(
+    payload as unknown as Record<string, unknown>,
+    payload.empresa,
+  );
+
   const uploads: PlannedUpload[] = [];
+  const unavailable: AbarcaWebhookDocument[] = [];
 
-  if (payload.comparativa_pdf) {
-    const filename = `estudio_${sanitizeFileSegment(payload.empresa)}.pdf`;
+  for (const field of ABARCA_DOCUMENT_FIELDS) {
+    const outcome = outcomes.get(field);
+    if (!outcome || outcome.status === "missing") {
+      unavailable.push(emptyRecord(field, "missing", null));
+      continue;
+    }
+    if (outcome.status === "invalid") {
+      console.warn("[abarca-webhook] document rejected", {
+        comparativaId,
+        field,
+        reason: outcome.reason,
+      });
+      unavailable.push(emptyRecord(field, "invalid", outcome.reason));
+      continue;
+    }
+
     uploads.push({
-      base64: payload.comparativa_pdf,
-      contentType: "application/pdf",
-      extension: "pdf",
-      filename,
-      storagePath: `${storagePath}/${filename}`,
-    });
-  }
-  if (payload.dni_photo_front) {
-    uploads.push({
-      base64: payload.dni_photo_front,
-      contentType: "image/jpeg",
-      extension: "jpg",
-      filename: "dni_frontal.jpg",
-      storagePath: `${storagePath}/dni_frontal.jpg`,
-    });
-  }
-  if (payload.dni_photo_back) {
-    uploads.push({
-      base64: payload.dni_photo_back,
-      contentType: "image/jpeg",
-      extension: "jpg",
-      filename: "dni_reverso.jpg",
-      storagePath: `${storagePath}/dni_reverso.jpg`,
-    });
-  }
-  if (payload.justo_titulo) {
-    uploads.push({
-      base64: payload.justo_titulo,
-      contentType: "application/pdf",
-      extension: "pdf",
-      filename: "justo_titulo.pdf",
-      storagePath: `${storagePath}/justo_titulo.pdf`,
+      plan: outcome.plan,
+      storagePath: `${storagePath}/${outcome.plan.filename}`,
     });
   }
 
-  return uploads;
+  return { unavailable, uploads };
+}
+
+function emptyRecord(
+  field: AbarcaDocumentField,
+  status: DocumentStatus,
+  reason: string | null,
+): AbarcaWebhookDocument {
+  return { download_url: null, field, reason, size: null, status };
+}
+
+function toAbarcaWebhookDocuments(
+  uploadedFiles: readonly UploadedFile[],
+  unavailable: readonly AbarcaWebhookDocument[],
+): AbarcaWebhookDocument[] {
+  const stored = uploadedFiles.map<AbarcaWebhookDocument>((file) => ({
+    download_url: file.downloadURL,
+    field: file.plan.field,
+    reason: file.plan.reason,
+    size: file.size,
+    status: file.plan.quarantined ? "quarantined" : "stored",
+  }));
+  return [...stored, ...unavailable];
+}
+
+/**
+ * Los documentos que subió el proxy de ingesta viven ya en Storage; aquí solo
+ * se traen para dejarlos en la ruta definitiva de la comparativa, que es la
+ * que respetan la cola de limpieza y la conversión a trámite.
+ */
+async function readStagedDocument(
+  plan: AbarcaDocumentPlan,
+  signal: AbortSignal,
+): Promise<Buffer> {
+  if (plan.source.kind === "inline") return plan.source.bytes;
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal.aborted) {
+    controller.abort();
+  } else {
+    signal.addEventListener("abort", abort, { once: true });
+  }
+  const timeout = setTimeout(() => controller.abort(), STAGED_FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(plan.source.ref.url, {
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Staged document fetch failed with status ${response.status}`,
+      );
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0) {
+      throw new Error("Staged document is empty");
+    }
+    return buffer;
+  } finally {
+    clearTimeout(timeout);
+    signal.removeEventListener("abort", abort);
+  }
 }
 
 async function uploadPlannedFiles(
@@ -517,16 +580,17 @@ async function uploadPlannedFiles(
   const results = await Promise.allSettled(
     plannedUploads.map(async (planned) => {
       try {
+        const bytes = await readStagedDocument(planned.plan, signal);
         const result = await uploadBase64File(
-          planned.base64,
+          bytes.toString("base64"),
           planned.storagePath,
-          planned.contentType,
+          planned.plan.contentType,
           { signal, timeoutMs: UPLOAD_TIMEOUT_MS },
         );
         return {
           ...planned,
           downloadURL: result.downloadURL,
-          size: Buffer.from(planned.base64, "base64").length,
+          size: bytes.length,
         };
       } catch (error) {
         cancelNetwork();
@@ -626,6 +690,178 @@ async function persistCleanupOutcome(
         now,
         comparativaId,
         claimToken,
+      ],
+    });
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
+/**
+ * El original del proxy solo se borra cuando la copia definitiva ya está
+ * guardada. Si esto falla, el fichero sigue en el inbox y no se pierde.
+ */
+async function discardStagedDocuments(
+  uploads: readonly PlannedUpload[],
+): Promise<void> {
+  const stagedPaths = uploads
+    .map(({ plan }) =>
+      plan.source.kind === "staged" ? plan.source.ref.path : null,
+    )
+    .filter((path): path is string => path !== null);
+  if (stagedPaths.length === 0) return;
+
+  const results = await Promise.allSettled(
+    stagedPaths.map((path) => deleteFiles([path])),
+  );
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.warn(
+        "[abarca-webhook] staged document cleanup failed",
+        result.reason,
+      );
+    }
+  }
+}
+
+/**
+ * Documentos que llegan después de que la entrega ya esté cerrada.
+ *
+ * Es el caso real que provocaba pérdidas: la primera entrega llega sin el DNI
+ * (Abarca no llegó a guardarlo, o el cuerpo excedía el límite de Vercel),
+ * Abarca reenvía el payload completo y el CRM respondía 200 sin mirarlo, así
+ * que el fichero se perdía para siempre.
+ */
+async function ingestLateDocuments(
+  db: Client,
+  comparativaId: string,
+  organizationId: string,
+  payload: AbarcaWebhookPayload,
+): Promise<AbarcaWebhookDocument[] | null> {
+  const known = await readStoredDocuments(db, comparativaId);
+  // Sin entrega previa guardada no hay nada que completar.
+  if (!known) return [];
+
+  const { uploads } = planDocuments(
+    payload,
+    organizationId,
+    comparativaId,
+    `redelivery-${crypto.randomUUID()}`,
+  );
+  // Solo lo registrado como ausente. Sin registro no se puede saber si el
+  // fichero ya se guardó (entregas anteriores a este cambio), y subirlo
+  // duplicaría documentos en cada reintento normal de Abarca.
+  const pending = uploads.filter(({ plan }) => {
+    const status = known.documents.get(plan.field);
+    return status === "missing" || status === "invalid";
+  });
+  if (pending.length === 0) return [];
+
+  const controller = new AbortController();
+  let uploadedFiles: UploadedFile[] = [];
+  let documents: AbarcaWebhookDocument[] = [];
+  try {
+    uploadedFiles = await uploadPlannedFiles(pending, controller.signal, () =>
+      controller.abort(),
+    );
+    documents = toAbarcaWebhookDocuments(uploadedFiles, []);
+    await persistLateDocuments(db, comparativaId, uploadedFiles, documents);
+  } catch (error) {
+    console.error("[abarca-webhook] late document ingest failed", error);
+    await cleanupExactUploads(uploadedFiles.map((file) => file.storagePath));
+    return null;
+  }
+
+  await discardStagedDocuments(pending);
+  return documents;
+}
+
+async function readStoredDocuments(
+  db: QueryClient,
+  comparativaId: string,
+): Promise<{
+  documents: Map<AbarcaDocumentField, string>;
+} | null> {
+  try {
+    const result = await db.execute({
+      sql: "SELECT raw_payload FROM abarca_estudios WHERE comparativa_id = ?",
+      args: [comparativaId],
+    });
+    if (result.rows.length === 0) return null;
+
+    return {
+      documents: new Map(
+        parseAbarcaDocuments(String(result.rows[0].raw_payload)).map(
+          (document) => [document.field, document.status],
+        ),
+      ),
+    };
+  } catch (error) {
+    console.warn("[abarca-webhook] stored documents unavailable", error);
+    return null;
+  }
+}
+
+/**
+ * Los ficheros y su estado se guardan juntos: si el estado quedara por detrás,
+ * el siguiente reintento de Abarca volvería a subir lo que ya está guardado.
+ */
+async function persistLateDocuments(
+  db: Client,
+  comparativaId: string,
+  uploadedFiles: readonly UploadedFile[],
+  documents: readonly AbarcaWebhookDocument[],
+): Promise<void> {
+  const listed = uploadedFiles.filter(({ plan }) => !plan.quarantined);
+  const transaction: WriteTransaction = await db.transaction("write");
+  const now = new Date().toISOString();
+
+  try {
+    for (const file of listed) {
+      await transaction.execute({
+        sql: `INSERT INTO comparativa_files (
+            id,
+            comparativa_id,
+            filename,
+            size,
+            extension,
+            upload_date,
+            download_url,
+            preview_url
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          crypto.randomUUID(),
+          comparativaId,
+          file.plan.filename,
+          file.size,
+          file.plan.extension,
+          now,
+          file.downloadURL,
+          null,
+        ],
+      });
+    }
+
+    const stored = await transaction.execute({
+      sql: "SELECT raw_payload FROM abarca_estudios WHERE comparativa_id = ?",
+      args: [comparativaId],
+    });
+    if (stored.rows.length === 0) {
+      throw new Error("Abarca study is missing");
+    }
+    await transaction.execute({
+      sql: `UPDATE abarca_estudios
+        SET raw_payload = ?
+        WHERE comparativa_id = ?`,
+      args: [
+        mergeDocumentsIntoRawPayload(
+          String(stored.rows[0].raw_payload),
+          documents,
+        ),
+        comparativaId,
       ],
     });
 
@@ -806,6 +1042,11 @@ async function finalizeDelivery(
 
     const now = new Date().toISOString();
     for (const file of uploadedFiles) {
+      // Lo que no hemos podido interpretar se ha subido igual, pero no se
+      // lista como documento de la comparativa: se ve en el aviso de
+      // documentos incompletos, con su enlace.
+      if (file.plan.quarantined) continue;
+
       await transaction.execute({
         sql: `INSERT INTO comparativa_files (
             id,
@@ -820,9 +1061,9 @@ async function finalizeDelivery(
         args: [
           crypto.randomUUID(),
           comparativaId,
-          file.filename,
+          file.plan.filename,
           file.size,
-          file.extension,
+          file.plan.extension,
           now,
           file.downloadURL,
           null,
@@ -951,11 +1192,12 @@ export async function POST(req: Request) {
     .digest("hex");
   let claimToken: string | null = null;
   let plannedUploads: PlannedUpload[] = [];
+  let unavailableDocuments: AbarcaWebhookDocument[] = [];
   let retriedPendingCleanup = false;
 
   while (claimToken === null) {
     const proposedToken = crypto.randomUUID();
-    const proposedUploads = planUploads(
+    const { unavailable, uploads: proposedUploads } = planDocuments(
       payload,
       organizationId,
       comparativaId,
@@ -1010,7 +1252,19 @@ export async function POST(req: Request) {
       continue;
     }
     if (claim.kind === "completed") {
-      return NextResponse.json({ success: true });
+      const late = await ingestLateDocuments(
+        db,
+        comparativaId,
+        organizationId,
+        payload,
+      );
+      if (late === null) {
+        return jsonError("Processing in progress", 503);
+      }
+      return NextResponse.json({
+        success: true,
+        documents: late.map(({ field, status }) => ({ field, status })),
+      });
     }
     if (claim.kind === "busy") {
       return jsonError("Processing in progress", 503);
@@ -1024,6 +1278,7 @@ export async function POST(req: Request) {
 
     claimToken = claim.token;
     plannedUploads = proposedUploads;
+    unavailableDocuments = unavailable;
   }
 
   const storagePaths = plannedUploads.map(({ storagePath }) => storagePath);
@@ -1040,7 +1295,14 @@ export async function POST(req: Request) {
       leaseGuard.cancelNetwork,
     );
     const apoloSips = await apoloSipsPromise;
-    const rawPayload = attachApoloSipsToRawPayload(body, apoloSips);
+    const documents = toAbarcaWebhookDocuments(
+      uploadedFiles,
+      unavailableDocuments,
+    );
+    const rawPayload = attachApoloSipsToRawPayload(
+      attachDocumentsToRawPayload(body, documents),
+      apoloSips,
+    );
 
     if (!(await leaseGuard.renew())) {
       throw new WebhookLeaseLostError();
@@ -1055,7 +1317,13 @@ export async function POST(req: Request) {
       rawPayload,
       uploadedFiles,
     );
-    return NextResponse.json({ success: true });
+
+    await discardStagedDocuments(plannedUploads);
+
+    return NextResponse.json({
+      success: true,
+      documents: documents.map(({ field, status }) => ({ field, status })),
+    });
   } catch (error) {
     leaseGuard.cancelNetwork();
     await leaseGuard.stop();

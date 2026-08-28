@@ -33,6 +33,9 @@ vi.mock("@/integrations/apolo-sips/server", () => ({
 
 const route = await import("./route");
 const validPdfBase64 = Buffer.from("%PDF-1.7").toString("base64");
+const validPngBase64 = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01,
+]).toString("base64");
 const validJpegBase64 = Buffer.from([
   0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0xff, 0xd9,
 ]).toString("base64");
@@ -50,11 +53,20 @@ interface CleanupState {
   token: string;
 }
 
+interface DocumentState {
+  download_url: string | null;
+  field: string;
+  reason: string | null;
+  size: number | null;
+  status: string;
+}
+
 interface DatabaseState {
   claim: ClaimState | null;
   cleanups: CleanupState[];
   comparisonStatus: string | null;
   files: number;
+  filenames: string[];
   study: boolean;
 }
 
@@ -67,6 +79,34 @@ let throwAfterFinalCommit: boolean;
 let deniedLeaseToken: string | null;
 let individualAbarcaUserIds: number[];
 let failIdentityLookup: boolean;
+let storedRawPayload: string;
+
+function setStoredRawPayload(rawPayload: string) {
+  storedRawPayload = rawPayload;
+}
+
+/** Estado por documento tal y como queda guardado en `raw_payload`. */
+function documents(): Record<string, DocumentState> {
+  if (!storedRawPayload) return {};
+  const stored = (
+    JSON.parse(storedRawPayload) as { abarca_documents?: DocumentState[] }
+  ).abarca_documents;
+  return Object.fromEntries(
+    (stored ?? []).map((document) => [document.field, document]),
+  );
+}
+
+function givenStoredDocuments(stored: Partial<DocumentState>[]) {
+  storedRawPayload = JSON.stringify({
+    ide: 100,
+    abarca_documents: stored.map((document) => ({
+      download_url: null,
+      reason: null,
+      size: null,
+      ...document,
+    })),
+  });
+}
 
 const db = {
   execute: mocks.execute,
@@ -76,6 +116,7 @@ const db = {
 function cloneState(): DatabaseState {
   return {
     ...state,
+    filenames: [...state.filenames],
     claim: state.claim ? { ...state.claim } : null,
     cleanups: state.cleanups.map((cleanup) => ({
       ...cleanup,
@@ -295,6 +336,19 @@ function makeTransaction() {
         }
         if (sql.includes("INSERT INTO comparativa_files")) {
           local.files += 1;
+          local.filenames.push(String(statement.args[2]));
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (sql.includes("SELECT raw_payload FROM abarca_estudios")) {
+          return {
+            rows: local.study ? [{ raw_payload: storedRawPayload }] : [],
+          };
+        }
+        if (
+          sql.includes("UPDATE abarca_estudios") &&
+          sql.includes("SET raw_payload")
+        ) {
+          setStoredRawPayload(String(statement.args[0]));
           return { rows: [], rowsAffected: 1 };
         }
         if (sql.includes("SELECT id FROM abarca_estudios")) {
@@ -304,6 +358,13 @@ function makeTransaction() {
           sql.includes("INSERT INTO abarca_estudios") ||
           sql.includes("UPDATE abarca_estudios")
         ) {
+          setStoredRawPayload(
+            String(
+              sql.includes("UPDATE abarca_estudios")
+                ? statement.args.at(-2)
+                : statement.args.at(-1),
+            ),
+          );
           if (failFinalDatabaseWrite) {
             throw new Error("transient database failure");
           }
@@ -358,6 +419,7 @@ function makeTransaction() {
 function cloneFrom(source: DatabaseState): DatabaseState {
   return {
     ...source,
+    filenames: [...source.filenames],
     claim: source.claim ? { ...source.claim } : null,
     cleanups: source.cleanups.map((cleanup) => ({
       ...cleanup,
@@ -398,6 +460,7 @@ beforeEach(() => {
     cleanups: [],
     comparisonStatus: "pending",
     files: 0,
+    filenames: [],
     study: false,
   };
   loseStatusCas = false;
@@ -408,6 +471,7 @@ beforeEach(() => {
   deniedLeaseToken = null;
   individualAbarcaUserIds = [];
   failIdentityLookup = false;
+  storedRawPayload = "";
 
   mocks.getTursoClientByTenant.mockReturnValue(db);
   mocks.transaction.mockImplementation(async () => makeTransaction());
@@ -444,6 +508,10 @@ beforeEach(() => {
             ? [{ id: "user-1" }]
             : [],
         };
+      }
+
+      if (statement.sql.includes("SELECT raw_payload FROM abarca_estudios")) {
+        return { rows: state.study ? [{ raw_payload: storedRawPayload }] : [] };
       }
 
       if (
@@ -490,6 +558,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("POST /api/webhooks/abarca", () => {
@@ -571,11 +640,173 @@ describe("POST /api/webhooks/abarca", () => {
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
+
+  test("stores a PNG sent in the JPEG-only DNI field", async () => {
+    const response = await route.POST(
+      request({
+        ide: 100,
+        crm_id: 321,
+        dni_photo_front: validPngBase64,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.filenames).toEqual(["dni_frontal.png"]);
+    expect(documents().dni_photo_front).toMatchObject({
+      status: "stored",
+    });
+    expect(mocks.uploadBase64File).toHaveBeenCalledWith(
+      validPngBase64,
+      expect.stringContaining("dni_frontal.png"),
+      "image/png",
+      expect.anything(),
+    );
+  });
+
+  test("keeps the study when one document is unreadable", async () => {
+    const response = await route.POST(
+      request({
+        ide: 100,
+        crm_id: 321,
+        comparativa_pdf: validPdfBase64,
+        dni_photo_back: "not base64 ***",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.study).toBe(true);
+    expect(state.comparisonStatus).toBe("awaiting_review");
+    expect(state.files).toBe(1);
+    expect(documents().dni_photo_back).toMatchObject({
+      reason: "undecodable_base64",
+      status: "invalid",
+    });
+  });
+
+  test("records the documents Abarca never sent", async () => {
+    await route.POST(
+      request({ ide: 100, crm_id: 321, comparativa_pdf: validPdfBase64 }),
+    );
+
+    expect(documents().dni_photo_front).toMatchObject({
+      status: "missing",
+    });
+    expect(documents().dni_photo_back).toMatchObject({
+      status: "missing",
+    });
+    expect(documents().justo_titulo).toMatchObject({ status: "missing" });
+  });
+
+  test("quarantines unrecognised bytes instead of dropping them", async () => {
+    const heic = Buffer.concat([
+      Buffer.from([0x00, 0x00, 0x00, 0x18]),
+      Buffer.from("ftypheic"),
+    ]).toString("base64");
+
+    const response = await route.POST(
+      request({ ide: 100, crm_id: 321, dni_photo_back: heic }),
+    );
+
+    expect(response.status).toBe(200);
+    // Se sube igual, pero no se lista como documento de la comparativa.
+    expect(mocks.uploadBase64File).toHaveBeenCalledWith(
+      heic,
+      expect.stringContaining("dni_reverso.bin"),
+      "application/octet-stream",
+      expect.anything(),
+    );
+    expect(state.files).toBe(0);
+    expect(documents().dni_photo_back).toMatchObject({
+      download_url: expect.stringContaining("dni_reverso.bin"),
+      status: "quarantined",
+    });
+  });
+
+  test("pulls a staged document uploaded by the ingest proxy", async () => {
+    const bytes = Buffer.from(validPngBase64, "base64");
+    const fetchMock = vi.fn(async () => new Response(bytes));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await route.POST(
+      request({
+        ide: 100,
+        crm_id: 321,
+        dni_photo_back: {
+          path: "abarca-inbox/tenant/comparison-1/d1/dni_photo_back.png",
+          url: "https://storage.example/staged.png",
+          bytes: bytes.length,
+          content_type: "image/png",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://storage.example/staged.png",
+      expect.objectContaining({ signal: expect.anything() }),
+    );
+    expect(mocks.uploadBase64File).toHaveBeenCalledWith(
+      validPngBase64,
+      expect.stringContaining("dni_reverso.png"),
+      "image/png",
+      expect.anything(),
+    );
+    expect(state.filenames).toEqual(["dni_reverso.png"]);
+    // El original del inbox solo se borra con la copia definitiva guardada.
+    expect(mocks.deleteFiles).toHaveBeenCalledWith([
+      "abarca-inbox/tenant/comparison-1/d1/dni_photo_back.png",
+    ]);
+  });
+
+  test("fails the delivery when a staged document cannot be fetched", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("nope", { status: 404 })),
+    );
+
+    const response = await route.POST(
+      request({
+        ide: 100,
+        crm_id: 321,
+        dni_photo_back: {
+          path: "abarca-inbox/tenant/comparison-1/d1/dni_photo_back.png",
+          url: "https://storage.example/staged.png",
+          bytes: 1024,
+          content_type: "image/png",
+        },
+      }),
+    );
+
+    // Mejor un reintento de Abarca que una comparativa cerrada sin el DNI.
+    expect(response.status).toBe(500);
+    expect(state.study).toBe(false);
+    expect(mocks.deleteFiles).not.toHaveBeenCalledWith([
+      "abarca-inbox/tenant/comparison-1/d1/dni_photo_back.png",
+    ]);
+  });
+
+  test("keeps document base64 out of the stored raw payload", async () => {
+    await route.POST(
+      request({
+        ide: 100,
+        crm_id: 321,
+        comparativa_pdf: validPdfBase64,
+      }),
+    );
+
+    expect(storedRawPayload).not.toContain(validPdfBase64);
+    expect(JSON.parse(storedRawPayload).comparativa_pdf).toBeNull();
+    expect(documents().comparativa_pdf).toMatchObject({
+      size: Buffer.from(validPdfBase64, "base64").length,
+      status: "stored",
+    });
+  });
+
   test("processes the initial callback exactly once", async () => {
     const response = await route.POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ success: true });
+    expect(await response.json()).toMatchObject({ success: true });
     expect(state.comparisonStatus).toBe("awaiting_review");
     expect(state.claim?.status).toBe("completed");
     expect(state.files).toBe(1);
@@ -596,13 +827,14 @@ describe("POST /api/webhooks/abarca", () => {
       cleanups: [],
       comparisonStatus: "awaiting_review",
       files: 1,
+      filenames: [],
       study: true,
     };
 
     const response = await route.POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ success: true });
+    expect(await response.json()).toMatchObject({ success: true });
     expect(state.files).toBe(1);
     expect(mocks.uploadBase64File).not.toHaveBeenCalled();
     expect(mocks.deleteFiles).not.toHaveBeenCalled();
@@ -1008,5 +1240,97 @@ describe("POST /api/webhooks/abarca", () => {
     expect(pulls).toBeLessThanOrEqual(18);
     expect(mocks.getTursoClientByTenant).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  test("ingests a document that arrives after the delivery completed", async () => {
+    state = {
+      claim: {
+        status: "completed",
+        token: "completed-token",
+        claimedAt: new Date().toISOString(),
+        leaseExpiresAt: Math.floor(Date.now() / 1000) + 5 * 60,
+      },
+      cleanups: [],
+      comparisonStatus: "awaiting_review",
+      files: 1,
+      filenames: [],
+      study: true,
+    };
+    givenStoredDocuments([
+      { field: "comparativa_pdf", status: "stored" },
+      { field: "dni_photo_back", status: "missing" },
+    ]);
+
+    const response = await route.POST(
+      request({
+        ide: 100,
+        crm_id: 321,
+        empresa: "Acme",
+        comparativa_pdf: validPdfBase64,
+        dni_photo_back: validPngBase64,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    // Solo el que faltaba: el estudio ya guardado no se vuelve a subir.
+    expect(mocks.uploadBase64File).toHaveBeenCalledTimes(1);
+    expect(mocks.uploadBase64File).toHaveBeenCalledWith(
+      validPngBase64,
+      expect.stringContaining("/abarca/redelivery-"),
+      "image/png",
+      expect.anything(),
+    );
+    expect(state.filenames).toEqual(["dni_reverso.png"]);
+    expect(documents().dni_photo_back).toMatchObject({ status: "stored" });
+  });
+
+  test("does not re-ingest documents that are already stored", async () => {
+    state = {
+      claim: {
+        status: "completed",
+        token: "completed-token",
+        claimedAt: new Date().toISOString(),
+        leaseExpiresAt: Math.floor(Date.now() / 1000) + 5 * 60,
+      },
+      cleanups: [],
+      comparisonStatus: "awaiting_review",
+      files: 1,
+      filenames: [],
+      study: true,
+    };
+    givenStoredDocuments([{ field: "dni_photo_back", status: "stored" }]);
+
+    const response = await route.POST(
+      request({ ide: 100, crm_id: 321, dni_photo_back: validPngBase64 }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.uploadBase64File).not.toHaveBeenCalled();
+    expect(state.files).toBe(1);
+  });
+
+  test("asks for a retry when a late document cannot be stored", async () => {
+    state = {
+      claim: {
+        status: "completed",
+        token: "completed-token",
+        claimedAt: new Date().toISOString(),
+        leaseExpiresAt: Math.floor(Date.now() / 1000) + 5 * 60,
+      },
+      cleanups: [],
+      comparisonStatus: "awaiting_review",
+      files: 1,
+      filenames: [],
+      study: true,
+    };
+    givenStoredDocuments([{ field: "dni_photo_back", status: "missing" }]);
+    mocks.uploadBase64File.mockRejectedValue(new Error("storage unavailable"));
+
+    const response = await route.POST(
+      request({ ide: 100, crm_id: 321, dni_photo_back: validPngBase64 }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(state.files).toBe(1);
   });
 });
