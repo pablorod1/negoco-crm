@@ -801,7 +801,7 @@ export default function MainView({
                         {abarcaEstudio.iban || "—"}
                       </p>
                     </div>
-                    {abarcaEstudio.comisiones?.oferta !== null &&
+                    {/* {abarcaEstudio.comisiones?.oferta !== null &&
                       abarcaEstudio.comisiones?.oferta !== undefined && (
                         <div>
                           <p className="text-xs text-gray-500">
@@ -822,7 +822,7 @@ export default function MainView({
                             {formatComission(abarcaEstudio.comisiones.base)}
                           </p>
                         </div>
-                      )}
+                      )} */}
                     {abarcaEstudio.observaciones && (
                       <div>
                         <p className="text-xs text-gray-500">Observaciones</p>
