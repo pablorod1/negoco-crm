@@ -688,7 +688,7 @@ describe("POST /api/v2/integrations/abarca/login", () => {
         status: 200,
         headers: {
           "content-type": "application/pdf",
-          "content-length": String(15 * 1024 * 1024 + 1),
+          "content-length": String(25 * 1024 * 1024 + 1),
         },
       }),
     );
@@ -698,6 +698,81 @@ describe("POST /api/v2/integrations/abarca/login", () => {
     );
 
     expect(response.status).toBe(502);
+  });
+
+  // El 502 que veíamos en producción era este: la cabecera no se podía
+  // interpretar y se trataba como fichero inválido. El tamaño de verdad lo
+  // mide el bucle de lectura, así que la entrega tiene que salir adelante.
+  test.each(["1024, 1024", "no-es-un-numero", "-1"])(
+    "sigue adelante con un Content-Length ilegible: %s",
+    async (contentLength) => {
+      allowPendingComparison();
+      mocks.execute.mockResolvedValueOnce({
+        rows: [
+          {
+            download_url:
+              "https://storage.googleapis.com/tenant/invoice.pdf",
+            extension: "pdf",
+          },
+        ],
+      });
+      mocks.fetch
+        .mockResolvedValueOnce(
+          new Response(new TextEncoder().encode("%PDF-1.7"), {
+            status: 200,
+            headers: {
+              "content-type": "application/pdf",
+              "content-length": contentLength,
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ login_url: "https://app.abarcaia.com/login" }),
+            { status: 200 },
+          ),
+        );
+
+      const response = await route.POST(
+        request({ comparativa_id: "comparison-1", file_id: "file-1" }),
+      );
+
+      expect(response.status).toBe(200);
+      const upstreamInit = mocks.fetch.mock.calls[1][1] as RequestInit;
+      expect(JSON.parse(String(upstreamInit.body))).toMatchObject({
+        pdf_base64: "JVBERi0xLjc=",
+      });
+    },
+  );
+
+  test("dice el tamaño real cuando el PDF no cabe, en vez de culpar a Abarca", async () => {
+    allowPendingComparison();
+    mocks.execute.mockResolvedValueOnce({
+      rows: [
+        {
+          download_url: "https://storage.googleapis.com/tenant/invoice.pdf",
+          extension: "pdf",
+        },
+      ],
+    });
+    mocks.fetch.mockResolvedValueOnce(
+      new Response("%PDF", {
+        status: 200,
+        headers: {
+          "content-type": "application/pdf",
+          "content-length": String(30 * 1024 * 1024),
+        },
+      }),
+    );
+
+    const response = await route.POST(
+      request({ comparativa_id: "comparison-1", file_id: "file-1" }),
+    );
+
+    expect(response.status).toBe(502);
+    const { error } = (await response.json()) as { error: string };
+    expect(error).toContain("30.0 MB");
+    expect(error).toContain("25.0 MB");
   });
 
   test("enforces the PDF size limit while streaming when Content-Length is absent", async () => {
@@ -711,13 +786,13 @@ describe("POST /api/v2/integrations/abarca/login", () => {
         },
       ],
     });
-    const eightMiB = new Uint8Array(8 * 1024 * 1024);
+    const thirteenMiB = new Uint8Array(13 * 1024 * 1024);
     mocks.fetch.mockResolvedValueOnce(
       new Response(
         new ReadableStream({
           start(controller) {
-            controller.enqueue(eightMiB);
-            controller.enqueue(eightMiB);
+            controller.enqueue(thirteenMiB);
+            controller.enqueue(thirteenMiB);
             controller.close();
           },
         }),
@@ -803,8 +878,11 @@ describe("POST /api/v2/integrations/abarca/login", () => {
     );
 
     expect(response.status).toBe(502);
+    // El problema es el fichero, no el comparador: el mensaje tiene que
+    // decirle al comercial qué puede hacer al respecto.
     expect(await response.json()).toEqual({
-      error: "No se pudo descargar el archivo",
+      error:
+        "El archivo guardado no es un PDF válido. Vuelve a subirlo o elige otro.",
     });
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
   });

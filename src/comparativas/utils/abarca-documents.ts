@@ -23,6 +23,24 @@ export const ABARCA_DOCUMENT_FIELDS = [
 
 export type AbarcaDocumentField = (typeof ABARCA_DOCUMENT_FIELDS)[number];
 
+/**
+ * Campos que Abarca manda y no guardamos. `factura` es la factura del cliente
+ * que el comparador nos devuelve: ya la tenemos adjunta a la comparativa.
+ *
+ * El proxy de ingesta la descarta antes de llegar aquí, pero el webhook
+ * antiguo sigue aceptando llamadas directas, así que se repite la regla.
+ * Debe coincidir con `DISCARDED_FIELDS` de
+ * `services/abarca-ingest/src/documents.js`.
+ */
+export const ABARCA_DISCARDED_FIELDS = ["factura"] as const;
+
+/**
+ * Por encima de esto un campo de texto es un fichero, no un dato, y no tiene
+ * nada que hacer dentro de `raw_payload`. Debe coincidir con
+ * `MAX_INLINE_FIELD_BYTES` del proxy.
+ */
+export const MAX_RAW_PAYLOAD_FIELD_BYTES = 64 * 1024;
+
 export const QUARANTINE_CONTENT_TYPE = "application/octet-stream";
 
 /** Tope por documento subido por el proxy. Cloud Run admite 32MB de cuerpo. */
@@ -265,7 +283,9 @@ export function resolveAbarcaDocuments(
  * falta una tabla aparte con su migración por tenant.
  *
  * De paso saca los base64 del payload guardado: sin esto cada entrega metía
- * varios MB en la base de datos del tenant.
+ * varios MB en la base de datos del tenant. Vaciar solo los campos conocidos
+ * no bastaba —`factura` se colaba entera, hasta 1,3MB por fila—, así que
+ * cualquier campo que pese como un fichero se sustituye por su tamaño.
  */
 export function attachDocumentsToRawPayload(
   body: unknown,
@@ -278,6 +298,16 @@ export function attachDocumentsToRawPayload(
 
   for (const field of ABARCA_DOCUMENT_FIELDS) {
     if (field in clone) clone[field] = null;
+  }
+  for (const field of ABARCA_DISCARDED_FIELDS) {
+    delete clone[field];
+  }
+  for (const [field, value] of Object.entries(clone)) {
+    if (typeof value !== "string") continue;
+    if (Buffer.byteLength(value) <= MAX_RAW_PAYLOAD_FIELD_BYTES) continue;
+    // No se tira el dato en silencio: queda el rastro de que llegó y cuánto
+    // pesaba, que es lo que hacía falta para diagnosticar el 413.
+    clone[field] = `[omitido: ${Buffer.byteLength(value)} bytes]`;
   }
   clone.abarca_documents = documents;
   return clone;

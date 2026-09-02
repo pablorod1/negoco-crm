@@ -41,10 +41,26 @@ Salida hacia el CRM: el mismo JSON, con cada documento sustituido por
 El CRM responde y esa respuesta se devuelve a Abarca tal cual, así que los
 reintentos siguen funcionando igual que antes.
 
+Cada campo recibe uno de tres tratos, y el orden importa:
+
+1. **`factura` se descarta**, sin subirse. Es la factura del cliente que el
+   comparador nos devuelve, y en el CRM ya está: es el mismo PDF que el
+   comercial adjuntó a la comparativa. Está en todas las entregas y pesa de
+   250KB a 3,3MB — era lo que dejaba el payload por encima del límite de
+   Vercel incluso después de sacar los documentos.
+2. **Los documentos conocidos se suben** y se sustituyen por su referencia.
+3. **Cualquier otro campo de texto de más de 64KB se sube igual**, marcado con
+   `unknown_field: true`, y se registra con un `console.error`. No sabemos qué
+   es, así que el CRM no lo adjunta a nada, pero la entrega no se cae y el
+   fichero no se pierde. Esta regla existe porque la lista de campos conocidos
+   siempre va por detrás de lo que manda Abarca: así fue como `factura` pasó
+   desapercibida.
+
 Reglas que este servicio garantiza:
 
-- **Ningún fichero se descarta.** Lo que no es base64 válido se sube tal cual
-  como `.bin` y el CRM lo marca en cuarentena.
+- **Ningún fichero se descarta salvo los de la lista `DISCARDED_FIELDS`.** Lo
+  que no es base64 válido se sube tal cual como `.bin` y el CRM lo marca en
+  cuarentena.
 - **Nada se reenvía sin estar guardado.** Si Storage falla, responde 503 para
   que Abarca reintente, en vez de cerrar la comparativa sin documentos.
 - **El original solo lo borra el CRM**, y solo cuando ya ha guardado su copia
@@ -114,3 +130,8 @@ npm test
 `src/comparativas/utils/abarca-documents.ts` del CRM: este servicio se
 despliega por separado y no comparte build. Si cambian los formatos aceptados
 (hoy JPG, PNG y PDF), hay que tocar los dos ficheros.
+
+Lo mismo vale para `DISCARDED_FIELDS` y `MAX_INLINE_FIELD_BYTES`: el CRM los
+repite como `ABARCA_DISCARDED_FIELDS` y `MAX_RAW_PAYLOAD_FIELD_BYTES` porque
+el webhook antiguo sigue aceptando llamadas directas de Abarca, sin pasar por
+este proxy, y ahí también hay que mantener los base64 fuera de la base.
