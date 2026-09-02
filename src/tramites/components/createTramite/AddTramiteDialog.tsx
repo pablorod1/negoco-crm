@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useState, useCallback } from "react";
+import { eligibleComparisonPlans } from "@/comparativas/utils/commission-completeness";
 import { useTramites } from "@/core/contexts/TramitesContext";
 
 import FirstStepForm from "./forms/firstStepForm/FirstStepForm";
@@ -58,7 +59,7 @@ export default function AddTramiteDialog({
 }: AddTramiteDialogProps) {
   // State management
   const [plan, setPlan] = useState<"fijo" | "indexado" | undefined>(
-    comparativa ? comparativa.plan[0] : undefined,
+    comparativa ? eligibleComparisonPlans(comparativa)[0] : undefined,
   );
   const { userData } = useUser();
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -86,6 +87,7 @@ export default function AddTramiteDialog({
       e.preventDefault();
       e.stopPropagation();
       setIsOpen(true);
+      setPlan(comparativa ? eligibleComparisonPlans(comparativa)[0] : undefined);
       setActiveTab(comparativa ? 0 : savedClient ? 2 : 1);
       // Reset form state
       setTramite(createEmptyTramiteDB(userData as User));
@@ -138,6 +140,7 @@ export default function AddTramiteDialog({
 
   const handleNext = useCallback(() => {
     if (comparativa && activeTab === 0) {
+      if (!plan || !eligibleComparisonPlans(comparativa).includes(plan)) return;
       setTramite(
         createEmptyTramiteDB(
           userData as User,
@@ -326,7 +329,12 @@ export default function AddTramiteDialog({
       formData.append("files", JSON.stringify(tramiteFiles));
       formData.append("userData", JSON.stringify(userData));
       formData.append("client", JSON.stringify(client));
-      formData.append("tramite", JSON.stringify(tramite));
+      if (comparativa) {
+        formData.append("source_comparison_id", comparativa.id);
+        formData.append("tramite", JSON.stringify({ ...tramite, comision: undefined, comision_sales_person: undefined }));
+      } else {
+        formData.append("tramite", JSON.stringify(tramite));
+      }
       // Optional fields
       if (signer) {
         formData.append("signer", JSON.stringify(signer));
@@ -499,6 +507,7 @@ export default function AddTramiteDialog({
       />,
       <ReviewStep
         key={5}
+        fromComparison
         tramite={tramite}
         client={client}
         signer={signer}

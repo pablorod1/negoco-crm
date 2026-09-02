@@ -76,6 +76,8 @@ function renderMainView({
   aiStudyData,
   isSubcomercial = false,
   onUpdate = () => {},
+  pendingResult = false,
+  studyResult,
 }: {
   role: string;
   status:
@@ -91,12 +93,15 @@ function renderMainView({
   aiStudyData?: Record<string, unknown>;
   isSubcomercial?: boolean;
   onUpdate?: () => void;
+  pendingResult?: boolean;
+  studyResult?: React.ComponentProps<typeof MainView>["studyResult"];
 }) {
   render(
     <MainView
       comparativa={{
         ...baseComparativa,
         status,
+        has_pending_study_result: pendingResult,
         ...(aiStudyData ? { abarca_estudio: aiStudyData } : {}),
       } as never}
       userData={
@@ -119,6 +124,7 @@ function renderMainView({
       isEditable
       isComercialEditable={false}
       isProcessed={false}
+      studyResult={studyResult}
     />,
   );
 }
@@ -158,6 +164,44 @@ function expectPendingActions({
 }
 
 describe("MainView study permissions", () => {
+  const resultAction = () => ({
+    canReview: true, loading: false, submitting: false, open: false,
+    error: null, review: vi.fn(), startWatching: vi.fn(), panelOpen: false,
+    setPanelOpen: vi.fn(),
+  });
+
+  test.each([
+    { role: "1", complete: false, review: true },
+    { role: "2", complete: true, review: false },
+  ])("places result review inside actions for authorized role $role", ({ role, complete, review }) => {
+    const controller = resultAction();
+    renderMainView({ role, status: "awaiting_review", complete, review, pendingResult: true, studyResult: controller });
+    const actions = screen.getByRole("region", { name: "Acciones" });
+    const button = within(actions).getByRole("button", { name: "Revisar resultado del estudio" });
+    expect(screen.getAllByRole("button", { name: "Revisar resultado del estudio" })).toHaveLength(1);
+    expect(button).toHaveClass("w-full");
+    fireEvent.click(button);
+    expect(controller.review).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/en la parte superior de la ficha/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Asignar Comercializadora y Comisiones" })).not.toBeInTheDocument();
+  });
+
+  test("keeps result review disabled until the server confirms availability", () => {
+    renderMainView({ role: "1", status: "awaiting_review", complete: true, review: true, pendingResult: true, studyResult: { ...resultAction(), canReview: false } });
+    expect(screen.getByRole("button", { name: "Revisar resultado del estudio" })).toBeDisabled();
+  });
+
+  test("does not show result actions without effective permissions", () => {
+    renderMainView({ role: "2", status: "awaiting_review", complete: false, review: false, pendingResult: true, studyResult: resultAction() });
+    expect(screen.queryByRole("button", { name: "Revisar resultado del estudio" })).not.toBeInTheDocument();
+  });
+
+  test("shows background errors with the actions instead of above navigation", () => {
+    renderMainView({ role: "1", status: "awaiting_review", complete: true, review: true, pendingResult: true, studyResult: { ...resultAction(), error: "No se pudo comprobar el estudio." } });
+    const actions = screen.getByRole("region", { name: "Acciones" });
+    expect(within(actions).getByRole("status")).toHaveTextContent("No se pudo comprobar el estudio.");
+  });
+
   test.each([
     {
       label: "AI tenant with complete permission",

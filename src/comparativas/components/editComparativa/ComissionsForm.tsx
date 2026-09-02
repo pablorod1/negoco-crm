@@ -4,10 +4,10 @@ import { InputComponent } from "@/tramites/components/createTramite/InputCompone
 import { memo } from "react";
 
 export interface ComissionFormValues {
-  comision_fijo: number;
-  comision_indexado: number;
-  comision_sales_person_fijo: number;
-  comision_sales_person_indexado: number;
+  comision_fijo: number | null;
+  comision_indexado: number | null;
+  comision_sales_person_fijo: number | null;
+  comision_sales_person_indexado: number | null;
 }
 
 interface ComissionsFormProps {
@@ -34,8 +34,7 @@ const ComissionsForm = memo(
       if (name.startsWith("comision_sales_person_")) {
         onSalesCommissionManualChange?.(name as keyof ComissionFormValues);
       }
-      // Convert string to number, handle empty strings as undefined
-      const numericValue = value === "" ? undefined : parseFloat(value);
+      const numericValue = value === "" ? null : parseFloat(value);
       setFormDataComissions((prev) => ({
         ...prev,
         [name]: numericValue,

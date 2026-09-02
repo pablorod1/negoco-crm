@@ -27,7 +27,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { eligibleComparisonPlans } from "@/comparativas/utils/commission-completeness";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -58,21 +59,14 @@ export default function ComparativaToTramiteStep({
     setPlan(value as "fijo" | "indexado");
   };
 
-  const checkFijoEmpty = () => {
-    return (
-      comparativa.comision.fijo === 0 &&
-      comparativa.comision_sales_person.fijo === 0
-    );
-  };
-
-  const checkIndexadoEmpty = () => {
-    return (
-      comparativa.comision.indexado === 0 &&
-      comparativa.comision_sales_person.indexado === 0
-    );
-  };
+  const assignedPlans = eligibleComparisonPlans(comparativa);
+  const eligiblePlan = plan && assignedPlans.includes(plan) ? plan : assignedPlans[0];
+  useEffect(() => {
+    if (plan !== eligiblePlan) setPlan(eligiblePlan);
+  }, [plan, eligiblePlan, setPlan]);
 
   const handleSubmit = () => {
+    if (!plan || !assignedPlans.includes(plan)) return;
     onSubmit();
   };
 
@@ -112,13 +106,7 @@ export default function ComparativaToTramiteStep({
                   label=""
                   selectedKey={plan as string}
                   onChange={handleChange}
-                  items={
-                    checkFijoEmpty()
-                      ? ["indexado"]
-                      : checkIndexadoEmpty()
-                        ? ["fijo"]
-                        : ["fijo", "indexado"]
-                  }
+                  items={assignedPlans}
                 />
               </div>
             </div>
@@ -129,7 +117,7 @@ export default function ComparativaToTramiteStep({
                     <div>
                       <span className="text-gray-600">Comisión:</span>
                       <span className="ml-2 font-medium text-gray-900">
-                        {formatComission(comparativa.comision[plan])}
+                        {comparativa.comision[plan] === null ? "Sin asignar" : formatComission(comparativa.comision[plan])}
                       </span>
                     </div>
                   ) : null}
@@ -139,7 +127,7 @@ export default function ComparativaToTramiteStep({
                         Comisión {!isComercial ? "Comercial" : ""}:
                       </span>
                       <span className="ml-2 font-medium text-gray-900">
-                        {formatComission(
+                        {comparativa.comision_sales_person[plan] === null ? "Sin asignar" : formatComission(
                           comparativa.comision_sales_person[plan],
                         )}
                       </span>
@@ -345,7 +333,12 @@ export default function ComparativaToTramiteStep({
         )}
       </div>
 
-      <ButtonGroupComponent onSubmit={handleSubmit} onCancel={onCancel} />
+      <ButtonGroupComponent
+        onSubmit={handleSubmit}
+        onCancel={onCancel}
+        submitDisabled={comparativa.status !== "completed" || !plan || !assignedPlans.includes(plan)}
+      />
+      {assignedPlans.length === 0 && <p role="status">No hay planes activos con todas las comisiones asignadas.</p>}
     </FormWrapper>
   );
 }

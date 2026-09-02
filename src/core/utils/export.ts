@@ -85,7 +85,7 @@ const writeColumnValue = (
   if (columnId === "Comisión" || columnId === "Comisión Comercial") {
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
       // Commission split by plan type gets its own pair of columns
-      const comisionObj = value as { fijo: number; indexado: number };
+      const comisionObj = value as { fijo: number | null; indexado: number | null };
 
       const fijoHeaderName = headerName.includes("Comercial")
         ? "Comisión Comercial Fijo"
@@ -94,8 +94,8 @@ const writeColumnValue = (
         ? "Comisión Comercial Indexado"
         : "Comisión Indexado";
 
-      rowData[fijoHeaderName] = comisionObj.fijo || 0;
-      rowData[indexadoHeaderName] = comisionObj.indexado || 0;
+      rowData[fijoHeaderName] = comisionObj.fijo ?? "Sin asignar";
+      rowData[indexadoHeaderName] = comisionObj.indexado ?? "Sin asignar";
     } else if (Array.isArray(value)) {
       rowData[headerName] = value.join(", ");
     } else {

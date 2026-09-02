@@ -24,6 +24,8 @@ type StoredComparison = {
 };
 
 const mocks = vi.hoisted(() => ({
+  validateUserSession: vi.fn(),
+  getSubcomerciales: vi.fn(),
   getTursoClient: vi.fn(),
   transaction: vi.fn(),
   txClose: vi.fn(),
@@ -35,9 +37,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/core/libsql/client", () => ({
   getTursoClient: mocks.getTursoClient,
 }));
+vi.mock("@/core/auth/session-utils", () => ({ validateUserSession: mocks.validateUserSession }));
 
 vi.mock("@/core/libsql/users/getSubcomerciales", () => ({
-  getSubcomerciales: vi.fn(),
+  getSubcomerciales: mocks.getSubcomerciales,
 }));
 
 const route = await import("./route");
@@ -170,6 +173,8 @@ async function executeStatement(statement: Statement) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "admin" } });
+  mocks.getSubcomerciales.mockResolvedValue({ success: true, ids: [] });
   comparisons = new Map();
   files = new Map();
   creationAudits = new Set();
@@ -207,6 +212,61 @@ beforeEach(() => {
 });
 
 describe("POST /api/v2/comparisons", () => {
+  test("requires a session for creation and list", async () => {
+    mocks.validateUserSession.mockResolvedValue({ success: false });
+    expect((await route.POST(createRequest())).status).toBe(401);
+    expect((await route.GET(new NextRequest("https://tenant.example.com/api/v2/comparisons"))).status).toBe(401);
+  });
+
+  test("rejects role2 manual amounts and completed creation", async () => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    expect((await route.POST(createRequest())).status).toBe(403);
+    expect((await route.POST(createRequest({ ...comparativa, status: "completed", comision: { fijo: null, indexado: null }, comision_sales_person: { fijo: null, indexado: null } }))).status).toBe(403);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+  test("role2 can create an empty pending comparison only in their scope", async () => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    const empty = { ...comparativa, comision: { fijo: null, indexado: null }, comision_sales_person: { fijo: null, indexado: null } };
+    expect((await route.POST(createRequest({ ...empty, user_id: "other" }, []))).status).toBe(403);
+    expect((await route.POST(createRequest(empty, []))).status).toBe(200);
+  });
+
+  test.each(["GET", "POST"])("%s ignores spoofed role and redacts agency while preserving completeness", async (method) => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    const execute = vi.fn(async (statement) => ({ rows: statement.sql.includes("COUNT(*)") ? [{ total: 1 }] : [{ id: "comparison-1", plan: '["fijo"]', comision_fijo: 12345, comision_indexado: null, comision_sales_person_fijo: 0, comision_sales_person_indexado: null }] }));
+    mocks.getTursoClient.mockReturnValue({ execute });
+    const request = new NextRequest("https://tenant.example.com/api/v2/comparisons?user_role=admin&user_id=other", method === "POST" ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify({ page: 1, rowsPerPage: 10, user_id: "other", user_role: "admin" }) } : undefined);
+    const response = await route[method as "GET" | "POST"](request);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: [{ comision: { fijo: null, indexado: null }, comision_sales_person: { fijo: 0 }, has_complete_commissions: { fijo: true, indexado: false } }] });
+    expect(execute.mock.calls.every(([statement]) => statement.args.includes("user-1") && !statement.args.includes("other"))).toBe(true);
+  });
+  test("list responses preserve null commissions and assigned zero", async () => {
+    mocks.getTursoClient.mockReturnValue({ execute: vi.fn(async (statement) => ({ rows: statement.sql.includes("COUNT(*)")
+      ? [{ total: 1 }]
+      : [{ id: "comparison-null", creation_date: "2026-09-02", client: "Client", service: "Luz", status: "pending", plan: '["fijo"]', comision_fijo: null, comision_indexado: 0, comision_sales_person_fijo: 0, comision_sales_person_indexado: null }],
+    })) });
+    const response = await route.GET(new NextRequest("https://tenant.example.com/api/v2/comparisons?user_id=user-1&user_role=admin"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: [{
+      comision: { fijo: null, indexado: 0 },
+      comision_sales_person: { fijo: 0, indexado: null },
+    }] });
+  });
+
+  test("accepts null and explicit zero commissions without changing inserted values", async () => {
+    const response = await route.POST(createRequest({
+      ...comparativa,
+      comision: { fijo: null, indexado: 0 },
+      comision_sales_person: { fijo: 0, indexado: null },
+    }, []));
+    expect(response.status).toBe(200);
+    const insert = mocks.txExecute.mock.calls.find(([statement]) =>
+      statement.sql.includes("INSERT INTO comparativas"),
+    );
+    expect(insert?.[0].args.slice(4, 8)).toEqual([null, 0, 0, null]);
+  });
+
   test("creates the comparison, audit, and files in one write transaction", async () => {
     const response = await route.POST(createRequest());
 

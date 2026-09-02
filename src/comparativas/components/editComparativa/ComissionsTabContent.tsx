@@ -19,11 +19,10 @@ export const CommissionsTabContent = ({
 }: CommissionsTabContentProps) => {
   const isComercial = userData.role === "2";
 
-  const getComissionText = (comission: number) => {
+  const getComissionText = (comission: number | null) => {
+    if (comission === null) return "Sin asignar";
     if (comission === 0 && comparativa.status !== "pending") {
       return "No hay ahorro";
-    } else if (comission === 0 && comparativa.status === "awaiting_review") {
-      return "Pendiente de revisión";
     }
     return formatComission(comission);
   };

@@ -18,6 +18,7 @@ import ContractForm from "./ContractForm";
 import { Button } from "@/core/components/ui/button";
 import { Separator } from "@/core/components/ui/separator";
 import { ComparativaVM } from "@/comparativas/types";
+import { eligibleComparisonPlans } from "@/comparativas/utils/commission-completeness";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
@@ -67,7 +68,7 @@ export default function ThirdStepForm({
   const { activeSuppliers } = useActiveEnergySuppliers();
   const { settings } = useCrmSettings();
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
-    tramite.user_id,
+    comparativa ? undefined : tramite.user_id,
   );
   const configuredProviders = useMemo(
     () => settings?.providers.map((provider) => provider.name) ?? [],
@@ -95,7 +96,7 @@ export default function ThirdStepForm({
   const supplierName = tramite.provider || firstContract?.new_company;
 
   useEffect(() => {
-    if (salesCommissionTouched) return;
+    if (comparativa || salesCommissionTouched) return;
 
     const calculatedCommission = calculateSalesPersonCommission({
       baseCommission: tramite.comision,
@@ -118,6 +119,7 @@ export default function ThirdStepForm({
       };
     });
   }, [
+    comparativa,
     activeSuppliers,
     supplierId,
     supplierName,
@@ -203,9 +205,13 @@ export default function ThirdStepForm({
             value === "Verificado"
               ? new Date().toISOString()
               : "",
-          comision: value === "Baja" ? -prevState.comision : prevState.comision,
+          comision: comparativa && tramite.plan
+            ? (value === "Baja" ? -1 : 1) * (comparativa.comision[tramite.plan] ?? 0)
+            : value === "Baja" ? -prevState.comision : prevState.comision,
           comision_sales_person:
-            value === "Baja"
+            comparativa && tramite.plan
+              ? (value === "Baja" ? -1 : 1) * (comparativa.comision_sales_person[tramite.plan] ?? 0)
+              : value === "Baja"
               ? -prevState.comision_sales_person
               : prevState.comision_sales_person,
         };
@@ -254,6 +260,7 @@ export default function ThirdStepForm({
             {userData &&
               (userData.role === "admin" || userData.role === "1") && (
                 <>
+                  {!comparativa && <>
                   <InputComponent
                     type="number"
                     label="Comisión"
@@ -272,6 +279,7 @@ export default function ThirdStepForm({
                     isRequired={tramite.status === "Activo"}
                     endContent={<Euro size={16} />}
                   />
+                  </>}
                   {configuredProviders.length > 0 ? (
                     <div className="flex w-full flex-col gap-2">
                       <Label htmlFor="provider">Proveedor</Label>
@@ -311,6 +319,11 @@ export default function ThirdStepForm({
                 </>
               )}
           </div>
+          {comparativa && <div>
+            <p>Las comisiones se copiarán desde la comparativa.</p>
+            {userData.role !== "2" && <p>Comisión: {tramite.comision} €</p>}
+            <p>Comisión comercial: {tramite.comision_sales_person} €</p>
+          </div>}
         </div>
         <Separator className="my-8" />
         <div className="flex items-center gap-4 mb-4">
@@ -352,7 +365,10 @@ export default function ThirdStepForm({
           </div>
         )}
       </form>
-      {tramite.status !== "Tramitable" &&
+      {comparativa ? (
+        <ButtonGroupComponent onCancel={onCancel} onBack={onBack} onSubmit={onSubmit}
+          submitDisabled={!tramite.plan || !eligibleComparisonPlans(comparativa).includes(tramite.plan)} />
+      ) : tramite.status !== "Tramitable" &&
       tramite.status !== "Borrador" &&
       tramite.status !== "Activo" ? (
         <CheckComisionModal

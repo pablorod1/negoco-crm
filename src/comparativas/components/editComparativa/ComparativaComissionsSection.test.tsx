@@ -11,6 +11,9 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import type { ComparativaVM } from "@/comparativas/types/comparativa.types";
 import type { User } from "@/core/types";
 import ComparativaComissionsSection from "./ComparativaComissionsSection";
+import { CommissionsTabContent } from "./ComissionsTabContent";
+import { createEmptyComparativaDB } from "@/comparativas/utils/comparativa.factories";
+import { formatChangeValue } from "@/comparativas/utils/comparativaChangesHelpers";
 
 vi.mock("@/core/components/CustomToast", () => ({
   showCustomToast: vi.fn(),
@@ -140,6 +143,75 @@ function save() {
 }
 
 describe("ComparativaComissionsSection", () => {
+  test.each<ComparativaVM["status"]>(["completed", "processed", "rejected", "rechazado_cliente"])("preserves No hay ahorro for assigned zero in %s", (status) => {
+    renderCommissionsSection({ comparativa: {
+      ...baseComparativa, status,
+      comision: { fijo: 0, indexado: null },
+      comision_sales_person: { fijo: null, indexado: null },
+    } });
+    expect(screen.getByText("No hay ahorro")).toBeInTheDocument();
+    expect(screen.getByText("Sin asignar")).toBeInTheDocument();
+  });
+
+  test.each<ComparativaVM["status"]>(["pending", "processing", "awaiting_review"])("keeps explicit zero numeric while the study is %s", (status) => {
+    renderCommissionsSection({ comparativa: {
+      ...baseComparativa, status,
+      comision: { fijo: 0, indexado: null },
+      comision_sales_person: { fijo: null, indexado: null },
+    } });
+    expect(screen.queryByText("No hay ahorro")).not.toBeInTheDocument();
+    expect(screen.getByText("0,00 €")).toBeInTheDocument();
+    expect(screen.getByText("Sin asignar")).toBeInTheDocument();
+  });
+
+  test.each<ComparativaVM["status"]>(["pending", "processing", "awaiting_review", "completed", "processed", "rejected", "rechazado_cliente"])("preserves the commissions tab's existing zero label in %s without treating null as zero", (status) => {
+    render(<CommissionsTabContent userData={baseUser} comparativa={{
+      ...baseComparativa, status,
+      comision: { fijo: 0, indexado: null },
+      comision_sales_person: { fijo: null, indexado: null },
+    }} />);
+    expect(screen.getByText(status === "pending" ? "0,00 €" : "No hay ahorro")).toBeInTheDocument();
+    expect(screen.getByText("Sin asignar")).toBeInTheDocument();
+  });
+
+  test("new comparisons initialize every commission unassigned and history distinguishes zero", () => {
+    const comparison = createEmptyComparativaDB(baseUser);
+    expect(comparison.comision).toEqual({ fijo: null, indexado: null });
+    expect(comparison.comision_sales_person).toEqual({ fijo: null, indexado: null });
+    expect(formatChangeValue(null, "comision_fijo")).toBe("Sin asignar");
+    expect(formatChangeValue(0, "comision_fijo")).toBe("0");
+  });
+  test("keeps blank commissions distinct from assigned zero", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response(200, { success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderCommissionsSection({ comparativa: {
+      ...baseComparativa,
+      comision: { fijo: null, indexado: null },
+      comision_sales_person: { fijo: 0, indexado: null },
+    } });
+    expect(screen.getByText("Sin asignar")).toBeInTheDocument();
+    startEditing();
+    expect(organizationFixedInput()).toHaveValue(null);
+    save();
+    expect(fetchMock).not.toHaveBeenCalled();
+    changeOrganizationFixed("0");
+    expect(organizationFixedInput()).toHaveValue(0);
+    save();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ comissions: { comision_fijo: 0 } });
+  });
+
+  test("clearing a completed commission stays blank and cannot save zero implicitly", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    renderCommissionsSection();
+    startEditing();
+    changeOrganizationFixed("");
+    expect(organizationFixedInput()).toHaveValue(null);
+    save();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();

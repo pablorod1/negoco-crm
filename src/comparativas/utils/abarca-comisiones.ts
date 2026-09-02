@@ -3,13 +3,8 @@ import type { AbarcaComisiones } from "@/comparativas/types/abarca.types";
 /**
  * Comisiones que Abarca manda con el estudio, leídas del payload guardado.
  *
- * Viven en `abarca_estudios.raw_payload` igual que `apolo_sips` y el estado de
- * los documentos: así se capturan sin migración mientras se decide cómo
- * volcarlas a `comparativas.comision_*` (falta resolver si van al slot fijo o
- * al indexado). La comisión del comercial se sigue calculando con nuestras
- * reglas por comercializadora; `base` queda guardada solo como referencia.
- *
- * Las dos vienen en euros, la misma unidad que usa el CRM.
+ * Oferta está expresada en euros y base en porcentaje. La aplicación y el
+ * cálculo autorizados viven en el servicio de resultados del estudio.
  */
 export function parseAbarcaComisiones(
   rawPayload: string,

@@ -77,10 +77,10 @@ beforeEach(async () => {
       client TEXT NOT NULL,
       service TEXT NOT NULL,
       plan TEXT NOT NULL,
-      comision_fijo REAL NOT NULL,
-      comision_indexado REAL NOT NULL,
-      comision_sales_person_fijo REAL NOT NULL,
-      comision_sales_person_indexado REAL NOT NULL,
+      comision_fijo REAL,
+      comision_indexado REAL,
+      comision_sales_person_fijo REAL,
+      comision_sales_person_indexado REAL,
       notes TEXT NOT NULL,
       user_id TEXT NOT NULL,
       creation_date TEXT NOT NULL,
@@ -120,6 +120,19 @@ afterEach(() => {
 });
 
 describe("createComparativaIdempotently", () => {
+  test("persists unassigned null commissions and explicit zero without conflating them", async () => {
+    await createComparativaIdempotently(client, {
+      ...comparativa,
+      comision: { fijo: null, indexado: 0 },
+      comision_sales_person: { fijo: 0, indexado: null },
+    }, []);
+    const result = await client.execute("SELECT comision_fijo, comision_indexado, comision_sales_person_fijo, comision_sales_person_indexado FROM comparativas");
+    expect({ ...result.rows[0] }).toEqual({
+      comision_fijo: null, comision_indexado: 0,
+      comision_sales_person_fijo: 0, comision_sales_person_indexado: null,
+    });
+  });
+
   test("creates once and treats the same operation as a successful retry", async () => {
     const first = await createComparativaIdempotently(client, comparativa, [
       file,

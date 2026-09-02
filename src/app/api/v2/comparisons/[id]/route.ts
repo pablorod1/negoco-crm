@@ -14,6 +14,7 @@ import {
 import { parseAbarcaApoloSipsSummary } from "@/comparativas/utils/abarca-apolo-sips";
 import { parseAbarcaComisiones } from "@/comparativas/utils/abarca-comisiones";
 import { parseAbarcaDocuments } from "@/comparativas/utils/abarca-documents";
+import { completeCommissionPlans } from "@/comparativas/utils/commission-completeness";
 
 /**
  * Database row interfaces for type safety
@@ -24,10 +25,10 @@ interface ComparativaRow extends Record<string, unknown> {
   service: string;
   plan: string;
   status: string;
-  comision_fijo: number;
-  comision_indexado: number;
-  comision_sales_person_fijo: number;
-  comision_sales_person_indexado: number;
+  comision_fijo: number | null;
+  comision_indexado: number | null;
+  comision_sales_person_fijo: number | null;
+  comision_sales_person_indexado: number | null;
   notes: string;
   creation_date: string;
   tramite_id: string | null;
@@ -85,18 +86,20 @@ type WriteTransaction = Pick<
 interface ComparisonByIdResponse {
   success: boolean;
   data?: {
+    has_complete_commissions: Record<ComparativaPlan, boolean>;
+    has_pending_study_result: boolean;
     id: string;
     client: string;
     service: "Luz" | "Gas";
     plan: ComparativaPlan[];
     status: string;
     comision: {
-      fijo: number;
-      indexado: number;
+      fijo: number | null;
+      indexado: number | null;
     };
     comision_sales_person: {
-      fijo: number;
-      indexado: number;
+      fijo: number | null;
+      indexado: number | null;
     };
     notes: string[];
     user: {
@@ -177,6 +180,7 @@ async function fetchComparisonData(
       c.service,
       c.plan,
       c.status,
+      EXISTS(SELECT 1 FROM comparison_study_results sr WHERE sr.comparativa_id = c.id AND sr.state = 'pending') AS has_pending_study_result,
       c.comision_fijo,
       c.comision_indexado,
       c.comision_sales_person_fijo,
@@ -295,20 +299,23 @@ function transformComparisonData(
   }>,
   abarcaEstudio?: AbarcaEstudio,
   abarcaDocuments?: AbarcaWebhookDocument[],
+  role?: string,
 ): ComparisonByIdResponse["data"] {
   return {
+    has_complete_commissions: completeCommissionPlans(comparativa),
+    has_pending_study_result: Boolean(comparativa.has_pending_study_result),
     id: String(comparativa.id),
     client: String(comparativa.client),
     service: String(comparativa.service) as "Luz" | "Gas",
     plan: JSON.parse(comparativa.plan as string) as ComparativaPlan[],
     status: String(comparativa.status),
     comision: {
-      fijo: Number(comparativa.comision_fijo),
-      indexado: Number(comparativa.comision_indexado),
+      fijo: role === "2" || comparativa.comision_fijo == null ? null : Number(comparativa.comision_fijo),
+      indexado: role === "2" || comparativa.comision_indexado == null ? null : Number(comparativa.comision_indexado),
     },
     comision_sales_person: {
-      fijo: Number(comparativa.comision_sales_person_fijo),
-      indexado: Number(comparativa.comision_sales_person_indexado),
+      fijo: comparativa.comision_sales_person_fijo == null ? null : Number(comparativa.comision_sales_person_fijo),
+      indexado: comparativa.comision_sales_person_indexado == null ? null : Number(comparativa.comision_sales_person_indexado),
     },
     notes: JSON.parse(comparativa.notes as string) as string[],
     user: {
@@ -324,7 +331,9 @@ function transformComparisonData(
       : undefined,
     has_permanencia: comparativa.has_permanencia === 1,
     has_renovacion: comparativa.has_renovacion === 1,
-    abarca_estudio: abarcaEstudio,
+    abarca_estudio: role === "2" && abarcaEstudio
+      ? { ...abarcaEstudio, crm_id: null, comisiones: null, raw_payload: "" }
+      : abarcaEstudio,
     abarca_documents: abarcaDocuments,
     files,
   };
@@ -584,6 +593,9 @@ export async function PATCH(
       const responseData = transformComparisonData(
         updatedComparison.data[0],
         filesResult.data || [],
+        undefined,
+        undefined,
+        authenticatedUser.role,
       );
       await transaction.commit();
 
@@ -805,6 +817,7 @@ export async function POST(
       files,
       abarcaEstudio,
       abarcaDocuments,
+      user_role,
     );
 
     return NextResponse.json({

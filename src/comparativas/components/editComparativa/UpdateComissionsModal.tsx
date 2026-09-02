@@ -66,11 +66,11 @@ export default function UpdateComissionsModal({
       let changed = false;
 
       if (
-        comparativa.plan.includes("fijo") &&
+        comparativa.plan.includes("fijo") && next.comision_fijo != null &&
         !manualSalesCommissionFields.comision_sales_person_fijo
       ) {
         const calculatedCommission = calculateSalesPersonCommission({
-          baseCommission: next.comision_fijo ?? 0,
+          baseCommission: next.comision_fijo,
           supplierId: comparativa.company_id,
           supplierName: comparativa.company_name,
           commissions: userCompanyCommissions,
@@ -87,11 +87,11 @@ export default function UpdateComissionsModal({
       }
 
       if (
-        comparativa.plan.includes("indexado") &&
+        comparativa.plan.includes("indexado") && next.comision_indexado != null &&
         !manualSalesCommissionFields.comision_sales_person_indexado
       ) {
         const calculatedCommission = calculateSalesPersonCommission({
-          baseCommission: next.comision_indexado ?? 0,
+          baseCommission: next.comision_indexado,
           supplierId: comparativa.company_id,
           supplierName: comparativa.company_name,
           commissions: userCompanyCommissions,
@@ -170,8 +170,8 @@ export default function UpdateComissionsModal({
           : ["comision_indexado", "comision_sales_person_indexado"];
     return requiredFields.some(
       (field) =>
-        formDataComissions[field as keyof ComissionFormValues] === undefined ||
-        formDataComissions[field as keyof ComissionFormValues] === null
+        formDataComissions[field as keyof ComissionFormValues] == null ||
+        !Number.isFinite(formDataComissions[field as keyof ComissionFormValues])
     );
   };
 

@@ -231,26 +231,6 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
       request: () => request({ comissions: {} }),
     },
     {
-      name: "only empty commission values",
-      request: () =>
-        request({ comissions: { comision_fijo: "" } }),
-    },
-    {
-      name: "only null commission values",
-      request: () =>
-        request({ comissions: { comision_fijo: null } }),
-    },
-    {
-      name: "only null and empty commission values",
-      request: () =>
-        request({
-          comissions: {
-            comision_fijo: null,
-            comision_indexado: "",
-          },
-        }),
-    },
-    {
       name: "non-finite numeric text",
       request: () =>
         request({ comissions: { comision_fijo: "Infinity" } }),
@@ -488,30 +468,12 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
     },
   );
 
-  test("treats null and empty values as omitted when another field is valid", async () => {
-    const response = await patch({
-      comissions: {
-        comision_fijo: null,
-        comision_indexado: "",
-        comision_sales_person_fijo: 15,
-      },
-    });
-
-    expect(response.status).toBe(200);
-    const update = findUpdateStatement();
-    expect(update.sql).not.toContain("comision_fijo = ?");
-    expect(update.sql).not.toContain("comision_indexado = ?");
-    expect(update.sql).toContain("comision_sales_person_fijo = ?");
-    expect(update.args).toEqual([15, "comparison-1"]);
-    expect(mocks.createComparativaChange).toHaveBeenCalledTimes(1);
-    expect(mocks.createComparativaChange).toHaveBeenCalledWith(
-      transaction,
-      expect.objectContaining({
-        field_name: "comision_sales_person_fijo",
-        old_value: "5",
-        new_value: "15",
-      }),
-    );
+  test.each([null, "", "   ", "\t\n"])("rejects clearing active commissions with %j instead of omitting them", async (value) => {
+    const response = await patch({ comissions: { comision_fijo: value, comision_sales_person_fijo: 15 } });
+    expect(response.status).toBe(409);
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.createComparativaChange).not.toHaveBeenCalled();
+    expect(mocks.rollback).toHaveBeenCalledOnce();
   });
 
   test.each([
@@ -550,7 +512,7 @@ describe("PATCH /api/v2/comparisons/[id]/commissions", () => {
     { storedValue: "12.5", expectedOldValue: "12.5" },
     { storedValue: "-12.5", expectedOldValue: "-12.5" },
     { storedValue: "1.25e2", expectedOldValue: "125" },
-    { storedValue: null, expectedOldValue: "0" },
+    { storedValue: null, expectedOldValue: null },
   ])(
     "supports persisted commission value $storedValue",
     async ({ storedValue, expectedOldValue }) => {

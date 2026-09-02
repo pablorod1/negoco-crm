@@ -22,6 +22,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/core/libsql/client", () => ({
   getTursoClient: mocks.getTursoClient,
 }));
+vi.mock("@/crm-settings/server", () => ({
+  getCrmSettings: vi.fn().mockResolvedValue({ providers: [], processing_auto_activation: { enabled: false } }),
+  isProviderAllowed: vi.fn().mockReturnValue(true),
+}));
 
 vi.mock("@/core/libsql/users/getSubcomerciales", () => ({
   getSubcomerciales: vi.fn(),

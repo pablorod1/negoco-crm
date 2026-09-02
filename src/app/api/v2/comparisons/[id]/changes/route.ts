@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Client } from "@libsql/client";
 import { validateUserSession } from "@/core/auth/session-utils";
 import { getTursoClient } from "@/core/libsql/client";
+import { salesVisibleHistory } from "@/comparativas/server/history-privacy";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import {
   getComparativaChanges,
@@ -126,7 +127,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: changes,
+      data: authenticatedUser.role === "2" ? salesVisibleHistory(changes) : changes,
     });
   } catch (error) {
     console.error("[API Error] Failed to fetch comparison changes:", error);

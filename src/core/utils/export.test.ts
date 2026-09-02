@@ -47,6 +47,12 @@ beforeEach(() => {
 });
 
 describe("exportRowsToExcel", () => {
+  test("exports unassigned comparison commissions distinctly from zero", async () => {
+    const table = buildTable([{ id: "Comisión", accessorKey: "comision" }]);
+    await exportRowsToExcel({ table, rows: [{ comision: { fijo: null, indexado: 0 } }], selectedColumnIds: ["Comisión"], name: "Comparativas" });
+    expect(sheetRows()[0]).toEqual({ "Comisión Fijo": "Sin asignar", "Comisión Indexado": 0 });
+  });
+
   test("resolves values through each column's accessorKey", async () => {
     const table = buildTable([
       { id: "Cliente", accessorKey: "client_name" },

@@ -19,12 +19,12 @@ export interface ComparativaDB {
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   comision: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   comision_sales_person: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   notes: string[];
   user_id: string;
@@ -42,17 +42,19 @@ export interface ComparativaWithSupplierDB extends ComparativaDB {
 }
 
 export interface ComparativaVM {
+  has_complete_commissions?: Record<ComparativaPlan, boolean>;
+  has_pending_study_result?: boolean;
   id: string;
   client: string;
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   comision: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   comision_sales_person: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   notes: string[];
   user: Partial<User>;
@@ -69,17 +71,19 @@ export interface ComparativaVM {
 }
 
 export interface ComparativaRow {
+  has_complete_commissions?: Record<ComparativaPlan, boolean>;
+  has_pending_study_result?: boolean;
   id: string;
   client: string;
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   comision: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   comision_sales_person: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   user: User;
   creation_date: string;

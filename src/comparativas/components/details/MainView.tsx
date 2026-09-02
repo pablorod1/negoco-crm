@@ -43,6 +43,7 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import { hasPermission } from "@/core/access-control/client";
 import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
 import { PredefinedNote } from "@/core/components/PredefinedNote";
+import type { StudyResultController } from "./StudyResultDialog";
 
 interface MainViewProps {
   comparativa: ComparativaVM;
@@ -52,6 +53,9 @@ interface MainViewProps {
   isEditable: boolean;
   isComercialEditable: boolean;
   isProcessed: boolean;
+  studyResult?: Pick<StudyResultController,
+    "canReview" | "loading" | "submitting" | "open" | "error" | "review" |
+    "startWatching" | "panelOpen" | "setPanelOpen">;
 }
 
 const PERIODS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
@@ -83,6 +87,7 @@ export default function MainView({
   isEditable,
   isComercialEditable,
   isProcessed,
+  studyResult,
 }: MainViewProps) {
   const isComercial = userData.role === "2";
   const isStudied = comparativa.status === "completed";
@@ -102,6 +107,8 @@ export default function MainView({
     userData.role,
     "comparisons.study.review",
   );
+  const hasPendingStudyResult =
+    comparativa.has_pending_study_result || studyResult?.canReview;
   const canUseAiStudies =
     canCompleteStudies &&
     (isComercial
@@ -140,6 +147,41 @@ export default function MainView({
       ? [Math.max(...apoloDemandPower.map((item) => item.value ?? 0))]
       : [],
   );
+  const titularName =
+    abarcaEstudio?.nombre_completo ||
+    [abarcaEstudio?.titular, abarcaEstudio?.ape1, abarcaEstudio?.ape2]
+      .filter(hasText)
+      .join(" ");
+  const supplyAddress = [abarcaEstudio?.calle_cups, abarcaEstudio?.numero_cups]
+    .filter(hasText)
+    .join(" ");
+  const hasTitularData = [
+    titularName,
+    abarcaEstudio?.dni,
+    abarcaEstudio?.email,
+    abarcaEstudio?.movil,
+    abarcaEstudio?.iban,
+  ].some(hasText);
+  const hasAddressData = [
+    supplyAddress,
+    abarcaEstudio?.localidad_cups,
+    abarcaEstudio?.codpostal_cups,
+    abarcaEstudio?.observaciones,
+  ].some(hasText);
+  const hasSupplyData =
+    [
+      abarcaEstudio?.cups,
+      abarcaEstudio?.tipo_tarifa,
+      abarcaEstudio?.empresa_cliente,
+    ].some(hasText) ||
+    [...contractedPowers, ...abarcaConsumption].some(
+      (item) => item.value !== null && item.value !== undefined,
+    );
+  const hasSipsData = apoloDemandPower.some(
+    (item) => item.value !== null && item.value !== undefined,
+  );
+  const hasStudyData =
+    hasTitularData || hasAddressData || hasSupplyData || hasSipsData;
 
   // Fetch supplier information if company_id is available
   const { supplier, loading: isLoadingSupplier } = useEnergySupplierById(
@@ -337,7 +379,7 @@ export default function MainView({
       {/* Hero Section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,2.15fr)]">
         {/* Card 1: Acciones */}
-        <Card>
+        <Card role="region" aria-label="Acciones">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Info className="h-4 w-4" />
@@ -371,14 +413,19 @@ export default function MainView({
                         : "—"}
                     </p>
                   </div>
-                  <div>
+                  {/* <div>
                     <p className="mb-1 text-xs text-gray-500">
                       Fecha de creación
                     </p>
                     <p className="text-sm font-medium text-gray-900">
                       {formatDateTime(comparativa.creation_date)}
                     </p>
-                  </div>
+                  </div> */}
+                  <ComparativaPlanSection
+                    comparativa={comparativa}
+                    onUpdate={onUpdate}
+                    canEdit={canEditCommercialSummary}
+                  />
                 </div>
               </div>
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
@@ -386,6 +433,11 @@ export default function MainView({
               </p>
 
               <div className="space-y-2">
+                {!studyResult?.open && studyResult?.error && (
+                  <p role="status" className="text-sm text-amber-800">
+                    {studyResult.error}
+                  </p>
+                )}
                 {/* Comparativa procesada — Ver trámite */}
                 {comparativa.status === "processed" &&
                   comparativa.tramite_id && (
@@ -436,7 +488,9 @@ export default function MainView({
                         {canUseAiStudies ? (
                           <AbarcaPanel
                             comparativaId={comparativa.id}
-                            onStudyCompleted={onUpdate}
+                            onStudyStarted={studyResult?.startWatching}
+                            open={studyResult?.panelOpen}
+                            onOpenChange={studyResult?.setPanelOpen}
                             files={comparativa.files}
                           />
                         ) : null}
@@ -465,7 +519,7 @@ export default function MainView({
 
                 {/* Estudio con IA recibido — pendiente de revisión */}
                 {isAwaitingReview ? (
-                  canReviewStudies ? (
+                  canReviewStudies || (canCompleteStudies && hasPendingStudyResult) ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <div className="mb-3 flex items-center gap-3">
                         <div className="rounded-md bg-amber-100 p-1.5">
@@ -476,19 +530,34 @@ export default function MainView({
                             Estudio con IA recibido
                           </p>
                           <p className="text-xs text-amber-700">
-                            Asigna la comercializadora y las comisiones para
-                            continuar
+                            {hasPendingStudyResult
+                              ? "Revisa los planes y las comisiones recibidos para continuar"
+                              : "Asigna la comercializadora y las comisiones para continuar"}
                           </p>
                         </div>
                       </div>
-                      <CompletarEstudioModal
-                        comparativa={comparativa}
-                        onUpdate={onUpdate}
-                        userData={userData}
-                        mode="ai_review"
-                        canCompleteStudies={canCompleteStudies}
-                        canReviewStudies={canReviewStudies}
-                      />
+                      {hasPendingStudyResult ? (
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          className="w-full gap-2"
+                          onClick={studyResult?.review}
+                          disabled={!studyResult?.canReview || studyResult.loading || studyResult.submitting}
+                        >
+                          <ShieldCheck className="h-4 w-4 shrink-0" />
+                          Revisar resultado del estudio
+                        </Button>
+                      ) : (
+                        <CompletarEstudioModal
+                          comparativa={comparativa}
+                          onUpdate={onUpdate}
+                          userData={userData}
+                          mode="ai_review"
+                          canCompleteStudies={canCompleteStudies}
+                          canReviewStudies={canReviewStudies}
+                        />
+                      )}
                     </div>
                   ) : (
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
@@ -595,23 +664,17 @@ export default function MainView({
               Comisiones, condiciones e información principal de la comparativa
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <ComparativaPlanSection
-              comparativa={comparativa}
-              onUpdate={onUpdate}
-              canEdit={canEditCommercialSummary}
-            />
-
-            <div
-              className={
-                hasPrioritySummary
-                  ? "grid grid-cols-1 gap-6 xl:grid-cols-[minmax(260px,0.95fr)_minmax(0,1.05fr)]"
-                  : "grid grid-cols-1 gap-6"
-              }
-            >
-              {hasPrioritySummary ? (
-                <div className="space-y-5">
-                  {!isSubcomercial ? (
+          <CardContent
+            className={
+              hasPrioritySummary
+                ? "grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(280px,1fr)_minmax(280px,1fr)]"
+                : "grid grid-cols-1 gap-5"
+            }
+          >
+            {hasPrioritySummary ? (
+              <div className="space-y-5">
+                {!isSubcomercial ? (
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-5">
                     <ComparativaComissionsSection
                       userData={userData}
                       comparativa={comparativa}
@@ -619,100 +682,102 @@ export default function MainView({
                       canEdit={canEditCommercialSummary}
                       embedded
                     />
-                  ) : null}
+                  </div>
+                ) : null}
 
-                  {isStudied && (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
-                      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-                        Renovación y permanencia
-                      </p>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="flex items-center justify-between gap-4 rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100">
-                          <label
-                            htmlFor={`permanencia-${comparativa.id}`}
-                            className="flex min-w-0 items-center gap-2 text-xs font-medium text-gray-700"
-                          >
-                            <ShieldCheck className="size-3.5 shrink-0 text-gray-500" />
-                            <span>Permanencia</span>
-                          </label>
-                          <Switch
-                            id={`permanencia-${comparativa.id}`}
-                            checked={!!comparativa.has_permanencia}
-                            disabled={updatingFlag !== null || isComercial}
-                            aria-label="Marcar comparativa con permanencia"
-                            onCheckedChange={(checked) =>
-                              handleFlagChange("has_permanencia", checked)
-                            }
-                            className="data-[state=checked]:bg-green-600"
-                          />
-                        </div>
+                {isStudied && (
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-5">
+                    <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Renovación y permanencia
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+                        <label
+                          htmlFor={`permanencia-${comparativa.id}`}
+                          className="flex min-w-0 items-center gap-2 text-sm font-medium text-gray-700"
+                        >
+                          <ShieldCheck className="size-4 shrink-0 text-gray-500" />
+                          <span>Permanencia</span>
+                        </label>
+                        <Switch
+                          id={`permanencia-${comparativa.id}`}
+                          checked={!!comparativa.has_permanencia}
+                          disabled={updatingFlag !== null || isComercial}
+                          aria-label="Marcar comparativa con permanencia"
+                          onCheckedChange={(checked) =>
+                            handleFlagChange("has_permanencia", checked)
+                          }
+                          className="data-[state=checked]:bg-green-600"
+                        />
+                      </div>
 
-                        <div className="flex items-center justify-between gap-4 rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100">
-                          <label
-                            htmlFor={`renovacion-${comparativa.id}`}
-                            className="flex min-w-0 items-center gap-2 text-xs font-medium text-gray-700"
-                          >
-                            <RefreshCw className="size-3.5 shrink-0 text-gray-500" />
-                            <span>Renovación</span>
-                          </label>
-                          <Switch
-                            id={`renovacion-${comparativa.id}`}
-                            checked={!!comparativa.has_renovacion}
-                            disabled={updatingFlag !== null || isComercial}
-                            aria-label="Marcar comparativa con renovación"
-                            onCheckedChange={(checked) =>
-                              handleFlagChange("has_renovacion", checked)
-                            }
-                          />
-                        </div>
+                      <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+                        <label
+                          htmlFor={`renovacion-${comparativa.id}`}
+                          className="flex min-w-0 items-center gap-2 text-sm font-medium text-gray-700"
+                        >
+                          <RefreshCw className="size-4 shrink-0 text-gray-500" />
+                          <span>Renovación</span>
+                        </label>
+                        <Switch
+                          id={`renovacion-${comparativa.id}`}
+                          checked={!!comparativa.has_renovacion}
+                          disabled={updatingFlag !== null || isComercial}
+                          aria-label="Marcar comparativa con renovación"
+                          onCheckedChange={(checked) =>
+                            handleFlagChange("has_renovacion", checked)
+                          }
+                        />
                       </div>
                     </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-5">
+                <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Comercial asignado
+                </p>
+                <div className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+                  <AvatarComponent
+                    userData={comparativa.user as User}
+                    className="rounded-full! h-10 w-10 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {comparativa.user.name || "Sin asignar"}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">
+                      {comparativa.user.email || "Sin email"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {!isComercial ? (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-5">
+                  <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Notas predefinidas
+                  </p>
+                  {visibleIsLoadingPredefinedNotes ? (
+                    <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm ring-1 ring-gray-100">
+                      Cargando notas predefinidas&hellip;
+                    </p>
+                  ) : visiblePredefinedNotes.length > 0 ? (
+                    <div className="space-y-3">
+                      {visiblePredefinedNotes.map((note) => (
+                        <PredefinedNote key={note.id} note={note} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm ring-1 ring-gray-100">
+                      Sin notas predefinidas para comparativas.
+                    </p>
                   )}
                 </div>
               ) : null}
-
-              <div className="space-y-5">
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Comercial asignado
-                  </p>
-                  <div className="flex items-start gap-3">
-                    <AvatarComponent
-                      userData={comparativa.user as User}
-                      className="rounded-full! h-9 w-9"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {comparativa.user.name || "Sin asignar"}
-                      </p>
-                      <p className="truncate text-xs text-gray-500">
-                        {comparativa.user.email || "Sin email"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {!isComercial ? <div className="mt-4 border-t border-gray-100 pt-4">
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Notas predefinidas
-                    </p>
-                    {visibleIsLoadingPredefinedNotes ? (
-                      <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
-                        Cargando notas predefinidas&hellip;
-                      </p>
-                    ) : visiblePredefinedNotes.length > 0 ? (
-                      <div className="space-y-2">
-                        {visiblePredefinedNotes.map((note) => (
-                          <PredefinedNote key={note.id} note={note} />
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
-                        Sin notas predefinidas para comparativas.
-                      </p>
-                    )}
-                  </div> : null}
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -731,195 +796,101 @@ export default function MainView({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Titular */}
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-                    Titular
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 gap-y-8">
-                    <div>
-                      <p className="text-xs text-gray-500">Nombre completo</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {abarcaEstudio.nombre_completo || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">DNI / NIF</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {abarcaEstudio.dni || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Email</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {abarcaEstudio.email || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Teléfono</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {abarcaEstudio.movil || "—"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {/* Dirección y Contacto */}
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-                    Dirección del suministro
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500">Dirección</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {[
-                          abarcaEstudio.calle_cups,
-                          abarcaEstudio.numero_cups,
-                        ]
-                          .filter(Boolean)
-                          .join(" ") || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Localidad</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {abarcaEstudio.localidad_cups || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Código Postal</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {abarcaEstudio.codpostal_cups || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">IBAN</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {abarcaEstudio.iban || "—"}
-                      </p>
-                    </div>
-                    {/* {abarcaEstudio.comisiones?.oferta !== null &&
-                      abarcaEstudio.comisiones?.oferta !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500">
-                            Comisión de oferta (Abarca)
-                          </p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatComission(abarcaEstudio.comisiones.oferta)}
-                          </p>
-                        </div>
-                      )}
-                    {abarcaEstudio.comisiones?.base !== null &&
-                      abarcaEstudio.comisiones?.base !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500">
-                            Comisión de comercial (Abarca)
-                          </p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatComission(abarcaEstudio.comisiones.base)}
-                          </p>
-                        </div>
-                      )} */}
-                    {abarcaEstudio.observaciones && (
-                      <div>
-                        <p className="text-xs text-gray-500">Observaciones</p>
-                        <p className="text-sm text-gray-700">
-                          {abarcaEstudio.observaciones}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {hasStudyData ? (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                {hasTitularData ? (
+                  <>
+                    <StudySectionTitle>Titular</StudySectionTitle>
+                    <StudyField
+                      label="Nombre completo"
+                      value={titularName}
+                      span="wide"
+                    />
+                    <StudyField label="DNI / NIF" value={abarcaEstudio.dni} />
+                    <StudyField
+                      label="Email"
+                      value={abarcaEstudio.email}
+                      span="wide"
+                    />
+                    <StudyField label="Teléfono" value={abarcaEstudio.movil} />
+                    <StudyField label="IBAN" value={abarcaEstudio.iban} />
+                  </>
+                ) : null}
+
+                {hasAddressData ? (
+                  <>
+                    <StudySectionTitle>Dirección del suministro</StudySectionTitle>
+                    <StudyField
+                      label="Dirección"
+                      value={supplyAddress}
+                      span="wide"
+                    />
+                    <StudyField
+                      label="Localidad"
+                      value={abarcaEstudio.localidad_cups}
+                    />
+                    <StudyField
+                      label="Código Postal"
+                      value={abarcaEstudio.codpostal_cups}
+                    />
+                    <StudyField
+                      label="Observaciones"
+                      value={abarcaEstudio.observaciones}
+                      span="full"
+                    />
+                  </>
+                ) : null}
+
+                {hasSupplyData ? (
+                  <>
+                    <StudySectionTitle>Suministro</StudySectionTitle>
+                    <StudyField
+                      label="CUPS"
+                      value={abarcaEstudio.cups}
+                      span="wide"
+                    />
+                    <StudyField
+                      label="Tarifa"
+                      value={abarcaEstudio.tipo_tarifa}
+                    />
+                    <StudyField
+                      label="Compañía actual"
+                      value={abarcaEstudio.empresa_cliente}
+                      span="wide"
+                    />
+                    <StudyPeriodGroup
+                      label="Potencia contratada"
+                      items={contractedPowers}
+                      unit="kW"
+                    />
+                    <StudyPeriodGroup
+                      label="Consumo"
+                      items={abarcaConsumption}
+                      unit="kWh"
+                      total={{ label: "Total", value: totalAbarcaConsumption }}
+                    />
+                  </>
+                ) : null}
+
+                {hasSipsData ? (
+                  <>
+                    <StudySectionTitle>
+                      Potencia máxima demandada (SIPS)
+                    </StudySectionTitle>
+                    <StudyPeriodGroup
+                      label="Por periodo"
+                      items={apoloDemandPower}
+                      unit="kW"
+                      total={{ label: "Máximo", value: maxApoloDemandPower }}
+                    />
+                  </>
+                ) : null}
               </div>
-
-              {/* Suministro */}
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-                  Suministro
-                </p>
-                <div className="grid grid-cols-2 gap-4 gap-y-8">
-                  <div>
-                    <p className="text-xs text-gray-500">CUPS</p>
-                    <p className="text-sm font-medium text-gray-900 break-all">
-                      {abarcaEstudio.cups}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tarifa</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {abarcaEstudio.tipo_tarifa || "—"}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-start gap-4 col-span-2">
-                    {contractedPowers.map(({ period, value }) => (
-                      <div key={period}>
-                        <p className="text-xs text-gray-500">
-                          Potencia {period}
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatNullableUnit(value, "kW")}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-start gap-4 col-span-2">
-                    {abarcaConsumption.map(({ period, value }) => (
-                      <div key={period}>
-                        <p className="text-xs text-gray-500">
-                          Consumo {period}
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatNullableUnit(value, "kWh")}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Consumo total</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {formatNullableUnit(totalAbarcaConsumption, "kWh")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Compañía actual</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {abarcaEstudio.empresa_cliente || "—"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Potencia Demandada SIPS */}
-              {abarcaEstudio.apolo_sips && (
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-                    Potencia máxima demandada (SIPS)
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 gap-y-8">
-                    {apoloDemandPower.map(({ period, value }) => (
-                      <div key={period}>
-                        <p className="text-xs text-gray-500">
-                          Potencia {period}
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatNullableUnit(value, "kW")}
-                        </p>
-                      </div>
-                    ))}
-                    <div>
-                      <p className="text-xs text-gray-500">Máximo registrado</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatNullableUnit(maxApoloDemandPower, "kW")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
-
+            ) : (
+              <p className="text-sm text-gray-500">
+                El estudio no ha devuelto datos que mostrar.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -961,6 +932,92 @@ export default function MainView({
           )}
         </CardFooter>
       </Card>
+    </div>
+  );
+}
+
+function hasText(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function StudySectionTitle({ children }: { children: string }) {
+  return (
+    <p className="col-span-full border-t border-gray-100 pt-5 text-xs font-medium uppercase tracking-wide text-gray-400 first:border-0 first:pt-0">
+      {children}
+    </p>
+  );
+}
+
+function StudyField({
+  label,
+  value,
+  span,
+}: {
+  label: string;
+  value: string | null | undefined;
+  span?: "wide" | "full";
+}) {
+  if (!hasText(value)) return null;
+
+  return (
+    <div
+      className={
+        span === "full"
+          ? "col-span-full min-w-0"
+          : span === "wide"
+            ? "min-w-0 sm:col-span-2"
+            : "min-w-0"
+      }
+    >
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="mt-0.5 text-sm font-medium break-words text-gray-900">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StudyPeriodGroup({
+  label,
+  items,
+  unit,
+  total,
+}: {
+  label: string;
+  items: Array<{ period: string; value: number | null }>;
+  unit: "kW" | "kWh";
+  total?: { label: string; value: number | null };
+}) {
+  const availableItems = items.filter((item) => item.value !== null);
+
+  if (availableItems.length === 0) return null;
+
+  return (
+    <div className="col-span-full">
+      <p className="mb-2 text-xs text-gray-500">{label}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {availableItems.map(({ period, value }) => (
+          <span
+            key={period}
+            className="inline-flex items-baseline gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1"
+          >
+            <span className="text-xs font-medium text-gray-500">{period}</span>
+            <span className="text-sm font-medium text-gray-900">
+              {formatNullableUnit(value, unit)}
+            </span>
+          </span>
+        ))}
+        {total && total.value !== null ? (
+          <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1">
+            <span className="text-xs font-medium text-primary-600">
+              {total.label}
+            </span>
+            <span className="text-sm font-semibold text-primary-900">
+              {formatNullableUnit(total.value, unit)}
+            </span>
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

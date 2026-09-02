@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import { validateUserSession } from "@/core/auth/session-utils";
+import { ComparisonSourceError, getComparisonContractSource } from "@/comparativas/server/contract-source";
 import {
   executeReadWithRetry,
   isRetryableLibsqlError,
@@ -713,6 +715,7 @@ const addTramiteFilesOptimized = async (
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ContractCreateResponse>> {
+  let isComparisonSource = false;
   try {
     // Initialize database connection
     const tursoClient = getTursoClient(request);
@@ -748,6 +751,16 @@ export async function POST(
     const signerString = formData.get("signer") as string;
     const userDataString = formData.get("userData") as string;
     const existingFilesString = formData.get("existingFiles") as string;
+    const sourceId = formData.get("source_comparison_id");
+    isComparisonSource = sourceId !== null;
+    let sourceActor: { id: string; role: string; name: string } | undefined;
+    let sourceOwner: string | undefined;
+    if (isComparisonSource) {
+      const auth = await validateUserSession(request);
+      if (!auth.success || !auth.user) throw new ComparisonSourceError(401, "Unauthorized");
+      sourceActor = auth.user;
+      if (typeof sourceId !== "string" || !sourceId) throw new ComparisonSourceError(400, "Invalid comparison source");
+    }
 
     // Validate required fields
     if (!tramiteString || !clientString || !userDataString) {
@@ -770,7 +783,13 @@ export async function POST(
     let existingFiles: TramiteFile[];
 
     try {
-      tramite = TramiteSchema.parse(JSON.parse(tramiteString)) as TramiteDB;
+      const draft = JSON.parse(tramiteString);
+      if (sourceActor && typeof sourceId === "string") {
+        const source = await getComparisonContractSource(tursoClient, sourceId, draft.plan, sourceActor, draft.status);
+        sourceOwner = source.user_id;
+        Object.assign(draft, source);
+      }
+      tramite = TramiteSchema.parse(draft) as TramiteDB;
 
       // Parse client data and handle coordinates properly
       const clientData = JSON.parse(clientString);
@@ -806,12 +825,15 @@ export async function POST(
       tramiteFiles = documents
         ? z.array(TramiteFileSchema).parse(JSON.parse(documents))
         : [];
-      userData = UserSchema.parse(JSON.parse(userDataString));
+      userData = sourceActor
+        ? UserSchema.parse(sourceActor)
+        : UserSchema.parse(JSON.parse(userDataString));
       // userData is used for validation and logging purposes
       existingFiles = existingFilesString
         ? z.array(TramiteFileSchema).parse(JSON.parse(existingFilesString))
         : [];
     } catch (validationError) {
+      if (validationError instanceof ComparisonSourceError) throw validationError;
       console.error("Validation error:", validationError);
       return NextResponse.json(
         {
@@ -873,9 +895,16 @@ export async function POST(
     }
 
     // Start transaction for data consistency
-    const tx = await tursoClient.transaction();
+    const tx = await tursoClient.transaction("write");
 
     try {
+      if (sourceActor && typeof sourceId === "string") {
+        Object.assign(tramite, await getComparisonContractSource(tx, sourceId, tramite.plan, sourceActor, tramite.status, sourceOwner));
+        if (tramite.status === "Baja") {
+          tramite.comision = -tramite.comision;
+          tramite.comision_sales_person = -tramite.comision_sales_person;
+        }
+      }
       // Execute operations SEQUENTIALLY inside the same transaction
       const clientRes = await addClientOptimized(client, tx, coordinates);
       if (!clientRes.success) throw new Error(clientRes.error);
@@ -941,6 +970,13 @@ export async function POST(
       throw error;
     }
   } catch (error) {
+    if (error instanceof ComparisonSourceError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
+    if (isComparisonSource) {
+      console.error("Comparison contract creation failed");
+      return NextResponse.json({ success: false, error: "Error al agregar trámite" }, { status: 500 });
+    }
     console.error("Error creating contract:", error);
 
     // Distinguish common error categories

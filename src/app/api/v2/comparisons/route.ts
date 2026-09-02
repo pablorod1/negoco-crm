@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import { validateUserSession } from "@/core/auth/session-utils";
+import { completeCommissionPlans } from "@/comparativas/utils/commission-completeness";
 import {
   executeReadWithRetry,
   isRetryableLibsqlError,
@@ -39,12 +41,12 @@ interface ComparisonResponseItem {
   creation_date: string;
   client: string;
   comision_sales_person: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   comision: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   status: string;
   service: "Luz" | "Gas";
@@ -97,8 +99,8 @@ const ComparativaStatusSchema = z.enum([
 const ServiceSchema = z.enum(["Luz", "Gas"]);
 
 const ComparativaComisionSchema = z.object({
-  fijo: z.number().min(0, "Fixed commission must be positive or zero"),
-  indexado: z.number().min(0, "Indexed commission must be positive or zero"),
+  fijo: z.number().min(0, "Fixed commission must be positive or zero").nullable(),
+  indexado: z.number().min(0, "Indexed commission must be positive or zero").nullable(),
 });
 
 const ComparativaSchema = z.object({
@@ -179,6 +181,9 @@ export async function GET(
 
   try {
     // Extract query parameters from URL
+    const auth = await validateUserSession(request);
+    if (!auth.success || !auth.user) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    if (!["admin", "1", "2"].includes(auth.user.role)) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     const { searchParams } = new URL(request.url);
 
     const parseJsonParam = <T,>(param: string | null): T | undefined => {
@@ -202,8 +207,8 @@ export async function GET(
     const requestData: PaginatedComparisonsRequest = {
       page: parseInt(searchParams.get("page") || "1"),
       rowsPerPage: rowsPerPageParsed,
-      user_id: searchParams.get("user_id") || "",
-      user_role: searchParams.get("user_role") || "",
+      user_id: auth.user.id,
+      user_role: auth.user.role,
       filterValue: searchParams.get("filterValue") || undefined,
       statusFilter: parseJsonParam<string[]>(searchParams.get("statusFilter")),
       dateRange: parseJsonParam<DateRange>(searchParams.get("dateRange")),
@@ -264,6 +269,7 @@ export async function GET(
                   c.comision_fijo AS comision_fijo,
                   c.comision_indexado AS comision_indexado,
                   c.status AS status,
+                  EXISTS(SELECT 1 FROM comparison_study_results sr WHERE sr.comparativa_id = c.id AND sr.state = 'pending') AS has_pending_study_result,
                   c.service AS service,
                   com.name AS company_name,
                   c.tramite_id AS tramite_id,
@@ -394,13 +400,15 @@ export async function GET(
       creation_date: row.creation_date as string,
       client: row.client as string,
       comision_sales_person: {
-        fijo: Number(row.comision_sales_person_fijo) || 0,
-        indexado: Number(row.comision_sales_person_indexado) || 0,
+        fijo: row.comision_sales_person_fijo == null ? null : Number(row.comision_sales_person_fijo),
+        indexado: row.comision_sales_person_indexado == null ? null : Number(row.comision_sales_person_indexado),
       },
       comision: {
-        fijo: Number(row.comision_fijo) || 0,
-        indexado: Number(row.comision_indexado) || 0,
+        fijo: user_role === "2" || row.comision_fijo == null ? null : Number(row.comision_fijo),
+        indexado: user_role === "2" || row.comision_indexado == null ? null : Number(row.comision_indexado),
       },
+      has_complete_commissions: completeCommissionPlans(row),
+      has_pending_study_result: Boolean(row.has_pending_study_result),
       status: row.status as string,
       service: row.service as "Luz" | "Gas",
       plan: JSON.parse(row.plan as string) as ComparativaPlan[],
@@ -509,6 +517,9 @@ async function handleComparisonCreation(
   request: NextRequest,
 ): Promise<NextResponse<ComparisonCreateResponse>> {
   try {
+    const auth = await validateUserSession(request);
+    if (!auth.success || !auth.user) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    if (!["admin", "1", "2"].includes(auth.user.role)) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     // Initialize database client
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
@@ -574,6 +585,15 @@ async function handleComparisonCreation(
       company_id: comparativaResult.data.company_id ?? undefined,
     };
     const comparativaFiles: ComparativaFile[] = filesResult.data;
+
+    if (auth.user.role === "2") {
+      const descendants = await getSubcomerciales(tursoClient, auth.user.id);
+      const owners = [auth.user.id, ...(descendants.success ? descendants.ids : [])];
+      if (!owners.includes(comparativa.user_id) || comparativa.status !== "pending" || comparativa.tramite_id ||
+          [...Object.values(comparativa.comision), ...Object.values(comparativa.comision_sales_person)].some((value) => value !== null)) {
+        return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+      }
+    }
 
     if (
       comparativaFiles.some(
@@ -653,6 +673,9 @@ async function handlePaginatedRequest(
     ...(requestData.userFilter && {
       userFilter: JSON.stringify(requestData.userFilter),
     }),
+    ...(requestData.companyFilter && { companyFilter: JSON.stringify(requestData.companyFilter) }),
+    excludeCompany: String(requestData.excludeCompany === true),
+    excludeUser: String(requestData.excludeUser === true),
   });
 
   // Create a new request object for internal processing

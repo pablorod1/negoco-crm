@@ -53,7 +53,7 @@ export function getStatusUpdatePayload({
   tramiteId,
 }: {
   status: ComparativaStatus;
-  commissions?: Record<string, number | undefined> | null;
+  commissions?: Record<string, number | null | undefined> | null;
   tramiteId?: string;
 }) {
   return {
@@ -64,7 +64,7 @@ export function getStatusUpdatePayload({
 }
 
 export function hasMissingCommission(
-  values: readonly (number | undefined)[],
+  values: readonly (number | null | undefined)[],
 ): boolean {
   return values.some(
     (value) => typeof value !== "number" || !Number.isFinite(value),

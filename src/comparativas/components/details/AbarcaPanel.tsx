@@ -22,84 +22,59 @@ import { ComparativaFile } from "@/comparativas/types";
 
 interface AbarcaPanelProps {
   comparativaId: string;
-  onStudyCompleted: () => void;
+  onStudyStarted?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   files: Partial<ComparativaFile>[];
 }
 
 export function AbarcaPanel({
   comparativaId,
-  onStudyCompleted,
+  onStudyStarted,
+  open,
+  onOpenChange,
   files,
 }: AbarcaPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const isOpen = open ?? localOpen;
+  const setIsOpen = useCallback((value: boolean) => {
+    setLocalOpen(value);
+    onOpenChange?.(value);
+  }, [onOpenChange]);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loginRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    loginRequest.current?.abort();
+    loginRequest.current = null;
+  }, [comparativaId]);
 
   const pdfFiles = files.filter(
     (file) => file.extension?.toLowerCase() === "pdf",
   );
 
-  // Poll comparativa status while the panel is open
-  useEffect(() => {
-    if (!isOpen || !iframeUrl) return;
-
-    pollingRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/v2/comparisons/${comparativaId}`, {
-          method: "POST",
-        });
-        if (!res.ok) return;
-        const responseBody = (await res.json()) as {
-          data?: { status?: string };
-        };
-        const comparativaStatus = responseBody.data?.status;
-
-        if (
-          !comparativaStatus ||
-          comparativaStatus === "pending" ||
-          comparativaStatus === "processing"
-        ) {
-          return;
-        }
-
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-
-        setIsOpen(false);
-        setIframeUrl(null);
-        onStudyCompleted();
-      } catch {
-        // Ignore polling errors
-      }
-    }, 5000);
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-    };
-  }, [isOpen, iframeUrl, comparativaId, onStudyCompleted]);
-
   const fetchLoginUrl = useCallback(
     async (fileId?: string) => {
+      if (loginRequest.current) return;
+      const controller = new AbortController();
+      loginRequest.current = controller;
       setIsLoading(true);
       setError(null);
       try {
         const res = await fetch("/api/v2/integrations/abarca/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             comparativa_id: comparativaId,
             ...(fileId ? { file_id: fileId } : {}),
           }),
         });
+        if (controller.signal.aborted) return;
 
         if (!res.ok) {
           setError("No se pudo conectar con el comparador");
@@ -107,16 +82,19 @@ export function AbarcaPanel({
         }
 
         const data = await res.json();
+        if (controller.signal.aborted) return;
         setIframeUrl(data.loginUrl);
         setIsIframeLoading(true);
+        onStudyStarted?.();
         setIsOpen(true);
       } catch {
-        setError("No se pudo conectar con el comparador");
+        if (!controller.signal.aborted) setError("No se pudo conectar con el comparador");
       } finally {
-        setIsLoading(false);
+        if (loginRequest.current === controller) loginRequest.current = null;
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     },
-    [comparativaId],
+    [comparativaId, onStudyStarted, setIsOpen],
   );
 
   const handleOpen = useCallback(() => {
@@ -139,7 +117,7 @@ export function AbarcaPanel({
     }
 
     fetchLoginUrl(fileId);
-  }, [iframeUrl, pdfFiles, fetchLoginUrl]);
+  }, [iframeUrl, pdfFiles, fetchLoginUrl, setIsOpen]);
 
   const handleFileSelect = useCallback(
     (fileId?: string) => {

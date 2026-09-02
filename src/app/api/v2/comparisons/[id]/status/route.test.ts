@@ -50,6 +50,7 @@ let currentComparison:
 let statusRowsAffected: number;
 let accessibleTramite: boolean;
 let activeSupplier: boolean;
+let pendingStudyResult: boolean;
 
 const transaction = {
   execute: mocks.execute,
@@ -59,7 +60,7 @@ const transaction = {
 
 function request(
   status: string,
-  comissions?: Record<string, number>,
+  comissions?: Record<string, number | null | string>,
   fields: { tramite_id?: string; company_id?: string } = {},
 ) {
   return new NextRequest(
@@ -80,7 +81,7 @@ function patchRequest(req: NextRequest, comparisonId = "comparison-1") {
 
 function patch(
   status: string,
-  comissions?: Record<string, number>,
+  comissions?: Record<string, number | null | string>,
   fields?: { tramite_id?: string; company_id?: string },
 ) {
   return patchRequest(request(status, comissions, fields));
@@ -101,6 +102,7 @@ beforeEach(() => {
   statusRowsAffected = 1;
   accessibleTramite = true;
   activeSupplier = true;
+  pendingStudyResult = false;
 
   mocks.getTursoClient.mockReturnValue({
     execute: mocks.execute,
@@ -125,6 +127,7 @@ beforeEach(() => {
   mocks.recordStatusChange.mockResolvedValue(true);
   mocks.execute.mockImplementation(
     async (statement: { sql: string; args: unknown[] }) => {
+      if (statement.sql.includes("FROM comparison_study_results")) return { rows: pendingStudyResult ? [{ exists: 1 }] : [] };
       if (
         statement.sql.trimStart().startsWith("SELECT") &&
         statement.sql.includes("comision_sales_person_indexado")
@@ -163,6 +166,25 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/v2/comparisons/[id]/status", () => {
+  test.each([0, null, 999])("forbids role2 manual commission %s even with review permission", async (value) => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    expect((await patch("completed", { comision_sales_person_fijo: value })).status).toBe(403);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  test("blocks pending study decisions in the write transaction", async () => {
+    pendingStudyResult = true;
+    expect((await patch("completed")).status).toBe(409);
+    expect(mocks.rollback).toHaveBeenCalledOnce();
+    expect(mocks.recordStatusChange).not.toHaveBeenCalled();
+    expect(mocks.recordCommissionChange).not.toHaveBeenCalled();
+  });
+
+  test("role2 completes historical studies using stored commissions", async () => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    expect((await patch("completed")).status).toBe(200);
+    expect(mocks.recordCommissionChange).not.toHaveBeenCalled();
+  });
   test("returns 401 without opening the database", async () => {
     mocks.validateUserSession.mockResolvedValue({ success: false });
 
@@ -588,6 +610,27 @@ describe("PATCH /api/v2/comparisons/[id]/status", () => {
       expect(mocks.commit).toHaveBeenCalledTimes(1);
     },
   );
+
+  test.each([null, "", "   ", "\t\n"])("rejects clearing an assigned commission during completion with %j", async (value) => {
+    currentComparison = { ...currentComparison!, status: "pending" };
+    const result = await patch("completed", { comision_fijo: value });
+    expect(result.status).toBe(409);
+    expect(mocks.commit).not.toHaveBeenCalled();
+  });
+
+  test("accepts all four active commissions explicitly assigned zero", async () => {
+    currentComparison = {
+      ...currentComparison!, status: "awaiting_review", plan: JSON.stringify(["fijo", "indexado"]),
+      comision_fijo: null, comision_indexado: null,
+      comision_sales_person_fijo: null, comision_sales_person_indexado: null,
+    };
+    const result = await patch("completed", {
+      comision_fijo: 0, comision_indexado: 0,
+      comision_sales_person_fijo: 0, comision_sales_person_indexado: 0,
+    });
+    expect(result.status).toBe(200);
+    expect(mocks.commit).toHaveBeenCalledOnce();
+  });
 
   test("accepts payload values that complete missing persisted completion data", async () => {
     currentComparison = {

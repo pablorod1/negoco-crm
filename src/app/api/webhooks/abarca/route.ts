@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { receiveStudyResult } from "@/comparativas/server/study-result";
 import type { Client, Transaction } from "@libsql/client";
 import { NextResponse } from "next/server";
 import {
@@ -1072,6 +1073,7 @@ async function finalizeDelivery(
     }
 
     await writeEstudio(transaction, comparativaId, payload, rawPayload);
+    await receiveStudyResult(transaction, comparativaId, payload, rawPayload);
 
     const statusUpdate = await transaction.execute({
       sql: `UPDATE comparativas

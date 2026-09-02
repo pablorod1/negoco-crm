@@ -7,12 +7,12 @@ export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
   service: "Luz",
   plan: ["fijo"],
   comision: {
-    fijo: 0,
-    indexado: 0,
+    fijo: null,
+    indexado: null,
   },
   comision_sales_person: {
-    fijo: 0,
-    indexado: 0,
+    fijo: null,
+    indexado: null,
   },
   notes: [],
   user_id: userData ? userData.id : "",

@@ -38,6 +38,7 @@ type DBExecutor = Pick<Client, "execute">;
  */
 export function formatChangeValue(value: unknown, fieldName?: string): string {
   if (value === null || value === undefined || value === "") {
+    if (fieldName && /comision|commission/i.test(fieldName)) return "Sin asignar";
     const fieldType = fieldName ? getFieldType(fieldName) : "text";
     if (fieldType === "number") return "0";
     if (fieldType === "date") return "Sin fecha";
@@ -256,7 +257,7 @@ export async function recordCommissionChange(
   user_id: string | null,
   field_name: string,
   old_value: number | null,
-  new_value: number
+  new_value: number | null
 ): Promise<boolean> {
   const oldFormatted = formatChangeValue(old_value, field_name);
   const newFormatted = formatChangeValue(new_value, field_name);
@@ -268,7 +269,7 @@ export async function recordCommissionChange(
     change_type: "commission_update",
     field_name,
     old_value: old_value?.toString() || null,
-    new_value: new_value.toString(),
+    new_value: new_value?.toString() ?? null,
     description,
   });
 }

@@ -34,10 +34,10 @@ interface Props {
 }
 
 interface FormData {
-  comision_fijo?: number;
-  comision_indexado?: number;
-  comision_sales_person_fijo?: number;
-  comision_sales_person_indexado?: number;
+  comision_fijo?: number | null;
+  comision_indexado?: number | null;
+  comision_sales_person_fijo?: number | null;
+  comision_sales_person_indexado?: number | null;
 }
 
 interface CommissionsApiResponse {
@@ -302,7 +302,7 @@ function ComparativaComissionsSectionContent({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: parseFloat(value) || 0,
+      [name]: value === "" ? null : parseFloat(value),
     }));
   };
 
@@ -348,6 +348,21 @@ function ComparativaComissionsSectionContent({
       return;
     }
 
+    const requiredValues = [
+      ...(hasFijo ? [formData.comision_fijo, formData.comision_sales_person_fijo] : []),
+      ...(hasIndexado ? [formData.comision_indexado, formData.comision_sales_person_indexado] : []),
+    ];
+    if (requiredValues.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+      showCustomToast({
+        title: "Campos vacíos",
+        message: "Asigna todas las comisiones antes de guardar; cero es un importe válido.",
+        iconColor: "var(--warning-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
+
     const changes = checkChanges();
 
     if (!changes) {
@@ -368,15 +383,11 @@ function ComparativaComissionsSectionContent({
     }
   };
 
-  const getComissionText = (comission: number) => {
-    if (comission === 0) {
-      if (comparativa.status === "awaiting_review") {
-        return "Pendiente de revisión";
-      } else if (comparativa.status !== "pending" && comparativa.status !== "processing") {
-        return "No hay ahorro";
-      }
+  const getComissionText = (comission: number | null) => {
+    if (comission === null) return "Sin asignar";
+    if (comission === 0 && !["pending", "processing", "awaiting_review"].includes(comparativa.status)) {
+      return "No hay ahorro";
     }
-
     return formatComission(comission);
   };
 

@@ -1,6 +1,6 @@
 import type React from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AbarcaPanel } from "./AbarcaPanel";
 
 const mocks = vi.hoisted(() => ({
@@ -52,11 +52,26 @@ beforeEach(() => {
 });
 
 describe("AbarcaPanel file contract", () => {
+  test("a login completed after unmount cannot open the panel or start watching", async () => {
+    let resolve!: (value: Response) => void;
+    mocks.fetch.mockReturnValueOnce(new Promise<Response>((done) => { resolve = done; }));
+    const onStudyStarted = vi.fn();
+    const onOpenChange = vi.fn();
+    const { unmount } = render(<AbarcaPanel comparativaId="comparison-1" files={[]} onStudyStarted={onStudyStarted} onOpenChange={onOpenChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Estudio con IA" }));
+    const signal = mocks.fetch.mock.calls[0][1].signal as AbortSignal;
+    unmount();
+    expect(signal.aborted).toBe(true);
+    await act(async () => resolve(new Response(JSON.stringify({ loginUrl: "about:blank" }), { status: 200 })));
+    expect(onStudyStarted).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   test("sends the selected file_id without client-controlled URLs or Abarca IDs", async () => {
     render(
       <AbarcaPanel
         comparativaId="comparison-1"
-        onStudyCompleted={() => {}}
+        onStudyStarted={() => {}}
         files={files}
       />,
     );
@@ -89,7 +104,7 @@ describe("AbarcaPanel file contract", () => {
     render(
       <AbarcaPanel
         comparativaId="comparison-1"
-        onStudyCompleted={() => {}}
+        onStudyStarted={() => {}}
         files={[{ ...files[0], id: undefined }]}
       />,
     );
@@ -119,7 +134,7 @@ describe("AbarcaPanel file contract", () => {
     render(
       <AbarcaPanel
         comparativaId="comparison-1"
-        onStudyCompleted={() => {}}
+        onStudyStarted={() => {}}
         files={[]}
       />,
     );

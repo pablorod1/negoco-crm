@@ -8,6 +8,7 @@ import {
 } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  receiveStudyResult: vi.fn(),
   commit: vi.fn(),
   deleteFiles: vi.fn(),
   execute: vi.fn(),
@@ -16,6 +17,10 @@ const mocks = vi.hoisted(() => ({
   rollback: vi.fn(),
   transaction: vi.fn(),
   uploadBase64File: vi.fn(),
+}));
+
+vi.mock("@/comparativas/server/study-result", () => ({
+  receiveStudyResult: mocks.receiveStudyResult,
 }));
 
 vi.mock("@/core/libsql/client", () => ({
@@ -452,6 +457,7 @@ function request(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.receiveStudyResult.mockReset().mockResolvedValue(undefined);
   vi.stubEnv("ABARCA_API_KEY", "webhook-key");
   vi.stubEnv("APOLO_SIPS_API_KEY", "");
 
@@ -814,6 +820,30 @@ describe("POST /api/webhooks/abarca", () => {
     expect(mocks.uploadBase64File).toHaveBeenCalledTimes(1);
     expect(mocks.deleteFiles).not.toHaveBeenCalled();
     expect(mocks.commit).toHaveBeenCalledTimes(2);
+    expect(mocks.receiveStudyResult).toHaveBeenCalledTimes(1);
+    expect(mocks.receiveStudyResult).toHaveBeenCalledWith(expect.objectContaining({ execute: expect.any(Function) }), "comparison-1", expect.objectContaining({ ide: 100 }), expect.any(String));
+  });
+
+  test.each(["fija", "indexada", "", "invalid", 3, {}, null])("type %j preserves study and documents", async (oferta_tipo) => {
+    const response = await route.POST(request({ ide: 100, crm_id: 321, oferta_tipo, comparativa_pdf: validPdfBase64 }));
+    expect(response.status).toBe(200);
+    expect(state.files).toBe(1);
+    expect(state.study).toBe(true);
+    expect(mocks.receiveStudyResult).toHaveBeenCalledWith(expect.anything(), "comparison-1", expect.objectContaining({ oferta_tipo }), expect.any(String));
+  });
+
+  test("study result failure rolls back study/documents/completion and remains retryable", async () => {
+    mocks.receiveStudyResult.mockRejectedValueOnce(new Error("study result write failed"));
+    const response = await route.POST(request());
+    expect(response.status).toBe(500);
+    expect(mocks.rollback).toHaveBeenCalled();
+    expect(state.files).toBe(0);
+    expect(state.study).toBe(false);
+    expect(state.claim?.status).not.toBe("completed");
+    expect(mocks.deleteFiles).toHaveBeenCalled();
+    const retry = await route.POST(request());
+    expect(retry.status).toBe(200);
+    expect(mocks.receiveStudyResult).toHaveBeenCalledTimes(2);
   });
 
   test("treats a repeated successful callback as idempotent", async () => {
@@ -838,6 +868,7 @@ describe("POST /api/webhooks/abarca", () => {
     expect(state.files).toBe(1);
     expect(mocks.uploadBase64File).not.toHaveBeenCalled();
     expect(mocks.deleteFiles).not.toHaveBeenCalled();
+    expect(mocks.receiveStudyResult).not.toHaveBeenCalled();
   });
 
   test("returns a retryable response for a concurrent active callback", async () => {
@@ -1282,6 +1313,7 @@ describe("POST /api/webhooks/abarca", () => {
     );
     expect(state.filenames).toEqual(["dni_reverso.png"]);
     expect(documents().dni_photo_back).toMatchObject({ status: "stored" });
+    expect(mocks.receiveStudyResult).not.toHaveBeenCalled();
   });
 
   test("does not re-ingest documents that are already stored", async () => {
@@ -1346,7 +1378,7 @@ describe("POST /api/webhooks/abarca", () => {
 
     expect(response.status).toBe(200);
     const stored = JSON.parse(storedRawPayload) as Record<string, unknown>;
-    // Todavía no se vuelcan a comparativas.comision_*: solo se guardan.
+    // The transactional service receives the same source values.
     expect(stored.comision_oferta).toBe(120.5);
     expect(stored.comision_base).toBe(30);
     expect(state.comparisonStatus).toBe("awaiting_review");

@@ -106,6 +106,7 @@ describe("getAllowedStatusOptions", () => {
 
   test("accepts zero commissions and rejects missing or non-finite values", () => {
     expect(hasMissingCommission([0, 0])).toBe(false);
+    expect(hasMissingCommission([0, null])).toBe(true);
     expect(hasMissingCommission([10, undefined])).toBe(true);
     expect(hasMissingCommission([Number.NaN, 10])).toBe(true);
     expect(hasMissingCommission([Number.POSITIVE_INFINITY])).toBe(true);

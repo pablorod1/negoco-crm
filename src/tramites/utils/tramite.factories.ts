@@ -9,6 +9,7 @@ import {
   EditTramiteFormData,
 } from "../types/tramite.types";
 import { ComparativaVM } from "@/comparativas/types";
+import { eligibleComparisonPlans } from "@/comparativas/utils/commission-completeness";
 
 // Factory functions
 export const createEmptyTramiteVM = (): TramiteVM => ({
@@ -40,15 +41,16 @@ const getComission = (
   comparativa: ComparativaVM,
   plan: "fijo" | "indexado",
 ) => {
-  return plan === "fijo"
-    ? {
-        comision: comparativa.comision.fijo,
-        comision_sales_person: comparativa.comision_sales_person.fijo,
-      }
-    : {
-        comision: comparativa.comision.indexado,
-        comision_sales_person: comparativa.comision_sales_person.indexado,
-      };
+  const comision = comparativa.comision[plan];
+  const comision_sales_person = comparativa.comision_sales_person[plan];
+  if (
+    !eligibleComparisonPlans(comparativa).includes(plan) ||
+    comision_sales_person === null || !Number.isFinite(comision_sales_person)
+  ) {
+    throw new Error("Asigna las comisiones del plan antes de crear un trámite");
+  }
+  // Hidden agency values are placeholders only; source payloads omit them and the server hydrates them.
+  return { comision: comision ?? 0, comision_sales_person };
 };
 
 export const createEmptyTramiteDB = (

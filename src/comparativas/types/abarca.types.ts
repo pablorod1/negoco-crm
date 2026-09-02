@@ -83,11 +83,9 @@ export const AbarcaWebhookSchema = z.object({
   cambio_titularidad: optionalBoolean,
   tiene_placas: optionalBoolean,
 
-  // Comisiones que propone Abarca, en euros.
-  // Todavía NO se escriben en comparativas.comision_*: falta decidir si van al
-  // slot fijo o al indexado, y la comisión del comercial se sigue calculando
-  // con nuestras reglas por comercializadora. Se capturan aquí para tenerlas
-  // guardadas y poder conectarlas sin volver a tocar el webhook.
+  // Unknown offer types still deliver the study and its documents.
+  oferta_tipo: z.unknown().optional(),
+  // Oferta en euros; base es un porcentaje, no un importe.
   comision_oferta: optionalNumber,
   comision_base: optionalNumber,
 
@@ -113,7 +111,7 @@ export interface AbarcaApoloSipsSummary {
 export interface AbarcaEstudio {
   id: string;
   comparativa_id: string;
-  crm_id: number;
+  crm_id: number | null;
   ide: number;
 
   // Suministro
@@ -181,11 +179,11 @@ export interface AbarcaEstudio {
  * Qué documento llegó, cuál falta y cuál no se pudo interpretar. Antes esto no
  * se registraba: una comparativa sin DNI era indistinguible de una completa.
  */
-/** Comisiones propuestas por Abarca, en euros. */
+/** Oferta en euros y porcentaje base propuestos por el comparador. */
 export interface AbarcaComisiones {
   /** Comisión de la oferta. Equivale a `tramites.comision`. */
   oferta: number | null;
-  /** Comisión del comercial según Abarca. Hoy no se aplica: la calculamos. */
+  /** Porcentaje base; solo se utiliza cuando la autoría individual está verificada. */
   base: number | null;
 }
 

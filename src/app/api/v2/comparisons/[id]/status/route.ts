@@ -15,8 +15,8 @@ import {
  * Request validation schema for comparison status updates
  */
 const optionalCommissionNumber = z.preprocess((val) => {
-  // Treat empty values as undefined (field not provided)
-  if (val === undefined || val === null || val === "") return undefined;
+  if (val === undefined) return undefined;
+  if (val === null || (typeof val === "string" && val.trim() === "")) return null;
   // Normalize strings, allowing comma decimal separators
   if (typeof val === "string") {
     const normalized = val.replace(",", ".");
@@ -24,7 +24,7 @@ const optionalCommissionNumber = z.preprocess((val) => {
     return Number.isFinite(num) ? num : NaN; // NaN will fail .finite()
   }
   return val;
-}, z.number().finite().optional());
+}, z.number().finite().nullable().optional());
 
 const SafeResourceIdSchema = z
   .string()
@@ -108,10 +108,10 @@ function validateStatusTransition(
     companyId: string | undefined;
     commissions:
       | {
-          comision_fijo?: number;
-          comision_indexado?: number;
-          comision_sales_person_fijo?: number;
-          comision_sales_person_indexado?: number;
+          comision_fijo?: number | null;
+          comision_indexado?: number | null;
+          comision_sales_person_fijo?: number | null;
+          comision_sales_person_indexado?: number | null;
         }
       | undefined;
   },
@@ -297,10 +297,10 @@ async function hasValidCompletionState(
   companyId: string | undefined,
   commissions:
     | {
-        comision_fijo?: number;
-        comision_indexado?: number;
-        comision_sales_person_fijo?: number;
-        comision_sales_person_indexado?: number;
+        comision_fijo?: number | null;
+        comision_indexado?: number | null;
+        comision_sales_person_fijo?: number | null;
+        comision_sales_person_indexado?: number | null;
       }
     | undefined,
 ): Promise<boolean> {
@@ -318,7 +318,7 @@ async function hasValidCompletionState(
     for (const [field, value] of Object.entries(commissions) as Array<
       [
         keyof AccessibleComparison["commissions"],
-        number | undefined,
+        number | null | undefined,
       ]
     >) {
       if (value !== undefined) finalCommissions[field] = value;
@@ -465,23 +465,23 @@ async function executeCommissionUpdate(
   comparativaId: string,
   currentCommissions: AccessibleComparison["commissions"],
   commissions: {
-    comision_fijo?: number;
-    comision_indexado?: number;
-    comision_sales_person_fijo?: number;
-    comision_sales_person_indexado?: number;
+    comision_fijo?: number | null;
+    comision_indexado?: number | null;
+    comision_sales_person_fijo?: number | null;
+    comision_sales_person_indexado?: number | null;
   },
   userId?: string,
 ): Promise<void> {
   const updates: string[] = [];
-  const params: (number | string)[] = [];
+  const params: (number | string | null)[] = [];
   const changes: Array<{
     field: keyof AccessibleComparison["commissions"];
     oldValue: number | null;
-    newValue: number;
+    newValue: number | null;
   }> = [];
 
   for (const [field, value] of Object.entries(commissions) as Array<
-    [keyof AccessibleComparison["commissions"], number | undefined]
+    [keyof AccessibleComparison["commissions"], number | null | undefined]
   >) {
     if (value === undefined) continue;
 
@@ -596,6 +596,10 @@ export async function PATCH(
 
     const { status, tramite_id, comissions, company_id } = validation.data;
     const comparisonId = comparisonIdValidation.data;
+
+    if (authenticatedUser.role === "2" && comissions !== undefined) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
 
     if (!status) {
       return NextResponse.json(
@@ -716,6 +720,17 @@ export async function PATCH(
           },
           { status: 409 },
         );
+      }
+
+      if (status === "completed") {
+        const pending = await transaction.execute({
+          sql: "SELECT 1 FROM comparison_study_results WHERE comparativa_id = ? AND state = 'pending' LIMIT 1",
+          args: [comparisonId],
+        });
+        if (pending.rows.length > 0) {
+          await transaction.rollback();
+          return NextResponse.json({ success: false, error: "Revisar resultado del estudio" }, { status: 409 });
+        }
       }
 
       await executeStatusUpdate(

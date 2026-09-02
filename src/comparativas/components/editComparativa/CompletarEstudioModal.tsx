@@ -44,6 +44,9 @@ interface Props {
 
 type ActionType = "complete" | "reject" | null;
 
+const normalizeSupplierName = (value: string) =>
+  value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleUpperCase("es");
+
 export default function CompletarEstudioModal({
   comparativa,
   onUpdate,
@@ -52,49 +55,26 @@ export default function CompletarEstudioModal({
   canCompleteStudies,
   canReviewStudies = false,
 }: Props) {
+  const isSalesPerson = userData.role === "2";
   const [isOpen, setIsOpen] = useState(false);
   const [actionType, setActionType] = useState<ActionType>(null);
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
+  const [selectedSupplierOverride, setSelectedSupplierId] = useState<string>("");
   const [manualSalesCommissionFields, setManualSalesCommissionFields] =
     useState<Partial<Record<keyof ComissionFormValues, boolean>>>({});
 
   // Load active energy suppliers
   const { activeSuppliers } = useActiveEnergySuppliers();
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
-    comparativa.user.id,
+    mode === "manual" && !isSalesPerson ? comparativa.user.id : undefined,
   );
 
-  // Auto-match the supplier returned by the AI study.
-  useEffect(() => {
-    if (
-      mode !== "ai_review" ||
-      selectedSupplierId ||
-      activeSuppliers.length === 0
-    )
-      return;
-
-    const empresa = comparativa.abarca_estudio?.empresa;
-    if (!empresa) return;
-
-    // Extract company name before " - " (e.g. "NATURGY - POR USO LUZ" → "naturgy")
-    const companyName = empresa.split(" - ")[0].trim().toLowerCase();
-    if (!companyName) return;
-
-    const match = activeSuppliers.find((s) =>
-      s.name.toLowerCase().includes(companyName),
-    );
-
-    if (match) {
-      setSelectedSupplierId(match.id);
-    }
-  }, [
-    mode,
-    activeSuppliers,
-    comparativa.abarca_estudio?.empresa,
-    selectedSupplierId,
-  ]);
+  const companyName = normalizeSupplierName(comparativa.abarca_estudio?.empresa ?? "");
+  const exact = activeSuppliers.filter((supplier) => normalizeSupplierName(supplier.name) === companyName);
+  const matches = exact.length ? exact : activeSuppliers.filter((supplier) => normalizeSupplierName(supplier.name) === companyName.split(" - ")[0]);
+  const matchedSupplierId = companyName && matches.length === 1 ? matches[0].id : "";
+  const selectedSupplierId = selectedSupplierOverride || comparativa.company_id || (mode === "ai_review" ? matchedSupplierId : "");
 
   // Comisiones state
   const [formDataComissions, setFormDataComissions] = useState<
@@ -102,35 +82,36 @@ export default function CompletarEstudioModal({
   >(
     comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
       ? {
-          comision_fijo: comparativa.comision.fijo,
-          comision_indexado: comparativa.comision.indexado,
-          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-          comision_sales_person_indexado:
-            comparativa.comision_sales_person.indexado,
-        }
+        comision_fijo: comparativa.comision.fijo,
+        comision_indexado: comparativa.comision.indexado,
+        comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+        comision_sales_person_indexado:
+          comparativa.comision_sales_person.indexado,
+      }
       : comparativa.plan.includes("fijo")
         ? {
-            comision_fijo: comparativa.comision.fijo,
-            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-          }
+          comision_fijo: comparativa.comision.fijo,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+        }
         : {
-            comision_indexado: comparativa.comision.indexado,
-            comision_sales_person_indexado:
-              comparativa.comision_sales_person.indexado,
-          },
+          comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_indexado:
+            comparativa.comision_sales_person.indexado,
+        },
   );
 
   useEffect(() => {
+    if (mode === "ai_review" || isSalesPerson) return;
     setFormDataComissions((prev) => {
       const next = { ...prev };
       let changed = false;
 
       if (
-        comparativa.plan.includes("fijo") &&
+        comparativa.plan.includes("fijo") && next.comision_fijo != null &&
         !manualSalesCommissionFields.comision_sales_person_fijo
       ) {
         const calculatedCommission = calculateSalesPersonCommission({
-          baseCommission: next.comision_fijo ?? 0,
+          baseCommission: next.comision_fijo,
           supplierId: selectedSupplierId,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
@@ -146,11 +127,11 @@ export default function CompletarEstudioModal({
       }
 
       if (
-        comparativa.plan.includes("indexado") &&
+        comparativa.plan.includes("indexado") && next.comision_indexado != null &&
         !manualSalesCommissionFields.comision_sales_person_indexado
       ) {
         const calculatedCommission = calculateSalesPersonCommission({
-          baseCommission: next.comision_indexado ?? 0,
+          baseCommission: next.comision_indexado,
           supplierId: selectedSupplierId,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
@@ -168,6 +149,8 @@ export default function CompletarEstudioModal({
       return changed ? next : prev;
     });
   }, [
+    mode,
+    isSalesPerson,
     activeSuppliers,
     comparativa.plan,
     formDataComissions.comision_fijo,
@@ -186,33 +169,43 @@ export default function CompletarEstudioModal({
     setFormDataComissions(
       comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
         ? {
-            comision_fijo: comparativa.comision.fijo,
-            comision_indexado: comparativa.comision.indexado,
-            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-            comision_sales_person_indexado:
-              comparativa.comision_sales_person.indexado,
-          }
+          comision_fijo: comparativa.comision.fijo,
+          comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          comision_sales_person_indexado:
+            comparativa.comision_sales_person.indexado,
+        }
         : comparativa.plan.includes("fijo")
           ? {
-              comision_fijo: comparativa.comision.fijo,
-              comision_sales_person_fijo:
-                comparativa.comision_sales_person.fijo,
-            }
+            comision_fijo: comparativa.comision.fijo,
+            comision_sales_person_fijo:
+              comparativa.comision_sales_person.fijo,
+          }
           : {
-              comision_indexado: comparativa.comision.indexado,
-              comision_sales_person_indexado:
-                comparativa.comision_sales_person.indexado,
-            },
+            comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_indexado:
+              comparativa.comision_sales_person.indexado,
+          },
     );
   };
 
   const handleOpen = (action: ActionType) => {
+    setFormDataComissions(Object.fromEntries(comparativa.plan.flatMap((plan) => [
+      [`comision_${plan}`, comparativa.comision[plan]],
+      [`comision_sales_person_${plan}`, comparativa.comision_sales_person[plan]],
+    ])));
+    setSelectedSupplierId(comparativa.company_id ?? "");
+    setManualSalesCommissionFields({});
     setIsOpen(true);
     setActionType(action);
   };
 
   const checkEmptyComissions = () => {
-    return Object.values(formDataComissions).some((value) => !value);
+    if (isSalesPerson) return comparativa.plan.some((plan) => comparativa.has_complete_commissions?.[plan] !== true);
+    return comparativa.plan.some((plan) =>
+      [formDataComissions[`comision_${plan}`], formDataComissions[`comision_sales_person_${plan}`]]
+        .some((value) => typeof value !== "number" || !Number.isFinite(value)),
+    );
   };
 
   const checkComissionsChanged = () => {
@@ -227,12 +220,12 @@ export default function CompletarEstudioModal({
           : undefined,
       comision_sales_person_fijo:
         formDataComissions.comision_sales_person_fijo !==
-        comparativa.comision_sales_person.fijo
+          comparativa.comision_sales_person.fijo
           ? formDataComissions.comision_sales_person_fijo
           : undefined,
       comision_sales_person_indexado:
         formDataComissions.comision_sales_person_indexado !==
-        comparativa.comision_sales_person.indexado
+          comparativa.comision_sales_person.indexado
           ? formDataComissions.comision_sales_person_indexado
           : undefined,
     };
@@ -347,6 +340,7 @@ export default function CompletarEstudioModal({
   };
 
   const handleCompleteEstudio = async () => {
+    if (comparativa.has_pending_study_result) return;
     if (mode === "manual" && uploadedFiles.length === 0) {
       showCustomToast({
         title: "Archivo requerido",
@@ -419,7 +413,7 @@ export default function CompletarEstudioModal({
       }
 
       // 2. Actualizar estado y comisiones
-      const changes = checkComissionsChanged();
+      const changes = isSalesPerson ? null : checkComissionsChanged();
 
       const res = await fetch(`/api/v2/comparisons/${comparativa.id}/status`, {
         method: "PATCH",
@@ -564,7 +558,7 @@ export default function CompletarEstudioModal({
     mode === "ai_review"
       ? comparativa.status === "awaiting_review"
       : comparativa.status === "pending" ||
-        comparativa.status === "processing";
+      comparativa.status === "processing";
   if (!hasAllowedStatus) {
     return null;
   }
@@ -577,6 +571,10 @@ export default function CompletarEstudioModal({
   }
 
   // AI review does not upload files or allow rejection.
+  if (comparativa.has_pending_study_result) {
+    return null;
+  }
+  const salesSummary = <div>{comparativa.plan.map((plan) => <p key={plan}>Comisión comercial {plan}: {comparativa.comision_sales_person[plan] === null ? "Sin asignar" : `${comparativa.comision_sales_person[plan]} €`}</p>)}</div>;
   if (mode === "ai_review") {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -593,7 +591,7 @@ export default function CompletarEstudioModal({
         </DialogTrigger>
         <DialogContent
           aria-describedby={undefined}
-          className="w-full max-w-3xl max-h-[95dvh] h-full overflow-y-auto"
+          className="w-full max-w-3xl max-h-[95dvh]  overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-primary-800">
@@ -656,7 +654,7 @@ export default function CompletarEstudioModal({
                 Asignar Comisiones{" "}
                 <span className="text-red-500 text-xs">*</span>
               </h3>
-              <ComissionsForm
+              {isSalesPerson ? salesSummary : <ComissionsForm
                 comparativa={comparativa}
                 formDataComissions={formDataComissions}
                 setFormDataComissions={setFormDataComissions}
@@ -666,11 +664,8 @@ export default function CompletarEstudioModal({
                     [field]: true,
                   }))
                 }
-                showAutoSalesCommissionHint={
-                  !manualSalesCommissionFields.comision_sales_person_fijo ||
-                  !manualSalesCommissionFields.comision_sales_person_indexado
-                }
-              />
+                showAutoSalesCommissionHint={false}
+              />}
             </div>
           </div>
 
@@ -706,7 +701,7 @@ export default function CompletarEstudioModal({
 
       {/* Modal para confirmar rechazo */}
       <Dialog open={isOpen && actionType === "reject"} onOpenChange={setIsOpen}>
-        <DialogContent className="w-full max-w-md max-h-[95dvh] h-full overflow-y-auto">
+        <DialogContent className="w-full max-w-md max-h-[95dvh]  overflow-y-auto">
           <DialogHeader>
             <DialogTitle>¿Rechazar comparativa?</DialogTitle>
             <DialogDescription>
@@ -833,7 +828,7 @@ export default function CompletarEstudioModal({
                 Asignar Comisiones{" "}
                 <span className="text-red-500 text-xs">*</span>
               </h3>
-              <ComissionsForm
+              {isSalesPerson ? salesSummary : <ComissionsForm
                 comparativa={comparativa}
                 formDataComissions={formDataComissions}
                 setFormDataComissions={setFormDataComissions}
@@ -847,7 +842,7 @@ export default function CompletarEstudioModal({
                   !manualSalesCommissionFields.comision_sales_person_fijo ||
                   !manualSalesCommissionFields.comision_sales_person_indexado
                 }
-              />
+              />}
               <div className="flex items-start gap-1">
                 <small className="text-gray-500">*</small>
                 <p className="text-sm text-gray-500">

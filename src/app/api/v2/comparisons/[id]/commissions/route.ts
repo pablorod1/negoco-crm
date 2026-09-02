@@ -23,15 +23,14 @@ const SafeResourceIdSchema = z
   .regex(/^[A-Za-z0-9_-]+$/);
 
 const optionalCommissionNumber = z.preprocess((value) => {
-  if (value === undefined || value === null || value === "") {
-    return undefined;
-  }
+  if (value === undefined) return undefined;
+  if (value === null || (typeof value === "string" && value.trim() === "")) return null;
   if (typeof value === "string") {
     const numberValue = Number(value.replace(",", "."));
     return Number.isFinite(numberValue) ? numberValue : Number.NaN;
   }
   return value;
-}, z.number().finite().optional());
+}, z.number().finite().nullable().optional());
 
 const CommissionsSchema = z
   .strictObject({
@@ -142,8 +141,8 @@ function parseStoredPlan(value: unknown): Plan[] {
 function normalizeStoredCommission(
   value: unknown,
   field: CommissionField,
-): number {
-  if (value === null) return 0;
+): number | null {
+  if (value === null) return null;
   if (
     typeof value === "string" &&
     !persistedDecimalCommissionPattern.test(value)
@@ -284,6 +283,17 @@ export async function PATCH(
           );
         }
 
+        // Completed comparisons must keep every active commission assigned.
+        if (commissionFields.some(({ field, plan }) => {
+          if (!activePlans.has(plan)) return false;
+          const value = commissions[field] === undefined
+            ? normalizeStoredCommission(currentComparison[field], field)
+            : commissions[field];
+          return typeof value !== "number" || !Number.isFinite(value);
+        })) {
+          throw new TransactionResponseError(409, "Asigna todas las comisiones del plan activo");
+        }
+
         const auditChanges = submittedFields.flatMap(
           ({ field, description }) => {
             const oldValue = normalizeStoredCommission(
@@ -335,9 +345,9 @@ export async function PATCH(
               user_id: authenticatedUser.id,
               change_type: "commission_update",
               field_name: change.field,
-              old_value: change.oldValue.toString(),
+              old_value: change.oldValue?.toString() ?? null,
               new_value: change.newValue.toString(),
-              description: `${change.description} actualizada de ${change.oldValue}€ a ${change.newValue}€`,
+              description: `${change.description} actualizada de ${change.oldValue === null ? "sin asignar" : `${change.oldValue}€`} a ${change.newValue}€`,
             },
           );
           if (!auditRecorded) {

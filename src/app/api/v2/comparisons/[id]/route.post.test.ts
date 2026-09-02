@@ -137,6 +137,42 @@ beforeEach(() => {
 });
 
 describe("POST /api/v2/comparisons/[id]", () => {
+  test.each(["2", "1", "admin"])("protects financial payload for role %s without losing document status", async (role) => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role } });
+    const document = { field: "comparativa_pdf", status: "missing", reason: "Pendiente" };
+    const raw = JSON.stringify({ oferta_euros: 87654, abarca_documents: [document] });
+    mocks.parseAbarcaApoloSipsSummary.mockReturnValue({ source: "apolo", has_data: true });
+    mocks.execute.mockImplementation(async ({ sql }: { sql: string }) => ({ rows:
+      sql.includes("FROM comparativas c") ? [comparisonRow] : sql.includes("FROM abarca_estudios") ? [{ id: "study", raw_payload: raw, crm_id: 98765 }] : [] }));
+    const response = await post();
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.data.has_complete_commissions).toEqual({ fijo: true, indexado: true });
+    expect(body.data.abarca_estudio.apolo_sips).toEqual({ source: "apolo", has_data: true });
+    expect(body.data.abarca_documents).toEqual([document]);
+    if (role === "2") {
+      expect(body.data.comision).toEqual({ fijo: null, indexado: null });
+      expect(body.data.abarca_estudio).toMatchObject({ raw_payload: "", crm_id: null, comisiones: null });
+      expect(JSON.stringify(body)).not.toContain("87654");
+      expect(JSON.stringify(body)).not.toContain("98765");
+    } else {
+      expect(body.data.comision).toEqual({ fijo: 10, indexado: 20 });
+      expect(body.data.abarca_estudio.raw_payload).toBe(raw);
+    }
+  });
+  test("preserves unassigned null and explicit zero in the detail response", async () => {
+    const originalExecute = mocks.execute.getMockImplementation()!;
+    mocks.execute.mockImplementation((statement) => statement.sql.includes("FROM comparativas c")
+      ? Promise.resolve({ rows: [{ ...comparisonRow, comision_fijo: null, comision_indexado: 0, comision_sales_person_fijo: 0, comision_sales_person_indexado: null }] })
+      : originalExecute(statement));
+    const response = await post();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: {
+      comision: { fijo: null, indexado: 0 },
+      comision_sales_person: { fijo: 0, indexado: null },
+    } });
+  });
+
   test("returns 401 without a session and never opens the database", async () => {
     mocks.validateUserSession.mockResolvedValue({ success: false });
 
