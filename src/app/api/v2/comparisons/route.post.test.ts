@@ -314,6 +314,20 @@ describe("POST /api/v2/comparisons", () => {
     consoleError.mockRestore();
   });
 
+  // Una comparativa sin factura no se puede estudiar, y el panel de Abarca
+  // acabaría abriendo el comparador sin nada que enviar. El formulario ya lo
+  // impide, pero `"[]"` pasaba la comprobación de parámetros que hay arriba.
+  test("rechaza una comparativa sin ningún documento", async () => {
+    const response = await route.POST(createRequest(comparativa, []));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "Debes subir al menos un documento",
+    });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   test("rejects files that reference a different comparison", async () => {
     const response = await route.POST(
       createRequest(comparativa, [
