@@ -595,6 +595,20 @@ async function handleComparisonCreation(
       }
     }
 
+    // Una comparativa nace de una factura: sin ningún fichero no hay nada que
+    // estudiar, y el panel de Abarca acaba abriendo el comparador sin nada que
+    // enviar. El formulario ya lo impide, pero `"[]"` pasaba la comprobación de
+    // parámetros de arriba, así que la regla tiene que estar también aquí.
+    if (comparativaFiles.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Debes subir al menos un documento",
+        },
+        { status: 400 },
+      );
+    }
+
     if (
       comparativaFiles.some(
         (file) => file.comparativa_id !== comparativa.id,

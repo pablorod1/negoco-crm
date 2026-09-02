@@ -15,6 +15,26 @@ export const DOCUMENT_FIELDS = [
   "justo_titulo",
 ];
 
+/**
+ * Campos que Abarca manda y el CRM no quiere.
+ *
+ * `factura` es la factura del cliente que el comercial sube al comparador, y
+ * el comparador nos la devuelve tal cual. Es el campo más grande del payload
+ * —está en todas las entregas, de 250KB a 3,3MB— y era el que hacía que
+ * incluso después de sacar los documentos siguiéramos por encima del límite
+ * de Vercel. En el CRM ya está: es el mismo PDF que el comercial adjuntó a la
+ * comparativa. Se descarta aquí, sin subirlo, para no pagar ni el ancho de
+ * banda ni el almacenamiento de una copia que no se usa.
+ */
+export const DISCARDED_FIELDS = ["factura"];
+
+/**
+ * Por encima de esto, un campo de texto deja de ser un dato y es un fichero.
+ * Ningún campo legítimo del estudio (observaciones, servicios, los desgloses
+ * de consumo) se acerca: el mayor que hemos visto ronda los 3KB.
+ */
+export const MAX_INLINE_FIELD_BYTES = 64 * 1024;
+
 const DATA_URI_PREFIX = /^data:[^;,]*;base64,/i;
 const BASE64_ALPHABET = /^[A-Za-z0-9+/\-_]*={0,2}$/;
 const PDF_SNIFF_WINDOW = 1024;

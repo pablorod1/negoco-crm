@@ -50,6 +50,17 @@ async function uploadToStaging(path, bytes, contentType) {
   return { url: await getDownloadURL(objectRef) };
 }
 
+/** Los campos que más ocupan, para no tener que ir a mirar el payload. */
+function describeBiggestFields(payload) {
+  return Object.entries(payload)
+    .map(([field, value]) => ({
+      bytes: Buffer.byteLength(JSON.stringify(value) ?? ""),
+      field,
+    }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, 5);
+}
+
 const app = express();
 app.disable("x-powered-by");
 
@@ -81,8 +92,9 @@ app.post(
     const prefix = buildStagingPrefix(tenant, comparativaId, STAGING_ROOT);
     let slim;
     let staged;
+    let discarded;
     try {
-      ({ slim, staged } = await stageDocuments(req.body, {
+      ({ slim, staged, discarded } = await stageDocuments(req.body, {
         prefix,
         upload: uploadToStaging,
       }));
@@ -103,19 +115,44 @@ app.post(
     const forwardedBytes = Buffer.byteLength(forwarded);
     console.log("[abarca-ingest] staged", {
       comparativaId,
-      documents: staged.map(({ bytes, content_type, field }) => ({
-        bytes,
-        content_type,
-        field,
-      })),
+      discarded,
+      documents: staged.map(
+        ({ bytes, content_type, field, unknown_field }) => ({
+          bytes,
+          content_type,
+          field,
+          ...(unknown_field ? { unknown_field } : {}),
+        }),
+      ),
       forwardedBytes,
       tenant,
     });
 
+    const unknownFields = staged.filter((entry) => entry.unknown_field);
+    if (unknownFields.length > 0) {
+      // Abarca ha añadido un campo con un fichero dentro. Está guardado y la
+      // entrega sigue, pero nadie lo va a adjuntar a la comparativa hasta que
+      // decidamos qué es. Este log es el aviso para decidirlo.
+      console.error("[abarca-ingest] unknown document fields staged", {
+        comparativaId,
+        fields: unknownFields.map(({ bytes, content_type, field, path }) => ({
+          bytes,
+          content_type,
+          field,
+          path,
+        })),
+        tenant,
+      });
+    }
+
     if (forwardedBytes > MAX_FORWARDED_BYTES) {
+      // Sin esto solo quedaba el tamaño total, y averiguar qué lo inflaba
+      // costó revisar los payloads guardados en la base de cada tenant.
       console.error("[abarca-ingest] payload too large after staging", {
+        biggestFields: describeBiggestFields(slim),
         comparativaId,
         forwardedBytes,
+        tenant,
       });
       return res
         .status(413)

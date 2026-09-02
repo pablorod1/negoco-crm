@@ -224,11 +224,12 @@ describe("POST /api/v2/comparisons", () => {
     expect((await route.POST(createRequest({ ...comparativa, status: "completed", comision: { fijo: null, indexado: null }, comision_sales_person: { fijo: null, indexado: null } }))).status).toBe(403);
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
-  test("role2 can create an empty pending comparison only in their scope", async () => {
+  test("role2 can create a pending comparison with unassigned commissions and a document only in their scope", async () => {
     mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
     const empty = { ...comparativa, comision: { fijo: null, indexado: null }, comision_sales_person: { fijo: null, indexado: null } };
-    expect((await route.POST(createRequest({ ...empty, user_id: "other" }, []))).status).toBe(403);
-    expect((await route.POST(createRequest(empty, []))).status).toBe(200);
+    expect((await route.POST(createRequest({ ...empty, user_id: "other" }))).status).toBe(403);
+    expect((await route.POST(createRequest(empty, []))).status).toBe(400);
+    expect((await route.POST(createRequest(empty))).status).toBe(200);
   });
 
   test.each(["GET", "POST"])("%s ignores spoofed role and redacts agency while preserving completeness", async (method) => {
@@ -259,7 +260,7 @@ describe("POST /api/v2/comparisons", () => {
       ...comparativa,
       comision: { fijo: null, indexado: 0 },
       comision_sales_person: { fijo: 0, indexado: null },
-    }, []));
+    }));
     expect(response.status).toBe(200);
     const insert = mocks.txExecute.mock.calls.find(([statement]) =>
       statement.sql.includes("INSERT INTO comparativas"),
@@ -372,6 +373,20 @@ describe("POST /api/v2/comparisons", () => {
     expect(files).toHaveLength(0);
     expect(creationAudits).toHaveLength(0);
     consoleError.mockRestore();
+  });
+
+  // Una comparativa sin factura no se puede estudiar, y el panel de Abarca
+  // acabaría abriendo el comparador sin nada que enviar. El formulario ya lo
+  // impide, pero `"[]"` pasaba la comprobación de parámetros que hay arriba.
+  test("rechaza una comparativa sin ningún documento", async () => {
+    const response = await route.POST(createRequest(comparativa, []));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "Debes subir al menos un documento",
+    });
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   test("rejects files that reference a different comparison", async () => {

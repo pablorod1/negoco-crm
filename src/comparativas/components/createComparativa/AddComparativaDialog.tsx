@@ -90,6 +90,22 @@ export default function AddComparativaDialog({
   const handleSubmit = async () => {
     if (submissionInFlight.current) return;
 
+    // El paso de documentos ya obliga a subir uno, pero esta es la única
+    // puerta por la que sale la petición. Sin ficheros no hay factura que
+    // estudiar y el panel de Abarca abriría el comparador sin nada que enviar,
+    // así que más vale devolver al comercial al paso que le falta.
+    if (documents.length === 0) {
+      showCustomToast({
+        title: "Falta el documento",
+        message: "Debes subir al menos un documento para crear la comparativa",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      setActiveTab(1);
+      return;
+    }
+
     submissionInFlight.current = true;
     setLoading(true);
     try {

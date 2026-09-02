@@ -77,7 +77,16 @@ export function AbarcaPanel({
         if (controller.signal.aborted) return;
 
         if (!res.ok) {
-          setError("No se pudo conectar con el comparador");
+          // El endpoint distingue entre "el fichero no sirve" y "Abarca no
+          // responde". Enseñar siempre lo segundo mandaba al comercial a
+          // reintentar en bucle un fallo que solo él podía arreglar.
+          const reason = await res
+            .json()
+            .then((body: { error?: unknown }) =>
+              typeof body?.error === "string" ? body.error : null,
+            )
+            .catch(() => null);
+          setError(reason ?? "No se pudo conectar con el comparador");
           return;
         }
 

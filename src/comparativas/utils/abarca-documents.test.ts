@@ -281,6 +281,29 @@ describe("document state stored in raw_payload", () => {
     expect(attached.abarca_documents).toEqual([stored, missing]);
   });
 
+  test("no guarda la factura: ya está adjunta a la comparativa", () => {
+    const attached = attachDocumentsToRawPayload(
+      { ide: 1, factura: "JVBERi0xLjc=", empresa: "Acme" },
+      [stored],
+    ) as Record<string, unknown>;
+
+    expect("factura" in attached).toBe(false);
+    expect(attached.empresa).toBe("Acme");
+  });
+
+  test("sustituye por su tamaño cualquier campo que pese como un fichero", () => {
+    const gordo = "A".repeat(70 * 1024);
+
+    const attached = attachDocumentsToRawPayload(
+      { ide: 1, contrato_firmado: gordo, observaciones: "corta" },
+      [stored],
+    ) as Record<string, unknown>;
+
+    expect(attached.contrato_firmado).toBe(`[omitido: ${gordo.length} bytes]`);
+    expect(attached.observaciones).toBe("corta");
+    expect(JSON.stringify(attached)).not.toContain(gordo);
+  });
+
   test("reads the state back", () => {
     const rawPayload = JSON.stringify(
       attachDocumentsToRawPayload({ ide: 1 }, [stored, missing]),

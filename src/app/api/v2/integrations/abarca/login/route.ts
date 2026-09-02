@@ -23,7 +23,10 @@ const ALLOWED_STORAGE_HOSTS = new Set([
   "firebasestorage.googleapis.com",
   "storage.googleapis.com",
 ]);
-const MAX_PDF_BYTES = 15 * 1024 * 1024;
+// Las facturas escaneadas se salen de lo que cabía en 15MB. De los 7.078 PDF
+// que hay hoy en la base solo uno queda fuera de este tope, y a Abarca le
+// llegarían ~33MB de base64 en el peor caso.
+const MAX_PDF_BYTES = 25 * 1024 * 1024;
 const PDF_DOWNLOAD_TIMEOUT_MS = 10_000;
 const MAX_LOGIN_RESPONSE_BYTES = 64 * 1024;
 const ABARCA_LOGIN_TIMEOUT_MS = 10_000;
@@ -104,6 +107,36 @@ function getAllowedStorageUrl(value: string): URL | null {
   }
 }
 
+/**
+ * Fallo de descarga con un motivo que se le puede enseñar al comercial.
+ *
+ * Antes todo acababa en un 502 con "No se pudo conectar con el comparador",
+ * que es mentira cuando el problema es el fichero, y en el log no quedaba ni
+ * el tamaño ni la cabecera que lo había provocado.
+ */
+class PdfDownloadError extends Error {
+  readonly userMessage: string;
+
+  constructor(userMessage: string, logMessage: string) {
+    super(logMessage);
+    this.name = "PdfDownloadError";
+    this.userMessage = userMessage;
+  }
+}
+
+function formatMegabytes(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function tooLargeError(bytes: number): PdfDownloadError {
+  return new PdfDownloadError(
+    `El PDF ocupa ${formatMegabytes(bytes)} y el máximo son ${formatMegabytes(
+      MAX_PDF_BYTES,
+    )}. Súbelo comprimido o elige otro archivo.`,
+    `PDF exceeds size limit: ${bytes} bytes`,
+  );
+}
+
 async function downloadPdfAsBase64(downloadUrl: string): Promise<string> {
   const url = getAllowedStorageUrl(downloadUrl);
   if (!url) {
@@ -134,18 +167,26 @@ async function downloadPdfAsBase64(downloadUrl: string): Promise<string> {
       .trim()
       .toLowerCase();
     if (contentType !== "application/pdf") {
-      throw new Error("Invalid PDF content type");
+      throw new PdfDownloadError(
+        "El archivo guardado no es un PDF. Vuelve a subirlo o elige otro.",
+        `Invalid PDF content type: ${contentType ?? "(sin cabecera)"}`,
+      );
     }
 
+    // La cabecera solo sirve para rechazar pronto lo que no cabe. Que no se
+    // pueda interpretar no dice nada del fichero, y tratarla como error es lo
+    // que devolvía 502 en producción sin dejar rastro del valor recibido: el
+    // tope de verdad lo aplica el contador de bytes del bucle de abajo.
     const contentLengthHeader = response.headers.get("content-length");
     if (contentLengthHeader !== null) {
       const contentLength = Number(contentLengthHeader);
-      if (
-        !Number.isSafeInteger(contentLength) ||
-        contentLength < 0 ||
-        contentLength > MAX_PDF_BYTES
-      ) {
-        throw new Error("Invalid PDF content length");
+      if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+        console.warn("[abarca-login] unusable content-length header", {
+          contentLength: contentLengthHeader,
+          url: url.pathname,
+        });
+      } else if (contentLength > MAX_PDF_BYTES) {
+        throw tooLargeError(contentLength);
       }
     }
 
@@ -165,7 +206,7 @@ async function downloadPdfAsBase64(downloadUrl: string): Promise<string> {
       totalBytes += value.byteLength;
       if (totalBytes > MAX_PDF_BYTES) {
         await reader.cancel();
-        throw new Error("PDF exceeds size limit");
+        throw tooLargeError(totalBytes);
       }
       chunks.push(value);
     }
@@ -180,7 +221,10 @@ async function downloadPdfAsBase64(downloadUrl: string): Promise<string> {
         .subarray(0, Math.min(1024, pdf.byteLength))
         .indexOf(Buffer.from("%PDF-")) === -1
     ) {
-      throw new Error("Invalid PDF signature");
+      throw new PdfDownloadError(
+        "El archivo guardado no es un PDF válido. Vuelve a subirlo o elige otro.",
+        `Invalid PDF signature: ${totalBytes} bytes`,
+      );
     }
 
     return pdf.toString("base64");
@@ -370,9 +414,20 @@ export async function POST(req: NextRequest) {
       try {
         pdfBase64 = await downloadPdfAsBase64(downloadUrl);
       } catch (error) {
-        console.error("[abarca-login] PDF download failed", error);
+        // Con el id del fichero se puede ir a mirar cuál falló; antes el log
+        // no decía de qué comparativa ni de qué archivo hablaba.
+        console.error("[abarca-login] PDF download failed", {
+          comparisonId,
+          error: error instanceof Error ? error.message : error,
+          fileId,
+        });
         return NextResponse.json(
-          { error: "No se pudo descargar el archivo" },
+          {
+            error:
+              error instanceof PdfDownloadError
+                ? error.userMessage
+                : "No se pudo descargar el archivo",
+          },
           { status: 502 },
         );
       }
