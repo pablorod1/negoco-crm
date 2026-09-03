@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ComparativaVM, ComparativaFile } from "@/comparativas/types";
 import { User, UserDefaultNote } from "@/core/types";
 import {
@@ -168,20 +168,25 @@ export default function MainView({
     abarcaEstudio?.codpostal_cups,
     abarcaEstudio?.observaciones,
   ].some(hasText);
-  const hasSupplyData =
-    [
-      abarcaEstudio?.cups,
-      abarcaEstudio?.tipo_tarifa,
-      abarcaEstudio?.empresa_cliente,
-    ].some(hasText) ||
-    [...contractedPowers, ...abarcaConsumption].some(
-      (item) => item.value !== null && item.value !== undefined,
-    );
+  const hasSupplyInfoData = [
+    abarcaEstudio?.cups,
+    abarcaEstudio?.tipo_tarifa,
+    abarcaEstudio?.empresa_cliente,
+  ].some(hasText);
+  const hasContractedPowerData = contractedPowers.some(
+    (item) => item.value !== null && item.value !== undefined,
+  );
+  const hasConsumptionData = abarcaConsumption.some(
+    (item) => item.value !== null && item.value !== undefined,
+  );
   const hasSipsData = apoloDemandPower.some(
     (item) => item.value !== null && item.value !== undefined,
   );
-  const hasStudyData =
-    hasTitularData || hasAddressData || hasSupplyData || hasSipsData;
+  const hasSupplyPointData =
+    hasTitularData || hasAddressData || hasSupplyInfoData;
+  const hasEnergyData =
+    hasContractedPowerData || hasConsumptionData || hasSipsData;
+  const hasStudyData = hasSupplyPointData || hasEnergyData;
 
   // Fetch supplier information if company_id is available
   const { supplier, loading: isLoadingSupplier } = useEnergySupplierById(
@@ -797,93 +802,118 @@ export default function MainView({
           </CardHeader>
           <CardContent>
             {hasStudyData ? (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                {hasTitularData ? (
-                  <>
-                    <StudySectionTitle>Titular</StudySectionTitle>
-                    <StudyField
-                      label="Nombre completo"
-                      value={titularName}
-                      span="wide"
-                    />
-                    <StudyField label="DNI / NIF" value={abarcaEstudio.dni} />
-                    <StudyField
-                      label="Email"
-                      value={abarcaEstudio.email}
-                      span="wide"
-                    />
-                    <StudyField label="Teléfono" value={abarcaEstudio.movil} />
-                    <StudyField label="IBAN" value={abarcaEstudio.iban} />
-                  </>
+              <div
+                className={`grid gap-x-8 gap-y-0 ${hasSupplyPointData && hasEnergyData ? "lg:grid-cols-2" : ""
+                  }`}
+              >
+                {hasSupplyPointData ? (
+                  <div className="min-w-0">
+                    {hasTitularData ? (
+                      <StudySection title="Titular">
+                        <StudyField
+                          label="Nombre completo"
+                          value={titularName}
+                        />
+                        <StudyField
+                          label="DNI / NIF"
+                          value={abarcaEstudio.dni}
+                        />
+                        <StudyField label="Email" value={abarcaEstudio.email} />
+                        <StudyField
+                          label="Teléfono"
+                          value={abarcaEstudio.movil}
+                        />
+                        <StudyField
+                          label="IBAN"
+                          value={abarcaEstudio.iban}
+                          span="full"
+                        />
+                      </StudySection>
+                    ) : null}
+
+                    {hasAddressData ? (
+                      <StudySection title="Dirección del suministro">
+                        <StudyField
+                          label="Dirección"
+                          value={supplyAddress}
+                          span="full"
+                        />
+                        <StudyField
+                          label="Localidad"
+                          value={abarcaEstudio.localidad_cups}
+                        />
+                        <StudyField
+                          label="Código Postal"
+                          value={abarcaEstudio.codpostal_cups}
+                        />
+                        <StudyField
+                          label="Observaciones"
+                          value={abarcaEstudio.observaciones}
+                          span="full"
+                        />
+                      </StudySection>
+                    ) : null}
+
+                    {hasSupplyInfoData ? (
+                      <StudySection title="Suministro">
+                        <StudyField label="CUPS" value={abarcaEstudio.cups} />
+                        <StudyField
+                          label="Tarifa"
+                          value={abarcaEstudio.tipo_tarifa}
+                        />
+                        <StudyField
+                          label="Compañía actual"
+                          value={abarcaEstudio.empresa_cliente}
+                          span="full"
+                        />
+                      </StudySection>
+                    ) : null}
+                  </div>
                 ) : null}
 
-                {hasAddressData ? (
-                  <>
-                    <StudySectionTitle>Dirección del suministro</StudySectionTitle>
-                    <StudyField
-                      label="Dirección"
-                      value={supplyAddress}
-                      span="wide"
-                    />
-                    <StudyField
-                      label="Localidad"
-                      value={abarcaEstudio.localidad_cups}
-                    />
-                    <StudyField
-                      label="Código Postal"
-                      value={abarcaEstudio.codpostal_cups}
-                    />
-                    <StudyField
-                      label="Observaciones"
-                      value={abarcaEstudio.observaciones}
-                      span="full"
-                    />
-                  </>
-                ) : null}
+                {hasEnergyData ? (
+                  <div
+                    className={`min-w-0 ${hasSupplyPointData
+                      ? "mt-5 border-t border-gray-100 pt-5 lg:mt-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
+                      : ""
+                      }`}
+                  >
 
-                {hasSupplyData ? (
-                  <>
-                    <StudySectionTitle>Suministro</StudySectionTitle>
-                    <StudyField
-                      label="CUPS"
-                      value={abarcaEstudio.cups}
-                      span="wide"
-                    />
-                    <StudyField
-                      label="Tarifa"
-                      value={abarcaEstudio.tipo_tarifa}
-                    />
-                    <StudyField
-                      label="Compañía actual"
-                      value={abarcaEstudio.empresa_cliente}
-                      span="wide"
-                    />
-                    <StudyPeriodGroup
-                      label="Potencia contratada"
-                      items={contractedPowers}
-                      unit="kW"
-                    />
-                    <StudyPeriodGroup
-                      label="Consumo"
-                      items={abarcaConsumption}
-                      unit="kWh"
-                      total={{ label: "Total", value: totalAbarcaConsumption }}
-                    />
-                  </>
-                ) : null}
+                    {hasConsumptionData ? (
+                      <StudySection title="Consumo" layout="stack">
+                        <StudyPeriodChips
+                          items={abarcaConsumption}
+                          unit="kWh"
+                          total={{
+                            label: "Total",
+                            value: totalAbarcaConsumption,
+                          }}
+                        />
+                      </StudySection>
+                    ) : null}
 
-                {hasSipsData ? (
-                  <>
-                    <StudySectionTitle>
-                      Potencia máxima demandada (SIPS)
-                    </StudySectionTitle>
-                    <StudyPeriodGroup
-                      label="Por periodo"
-                      items={apoloDemandPower}
-                      unit="kW"
-                      total={{ label: "Máximo", value: maxApoloDemandPower }}
-                    />
-                  </>
+                    {hasContractedPowerData ? (
+                      <StudySection title="Potencia contratada" layout="stack">
+                        <StudyPeriodChips items={contractedPowers} unit="kW" />
+                      </StudySection>
+                    ) : null}
+
+                    {hasSipsData ? (
+                      <StudySection
+                        title="Potencia máxima demandada (SIPS)"
+                        layout="stack"
+                      >
+                        <StudyPeriodChips
+                          items={apoloDemandPower}
+                          unit="kW"
+                          total={{
+                            label: "Máximo",
+                            value: maxApoloDemandPower,
+                          }}
+                        />
+                      </StudySection>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
             ) : (
@@ -940,11 +970,30 @@ function hasText(value: string | null | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function StudySectionTitle({ children }: { children: string }) {
+function StudySection({
+  title,
+  layout = "grid",
+  children,
+}: {
+  title: string;
+  layout?: "grid" | "stack";
+  children: ReactNode;
+}) {
   return (
-    <p className="col-span-full border-t border-gray-100 pt-5 text-xs font-medium uppercase tracking-wide text-gray-400 first:border-0 first:pt-0">
-      {children}
-    </p>
+    <section className="mt-5 border-t border-gray-100 pt-5 first:mt-0 first:border-0 first:pt-0">
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-400">
+        {title}
+      </p>
+      <div
+        className={
+          layout === "grid"
+            ? "grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2"
+            : "space-y-4"
+        }
+      >
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -955,20 +1004,12 @@ function StudyField({
 }: {
   label: string;
   value: string | null | undefined;
-  span?: "wide" | "full";
+  span?: "full";
 }) {
   if (!hasText(value)) return null;
 
   return (
-    <div
-      className={
-        span === "full"
-          ? "col-span-full min-w-0"
-          : span === "wide"
-            ? "min-w-0 sm:col-span-2"
-            : "min-w-0"
-      }
-    >
+    <div className={span === "full" ? "col-span-full min-w-0" : "min-w-0"}>
       <p className="text-xs text-gray-500">{label}</p>
       <p className="mt-0.5 text-sm font-medium break-words text-gray-900">
         {value}
@@ -977,13 +1018,11 @@ function StudyField({
   );
 }
 
-function StudyPeriodGroup({
-  label,
+function StudyPeriodChips({
   items,
   unit,
   total,
 }: {
-  label: string;
   items: Array<{ period: string; value: number | null }>;
   unit: "kW" | "kWh";
   total?: { label: string; value: number | null };
@@ -993,31 +1032,28 @@ function StudyPeriodGroup({
   if (availableItems.length === 0) return null;
 
   return (
-    <div className="col-span-full">
-      <p className="mb-2 text-xs text-gray-500">{label}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        {availableItems.map(({ period, value }) => (
-          <span
-            key={period}
-            className="inline-flex items-baseline gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1"
-          >
-            <span className="text-xs font-medium text-gray-500">{period}</span>
-            <span className="text-sm font-medium text-gray-900">
-              {formatNullableUnit(value, unit)}
-            </span>
+    <div className="flex flex-wrap items-center gap-2">
+      {availableItems.map(({ period, value }) => (
+        <span
+          key={period}
+          className="inline-flex items-baseline gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1"
+        >
+          <span className="text-xs font-medium text-gray-500">{period}</span>
+          <span className="text-sm font-medium text-gray-900">
+            {formatNullableUnit(value, unit)}
           </span>
-        ))}
-        {total && total.value !== null ? (
-          <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1">
-            <span className="text-xs font-medium text-primary-600">
-              {total.label}
-            </span>
-            <span className="text-sm font-semibold text-primary-900">
-              {formatNullableUnit(total.value, unit)}
-            </span>
+        </span>
+      ))}
+      {total && total.value !== null ? (
+        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1">
+          <span className="text-xs font-medium text-primary-600">
+            {total.label}
           </span>
-        ) : null}
-      </div>
+          <span className="text-sm font-semibold text-primary-900">
+            {formatNullableUnit(total.value, unit)}
+          </span>
+        </span>
+      ) : null}
     </div>
   );
 }
