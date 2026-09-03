@@ -37,15 +37,23 @@ export function AbarcaPanel({
 }: AbarcaPanelProps) {
   const [localOpen, setLocalOpen] = useState(false);
   const isOpen = open ?? localOpen;
-  const setIsOpen = useCallback((value: boolean) => {
-    setLocalOpen(value);
-    onOpenChange?.(value);
-  }, [onOpenChange]);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const setIsOpen = useCallback((value: boolean) => {
+    setLocalOpen(value);
+    onOpenChange?.(value);
+    // El login_url de Abarca es de un solo uso y el Sheet desmonta el iframe al
+    // cerrarse. Conservarlo solo servía para que la siguiente apertura volviera
+    // a navegar a un token ya gastado, que es lo que Abarca devuelve como
+    // "sesión expirada". Cada apertura pide uno nuevo.
+    if (!value) {
+      setIframeUrl(null);
+      setError(null);
+    }
+  }, [onOpenChange]);
   const loginRequest = useRef<AbortController | null>(null);
 
   useEffect(() => () => {
@@ -107,11 +115,6 @@ export function AbarcaPanel({
   );
 
   const handleOpen = useCallback(() => {
-    if (iframeUrl) {
-      setIsOpen(true);
-      return;
-    }
-
     if (pdfFiles.length > 1) {
       setIsFileModalOpen(true);
       return;
@@ -126,7 +129,7 @@ export function AbarcaPanel({
     }
 
     fetchLoginUrl(fileId);
-  }, [iframeUrl, pdfFiles, fetchLoginUrl, setIsOpen]);
+  }, [pdfFiles, fetchLoginUrl]);
 
   const handleFileSelect = useCallback(
     (fileId?: string) => {

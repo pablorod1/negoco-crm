@@ -67,6 +67,28 @@ describe("AbarcaPanel file contract", () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
+  test("requests a fresh login token every time the panel is reopened", async () => {
+    // El login_url de Abarca es de un solo uso: reciclar el de la apertura
+    // anterior hacía que el iframe cargara un token gastado y Abarca
+    // respondiera con su pantalla de "sesión expirada".
+    render(
+      <AbarcaPanel comparativaId="comparison-1" files={[]} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Estudio con IA" }));
+    await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(1));
+
+    // Radix tarda un tick en retirar el aria-hidden del resto del documento,
+    // así que el disparador no es accesible hasta que el Sheet se cierra del
+    // todo; findByRole espera a eso en vez de asumirlo.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Estudio con IA" }),
+    );
+
+    await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(2));
+  });
+
   test("sends the selected file_id without client-controlled URLs or Abarca IDs", async () => {
     render(
       <AbarcaPanel
