@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/core/components/ui/dialog";
 import { Checkbox } from "@/core/components/ui/checkbox";
 import { Input } from "@/core/components/ui/input";
@@ -37,6 +36,8 @@ import { useDefaultCompanyCommissions } from "@/core/hooks/use-default-company-c
 
 interface Props {
   user: User;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onUpdated?: (user: User) => void;
 }
 
@@ -61,9 +62,13 @@ const noteTargets: { value: UserDefaultNoteTarget; label: string }[] = [
 
 const NO_SUPER_ID = "__none__";
 
-export default function EditUserConfigModal({ user, onUpdated }: Props) {
+export default function EditUserConfigModal({
+  user,
+  open,
+  onOpenChange,
+  onUpdated,
+}: Props) {
   const { userData } = useUser();
-  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -77,7 +82,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
   const { activeSuppliers, loading: suppliersLoading, refetch } =
     useActiveEnergySuppliers();
   const { defaults, loading: defaultsLoading } =
-    useDefaultCompanyCommissions(isOpen);
+    useDefaultCompanyCommissions(open);
 
   // `commissions` guarda solo las comisiones personalizadas del colaborador.
   // Las comercializadoras que no estén aquí heredan el valor por defecto.
@@ -105,7 +110,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
   }, [commercialUsers, superId]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!open) return;
 
     let cancelled = false;
     async function loadDetail() {
@@ -183,15 +188,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, refetch, user.id, userData]);
-
-  const handleOpen = () => {
-    setName(user.name);
-    setEmail(user.email);
-    setSuperId(user.super_id ?? "");
-    setPassword("");
-    setIsOpen(true);
-  };
+  }, [open, refetch, user.id, userData]);
 
   const updateCommission = (
     supplierId: string,
@@ -316,7 +313,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
         iconColor: "green",
       });
       onUpdated?.({ ...user, name, email, super_id: superId.trim() || null });
-      setIsOpen(false);
+      onOpenChange(false);
     } catch {
       showCustomToast({
         title: "Error",
@@ -331,19 +328,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <TooltipComponent color="bg-primary" content="Configuración avanzada">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-            onClick={handleOpen}
-          >
-            <Settings2 size={14} />
-          </Button>
-        </TooltipComponent>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         aria-describedby={undefined}
         className="max-w-5xl border-gray-200 p-0 overflow-hidden"
@@ -370,11 +355,25 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
                 Edita el perfil y define una nueva contraseña si es necesario.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/*
+              Estos campos viven en su propio <form> y declaran autoComplete:
+              un <input type="password"> sin formulario que lo contenga hace
+              que el gestor de contraseñas del navegador lo tome por un login y
+              autorrellene las credenciales del admin en el primer campo de
+              texto del documento (el buscador del listado, que queda detrás).
+              Ver docs/AUTOFILL_HARDENING_PLAN.md.
+            */}
+            <form
+              autoComplete="off"
+              onSubmit={(event) => event.preventDefault()}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
               <div className="space-y-2">
                 <Label htmlFor="user-name">Nombre</Label>
                 <Input
                   id="user-name"
+                  name="user-config-name"
+                  autoComplete="off"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   disabled={initializing || loading}
@@ -384,7 +383,9 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
                 <Label htmlFor="user-email">Email</Label>
                 <Input
                   id="user-email"
+                  name="user-config-email"
                   type="email"
+                  autoComplete="off"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={initializing || loading}
@@ -419,14 +420,16 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
                 <Label htmlFor="user-password">Nueva contraseña</Label>
                 <Input
                   id="user-password"
+                  name="user-config-password"
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   placeholder="Dejar en blanco para no cambiar"
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={initializing || loading}
                 />
               </div>
-            </div>
+            </form>
           </section>
 
           <section className="rounded-3xl border border-gray-200 p-5 space-y-4">
@@ -619,7 +622,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
         <DialogFooter className="gap-3 px-6 py-4 border-t border-gray-100 bg-white">
           <Button
             variant="outline"
-            onClick={() => setIsOpen(false)}
+            onClick={() => onOpenChange(false)}
             className="border-gray-200 text-gray-700 hover:bg-gray-50"
             disabled={loading}
           >
@@ -635,5 +638,25 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Disparador del panel. Se exporta suelto porque el diálogo se renderiza a
+ * nivel de tabla: si viviese dentro de la fila, cualquier filtro o recarga del
+ * listado desmontaría la fila y cerraría el panel abierto.
+ */
+export function EditUserConfigButton({ onClick }: { onClick: () => void }) {
+  return (
+    <TooltipComponent color="bg-primary" content="Configuración avanzada">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+        onClick={onClick}
+      >
+        <Settings2 size={14} />
+      </Button>
+    </TooltipComponent>
   );
 }
