@@ -81,7 +81,8 @@ export const createEmptyTramiteDB = (
   comision: comparativa && plan ? getComission(comparativa, plan).comision : 0,
   status: "Borrador",
   liquidez_status: null,
-  notes: comparativa ? comparativa.notes : [],
+  // Campo legacy: las notas de la comparativa se vuelcan como tickets al crear el trámite
+  notes: [],
   internal_notes: [],
   client_id: "",
   user_id: comparativa
