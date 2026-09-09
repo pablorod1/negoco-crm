@@ -14,6 +14,10 @@ import { useTransitionRouter } from "next-view-transitions";
 import { Switch } from "@/core/components/ui/switch";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { formatConsumption } from "@/core/utils/format";
+import {
+  companyLogoUrl,
+  isUnoptimizedLogo,
+} from "@/comercializadoras/lib/logo-url";
 
 interface ComercializadoraCardProps {
   comercializadora: ComercializadoraVM;
@@ -86,6 +90,8 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
     }
   };
 
+  const logoUrl = companyLogoUrl(comercializadora.logo);
+
   return (
     <div
       onClick={handleClick}
@@ -94,15 +100,16 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
-          {comercializadora.logo ? (
+          {logoUrl ? (
             <div className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
               <Image
-                src={`/companies/${comercializadora.logo}`}
+                src={logoUrl}
                 alt={`Logo de ${comercializadora.name}`}
                 width={24}
                 height={24}
                 className="w-6 h-6 object-contain"
                 loading="lazy"
+                unoptimized={isUnoptimizedLogo(comercializadora.logo)}
               />
             </div>
           ) : (
