@@ -134,6 +134,27 @@ describe("comparison contract source", () => {
     expect((await POST(request())).status).toBe(409);
     expect(mocks.rollback).toHaveBeenCalledOnce();
   });
+  test("copies the comparison quick notes into the new contract", async () => {
+    role = txRole = "admin";
+    const note = { message: "Cliente sin luz", is_internal: 1, status_id: 1, type_id: 4, priority: "high", created_by: "owner", assigned_to: "owner", created_at: "2026-09-01T10:00:00.000Z" };
+    mocks.txExecute.mockImplementation(async ({ sql }: Statement) => {
+      if (sql.includes("SELECT role")) return { rows: [{ role: txRole }] };
+      if (sql.includes("FROM comparativas c")) return { rows: [txComparison] };
+      if (sql.includes("ty.name = 'note'")) return { rows: [note] };
+      return { rows: [], rowsAffected: 1 };
+    });
+
+    expect((await POST(request())).status).toBe(200);
+
+    const statements = mocks.txExecute.mock.calls.map(([statement]) => statement as Statement);
+    const select = statements.find((statement) => statement.sql.includes("ty.name = 'note'"));
+    expect(select?.args).toEqual(["comparison-1"]);
+    const insert = statements.find((statement) => statement.sql.includes("INSERT INTO tickets"));
+    expect(insert?.args).toEqual(expect.arrayContaining(["Nota de comparativa", "Cliente sin luz", 1, "TR-1", "owner", "2026-09-01T10:00:00.000Z"]));
+    expect(statements.findIndex((statement) => statement.sql.includes("INSERT INTO tramites")))
+      .toBeLessThan(statements.findIndex((statement) => statement.sql.includes("INSERT INTO tickets")));
+    expect(mocks.commit).toHaveBeenCalledOnce();
+  });
   test("rolls back an insert failure without exposing copied values", async () => {
     failInsert = true;
     const response = await POST(request());

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { validateUserSession } from "@/core/auth/session-utils";
 import { ComparisonSourceError, getComparisonContractSource } from "@/comparativas/server/contract-source";
+import { copyComparisonNotesToTramite } from "@/comparativas/server/copyComparisonNotes";
 import {
   executeReadWithRetry,
   isRetryableLibsqlError,
@@ -920,6 +921,11 @@ export async function POST(
 
       const tramiteRes = await addTramiteOptimized(tramite, tx);
       if (!tramiteRes.success) throw new Error(tramiteRes.error);
+
+      // Vuelca al trámite las notas rápidas (públicas e internas) de la comparativa
+      if (typeof sourceId === "string" && sourceId) {
+        await copyComparisonNotesToTramite(tx, sourceId, tramite.id);
+      }
 
       if (contracts && contracts.length > 0) {
         const contractsRes = await addContractsOptimized(contracts, tx);
