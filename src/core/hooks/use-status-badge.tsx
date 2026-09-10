@@ -6,6 +6,18 @@ import {
   LiquidezStatus,
   Status,
 } from "@/core/types";
+import {
+  BadgeCheck,
+  Ban,
+  CircleCheck,
+  CircleX,
+  FilePen,
+  FileSignature,
+  Gauge,
+  RefreshCw,
+  Send,
+  TriangleAlert,
+} from "lucide-react";
 
 const COMPARATIVA_STATUS_BADGES = {
   pending: <Badge variant="warning">Pendiente de Estudio</Badge>,
@@ -47,17 +59,79 @@ const TABLE_LIQUIDEZ_STATUS_BADGES = {
 };
 
 const STATUS_BADGES = {
-  Borrador: <Badge variant="danger">Borrador</Badge>,
-  Tramitable: <Badge variant="warning">Tramitable</Badge>,
-  Verificado: <Badge variant="secondary">Verificado</Badge>,
-  "Pendiente de Firma": <Badge variant="info">Pendiente de Firma</Badge>,
-  Procesando: <Badge variant="pending">Procesando</Badge>,
-  Activo: <Badge variant="success">Activo</Badge>,
-  Baja: <Badge variant="danger">Baja</Badge>,
-  Scoring: <Badge variant="danger">Scoring</Badge>,
-  Incidencia: <Badge variant="warning">Incidencia</Badge>,
-  KO: <Badge variant="danger">KO</Badge>,
+  Borrador: (
+    <Badge variant="danger">
+      <FilePen className="size-3" />
+      Borrador
+    </Badge>
+  ),
+  Tramitable: (
+    <Badge variant="warning">
+      <Send className="size-3" />
+      Tramitable
+    </Badge>
+  ),
+  Verificado: (
+    <Badge variant="secondary">
+      <BadgeCheck className="size-3" />
+      Verificado
+    </Badge>
+  ),
+  "Pendiente de Firma": (
+    <Badge variant="info">
+      <FileSignature className="size-3" />
+      Pendiente de Firma
+    </Badge>
+  ),
+  Procesando: (
+    <Badge variant="pending">
+      <RefreshCw className="size-3" />
+      Procesando
+    </Badge>
+  ),
+  Activo: (
+    <Badge className="border-transparent bg-success-500 text-white hover:bg-success-500">
+      <CircleCheck className="size-3" />
+      Activo
+    </Badge>
+  ),
+  Baja: (
+    <Badge className="border-transparent bg-danger-500 text-white hover:bg-danger-500">
+      <Ban className="size-3" />
+      Baja
+    </Badge>
+  ),
+  Scoring: (
+    <Badge variant="danger">
+      <Gauge className="size-3" />
+      Scoring
+    </Badge>
+  ),
+  Incidencia: (
+    <Badge variant="danger">
+      <TriangleAlert className="size-3" />
+      Incidencia
+    </Badge>
+  ),
+  KO: (
+    <Badge variant="danger">
+      <CircleX className="size-3" />
+      KO
+    </Badge>
+  ),
   default: <Badge>Sin Asignar</Badge>,
+};
+
+// Versión compacta para las tablas: mismos estados/iconos pero con
+// etiquetas cortas en los que rompen la UI por su longitud.
+const TABLE_STATUS_BADGES = {
+  ...STATUS_BADGES,
+  "Pendiente de Firma": (
+    <Badge variant="info">
+      <FileSignature className="size-3" />
+      Pendiente
+    </Badge>
+  ),
 };
 
 const FOTOVOLTAICA_STATUS_BADGES = {
@@ -131,6 +205,12 @@ export const getStatusBadge = (
   }
 
   if (statusType === "general") {
+    if (isTable) {
+      return (
+        TABLE_STATUS_BADGES[status as keyof typeof TABLE_STATUS_BADGES] ||
+        TABLE_STATUS_BADGES.default
+      );
+    }
     return STATUS_BADGES[status as Status] || STATUS_BADGES.default;
   }
 
@@ -210,5 +290,11 @@ export const getStatusBadge = (
   }
 
   // Por defecto, asumir que es un Status general
+  if (isTable) {
+    return (
+      TABLE_STATUS_BADGES[status as keyof typeof TABLE_STATUS_BADGES] ||
+      TABLE_STATUS_BADGES.default
+    );
+  }
   return STATUS_BADGES[status as Status] || STATUS_BADGES.default;
 };

@@ -363,7 +363,7 @@ export const LiquidezColumns: ColumnDef<TramiteRow>[] = [
       <span className="text-gray-600 font-medium text-xs">Estado</span>
     ),
     cell: ({ row }) => {
-      return getStatusBadge(row.original.status as Status, "general");
+      return getStatusBadge(row.original.status as Status, "general", true);
     },
   },
   {

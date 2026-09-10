@@ -268,7 +268,8 @@ export const SubComercialTramitesColumns: ColumnDef<TramiteRow, unknown>[] = [
     header: () => (
       <span className="text-gray-600 font-medium text-xs">Estado</span>
     ),
-    cell: ({ row }) => getStatusBadge(row.original.status as Status, "general"),
+    cell: ({ row }) =>
+      getStatusBadge(row.original.status as Status, "general", true),
   },
   {
     id: "actions",
@@ -367,7 +368,8 @@ export const ComercialTramiteColumns: ColumnDef<TramiteRow, unknown>[] = [
     header: () => (
       <span className="text-gray-600 font-medium text-xs">Estado</span>
     ),
-    cell: ({ row }) => getStatusBadge(row.original.status as Status, "general"),
+    cell: ({ row }) =>
+      getStatusBadge(row.original.status as Status, "general", true),
   },
   {
     id: "Liquidez",
@@ -509,7 +511,8 @@ export const TramiteColumns: ColumnDef<TramiteRow, unknown>[] = [
     header: () => (
       <span className="text-gray-600 font-medium text-xs">Estado</span>
     ),
-    cell: ({ row }) => getStatusBadge(row.original.status as Status, "general"),
+    cell: ({ row }) =>
+      getStatusBadge(row.original.status as Status, "general", true),
   },
   {
     id: "Liquidez",
