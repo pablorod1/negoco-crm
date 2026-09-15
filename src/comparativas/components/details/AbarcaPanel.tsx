@@ -284,11 +284,16 @@ export function AbarcaPanel({
                     </div>
                   </div>
                 )}
+                {/*
+                  allow-modals: Abarca confirma acciones destructivas (borrar
+                  un estudio) con `confirm()`. Sin él el navegador ignora la
+                  llamada en silencio y el botón no hace nada.
+                */}
                 <iframe
                   id="abarca-panel"
                   src={iframeUrl}
                   title="Comparador energético con IA"
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
                   className="abarca-panel w-full h-full border-0"
                   onLoad={() => setIsIframeLoading(false)}
                 />

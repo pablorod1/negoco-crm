@@ -96,11 +96,12 @@ export default function ComparadorPage() {
         </div>
       )}
 
+      {/* allow-modals: Abarca confirma el borrado de estudios con `confirm()` */}
       {iframeUrl && (
         <iframe
           src={iframeUrl}
           title="Comparador energético con IA"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
           referrerPolicy="no-referrer"
           className="w-full h-full border-0"
           onLoad={() => setIsLoading(false)}
