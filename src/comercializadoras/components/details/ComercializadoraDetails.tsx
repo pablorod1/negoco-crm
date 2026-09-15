@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
@@ -8,9 +8,9 @@ import { useParams } from "next/navigation";
 import { useComercializadora } from "@/comercializadoras/hooks/useComercializadora";
 import { useComercializadoraViewNavigation } from "@/comercializadoras/hooks/useComercializadoraViewNavigation";
 import { ComercializadoraNavigation } from "./ComercializadoraNavigation";
-import { ComercializadoraMainView } from "./ComercializadoraMainView";
+import { ComercializadoraHeaderCard } from "./ComercializadoraHeaderCard";
 import { ComercializadoraTramitesTable } from "./ComercializadoraTramitesTable";
-import { ComercializadoraDocumentsList } from "./ComercializadoraDocumentsList";
+import { ComercializadoraDocumentsExplorer } from "./ComercializadoraDocumentsExplorer";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { User } from "@/core/types";
 import { useUser } from "@/core/contexts/UserContext";
@@ -37,10 +37,8 @@ export default function ComercializadoraDetails() {
   const { id } = params;
 
   // Usando hooks personalizados siguiendo el patrón de cliente
-  const { comercializadora, loading, error, refetch } = useComercializadora(
-    id,
-    userData as User
-  );
+  const { comercializadora, loading, error, refetchSilently } =
+    useComercializadora(id, userData as User);
   const { currentView, setCurrentView } = useComercializadoraViewNavigation();
 
   if (loading) {
@@ -82,17 +80,18 @@ export default function ComercializadoraDetails() {
 
       {/* Main Content Container */}
       <div className="px-6 py-8 space-y-8">
+        {/* Identidad y métricas, siempre visibles */}
+        <ComercializadoraHeaderCard comercializadora={comercializadora} />
+
         {/* Navigation */}
         <ComercializadoraNavigation
           currentView={currentView}
           onViewChange={setCurrentView}
+          numTramites={comercializadora.num_tramites}
+          numFiles={comercializadora.num_files}
         />
 
         {/* Content based on current view */}
-        {currentView === "main" && (
-          <ComercializadoraMainView comercializadora={comercializadora} />
-        )}
-
         {currentView === "tramites" && (
           <div className="space-y-6">
             <ComercializadoraTramitesTable
@@ -104,11 +103,10 @@ export default function ComercializadoraDetails() {
 
         {currentView === "documentos" && (
           <div className="space-y-6">
-            <ComercializadoraDocumentsList
-              files={comercializadora.files}
+            <ComercializadoraDocumentsExplorer
+              supplierName={comercializadora.name}
               userData={userData as User}
-              comercializadora={comercializadora}
-              refetch={refetch}
+              onChange={refetchSilently}
             />
           </div>
         )}
