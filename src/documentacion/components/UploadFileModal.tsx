@@ -237,9 +237,8 @@ export default function UploadFileModal({
       <div key={subfolder.path}>
         <button
           onClick={() => setSelectedFolder(subfolder.path)}
-          className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-            selectedFolder === subfolder.path ? "bg-blue-50 text-blue-600" : ""
-          }`}
+          className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${selectedFolder === subfolder.path ? "bg-blue-50 text-blue-600" : ""
+            }`}
           style={{ paddingLeft: `${padding}px` }}
         >
           <Folder size={16} />
@@ -261,9 +260,8 @@ export default function UploadFileModal({
         </button>
         {subfolder.subfolders.length > 0 && (
           <div
-            className={`overflow-hidden transition-all duration-200 ease-in-out ${
-              expandedFolders.has(subfolder.path) ? "max-h-screen" : "max-h-0"
-            }`}
+            className={`overflow-hidden transition-all duration-200 ease-in-out ${expandedFolders.has(subfolder.path) ? "max-h-screen" : "max-h-0"
+              }`}
           >
             {renderSubfolders(subfolder.subfolders, padding + 16)}
           </div>
@@ -299,11 +297,10 @@ export default function UploadFileModal({
           <div
             {...getRootProps()}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-                    ${
-                      isDragActive
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
+                    ${isDragActive
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-gray-400"
+              }`}
           >
             <input {...getInputProps()} />
             {isDragActive ? (
@@ -352,25 +349,23 @@ export default function UploadFileModal({
               <div className="space-y-1">
                 <button
                   onClick={() => setSelectedFolder("/")}
-                  className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-                    selectedFolder === "/" ? "bg-blue-50 text-blue-600" : ""
-                  }`}
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${selectedFolder === "/" ? "bg-blue-50 text-blue-600" : ""
+                    }`}
                 >
                   <Folder size={16} />
                   <span>Inicio</span>
                 </button>
-                <div className="flex flex-col max-h-[220px] overflow-y-auto ">
+                <div className="flex flex-col max-h-[220px] overflow-y-auto">
                   {folderGroups.map(
                     (group) =>
                       group.path && (
                         <div key={group.path} className="space-y-1 ps-6">
                           <button
                             onClick={() => setSelectedFolder(group.path)}
-                            className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-                              selectedFolder === group.path
+                            className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${selectedFolder === group.path
                                 ? "bg-blue-50 text-blue-600"
                                 : ""
-                            }`}
+                              }`}
                           >
                             <Folder size={16} />
                             <span>{group.name}</span>
@@ -388,11 +383,10 @@ export default function UploadFileModal({
                           </button>
                           {group.subfolders.length > 0 && (
                             <div
-                              className={`overflow-hidden transition-all duration-200 ease-in-out ${
-                                expandedFolders.has(group.path)
+                              className={`overflow-hidden transition-all duration-200 ease-in-out ${expandedFolders.has(group.path)
                                   ? "max-h-screen"
                                   : "max-h-0"
-                              }`}
+                                }`}
                             >
                               {renderSubfolders(group.subfolders)}
                             </div>
