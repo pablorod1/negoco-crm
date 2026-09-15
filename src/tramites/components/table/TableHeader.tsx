@@ -12,6 +12,7 @@ import { ActionButtons } from "./components/ActionButtons";
 import { ActiveFilters } from "./components/ActiveFilters";
 import { useActiveFilters } from "@/tramites/hooks/useActiveFilters";
 import { useProviderFilter } from "@/tramites/hooks/useProviderFilter";
+import type { ServerExportConfig } from "@/core/components/ExportTableModal";
 
 interface TableHeaderProps<TData> {
   filterValue: string;
@@ -48,6 +49,7 @@ interface TableHeaderProps<TData> {
   setExcludeCompany: (value: boolean) => void;
   excludeUser: boolean;
   setExcludeUser: (value: boolean) => void;
+  serverExport: ServerExportConfig;
 }
 
 export default function TramitesHeader<TData>({
@@ -85,6 +87,7 @@ export default function TramitesHeader<TData>({
   setExcludeCompany,
   excludeUser,
   setExcludeUser,
+  serverExport,
 }: TableHeaderProps<TData>) {
   const isComercial = userData?.role === "2";
   const isTramitesTable = title === "Trámites";
@@ -199,6 +202,7 @@ export default function TramitesHeader<TData>({
               isTramitesTable={isTramitesTable}
               isLiquidezTable={isLiquidezTable}
               title={title}
+              serverExport={serverExport}
             />
           </div>
         </div>

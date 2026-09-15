@@ -10,10 +10,10 @@ import {
 
 interface DataTablePaginationProps {
   total: number;
-  rowsPerPage: number | string;
+  rowsPerPage: number;
   pageIndex: number;
   setPageIndex: (pageIndex: number) => void;
-  setPageSize: (pageSize: number | string) => void;
+  setPageSize: (pageSize: number) => void;
 }
 
 export function DataTablePagination({
@@ -23,7 +23,7 @@ export function DataTablePagination({
   setPageIndex,
   setPageSize,
 }: DataTablePaginationProps) {
-  const totalPages = Math.ceil(total / Number(rowsPerPage));
+  const totalPages = Math.ceil(total / rowsPerPage);
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   // Determine which page numbers to show
@@ -54,7 +54,7 @@ export function DataTablePagination({
   const visiblePages = getVisiblePages();
 
   const handleSetPageSize = (value: string) => {
-    const newPageSize = value === "Sin Límite" ? 400 : parseInt(value, 10);
+    const newPageSize = parseInt(value, 10);
     setPageSize(newPageSize);
     setPageIndex(1); // Reset to first page when changing page size
   };
@@ -83,9 +83,9 @@ export function DataTablePagination({
               </SelectValue>
             </SelectTrigger>
             <SelectContent side="top">
-              {[5, 10, 15, 20, 30, 40, 50, 100, 200, 400].map(
-                (pageSize, index) => (
-                  <SelectItem key={index} value={pageSize.toString()}>
+              {[5, 10, 15, 20, 30, 40, 50, 100].map(
+                (pageSize) => (
+                  <SelectItem key={pageSize} value={pageSize.toString()}>
                     {pageSize}
                   </SelectItem>
                 )

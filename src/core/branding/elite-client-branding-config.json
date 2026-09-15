@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "metadataColumnPath": "organization.metadata.branding",
+  "clients": {
+    "beenergy": {
+      "tenant": "beenergy",
+      "displayName": "Beenergy",
+      "organization": {
+        "name": "Beenergy",
+        "logo": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/xmj39n50xBPrsnXBFe3gE6gfuMHC0RG1%2Flogo%2Fbeenergy.png?alt=media&token=ad1b26f9-dc7d-4151-9dce-7d9bf5cbe328"
+      },
+      "assets": {
+        "defaultLogoSource": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/xmj39n50xBPrsnXBFe3gE6gfuMHC0RG1%2Flogo%2Fbeenergy.png?alt=media&token=ad1b26f9-dc7d-4151-9dce-7d9bf5cbe328",
+        "faviconSource": "public/beenergy/favicon.png"
+      },
+      "metadata": {
+        "branding": {
+          "enabled": true,
+          "displayName": "Beenergy",
+          "faviconUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/xmj39n50xBPrsnXBFe3gE6gfuMHC0RG1%2Flogo%2Ffavicon.png?alt=media&token=741ea478-8d4c-4335-b8a6-5c7d86722e7c",
+          "logo": {
+            "defaultUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/xmj39n50xBPrsnXBFe3gE6gfuMHC0RG1%2Flogo%2Fbeenergy.png?alt=media&token=ad1b26f9-dc7d-4151-9dce-7d9bf5cbe328",
+            "emailUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/xmj39n50xBPrsnXBFe3gE6gfuMHC0RG1%2Flogo%2Fbeenergy.png?alt=media&token=ad1b26f9-dc7d-4151-9dce-7d9bf5cbe328",
+            "alt": "Beenergy",
+            "width": 700,
+            "height": 300
+          },
+          "palette": {
+            "primary": {
+              "50": "#fffdeb",
+              "100": "#fdf7c8",
+              "200": "#faee8d",
+              "300": "#f8e151",
+              "400": "#f7d43a",
+              "500": "#f0b210",
+              "600": "#d48a0b",
+              "700": "#b0630d",
+              "800": "#8f4d11",
+              "900": "#763f11",
+              "950": "#442004",
+              "DEFAULT": "#f0b210"
+            }
+          },
+          "hero": {
+            "background": "linear-gradient(90deg, #f0b210 0%, #f7d43a 100%)",
+            "border": "#faee8d",
+            "padding": "16px",
+            "foreground": "#0f172a",
+            "mutedForeground": "#475569",
+            "cardBackground": "rgb(255 255 255 / 0.42)",
+            "cardForeground": "#0f172a",
+            "cardMutedForeground": "#475569",
+            "cardBorder": "transparent"
+          },
+          "email": {
+            "fromName": "Beenergy",
+            "smtpEnvPrefix": "BEENERGY"
+          }
+        }
+      }
+    },
+    "nasertel": {
+      "tenant": "nasertel",
+      "displayName": "Nasertel",
+      "organization": {
+        "name": "Nasertel",
+        "logo": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/BhX1znE7eH7b5DMKm6ckNDpBUW5anjyt%2Flogo%2Fnasertel.webp?alt=media&token=0532b816-e14e-4d70-8173-a8557719bba0"
+      },
+      "assets": {
+        "defaultLogoSource": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/BhX1znE7eH7b5DMKm6ckNDpBUW5anjyt%2Flogo%2Fnasertel.webp?alt=media&token=0532b816-e14e-4d70-8173-a8557719bba0",
+        "paletteSource": "/var/folders/6k/b6dvl2ns3xlbtwtxc_hhl0700000gp/T/codex-clipboard-42dac8ab-c0d9-476e-b275-776df511424f.png"
+      },
+      "metadata": {
+        "branding": {
+          "enabled": true,
+          "displayName": "Nasertel",
+          "faviconUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/BhX1znE7eH7b5DMKm6ckNDpBUW5anjyt%2Flogo%2Fnasertel.webp?alt=media&token=0532b816-e14e-4d70-8173-a8557719bba0",
+          "logo": {
+            "defaultUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/BhX1znE7eH7b5DMKm6ckNDpBUW5anjyt%2Flogo%2Fnasertel.webp?alt=media&token=0532b816-e14e-4d70-8173-a8557719bba0",
+            "emailUrl": "https://firebasestorage.googleapis.com/v0/b/negoco-crm-c57a3.firebasestorage.app/o/BhX1znE7eH7b5DMKm6ckNDpBUW5anjyt%2Flogo%2Fnasertel.webp?alt=media&token=0532b816-e14e-4d70-8173-a8557719bba0",
+            "alt": "Nasertel",
+            "width": 2048,
+            "height": 658
+          },
+          "palette": {
+            "primary": {
+              "50": "#eefdfe",
+              "100": "#cff8f7",
+              "200": "#a5efed",
+              "300": "#6fe0dc",
+              "400": "#36cbc7",
+              "500": "#0fa9a6",
+              "600": "#008f8c",
+              "700": "#06716f",
+              "800": "#0b5a5a",
+              "900": "#0d494a",
+              "950": "#062c2e",
+              "DEFAULT": "#008f8c"
+            },
+            "secondary": {
+              "50": "#f2f7fa",
+              "100": "#dceaf0",
+              "200": "#bdd5df",
+              "300": "#93b7c6",
+              "400": "#6590a3",
+              "500": "#456f84",
+              "600": "#34586b",
+              "700": "#2c4758",
+              "800": "#263d4b",
+              "900": "#203342",
+              "950": "#111f2b",
+              "DEFAULT": "#203342"
+            }
+          },
+          "hero": {
+            "background": "linear-gradient(90deg, #173f55 0%, #008f8c 100%)",
+            "border": "#0fa9a6",
+            "padding": "16px",
+            "foreground": "#ffffff",
+            "mutedForeground": "rgb(255 255 255 / 0.82)",
+            "cardBackground": "rgb(255 255 255 / 0.86)",
+            "cardForeground": "#0f172a",
+            "cardMutedForeground": "#475569",
+            "cardBorder": "transparent"
+          },
+          "email": {
+            "fromName": "Nasertel",
+            "smtpEnvPrefix": "NASERTEL"
+          }
+        }
+      }
+    }
+  }
+}

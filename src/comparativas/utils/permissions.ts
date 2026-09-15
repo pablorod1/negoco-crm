@@ -22,7 +22,10 @@ export function isComercialEditableComparativa(
   if (!comparativa || !userRole) return false;
 
   const isComercial = userRole === "2";
-  return isComercial && comparativa.status === "pending";
+  return (
+    isComercial &&
+    (comparativa.status === "pending" || comparativa.status === "processing")
+  );
 }
 
 export function isStudiedComparativa(

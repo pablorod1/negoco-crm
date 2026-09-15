@@ -2,17 +2,22 @@
 import { Button } from "@/core/components/ui/button";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
+import type { ResolvedBranding } from "@/core/branding/types";
 
-export default function EmptyToken() {
+export default function EmptyToken({
+  logo,
+}: {
+  logo: ResolvedBranding["logo"];
+}) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 mx-auto">
       <div className="max-w-md w-full px-6 py-8 bg-white shadow-md rounded-lg">
         <div className="text-center mb-6">
           <Image
-            src="/logo_inline.png"
-            alt="Negoco Cloud IT Logo"
-            width={150}
-            height={50}
+            src={logo.defaultUrl}
+            alt={logo.alt}
+            width={logo.width}
+            height={logo.height}
             className="h-12 mx-auto mb-4"
           />
           <h2 className="text-2xl font-bold text-gray-800">Enlace no válido</h2>
@@ -68,4 +73,3 @@ export default function EmptyToken() {
     </div>
   );
 }
-

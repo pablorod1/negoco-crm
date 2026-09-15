@@ -12,7 +12,9 @@ import AddTramiteDialog from "../../createTramite/AddTramiteDialog";
 import CreateBajaModal from "../../createBaja/CreateBajaModal";
 import { UpdateMultipleTramitesModal } from "../../liquidez/UpdateMultipleTramitesModal";
 import { ImportExcelLiquidezModal } from "../../liquidez/ImportExcelLiquidezModal";
-import ExportTableModal from "@/core/components/ExportTableModal";
+import ExportTableModal, {
+  type ServerExportConfig,
+} from "@/core/components/ExportTableModal";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import type { Table } from "@tanstack/react-table";
 import type { User } from "@/core/types";
@@ -23,6 +25,7 @@ interface ActionButtonsProps<TData> {
   isTramitesTable: boolean;
   isLiquidezTable: boolean;
   title: string;
+  serverExport: ServerExportConfig;
 }
 
 export function ActionButtons<TData>({
@@ -31,6 +34,7 @@ export function ActionButtons<TData>({
   isTramitesTable,
   isLiquidezTable,
   title,
+  serverExport,
 }: ActionButtonsProps<TData>) {
   const isComercial = userData?.role === "2";
 
@@ -59,7 +63,11 @@ export function ActionButtons<TData>({
             </PopoverTrigger>
           </TooltipComponent>
           <PopoverContent className="p-0 w-fit">
-            <ExportTableModal table={table} name={title} />
+            <ExportTableModal
+              table={table}
+              name={title}
+              serverExport={serverExport}
+            />
           </PopoverContent>
         </Popover>
       )}

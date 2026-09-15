@@ -13,10 +13,6 @@ const nextConfig: NextConfig = {
         hostname: "firebasestorage.googleapis.com",
       },
       {
-        protocol: "https",
-        hostname: "beenergy.vercel.app",
-      },
-      {
         protocol: "http",
         hostname: "localhost",
       },
@@ -34,7 +30,6 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "http://localhost:3000",
     "http://test.localhost:3000",
-    "http://beenergy.localhost:3000",
   ],
   // Configure webpack for react-pdf
   webpack: (config, { isServer }) => {

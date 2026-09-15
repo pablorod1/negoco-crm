@@ -2,7 +2,7 @@
 import "../globals.css";
 import { ToastBar, Toaster } from "react-hot-toast";
 import { Providers } from "../providers";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { SidebarComponent } from "@/core/components/sidebar/Sidebar";
 import { SidebarInset, SidebarProvider } from "@/core/components/ui/sidebar";
 import Header from "@/core/components/Header";
@@ -17,7 +17,6 @@ export default function MainLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [activeOrganization, setActiveOrganization] = useState("");
   const pathname = usePathname();
   const isComparadorRoute = pathname === "/comparador";
   const isPerfilRoute = pathname === "/perfil";
@@ -25,23 +24,16 @@ export default function MainLayout({
   const isAllowedForComparador =
     isComparadorRoute || isPerfilRoute || isSoporteRoute;
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setActiveOrganization(window.location.hostname.split(".")[0]);
-    }
-  }, []);
-
   return (
     <Providers>
       <PlanRedirectGuard />
-      <SidebarProvider defaultOpen={false}>
+      <SidebarProvider defaultOpen>
         <SidebarComponent />
         <SidebarInset>
-          <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden">
+          <div className="flex flex-col min-h-dvh min-w-0 overflow-hidden max-w-dvw">
             <Header />
             <main
-              className="main-content flex-1 overflow-auto"
-              data-client={activeOrganization}
+              className="main-content flex-1 overflow-auto pt-12"
             >
               {isAllowedForComparador ? (
                 children

@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useState, useCallback } from "react";
+import { eligibleComparisonPlans } from "@/comparativas/utils/commission-completeness";
 import { useTramites } from "@/core/contexts/TramitesContext";
 
 import FirstStepForm from "./forms/firstStepForm/FirstStepForm";
@@ -58,7 +59,7 @@ export default function AddTramiteDialog({
 }: AddTramiteDialogProps) {
   // State management
   const [plan, setPlan] = useState<"fijo" | "indexado" | undefined>(
-    comparativa ? comparativa.plan[0] : undefined,
+    comparativa ? eligibleComparisonPlans(comparativa)[0] : undefined,
   );
   const { userData } = useUser();
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -90,6 +91,7 @@ export default function AddTramiteDialog({
       e.preventDefault();
       e.stopPropagation();
       setIsOpen(true);
+      setPlan(comparativa ? eligibleComparisonPlans(comparativa)[0] : undefined);
       setActiveTab(comparativa ? 0 : savedClient ? 2 : 1);
       // Reset form state
       setTramite(createEmptyTramiteDB(userData as User));
@@ -144,6 +146,7 @@ export default function AddTramiteDialog({
 
   const handleNext = useCallback(() => {
     if (comparativa && activeTab === 0) {
+      if (!plan || !eligibleComparisonPlans(comparativa).includes(plan)) return;
       setTramite(
         createEmptyTramiteDB(
           userData as User,
@@ -160,36 +163,7 @@ export default function AddTramiteDialog({
     if (!comparativa || !userData) return;
 
     try {
-      // Update comparativa status
-      const comparativaRes = await fetch(
-        `/api/v2/comparisons/${comparativa.id}/status`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            status: "processed",
-            tramite_id: tramite.id,
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      const { success: comparativaSuccess, error: comparativaError } =
-        await comparativaRes.json();
-
-      if (!comparativaSuccess) {
-        showCustomToast({
-          title: "Error al actualizar comparativa",
-          message: comparativaError || "Error desconocido",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        return false;
-      }
-
-      // Move files
+      // Move files before marking the comparison as processed
       const moveFileRes = await fetch(
         `/api/v2/comparisons/${comparativa.id}/convert-to-contract`,
         {
@@ -205,6 +179,17 @@ export default function AddTramiteDialog({
         },
       );
 
+      if (!moveFileRes.ok) {
+        showCustomToast({
+          title: "Error al mover archivos",
+          message: "El servidor no pudo completar la conversión de archivos",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return false;
+      }
+
       const { success: moveFilesSuccess, error: moveFileError } =
         await moveFileRes.json();
 
@@ -212,6 +197,46 @@ export default function AddTramiteDialog({
         showCustomToast({
           title: "Error al mover archivos",
           message: moveFileError || "Error desconocido",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return false;
+      }
+
+      // Update comparativa status only after its files are safely transferred
+      const comparativaRes = await fetch(
+        `/api/v2/comparisons/${comparativa.id}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: "processed",
+            tramite_id: tramite.id,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!comparativaRes.ok) {
+        showCustomToast({
+          title: "Error al actualizar comparativa",
+          message: "El servidor no pudo actualizar el estado de la comparativa",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return false;
+      }
+
+      const { success: comparativaSuccess, error: comparativaError } =
+        await comparativaRes.json();
+
+      if (!comparativaSuccess) {
+        showCustomToast({
+          title: "Error al actualizar comparativa",
+          message: comparativaError || "Error desconocido",
           iconColor: "var(--danger-color)",
           iconSize: 24,
           icon: CircleX,
@@ -375,7 +400,12 @@ export default function AddTramiteDialog({
       formData.append("files", JSON.stringify(tramiteFiles));
       formData.append("userData", JSON.stringify(userData));
       formData.append("client", JSON.stringify(client));
-      formData.append("tramite", JSON.stringify(tramite));
+      if (comparativa) {
+        formData.append("source_comparison_id", comparativa.id);
+        formData.append("tramite", JSON.stringify({ ...tramite, comision: undefined, comision_sales_person: undefined }));
+      } else {
+        formData.append("tramite", JSON.stringify(tramite));
+      }
       // Optional fields
       if (signer) {
         formData.append("signer", JSON.stringify(signer));
@@ -475,7 +505,6 @@ export default function AddTramiteDialog({
         const updated = await processComparativaUpdate();
         if (updated && onComparativaUpdated) {
           onComparativaUpdated();
-          handleClose(true); // Skip cleanup on successful creation
         }
       }
 
@@ -483,20 +512,10 @@ export default function AddTramiteDialog({
       localStorage.removeItem("signer");
       localStorage.removeItem("client");
 
-      try {
-        await refreshTramites();
-        handleClose(true); // Skip cleanup on successful creation
-      } catch (error) {
+      void handleClose(true);
+      void refreshTramites().catch((error) => {
         console.error("Error al refrescar los trámites:", error);
-        showCustomToast({
-          title: "Error al refrescar los trámites",
-          message: "Inténtalo de nuevo más tarde",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        handleClose(true); // Skip cleanup even on refresh error since tramite was created
-      }
+      });
     } catch (error) {
       console.error("Submission error:", error);
       showCustomToast({
@@ -594,6 +613,7 @@ export default function AddTramiteDialog({
       />,
       <ReviewStep
         key={5}
+        fromComparison
         tramite={tramite}
         client={client}
         signer={signer}
@@ -751,6 +771,7 @@ export default function AddTramiteDialog({
           </Button>
         ) : (
           <button
+            type="button"
             onClick={handleOpen}
             className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:shadow-sm border border-transparent hover:border-blue-200"
           >

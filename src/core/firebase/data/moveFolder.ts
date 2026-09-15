@@ -1,154 +1,192 @@
-﻿import { Client } from "@libsql/client";
+import type { Client, Transaction } from "@libsql/client";
 import {
-  ref,
-  listAll,
-  getDownloadURL,
-  uploadBytes,
   deleteObject,
+  getDownloadURL,
+  ref,
+  uploadBytes,
+  type StorageReference,
 } from "firebase/storage";
 import { storage } from "../firebaseConfig";
-import { ComparativaFile } from "@/comparativas/types";
+import type { ComparativaFile } from "@/comparativas/types";
 
-// Función para mover archivos en Firebase Storage
-export const moveFilesInFirebaseStorage = async (
-  organization_id: string,
-  comparativa_id: string,
-  tramite_id: string
-): Promise<{
-  success: boolean;
-  downloadURLs?: { url: string; name: string }[];
-  error?: string;
-}> => {
-  try {
-    // Ruta origen y destino
-    const sourceDir = `${organization_id}/comparativas/${comparativa_id}`;
-    const targetDir = `${organization_id}/tramites/${tramite_id}`;
+interface CopiedComparativaFile {
+  file: ComparativaFile;
+  sourceRef: StorageReference;
+  downloadURL: string;
+}
 
-    // Listar todos los archivos en el directorio de origen
-    const sourceRef = ref(storage, sourceDir);
-    const filesList = await listAll(sourceRef);
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
-    // Si no hay archivos, devolver éxito
-    if (filesList.items.length === 0) {
-      return {
-        success: false,
-        error: `No hay archivos en firebase en el path ${sourceDir}`,
-      };
-    }
+function parseComparativaFile(
+  row: Record<string, unknown>,
+  comparativaId: string,
+): ComparativaFile {
+  const id = String(row.id ?? "");
+  const downloadUrl = String(row.download_url ?? "").trim();
 
-    const downloadURLs: { url: string; name: string }[] = [];
-
-    // Mover cada archivo (descargar → subir a nueva ubicación → eliminar original)
-    for (const fileRef of filesList.items) {
-      // Obtener el nombre del archivo
-      const fileName = fileRef.name;
-
-      // Descargar el archivo como blob
-      const downloadURL = await getDownloadURL(fileRef);
-      const fileResponse = await fetch(downloadURL);
-      const fileBlob = await fileResponse.blob();
-
-      // Crear referencia a la nueva ubicación
-      const newFileRef = ref(storage, `${targetDir}/${fileName}`);
-
-      // Subir a la nueva ubicación
-      await uploadBytes(newFileRef, fileBlob);
-
-      // Obtener la URL de descarga del nuevo archivo
-      const newDownloadURL = await getDownloadURL(newFileRef);
-      downloadURLs.push({ url: newDownloadURL, name: fileName });
-      // Eliminar el archivo original
-      await deleteObject(fileRef);
-    }
-    return { success: true, downloadURLs };
-  } catch (error) {
-    console.error("Error moving files in Firebase Storage:", error);
-    return { success: false, error: String(error) };
+  if (!id) {
+    throw new Error("La comparativa contiene un archivo sin identificador");
   }
-};
+  if (!downloadUrl) {
+    throw new Error(`El archivo ${id} no tiene una URL de descarga válida`);
+  }
 
-// Función actualizada que integra la base de datos y el storage
+  return {
+    id,
+    comparativa_id: comparativaId,
+    filename: String(row.filename ?? ""),
+    size: Number(row.size),
+    extension: String(row.extension ?? ""),
+    upload_date: String(row.upload_date ?? ""),
+    download_url: downloadUrl,
+    preview_url:
+      row.preview_url === null || row.preview_url === undefined
+        ? null
+        : String(row.preview_url),
+  };
+}
+
+async function copyFileToTramite(
+  file: ComparativaFile,
+  organizationId: string,
+  comparativaId: string,
+  tramiteId: string,
+): Promise<CopiedComparativaFile> {
+  const sourceRef = ref(storage, file.download_url);
+  const expectedSourcePrefix = `${organizationId}/comparativas/${comparativaId}/`;
+
+  if (!sourceRef.fullPath.startsWith(expectedSourcePrefix)) {
+    throw new Error(
+      `El archivo ${file.id} no pertenece a la comparativa esperada`,
+    );
+  }
+
+  const response = await fetch(file.download_url);
+  if (!response.ok) {
+    throw new Error(
+      `No se pudo descargar el archivo ${file.id}: HTTP ${response.status}`,
+    );
+  }
+
+  const destinationRef = ref(
+    storage,
+    `${organizationId}/tramites/${tramiteId}/${file.id}/${file.filename}`,
+  );
+  await uploadBytes(destinationRef, await response.blob());
+  const downloadURL = await getDownloadURL(destinationRef);
+
+  if (!downloadURL) {
+    throw new Error(
+      `Firebase no devolvió una URL de descarga para el archivo ${file.id}`,
+    );
+  }
+
+  return { file, sourceRef, downloadURL };
+}
+
+async function rollbackTransaction(transaction: Transaction): Promise<void> {
+  try {
+    await transaction.rollback();
+  } catch (rollbackError) {
+    console.error("Error rolling back file conversion:", rollbackError);
+  }
+}
+
+/**
+ * Copies comparison files before atomically transferring their database rows.
+ * Source objects are removed only after the database commit, so failures remain
+ * recoverable and can be retried without losing the original documents.
+ */
 export const moveFolderFromComparativasToTramites = async (
   tursoClient: Client,
-  organization_id: string,
-  comparativa_id: string,
-  tramite_id: string
-): Promise<{
-  success: boolean;
-  error?: string;
-}> => {
+  organizationId: string,
+  comparativaId: string,
+  tramiteId: string,
+): Promise<{ success: boolean; error?: string }> => {
+  let transaction: Transaction | undefined;
+
   try {
-    // 1. Obtener todos los archivos relacionados con la comparativa
     const comparativaRows = await tursoClient.execute({
       sql: `SELECT * FROM comparativa_files WHERE comparativa_id = ?`,
-      args: [comparativa_id],
+      args: [comparativaId],
     });
 
     if (comparativaRows.rows.length === 0) {
       return {
         success: false,
-        error: `No hay archivos en la tabla comparativa_files para la comparativa ${comparativa_id}`,
-      }; // No hay archivos para mover
-    }
-
-    const files: Partial<ComparativaFile>[] = comparativaRows.rows.map(
-      (row) => ({
-        id: row.id as string,
-        filename: row.filename as string,
-        size: row.size as number,
-        extension: row.extension as string,
-      })
-    );
-
-    // 3. Mover archivos en Firebase Storage
-    const { success, downloadURLs, error } = await moveFilesInFirebaseStorage(
-      organization_id,
-      comparativa_id,
-      tramite_id
-    );
-    if (!success) {
-      return {
-        success: false,
-        error: `Error al mover archivos en Firebase Storage: ${error}`,
+        error: `No hay archivos en la tabla comparativa_files para la comparativa ${comparativaId}`,
       };
     }
-    // 2. Insertar cada archivo en la tabla tramite_files
-    for (const file of files) {
-      await tursoClient.execute({
+
+    const files = comparativaRows.rows.map((row) =>
+      parseComparativaFile(row, comparativaId),
+    );
+    const copiedFiles = await Promise.all(
+      files.map((file) =>
+        copyFileToTramite(
+          file,
+          organizationId,
+          comparativaId,
+          tramiteId,
+        ),
+      ),
+    );
+
+    transaction = await tursoClient.transaction("write");
+
+    for (const { file, downloadURL } of copiedFiles) {
+      await transaction.execute({
         sql: `
-          INSERT INTO tramite_files (id, filename, size, extension, upload_date, tramite_id, download_url, preview_url) 
+          INSERT INTO tramite_files (id, filename, size, extension, upload_date, tramite_id, download_url, preview_url)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         args: [
-          file.id as string,
-          file.filename as string,
-          file.size as number,
-          file.extension as string,
-          new Date().toISOString(),
-          tramite_id,
-          downloadURLs?.find((f) => f.name === file.filename)?.url || "",
-          null,
+          file.id,
+          file.filename,
+          file.size,
+          file.extension,
+          file.upload_date,
+          tramiteId,
+          downloadURL,
+          file.preview_url ? downloadURL : null,
         ],
       });
     }
 
-    // 4. Eliminar los archivos de la tabla comparativa_files
-    const deletionResponse = await tursoClient.execute({
+    const deletionResponse = await transaction.execute({
       sql: "DELETE FROM comparativa_files WHERE comparativa_id = ?",
-      args: [comparativa_id],
+      args: [comparativaId],
     });
 
     if (deletionResponse.rowsAffected !== files.length) {
-      return {
-        success: false,
-        error:
-          "No se pudieron eliminar los archivos de la comparativa en la base de datos",
-      };
+      throw new Error(
+        "No se pudieron transferir todos los archivos de la comparativa",
+      );
+    }
+
+    await transaction.commit();
+    transaction = undefined;
+
+    const cleanupResults = await Promise.allSettled(
+      copiedFiles.map(({ sourceRef }) => deleteObject(sourceRef)),
+    );
+    for (const result of cleanupResults) {
+      if (result.status === "rejected") {
+        console.error(
+          "Error deleting a comparison file after conversion:",
+          result.reason,
+        );
+      }
     }
 
     return { success: true };
   } catch (error) {
-    console.error("Error moving folder:", error);
-    return { success: false, error: String(error) };
+    if (transaction) {
+      await rollbackTransaction(transaction);
+    }
+    console.error("Error moving comparison files:", error);
+    return { success: false, error: getErrorMessage(error) };
   }
 };

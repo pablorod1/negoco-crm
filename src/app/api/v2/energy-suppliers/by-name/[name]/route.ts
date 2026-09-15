@@ -4,6 +4,7 @@ import { getTursoClient } from "@/core/libsql/client";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { ComercializadoraDetails, Rate } from "@/comercializadoras/types";
 import { DocumentacionFile } from "@/core/types";
+import { getNormalizedDocumentLibraryFolderNameSql } from "@/documentacion/lib/documentLibraryFolderSql";
 
 // Request validation schema for path parameter
 const EnergySupplierByNameParamsSchema = z.object({
@@ -155,7 +156,7 @@ export async function POST(
         c.name,
         c.logo,
         c.active,
-        (SELECT COUNT(*) FROM documentacion_files WHERE folder_name LIKE '%' || c.name || '%') as num_files,
+        (SELECT COUNT(*) FROM documentacion_files WHERE ${getNormalizedDocumentLibraryFolderNameSql()} LIKE '%' || c.name || '%') as num_files,
         (
           SELECT COUNT(DISTINCT con.tramite_id)
           FROM contracts con
@@ -191,7 +192,7 @@ export async function POST(
             'upload_date', df.upload_date,
             'size', df.size
           )
-        ) FROM documentacion_files df WHERE df.folder_name LIKE '%' || c.name || '%') as files
+        ) FROM documentacion_files df WHERE ${getNormalizedDocumentLibraryFolderNameSql("df.folder_name")} LIKE '%' || c.name || '%') as files
       FROM comercializadoras c
       WHERE c.name = ?
     `;

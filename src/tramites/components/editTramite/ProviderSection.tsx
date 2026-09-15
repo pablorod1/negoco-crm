@@ -7,6 +7,17 @@ import { CircleCheck, CircleX, Pencil } from "lucide-react";
 import { useState } from "react";
 import { InputComponent } from "../createTramite/InputComponent";
 import { showCustomToast } from "@/core/components/CustomToast";
+import { useCrmSettings } from "@/crm-settings/hooks/useCrmSettings";
+import { Label } from "@/core/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/core/components/ui/select";
+
+const NO_PROVIDER_VALUE = "__none__";
 
 interface Props {
   tramite: TramiteVM;
@@ -16,6 +27,12 @@ export default function ProviderSection({ tramite, onUpdate }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [newProvider, setNewProvider] = useState(tramite.provider || "");
   const [isLoading, setIsLoading] = useState(false);
+  const { settings } = useCrmSettings();
+  const configuredProviders =
+    settings?.providers.map((provider) => provider.name) ?? [];
+  const providerOptions = configuredProviders.includes(tramite.provider || "")
+    ? configuredProviders
+    : [tramite.provider || "", ...configuredProviders].filter(Boolean);
 
   const handleEdit = () => {
     if (isEditing) {
@@ -157,14 +174,38 @@ export default function ProviderSection({ tramite, onUpdate }: Props) {
         </div>
       ) : (
         <div className="space-y-4">
-          <InputComponent
-            name="provider"
-            value={newProvider}
-            onChange={handleChange}
-            type="text"
-            label="Nombre del proveedor"
-            placeholder="Introduce el proveedor (dejar vacío para eliminar)"
-          />
+          {configuredProviders.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <Label>Nombre del proveedor</Label>
+              <Select
+                value={newProvider || NO_PROVIDER_VALUE}
+                onValueChange={(value) =>
+                  setNewProvider(value === NO_PROVIDER_VALUE ? "" : value)
+                }
+              >
+                <SelectTrigger className="h-10 rounded-md">
+                  <SelectValue placeholder="Seleccionar proveedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PROVIDER_VALUE}>Sin proveedor</SelectItem>
+                  {providerOptions.map((provider) => (
+                    <SelectItem key={provider} value={provider}>
+                      {provider}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <InputComponent
+              name="provider"
+              value={newProvider}
+              onChange={handleChange}
+              type="text"
+              label="Nombre del proveedor"
+              placeholder="Introduce el proveedor (dejar vacío para eliminar)"
+            />
+          )}
           <div className="flex gap-2">
             <Button size="sm" onClick={handleSubmit} disabled={isLoading}>
               <CircleCheck className="mr-2 size-4" />

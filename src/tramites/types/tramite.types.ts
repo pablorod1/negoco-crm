@@ -38,6 +38,7 @@ export interface TramiteDB {
   collection_date: string | null;
   payment_date: string | null;
   rejected_date: string | null;
+  processing_date?: string | null;
   sales_name: string;
   comision_sales_person: number;
   comision: number;
@@ -87,6 +88,7 @@ export interface TramiteRow {
   collection_date: string | null;
   payment_date: string | null;
   rejected_date: string | null;
+  processing_date?: string | null;
   sales_name: string;
   client_name: string;
   client_email: string;

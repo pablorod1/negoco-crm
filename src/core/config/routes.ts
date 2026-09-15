@@ -12,6 +12,7 @@ import {
   FileText,
   BarChart3,
   UserCircle,
+  MessageSquareText,
   LucideIcon,
 } from "lucide-react";
 import { formatUUID } from "../utils/format";
@@ -36,6 +37,14 @@ export const routeConfig: Record<string, RouteConfig> = {
     icon: Home,
     category: "principal",
     description: "Panel principal del CRM",
+  },
+  "/foro": {
+    path: "/foro",
+    title: "Foro",
+    icon: MessageSquareText,
+    parent: "/",
+    category: "principal",
+    description: "Debates internos del equipo",
   },
 
   // Operaciones
@@ -175,7 +184,7 @@ export const routeConfig: Record<string, RouteConfig> = {
     icon: Megaphone,
     parent: "/",
     category: "gestion",
-    description: "Comunicaciones y campañas informativas",
+    description: "Cartel destacado que ven todos los usuarios en su dashboard",
   },
 
   // Perfil

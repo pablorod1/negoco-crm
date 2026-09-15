@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -24,13 +24,23 @@ import AvatarComponent from "@/core/components/AvatarComponent";
 import DeleteUserConfirmationModal from "./BanUserConfirmationModal";
 import { useUser } from "@/core/contexts/UserContext";
 import UnbanUserConfirmationModal from "./UnbanUserConfirmationModal";
-import EditUserConfigModal from "./EditUserConfigModal";
+import EditUserConfigModal, {
+  EditUserConfigButton,
+} from "./EditUserConfigModal";
 import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
 import { useMultipleSelector } from "@/core/hooks/use-multiple-selector";
 import { Input } from "@/core/components/ui/input";
 import LoaderComponent from "@/core/components/LoaderComponent";
 
 const columnHelper = createColumnHelper<User>();
+
+/** Búsqueda insensible a mayúsculas y acentos, normalizando ambos lados. */
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
 
 function UsersGridTable({
   users,
@@ -43,13 +53,34 @@ function UsersGridTable({
   const { convertToOptions, convertFromOptions } = useMultipleSelector();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [isGridView, setIsGridView] = useState(false);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  // Ediciones pintadas en local para no recargar el listado entero. Caducan en
+  // cuanto el servidor devuelve una lista nueva.
+  const [userPatches, setUserPatches] = useState<Record<string, User>>({});
+  const [editing, setEditing] = useState<{ user: User; open: boolean } | null>(
+    null
+  );
 
   useEffect(() => {
-    if (users.length > 0) {
-      setFilteredUsers(users);
-    }
+    setUserPatches({});
   }, [users]);
+
+  const filteredUsers = useMemo(() => {
+    const term = normalizeText(searchTerm.trim());
+    return users
+      .map((user) => userPatches[user.id] ?? user)
+      .filter(
+        (user) => selectedRoles.length === 0 || selectedRoles.includes(user.role)
+      )
+      .filter(
+        (user) =>
+          !term ||
+          normalizeText(user.name).includes(term) ||
+          normalizeText(user.email).includes(term) ||
+          normalizeText(user.company ?? "").includes(term)
+      );
+  }, [users, userPatches, searchTerm, selectedRoles]);
 
   // Variable para verificar si el usuario actual es administrador
   const isAdmin = userData?.role === "admin";
@@ -140,10 +171,11 @@ function UsersGridTable({
   const actionColumn: ColumnDef<User, string> = columnHelper.accessor("id", {
     cell: (info) => (
       <div className="flex items-center gap-1">
-        {(isAdmin) && (
-          <EditUserConfigModal
-            user={info.row.original}
-            onUpdated={handleUserUpdated}
+        {isAdmin && (
+          <EditUserConfigButton
+            onClick={() =>
+              setEditing({ user: info.row.original, open: true })
+            }
           />
         )}
         {info.row.original.banned ? (
@@ -179,37 +211,11 @@ function UsersGridTable({
   });
 
   const handleRoleFilterChange = (selectedOptions: Option[]) => {
-    const selectedRoles = convertFromOptions(selectedOptions);
-    if (selectedRoles.length === 0) {
-      setFilteredUsers(users);
-      return;
-    }
-    const filtered = users.filter((user) => selectedRoles.includes(user.role));
-    setFilteredUsers(filtered);
-  };
-
-  const handleNameFilterChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const value = event.target.value.toLowerCase();
-
-    const filtered = users.filter(
-      (user) =>
-        user.name
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .includes(value) ||
-        user.email.toLowerCase().includes(value) ||
-        user.company?.toLowerCase().includes(value)
-    );
-    setFilteredUsers(filtered);
+    setSelectedRoles(convertFromOptions(selectedOptions));
   };
 
   const handleUserUpdated = (updatedUser: User) => {
-    setFilteredUsers((current) =>
-      current.map((user) => (user.id === updatedUser.id ? updatedUser : user))
-    );
+    setUserPatches((current) => ({ ...current, [updatedUser.id]: updatedUser }));
   };
 
   return (
@@ -227,9 +233,12 @@ function UsersGridTable({
               {(isAdmin || isBackoffice) && (
                 <>
                   <Input
-                    type="text"
-                    name="name"
-                    onChange={handleNameFilterChange}
+                    id="colaboradores-search"
+                    type="search"
+                    name="colaboradores-search"
+                    autoComplete="off"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="Buscar usuarios..."
                     className="w-80 h-9 border-gray-200 text-sm"
                   />
@@ -271,7 +280,7 @@ function UsersGridTable({
               users={filteredUsers}
               isAdmin={isAdmin}
               isBackoffice={isBackoffice}
-              onUserUpdated={handleUserUpdated}
+              onEdit={(user) => setEditing({ user, open: true })}
             />
           ) : (
             <div className="border border-gray-200 rounded-4xl overflow-hidden">
@@ -327,6 +336,20 @@ function UsersGridTable({
           )}
         </div>
       )}
+
+      {/* A propósito fuera del listado: dentro de la fila, cualquier filtro o
+          recarga desmontaba la fila y cerraba el panel abierto de golpe. */}
+      {editing && (
+        <EditUserConfigModal
+          key={editing.user.id}
+          user={editing.user}
+          open={editing.open}
+          onOpenChange={(open) =>
+            setEditing((current) => (current ? { ...current, open } : null))
+          }
+          onUpdated={handleUserUpdated}
+        />
+      )}
     </div>
   );
 }
@@ -336,12 +359,12 @@ function GridView({
   users,
   isAdmin,
   isBackoffice,
-  onUserUpdated,
+  onEdit,
 }: {
   users: User[];
   isAdmin: boolean;
   isBackoffice: boolean;
-  onUserUpdated: (user: User) => void;
+  onEdit: (user: User) => void;
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-4">
@@ -367,7 +390,7 @@ function GridView({
             </div>
             {(isAdmin || isBackoffice) && (
               <div className="flex-shrink-0 flex items-center gap-1">
-                <EditUserConfigModal user={user} onUpdated={onUserUpdated} />
+                <EditUserConfigButton onClick={() => onEdit(user)} />
                 {user.banned ? (
                   <UnbanUserConfirmationModal
                     userName={user.name}

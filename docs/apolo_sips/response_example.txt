@@ -1,0 +1,24 @@
+cups,
+fechaInicioMesConsumo,
+fechaFinMesConsumo,
+codigoTarifaATR, -
+consumoEnergiaActivaEnWhP1, -
+consumoEnergiaActivaEnWhP2, - 
+consumoEnergiaActivaEnWhP3, -
+consumoEnergiaActivaEnWhP4, -
+consumoEnergiaActivaEnWhP5, -
+consumoEnergiaActivaEnWhP6, -
+consumoEnergíaReactivaEnVArhP1, 
+consumoEnergíaReactivaEnVArhP2,
+consumoEnergíaReactivaEnVArhP3,
+consumoEnergíaReactivaEnVArhP4,
+consumoEnergíaReactivaEnVArhP5,
+consumoEnergíaReactivaEnVArhP6,
+potenciaDemandadaEnWP1,
+potenciaDemandadaEnWP2,
+potenciaDemandadaEnWP3,
+potenciaDemandadaEnWP4,
+potenciaDemandadaEnWP5,
+potenciaDemandadaEnWP6,
+codigoDHEquipoDeMedida,
+codigoTipoLectura

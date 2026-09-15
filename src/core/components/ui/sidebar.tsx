@@ -27,10 +27,42 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+const SIDEBAR_STORAGE_KEY = "sidebar_state:v1";
 const SIDEBAR_WIDTH = "18rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+
+function getStoredSidebarOpen(defaultOpen: boolean) {
+  if (typeof window === "undefined") {
+    return defaultOpen;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    if (storedValue === "expanded") return true;
+    if (storedValue === "collapsed") return false;
+  } catch {
+    return defaultOpen;
+  }
+
+  return defaultOpen;
+}
+
+function storeSidebarOpen(open: boolean) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      SIDEBAR_STORAGE_KEY,
+      open ? "expanded" : "collapsed",
+    );
+  } catch {
+    // localStorage can be unavailable or full; the in-memory state still works.
+  }
+}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
@@ -45,7 +77,7 @@ type SidebarContextProps = {
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 
 function useSidebar() {
-  const context = React.useContext(SidebarContext);
+  const context = React.use(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
@@ -71,8 +103,11 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen);
+  const [_open, _setOpen] = React.useState(() =>
+    getStoredSidebarOpen(defaultOpen),
+  );
   const open = openProp ?? _open;
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value;
@@ -84,6 +119,7 @@ function SidebarProvider({
 
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+      storeSidebarOpen(openState);
     },
     [setOpenProp, open],
   );
@@ -284,6 +320,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
 
   return (
     <button
+      type="button"
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
@@ -607,9 +644,9 @@ function SidebarMenuSkeleton({
   showIcon?: boolean;
 }) {
   // Random width between 50 to 90%.
-  const width = React.useMemo(() => {
+  const [width] = React.useState(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+  });
 
   return (
     <div

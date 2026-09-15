@@ -14,6 +14,10 @@ import { useTransitionRouter } from "next-view-transitions";
 import { Switch } from "@/core/components/ui/switch";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { formatConsumption } from "@/core/utils/format";
+import {
+  companyLogoUrl,
+  isUnoptimizedLogo,
+} from "@/comercializadoras/lib/logo-url";
 
 interface ComercializadoraCardProps {
   comercializadora: ComercializadoraVM;
@@ -86,6 +90,8 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
     }
   };
 
+  const logoUrl = companyLogoUrl(comercializadora.logo);
+
   return (
     <div
       onClick={handleClick}
@@ -94,19 +100,20 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
-          {comercializadora.logo ? (
-            <div className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+          {logoUrl ? (
+            <div className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
               <Image
-                src={`/companies/${comercializadora.logo}`}
+                src={logoUrl}
                 alt={`Logo de ${comercializadora.name}`}
-                width={24}
-                height={24}
-                className="w-6 h-6 object-contain"
+                width={200}
+                height={200}
+                className="size-full object-cover"
                 loading="lazy"
+                unoptimized={isUnoptimizedLogo(comercializadora.logo)}
               />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5 text-gray-600" />
             </div>
           )}
@@ -117,11 +124,10 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
             </h3>
             <div className="flex items-center space-x-2 mt-1">
               <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  isActive
-                    ? "bg-green-50 text-green-700"
-                    : "bg-gray-100 text-gray-600"
-                }`}
+                className={`text-xs px-2 py-0.5 rounded-full ${isActive
+                  ? "bg-green-50 text-green-700"
+                  : "bg-gray-100 text-gray-600"
+                  }`}
               >
                 {isActive ? "Activa" : "Inactiva"}
               </span>
@@ -129,7 +135,7 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 flex-shrink-0">
+        <div className="flex items-center space-x-2 shrink-0">
           {!isComercial && (
             <div onClick={(e) => e.stopPropagation()}>
               <Switch checked={isActive} onCheckedChange={handleCheckChange} />

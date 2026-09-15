@@ -33,6 +33,7 @@ import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySuppli
 import { Skeleton } from "@/core/components/ui/skeleton";
 
 interface Props {
+  fromComparison?: boolean;
   tramite: TramiteDB;
   client: ClientDB;
   signer?: SignerDB | null;
@@ -49,6 +50,7 @@ interface Props {
 }
 
 export default function ReviewStep({
+  fromComparison = false,
   tramite,
   client,
   signer,
@@ -158,7 +160,7 @@ export default function ReviewStep({
                         Comisión
                       </p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {tramite.comision > 0
+                        {fromComparison || tramite.comision > 0
                           ? formatComission(tramite.comision)
                           : "---"}
                       </p>
@@ -170,7 +172,7 @@ export default function ReviewStep({
                         Comisión {!isComercial ? "Comercial" : ""}
                       </p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {tramite.comision_sales_person > 0
+                        {fromComparison || tramite.comision_sales_person > 0
                           ? formatComission(tramite.comision_sales_person)
                           : "---"}
                       </p>

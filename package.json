@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "backfill:abarca-files": "tsx src/scripts/backfill-abarca-files.ts",
     "seed:tickets": "tsx scripts/seed-ticket-system.ts"
   },
   "dependencies": {

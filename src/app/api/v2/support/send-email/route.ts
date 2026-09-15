@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import {
+  getEmailFrom,
+  getEmailTransportConfig,
+  resolveEmailBranding,
+} from "@/core/branding/email";
+import type { ResolvedEmailBranding } from "@/core/branding/types";
 
 interface SupportEmailData {
   subject: string;
@@ -9,7 +15,12 @@ interface SupportEmailData {
   userOrganization: string;
 }
 
-function generateSupportEmailHTML(data: SupportEmailData): string {
+function generateSupportEmailHTML(
+  data: SupportEmailData,
+  emailBranding: ResolvedEmailBranding,
+): string {
+  const { theme, branding, logoUrl } = emailBranding;
+
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -18,19 +29,19 @@ function generateSupportEmailHTML(data: SupportEmailData): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nueva Consulta de Soporte - ${data.subject}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f7f9fc;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: ${theme.bodyBg};">
     <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
         
         <!-- Header -->
-        <div style="background-color: #f0f6ff; padding: 30px; text-align: center;">
-            <img src="https://negococloud.es/favicon.png" alt="Negoco Cloud Logo" style="height: 50px;">
+        <div style="background-color: ${theme.headerBg}; padding: 30px; text-align: center;">
+            <img src="${logoUrl}" alt="${branding.displayName} Logo" style="height: 50px;">
         </div>
 
         <!-- Content -->
         <div style="padding: 40px;">
             
             <!-- Title -->
-            <h1 style="color: #3b82f6; margin: 0 0 20px 0; font-size: 24px; font-weight: 600; text-align: center;">
+            <h1 style="color: ${theme.heading}; margin: 0 0 20px 0; font-size: 24px; font-weight: 600; text-align: center;">
                 Nueva Consulta de Soporte
             </h1>
 
@@ -83,18 +94,18 @@ function generateSupportEmailHTML(data: SupportEmailData): string {
         </div>
 
         <!-- Footer -->
-        <div style="background-color: #f0f5fc; border-top: 1px solid #e5ebf5; padding: 30px; text-center;">
+        <div style="background-color: ${theme.subtleBg}; border-top: 1px solid ${theme.border}; padding: 30px; text-align: center;">
             <p style="color: #758195; margin: 0 0 15px 0; font-size: 14px;">
                 Puedes responder directamente a 
-                <a href="mailto:${data.userEmail}" style="color: #3b82f6; text-decoration: none;">${data.userEmail}</a>
+                <a href="mailto:${data.userEmail}" style="color: ${theme.link}; text-decoration: none;">${data.userEmail}</a>
             </p>
 
             <p style="color: #758195; margin: 0; font-size: 13px;">
-                Este correo fue generado automáticamente desde el sistema de soporte de Negoco Cloud CRM.
+                Este correo fue generado automáticamente desde el sistema de soporte de ${branding.displayName} CRM.
             </p>
 
             <p style="color: #758195; margin: 15px 0 0 0; font-size: 13px;">
-                &copy; ${new Date().getFullYear()} Negoco Cloud. Todos los derechos reservados.
+                &copy; ${new Date().getFullYear()} ${branding.displayName}. Todos los derechos reservados.
             </p>
         </div>
 
@@ -129,32 +140,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const email = process.env.EMAIL;
-    const password = process.env.EMAIL_PASS;
+    const emailBranding = await resolveEmailBranding({ req });
 
     // Create transporter for sending emails
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: 465,
-      secure: true,
-      auth: {
-        user: email,
-        pass: password,
-      },
-    });
+    const transporter = nodemailer.createTransport(
+      getEmailTransportConfig(emailBranding),
+    );
 
     // Generate email content
-    const htmlContent = generateSupportEmailHTML(emailData);
+    const htmlContent = generateSupportEmailHTML(emailData, emailBranding);
 
     // Email subject
     const emailSubject = `[Soporte] ${emailData.subject} - ${emailData.userName}`;
 
     // Send email to support
     const mailOptions = {
-      from: {
-        address: email as string,
-        name: "Soporte Negoco Cloud",
-      },
+      from: getEmailFrom(emailBranding),
       to: "soporte@negococloud.es",
       subject: emailSubject,
       html: htmlContent,

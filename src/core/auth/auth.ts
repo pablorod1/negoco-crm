@@ -71,6 +71,7 @@ export const getAuth = (req: NextRequest) => {
         await sendPasswordResetEmail({
           email: user.email,
           resetLink: resetPasswordURL.toString(),
+          req,
         });
       },
       resetPasswordTokenExpiresIn: 24 * 60 * 60,

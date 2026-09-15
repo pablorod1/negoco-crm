@@ -14,36 +14,41 @@ import {
   Tailwind,
   Text,
 } from "@react-email/components";
+import { NextRequest } from "next/server";
+import {
+  getEmailFrom,
+  getEmailTransportConfig,
+  resolveEmailBranding,
+} from "@/core/branding/email";
+import type { EmailBrandingTheme } from "@/core/branding/types";
 
 export async function sendPasswordResetEmail({
   email,
   resetLink,
+  req,
 }: {
   email: string;
   resetLink: string;
+  req: NextRequest;
 }) {
-  const emailFrom = process.env.EMAIL_NOREPLY || "";
-  const password = process.env.EMAIL_PASS_NOREPLY || "";
-  // Configurar el transporter de nodemailer
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: 465,
-    secure: true,
-    auth: {
-      user: emailFrom,
-      pass: password,
-    },
-  });
+  const emailBranding = await resolveEmailBranding({ req });
+  const transporter = nodemailer.createTransport(
+    getEmailTransportConfig(emailBranding),
+  );
 
-  const emailHtml = await render(<PasswordResetEmail resetLink={resetLink} />);
+  const emailHtml = await render(
+    <PasswordResetEmail
+      resetLink={resetLink}
+      displayName={emailBranding.branding.displayName}
+      logoUrl={emailBranding.logoUrl}
+      theme={emailBranding.theme}
+    />,
+  );
   // Configurar el email
   const mailOptions = {
-    from: {
-      address: emailFrom,
-      name: "Negoco Cloud Soporte",
-    },
+    from: getEmailFrom(emailBranding),
     to: email,
-    subject: `Restablecimiento de contraseña - Negoco Cloud`,
+    subject: `Restablecimiento de contraseña - ${emailBranding.branding.displayName}`,
     html: emailHtml,
   };
 
@@ -57,31 +62,52 @@ export async function sendPasswordResetEmail({
   }
 }
 
-const PasswordResetEmail = ({ resetLink }: { resetLink: string }) => {
+const PasswordResetEmail = ({
+  resetLink,
+  displayName,
+  logoUrl,
+  theme,
+}: {
+  resetLink: string;
+  displayName: string;
+  logoUrl: string;
+  theme: EmailBrandingTheme;
+}) => {
+  const currentYear = new Date().getFullYear();
+
   return (
     <Html lang="es">
       <Head>
         <title>Restablecimiento de Contraseña</title>
         <Preview>
-          Solicitud para restablecer la contraseña de tu cuenta en Negoco Cloud
+          Solicitud para restablecer la contraseña de tu cuenta en {displayName}
         </Preview>
       </Head>
       <Tailwind>
-        <Body className="bg-[#f7f9fc] py-[40px] font-sans text-[#333333] m-0 p-0">
+        <Body
+          className="py-[40px] font-sans text-[#333333] m-0 p-0"
+          style={{ backgroundColor: theme.bodyBg }}
+        >
           <Container className="max-w-[600px] mx-auto bg-white rounded-[10px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
             {/* Header with logo */}
-            <Section className="bg-[#f0f6ff] py-[30px] text-center">
+            <Section
+              className="py-[30px] text-center"
+              style={{ backgroundColor: theme.headerBg }}
+            >
               <Img
-                alt="Negoco Cloud Logo"
+                alt={`${displayName} Logo`}
                 className="mx-auto"
                 height={50}
-                src="https://negococloud.es/favicon.png"
+                src={logoUrl}
               />
             </Section>
 
             {/* Main content */}
             <Section className="px-[50px] py-[40px]">
-              <Heading className="text-[#0066cc] text-[24px] font-semibold m-0 mb-[20px] text-center">
+              <Heading
+                className="text-[24px] font-semibold m-0 mb-[20px] text-center"
+                style={{ color: theme.heading }}
+              >
                 Restablecimiento de Contraseña
               </Heading>
 
@@ -91,7 +117,7 @@ const PasswordResetEmail = ({ resetLink }: { resetLink: string }) => {
 
               <Text className="text-[16px] leading-[1.6] m-0 mb-[15px]">
                 Hemos recibido una solicitud para restablecer la contraseña de
-                tu cuenta en <strong>Negoco Cloud</strong>. Para continuar con
+                tu cuenta en <strong>{displayName}</strong>. Para continuar con
                 este proceso y crear una nueva contraseña, haz clic en el botón
                 de abajo:
               </Text>
@@ -99,7 +125,8 @@ const PasswordResetEmail = ({ resetLink }: { resetLink: string }) => {
               <Section className="my-[30px] text-center">
                 <Button
                   href={resetLink}
-                  className="bg-[#0066cc] text-white py-[14px] px-[26px] rounded-[6px] font-semibold text-[16px] no-underline inline-block shadow-[0_3px_6px_rgba(0,102,204,0.2)] box-border"
+                  className="text-white py-[14px] px-[26px] rounded-[6px] font-semibold text-[16px] no-underline inline-block shadow-[0_3px_6px_rgba(0,102,204,0.2)] box-border"
+                  style={{ backgroundColor: theme.buttonBg }}
                 >
                   Restablecer Contraseña
                 </Button>
@@ -110,7 +137,13 @@ const PasswordResetEmail = ({ resetLink }: { resetLink: string }) => {
                 en tu navegador:
               </Text>
 
-              <Text className="m-0 mb-[20px] mt-[10px] py-[12px] px-[15px] bg-[#f5f7fa] rounded-[6px] text-[14px] break-all border-l-[4px] border-l-[#0066cc] text-[#666]">
+              <Text
+                className="m-0 mb-[20px] mt-[10px] py-[12px] px-[15px] rounded-[6px] text-[14px] break-all border-l-[4px] text-[#666]"
+                style={{
+                  backgroundColor: theme.mutedBg,
+                  borderLeftColor: theme.buttonBg,
+                }}
+              >
                 {resetLink}
               </Text>
 
@@ -127,17 +160,24 @@ const PasswordResetEmail = ({ resetLink }: { resetLink: string }) => {
               <Text className="text-[16px] leading-[1.6] m-0 mt-[25px] mb-[10px]">
                 Saludos,
                 <br />
-                El equipo de Negoco Cloud
+                El equipo de {displayName}
               </Text>
             </Section>
 
             {/* Footer */}
-            <Section className="bg-[#f0f5fc] px-[50px] py-[30px] text-center border-t-[1px] border-t-[#e5ebf5]">
+            <Section
+              className="px-[50px] py-[30px] text-center border-t-[1px]"
+              style={{
+                backgroundColor: theme.subtleBg,
+                borderTopColor: theme.border,
+              }}
+            >
               <Text className="m-0 mb-[15px] text-[#758195] text-[14px]">
                 Si tienes alguna duda, contáctanos en{" "}
                 <a
                   href="mailto:soporte@negococloud.es"
-                  className="text-[#0066cc] no-underline"
+                  className="no-underline"
+                  style={{ color: theme.link }}
                 >
                   soporte@negococloud.es
                 </a>
@@ -149,7 +189,7 @@ const PasswordResetEmail = ({ resetLink }: { resetLink: string }) => {
               </Text>
 
               <Text className="m-0 mt-[15px] text-[#758195] text-[13px]">
-                &copy; {new Date().getFullYear()} Negoco Cloud. Todos los
+                &copy; {currentYear} {displayName}. Todos los
                 derechos reservados.
               </Text>
             </Section>
@@ -161,4 +201,3 @@ const PasswordResetEmail = ({ resetLink }: { resetLink: string }) => {
 };
 
 export default PasswordResetEmail;
-

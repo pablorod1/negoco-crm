@@ -7,17 +7,24 @@ import {
   uploadBytes,
 } from "firebase/storage";
 
+export interface UploadedFileResult {
+  downloadURL: string;
+  previewURL?: string;
+  file_path?: string;
+}
+
 export async function uploadFile(
   file: File,
   parent_folder_name: string,
   folder_name?: string
-): Promise<{ downloadURL: string; previewURL?: string; file_path?: string }> {
+): Promise<UploadedFileResult> {
   try {
-    // Subir el archivo original
-    const storageRef = ref(
-      storage,
-      `${parent_folder_name}/${folder_name}/${file.name}`
-    );
+    const file_path = [parent_folder_name, folder_name, file.name]
+      .filter(
+        (segment): segment is string => Boolean(segment) && segment !== "/"
+      )
+      .join("/");
+    const storageRef = ref(storage, file_path);
     await uploadBytes(storageRef, file);
     const downloadURL = await getDownloadURL(storageRef);
 
@@ -28,8 +35,6 @@ export async function uploadFile(
     if (file.type.startsWith("image/")) {
       previewURL = downloadURL;
     }
-
-    const file_path = `${parent_folder_name}/${folder_name}/${file.name}`;
 
     return { downloadURL, previewURL, file_path };
   } catch (error) {
@@ -42,7 +47,7 @@ export async function uploadFiles(
   files: File[],
   parent_folder_name: string,
   folder_name?: string
-): Promise<{ downloadURL: string; previewURL?: string }[]> {
+): Promise<UploadedFileResult[]> {
   try {
     const uploads = files.map((file) =>
       uploadFile(file, parent_folder_name, folder_name)

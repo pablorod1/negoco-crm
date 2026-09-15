@@ -38,7 +38,8 @@ function useTramites(
   client_id: string,
   userData: User,
   pageIndex: number,
-  pageSize: number | string
+  pageSize: number,
+  paginationReady: boolean,
 ) {
   const [state, setState] = useState<{
     tramites: TramiteRow[];
@@ -62,17 +63,14 @@ function useTramites(
 
   // Fetch tramites
   const fetchTramites = useCallback(async () => {
-    if (!userData) return;
+    if (!userData || !paginationReady) return;
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       const params = new URLSearchParams();
       params.append("page", pageIndex.toString());
-      params.append(
-        "rowsPerPage",
-        typeof pageSize === "number" ? pageSize.toString() : "Sin Límite"
-      );
+      params.append("rowsPerPage", pageSize.toString());
       params.append("user_id", userData.id);
       params.append("user_role", userData.role);
       params.append("clientFilter", client_id);
@@ -121,14 +119,14 @@ function useTramites(
         iconColor: "var(--danger-color)",
       });
     }
-  }, [userData, pageIndex, pageSize, client_id, filters]);
+  }, [userData, paginationReady, pageIndex, pageSize, client_id, filters]);
 
   // Effect to fetch data when dependencies change
   useEffect(() => {
-    if (userData) {
-      fetchTramites();
+    if (userData && paginationReady) {
+      void fetchTramites();
     }
-  }, [fetchTramites, userData]);
+  }, [fetchTramites, paginationReady, userData]);
 
   // Set search term with debounce
   const setSearchTerm = useCallback((term: string) => {
@@ -190,9 +188,8 @@ const ErrorState = ({
 
 export function ClientTramitesTable({ client_id }: Props) {
   const { userData } = useUser();
-  const { pageIndex, pageSize, setPageIndex, setPageSize } = useTablePagination(
-    `client-tramites-${client_id}`
-  );
+  const { pageIndex, pageSize, setPageIndex, setPageSize, isInitialized } =
+    useTablePagination(`client-tramites-${client_id}`);
 
   // Get columns based on user role
   const columns = useMemo(() => {
@@ -217,7 +214,13 @@ export function ClientTramitesTable({ client_id }: Props) {
     refetch,
     filters,
     setSearchTerm,
-  } = useTramites(client_id, userData as User, pageIndex, pageSize);
+  } = useTramites(
+    client_id,
+    userData as User,
+    pageIndex,
+    pageSize,
+    isInitialized,
+  );
 
   // Table configuration
   const tableConfig = useMemo(

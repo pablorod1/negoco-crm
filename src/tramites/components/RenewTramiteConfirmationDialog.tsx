@@ -177,9 +177,8 @@ export default function RenewTramiteConfirmationDialog({
 
       showCustomToast({
         title: "Trámite renovado",
-        message: `El trámite ha sido renovado correctamente. ${
-          sendNotification ? `Se ha notificado a ${tramite.user.name}` : ""
-        }`,
+        message: `El trámite ha sido renovado correctamente. ${sendNotification ? `Se ha notificado a ${tramite.user.name}` : ""
+          }`,
         iconColor: "var(--success-color)",
         iconSize: 24,
         icon: RefreshCcw,
@@ -212,7 +211,7 @@ export default function RenewTramiteConfirmationDialog({
     <>
       <Dialog open={isOpen}>
         <DialogTrigger asChild>
-          <Button onClick={onOpen} className="gap-2">
+          <Button onClick={onOpen} className="gap-2 w-full">
             <RefreshCcw size={16} />
             Renovar Trámite
           </Button>

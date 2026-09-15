@@ -27,7 +27,7 @@ interface FileGridProps {
 }
 
 const getBreadcrumbPath = (folders: string[], currentIndex: number): string => {
-  return folders.slice(0, currentIndex + 1).join(",");
+  return folders.slice(0, currentIndex + 1).join("/");
 };
 
 export function FileGrid({
@@ -125,7 +125,9 @@ export function FileGrid({
               )}
             </Button>
 
-            {isNonCommercialUser && <UploadFileModal />}
+            {isNonCommercialUser && (
+              <UploadFileModal initialFolderPath={currentPath} />
+            )}
           </div>
         </div>
       )}
@@ -171,7 +173,9 @@ export function FileGrid({
               )}
             </Button>
 
-            {isNonCommercialUser && <UploadFileModal />}
+            {isNonCommercialUser && (
+              <UploadFileModal initialFolderPath={currentPath} />
+            )}
           </div>
         </div>
       )}

@@ -18,131 +18,131 @@ import {
 import { Button } from "@/core/components/ui/button";
 import { Loader2, X, RotateCcw, Stars, FileText } from "lucide-react";
 import Image from "next/image";
-import { useUser } from "@/core/contexts/UserContext";
 import { ComparativaFile } from "@/comparativas/types";
 
 interface AbarcaPanelProps {
   comparativaId: string;
-  abarcaUserId: number;
-  onStudyCompleted: () => void;
+  onStudyStarted?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   files: Partial<ComparativaFile>[];
 }
 
 export function AbarcaPanel({
   comparativaId,
-  abarcaUserId,
-  onStudyCompleted,
+  onStudyStarted,
+  open,
+  onOpenChange,
   files,
 }: AbarcaPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const isOpen = open ?? localOpen;
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { userData } = useUser();
+  const setIsOpen = useCallback((value: boolean) => {
+    setLocalOpen(value);
+    onOpenChange?.(value);
+    // El login_url de Abarca es de un solo uso y el Sheet desmonta el iframe al
+    // cerrarse. Conservarlo solo servía para que la siguiente apertura volviera
+    // a navegar a un token ya gastado, que es lo que Abarca devuelve como
+    // "sesión expirada". Cada apertura pide uno nuevo.
+    if (!value) {
+      setIframeUrl(null);
+      setError(null);
+    }
+  }, [onOpenChange]);
+  const loginRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    loginRequest.current?.abort();
+    loginRequest.current = null;
+  }, [comparativaId]);
 
   const pdfFiles = files.filter(
-    (f) => f.extension?.toLowerCase() === "pdf" && f.download_url,
+    (file) => file.extension?.toLowerCase() === "pdf",
   );
 
-  // Poll comparativa status while the panel is open
-  useEffect(() => {
-    if (!isOpen || !iframeUrl || !userData) return;
-
-    pollingRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/v2/comparisons/${comparativaId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: comparativaId,
-            user_id: userData.id,
-            user_role: userData.role,
-          }),
-        });
-        if (!res.ok) return;
-        const responseBody = (await res.json()) as {
-          data?: { status?: string };
-        };
-        const comparativaStatus = responseBody.data?.status;
-
-        if (!comparativaStatus || comparativaStatus === "pending") return;
-
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-
-        setIsOpen(false);
-        setIframeUrl(null);
-        onStudyCompleted();
-      } catch {
-        // Ignore polling errors
-      }
-    }, 5000);
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-    };
-  }, [isOpen, iframeUrl, comparativaId, onStudyCompleted, userData]);
-
   const fetchLoginUrl = useCallback(
-    async (fileUrl?: string) => {
+    async (fileId?: string) => {
+      if (loginRequest.current) return;
+      const controller = new AbortController();
+      loginRequest.current = controller;
       setIsLoading(true);
       setError(null);
       try {
         const res = await fetch("/api/v2/integrations/abarca/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
-            ide: 100,
-            idcm: abarcaUserId,
             comparativa_id: comparativaId,
-            ...(fileUrl ? { file_url: fileUrl } : {}),
+            ...(fileId ? { file_id: fileId } : {}),
           }),
         });
+        if (controller.signal.aborted) return;
 
         if (!res.ok) {
-          console.error("Error fetching Abarca login URL:", await res.text());
-          setError("No se pudo conectar con Abarca");
+          // El endpoint distingue entre "el fichero no sirve" y "Abarca no
+          // responde". Enseñar siempre lo segundo mandaba al comercial a
+          // reintentar en bucle un fallo que solo él podía arreglar.
+          const reason = await res
+            .json()
+            .then((body: { error?: unknown }) =>
+              typeof body?.error === "string" ? body.error : null,
+            )
+            .catch(() => null);
+          setError(reason ?? "No se pudo conectar con el comparador");
           return;
         }
 
         const data = await res.json();
+        if (controller.signal.aborted) return;
         setIframeUrl(data.loginUrl);
         setIsIframeLoading(true);
+        onStudyStarted?.();
         setIsOpen(true);
       } catch {
-        setError("Error de conexión con Abarca");
+        if (!controller.signal.aborted) setError("No se pudo conectar con el comparador");
       } finally {
-        setIsLoading(false);
+        if (loginRequest.current === controller) loginRequest.current = null;
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     },
-    [abarcaUserId, comparativaId],
+    [comparativaId, onStudyStarted, setIsOpen],
   );
 
   const handleOpen = useCallback(() => {
-    if (iframeUrl) {
-      setIsOpen(true);
+    if (pdfFiles.length > 1) {
+      setIsFileModalOpen(true);
       return;
     }
 
-    if (pdfFiles.length > 1) {
-      setIsFileModalOpen(true);
-    } else {
-      fetchLoginUrl(pdfFiles[0]?.download_url ?? undefined);
+    const fileId = pdfFiles[0]?.id?.trim();
+    if (pdfFiles.length === 1 && !fileId) {
+      setError(
+        "El PDF disponible no tiene un identificador válido y no se puede enviar.",
+      );
+      return;
     }
-  }, [iframeUrl, pdfFiles, fetchLoginUrl]);
+
+    fetchLoginUrl(fileId);
+  }, [pdfFiles, fetchLoginUrl]);
 
   const handleFileSelect = useCallback(
-    (fileUrl: string) => {
+    (fileId?: string) => {
+      const validFileId = fileId?.trim();
+      if (!validFileId) {
+        setError(
+          "El PDF seleccionado no tiene un identificador válido y no se puede enviar.",
+        );
+        return;
+      }
+
       setIsFileModalOpen(false);
-      fetchLoginUrl(fileUrl);
+      fetchLoginUrl(validFileId);
     },
     [fetchLoginUrl],
   );
@@ -164,10 +164,15 @@ export function AbarcaPanel({
         ) : (
           <span className="flex items-center gap-2">
             <Stars className="h-4 w-4" />
-            Realizar estudio con IA
+            Estudio con IA
           </span>
         )}
       </Button>
+      {error && !isOpen && !isFileModalOpen && (
+        <p role="alert" className="mt-2 text-xs text-red-600">
+          {error}
+        </p>
+      )}
 
       {/* File selection modal */}
       <Dialog open={isFileModalOpen} onOpenChange={setIsFileModalOpen}>
@@ -179,18 +184,36 @@ export function AbarcaPanel({
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 mt-2">
-            {pdfFiles.map((file) => (
-              <button
-                key={file.id ?? file.download_url}
-                onClick={() => handleFileSelect(file.download_url!)}
-                className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <FileText className="h-5 w-5 shrink-0 text-gray-400" />
-                <span className="truncate text-sm font-medium text-gray-800">
-                  {file.filename ?? "Documento PDF"}
-                </span>
-              </button>
-            ))}
+            {pdfFiles.map((file) => {
+              const fileId = file.id?.trim();
+
+              return (
+                <button
+                  type="button"
+                  key={file.id ?? file.download_url ?? file.filename}
+                  onClick={() => handleFileSelect(fileId)}
+                  disabled={!fileId}
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <FileText className="h-5 w-5 shrink-0 text-gray-400" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-gray-800">
+                      {file.filename ?? "Documento PDF"}
+                    </span>
+                    {!fileId && (
+                      <span className="block text-xs text-red-600">
+                        Archivo sin identificador
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+            {pdfFiles.some((file) => !file.id?.trim()) && (
+              <p role="alert" className="text-xs text-red-600">
+                Los archivos sin identificador válido no se pueden seleccionar.
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -213,7 +236,7 @@ export function AbarcaPanel({
                 </div>
                 <div>
                   <SheetTitle className="text-base">
-                    Comparador Energético
+                    Comparador energético con IA
                   </SheetTitle>
                   <SheetDescription className="text-xs">
                     Negoco Cloud AI
@@ -264,7 +287,8 @@ export function AbarcaPanel({
                 <iframe
                   id="abarca-panel"
                   src={iframeUrl}
-                  title="Comparador Energético Abarca"
+                  title="Comparador energético con IA"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
                   className="abarca-panel w-full h-full border-0"
                   onLoad={() => setIsIframeLoading(false)}
                 />

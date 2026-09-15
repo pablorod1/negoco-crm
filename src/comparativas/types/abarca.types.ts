@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ApoloSipsPeriodValues } from "@/integrations/apolo-sips/summary";
 
 // --- Zod Schema ---
 
@@ -6,10 +7,25 @@ const optionalString = z.string().nullish();
 const optionalNumber = z.number().nullish();
 const optionalBoolean = z.boolean().nullish();
 
+/**
+ * Los documentos NO se validan aquí a propósito.
+ *
+ * Cuando iban dentro del objeto, un solo fichero mal formado (un PNG en un
+ * campo declarado JPEG, base64 con saltos de línea, un JPEG con bytes tras el
+ * marcador EOI) tumbaba el payload entero y se perdía también el estudio. El
+ * comparador acepta JPG, PNG y PDF, así que el campo por sí solo no dice qué
+ * tipo llega.
+ *
+ * La resolución real vive en `@/comparativas/utils/abarca-documents`, que
+ * decide fichero a fichero y pone en cuarentena lo que no reconoce en vez de
+ * descartarlo.
+ */
+const documentField = z.unknown().nullish();
+
 export const AbarcaWebhookSchema = z.object({
   // Identificación
   ide: z.number(),
-  crm_id: z.number(),
+  crm_id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
 
   // Suministro
   cups: optionalString,
@@ -30,6 +46,7 @@ export const AbarcaWebhookSchema = z.object({
   // Empresas
   empresa_cliente: optionalString,
   empresa: optionalString,
+  comercializadora: optionalString,
 
   // Titular
   titular: optionalString,
@@ -57,15 +74,21 @@ export const AbarcaWebhookSchema = z.object({
   movil: optionalString,
   iban: optionalString,
 
-  // Documentos base64
-  dni_photo_front: optionalString,
-  dni_photo_back: optionalString,
-  justo_titulo: optionalString,
-  comparativa_pdf: optionalString,
+  // Documentos: base64 en línea o referencia a Storage puesta por el proxy
+  dni_photo_front: documentField,
+  dni_photo_back: documentField,
+  justo_titulo: documentField,
+  comparativa_pdf: documentField,
 
   // Banderas
   cambio_titularidad: optionalBoolean,
   tiene_placas: optionalBoolean,
+
+  // Unknown offer types still deliver the study and its documents.
+  oferta_tipo: z.unknown().optional(),
+  // Oferta en euros; base es un porcentaje, no un importe.
+  comision_oferta: optionalNumber,
+  comision_base: optionalNumber,
 
   // Otros
   observaciones: optionalString,
@@ -78,10 +101,18 @@ export type AbarcaWebhookPayload = z.infer<typeof AbarcaWebhookSchema>;
 
 // --- DB Types ---
 
+export interface AbarcaApoloSipsSummary {
+  cups: string;
+  fetched_at: string;
+  months: number;
+  has_data: boolean;
+  max_demand_power_kw_by_period: ApoloSipsPeriodValues;
+}
+
 export interface AbarcaEstudio {
   id: string;
   comparativa_id: string;
-  crm_id: number;
+  crm_id: number | null;
   ide: number;
 
   // Suministro
@@ -138,9 +169,31 @@ export interface AbarcaEstudio {
   observaciones: string | null;
   servicios: string | null;
   permanencia: number;
+  apolo_sips: AbarcaApoloSipsSummary | null;
+  comisiones: AbarcaComisiones | null;
 
   raw_payload: string;
   created_at: string;
+}
+
+/**
+ * Qué documento llegó, cuál falta y cuál no se pudo interpretar. Antes esto no
+ * se registraba: una comparativa sin DNI era indistinguible de una completa.
+ */
+/** Oferta en euros y porcentaje base propuestos por el comparador. */
+export interface AbarcaComisiones {
+  /** Comisión de la oferta. Equivale a `tramites.comision`. */
+  oferta: number | null;
+  /** Porcentaje base; solo se utiliza cuando la autoría individual está verificada. */
+  base: number | null;
+}
+
+export interface AbarcaWebhookDocument {
+  field: "comparativa_pdf" | "dni_photo_front" | "dni_photo_back" | "justo_titulo";
+  status: "stored" | "quarantined" | "missing" | "invalid";
+  download_url: string | null;
+  reason: string | null;
+  size: number | null;
 }
 
 export interface AbarcaSession {

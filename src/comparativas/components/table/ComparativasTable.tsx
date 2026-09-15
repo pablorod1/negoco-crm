@@ -9,7 +9,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ComparativasHeader from "./ComparativasHeader";
 import { useTableFilters } from "@/core/hooks/use-table-filters";
 import { useTablePagination } from "@/core/hooks/use-table-pagination";
@@ -32,8 +32,9 @@ export default function ComparativasTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [loading, setLoading] = useState(false);
+  const latestRequestId = useRef(0);
 
-  const { pageIndex, pageSize, setPageIndex, setPageSize } =
+  const { pageIndex, pageSize, setPageIndex, setPageSize, isInitialized } =
     useTablePagination("comparativas");
 
   const {
@@ -56,21 +57,19 @@ export default function ComparativasTable<TData, TValue>({
   } = useTableFilters("comparativas");
 
   const fetchComparativas = useCallback(
-    async (isMounted = true) => {
+    async (signal?: AbortSignal) => {
+      if (!isInitialized) return;
+      const requestId = ++latestRequestId.current;
+      const isCurrentRequest = () =>
+        requestId === latestRequestId.current && !signal?.aborted;
+
       setLoading(true);
       if (userData) {
         try {
           // Build query params for the new GET endpoint contract
           const params = new URLSearchParams();
           params.set("page", String(pageIndex));
-          params.set(
-            "rowsPerPage",
-            typeof pageSize === "number"
-              ? String(pageSize)
-              : pageSize === "Sin Límite"
-                ? "200"
-                : "200",
-          );
+          params.set("rowsPerPage", String(pageSize));
           params.set("user_id", userData.id);
           params.set("user_role", userData.role);
           if (filterValue && filterValue.trim().length > 0) {
@@ -97,24 +96,25 @@ export default function ComparativasTable<TData, TValue>({
           }
 
           const url = `/api/v2/comparisons?${params.toString()}`;
-          const res = await fetch(url, { method: "GET" });
+          const res = await fetch(url, { method: "GET", signal });
 
           const { success, data, error, total } = await res.json();
           if (!success) {
-            if (isMounted) {
+            if (isCurrentRequest()) {
               setComparativas([]);
               setLoading(false);
             }
             console.error("Error al obtener comparativas:", error);
             return;
           }
-          if (isMounted) {
+          if (isCurrentRequest()) {
             setComparativas(data || []);
             setTotalComparativas(total || 0);
             setLoading(false);
           }
         } catch (error) {
-          if (isMounted) {
+          if ((error as Error).name === "AbortError") return;
+          if (isCurrentRequest()) {
             setLoading(false);
           }
           console.error("Error al obtener comparativas:", error);
@@ -132,27 +132,30 @@ export default function ComparativasTable<TData, TValue>({
       companyFilter,
       excludeCompany,
       excludeUser,
+      isInitialized,
     ],
   );
 
   // Consolidated useEffect for data fetching and refresh
   useEffect(() => {
-    let isMounted = true;
+    if (!isInitialized) return;
+
+    const controller = new AbortController();
 
     const refresh = async () => {
-      if (!isMounted) return;
-      await fetchComparativas(true);
+      await fetchComparativas();
     };
 
-    setRefreshComparativas(refresh);
+    const unregisterRefresh = setRefreshComparativas(refresh);
 
     // Initial fetch
-    fetchComparativas(isMounted);
+    void fetchComparativas(controller.signal);
 
     return () => {
-      isMounted = false;
+      controller.abort();
+      unregisterRefresh();
     };
-  }, [fetchComparativas, setRefreshComparativas]);
+  }, [fetchComparativas, isInitialized, setRefreshComparativas]);
 
   const tableConfig = useMemo(
     () => ({

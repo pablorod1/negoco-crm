@@ -9,6 +9,7 @@ import {
   EditTramiteFormData,
 } from "../types/tramite.types";
 import { ComparativaVM } from "@/comparativas/types";
+import { eligibleComparisonPlans } from "@/comparativas/utils/commission-completeness";
 
 // Factory functions
 export const createEmptyTramiteVM = (): TramiteVM => ({
@@ -20,6 +21,7 @@ export const createEmptyTramiteVM = (): TramiteVM => ({
   collection_date: null,
   payment_date: null,
   rejected_date: null,
+  processing_date: null,
   sales_name: "",
   comision_sales_person: 0,
   comision: 0,
@@ -39,15 +41,16 @@ const getComission = (
   comparativa: ComparativaVM,
   plan: "fijo" | "indexado",
 ) => {
-  return plan === "fijo"
-    ? {
-        comision: comparativa.comision.fijo,
-        comision_sales_person: comparativa.comision_sales_person.fijo,
-      }
-    : {
-        comision: comparativa.comision.indexado,
-        comision_sales_person: comparativa.comision_sales_person.indexado,
-      };
+  const comision = comparativa.comision[plan];
+  const comision_sales_person = comparativa.comision_sales_person[plan];
+  if (
+    !eligibleComparisonPlans(comparativa).includes(plan) ||
+    comision_sales_person === null || !Number.isFinite(comision_sales_person)
+  ) {
+    throw new Error("Asigna las comisiones del plan antes de crear un trámite");
+  }
+  // Hidden agency values are placeholders only; source payloads omit them and the server hydrates them.
+  return { comision: comision ?? 0, comision_sales_person };
 };
 
 export const createEmptyTramiteDB = (
@@ -65,6 +68,7 @@ export const createEmptyTramiteDB = (
   payment_date: null,
   collection_date: null,
   rejected_date: null,
+  processing_date: null,
   sales_name: comparativa
     ? (comparativa.user.name as string)
     : userData
@@ -77,7 +81,8 @@ export const createEmptyTramiteDB = (
   comision: comparativa && plan ? getComission(comparativa, plan).comision : 0,
   status: "Borrador",
   liquidez_status: null,
-  notes: comparativa ? comparativa.notes : [],
+  // Campo legacy: las notas de la comparativa se vuelcan como tickets al crear el trámite
+  notes: [],
   internal_notes: [],
   client_id: "",
   user_id: comparativa

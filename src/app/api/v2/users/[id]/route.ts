@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTursoClient } from "@/core/libsql/client";
 import { z } from "zod";
+import { getTenantFromHost } from "@/core/branding/tenant";
+import { resolveBrandingFromOrganization } from "@/core/branding/metadata";
+import type { ResolvedBranding } from "@/core/branding/types";
+import { getEffectivePermissions } from "@/core/access-control/server";
+import type { PermissionMap } from "@/core/access-control/types";
+import { validateUserSession } from "@/core/auth/session-utils";
+import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
 
 // Request Validation Schema
 const GetUserParamsSchema = z.object({
@@ -22,6 +29,7 @@ interface UserResponse {
     role: string;
     super_id: string | null;
     should_reset_password: boolean;
+    has_abarca_user_id: boolean;
     notifications: number;
     company: string | null;
     organization: {
@@ -30,6 +38,7 @@ interface UserResponse {
       logo: string | null;
       plan: string | null;
       abarca_user_id?: number;
+      branding: ResolvedBranding;
     };
     company_commissions: {
       id: string;
@@ -49,6 +58,7 @@ interface UserResponse {
       created_at: string | null;
       updated_at: string | null;
     }[];
+    permissions: PermissionMap;
   };
 }
 
@@ -68,6 +78,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<UserResponse | ErrorResponse>> {
   try {
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     const { id } = await params;
 
     // Validate parameters
@@ -101,6 +119,7 @@ export async function GET(
         o.id as org_id,
         o.name as org_name,
         o.logo as org_logo,
+        o.metadata as org_metadata,
         o.plan as org_plan,
         o.abarca_user_id as org_abarca_user_id,
         LOWER(p.name) as plan_name,
@@ -111,7 +130,7 @@ export async function GET(
       LEFT JOIN plans p ON o.plan = p.id
       LEFT JOIN notifications n ON u.id = n.user_id
       WHERE u.id = ?
-      GROUP BY u.id, o.id, o.name, o.logo, o.plan, p.name`,
+      GROUP BY u.id, o.id, o.name, o.logo, o.metadata, o.plan, p.name`,
       args: [id],
     });
 
@@ -126,7 +145,20 @@ export async function GET(
     }
 
     const row = response.rows[0];
-    const [commissionsResponse, notesResponse] = await Promise.all([
+    const tenant = getTenantFromHost(request.headers.get("host"));
+    const planName = row.plan_name ? String(row.plan_name) : null;
+    const orgName = row.org_name ? String(row.org_name) : "";
+    const orgLogo = row.org_logo ? String(row.org_logo) : null;
+    const orgMetadata = row.org_metadata ? String(row.org_metadata) : null;
+    const branding = resolveBrandingFromOrganization({
+      tenant,
+      name: orgName,
+      logo: orgLogo,
+      plan: planName,
+      metadata: orgMetadata,
+    });
+    const userRole = String(row.role);
+    const [commissionsResponse, notesResponse, permissions] = await Promise.all([
       tursoClient.execute({
         sql: `SELECT
           ucc.id,
@@ -150,6 +182,7 @@ export async function GET(
         ORDER BY created_at ASC`,
         args: [id],
       }),
+      getEffectivePermissions(tursoClient, { id, role: userRole }),
     ]);
 
     return NextResponse.json({
@@ -163,20 +196,23 @@ export async function GET(
         updated_at: row.updated_at as string,
         banned: Boolean(row.banned),
         image: row.image ? String(row.image) : null,
-        role: String(row.role),
+        role: userRole,
         super_id: row.super_id ? String(row.super_id) : null,
         should_reset_password: Boolean(row.should_reset_password),
+        has_abarca_user_id: hasAiStudiesCapability(row.abarca_user_id),
         notifications: Number(row.notifications) || 0,
         company: row.company ? String(row.company) : null,
         organization: {
           id: row.org_id ? String(row.org_id) : "",
-          name: row.org_name ? String(row.org_name) : "",
-          logo: row.org_logo ? String(row.org_logo) : null,
-          plan: row.plan_name ? String(row.plan_name) : null,
+          name: orgName,
+          logo: orgLogo,
+          plan: planName,
           abarca_user_id:
-            row.org_abarca_user_id !== null
+            row.org_abarca_user_id !== null &&
+            row.org_abarca_user_id !== undefined
               ? Number(row.org_abarca_user_id)
               : undefined,
+          branding,
         },
         company_commissions: commissionsResponse.rows.map((commission) => ({
           id: String(commission.id),
@@ -200,6 +236,7 @@ export async function GET(
           created_at: note.created_at ? String(note.created_at) : null,
           updated_at: note.updated_at ? String(note.updated_at) : null,
         })),
+        permissions,
       },
     });
   } catch (error) {

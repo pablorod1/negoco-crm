@@ -1,9 +1,10 @@
 import { User } from "@/core/types";
-import { AbarcaEstudio } from "./abarca.types";
+import { AbarcaEstudio, AbarcaWebhookDocument } from "./abarca.types";
 
 // Comparativa related types
 export type ComparativaStatus =
   | "pending"
+  | "processing"
   | "awaiting_review"
   | "completed"
   | "processed"
@@ -18,12 +19,12 @@ export interface ComparativaDB {
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   comision: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   comision_sales_person: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   notes: string[];
   user_id: string;
@@ -41,17 +42,19 @@ export interface ComparativaWithSupplierDB extends ComparativaDB {
 }
 
 export interface ComparativaVM {
+  has_complete_commissions?: Record<ComparativaPlan, boolean>;
+  has_pending_study_result?: boolean;
   id: string;
   client: string;
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   comision: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   comision_sales_person: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   notes: string[];
   user: Partial<User>;
@@ -62,22 +65,25 @@ export interface ComparativaVM {
   company_id?: string; // ID reference to comercializadoras table
   company_name?: string; // Resolved name for display purposes
   abarca_estudio?: AbarcaEstudio; // Datos del estudio de Abarca si existe
+  abarca_documents?: AbarcaWebhookDocument[]; // Estado de los documentos del webhook
   has_permanencia: boolean;
   has_renovacion: boolean;
 }
 
 export interface ComparativaRow {
+  has_complete_commissions?: Record<ComparativaPlan, boolean>;
+  has_pending_study_result?: boolean;
   id: string;
   client: string;
   service: "Luz" | "Gas";
   plan: ComparativaPlan[];
   comision: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   comision_sales_person: {
-    fijo: number;
-    indexado: number;
+    fijo: number | null;
+    indexado: number | null;
   };
   user: User;
   creation_date: string;

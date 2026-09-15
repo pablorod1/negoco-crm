@@ -5,6 +5,7 @@ import { LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { useSidebarSlideNavigation } from "../view-transitions/useGenieEffect";
+import { getErrorMessage } from "../utils/error";
 
 // Definición de tipos para las props del componente
 interface CustomToastProps {
@@ -113,6 +114,9 @@ export const showCustomToast = ({
   buttonLink = undefined,
   buttonLinkText = undefined,
 }: ShowCustomToastParams) => {
+  const titleText = getErrorMessage(title, "");
+  const messageText = getErrorMessage(message, "");
+
   // Validamos que no se pasen ambos (imagen e icono) al mismo tiempo
   if (imageUrl && icon) {
     console.warn(
@@ -129,8 +133,8 @@ export const showCustomToast = ({
         }`}
       >
         <CustomToast
-          title={title}
-          message={message}
+          title={titleText}
+          message={messageText}
           imageUrl={imageUrl}
           icon={icon}
           iconColor={iconColor}
@@ -180,6 +184,8 @@ export const showToast = {
                   <p className="text-sm font-medium text-gray-900">{message}</p>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Cerrar notificación"
                   onClick={() => toast.dismiss(t.id)}
                   className="ml-4 flex-shrink-0 flex text-gray-400 hover:text-gray-600"
                 >
@@ -234,6 +240,8 @@ export const showToast = {
                   <p className="text-sm font-medium text-gray-900">{message}</p>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Cerrar notificación"
                   onClick={() => toast.dismiss(t.id)}
                   className="ml-4 flex-shrink-0 flex text-gray-400 hover:text-gray-600"
                 >
@@ -288,6 +296,8 @@ export const showToast = {
                   <p className="text-sm font-medium text-gray-900">{message}</p>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Cerrar notificación"
                   onClick={() => toast.dismiss(t.id)}
                   className="ml-4 flex-shrink-0 flex text-gray-400 hover:text-gray-600"
                 >

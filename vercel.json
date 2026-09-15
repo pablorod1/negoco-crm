@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/tramites/process-to-active",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import { validateUserSession } from "@/core/auth/session-utils";
+import { ComparisonSourceError, getComparisonContractSource } from "@/comparativas/server/contract-source";
+import { copyComparisonNotesToTramite } from "@/comparativas/server/copyComparisonNotes";
 import {
   executeReadWithRetry,
   isRetryableLibsqlError,
 } from "@/core/libsql/executeWithRetry";
-import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
+import {
+  buildContractBaseQuery,
+  buildContractFilters,
+  buildContractHydrationQuery,
+  mapContractRow,
+  parseContractFilterParams,
+} from "@/core/libsql/contracts/contractFilters";
 import {
   ClientDB,
   ContractDB,
@@ -15,6 +24,11 @@ import {
 } from "@/tramites/types/tramite.types";
 import { Client } from "@libsql/client";
 import { recordTramiteCreation } from "@/tramites/utils/tramiteChangesHelpers";
+import { getCrmSettings, isProviderAllowed } from "@/crm-settings/server";
+import {
+  cancelPendingProcessingJobsFromRequest,
+  createProcessingJobFromRequest,
+} from "@/crm-settings/processing-jobs";
 
 // Zod Validation Schemas
 const StatusSchema = z.enum([
@@ -68,7 +82,7 @@ const DateRangeSchema = z
 
 const PaginatedContractsRequestSchema = z.object({
   page: z.number().min(1, "Page must be at least 1"),
-  rowsPerPage: z.union([z.number().min(1), z.literal("Sin Límite")]),
+  rowsPerPage: z.number().int().min(1).max(100),
   user_id: z.string().min(1, "User ID is required"),
   user_role: z.string().min(1, "User role is required"),
   filterValue: z.string().optional(),
@@ -96,6 +110,7 @@ const TramiteSchema = z.object({
   renovation_date: z.string().optional().default(""),
   collection_date: z.string().nullable().optional(),
   payment_date: z.string().nullable().optional(),
+  processing_date: z.string().nullable().optional(),
   sales_name: z.string().min(1, "Sales name is required"),
   comision_sales_person: z.coerce.number().optional().default(0),
   comision: z.coerce.number().optional().default(0),
@@ -585,8 +600,8 @@ const addTramiteOptimized = async (
         INSERT INTO tramites (
           id, creation_date, tramitation_date, activation_date, renovation_date,
           sales_name, comision, comision_sales_person, status, liquidez_status,
-          notes, internal_notes, client_id, user_id, collection_date, payment_date, provider, plan
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          notes, internal_notes, client_id, user_id, collection_date, payment_date, processing_date, provider, plan
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         tramite.id,
@@ -605,6 +620,7 @@ const addTramiteOptimized = async (
         tramite.user_id,
         tramite.collection_date || null,
         tramite.payment_date || null,
+        tramite.processing_date || null,
         tramite.provider || null,
         tramite.plan || null,
       ],
@@ -743,6 +759,7 @@ const addTramiteFilesOptimized = async (
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ContractCreateResponse>> {
+  let isComparisonSource = false;
   try {
     // Initialize database connection
     const tursoClient = getTursoClient(request);
@@ -778,6 +795,16 @@ export async function POST(
     const signerString = formData.get("signer") as string;
     const userDataString = formData.get("userData") as string;
     const existingFilesString = formData.get("existingFiles") as string;
+    const sourceId = formData.get("source_comparison_id");
+    isComparisonSource = sourceId !== null;
+    let sourceActor: { id: string; role: string; name: string } | undefined;
+    let sourceOwner: string | undefined;
+    if (isComparisonSource) {
+      const auth = await validateUserSession(request);
+      if (!auth.success || !auth.user) throw new ComparisonSourceError(401, "Unauthorized");
+      sourceActor = auth.user;
+      if (typeof sourceId !== "string" || !sourceId) throw new ComparisonSourceError(400, "Invalid comparison source");
+    }
 
     // Validate required fields
     if (!tramiteString || !clientString || !userDataString) {
@@ -800,7 +827,13 @@ export async function POST(
     let existingFiles: TramiteFile[];
 
     try {
-      tramite = TramiteSchema.parse(JSON.parse(tramiteString)) as TramiteDB;
+      const draft = JSON.parse(tramiteString);
+      if (sourceActor && typeof sourceId === "string") {
+        const source = await getComparisonContractSource(tursoClient, sourceId, draft.plan, sourceActor, draft.status);
+        sourceOwner = source.user_id;
+        Object.assign(draft, source);
+      }
+      tramite = TramiteSchema.parse(draft) as TramiteDB;
 
       // Parse client data and handle coordinates properly
       const clientData = JSON.parse(clientString);
@@ -836,12 +869,15 @@ export async function POST(
       tramiteFiles = documents
         ? z.array(TramiteFileSchema).parse(JSON.parse(documents))
         : [];
-      userData = UserSchema.parse(JSON.parse(userDataString));
+      userData = sourceActor
+        ? UserSchema.parse(sourceActor)
+        : UserSchema.parse(JSON.parse(userDataString));
       // userData is used for validation and logging purposes
       existingFiles = existingFilesString
         ? z.array(TramiteFileSchema).parse(JSON.parse(existingFilesString))
         : [];
     } catch (validationError) {
+      if (validationError instanceof ComparisonSourceError) throw validationError;
       console.error("Validation error:", validationError);
       return NextResponse.json(
         {
@@ -850,6 +886,39 @@ export async function POST(
         },
         { status: 400 },
       );
+    }
+
+    const crmSettings = await getCrmSettings(tursoClient);
+    if (
+      !isProviderAllowed(
+        crmSettings.providers,
+        tramite.provider ? String(tramite.provider) : null,
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Proveedor no configurado",
+        },
+        { status: 422 },
+      );
+    }
+
+    const shouldCreateProcessingJob =
+      tramite.status === "Procesando" &&
+      crmSettings.processing_auto_activation.enabled;
+
+    if (tramite.status === "Procesando" && !tramite.processing_date) {
+      tramite.processing_date = new Date().toISOString();
+    }
+
+    if (shouldCreateProcessingJob && tramite.processing_date) {
+      await createProcessingJobFromRequest({
+        request,
+        tramiteId: tramite.id,
+        processingDate: tramite.processing_date,
+        delayMinutes: crmSettings.processing_auto_activation.delay_minutes,
+      });
     }
 
     // Pre-compute any external dependencies BEFORE starting transaction
@@ -870,9 +939,16 @@ export async function POST(
     }
 
     // Start transaction for data consistency
-    const tx = await tursoClient.transaction();
+    const tx = await tursoClient.transaction("write");
 
     try {
+      if (sourceActor && typeof sourceId === "string") {
+        Object.assign(tramite, await getComparisonContractSource(tx, sourceId, tramite.plan, sourceActor, tramite.status, sourceOwner));
+        if (tramite.status === "Baja") {
+          tramite.comision = -tramite.comision;
+          tramite.comision_sales_person = -tramite.comision_sales_person;
+        }
+      }
       // Execute operations SEQUENTIALLY inside the same transaction
       const clientRes = await addClientOptimized(client, tx, coordinates);
       if (!clientRes.success) throw new Error(clientRes.error);
@@ -888,6 +964,11 @@ export async function POST(
 
       const tramiteRes = await addTramiteOptimized(tramite, tx);
       if (!tramiteRes.success) throw new Error(tramiteRes.error);
+
+      // Vuelca al trámite las notas rápidas (públicas e internas) de la comparativa
+      if (typeof sourceId === "string" && sourceId) {
+        await copyComparisonNotesToTramite(tx, sourceId, tramite.id);
+      }
 
       if (contracts && contracts.length > 0) {
         const contractsRes = await addContractsOptimized(contracts, tx);
@@ -922,9 +1003,29 @@ export async function POST(
     } catch (error) {
       // Rollback transaction on error
       await tx.rollback();
+
+      if (shouldCreateProcessingJob) {
+        await cancelPendingProcessingJobsFromRequest({
+          request,
+          tramiteId: tramite.id,
+        }).catch((cancelError) => {
+          console.error(
+            "Error canceling processing job after failed contract creation:",
+            cancelError,
+          );
+        });
+      }
+
       throw error;
     }
   } catch (error) {
+    if (error instanceof ComparisonSourceError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
+    if (isComparisonSource) {
+      console.error("Comparison contract creation failed");
+      return NextResponse.json({ success: false, error: "Error al agregar trámite" }, { status: 500 });
+    }
     console.error("Error creating contract:", error);
 
     // Distinguish common error categories
@@ -964,72 +1065,19 @@ export async function GET(
     // Parse query parameters from URL
     const searchParams = request.nextUrl.searchParams;
 
-    // Helper function to parse JSON from query params safely
-    const parseJsonParam = (
-      param: string | null,
-    ): { from?: Date; to?: Date } | undefined => {
-      if (!param) return undefined;
-      try {
-        const parsed = JSON.parse(decodeURIComponent(param));
-        if (!parsed || typeof parsed !== "object") return undefined;
-        const obj = parsed as { from?: string; to?: string };
-        const fromVal = obj.from;
-        const toVal = obj.to;
-        const result: { from?: Date; to?: Date } = {};
-        if (fromVal) result.from = new Date(fromVal);
-        if (toVal) result.to = new Date(toVal);
-        return result;
-      } catch {
-        return undefined;
-      }
-    };
-
-    // Helper function to parse array params
-    const parseArrayParam = (param: string | null): string[] | undefined => {
-      if (!param) return undefined;
-      try {
-        const decoded = decodeURIComponent(param);
-        return JSON.parse(decoded);
-      } catch {
-        // Fallback: split by comma if not valid JSON
-        return param.split(",").filter(Boolean);
-      }
-    };
-
     // Extract and validate parameters from query string
     const requestData = {
       page: parseInt(searchParams.get("page") || "1"),
       rowsPerPage:
         searchParams.get("rowsPerPage") === "Sin Límite"
-          ? 400
-          : parseInt(searchParams.get("rowsPerPage") || "15"),
+          ? 100
+          : Math.min(
+              parseInt(searchParams.get("rowsPerPage") || "50"),
+              100,
+            ),
       user_id: searchParams.get("user_id") || "",
       user_role: searchParams.get("user_role") || "",
-      filterValue: searchParams.get("filterValue") || undefined,
-      companyFilter: parseArrayParam(searchParams.get("companyFilter")),
-      statusFilter: parseArrayParam(searchParams.get("statusFilter")),
-      liquidezStatusFilter: parseArrayParam(
-        searchParams.get("liquidezStatusFilter"),
-      ),
-      contractTypeFilter: parseArrayParam(
-        searchParams.get("contractTypeFilter"),
-      ),
-      activationDateRange: parseJsonParam(
-        searchParams.get("activationDateRange"),
-      ),
-      creationDateRange: parseJsonParam(searchParams.get("creationDateRange")),
-      renovationDateRange: parseJsonParam(
-        searchParams.get("renovationDateRange"),
-      ),
-      collectionDateRange: parseJsonParam(
-        searchParams.get("collectionDateRange"),
-      ),
-      paymentDateRange: parseJsonParam(searchParams.get("paymentDateRange")),
-      userFilter: parseArrayParam(searchParams.get("userFilter")),
-      clientFilter: searchParams.get("clientFilter") || undefined,
-      providerFilter: parseArrayParam(searchParams.get("providerFilter")),
-      excludeCompany: searchParams.get("excludeCompany") === "true",
-      excludeUser: searchParams.get("excludeUser") === "true",
+      ...parseContractFilterParams(searchParams),
     };
 
     // Validate input parameters
@@ -1047,27 +1095,7 @@ export async function GET(
 
     const validatedData = validationResult.data;
 
-    const {
-      page,
-      rowsPerPage,
-      user_id,
-      user_role,
-      filterValue,
-      companyFilter,
-      statusFilter,
-      liquidezStatusFilter,
-      contractTypeFilter,
-      activationDateRange,
-      creationDateRange,
-      renovationDateRange,
-      collectionDateRange,
-      paymentDateRange,
-      userFilter,
-      clientFilter,
-      providerFilter,
-      excludeCompany,
-      excludeUser,
-    } = validatedData;
+    const { page, rowsPerPage } = validatedData;
 
     // Initialize database connection
     const tursoClient = getTursoClient(request);
@@ -1079,183 +1107,18 @@ export async function GET(
     }
 
     // Calculate pagination offset
-    const offset =
-      (page - 1) * (typeof rowsPerPage === "number" ? rowsPerPage : 0);
+    const offset = (page - 1) * rowsPerPage;
 
-    // Build dynamic filters and parameters (exact original logic)
-    const filters: string[] = [];
-    const params: (string | number)[] = [];
-
-    // User role-based filtering (preserved exact logic)
-    if (user_role === "2") {
-      const subcomerciales = await getSubcomerciales(tursoClient, user_id);
-      if (subcomerciales.success && subcomerciales.ids.length > 0) {
-        filters.push(
-          `(t.user_id = ? OR (t.status != 'Borrador' AND t.user_id IN (${subcomerciales.ids
-            .map(() => "?")
-            .join(", ")})))`,
-        );
-        params.push(user_id, ...subcomerciales.ids);
-      } else {
-        filters.push(`t.user_id = ?`);
-        params.push(user_id);
-      }
-    } else {
-      // For other roles: apply userFilter if provided, otherwise show all non-draft tramites
-      if (userFilter && userFilter.length > 0) {
-        const operator = excludeUser ? "NOT IN" : "IN";
-        filters.push(
-          `(t.user_id ${operator} (${userFilter.map(() => "?").join(", ")}) AND 
-           (t.user_id = ? OR t.status != 'Borrador'))`,
-        );
-        params.push(...userFilter, user_id);
-      } else {
-        filters.push(
-          `(t.user_id = ? OR (t.user_id != ? AND t.status != 'Borrador'))`,
-        );
-        params.push(user_id, user_id);
-      }
-    }
-
-    // Dynamic text filter helper
-    const addTextFilter = (fields: string[], value: string) => {
-      const likeConditions = fields
-        .map((field) => `${field} LIKE ?`)
-        .join(" OR ");
-      filters.push(`(${likeConditions})`);
-      fields.forEach(() => params.push(`%${value}%`));
-    };
-
-    // Apply text search filter
-    if (filterValue) {
-      addTextFilter(
-        [
-          "t.id",
-          "t.sales_name",
-          "c.name",
-          "c.last_name",
-          "c.email",
-          "con.CUPS",
-        ],
-        filterValue,
-      );
-    }
-
-    // Array-based filters helper
-    const addArrayFilter = (column: string, filterArray?: string[]) => {
-      if (filterArray && filterArray.length > 0) {
-        filters.push(`${column} IN (${filterArray.map(() => "?").join(", ")})`);
-        params.push(...filterArray);
-      }
-    };
-
-    // Company filter: single batch query instead of N+1
-    const addCompanyFilter = async (
-      filterArray?: string[],
-      exclude?: boolean,
-    ) => {
-      if (!filterArray || filterArray.length === 0) return;
-
-      const placeholders = filterArray.map(() => "?").join(", ");
-      const companyResult = await executeReadWithRetry(tursoClient, {
-        sql: `SELECT name FROM comercializadoras WHERE id IN (${placeholders})`,
-        args: filterArray,
-      });
-      const companyNames = companyResult.rows.map((r) => r.name as string);
-
-      // Match by both ID and resolved name
-      const allValues = [...filterArray, ...companyNames];
-      const allPlaceholders = allValues.map(() => "?").join(", ");
-      if (exclude) {
-        filters.push(
-          `t.id NOT IN (SELECT tramite_id FROM contracts WHERE tramite_id IS NOT NULL AND new_company IN (${allPlaceholders}))`,
-        );
-      } else {
-        filters.push(`con.new_company IN (${allPlaceholders})`);
-      }
-      params.push(...allValues);
-    };
-
-    // Provider filter helper (case-insensitive)
-    const addProviderFilter = (filterArray?: string[]) => {
-      if (filterArray && filterArray.length > 0) {
-        const providerConditions = filterArray
-          .map(() => "LOWER(t.provider) LIKE LOWER(?)")
-          .join(" OR ");
-        filters.push(`(${providerConditions})`);
-        // Add wildcards for partial matching
-        params.push(...filterArray.map((provider) => `%${provider}%`));
-      }
-    };
-
-    if (companyFilter) {
-      await addCompanyFilter(companyFilter, excludeCompany);
-    }
-    addArrayFilter("t.status", statusFilter);
-    addArrayFilter("con.type", contractTypeFilter);
-    addArrayFilter("t.liquidez_status", liquidezStatusFilter);
-    if (clientFilter) {
-      addArrayFilter("c.id", [clientFilter]);
-    }
-
-    if (providerFilter) {
-      addProviderFilter(providerFilter);
-    }
-
-    // Date range filter helper
-    const addDateRangeFilter = (
-      column: string,
-      dateRange?: { from?: Date; to?: Date },
-    ) => {
-      if (dateRange && dateRange.from && dateRange.to) {
-        const fromDate = new Date(dateRange.from);
-        const toExclusiveDate = new Date(dateRange.to);
-
-        toExclusiveDate.setDate(toExclusiveDate.getDate() + 1);
-
-        filters.push(
-          `(datetime(${column}) >= datetime(?) AND datetime(${column}) < datetime(?))`,
-        );
-        params.push(fromDate.toISOString(), toExclusiveDate.toISOString());
-      }
-    };
-
-    // Apply date range filters
-    addDateRangeFilter("activation_date", activationDateRange);
-    addDateRangeFilter("creation_date", creationDateRange);
-    addDateRangeFilter("renovation_date", renovationDateRange);
-    addDateRangeFilter("collection_date", collectionDateRange);
-    addDateRangeFilter("payment_date", paymentDateRange);
-
-    // Determine which JOINs are required by the active filters. This lets
-    // the count + pagination phase avoid the expensive contracts/comercializadoras
-    // joins when not needed, which is the main source of memory blow-up.
-    const needsContractsJoin =
-      Boolean(filterValue) ||
-      (contractTypeFilter?.length ?? 0) > 0 ||
-      (companyFilter?.length ?? 0) > 0;
+    // Build dynamic filters and parameters (shared with the export endpoint)
+    const { filters, params, needsContractsJoin, needsClientsJoin } =
+      await buildContractFilters(tursoClient, validatedData);
 
     // Construct base query for the pagination/count phase.
-    // We keep the clients join because text search and clientFilter use it
-    // and it's a 1:1 relation (no row explosion).
-    let baseQuery = `
-      FROM
-          tramites t
-      LEFT JOIN
-          clients c ON t.client_id = c.id
-    `;
-
-    if (needsContractsJoin) {
-      baseQuery += `
-      LEFT JOIN
-          contracts con ON t.id = con.tramite_id
-      `;
-    }
-
-    // Add WHERE clause if filters exist
-    if (filters.length > 0) {
-      baseQuery += ` WHERE ` + filters.join(" AND ");
-    }
+    const baseQuery = buildContractBaseQuery({
+      filters,
+      needsClientsJoin,
+      needsContractsJoin,
+    });
 
     // Total count query.
     // Wrapping in a subquery + COUNT(*) is more memory-friendly than
@@ -1272,8 +1135,8 @@ export async function GET(
     const idsQuery = `
       SELECT t.id, t.creation_date
       ${baseQuery}
-      GROUP BY t.id
-      ORDER BY t.creation_date DESC
+      ${needsContractsJoin ? "GROUP BY t.id" : ""}
+      ORDER BY t.creation_date DESC, t.id DESC
       LIMIT ? OFFSET ?
     `;
 
@@ -1295,88 +1158,14 @@ export async function GET(
     // contracts, eliminating the SQLITE_NOMEM risk.
     let processedData: ContractData[] = [];
     if (pageIds.length > 0) {
-      const idPlaceholders = pageIds.map(() => "?").join(", ");
-      const dataQuery = `
-        SELECT
-            t.id AS id,
-            t.creation_date AS creation_date,
-            t.activation_date AS activation_date,
-            t.renovation_date AS renovation_date,
-            t.collection_date AS collection_date,
-            t.payment_date AS payment_date,
-            t.rejected_date AS rejected_date,
-            t.sales_name AS sales_name,
-            t.comision_sales_person AS comision_sales_person,
-            t.comision AS comision,
-            t.status AS status,
-            t.liquidez_status AS liquidez_status,
-            t.provider AS provider,
-            c.name AS client_name,
-            c.last_name AS client_last_name,
-            c.email AS client_email,
-            c.id AS client_id,
-            COALESCE(GROUP_CONCAT(DISTINCT con.CUPS), '') AS CUPS,
-            COALESCE(GROUP_CONCAT(DISTINCT COALESCE(com.name, con.new_company)), '') AS new_companies,
-            COALESCE(GROUP_CONCAT(DISTINCT con.old_company), '') AS old_companies,
-            COALESCE(GROUP_CONCAT(DISTINCT con.plan), '') AS plans,
-            COALESCE(GROUP_CONCAT(DISTINCT con.type), '') AS contract_types,
-            COALESCE(GROUP_CONCAT(DISTINCT con.consumption), '') AS consumptions
-        FROM tramites t
-        LEFT JOIN clients c ON t.client_id = c.id
-        LEFT JOIN contracts con ON t.id = con.tramite_id
-        LEFT JOIN comercializadoras com ON com.id = con.new_company
-        WHERE t.id IN (${idPlaceholders})
-        GROUP BY t.id
-        ORDER BY t.creation_date DESC
-      `;
-
       const dataResult = await executeReadWithRetry(tursoClient, {
-        sql: dataQuery,
+        sql: buildContractHydrationQuery(pageIds.length),
         args: pageIds,
       });
 
-      processedData = dataResult.rows.map((row) => {
-        const parseArray = (value: string | null) =>
-          value ? value.split(",").filter(Boolean) : [];
-
-        const parseNumericArray = (value: string | null) =>
-          value
-            ? (value
-                .split(",")
-                .map((x) => {
-                  const num = Number(x);
-                  return !isNaN(num) ? num : null;
-                })
-                .filter((x) => x !== null) as number[])
-            : [];
-
-        return {
-          id: row.id as string,
-          creation_date: row.creation_date as string,
-          activation_date: row.activation_date as string,
-          renovation_date: row.renovation_date as string,
-          collection_date: row.collection_date as string | null,
-          payment_date: row.payment_date as string | null,
-          rejected_date: row.rejected_date as string | null,
-          sales_name: row.sales_name as string,
-          client_name: `${row.client_name || ""} ${
-            row.client_last_name || ""
-          }`.trim(),
-          client_email: row.client_email as string,
-          client_id: row.client_id as string,
-          CUPS: parseArray(row.CUPS as string),
-          new_company: parseArray(row.new_companies as string),
-          old_company: parseArray(row.old_companies as string),
-          plan: parseArray(row.plans as string),
-          contract_type: parseArray(row.contract_types as string),
-          consumption: parseNumericArray(row.consumptions as string),
-          comision_sales_person: row.comision_sales_person as number,
-          comision: row.comision as number,
-          status: row.status as string,
-          liquidez_status: row.liquidez_status as string,
-          provider: row.provider as string | null,
-        };
-      });
+      processedData = dataResult.rows.map((row) =>
+        mapContractRow(row as unknown as Record<string, unknown>),
+      );
     }
 
     // Return exact original response format

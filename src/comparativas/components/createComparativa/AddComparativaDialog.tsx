@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/core/components/ui/dialog";
-import { BarChart3, CheckCircle, CircleX, Plus, Rocket } from "lucide-react";
+import { BarChart3, CheckCircle, CircleX, PlusCircle, Rocket } from "lucide-react";
 import { useUser } from "@/core/contexts/UserContext";
 import { Button } from "@/core/components/ui/button";
 import { CreateComparativaStepper } from "./CreateComparativaStepper";
@@ -26,6 +26,7 @@ import { uploadFile } from "@/core/firebase/data/uploadFiles";
 import { type VariantProps } from "class-variance-authority";
 import { buttonVariants } from "@/core/components/ui/button";
 import { cn } from "@/core/utils";
+import { createComparativaRequest } from "@/comparativas/utils/createComparativaRequest";
 
 export default function AddComparativaDialog({
   variant,
@@ -39,11 +40,12 @@ export default function AddComparativaDialog({
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const submissionInFlight = useRef(false);
   const userPlan = getPlan();
   const isStarterPlan = userPlan === "starter";
 
   const [comparativa, setComparativa] = useState<ComparativaDB>(
-    createEmptyComparativaDB(userData as User)
+    () => createEmptyComparativaDB(userData as User),
   );
   const [documents, setDocuments] = useState<File[]>([]);
 
@@ -86,49 +88,64 @@ export default function AddComparativaDialog({
   };
 
   const handleSubmit = async () => {
+    if (submissionInFlight.current) return;
+
+    // El paso de documentos ya obliga a subir uno, pero esta es la única
+    // puerta por la que sale la petición. Sin ficheros no hay factura que
+    // estudiar y el panel de Abarca abriría el comparador sin nada que enviar,
+    // así que más vale devolver al comercial al paso que le falta.
+    if (documents.length === 0) {
+      showCustomToast({
+        title: "Falta el documento",
+        message: "Debes subir al menos un documento para crear la comparativa",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
+      setActiveTab(1);
+      return;
+    }
+
+    submissionInFlight.current = true;
     setLoading(true);
     try {
-      const comparativaFiles: ComparativaFile[] = [];
+      let comparativaFiles: ComparativaFile[];
+      try {
+        comparativaFiles = await Promise.all(
+          documents.map(async (file) => {
+            const { downloadURL, previewURL } = await uploadFile(
+              file,
+              `${userData?.organization.id}/comparativas`,
+              comparativa.id,
+            );
 
-      for (const file of documents) {
-        try {
-          const { downloadURL, previewURL } = await uploadFile(
-            file,
-            `${userData?.organization.id}/comparativas`,
-            comparativa.id
-          );
-
-          comparativaFiles.push({
-            id: crypto.randomUUID(),
-            comparativa_id: comparativa.id,
-            filename: file.name,
-            size: file.size,
-            extension: file.name.split(".").pop() || "",
-            upload_date: new Date().toISOString(),
-            download_url: downloadURL,
-            preview_url: previewURL || null,
-          });
-        } catch (error) {
-          showCustomToast({
-            title: "Error al subir el archivo",
-            message: "Inténtalo de nuevo más tarde",
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          console.error("Error uploading file:", error);
-          return;
-        }
+            return {
+              id: crypto.randomUUID(),
+              comparativa_id: comparativa.id,
+              filename: file.name,
+              size: file.size,
+              extension: file.name.split(".").pop() || "",
+              upload_date: new Date().toISOString(),
+              download_url: downloadURL,
+              preview_url: previewURL || null,
+            };
+          }),
+        );
+      } catch (error) {
+        showCustomToast({
+          title: "Error al subir el archivo",
+          message: "Inténtalo de nuevo más tarde",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        console.error("Error uploading file:", error);
+        return;
       }
       const formData = new FormData();
       formData.append("comparativa", JSON.stringify(comparativa));
       formData.append("files", JSON.stringify(comparativaFiles));
-      const response = await fetch(`/api/v2/comparisons`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const { success, error } = await response.json();
+      const { success, error } = await createComparativaRequest(formData);
 
       if (!success) {
         showCustomToast({
@@ -150,20 +167,10 @@ export default function AddComparativaDialog({
         buttonLink: `/comparativas/${comparativa.id}`,
         buttonLinkText: "Ver comparativa",
       });
-      try {
-        await refreshComparativas();
-        onClose(true); // Skip cleanup on successful creation
-      } catch (error) {
+      void onClose(true);
+      void refreshComparativas().catch((error) => {
         console.error("Error al refrescar las comparativas:", error);
-        showCustomToast({
-          title: "Error al refrescar las comparativas",
-          message: "Inténtalo de nuevo más tarde",
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-          icon: CircleX,
-        });
-        onClose(true); // Skip cleanup even on refresh error since comparativa was created
-      }
+      });
     } catch (error) {
       showCustomToast({
         title: "Error al crear la comparativa",
@@ -174,6 +181,7 @@ export default function AddComparativaDialog({
       });
       console.error("Error al crear la comparativa:", error);
     } finally {
+      submissionInFlight.current = false;
       setLoading(false);
     }
   };
@@ -217,18 +225,19 @@ export default function AddComparativaDialog({
                   ? (variant as VariantProps<typeof buttonVariants>["variant"])
                   : "default"
               }
-              className="h-9 px-4 text-sm font-medium"
+              size={"sm"}
               onClick={() => setIsOpen(true)}
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <PlusCircle className="w-4 h-4" />
               <span>Nueva Comparativa</span>
             </Button>
           ) : (
             <button
+              type="button"
               onClick={() => setIsOpen(true)}
               className="group cursor-pointer w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200"
             >
-              <div className="flex-shrink-0 p-2 rounded-md bg-gray-100 group-hover:bg-gray-200 text-gray-600 transition-colors duration-200">
+              <div className="shrink-0 p-2 rounded-md bg-gray-100 group-hover:bg-gray-200 text-gray-600 transition-colors duration-200">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div className="flex-1 text-left min-w-0">

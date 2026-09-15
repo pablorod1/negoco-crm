@@ -55,7 +55,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
         disabled={disabled}
         value={selectedKey}
       >
-        <SelectTrigger className="capitalize">
+        <SelectTrigger id={name} className="capitalize">
           <SelectValue placeholder="Seleccione una opción">
             {textValue || selectedKey}
           </SelectValue>
@@ -122,6 +122,7 @@ interface InputProps {
   endContent?: React.ReactNode;
   value: string | number;
   disabled?: boolean;
+  readOnly?: boolean;
   placeholder?: string;
 }
 
@@ -136,6 +137,7 @@ export const InputComponent: React.FC<InputProps> = ({
   endContent,
   value,
   disabled,
+  readOnly,
   placeholder,
 }) => {
   return (
@@ -159,8 +161,12 @@ export const InputComponent: React.FC<InputProps> = ({
           type={type}
           value={value || ""}
           disabled={disabled ? true : false}
+          readOnly={readOnly}
+          aria-readonly={readOnly}
           color={errors ? "danger" : "primary"}
-          className={`z-10 ${startContent ? "pl-8" : ""} ${endContent ? "pr-8" : ""}`}
+          className={`z-10 ${startContent ? "pl-8" : ""} ${
+            endContent ? "pr-8" : ""
+          } ${readOnly ? "bg-gray-50 text-gray-600" : ""}`}
           placeholder={placeholder}
         />
         {endContent && (

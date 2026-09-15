@@ -5,6 +5,10 @@ import { Badge } from "@/core/components/ui/badge";
 import { Building2, FileText, ClipboardList, Zap } from "lucide-react";
 import Image from "next/image";
 import { formatConsumption } from "@/core/utils/format";
+import {
+  companyLogoUrl,
+  isUnoptimizedLogo,
+} from "@/comercializadoras/lib/logo-url";
 
 interface ComercializadoraMainCardProps {
   comercializadora: ComercializadoraDetails;
@@ -24,6 +28,8 @@ const getEstadoBadge = (estado: boolean) => {
 export function ComercializadoraMainCard({
   comercializadora,
 }: ComercializadoraMainCardProps) {
+  const logoUrl = companyLogoUrl(comercializadora.logo);
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Header Section - Minimalista */}
@@ -50,14 +56,19 @@ export function ComercializadoraMainCard({
           {/* Logo Section - Simplificado */}
           <div className="flex justify-center lg:justify-start lg:col-span-1">
             <div className="relative">
-              <div className="w-32 h-32 bg-gray-50 rounded-lg p-4 border">
-                <Image
-                  src={`/companies/${comercializadora.logo}`}
-                  alt="Logo Comercializadora"
-                  width={256}
-                  height={256}
-                  className="object-contain w-full h-full"
-                />
+              <div className="w-32 h-32 bg-gray-50 rounded-lg p-4 border flex items-center justify-center">
+                {logoUrl ? (
+                  <Image
+                    src={logoUrl}
+                    alt="Logo Comercializadora"
+                    width={256}
+                    height={256}
+                    className="object-contain w-full h-full"
+                    unoptimized={isUnoptimizedLogo(comercializadora.logo)}
+                  />
+                ) : (
+                  <Building2 className="w-12 h-12 text-gray-400" />
+                )}
               </div>
               {comercializadora.active && (
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>

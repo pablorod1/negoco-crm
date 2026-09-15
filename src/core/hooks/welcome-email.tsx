@@ -16,6 +16,12 @@ import {
 } from "@react-email/components";
 import nodemailer from "nodemailer";
 import { NextRequest } from "next/server";
+import {
+  getEmailFrom,
+  getEmailTransportConfig,
+  resolveEmailBranding,
+} from "@/core/branding/email";
+import type { EmailBrandingTheme } from "@/core/branding/types";
 
 export async function sendWelcomeEmail({
   email_to,
@@ -30,48 +36,26 @@ export async function sendWelcomeEmail({
   link: string;
   org_logo: string | undefined;
 }) {
-  const host = req.headers.get("host");
-  if (!host) {
-    throw new Error("No host found in request headers");
-  }
+  const emailBranding = await resolveEmailBranding({ req, logoUrl: org_logo });
 
-  // Extraer el subdominio (client1, client2, etc.)
-  const subdomain = host.split(".")[0];
-  const email =
-    subdomain === "beenergy"
-      ? process.env.EMAIL_BEENERGY
-      : process.env.EMAIL_NOREPLY;
-  const password =
-    subdomain === "beenergy"
-      ? process.env.EMAIL_PASS_BEENERGY
-      : process.env.EMAIL_PASS_NOREPLY;
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: 465,
-    secure: true,
-    auth: {
-      user: email,
-      pass: password,
-    },
-  });
+  const transporter = nodemailer.createTransport(
+    getEmailTransportConfig(emailBranding),
+  );
 
   // Configurar el email
   const emailHtml = await render(
     <WelcomeEmail
       name={name}
       link={link}
-      org_logo={org_logo}
-      subdomain={subdomain}
+      displayName={emailBranding.branding.displayName}
+      logoUrl={emailBranding.logoUrl}
+      theme={emailBranding.theme}
     />
   );
   const mailOptions = {
-    from: {
-      name: subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud",
-      address: email as string,
-    },
+    from: getEmailFrom(emailBranding),
     to: email_to,
-    subject: `Bienvenido a ${subdomain.toUpperCase()} - Negoco Cloud`,
+    subject: `Bienvenido a ${emailBranding.branding.displayName}`,
     html: emailHtml,
   };
 
@@ -87,13 +71,15 @@ export async function sendWelcomeEmail({
 const WelcomeEmail = ({
   name,
   link,
-  org_logo,
-  subdomain,
+  displayName,
+  logoUrl,
+  theme,
 }: {
   name: string;
   link: string;
-  org_logo: string | undefined;
-  subdomain: string;
+  displayName: string;
+  logoUrl: string;
+  theme: EmailBrandingTheme;
 }) => {
   const currentYear = new Date().getFullYear();
 
@@ -101,25 +87,25 @@ const WelcomeEmail = ({
     <Html>
       <Head />
       <Preview>
-        Bienvenido a {subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud"} -
-        Su nueva plataforma CRM para consultoría energética
+        Bienvenido a {displayName} - Su nueva plataforma CRM para consultoría
+        energética
       </Preview>
       <Tailwind>
-        <Body className="bg-[#f6f9fc] font-sans py-[40px]">
+        <Body className="font-sans py-[40px]" style={{ backgroundColor: theme.bodyBg }}>
           <Container className="bg-white rounded-[8px] mx-auto p-[20px] max-w-[600px]">
             {/* Header */}
             <Section className="mt-[32px]">
               <Img
-                alt="Negoco Cloud Logo"
+                alt={`${displayName} Logo`}
                 className="mx-auto mb-6"
                 height={50}
-                src={org_logo ? org_logo : "https://negococloud.es/favicon.png"}
+                src={logoUrl}
               />
               <Heading
-                className={`text-[24px] font-bold text-center  m-0 ${subdomain === "beenergy" ? "text-[#f7d43a]" : "text-[#3b82f6]"}`}
+                className="text-[24px] font-bold text-center m-0"
+                style={{ color: theme.heading }}
               >
-                Bienvenido a{" "}
-                {subdomain === "beenergy" ? "Beenergy" : "Negoco Cloud"}
+                Bienvenido a {displayName}
               </Heading>
               <Text className="text-[16px] text-center text-gray-600">
                 La plataforma CRM líder en consultoría energética en España
@@ -134,12 +120,12 @@ const WelcomeEmail = ({
                 Estimado {name},
               </Text>
               <Text className="text-[16px] text-gray-700 mb-[24px]">
-                ¡Gracias por elegir <strong>Negoco Cloud</strong>! Estamos
+                ¡Gracias por elegir <strong>{displayName}</strong>! Estamos
                 encantados de darle la bienvenida a nuestra plataforma CRM
                 especializada en consultoría energética.
               </Text>
               <Text className="text-[16px] text-gray-700 mb-[24px]">
-                Con Negoco Cloud, ahora tiene acceso a:
+                Con {displayName}, ahora tiene acceso a:
               </Text>
 
               <Section className="pl-[16px] mb-[24px]">
@@ -169,7 +155,8 @@ const WelcomeEmail = ({
 
               <Section className="text-center mb-[32px]">
                 <Button
-                  className={`${subdomain === "beenergy" ? "bg-[#f7d43a]" : "bg-[#3b82f6]"} text-white font-bold py-[12px] px-[24px] rounded-[4px] no-underline text-center box-border`}
+                  className="text-white font-bold py-[12px] px-[24px] rounded-[4px] no-underline text-center box-border"
+                  style={{ backgroundColor: theme.buttonBg }}
                   href={`${link}/login`}
                 >
                   Acceder a mi cuenta
@@ -186,23 +173,19 @@ const WelcomeEmail = ({
                 equipo de soporte en{" "}
                 <a
                   href="mailto:soporte@negococloud.es"
-                  className={
-                    subdomain === "beenergy"
-                      ? "text-[#f7d43a]"
-                      : "text-[#3b82f6]"
-                  }
+                  style={{ color: theme.link }}
                 >
                   soporte@negococloud.es
                 </a>
               </Text>
               <Text className="text-[14px] text-center text-gray-500 mb-[32px]">
-                ¡Le deseamos mucho éxito con Negoco Cloud!
+                ¡Le deseamos mucho éxito con {displayName}!
               </Text>
 
               <Hr className="border-[#e6ebf1] my-[20px]" />
 
               <Text className="text-[12px] text-center text-gray-400 m-0">
-                © {currentYear} Negoco Cloud. Todos los derechos reservados.
+                © {currentYear} {displayName}. Todos los derechos reservados.
               </Text>
             </Section>
           </Container>
@@ -213,4 +196,3 @@ const WelcomeEmail = ({
 };
 
 export default WelcomeEmail;
-

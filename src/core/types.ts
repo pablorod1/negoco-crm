@@ -1,4 +1,7 @@
-﻿export interface User {
+﻿import type { ResolvedBranding } from "@/core/branding/types";
+import type { PermissionMap } from "@/core/access-control/types";
+
+export interface User {
   id: string;
   email: string;
   email_verified: boolean;
@@ -12,18 +15,35 @@
   role: string;
   super_id: string | null;
   should_reset_password: boolean;
+  has_abarca_user_id: boolean;
   notifications?: number;
   last_login?: string | null;
   company_commissions?: UserCompanyCommission[];
   targeted_notes?: UserDefaultNote[];
+  permissions?: PermissionMap;
 }
 
 export type CommissionType = "percent" | "fixed";
 export type UserDefaultNoteTarget = "global" | "tramites" | "comparativas";
 
+/** De dónde sale una comisión: del override del colaborador o del valor por defecto de la asesoría. */
+export type CommissionSource = "user" | "default";
+
 export interface UserCompanyCommission {
   id: string;
   user_id: string;
+  comercializadora_id: string;
+  comercializadora_name?: string | null;
+  commission_type: CommissionType;
+  commission_value: number;
+  created_at: string | null;
+  updated_at: string | null;
+  /** Presente en las comisiones efectivas (resueltas con herencia). */
+  source?: CommissionSource;
+}
+
+export interface DefaultCompanyCommission {
+  id: string;
   comercializadora_id: string;
   comercializadora_name?: string | null;
   commission_type: CommissionType;
@@ -47,6 +67,7 @@ export interface Organization {
   logo: string | null;
   plan: string | null;
   abarca_user_id?: number;
+  branding?: ResolvedBranding;
 }
 
 export interface Notification {
@@ -104,10 +125,12 @@ export type LiquidezStatus =
 
 export type ComparativaStatus =
   | "pending"
+  | "processing"
   | "awaiting_review"
   | "completed"
   | "processed"
-  | "rejected";
+  | "rejected"
+  | "rechazado_cliente";
 
 export type FotovoltaicaStatus =
   | "pending"

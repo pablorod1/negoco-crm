@@ -1,4 +1,4 @@
-﻿import React from "react";
+﻿import React, { useRef } from "react";
 import { CardContent } from "@/core/components/ui/card";
 import {
   Table,
@@ -8,24 +8,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/core/components/ui/table";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   ColumnDef,
   flexRender,
   type Table as TableType,
 } from "@tanstack/react-table";
-import { cn } from "@/core/utils";
 import { DataTablePagination } from "./DataTablePagination";
 import LoaderComponent from "../LoaderComponent";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
   loading: boolean;
   columns: ColumnDef<TData, TValue>[];
-  rowsPerPage: number | string;
+  rowsPerPage: number;
   pageIndex: number;
   setPageIndex: (pageIndex: number) => void;
-  setPageSize: (pageSize: number | string) => void;
+  setPageSize: (pageSize: number) => void;
   total: number;
 }
 
@@ -41,10 +40,27 @@ export function TableContent<TData, TValue>({
 }: TableContentProps<TData, TValue>) {
   const rows = table.getRowModel().rows;
   const hasRows = rows && rows.length > 0;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 52,
+    overscan: 8,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const topPadding = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const bottomPadding =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() -
+      virtualRows[virtualRows.length - 1].end
+      : 0;
 
   return (
     <CardContent className="p-0 overflow-hidden w-full">
-      <div className="overflow-x-auto">
+      <div
+        ref={scrollContainerRef}
+        className="max-h-[calc(100dvh-15rem)] overflow-auto"
+      >
         <Table>
           <TableHeader className="bg-gray-50/60 border-b border-gray-100">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -58,9 +74,9 @@ export function TableContent<TData, TValue>({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                     </div>
                   </TableHead>
                 ))}
@@ -68,91 +84,100 @@ export function TableContent<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            <AnimatePresence>
-              {hasRows ? (
-                rows.map((row, index) => (
-                  <motion.tr
-                    key={row.id}
-                    className={cn(
-                      "border-b border-gray-50 hover:bg-gray-50/30 transition-all duration-200 cursor-default group",
-                      "bg-white",
-                    )}
-                    initial={{ opacity: 0, y: 2 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -2 }}
-                    transition={{
-                      duration: 0.15,
-                      delay: index * 0.01,
-                      ease: "easeOut",
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className="py-3 px-4 text-sm text-gray-800 first:pl-6 last:pr-6"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </motion.tr>
-                ))
-              ) : (
-                <motion.tr
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-white"
+            {hasRows ? (
+              <>
+                {topPadding > 0 && (
+                  <TableRow aria-hidden="true" className="border-0">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="p-0"
+                      style={{ height: `${topPadding}px` }}
+                    />
+                  </TableRow>
+                )}
+                {virtualRows.map((virtualRow) => {
+                  const row = rows[virtualRow.index];
+
+                  return (
+                    <TableRow
+                      key={row.id}
+                      ref={rowVirtualizer.measureElement}
+                      data-index={virtualRow.index}
+                      className="group cursor-default border-b border-gray-50 bg-white transition-colors duration-150 hover:bg-gray-50/30"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className="py-3 px-4 text-sm text-gray-800 first:pl-6 last:pr-6"
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })}
+                {bottomPadding > 0 && (
+                  <TableRow aria-hidden="true" className="border-0">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="p-0"
+                      style={{ height: `${bottomPadding}px` }}
+                    />
+                  </TableRow>
+                )}
+              </>
+            ) : (
+              <TableRow className="bg-white">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-64 text-center"
                 >
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-64 text-center"
-                  >
-                    {loading ? (
-                      <div className="flex flex-col items-center justify-center space-y-3">
-                        <LoaderComponent />
-                        <div className="space-y-1 text-center">
-                          <p className="text-gray-600 text-sm font-medium">
-                            Cargando datos...
-                          </p>
-                          <p className="text-gray-400 text-xs">
-                            Por favor espera un momento
-                          </p>
-                        </div>
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <LoaderComponent />
+                      <div className="space-y-1 text-center">
+                        <p className="text-gray-600 text-sm font-medium">
+                          Cargando datos...
+                        </p>
+                        <p className="text-gray-400 text-xs">
+                          Por favor espera un momento
+                        </p>
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center space-y-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                          <svg
-                            className="w-6 h-6 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="space-y-1 text-center">
-                          <p className="text-gray-700 font-medium text-sm">
-                            No hay datos disponibles
-                          </p>
-                          <p className="text-gray-500 text-xs max-w-xs">
-                            No se encontraron registros que coincidan con los
-                            criterios actuales
-                          </p>
-                        </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg
+                          className="w-6 h-6 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
                       </div>
-                    )}
-                  </TableCell>
-                </motion.tr>
-              )}
-            </AnimatePresence>
+                      <div className="space-y-1 text-center">
+                        <p className="text-gray-700 font-medium text-sm">
+                          No hay datos disponibles
+                        </p>
+                        <p className="text-gray-500 text-xs max-w-xs">
+                          No se encontraron registros que coincidan con los
+                          criterios actuales
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

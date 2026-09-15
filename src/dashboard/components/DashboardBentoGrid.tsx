@@ -9,6 +9,7 @@ import { getUserRolePermissions } from "@/core/utils/userRoles";
 import { DashboardView } from "./DashboardView";
 import { DashboardViewToggle, DashboardView as ViewType } from "./ViewToggle";
 import Hero from "./Hero";
+import DashboardAnnouncementFloating from "./DashboardAnnouncementFloating";
 
 // Re-export types for backward compatibility
 export type { DashboardCardValue } from "@/dashboard/hooks/useDashboardData";
@@ -80,6 +81,8 @@ export default function DashboardBentoGrid() {
 
   return (
     <section className="flex flex-col gap-6 px-8 py-8">
+      <DashboardAnnouncementFloating />
+
       {loading ? (
         <>
           <div className="flex items-center justify-between mb-4">

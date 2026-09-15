@@ -99,7 +99,7 @@ export default function RejectTramiteModal({
   return (
     <Dialog open={isOpen} modal>
       <DialogTrigger asChild>
-        <Button variant="destructiveDropdown" onClick={() => setIsOpen(true)}>
+        <Button variant="destructiveOutline" onClick={() => setIsOpen(true)}>
           Dar de baja
         </Button>
       </DialogTrigger>
@@ -141,7 +141,7 @@ export default function RejectTramiteModal({
               items={STATUS_TYPES}
               disabled
               name="status"
-              onChange={() => {}}
+              onChange={() => { }}
             />
             <SelectComponent
               label="Estado de liquidez"

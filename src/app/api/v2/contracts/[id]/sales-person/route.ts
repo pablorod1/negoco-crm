@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
 import { Client } from "@libsql/client";
 import { recordAssignmentChange } from "@/tramites/utils/tramiteChangesHelpers";
+import { getErrorMessage } from "@/core/utils/error";
 
 /**
  * REFACTORED CONTRACT SALES PERSON UPDATE ENDPOINT
@@ -214,28 +215,10 @@ export async function PATCH(
     // ==================== TRACK CHANGES ====================
 
     if (currentData.user_id !== user_id) {
-      // Get user names for better description
-      const oldUserResult = currentData.user_id
-        ? await tursoClient.execute({
-            sql: `SELECT name, last_name FROM user WHERE id = ?`,
-            args: [currentData.user_id],
-          })
-        : null;
-
-      const newUserResult = await tursoClient.execute({
-        sql: `SELECT name, last_name FROM user WHERE id = ?`,
-        args: [user_id],
-      });
-
       const oldUserName =
-        oldUserResult && oldUserResult.rows.length > 0
-          ? `${oldUserResult.rows[0].name} ${oldUserResult.rows[0].last_name || ""}`.trim()
+        typeof currentData.sales_name === "string"
+          ? currentData.sales_name
           : undefined;
-
-      const newUserName =
-        newUserResult.rows.length > 0
-          ? `${newUserResult.rows[0].name} ${newUserResult.rows[0].last_name || ""}`.trim()
-          : sales_name;
 
       await recordAssignmentChange(
         tursoClient,
@@ -244,7 +227,7 @@ export async function PATCH(
         currentData.user_id as string | null,
         user_id,
         oldUserName,
-        newUserName
+        sales_name
       );
     } // ==================== RESPONSE HANDLING ====================
 
@@ -265,10 +248,12 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
+    console.error("Sales person update failed:", error);
+
     return NextResponse.json(
       {
         success: false,
-        error: error as string,
+        error: getErrorMessage(error, "Error al reasignar el comercial"),
       },
       { status: 500 }
     );

@@ -1,32 +1,75 @@
 ﻿import { storage } from "@/core/firebase/firebaseConfig";
+import { resolveDocumentacionStorageFolderPaths } from "@/core/firebase/data/getFolders";
 import { deleteObject, ref } from "firebase/storage";
+
+const buildStoragePath = (segments: Array<string | undefined>) =>
+  segments
+    .filter((segment): segment is string => Boolean(segment) && segment !== "/")
+    .join("/");
 
 export const deleteFileFromStorage = async (
   parent_folder: string,
   folderPath: string,
   fileName: string,
-  organization_id: string
+  organization_id: string,
+  exactStoragePath?: string
 ): Promise<{
   success: boolean;
   error?: string;
 }> => {
   try {
-    const fileRef = ref(
-      storage,
-      `${organization_id}/${parent_folder}/${folderPath}/${fileName}`
-    );
+    const folderPaths =
+      parent_folder === "documentacion"
+        ? await resolveDocumentacionStorageFolderPaths(
+            folderPath,
+            organization_id
+          )
+        : [buildStoragePath([organization_id, parent_folder, folderPath])];
+    const storagePaths = new Set<string>();
 
-    if (!fileRef) {
+    if (exactStoragePath) {
+      storagePaths.add(exactStoragePath);
+    }
+
+    folderPaths.forEach((storageFolderPath) => {
+      storagePaths.add(buildStoragePath([storageFolderPath, fileName]));
+    });
+
+    let lastError: unknown;
+    let sawObjectNotFound = false;
+
+    for (const storagePath of storagePaths) {
+      try {
+        await deleteObject(ref(storage, storagePath));
+
+        return {
+          success: true,
+        };
+      } catch (error) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "storage/object-not-found"
+        ) {
+          sawObjectNotFound = true;
+          continue;
+        }
+
+        lastError = error;
+      }
+    }
+
+    if (sawObjectNotFound && !lastError) {
       return {
-        success: false,
-        error: "File not found",
+        success: true,
       };
     }
 
-    await deleteObject(fileRef);
-
+    console.error("Error deleting file:", lastError);
     return {
-      success: true,
+      success: false,
+      error: "Error deleting file",
     };
   } catch (error) {
     console.error("Error deleting file:", error);

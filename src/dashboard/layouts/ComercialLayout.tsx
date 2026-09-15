@@ -8,7 +8,7 @@ import { TeamTramitesBarChart } from "@/dashboard/components/charts/TeamTramites
 import { IncidenciasView } from "@/dashboard/components/incidencias/IncidenciasView";
 import type { DashboardView } from "../components/ViewToggle";
 
-type NonAdminDashboardView = Exclude<DashboardView, "metrics">;
+type NonAdminDashboardView = Exclude<DashboardView, "metrics" | "sips">;
 
 interface ComercialLayoutProps {
   userData: User;

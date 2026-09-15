@@ -27,6 +27,8 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const organizationId = userData.organization.id;
+  const organizationLogo = userData.organization.logo;
 
   const validateUserData = useCallback((formData: CreateUserPayload) => {
     try {
@@ -182,13 +184,13 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
         // Step 3: Add to organization - CRITICAL FIX
         setLoadingStep(3);
         setLoadingMessage("Añadiendo a la organización");
-        if (!userData?.organization?.id) {
+        if (!organizationId) {
           throw new Error("ID de organización no encontrado");
         }
 
         // Convert role number to organization role
         const orgRole = formData.role === "admin" ? "admin" : "member";
-        await addToOrganization(userId, userData.organization.id, orgRole);
+        await addToOrganization(userId, organizationId, orgRole);
 
         // Step 4: Assign super user (optional)
         if (formData.super_id && formData.super_id.trim() !== "") {
@@ -207,18 +209,29 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
         // Step 6: Send welcome email
         setLoadingStep(6);
         setLoadingMessage("Enviando email de bienvenida");
-        await sendWelcomeEmail(
-          formData.email,
-          formData.name,
-          userData.organization?.logo || undefined
-        ); // Success
+        let welcomeEmailSent = true;
+        try {
+          await sendWelcomeEmail(
+            formData.email,
+            formData.name,
+            organizationLogo || undefined
+          );
+        } catch (error) {
+          welcomeEmailSent = false;
+          console.info("Welcome email was not sent after user creation", error);
+        }
+
         setLoadingStep(7);
         setLoadingMessage("Completado");
+        const roleLabel =
+          ROLES[parseInt(formData.role === "admin" ? "0" : formData.role)];
+        const successMessage = `${formData.name} ha sido creado con el rol de ${roleLabel}`;
+        const emailStatusMessage = welcomeEmailSent
+          ? ""
+          : ". El email de bienvenida no se ha enviado";
         showCustomToast({
           title: "Usuario creado exitosamente",
-          message: `${formData.name} ha sido creado con el rol de ${
-            ROLES[parseInt(formData.role === "admin" ? "0" : formData.role)]
-          }`,
+          message: `${successMessage}${emailStatusMessage}`,
           icon: UserRoundCheck,
           iconColor: "green",
           iconSize: 24,
@@ -252,8 +265,8 @@ export function useUserCreation({ userData, onSuccess }: UseUserCreationProps) {
       assignCompany,
       sendWelcomeEmail,
       onSuccess,
-      userData.organization.id,
-      userData.organization?.logo,
+      organizationId,
+      organizationLogo,
     ]
   );
 

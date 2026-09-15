@@ -1,5 +1,5 @@
-﻿import { UpdatedFields } from "@/tramites/hooks/track-tramite-changes";
-import { Notification } from "@/core/types";
+﻿import type { UpdatedFields } from "@/tramites/hooks/track-tramite-changes";
+import type { Notification } from "@/core/types";
 import { formatUUID } from "./format";
 
 export const getColorPriority = (priority: number) => {
@@ -55,7 +55,7 @@ export const getLinkContext = (context: string, link: string): string => {
 
 export const generateTramitesNotificationMessage = (
   changes?: UpdatedFields | undefined,
-  uploadedFiles?: File[] | undefined
+  uploadedFiles?: File[] | undefined,
 ): string => {
   const messages: string[] = [];
 
@@ -77,13 +77,13 @@ export const generateTramitesNotificationMessage = (
       // Revisamos otros campos
       if (changes.signer) {
         messages.push(
-          "Se ha modificado la información de la persona firmante del trámite"
+          "Se ha modificado la información de la persona firmante del trámite",
         );
       }
 
       if (changes.client) {
         messages.push(
-          "Se ha modificado la información del cliente del trámite"
+          "Se ha modificado la información del cliente del trámite",
         );
       }
 
@@ -139,7 +139,7 @@ export const generateComparativaNotificationMessage = (
   notes: boolean | undefined,
   status: string | undefined,
   files: boolean | undefined,
-  comissions: boolean | undefined
+  comissions: boolean | undefined,
 ) => {
   const messages: string[] = [];
 
@@ -157,7 +157,7 @@ export const generateComparativaNotificationMessage = (
             : status === "processed"
               ? "Completada"
               : "Desconocido"
-      }`
+      }`,
     );
   }
 
@@ -206,7 +206,7 @@ export const generateComparativaUpdatedNotification = ({
       notes,
       status,
       files,
-      comissions
+      comissions,
     ),
     client,
     created_at: new Date().toISOString(),
@@ -229,7 +229,7 @@ interface FotovoltaicaNotification {
 export const generateFotovoltaicaNotificationMessage = (
   notes: boolean | undefined,
   status: string | undefined,
-  files: boolean | undefined
+  files: boolean | undefined,
 ): string => {
   const messages: string[] = [];
 
@@ -239,7 +239,7 @@ export const generateFotovoltaicaNotificationMessage = (
 
   if (status) {
     messages.push(
-      `Se ha actualizado el estado de la solicitud fotovoltaica a ${status}`
+      `Se ha actualizado el estado de la solicitud fotovoltaica a ${status}`,
     );
   }
 
@@ -300,7 +300,7 @@ interface TicketReplyNotification {
 export const generateTicketCreatedNotificationMessage = (
   context: string,
   subject: string,
-  created_by_name?: string
+  created_by_name?: string,
 ): string => {
   const contextName =
     {
@@ -317,7 +317,7 @@ export const generateTicketCreatedNotificationMessage = (
 
 export const generateTicketReplyNotificationMessage = (
   subject: string,
-  author_name?: string
+  author_name?: string,
 ): string => {
   const authorInfo = author_name ? ` de ${author_name}` : "";
   return `Hay una nueva respuesta${authorInfo} en el ticket: "${subject}"`;
@@ -340,7 +340,7 @@ export const generateTicketCreatedNotification = ({
     message: generateTicketCreatedNotificationMessage(
       context,
       subject,
-      created_by_name
+      created_by_name,
     ),
     client,
     created_at: new Date().toISOString(),

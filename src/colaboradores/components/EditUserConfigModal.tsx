@@ -10,8 +10,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/core/components/ui/dialog";
+import { Checkbox } from "@/core/components/ui/checkbox";
 import { Input } from "@/core/components/ui/input";
 import { Label } from "@/core/components/ui/label";
 import {
@@ -32,9 +32,12 @@ import {
   UserDefaultNoteTarget,
 } from "@/core/types";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
+import { useDefaultCompanyCommissions } from "@/core/hooks/use-default-company-commissions";
 
 interface Props {
   user: User;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onUpdated?: (user: User) => void;
 }
 
@@ -59,9 +62,13 @@ const noteTargets: { value: UserDefaultNoteTarget; label: string }[] = [
 
 const NO_SUPER_ID = "__none__";
 
-export default function EditUserConfigModal({ user, onUpdated }: Props) {
+export default function EditUserConfigModal({
+  user,
+  open,
+  onOpenChange,
+  onUpdated,
+}: Props) {
   const { userData } = useUser();
-  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -74,7 +81,11 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
   const [commercialUsers, setCommercialUsers] = useState<User[]>([]);
   const { activeSuppliers, loading: suppliersLoading, refetch } =
     useActiveEnergySuppliers();
+  const { defaults, loading: defaultsLoading } =
+    useDefaultCompanyCommissions(open);
 
+  // `commissions` guarda solo las comisiones personalizadas del colaborador.
+  // Las comercializadoras que no estén aquí heredan el valor por defecto.
   const commissionsBySupplier = useMemo(() => {
     return new Map(
       commissions.map((commission) => [
@@ -83,6 +94,12 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
       ]),
     );
   }, [commissions]);
+
+  const defaultsBySupplier = useMemo(() => {
+    return new Map(
+      defaults.map((fallback) => [fallback.comercializadora_id, fallback]),
+    );
+  }, [defaults]);
 
   const selectedSuperName = useMemo(() => {
     if (!superId) return "Sin superior asignado";
@@ -93,7 +110,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
   }, [commercialUsers, superId]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!open) return;
 
     let cancelled = false;
     async function loadDetail() {
@@ -171,15 +188,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, refetch, user.id, userData]);
-
-  const handleOpen = () => {
-    setName(user.name);
-    setEmail(user.email);
-    setSuperId(user.super_id ?? "");
-    setPassword("");
-    setIsOpen(true);
-  };
+  }, [open, refetch, user.id, userData]);
 
   const updateCommission = (
     supplierId: string,
@@ -207,6 +216,27 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
     });
   };
 
+  /**
+   * Alterna entre heredar la comisión por defecto de la asesoría y fijar una
+   * propia. Al personalizar se parte del valor heredado para no perderlo.
+   */
+  const toggleCommissionOverride = (supplierId: string, override: boolean) => {
+    if (!override) {
+      setCommissions((current) =>
+        current.filter(
+          (commission) => commission.comercializadora_id !== supplierId,
+        ),
+      );
+      return;
+    }
+
+    const fallback = defaultsBySupplier.get(supplierId);
+    updateCommission(supplierId, {
+      commission_type: fallback?.commission_type ?? "percent",
+      commission_value: String(fallback?.commission_value ?? 0),
+    });
+  };
+
   const addNote = () => {
     setNotes((current) => [
       ...current,
@@ -228,14 +258,13 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const submittedCommissions = activeSuppliers.map((supplier) => {
-        const commission = commissionsBySupplier.get(supplier.id);
-        return {
-          comercializadora_id: supplier.id,
-          commission_type: commission?.commission_type ?? "percent",
-          commission_value: Number(commission?.commission_value || 0),
-        };
-      });
+      // Solo se envían las comisiones personalizadas: lo que no viaje se borra
+      // en el servidor y pasa a heredar el valor por defecto.
+      const submittedCommissions = commissions.map((commission) => ({
+        comercializadora_id: commission.comercializadora_id,
+        commission_type: commission.commission_type,
+        commission_value: Number(commission.commission_value) || 0,
+      }));
 
       const res = await fetch(`/api/v2/users/${user.id}/config`, {
         method: "PATCH",
@@ -284,7 +313,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
         iconColor: "green",
       });
       onUpdated?.({ ...user, name, email, super_id: superId.trim() || null });
-      setIsOpen(false);
+      onOpenChange(false);
     } catch {
       showCustomToast({
         title: "Error",
@@ -299,19 +328,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <TooltipComponent color="bg-primary" content="Configuración avanzada">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-            onClick={handleOpen}
-          >
-            <Settings2 size={14} />
-          </Button>
-        </TooltipComponent>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         aria-describedby={undefined}
         className="max-w-5xl border-gray-200 p-0 overflow-hidden"
@@ -338,11 +355,25 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
                 Edita el perfil y define una nueva contraseña si es necesario.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/*
+              Estos campos viven en su propio <form> y declaran autoComplete:
+              un <input type="password"> sin formulario que lo contenga hace
+              que el gestor de contraseñas del navegador lo tome por un login y
+              autorrellene las credenciales del admin en el primer campo de
+              texto del documento (el buscador del listado, que queda detrás).
+              Ver docs/AUTOFILL_HARDENING_PLAN.md.
+            */}
+            <form
+              autoComplete="off"
+              onSubmit={(event) => event.preventDefault()}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
               <div className="space-y-2">
                 <Label htmlFor="user-name">Nombre</Label>
                 <Input
                   id="user-name"
+                  name="user-config-name"
+                  autoComplete="off"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   disabled={initializing || loading}
@@ -352,7 +383,9 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
                 <Label htmlFor="user-email">Email</Label>
                 <Input
                   id="user-email"
+                  name="user-config-email"
                   type="email"
+                  autoComplete="off"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={initializing || loading}
@@ -387,24 +420,28 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
                 <Label htmlFor="user-password">Nueva contraseña</Label>
                 <Input
                   id="user-password"
+                  name="user-config-password"
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   placeholder="Dejar en blanco para no cambiar"
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={initializing || loading}
                 />
               </div>
-            </div>
+            </form>
           </section>
 
           <section className="rounded-3xl border border-gray-200 p-5 space-y-4">
             <div>
               <h3 className="font-semibold text-gray-900">Comisiones</h3>
               <p className="text-sm text-gray-500">
-                Define la comisión del colaborador por comercializadora activa.
+                Por defecto hereda la comisión de la asesoría. Marca
+                &laquo;Personalizar&raquo; solo donde este colaborador cobre algo
+                distinto.
               </p>
             </div>
-            {suppliersLoading || initializing ? (
+            {suppliersLoading || defaultsLoading || initializing ? (
               <div className="text-sm text-gray-500 py-6 text-center">
                 Cargando comercializadoras...
               </div>
@@ -416,20 +453,58 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
               <div className="space-y-2">
                 {activeSuppliers.map((supplier) => {
                   const commission = commissionsBySupplier.get(supplier.id);
+                  const fallback = defaultsBySupplier.get(supplier.id);
+                  const isOverride = Boolean(commission);
+                  const effectiveType =
+                    commission?.commission_type ??
+                    fallback?.commission_type ??
+                    "percent";
+                  const effectiveValue =
+                    commission?.commission_value ??
+                    (fallback ? String(fallback.commission_value) : "");
+
                   return (
                     <div
                       key={supplier.id}
-                      className="grid grid-cols-1 md:grid-cols-[1fr_140px_160px] gap-3 items-center rounded-2xl bg-gray-50 p-3"
+                      className="grid grid-cols-1 md:grid-cols-[1fr_150px_120px_150px] gap-3 items-center rounded-2xl bg-gray-50 p-3"
                     >
-                      <div className="font-medium text-sm text-gray-800 truncate">
-                        {supplier.name}
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm text-gray-800 truncate">
+                          {supplier.name}
+                        </div>
+                        {!isOverride && (
+                          <span className="text-xs text-gray-400">
+                            {fallback
+                              ? `Hereda ${fallback.commission_value}${
+                                  fallback.commission_type === "percent"
+                                    ? "%"
+                                    : " €"
+                                }`
+                              : "Sin comisión por defecto"}
+                          </span>
+                        )}
                       </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={isOverride}
+                          onCheckedChange={(checked) =>
+                            toggleCommissionOverride(
+                              supplier.id,
+                              checked === true,
+                            )
+                          }
+                          disabled={loading}
+                        />
+                        <span className="text-sm text-gray-600">
+                          Personalizar
+                        </span>
+                      </label>
                       <Select
-                        value={commission?.commission_type ?? "percent"}
+                        value={effectiveType}
                         onValueChange={(value: CommissionType) =>
                           updateCommission(supplier.id, { commission_type: value })
                         }
-                        disabled={loading}
+                        disabled={loading || !isOverride}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -443,13 +518,14 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
                         type="number"
                         min={0}
                         step={0.01}
-                        value={commission?.commission_value ?? "0"}
+                        placeholder="Sin comisión"
+                        value={effectiveValue}
                         onChange={(event) =>
                           updateCommission(supplier.id, {
                             commission_value: event.target.value,
                           })
                         }
-                        disabled={loading}
+                        disabled={loading || !isOverride}
                       />
                     </div>
                   );
@@ -546,7 +622,7 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
         <DialogFooter className="gap-3 px-6 py-4 border-t border-gray-100 bg-white">
           <Button
             variant="outline"
-            onClick={() => setIsOpen(false)}
+            onClick={() => onOpenChange(false)}
             className="border-gray-200 text-gray-700 hover:bg-gray-50"
             disabled={loading}
           >
@@ -562,5 +638,25 @@ export default function EditUserConfigModal({ user, onUpdated }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Disparador del panel. Se exporta suelto porque el diálogo se renderiza a
+ * nivel de tabla: si viviese dentro de la fila, cualquier filtro o recarga del
+ * listado desmontaría la fila y cerraría el panel abierto.
+ */
+export function EditUserConfigButton({ onClick }: { onClick: () => void }) {
+  return (
+    <TooltipComponent color="bg-primary" content="Configuración avanzada">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+        onClick={onClick}
+      >
+        <Settings2 size={14} />
+      </Button>
+    </TooltipComponent>
   );
 }

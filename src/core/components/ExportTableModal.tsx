@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/core/components/ui/button";
@@ -13,9 +13,9 @@ import {
 } from "@/core/components/ui/dialog";
 import { Checkbox } from "@/core/components/ui/checkbox";
 import { Label } from "@/core/components/ui/label";
-import { Download, FileX } from "lucide-react";
+import { Download, FileX, Loader2 } from "lucide-react";
 import { Table } from "@tanstack/react-table";
-import { exportToExcel } from "@/core/utils/export";
+import { exportRowsToExcel, exportToExcel } from "@/core/utils/export";
 import { showCustomToast } from "./CustomToast";
 
 interface ColumnOption {
@@ -24,14 +24,42 @@ interface ColumnOption {
   selected: boolean;
 }
 
+/** Outcome of fetching every filtered row from the server. */
+export type ServerExportOutcome =
+  | { status: "ok"; rows: Record<string, unknown>[] }
+  | { status: "limit"; total: number; limit: number }
+  | { status: "error"; message: string };
+
+export interface ServerExportConfig {
+  /** Columns offered by the export only — they have no counterpart in the table. */
+  virtualColumns: { id: string; label: string }[];
+  /** Fetches every row matching the active filters, not just the visible page. */
+  fetchRows: (options: {
+    includeNotes: boolean;
+  }) => Promise<ServerExportOutcome>;
+}
+
 interface Props<TData> {
   table: Table<TData>;
   name: string;
+  /**
+   * When provided, the export pulls every filtered row from the server instead
+   * of exporting the rows currently rendered.
+   */
+  serverExport?: ServerExportConfig;
 }
 
-export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
+/** Columns that carry UI affordances rather than data. */
+const NON_EXPORTABLE_COLUMNS = ["actions", "select"];
+
+export default function ExportTableModal<TData>({
+  table,
+  name,
+  serverExport,
+}: Props<TData>) {
   const [open, setOpen] = useState(false);
   const [columns, setColumns] = useState<ColumnOption[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Actualiza las columnas cuando el modal se abre o la tabla cambia
   useEffect(() => {
@@ -39,15 +67,20 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
       // Solo actualiza las columnas cuando el modal está abierto
       const tableColumns = table
         .getAllColumns()
-        .filter((column) => column.id !== "actions")
+        .filter((column) => !NON_EXPORTABLE_COLUMNS.includes(column.id))
         .map((column) => ({
           id: column.id,
           label: column.id,
           selected: column.getIsVisible(),
         }));
-      setColumns(tableColumns);
+
+      const virtualColumns = (serverExport?.virtualColumns ?? []).map(
+        (column) => ({ ...column, selected: true }),
+      );
+
+      setColumns([...tableColumns, ...virtualColumns]);
     }
-  }, [open, table]);
+  }, [open, table, serverExport]);
 
   const handleColumnToggle = (columnId: string) => {
     setColumns((prevColumns) =>
@@ -68,37 +101,77 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
   const selectedCount = columns.filter((column) => column.selected).length;
   const totalCount = columns.length;
 
+  const notifyError = (message: string) =>
+    showCustomToast({
+      title: "Error",
+      message,
+      iconColor: "var(--danger-color)",
+      iconSize: 24,
+      icon: FileX,
+    });
+
   const handleExport = async () => {
     const selectedColumnIds = columns
       .filter((column) => column.selected)
       .map((column) => column.id);
 
-    // Ejecuta la función de exportación personalizada si se proporciona
-    const { success, error } = await exportToExcel({
-      table,
-      selectedColumnIds,
-      name,
-    });
+    setIsExporting(true);
 
-    if (!success) {
+    try {
+      const result = serverExport
+        ? await runServerExport(selectedColumnIds)
+        : await exportToExcel({ table, selectedColumnIds, name });
+
+      // A null result means the server export already reported the problem.
+      if (!result) return;
+
+      if (!result.success) {
+        notifyError(result.error ?? "Error al exportar a Excel");
+        return;
+      }
+
       showCustomToast({
-        title: "Error",
-        message: error,
-        iconColor: "var(--danger-color)",
+        title: "Éxito",
+        message: `Se han exportado ${selectedCount} columnas a Excel`,
+        iconColor: "var(--success-color)",
         iconSize: 24,
         icon: FileX,
       });
+
+      setOpen(false);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  /** Fetches every filtered row, then writes the workbook from that data. */
+  const runServerExport = async (selectedColumnIds: string[]) => {
+    if (!serverExport) return null;
+
+    const includeNotes = selectedColumnIds.some((columnId) =>
+      serverExport.virtualColumns.some((column) => column.id === columnId),
+    );
+
+    const outcome = await serverExport.fetchRows({ includeNotes });
+
+    if (outcome.status === "limit") {
+      notifyError(
+        `Hay ${outcome.total.toLocaleString("es-ES")} resultados y el máximo por exportación es ${outcome.limit.toLocaleString("es-ES")}. Afina los filtros e inténtalo de nuevo.`,
+      );
+      return null;
     }
 
-    showCustomToast({
-      title: "Éxito",
-      message: `Se han exportado ${selectedCount} columnas a Excel`,
-      iconColor: "var(--success-color)",
-      iconSize: 24,
-      icon: FileX,
-    });
+    if (outcome.status === "error") {
+      notifyError(outcome.message);
+      return null;
+    }
 
-    setOpen(false);
+    return exportRowsToExcel({
+      table,
+      rows: outcome.rows,
+      selectedColumnIds,
+      name,
+    });
   };
 
   return (
@@ -117,7 +190,9 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
         <DialogHeader>
           <DialogTitle>Exportar {name}</DialogTitle>
           <DialogDescription>
-            Selecciona las columnas que deseas exportar
+            {serverExport
+              ? "Selecciona las columnas que deseas exportar. Se exportarán todos los registros que cumplan los filtros activos."
+              : "Selecciona las columnas que deseas exportar"}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -159,7 +234,7 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
                       htmlFor={`column-${column.id}`}
                       className="flex-1 cursor-pointer capitalize"
                     >
-                      {column.id
+                      {column.label
                         .replace(/([A-Z])/g, " $1")
                         .replace(/_/g, " ")
                         .trim()}
@@ -175,17 +250,28 @@ export default function ExportTableModal<TData>({ table, name }: Props<TData>) {
           )}
         </div>
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between sm:space-x-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={isExporting}
+          >
             Cancelar
           </Button>
           <Button
             onClick={handleExport}
-            disabled={selectedCount === 0}
+            disabled={selectedCount === 0 || isExporting}
             className="mt-2 sm:mt-0"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Exportar {selectedCount}{" "}
-            {selectedCount === 1 ? "columna" : "columnas"}
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {isExporting
+              ? "Exportando..."
+              : `Exportar ${selectedCount} ${
+                  selectedCount === 1 ? "columna" : "columnas"
+                }`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -18,11 +18,21 @@ import ContractForm from "./ContractForm";
 import { Button } from "@/core/components/ui/button";
 import { Separator } from "@/core/components/ui/separator";
 import { ComparativaVM } from "@/comparativas/types";
+import { eligibleComparisonPlans } from "@/comparativas/utils/commission-completeness";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
-import { Switch } from "@/core/components/ui/switch";
+import { useCrmSettings } from "@/crm-settings/hooks/useCrmSettings";
 import { Label } from "@/core/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/core/components/ui/select";
+
+const NO_PROVIDER_VALUE = "__none__";
 
 interface Props {
   onBack: () => void;
@@ -69,9 +79,21 @@ export default function ThirdStepForm({
   );
   const [salesCommissionTouched, setSalesCommissionTouched] = useState(false);
   const { activeSuppliers } = useActiveEnergySuppliers();
+  const { settings } = useCrmSettings();
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
-    tramite.user_id,
+    comparativa ? undefined : tramite.user_id,
   );
+  const configuredProviders = useMemo(
+    () => settings?.providers.map((provider) => provider.name) ?? [],
+    [settings],
+  );
+  const providerOptions = useMemo(() => {
+    if (!tramite.provider || configuredProviders.includes(tramite.provider)) {
+      return configuredProviders;
+    }
+
+    return [tramite.provider, ...configuredProviders];
+  }, [configuredProviders, tramite.provider]);
 
   const firstContract = contracts[0];
   const contractSupplierId = activeSuppliers.find(
@@ -104,7 +126,7 @@ export default function ThirdStepForm({
     (userData.role === "admin" || userData.role === "1");
 
   useEffect(() => {
-    if (salesCommissionTouched) return;
+    if (comparativa || salesCommissionTouched) return;
 
     const calculatedCommission = calculateSalesPersonCommission({
       baseCommission: tramite.comision,
@@ -127,6 +149,7 @@ export default function ThirdStepForm({
       };
     });
   }, [
+    comparativa,
     activeSuppliers,
     supplierId,
     supplierName,
@@ -212,16 +235,20 @@ export default function ThirdStepForm({
             value === "Activo" ? RENOVATION_DATE.toISOString() : "",
           tramitation_date:
             value === "Procesando" ||
-            value === "Activo" ||
-            value === "Pendiente de Firma" ||
-            value === "Verificado"
+              value === "Activo" ||
+              value === "Pendiente de Firma" ||
+              value === "Verificado"
               ? new Date().toISOString()
               : "",
-          comision: value === "Baja" ? -prevState.comision : prevState.comision,
+          comision: comparativa && tramite.plan
+            ? (value === "Baja" ? -1 : 1) * (comparativa.comision[tramite.plan] ?? 0)
+            : value === "Baja" ? -prevState.comision : prevState.comision,
           comision_sales_person:
-            value === "Baja"
-              ? -prevState.comision_sales_person
-              : prevState.comision_sales_person,
+            comparativa && tramite.plan
+              ? (value === "Baja" ? -1 : 1) * (comparativa.comision_sales_person[tramite.plan] ?? 0)
+              : value === "Baja"
+                ? -prevState.comision_sales_person
+                : prevState.comision_sales_person,
         };
       } else {
         return {
@@ -268,35 +295,70 @@ export default function ThirdStepForm({
             {userData &&
               (userData.role === "admin" || userData.role === "1") && (
                 <>
-                  <InputComponent
-                    type="number"
-                    label="Comisión"
-                    name="comision"
-                    value={tramite.comision || ""}
-                    onChange={handleComisionChange}
-                    isRequired={tramite.status === "Activo"}
-                    endContent={<Euro size={16} />}
-                  />
-                  <InputComponent
-                    type="number"
-                    label="Comisión Comercial"
-                    name="comision_sales_person"
-                    value={tramite.comision_sales_person || ""}
-                    onChange={handleComisionSalesChange}
-                    isRequired={tramite.status === "Activo"}
-                    endContent={<Euro size={16} />}
-                  />
-                  <InputComponent
-                    type="text"
-                    label="Proveedor"
-                    name="provider"
-                    value={tramite.provider || ""}
-                    onChange={handleProviderChange}
-                    isRequired={false}
-                  />
+                  {!comparativa && <>
+                    <InputComponent
+                      type="number"
+                      label="Comisión"
+                      name="comision"
+                      value={tramite.comision || ""}
+                      onChange={handleComisionChange}
+                      isRequired={tramite.status === "Activo"}
+                      endContent={<Euro size={16} />}
+                    />
+                    <InputComponent
+                      type="number"
+                      label="Comisión Comercial"
+                      name="comision_sales_person"
+                      value={tramite.comision_sales_person || ""}
+                      onChange={handleComisionSalesChange}
+                      isRequired={tramite.status === "Activo"}
+                      endContent={<Euro size={16} />}
+                    />
+                  </>}
+                  {configuredProviders.length > 0 ? (
+                    <div className="flex w-full flex-col gap-2">
+                      <Label htmlFor="provider">Proveedor</Label>
+                      <Select
+                        value={tramite.provider || NO_PROVIDER_VALUE}
+                        onValueChange={(value) =>
+                          handleProviderChange(
+                            value === NO_PROVIDER_VALUE ? "" : value,
+                          )
+                        }
+                      >
+                        <SelectTrigger id="provider" className="rounded-md">
+                          <SelectValue placeholder="Seleccionar proveedor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_PROVIDER_VALUE}>
+                            Sin proveedor
+                          </SelectItem>
+                          {providerOptions.map((provider) => (
+                            <SelectItem key={provider} value={provider}>
+                              {provider}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <InputComponent
+                      type="text"
+                      label="Proveedor"
+                      name="provider"
+                      value={tramite.provider || ""}
+                      onChange={handleProviderChange}
+                      isRequired={false}
+                    />
+                  )}
                 </>
               )}
           </div>
+          {comparativa && <div>
+            <p>Las comisiones se copiarán desde la comparativa.</p>
+            {userData.role !== "2" && <p>Comisión: {tramite.comision} €</p>}
+            <p>Comisión comercial: {tramite.comision_sales_person} €</p>
+          </div>}
         </div>
         {canShowImaginaSwitch && (
           <div className="flex items-center justify-between rounded-md border border-primary-100 bg-primary-50 px-4 py-3">
@@ -355,9 +417,12 @@ export default function ThirdStepForm({
           </div>
         )}
       </form>
-      {tramite.status !== "Tramitable" &&
-      tramite.status !== "Borrador" &&
-      tramite.status !== "Activo" ? (
+      {comparativa ? (
+        <ButtonGroupComponent onCancel={onCancel} onBack={onBack} onSubmit={onSubmit}
+          submitDisabled={!tramite.plan || !eligibleComparisonPlans(comparativa).includes(tramite.plan)} />
+      ) : tramite.status !== "Tramitable" &&
+        tramite.status !== "Borrador" &&
+        tramite.status !== "Activo" ? (
         <CheckComisionModal
           tramite={tramite}
           onSubmit={onSubmit}

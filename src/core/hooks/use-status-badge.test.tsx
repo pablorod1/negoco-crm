@@ -3,6 +3,18 @@ import { render } from "@testing-library/react";
 import { getStatusBadge } from "./use-status-badge";
 
 describe("getStatusBadge comparativa", () => {
+  test("renders 'Procesando' for processing status", () => {
+    const { container } = render(
+      <>{getStatusBadge("processing", "comparativa")}</>,
+    );
+    expect(container.textContent).toBe("Procesando");
+    expect(container.firstElementChild).toHaveClass(
+      "border-indigo-300",
+      "bg-indigo-50",
+      "text-indigo-700",
+    );
+  });
+
   test("renders 'Rechazado Cliente' for rechazado_cliente status", () => {
     const { container } = render(
       <>{getStatusBadge("rechazado_cliente", "comparativa")}</>,

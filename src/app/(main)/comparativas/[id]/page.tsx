@@ -21,11 +21,14 @@ import ComparativaNavigation from "@/comparativas/components/details/Comparativa
 import MainView from "@/comparativas/components/details/MainView";
 import { ComparativaNotesSection } from "@/comparativas/components/editComparativa/NotesTabContent";
 import ComparativaChangesHistory from "@/comparativas/components/ComparativaChangesHistory";
+import { StudyResultController } from "@/comparativas/components/details/StudyResultController";
+import { hasPermission } from "@/core/access-control/client";
 
 export default function EditComparativaPage() {
   const { userData } = useUser();
   const isSubcomercial = userData?.role === "2" && userData?.super_id;
   const isAdmin = userData?.role === "admin";
+  const canResolveStudy = !!userData && (hasPermission(userData.permissions, userData.role, "comparisons.study.complete") || hasPermission(userData.permissions, userData.role, "comparisons.study.review"));
 
   // Usando nuestros hooks personalizados siguiendo el patrón de trámites
   const { comparativa, loading, loadedData, fetchComparativa } =
@@ -57,13 +60,18 @@ export default function EditComparativaPage() {
   }
 
   return (
+    <StudyResultController key={`${comparativa.id}:${userData?.id}:${userData?.role}:${canResolveStudy}`} comparisonId={comparativa.id} comparisonStatus={comparativa.status} user={userData as User} onRefresh={fetchComparativa}>
+      {(studyResult) => (
     <div className="min-h-screen ">
       {/* Main Content Container */}
       <div className="px-6 py-8 space-y-8">
         {/* Navigation */}
         <ComparativaNavigation
           currentView={currentView}
-          onViewChange={setCurrentView}
+          onViewChange={(view) => {
+            studyResult.setPanelOpen(false);
+            setCurrentView(view);
+          }}
           isAdmin={isAdmin}
         />
 
@@ -77,6 +85,7 @@ export default function EditComparativaPage() {
             isEditable={isEditable}
             isComercialEditable={isComercialEditable}
             isProcessed={isProcessed}
+            studyResult={studyResult}
           />
         )}
 
@@ -144,5 +153,7 @@ export default function EditComparativaPage() {
         )}
       </div>
     </div>
+      )}
+    </StudyResultController>
   );
 }
