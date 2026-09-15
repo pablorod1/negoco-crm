@@ -1,12 +1,14 @@
-﻿"use client";
+"use client";
 import EmptyDocumentacion from "@/documentacion/components/EmptyDocumentacion";
 import { FileGrid } from "@/documentacion/components/FileGrid";
 import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
 import { getSubFoldersFromFolder } from "@/core/firebase/data/getFolders";
 import { DocumentacionFile, User } from "@/core/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUser } from "@/core/contexts/UserContext";
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
+import { useDocumentLibrarySuppliers } from "@/documentacion/contexts/DocumentLibrarySuppliersContext";
+import { splitSupplierFolders } from "@/documentacion/lib/supplier-folders";
 
 export default function DocumentacionPage() {
   const { userData } = useUser();
@@ -15,6 +17,8 @@ export default function DocumentacionPage() {
   const [recentlyFiles, setRecentlyFiles] = useState<DocumentacionFile[]>([]);
   const { setRefreshDocumentacion, isLoading, setIsLoading } =
     useDocumentacion();
+  const { suppliers, loading: suppliersLoading } =
+    useDocumentLibrarySuppliers();
 
   const fetchFolders = useCallback(async () => {
     setIsLoading(true);
@@ -80,14 +84,24 @@ export default function DocumentacionPage() {
     fetchFolders();
   }, [fetchFolders]);
 
+  // Las comercializadoras activas siempre tienen carpeta, exista o no en Storage
+  const { supplierFolders, otherFolders } = useMemo(
+    () => splitSupplierFolders(folders, suppliers),
+    [folders, suppliers]
+  );
+
+  const hasContent =
+    files.length > 0 || otherFolders.length > 0 || supplierFolders.length > 0;
+
   return (
     <div className="space-y-6">
-      {isLoading ? (
+      {isLoading || suppliersLoading ? (
         <FullScreenLoaderComponent />
-      ) : files.length > 0 || folders.length > 0 ? (
+      ) : hasContent ? (
         <FileGrid
           recentlyFiles={recentlyFiles}
-          folders={folders}
+          folders={otherFolders}
+          supplierFolders={supplierFolders}
           currentPath=""
           folderPath={[]}
           userData={userData as User}

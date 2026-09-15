@@ -1,5 +1,4 @@
-﻿"use client";
-import { getAllFoldersWithPaths } from "@/core/firebase/data/getFolders";
+"use client";
 import { Button } from "@/core/components/ui/button";
 import {
   Dialog,
@@ -9,32 +8,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/core/components/ui/dialog";
-import { Folder, ChevronRight, UploadIcon, ChevronDown } from "lucide-react";
+import { Input } from "@/core/components/ui/input";
+import { Label } from "@/core/components/ui/label";
+import { CircleX, FolderPlus, UploadIcon, X } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useDocumentacion } from "@/core/contexts/DocumentacionContext";
 import { useUser } from "@/core/contexts/UserContext";
-import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
+import { showCustomToast } from "@/core/components/CustomToast";
 import { uploadDocumentLibraryFiles } from "@/documentacion/lib/uploadDocumentLibraryFiles";
-import { normalizeDocumentLibraryFolderPath } from "@/core/utils/document-library-path";
+import {
+  DOCUMENT_LIBRARY_ROOT_FOLDER,
+  normalizeDocumentLibraryFolderPath,
+} from "@/core/utils/document-library-path";
+import { useDocumentLibraryFolderTree } from "@/documentacion/hooks/useDocumentLibraryFolderTree";
+import {
+  describeFolderPath,
+  validateNewFolderName,
+} from "@/documentacion/lib/folder-tree";
+import { FolderPicker } from "./FolderPicker";
 
 interface FileWithPreview extends File {
   preview?: string;
-}
-
-interface FolderStructure {
-  path: string;
-  displayName: string;
-  level: number;
-  parent: string;
-  subfolders: FolderStructure[];
-}
-
-interface FolderGroup {
-  name: string;
-  path: string;
-  subfolders: FolderStructure[];
 }
 
 interface UploadFileModalProps {
@@ -42,27 +38,23 @@ interface UploadFileModalProps {
 }
 
 export default function UploadFileModal({
-  initialFolderPath = "/",
+  initialFolderPath = DOCUMENT_LIBRARY_ROOT_FOLDER,
 }: UploadFileModalProps) {
   const normalizedInitialFolderPath =
     normalizeDocumentLibraryFolderPath(initialFolderPath);
   const [isOpen, setIsOpen] = useState(false);
   const { userData } = useUser();
   const { refreshDocumentacion } = useDocumentacion();
+  const { tree } = useDocumentLibraryFolderTree();
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string>(
     normalizedInitialFolderPath
   );
   const [createFolder, setCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(["/"])
-  );
 
   const onOpen = () => setIsOpen(true);
-  const onClose = () => setIsOpen(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const filesWithPreview = acceptedFiles.map((file) =>
@@ -76,86 +68,6 @@ export default function UploadFileModal({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
   });
-
-  useEffect(() => {
-    const fetchAllFolders = async () => {
-      const { success, data: folders } = await getAllFoldersWithPaths(
-        userData?.organization.id as string
-      );
-      if (success && folders) {
-        const folderMap: Record<string, FolderStructure> = {};
-        const groups: Record<string, FolderGroup> = {
-          root: { name: "Inicio", path: "", subfolders: [] },
-        };
-
-        // First pass: create all folder objects
-        folders.forEach((path) => {
-          const normalizedPath = normalizeDocumentLibraryFolderPath(path);
-          if (normalizedPath === "/") {
-            return;
-          }
-
-          const parts = normalizedPath.split("/");
-          const level = parts.length;
-          const name = parts[parts.length - 1];
-          const parent = parts.slice(0, -1).join("/");
-
-          folderMap[normalizedPath] = {
-            path: normalizedPath,
-            displayName: name,
-            level,
-            parent,
-            subfolders: [],
-          };
-
-          if (level === 1) {
-            groups[normalizedPath] = {
-              name,
-              path: normalizedPath,
-              subfolders: [],
-            };
-          }
-        });
-
-        // Second pass: build the hierarchy
-        Object.values(folderMap).forEach((folder) => {
-          if (folder.parent) {
-            if (folder.level === 2) {
-              // Level 2 folders go directly into their top-level group
-              const topLevelParent = folder.path.split("/")[0];
-              if (groups[topLevelParent]) {
-                groups[topLevelParent].subfolders.push(folder);
-              }
-            } else {
-              // Deeper level folders go into their immediate parent's subfolders
-              const parentFolder = folderMap[folder.parent];
-              if (parentFolder) {
-                parentFolder.subfolders.push(folder);
-              }
-            }
-          }
-        });
-
-        // Sort all subfolders recursively
-        const sortFolders = (folders: FolderStructure[]) => {
-          folders.sort((a, b) => a.displayName.localeCompare(b.displayName));
-          folders.forEach((folder) => {
-            if (folder.subfolders.length > 0) {
-              sortFolders(folder.subfolders);
-            }
-          });
-        };
-
-        Object.values(groups).forEach((group) => {
-          sortFolders(group.subfolders);
-        });
-
-        setFolderGroups(Object.values(groups));
-      }
-    };
-
-    fetchAllFolders();
-  }, [userData]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -174,28 +86,25 @@ export default function UploadFileModal({
     });
   };
 
-  const getUploadFilePath = () => {
-    if (selectedFolder === "/" && !createFolder) {
-      return normalizeDocumentLibraryFolderPath(selectedFolder);
-    } else if (selectedFolder === "/" && createFolder) {
-      return normalizeDocumentLibraryFolderPath(newFolderName);
-    } else if (selectedFolder !== "/" && !createFolder) {
-      return normalizeDocumentLibraryFolderPath(selectedFolder);
-    } else if (selectedFolder !== "/" && createFolder) {
-      return normalizeDocumentLibraryFolderPath(
-        `${selectedFolder}/${newFolderName}`
-      );
-    }
-
-    return normalizeDocumentLibraryFolderPath(selectedFolder);
-  };
+  const newFolderError = createFolder
+    ? validateNewFolderName(newFolderName, selectedFolder, tree)
+    : null;
+  // Sólo se avisa cuando el usuario ya ha escrito algo
+  const showNewFolderError = createFolder && newFolderName.length > 0;
+  const uploadFolderPath = createFolder
+    ? normalizeDocumentLibraryFolderPath(
+        `${selectedFolder}/${newFolderName.trim()}`
+      )
+    : selectedFolder;
+  const canUpload =
+    files.length > 0 && !isUploading && (!createFolder || !newFolderError);
 
   const handleUpload = async () => {
     try {
       setIsUploading(true);
       await uploadDocumentLibraryFiles({
         files,
-        folderName: getUploadFilePath(),
+        folderName: uploadFolderPath,
         organizationId: userData?.organization.id as string,
       });
       setFiles([]);
@@ -203,6 +112,16 @@ export default function UploadFileModal({
       refreshDocumentacion();
     } catch (error) {
       console.error("Error uploading files:", error);
+      showCustomToast({
+        title: "Error al subir archivos",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Inténtalo de nuevo más tarde.",
+        icon: CircleX,
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+      });
     } finally {
       setIsUploading(false);
     }
@@ -213,225 +132,159 @@ export default function UploadFileModal({
     setCreateFolder(false);
     setNewFolderName("");
     setSelectedFolder(normalizedInitialFolderPath);
-    onClose();
+    setIsOpen(false);
   };
 
-  const toggleFolder = (path: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) {
-        next.delete(path);
-      } else {
-        next.add(path);
-      }
-      return next;
-    });
-  };
-
-  const renderSubfolders = (
-    subfolders: FolderStructure[],
-    padding: number = 36
-  ) => {
-    return subfolders.map((subfolder) => (
-      <div key={subfolder.path}>
-        <button
-          onClick={() => setSelectedFolder(subfolder.path)}
-          className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-            selectedFolder === subfolder.path ? "bg-blue-50 text-blue-600" : ""
-          }`}
-          style={{ paddingLeft: `${padding}px` }}
-        >
-          <Folder size={16} />
-          <span>{subfolder.displayName}</span>
-          {subfolder.subfolders.length > 0 ? (
-            <div
-              onClick={(e) => toggleFolder(subfolder.path, e)}
-              className="hover:bg-gray-200 rounded p-0.5"
-            >
-              {expandedFolders.has(subfolder.path) ? (
-                <ChevronDown size={16} />
-              ) : (
-                <ChevronRight size={16} />
-              )}
-            </div>
-          ) : (
-            <div className="w-[28px]" /> // Spacer for alignment
-          )}
-        </button>
-        {subfolder.subfolders.length > 0 && (
-          <div
-            className={`overflow-hidden transition-all duration-200 ease-in-out ${
-              expandedFolders.has(subfolder.path) ? "max-h-screen" : "max-h-0"
-            }`}
-          >
-            {renderSubfolders(subfolder.subfolders, padding + 16)}
-          </div>
-        )}
-      </div>
-    ));
+  const cancelNewFolder = () => {
+    setCreateFolder(false);
+    setNewFolderName("");
   };
 
   return (
-    <>
-      <Dialog open={isOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" onClick={onOpen}>
-            <UploadIcon width={16} height={16} />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogTrigger asChild>
+        <Button variant="outline" onClick={onOpen}>
+          <UploadIcon width={16} height={16} />
+          Subir archivos
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl w-full">
+        <DialogHeader
+          className="flex flex-col gap-1"
+          aria-describedby={undefined}
+        >
+          <DialogTitle className="text-xl text-primary-800">
             Subir archivos
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-xl w-full">
-          <DialogHeader
-            className="flex flex-col gap-1"
-            aria-describedby={undefined}
-          >
-            <DialogTitle className="text-xl text-primary-800">
-              Subir archivos
-            </DialogTitle>
-          </DialogHeader>
-          {isUploading && (
-            <LoadingStateModal
-              title="Subiendo archivos..."
-              description="Espere unos segundos mientras subimos los archivos."
-            />
-          )}
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+          </DialogTitle>
+        </DialogHeader>
+        {isUploading && (
+          <LoadingStateModal
+            title="Subiendo archivos..."
+            description="Espere unos segundos mientras subimos los archivos."
+          />
+        )}
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
                     ${
                       isDragActive
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-300 hover:border-gray-400"
                     }`}
-          >
-            <input {...getInputProps()} />
-            {isDragActive ? (
-              <p>Suelta los archivos aquí...</p>
-            ) : (
-              <div>
-                <p>
-                  Arrastra y suelta archivos aquí, o haz clic para seleccionar
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Formatos soportados: PNG, JPG, PDF, DOC, DOCX
-                </p>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col max-h-[130px] overflow-y-auto mt-4">
-            {files.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {files.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm truncate max-w-[200px]">
-                        {file.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ({(file.size / 1024).toFixed(1)} KB)
-                      </span>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      onClick={() => removeFile(index)}
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Carpeta destino</label>
-              <div className="space-y-1">
-                <button
-                  onClick={() => setSelectedFolder("/")}
-                  className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-                    selectedFolder === "/" ? "bg-blue-50 text-blue-600" : ""
-                  }`}
-                >
-                  <Folder size={16} />
-                  <span>Inicio</span>
-                </button>
-                <div className="flex flex-col max-h-[220px] overflow-y-auto ">
-                  {folderGroups.map(
-                    (group) =>
-                      group.path && (
-                        <div key={group.path} className="space-y-1 ps-6">
-                          <button
-                            onClick={() => setSelectedFolder(group.path)}
-                            className={`w-full px-3 py-2 text-left flex items-center gap-2 rounded hover:bg-gray-100 ${
-                              selectedFolder === group.path
-                                ? "bg-blue-50 text-blue-600"
-                                : ""
-                            }`}
-                          >
-                            <Folder size={16} />
-                            <span>{group.name}</span>
-                            <div
-                              onClick={(e) => toggleFolder(group.path, e)}
-                              className="hover:bg-gray-200 rounded p-0.5"
-                            >
-                              {group.subfolders.length > 0 &&
-                                (expandedFolders.has(group.path) ? (
-                                  <ChevronDown size={16} />
-                                ) : (
-                                  <ChevronRight size={16} />
-                                ))}
-                            </div>
-                          </button>
-                          {group.subfolders.length > 0 && (
-                            <div
-                              className={`overflow-hidden transition-all duration-200 ease-in-out ${
-                                expandedFolders.has(group.path)
-                                  ? "max-h-screen"
-                                  : "max-h-0"
-                              }`}
-                            >
-                              {renderSubfolders(group.subfolders)}
-                            </div>
-                          )}
-                        </div>
-                      )
-                  )}
-                </div>
-                <button
-                  onClick={() => setCreateFolder(true)}
-                  className="w-full px-3 py-2 text-left text-blue-600 hover:bg-gray-100 rounded"
-                >
-                  + Crear nueva carpeta
-                </button>
-              </div>
+        >
+          <input {...getInputProps()} />
+          {isDragActive ? (
+            <p>Suelta los archivos aquí...</p>
+          ) : (
+            <div>
+              <p>Arrastra y suelta archivos aquí, o haz clic para seleccionar</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Formatos soportados: PNG, JPG, PDF, DOC, DOCX
+              </p>
             </div>
+          )}
+        </div>
+        {files.length > 0 && (
+          <ul className="max-h-[130px] space-y-2 overflow-y-auto">
+            {files.map((file, index) => (
+              <li
+                key={`${file.name}-${index}`}
+                className="flex items-center justify-between rounded bg-gray-50 p-2"
+              >
+                <div className="flex min-w-0 items-center space-x-2">
+                  <span className="truncate text-sm">{file.name}</span>
+                  <span className="shrink-0 text-xs text-gray-500">
+                    ({(file.size / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-gray-500 hover:text-red-600"
+                  aria-label={`Quitar ${file.name}`}
+                  onClick={() => removeFile(index)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
 
-            {createFolder && (
-              <InputComponent
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Carpeta destino</Label>
+          <FolderPicker
+            tree={tree}
+            value={selectedFolder}
+            onChange={setSelectedFolder}
+            disabled={isUploading}
+          />
+
+          {createFolder ? (
+            <div className="space-y-2 rounded-lg border border-primary-100 bg-primary-50/40 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="new-folder-name" className="text-sm">
+                  Nueva carpeta en{" "}
+                  <span className="font-semibold">
+                    {describeFolderPath(selectedFolder)}
+                  </span>
+                </Label>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-gray-500"
+                  aria-label="Cancelar nueva carpeta"
+                  onClick={cancelNewFolder}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <Input
+                id="new-folder-name"
                 type="text"
-                name="newFolder"
-                label="Nueva carpeta"
-                placeholder="Nombre de la carpeta"
+                autoFocus
                 value={newFolderName}
                 disabled={isUploading}
-                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Nombre de la carpeta"
+                aria-invalid={showNewFolderError && Boolean(newFolderError)}
+                onChange={(event) => setNewFolderName(event.target.value)}
+                className="rounded-md bg-white"
               />
-            )}
-          </div>
-          <DialogFooter>
-            <Button color="danger" variant="destructive" onClick={handleClose}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpload} disabled={files.length === 0}>
-              {isUploading ? "Subiendo..." : "Subir archivos"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+              {showNewFolderError && newFolderError && (
+                <p className="text-sm text-red-600">{newFolderError}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <p className="min-w-0 truncate text-gray-600">
+                Se subirá en{" "}
+                <span className="font-medium text-gray-900">
+                  {describeFolderPath(selectedFolder)}
+                </span>
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 text-primary-700"
+                disabled={isUploading}
+                onClick={() => setCreateFolder(true)}
+              >
+                <FolderPlus className="h-4 w-4" />
+                Nueva carpeta
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button color="danger" variant="destructive" onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button onClick={handleUpload} disabled={!canUpload}>
+            {isUploading ? "Subiendo..." : "Subir archivos"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

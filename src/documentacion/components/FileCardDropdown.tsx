@@ -8,10 +8,13 @@ import {
   CloudAlert,
   DownloadCloud,
   Eye,
+  FolderInput,
   MoreVertical,
 } from "lucide-react";
+import { useState } from "react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import DeleteFileConfirmationModal from "./DeleteFileConfirmationModal";
+import { MoveFilesDialog } from "./MoveFilesDialog";
 import {
   Popover,
   PopoverTrigger,
@@ -109,6 +112,8 @@ export default function FileCardDropdown({
   handlePreviewFile: (file: DocumentacionFile) => void;
 }) {
   const isComercial = userData.role === "2";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   const handleDownload = async () => {
     try {
@@ -148,11 +153,12 @@ export default function FileCardDropdown({
   };
 
   return (
-    <Popover>
+    <Popover open={menuOpen} onOpenChange={setMenuOpen}>
       <PopoverTrigger asChild>
         <Button
           size="icon"
           variant="ghost"
+          aria-label={`Acciones de ${file.name}`}
           className="h-8 w-8 text-gray-500 hover:text-gray-700"
         >
           <MoreVertical className="h-4 w-4" />
@@ -180,12 +186,36 @@ export default function FileCardDropdown({
             Descargar
           </Button>
           {!isComercial && (
-            <div className="border-t border-gray-100 pt-1">
-              <DeleteFileConfirmationModal files={[file]} userData={userData} />
-            </div>
+            <>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setMoveOpen(true);
+                }}
+                className="w-full justify-start h-9 px-3 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+              >
+                <FolderInput className="h-4 w-4 mr-3" />
+                Mover a…
+              </Button>
+              <div className="border-t border-gray-100 pt-1">
+                <DeleteFileConfirmationModal
+                  files={[file]}
+                  userData={userData}
+                />
+              </div>
+            </>
           )}
         </div>
       </PopoverContent>
+      {!isComercial && (
+        <MoveFilesDialog
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          files={[file]}
+          userData={userData}
+        />
+      )}
     </Popover>
   );
 }

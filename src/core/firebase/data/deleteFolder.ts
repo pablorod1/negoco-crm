@@ -1,12 +1,15 @@
-﻿import { storage } from "@/core/firebase/firebaseConfig";
 import { resolveDocumentacionStorageFolderPaths } from "@/core/firebase/data/getFolders";
-import { deleteObject, listAll, ref } from "firebase/storage";
+import {
+  deleteStorageObjects,
+  listDocumentacionObjects,
+} from "./documentacionStorage";
 
 const buildStoragePath = (segments: Array<string | undefined>) =>
   segments
     .filter((segment): segment is string => Boolean(segment) && segment !== "/")
     .join("/");
 
+/** Borra la carpeta y todo lo que cuelga de ella, subcarpetas incluidas. */
 export const deleteFolderFromStorage = async (
   parent_folder: string,
   folderPath: string,
@@ -21,13 +24,8 @@ export const deleteFolderFromStorage = async (
       : [buildStoragePath([organization_id, parent_folder, folderPath])];
 
   for (const storageFolderPath of folderPaths) {
-    const files = await listAll(ref(storage, storageFolderPath));
-
-    await Promise.all(
-      files.items.map(async (file) => {
-        await deleteObject(file);
-      })
-    );
+    const objects = await listDocumentacionObjects(storageFolderPath);
+    await deleteStorageObjects(objects, "DELETE-FOLDER");
   }
 
   return {
