@@ -379,3 +379,23 @@ describe("useImaginaRates", () => {
     expect(result.current.loading).toBe(false);
   });
 });
+
+
+test("refreshes after synchronization while retaining the catalogue and historical selection context", async () => {
+  const next = deferred<Response>();
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ success: true, data: successfulData })))
+    .mockImplementationOnce(() => next.promise);
+  vi.stubGlobal("fetch", fetchMock);
+  const { result } = renderHook(() => useImaginaRates({ enabled: true, historicalRateId: "rate-1" }));
+  await waitFor(() => expect(result.current.data).toEqual(successfulData));
+  act(() => window.dispatchEvent(new Event("imagina-rates-synced")));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  expect(result.current.integration?.configured).toBe(true);
+  expect(result.current.rates).toEqual(successfulData.rates);
+  expect(result.current.loading).toBe(true);
+  await act(async () => next.resolve(new Response(JSON.stringify({ success: true, data: { ...successfulData, rates: [] } }))));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.rates).toEqual([]);
+  expect(fetchMock.mock.calls[1][0]).toContain("selected_rate_id=rate-1");
+});

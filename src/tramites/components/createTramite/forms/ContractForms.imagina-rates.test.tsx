@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -7,9 +7,19 @@ import ContractForm from "./ContractForm";
 import EditContractForm from "@/tramites/components/editTramite/contract/EditContractForm";
 
 const mocks = vi.hoisted(() => ({
+  fetchConsumptions: vi.fn(),
   showCustomToast: vi.fn(),
   useActiveEnergySuppliers: vi.fn(),
   useImaginaRates: vi.fn(),
+}));
+
+vi.mock("@/core/contexts/UserContext", () => ({
+  useUser: () => ({ userData: { role: "admin" } }),
+}));
+
+vi.mock("@/integrations/apolo-sips", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/integrations/apolo-sips")>()),
+  useApoloSips: () => ({ fetchConsumptions: mocks.fetchConsumptions }),
 }));
 
 vi.mock("@/comercializadoras/hooks/useActiveEnergySuppliers", () => ({
@@ -276,6 +286,19 @@ describe.each<FormKind>(["creation", "edition"])(
       mocks.useImaginaRates.mockReturnValue(configuredRates);
     });
 
+    test("shows the standard address search for other suppliers and preserves manual structured fields on save", () => {
+      const onSave = vi.fn();
+      const contract = { ...createContract(null), new_company: "other-id" };
+      mocks.useActiveEnergySuppliers.mockReturnValue(supplierHookResult([{ id: "other-id", name: "Otra comercializadora", active: true, logo: null, num_tramites: 0, num_files: 0, total_consumption: 0 }]));
+      renderForm(kind, contract, onSave);
+      expect(screen.getByRole("combobox", { name: /Dirección/ })).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Tipo de vía"), { target: { value: "Calle" } });
+      fireEvent.change(screen.getByLabelText("Calle"), { target: { value: "Mayor" } });
+      fireEvent.change(screen.getByLabelText("Número"), { target: { value: "12" } });
+      fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ address: "Calle Mayor 12", calle: "Mayor", numero_finca: "12", tipo_via_cnmc: "Calle" }));
+    });
+
     test("blocks an unresolved supplier id while suppliers are loading", () => {
       mocks.useActiveEnergySuppliers.mockReturnValue(
         supplierHookResult([], true),
@@ -479,3 +502,34 @@ describe.each<FormKind>(["creation", "edition"])(
     });
   },
 );
+
+
+describe("creation with SIPS and Imagina", () => {
+  test("waits for SIPS and keeps saving blocked until Imagina rates finish loading", async () => {
+    let finishConsumption!: (value: null) => void;
+    mocks.fetchConsumptions.mockReturnValue(new Promise<null>((resolve) => {
+      finishConsumption = resolve;
+    }));
+    mocks.useActiveEnergySuppliers.mockReturnValue(supplierHookResult());
+    mocks.useImaginaRates.mockReturnValue(configuredRates);
+    const contract = { ...createContract("rate-1"), CUPS: "ES0222120028021251AW" };
+    const onSave = vi.fn();
+    const view = renderForm("creation", contract, onSave);
+
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    expect(mocks.fetchConsumptions).toHaveBeenCalledWith({
+      cups: contract.CUPS,
+      tipoSuministro: "ELECTRICIDAD",
+    });
+
+    mocks.useImaginaRates.mockReturnValue({ ...configuredRates, loading: true });
+    await act(async () => finishConsumption(null));
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+
+    mocks.useImaginaRates.mockReturnValue(configuredRates);
+    view.rerender(<ContractForm contract={contract} tramite_id="tramite-1" onCreateContract={onSave} onCancel={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ rate_id: "rate-1" }));
+  });
+});

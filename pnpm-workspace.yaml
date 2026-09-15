@@ -18,3 +18,4 @@ minimumReleaseAgeExclude:
   - '@better-auth/prisma-adapter@1.6.14'
   - '@better-auth/telemetry@1.6.14'
   - better-auth@1.6.14
+  - lucide-react@1.46.0

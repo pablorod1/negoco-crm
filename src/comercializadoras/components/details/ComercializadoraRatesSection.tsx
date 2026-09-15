@@ -1,5 +1,6 @@
 "use client";
 
+import ImaginaRatesSync from "../ImaginaRatesSync";
 import { Database, Tag } from "lucide-react";
 
 import type { ImaginaRate } from "@/comercializadoras/types";
@@ -59,6 +60,9 @@ export function ComercializadoraRatesSection({
         </CardHeader>
 
         <CardContent className="p-0">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <ImaginaRatesSync rates={rates} />
+          </div>
           {rates.length === 0 ? (
             <div className="flex flex-col items-center px-6 py-14 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">

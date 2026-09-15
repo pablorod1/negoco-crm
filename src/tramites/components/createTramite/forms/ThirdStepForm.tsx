@@ -24,6 +24,7 @@ import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commiss
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 import { useCrmSettings } from "@/crm-settings/hooks/useCrmSettings";
 import { Label } from "@/core/components/ui/label";
+import { Switch } from "@/core/components/ui/switch";
 import {
   Select,
   SelectContent,

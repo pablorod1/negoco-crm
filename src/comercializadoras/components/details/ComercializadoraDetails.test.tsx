@@ -148,8 +148,8 @@ describe("ComercializadoraDetails rates view", () => {
   test("keeps the rates tab hidden while the catalog is loading", () => {
     mockUseImaginaRates.mockReturnValue({
       data: null,
-      integration: { enabled: true, configured: true },
-      rates: [imaginaRate],
+      integration: null,
+      rates: [],
       unavailableSelectedRate: null,
       loading: true,
       error: null,
@@ -161,6 +161,17 @@ describe("ComercializadoraDetails rates view", () => {
       screen.queryByRole("button", { name: "Tarifas" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId("rates-section")).not.toBeInTheDocument();
+  });
+
+  test("keeps the rates view open while refreshing a synchronized catalogue", () => {
+    const { rerender } = render(<ComercializadoraDetails />);
+    fireEvent.click(screen.getByRole("button", { name: "Tarifas" }));
+    mockUseImaginaRates.mockReturnValue({
+      integration: { enabled: true, configured: true },
+      rates: [imaginaRate], loading: true, error: null,
+    });
+    rerender(<ComercializadoraDetails />);
+    expect(screen.getByTestId("rates-section")).toBeInTheDocument();
   });
 
   test("does not request or show Imagina rates for another supplier", () => {

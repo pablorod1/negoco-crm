@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { normalizeCandidate } from "@/core/addresses/cartociudad";
 
 const SearchSchema = z.object({
   q: z.string().trim().min(3),
@@ -11,42 +12,6 @@ const SearchSchema = z.object({
 
 const CARTOCIUDAD_CANDIDATES_URL =
   "https://www.cartociudad.es/geocoder/api/geocoder/candidates";
-
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const normalizeCandidate = (candidate: Record<string, unknown>) => {
-  const tipVia = typeof candidate.tip_via === "string" ? candidate.tip_via : "";
-  const escapedTipVia = escapeRegExp(tipVia);
-  const portalNumber =
-    typeof candidate.portalNumber === "string"
-      ? candidate.portalNumber
-      : typeof candidate.portalNumber === "number"
-        ? String(candidate.portalNumber)
-        : "";
-  const extension =
-    typeof candidate.extension === "string" ? candidate.extension : "";
-  const escapedPortal = escapeRegExp(portalNumber);
-  const escapedExtension = escapeRegExp(extension);
-
-  return {
-    id: String(candidate.id || candidate.address || crypto.randomUUID()),
-    type: String(candidate.type || ""),
-    label: String(candidate.address || ""),
-    tipo_via_cnmc: tipVia,
-    calle: String(candidate.address || "")
-      .replace(new RegExp(`^${escapedTipVia}\\s+`, "i"), "")
-      .replace(new RegExp(`\\s+${escapedPortal}${escapedExtension}$`, "i"), "")
-      .trim(),
-    numero_finca: [portalNumber, extension].filter(Boolean).join(""),
-    postal_code: String(candidate.postalCode || ""),
-    city: String(candidate.muni || candidate.poblacion || ""),
-    province: String(candidate.province || ""),
-    lat: candidate.lat == null ? null : Number(candidate.lat),
-    lng: candidate.lng == null ? null : Number(candidate.lng),
-    raw: candidate,
-  };
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,6 +39,7 @@ export async function GET(request: NextRequest) {
     query.searchParams.set("q", parsed.data.q);
     query.searchParams.set("limit", String(parsed.data.limit));
     query.searchParams.set("countrycodes", "es");
+    query.searchParams.set("no_process", "municipio,provincia,comunidad autonoma,poblacion,toponimo,expendeduria,punto_recarga_electrica,ngbe");
     if (parsed.data.postal_code) {
       query.searchParams.set("cod_postal_filter", parsed.data.postal_code);
     }
@@ -111,6 +77,9 @@ export async function GET(request: NextRequest) {
       data: candidates
         .filter((candidate: unknown): candidate is Record<string, unknown> =>
           Boolean(candidate && typeof candidate === "object"),
+        )
+        .filter((candidate: Record<string, unknown>) =>
+          ["portal", "callejero", "carretera", "carreteras"].includes(String(candidate.type)),
         )
         .map(normalizeCandidate),
     });

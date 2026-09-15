@@ -52,14 +52,12 @@ export default function ComercializadoraDetails() {
   const {
     integration,
     rates,
-    loading: ratesLoading,
     error: ratesError,
   } = useImaginaRates({ enabled: isImaginaSupplier });
   const { currentView, setCurrentView, resetToMain } =
     useComercializadoraViewNavigation();
   const showRates =
     isImaginaSupplier &&
-    !ratesLoading &&
     !ratesError &&
     integration?.configured === true;
 

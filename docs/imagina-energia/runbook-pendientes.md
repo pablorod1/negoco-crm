@@ -13,9 +13,18 @@ Este documento separa las tareas pendientes en dos bloques:
 
 Archivo:
 
-- `docs/migrations/008_imagina_energia_integration.sql`
+- `docs/migrations/009_imagina_energia_integration.sql`
 
-Pasos:
+Ejecución comprobable por tenant (sin cambios por defecto):
+
+```sh
+pnpm exec tsx src/scripts/migrations/run-imagina-energia.ts --tenant=TEST
+pnpm exec tsx src/scripts/migrations/run-imagina-energia.ts --tenant=TEST --apply
+```
+
+El script usa las variables `NEXT_TURSO_DB_URL_<TENANT>` y `NEXT_TURSO_DB_AUTH_TOKEN_<TENANT>`, comprueba las columnas existentes y aplica únicamente las sentencias pendientes en una transacción. Se puede repetir para completar migraciones parciales sin sobrescribir datos. Sustituir `TEST` por el tenant correspondiente.
+
+Pasos de ejecución manual del SQL:
 
 1. Revisar `PRAGMA table_info(...)` antes de ejecutar cada `ALTER TABLE`, porque SQLite/libSQL no soporta `ADD COLUMN IF NOT EXISTS` de forma portable.
 2. Ejecutar los `CREATE TABLE IF NOT EXISTS`.
@@ -225,6 +234,8 @@ El backend exige `contracts.rate_id`. La experiencia completa permite:
 - mostrar `alias_externo`, `codigo_atr`, `descripcion`
 - evitar seleccionar tarifas no sincronizadas o deshabilitadas
 
-Nota de cierre: la UI incluye el selector de tarifa en contrato y una pestana de
-solo lectura en el detalle de Imagina Energia, visible unicamente cuando la
-integracion del tenant esta configurada.
+La UI permite sincronizar desde el selector del contrato y desde la pestaña de tarifas de Imagina Energía, cuando la integración está configurada. Muestra la última fecha disponible y un aviso si el catálogo está vacío, sin abandonar el formulario.
+
+La sincronización mediante `POST /api/v2/integrations/imagina-energia/tarifas` actualiza el catálogo en una transacción, conserva los identificadores internos y desactiva las tarifas retiradas sin borrar sus referencias históricas. Devuelve recuentos de tarifas nuevas, actualizadas y retiradas. `GET` se conserva para los clientes existentes.
+
+No hay detección automática de cambios en origen ni sincronización programada. La fecha de descarga no garantiza vigencia; se debe resincronizar para comprobar novedades.

@@ -123,6 +123,23 @@ describe("Imagina contract mapper", () => {
     }
   });
 
+  test("uses C1 defaults without optional fields and preserves explicit changes", () => {
+    const input = { tenant: "tenant", webhookRootDomain: "negoco.test", tramite, client: residentialClient, contract, rate };
+    const defaults = validateAndBuildImaginaContractPayload(input);
+    expect(defaults.ok).toBe(true);
+    if (defaults.ok) {
+      expect(defaults.payload.mismo_titular).toBe(true);
+      expect(defaults.payload.misma_potencia).toBe(true);
+      expect(defaults.payload).not.toHaveProperty("tipo_autoconsumo_cnmc");
+    }
+    const changed = validateAndBuildImaginaContractPayload({ ...input, contract: { ...contract, mismo_titular: false, misma_potencia: false } });
+    expect(changed.ok).toBe(true);
+    if (changed.ok) {
+      expect(changed.payload.mismo_titular).toBe(false);
+      expect(changed.payload.misma_potencia).toBe(false);
+    }
+  });
+
   test("derives new supply flag from contract type", () => {
     const result = validateAndBuildImaginaContractPayload({
       tenant: "tenant",

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 
 import type {
   ImaginaRate,
@@ -50,13 +50,18 @@ const isImaginaRatesListData = (
     isImaginaRate(value.unavailable_selected_rate));
 
 interface ImaginaRatesRequest {
+  revision: number;
   requestKey: string;
   generation: number;
 }
 
 type ImaginaRatesRequestState =
   | { status: "idle" }
-  | { status: "loading"; request: ImaginaRatesRequest }
+  | {
+      status: "loading";
+      request: ImaginaRatesRequest;
+      data?: ImaginaRatesListData;
+    }
   | {
       status: "success";
       request: ImaginaRatesRequest;
@@ -87,7 +92,17 @@ const requestStateReducer = (
 ): ImaginaRatesRequestState => {
   switch (action.type) {
     case "started":
-      return { status: "loading", request: action.request };
+      return {
+        status: "loading",
+        request: action.request,
+        data:
+          state.status !== "idle" &&
+          state.request.requestKey === action.request.requestKey &&
+          state.request.revision !== action.request.revision &&
+          "data" in state
+            ? state.data
+            : undefined,
+      };
     case "succeeded":
       return isCurrentRequest(state, action.request)
         ? {
@@ -113,6 +128,13 @@ export function useImaginaRates({
 }: UseImaginaRatesOptions) {
   const [state, dispatch] = useReducer(requestStateReducer, { status: "idle" });
   const generationRef = useRef(0);
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    const refresh = () => setRevision((value) => value + 1);
+    window.addEventListener("imagina-rates-synced", refresh);
+    return () => window.removeEventListener("imagina-rates-synced", refresh);
+  }, [enabled]);
   const requestKey = historicalRateId
     ? `${ENDPOINT}?${new URLSearchParams({ selected_rate_id: historicalRateId })}`
     : ENDPOINT;
@@ -123,6 +145,7 @@ export function useImaginaRates({
     const controller = new AbortController();
     const request = {
       requestKey,
+      revision,
       generation: generationRef.current + 1,
     };
     generationRef.current = request.generation;
@@ -143,11 +166,7 @@ export function useImaginaRates({
             ? result.error
             : null;
 
-        if (
-          !response.ok ||
-          !isRecord(result) ||
-          result.success !== true
-        ) {
+        if (!response.ok || !isRecord(result) || result.success !== true) {
           errorMessage = apiError ?? DEFAULT_ERROR;
           throw new Error(errorMessage);
         }
@@ -168,13 +187,16 @@ export function useImaginaRates({
     void fetchRates();
 
     return () => controller.abort();
-  }, [enabled, requestKey]);
+  }, [enabled, requestKey, revision]);
 
   const currentState =
-    enabled && state.status !== "idle" && state.request.requestKey === requestKey
+    enabled &&
+    state.status !== "idle" &&
+    state.request.requestKey === requestKey
       ? state
       : null;
-  const data = currentState?.status === "success" ? currentState.data : null;
+  const data =
+    currentState && "data" in currentState ? (currentState.data ?? null) : null;
 
   return {
     data,

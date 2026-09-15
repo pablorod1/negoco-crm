@@ -1,5 +1,6 @@
 ﻿import { createClient } from "@libsql/client";
 import { NextRequest } from "next/server";
+import { getTursoEnvNames } from "@/core/branding/tenant";
 
 export const getTursoClient = (req: NextRequest) => {
   // Obtener el host desde la cabecera "host"
@@ -11,15 +12,8 @@ export const getTursoClient = (req: NextRequest) => {
   // Extraer el subdominio (client1, client2, etc.)
   const subdomain = host.split(".")[0];
 
-  // Construir el nombre de la variable de entorno
-  const tursoUrlEnv =
-    subdomain.includes("localhost")
-      ? "NEXT_TURSO_DB_URL_TEST"
-      : `NEXT_TURSO_DB_URL_${subdomain.toUpperCase()}`;
-  const tursoAuthTokenEnv =
-    subdomain.includes("localhost")
-      ? "NEXT_TURSO_DB_AUTH_TOKEN_TEST"
-      : `NEXT_TURSO_DB_AUTH_TOKEN_${subdomain.toUpperCase()}`;
+  const { url: tursoUrlEnv, authToken: tursoAuthTokenEnv } =
+    getTursoEnvNames(subdomain.includes("localhost") ? "localhost" : subdomain);
 
   // Obtener las variables de entorno dinámicas
   const tursoUrl = process.env[tursoUrlEnv];
@@ -37,9 +31,9 @@ export const getTursoClient = (req: NextRequest) => {
 };
 
 export const getTursoClientByTenant = (tenant: string) => {
-  const tursoUrl = process.env[`NEXT_TURSO_DB_URL_${tenant.toUpperCase()}`];
-  const tursoAuth =
-    process.env[`NEXT_TURSO_DB_AUTH_TOKEN_${tenant.toUpperCase()}`];
+  const envNames = getTursoEnvNames(tenant);
+  const tursoUrl = process.env[envNames.url];
+  const tursoAuth = process.env[envNames.authToken];
 
   if (!tursoUrl || !tursoAuth) {
     throw new Error(`Missing Turso configuration for tenant: ${tenant}`);

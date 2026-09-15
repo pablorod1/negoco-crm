@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import type { Client } from "@libsql/client";
 import { readImaginaEnergiaConfig } from "./config";
 import { ImaginaEnergiaClient } from "./client";
@@ -104,7 +105,7 @@ export const getImaginaIntegrationStatus = async (
 
 export const syncImaginaTarifas = async (
   context: ServiceContext,
-): Promise<ServiceResult<{ count: number; requestId?: string | number }>> => {
+): Promise<ServiceResult<{ count: number; added: number; updated: number; deactivated: number; requestId?: string | number }>> => {
   const channelId = await requireChannel(context.db);
   const supplier = await getImaginaComercializadora(context.db);
   if (!supplier) {
@@ -124,9 +125,11 @@ export const syncImaginaTarifas = async (
   const parsed = ImaginaTarifasResponseSchema.parse(response.data);
   const now = new Date().toISOString();
 
-  for (const tariff of parsed.content) {
+  const ids = new Set(parsed.content.map((tariff) => String(tariff.id_tarifa_precios)));
+  if (ids.size !== parsed.content.length) throw new Error("Imagina ha devuelto identificadores de tarifa duplicados");
+  const upserts = parsed.content.map((tariff) => {
     const externalRateId = String(tariff.id_tarifa_precios);
-    await context.db.execute({
+    return {
       sql: `INSERT INTO comercializadora_rates (
               id, name, price, type, created_at, updated_at, comercializadora_id,
               provider, external_rate_id, alias_externo, codigo_atr, descripcion,
@@ -160,13 +163,43 @@ export const syncImaginaTarifas = async (
         JSON.stringify(tariff),
         now,
       ],
+    };
+  });
+
+  const transaction = await context.db.transaction("write");
+  let added = 0;
+  let updated = 0;
+  let deactivated = 0;
+  try {
+    const previous = await transaction.execute({
+      sql: "SELECT external_rate_id, raw, enabled FROM comercializadora_rates WHERE comercializadora_id = ? AND provider = ?",
+      args: [String(supplier.id), IMAGINA_PROVIDER],
     });
+    const byId = new Map(previous.rows.map((row) => [String(row.external_rate_id), row]));
+    for (const tariff of parsed.content) {
+      const before = byId.get(String(tariff.id_tarifa_precios));
+      if (!before) added++;
+      else if (!before.enabled || !isDeepStrictEqual(JSON.parse(String(before.raw || "null")), tariff)) updated++;
+    }
+    deactivated = previous.rows.filter((row) => Boolean(row.enabled) && !ids.has(String(row.external_rate_id))).length;
+    // Retain IDs for existing contracts, and publish the entire catalogue atomically.
+    await transaction.batch([
+      { sql: "UPDATE comercializadora_rates SET enabled = 0 WHERE comercializadora_id = ? AND provider = ?", args: [String(supplier.id), IMAGINA_PROVIDER] },
+      ...upserts,
+    ]);
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  } finally {
+    transaction.close();
   }
 
   return {
     success: true,
     data: {
       count: parsed.content.length,
+      added, updated, deactivated,
       requestId: parsed.request_id,
     },
   };

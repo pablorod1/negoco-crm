@@ -62,7 +62,7 @@ describe("ComercializadoraRatesSection", () => {
       screen.getByText("Sin fecha de sincronización"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/€\/kWh/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sincronizar tarifas" })).toBeInTheDocument();
   });
 
   test("associates every rate value with a semantic description term", () => {
@@ -123,6 +123,6 @@ describe("ComercializadoraRatesSection", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("0 tarifas")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sincronizar tarifas" })).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { GAS_CONSUMPTION_COLUMNS } from "./columns.ts";
 import { parseCsv } from "./csv.ts";
 import { normalizeApoloSipsCsv } from "./normalize.ts";

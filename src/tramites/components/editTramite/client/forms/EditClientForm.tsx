@@ -45,12 +45,12 @@ const hasRequiredText = (value: unknown): value is string =>
 const hasValidSigner = (signer?: SignerDB): signer is SignerDB =>
   Boolean(
     signer &&
-      hasRequiredText(signer.id) &&
-      hasRequiredText(signer.name) &&
-      hasRequiredText(signer.last_name) &&
-      hasRequiredText(signer.email) &&
-      hasRequiredText(signer.phone) &&
-      hasRequiredText(signer.document_number),
+    hasRequiredText(signer.id) &&
+    hasRequiredText(signer.name) &&
+    hasRequiredText(signer.last_name) &&
+    hasRequiredText(signer.email) &&
+    hasRequiredText(signer.phone) &&
+    hasRequiredText(signer.document_number),
   );
 
 interface Props {
@@ -327,7 +327,7 @@ export default function EditClientForm({
 
   return (
     <div className="h-full">
-      <div className="flex flex-col gap-4 w-full">
+      <div className="flex flex-col gap-4 w-full h-full">
         <div className="flex items-stretch gap-4">
           <InputComponent
             name="name"
@@ -436,14 +436,14 @@ export default function EditClientForm({
         />
         {(formData.type === "Empresa" ||
           formData.type === "Comunidad de Propietarios") && (
-          <InputComponent
-            name="cnae"
-            label="CNAE"
-            value={formData.cnae || ""}
-            onChange={handleFieldChange}
-            type="text"
-          />
-        )}
+            <InputComponent
+              name="cnae"
+              label="CNAE"
+              value={formData.cnae || ""}
+              onChange={handleFieldChange}
+              type="text"
+            />
+          )}
         <div className="flex items-stretch gap-4">
           <SelectComponent
             name="tipo_via_cnmc"

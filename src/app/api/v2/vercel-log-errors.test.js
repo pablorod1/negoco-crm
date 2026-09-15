@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 let getTursoClientCalls = 0;
 
 const mocks = vi.hoisted(() => ({
+  validateUserSession: vi.fn(),
   executeImpl: undefined,
   getSubcomercialesImpl: undefined,
   execute: vi.fn((statement) => mocks.executeImpl(statement)),
@@ -29,6 +30,10 @@ vi.mock("@/core/libsql/users/getSubcomerciales", () => ({
 }));
 vi.mock("/src/core/libsql/users/getSubcomerciales.ts", () => ({
   getSubcomerciales: mocks.getSubcomerciales,
+}));
+
+vi.mock("/src/core/auth/session-utils.ts", () => ({
+  validateUserSession: mocks.validateUserSession,
 }));
 
 const contractsRoute = await import("./contracts/route.ts");
@@ -72,6 +77,7 @@ const withMutedWarn = async (callback) => {
 };
 
 beforeEach(() => {
+  mocks.validateUserSession.mockResolvedValue({ success: false });
   mocks.execute.mockClear();
   mocks.getTursoClient.mockClear();
   getTursoClientCalls = 0;
@@ -91,7 +97,7 @@ describe("Vercel log error routes", () => {
     expect(getTursoClientCalls).toBe(0);
   });
 
-  test("comparisons rejects missing user context with 400 and no warning log", async () => {
+  test("comparisons rejects unauthenticated requests with 401 and no warning log", async () => {
     const response = await withMutedWarn(async (warn) => {
       const res = await comparisonsRoute.GET(
         new Request(
@@ -103,8 +109,8 @@ describe("Vercel log error routes", () => {
     });
 
     const body = await response.json();
-    expect(response.status).toBe(400);
-    expect(body).toEqual({ success: false, error: "Missing parameters" });
+    expect(response.status).toBe(401);
+    expect(body).toEqual({ success: false, error: "Unauthorized" });
     expect(getTursoClientCalls).toBe(0);
   });
 

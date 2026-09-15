@@ -47,5 +47,5 @@ test("does not render a rate selector or notice for an unconfigured tenant", () 
   expect(screen.queryByText(/Tarifa Imagina/i)).not.toBeInTheDocument();
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  expect(screen.getByText("Canal firma")).toBeInTheDocument();
+  expect(screen.getByText("Canal de firma")).toBeInTheDocument();
 });

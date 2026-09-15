@@ -21,6 +21,12 @@ import { useImaginaRates } from "@/comercializadoras/hooks/useImaginaRates";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { ComparativaVM } from "@/comparativas/types";
 import { useUser } from "@/core/contexts/UserContext";
+import ContractAddressFields from "./ContractAddressFields";
+import ImaginaContractFields from "./ImaginaContractFields";
+import {
+  resolveSupplierSelection,
+  validateImaginaRate,
+} from "@/tramites/utils/validation/create-contract/rate-validation";
 import {
   isValidApoloSipsCups,
   sanitizeCups,
@@ -104,6 +110,9 @@ export default function ContractForm({
       createInitialApoloConsumptionState(contract, comparativa),
     );
   const isConsumptionReadOnly = userData?.role === "2";
+  const [historicalRateId] = React.useState(
+    () => contract?.rate_id?.trim() || undefined,
+  );
   const apoloConsumptionStatus = apoloConsumption.status;
   const apoloConsumptionCups = apoloConsumption.cups;
   const apoloConsumptionRequestId = apoloConsumption.requestId;
@@ -116,6 +125,18 @@ export default function ContractForm({
     loading: suppliersLoading,
     error: suppliersError,
   } = useActiveEnergySuppliers();
+
+  const supplierResolution = resolveSupplierSelection(
+    formData.new_company,
+    activeSuppliers,
+    suppliersLoading,
+    suppliersError,
+  );
+  const isImaginaContract = supplierResolution.isImagina;
+  const imaginaRates = useImaginaRates({
+    enabled: isImaginaContract,
+    historicalRateId,
+  });
 
   // Convert suppliers to dropdown format
   const supplierOptions = React.useMemo(
@@ -396,7 +417,7 @@ export default function ContractForm({
   return (
     <>
       <form>
-        <ScrollArea className="w-full h-full max-h-[calc(100vh-400px)]">
+        <ScrollArea className="w-full h-full max-h-[calc(100vh-400px)] overflow-y-auto">
           <div className="flex flex-col gap-y-4 w-full px-4">
             <div className="flex items-stretch gap-4 w-full">
               <SelectComponent
@@ -418,6 +439,22 @@ export default function ContractForm({
                 selectedKey={formData.plan}
               />
             </div>
+            <ContractAddressFields
+              formData={formData}
+              error={errors.address}
+              onChange={(fields) => {
+                setFormData((prev) => ({ ...prev, ...fields }));
+                setErrors((prev) => ({
+                  ...prev,
+                  ...Object.fromEntries(
+                    Object.entries(fields).map(([name, value]) => [
+                      name,
+                      validateField(String(value ?? "")).errorMessage || "",
+                    ]),
+                  ),
+                }));
+              }}
+            />
             <div className="flex items-stretch gap-4 w-full">
               <InputComponent
                 name="province"
@@ -447,15 +484,6 @@ export default function ContractForm({
                 isRequired
               />
             </div>
-            <InputComponent
-              name="address"
-              label="Dirección"
-              onChange={handleFieldChange}
-              value={formData.address}
-              errors={errors.address}
-              type="text"
-              isRequired
-            />
             <div className="flex items-stretch gap-4 w-full">
               <InputComponent
                 name="CUPS"
@@ -588,6 +616,7 @@ export default function ContractForm({
       <ButtonGroupComponent
         loading={loading}
         submitDisabled={
+          isCalculatingConsumption ||
           supplierResolution.blocked ||
           (isImaginaContract &&
             (imaginaRates.loading ||
@@ -597,7 +626,6 @@ export default function ContractForm({
         onSubmit={handleAddContract}
         onCancel={onCancel}
         lastStep={lastStep}
-        submitDisabled={isCalculatingConsumption}
         submitLabel={
           isCalculatingConsumption ? "Calculando consumo..." : undefined
         }

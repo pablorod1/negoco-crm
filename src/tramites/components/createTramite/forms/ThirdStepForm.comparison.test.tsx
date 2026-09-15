@@ -4,7 +4,7 @@ import type { AnchorHTMLAttributes } from "react";
 import type { ComparativaVM } from "@/comparativas/types";
 import type { User } from "@/core/types";
 import type { TramiteDB } from "@/tramites/types";
-import { createEmptyClientDB, createEmptyTramiteDB } from "@/tramites/utils/tramite.factories";
+import { createEmptyClientDB, createEmptyContractDB, createEmptyTramiteDB } from "@/tramites/utils/tramite.factories";
 import ThirdStepForm from "./ThirdStepForm";
 import ReviewStep from "./ReviewStep";
 
@@ -60,4 +60,26 @@ describe("source comparison contract wizard", () => {
     render(<ReviewStep fromComparison tramite={createEmptyTramiteDB(user, "fijo", comparison)} client={createEmptyClientDB(comparison)} contracts={[]} documents={[]} selectedExistingFiles={[]} onSubmit={vi.fn()} onBack={vi.fn()} onCancel={vi.fn()} loading={false} userData={user} />);
     expect(screen.getAllByText(/0,00/).length).toBeGreaterThanOrEqual(2);
   });
+});
+
+
+test("verified Imagina contracts expose the send switch and select the contract", () => {
+  const contract = { ...createEmptyContractDB(), id: "imagina-contract", new_company: "Imagina Energía" };
+  const setSendToImagina = vi.fn();
+  const setImaginaContractIdToSend = vi.fn();
+  render(<ThirdStepForm
+    tramite={{ ...createEmptyTramiteDB(user), status: "Verificado" }}
+    userData={user}
+    setTramite={vi.fn()}
+    contracts={[contract]}
+    setContracts={vi.fn()}
+    onBack={vi.fn()}
+    onCancel={vi.fn()}
+    onSubmit={vi.fn()}
+    setSendToImagina={setSendToImagina}
+    setImaginaContractIdToSend={setImaginaContractIdToSend}
+  />);
+  fireEvent.click(screen.getByRole("switch", { name: "Enviar contrato a Imagina" }));
+  expect(setSendToImagina).toHaveBeenCalledWith(true);
+  expect(setImaginaContractIdToSend).toHaveBeenCalledWith("imagina-contract");
 });

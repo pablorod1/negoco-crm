@@ -26,3 +26,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Synchronization mutates the local catalogue; UI clients use POST.
+export const POST = GET;

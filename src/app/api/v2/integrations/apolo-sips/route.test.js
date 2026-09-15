@@ -1,17 +1,17 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, vi, test } from "vitest";
 import {
   ELECTRICITY_CONSUMPTION_COLUMNS,
   ELECTRICITY_PS_COLUMNS,
   GAS_CONSUMPTION_COLUMNS,
   GAS_PS_COLUMNS,
   NUMERIC_APOLO_SIPS_COLUMNS,
-} from "@/integrations/apolo-sips/columns.ts";
+} from "../../../../../integrations/apolo-sips/columns.ts";
 
-let validateUserSessionImpl;
+const { validateUserSession } = vi.hoisted(() => ({
+  validateUserSession: vi.fn(),
+}));
 
-const validateUserSession = mock((request) => validateUserSessionImpl(request));
-
-mock.module("@/core/auth/session-utils", () => ({
+vi.mock("/src/core/auth/session-utils.ts", () => ({
   validateUserSession,
 }));
 
@@ -73,9 +73,9 @@ const columnsForPayload = (payload) => {
 
 beforeEach(() => {
   validateUserSession.mockClear();
-  validateUserSessionImpl = async () => ({ success: true, user: authenticatedUser });
+  validateUserSession.mockResolvedValue({ success: true, user: authenticatedUser });
   process.env.APOLO_SIPS_API_KEY = "test-secret-key";
-  globalThis.fetch = mock(async (_url, init) => {
+  globalThis.fetch = vi.fn(async (_url, init) => {
     const payload = JSON.parse(init.body);
     return new Response(csvFor(columnsForPayload(payload), false), {
       status: 200,
@@ -86,7 +86,7 @@ beforeEach(() => {
 
 describe("POST /api/v2/integrations/apolo-sips", () => {
   test("rejects requests without an authenticated session", async () => {
-    validateUserSessionImpl = async () => ({ success: false });
+    validateUserSession.mockResolvedValue({ success: false });
 
     const response = await route.POST(
       request({
@@ -141,7 +141,7 @@ describe("POST /api/v2/integrations/apolo-sips", () => {
     let resolveFirst;
     let firstResponsePending = true;
 
-    globalThis.fetch = mock((_url, init) => {
+    globalThis.fetch = vi.fn((_url, init) => {
       const payload = JSON.parse(init.body);
 
       if (payload.Procedimiento === "PS") {

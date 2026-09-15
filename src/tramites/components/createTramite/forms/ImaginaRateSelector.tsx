@@ -1,5 +1,6 @@
 "use client";
 
+import ImaginaRatesSync from "@/comercializadoras/components/ImaginaRatesSync";
 import type { ImaginaRate } from "@/comercializadoras/types";
 import { Label } from "@/core/components/ui/label";
 import {
@@ -119,7 +120,7 @@ export default function ImaginaRateSelector({
           id="rate_id"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? "rate_id-error" : undefined}
-          className="h-auto min-h-10 rounded-xl py-2"
+          className="capitalize"
         >
           <SelectValue placeholder="Seleccione una tarifa">
             {selectedOption ? (
@@ -184,6 +185,7 @@ export default function ImaginaRateSelector({
           ) : null}
         </SelectContent>
       </Select>
+      <ImaginaRatesSync rates={rates} />
       {error ? (
         <p id="rate_id-error" className="ms-1 text-sm text-red-600">
           {error}

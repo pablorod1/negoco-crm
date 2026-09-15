@@ -19,6 +19,7 @@ import {
 import { Label } from "@/core/components/ui/label";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useImaginaRates } from "@/comercializadoras/hooks/useImaginaRates";
+import ContractAddressFields from "../../createTramite/forms/ContractAddressFields";
 import ImaginaContractFields from "../../createTramite/forms/ImaginaContractFields";
 import {
   resolveSupplierSelection,
@@ -213,6 +214,22 @@ export default function EditContractForm({
               selectedKey={formData.plan}
             />
           </div>
+          <ContractAddressFields
+            formData={formData}
+            error={errors.address}
+            onChange={(fields) => {
+              setFormData((prev) => ({ ...prev, ...fields }));
+              setErrors((prev) => ({
+                ...prev,
+                ...Object.fromEntries(
+                  Object.entries(fields).map(([name, value]) => [
+                    name,
+                    validateField(String(value ?? "")).errorMessage || "",
+                  ]),
+                ),
+              }));
+            }}
+          />
           <div className="flex items-stretch gap-4 w-full">
             <InputComponent
               name="province"
@@ -242,16 +259,6 @@ export default function EditContractForm({
               value={formData.postal_code}
             />
           </div>
-          <InputComponent
-            name="address"
-            label="Dirección"
-            onChange={handleFieldChange}
-            errors={errors.address}
-            type="text"
-            isRequired
-            value={formData.address}
-          />
-
           <div className="flex items-stretch gap-4 w-full">
             <InputComponent
               name="CUPS"

@@ -48,7 +48,7 @@ const PUBLIC_REVIEW = {
   group: "Comparativas",
   label: "Revisar estudios con IA",
   description:
-    "Permite validar el resultado recibido y completar el estudio.",
+    "Permite completar la revisión de estudios con IA. Los comerciales no pueden modificar comisiones y necesitan importes ya asignados; admin y backoffice pueden resolver los casos pendientes.",
   defaults: {
     admin: true,
     "1": true,

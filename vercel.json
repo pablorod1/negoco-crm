@@ -4,5 +4,7 @@
       "path": "/api/cron/tramites/process-to-active",
       "schedule": "*/5 * * * *"
     }
-  ]
+  ],
+  "installCommand": "npx --yes pnpm@11.5.0 install --frozen-lockfile",
+  "buildCommand": "pnpm run build"
 }
