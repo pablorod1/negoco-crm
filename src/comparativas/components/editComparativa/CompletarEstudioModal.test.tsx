@@ -58,7 +58,8 @@ describe("AI study review values", () => {
 
   test("role2 sees only sales readonly and submits no commission payload", async () => {
     render(<CompletarEstudioModal {...props} userData={{ ...user, role: "2" }} comparativa={{ ...comparison, comision: { fijo: null, indexado: null }, has_complete_commissions: { fijo: true, indexado: false } }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Asignar Comercializadora y Comisiones" }));
+    fireEvent.click(screen.getByRole("button", { name: "Revisar estudio" }));
+    expect(screen.getByRole("combobox")).toBeDisabled();
     expect(screen.queryByLabelText("comision_fijo")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("comision_sales_person_fijo")).not.toBeInTheDocument();
     expect(screen.getByText("Comisión comercial fijo: 37 €")).toBeInTheDocument();

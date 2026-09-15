@@ -46,6 +46,7 @@ export const AbarcaWebhookSchema = z.object({
   // Empresas
   empresa_cliente: optionalString,
   empresa: optionalString,
+  comercializadora: optionalString,
 
   // Titular
   titular: optionalString,

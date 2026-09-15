@@ -185,6 +185,20 @@ describe("PATCH /api/v2/comparisons/[id]/status", () => {
     expect((await patch("completed")).status).toBe(200);
     expect(mocks.recordCommissionChange).not.toHaveBeenCalled();
   });
+  test.each([null, "supplier-2"])("commercial cannot select company %s during review", async (company) => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    if (company === null) currentComparison = { ...currentComparison!, company_id: null };
+    const response = await patch("completed", undefined, { company_id: company ?? "supplier-1" });
+    expect(response.status).toBe(409);
+    expect(mocks.recordStatusChange).not.toHaveBeenCalled();
+    expect(mocks.recordCommissionChange).not.toHaveBeenCalled();
+  });
+  test("commercial cannot complete a review without assigned sales", async () => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    currentComparison = { ...currentComparison!, comision_sales_person_fijo: null };
+    expect((await patch("completed")).status).toBe(409);
+    expect(mocks.recordStatusChange).not.toHaveBeenCalled();
+  });
   test("returns 401 without opening the database", async () => {
     mocks.validateUserSession.mockResolvedValue({ success: false });
 

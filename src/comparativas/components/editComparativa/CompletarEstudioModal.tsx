@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/core/components/ui/select";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
+import { resolveAbarcaSupplier } from "@/comparativas/utils/abarca-supplier";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
 
 interface Props {
@@ -43,9 +44,6 @@ interface Props {
 }
 
 type ActionType = "complete" | "reject" | null;
-
-const normalizeSupplierName = (value: string) =>
-  value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleUpperCase("es");
 
 export default function CompletarEstudioModal({
   comparativa,
@@ -70,10 +68,7 @@ export default function CompletarEstudioModal({
     mode === "manual" && !isSalesPerson ? comparativa.user.id : undefined,
   );
 
-  const companyName = normalizeSupplierName(comparativa.abarca_estudio?.empresa ?? "");
-  const exact = activeSuppliers.filter((supplier) => normalizeSupplierName(supplier.name) === companyName);
-  const matches = exact.length ? exact : activeSuppliers.filter((supplier) => normalizeSupplierName(supplier.name) === companyName.split(" - ")[0]);
-  const matchedSupplierId = companyName && matches.length === 1 ? matches[0].id : "";
+  const matchedSupplierId = resolveAbarcaSupplier(comparativa.abarca_estudio?.empresa, activeSuppliers).supplier?.id ?? "";
   const selectedSupplierId = selectedSupplierOverride || comparativa.company_id || (mode === "ai_review" ? matchedSupplierId : "");
 
   // Comisiones state
@@ -586,7 +581,7 @@ export default function CompletarEstudioModal({
             onClick={() => handleOpen("complete")}
           >
             <CheckCircle className="h-4 w-4" />
-            Asignar Comercializadora y Comisiones
+            {isSalesPerson ? "Revisar estudio" : "Asignar Comercializadora y Comisiones"}
           </Button>
         </DialogTrigger>
         <DialogContent
@@ -598,9 +593,9 @@ export default function CompletarEstudioModal({
               Revisión de estudio · {comparativa.client}
             </DialogTitle>
             <DialogDescription>
-              El estudio con IA se ha recibido correctamente. Asigna la
-              comercializadora ganadora y las comisiones para completar la
-              comparativa.
+              {isSalesPerson
+                ? "Verifica el estudio recibido y confirma la revisión. La comisión asignada no se modificará."
+                : "El estudio con IA se ha recibido correctamente. Asigna la comercializadora ganadora y las comisiones para completar la comparativa."}
             </DialogDescription>
           </DialogHeader>
 
@@ -628,6 +623,7 @@ export default function CompletarEstudioModal({
                 <Select
                   value={selectedSupplierId}
                   onValueChange={setSelectedSupplierId}
+                  disabled={isSalesPerson}
                 >
                   <SelectTrigger
                     id="supplier-select-ai-review"
@@ -651,7 +647,7 @@ export default function CompletarEstudioModal({
             {/* Comisiones */}
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-gray-900">
-                Asignar Comisiones{" "}
+                {isSalesPerson ? "Comisión asignada" : "Asignar Comisiones"}{" "}
                 <span className="text-red-500 text-xs">*</span>
               </h3>
               {isSalesPerson ? salesSummary : <ComissionsForm
@@ -825,7 +821,7 @@ export default function CompletarEstudioModal({
             {/* Comisiones */}
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-gray-900">
-                Asignar Comisiones{" "}
+                {isSalesPerson ? "Comisión asignada" : "Asignar Comisiones"}{" "}
                 <span className="text-red-500 text-xs">*</span>
               </h3>
               {isSalesPerson ? salesSummary : <ComissionsForm

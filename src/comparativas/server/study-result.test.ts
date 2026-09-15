@@ -53,11 +53,11 @@ async function receive(overrides: Record<string, unknown> = {}) {
 async function row() { return (await db.execute("SELECT * FROM comparativas WHERE id='c'")).rows[0]; }
 async function stored() { return (await db.execute("SELECT * FROM comparison_study_results WHERE comparativa_id='c'")).rows[0]; }
 async function auditRows() { return (await db.execute("SELECT * FROM comparativa_changes ORDER BY rowid")).rows; }
-async function decision(override: Partial<StudyResultDecision> = {}, actor = "owner", plan?: StudyPlan) {
+async function decision(override: Partial<StudyResultDecision> = {}, actor = "admin", plan?: StudyPlan) {
   const preview = (await getStudyResult(db, "c", actor, plan)).data!;
   return { resultId: preview.id, revision: preview.revision, planDecision: "none", commissionDecision: "apply", ...override } as StudyResultDecision;
 }
-const confirm = (input: StudyResultDecision, actor = "owner") => write((tx) => confirmStudyResult(tx, "c", actor, input));
+const confirm = (input: StudyResultDecision, actor = "admin") => write((tx) => confirmStudyResult(tx, "c", actor, input));
 async function conflict() { await db.execute("UPDATE comparativas SET comision_fijo=10, comision_sales_person_fijo=3 WHERE id='c'"); await receive(); }
 
 describe("study receipt and server commissions", () => {
@@ -127,9 +127,10 @@ describe("study receipt and server commissions", () => {
     expect((await row()).comision_sales_person_fijo).toBe(90);
     expect((await auditRows()).some((entry) => String(entry.field_name).startsWith("comision_"))).toBe(false);
   });
-  test.each(["missing", "NAT", "NATURGY EXTRA"])("unknown supplier %s does not become rule absence fallback", async (empresa) => {
+  test.each(["missing", "NAT", "NATURGY EXTRA"])("unknown supplier %s uses verified base fallback", async (empresa) => {
     await receive({ empresa });
-    expect((await row()).comision_sales_person_fijo).toBeNull();
+    expect((await row()).comision_sales_person_fijo).toBe(25);
+    expect((await stored()).calculation_source).toBe("verified_base_percentage");
   });
   test("ambiguous normalized suppliers do not select a first match", async () => {
     await db.execute("INSERT INTO comercializadoras VALUES ('duplicate',' naturgy ')");
@@ -261,7 +262,7 @@ describe("preview and confirmation", () => {
     await receive({ oferta_tipo: "invalid" });
     const noPlan = await decision();
     const snapshot = await stored();
-    const preview = await decision({ chosenType: "fijo" }, "owner", "fijo");
+    const preview = await decision({ chosenType: "fijo" }, "admin", "fijo");
     expect(await stored()).toEqual(snapshot);
     expect(preview.revision).not.toBe(noPlan.revision);
     await expect(confirm({ ...preview, revision: noPlan.revision })).rejects.toMatchObject({ status: 409 });
@@ -286,7 +287,7 @@ describe("preview and confirmation", () => {
   });
   test.each(["offer_keep_sales", "offer_clear_sales"] as const)("uncalculable decision %s", async (commissionDecision) => {
     await db.execute("UPDATE comparativas SET comision_fijo=10, comision_sales_person_fijo=3");
-    await receive({ empresa: "unknown" });
+    await receive({ empresa: "unknown", comision_base: null });
     await confirm(await decision({ commissionDecision }));
     expect((await row()).comision_fijo).toBe(100);
     expect((await row()).comision_sales_person_fijo).toBe(commissionDecision === "offer_keep_sales" ? 3 : null);
@@ -300,7 +301,7 @@ describe("preview and confirmation", () => {
   });
   test("role2 cannot set manual sales or submit raw financial fields", async () => {
     await conflict();
-    await expect(confirm(await decision({ commissionDecision: "manual", manualSales: 0 }))).rejects.toMatchObject({ status: 403 });
+    await expect(confirm(await decision({ commissionDecision: "manual", manualSales: 0 }, "owner"), "owner")).rejects.toMatchObject({ status: 403 });
     for (const extra of [{ offer: 1 }, { base: 1 }, { user_id: "admin" }, { manualSales: 3 }]) {
       expect(StudyResultDecisionSchema.safeParse({ ...await decision(), ...extra }).success).toBe(false);
     }
@@ -313,20 +314,20 @@ describe("preview and confirmation", () => {
   test("missing offer + missing type + plan replacement preserves all commissions", async () => {
     await db.execute("UPDATE comparativas SET comision_fijo=88, comision_sales_person_fijo=44, comision_indexado=66, comision_sales_person_indexado=33");
     await receive({ oferta_tipo: null, comision_oferta: null });
-    await confirm(await decision({ chosenType: "indexado", planDecision: "replace", commissionDecision: "keep" }, "owner", "indexado"));
+    await confirm(await decision({ chosenType: "indexado", planDecision: "replace", commissionDecision: "keep" }, "admin", "indexado"));
     expect(await row()).toMatchObject({ comision_fijo: 88, comision_sales_person_fijo: 44, comision_indexado: 66, comision_sales_person_indexado: 33 });
     expect((await auditRows()).some((entry) => String(entry.field_name).startsWith("comision_"))).toBe(false);
   });
   test("missing offer forbids fixed/apply/manual amount mutations", async () => {
     await receive({ oferta_tipo: null, comision_oferta: null });
-    await expect(confirm(await decision({ chosenType: "fijo" }, "owner", "fijo"))).rejects.toMatchObject({ status: 403 });
+    await expect(confirm(await decision({ chosenType: "fijo" }, "admin", "fijo"))).rejects.toMatchObject({ status: 403 });
     await expect(confirm(await decision({ chosenType: "fijo", commissionDecision: "manual", manualSales: 10 }, "admin", "fijo"), "admin")).rejects.toMatchObject({ status: 403 });
   });
   test("missing offer needs no financial rule/supplier lookup even for type and plan decisions", async () => {
     await receive({ oferta_tipo: null, comision_oferta: null });
     await db.execute("DROP TABLE user_company_commissions");
     await db.execute("DROP TABLE comercializadoras");
-    const input = await decision({ chosenType: "indexado", planDecision: "add", commissionDecision: "keep" }, "owner", "indexado");
+    const input = await decision({ chosenType: "indexado", planDecision: "add", commissionDecision: "keep" }, "admin", "indexado");
     await confirm(input);
     expect((await row()).comision_indexado).toBeNull();
   });
@@ -353,7 +354,7 @@ describe("preview and confirmation", () => {
     await conflict();
     const input = await decision({}, "admin");
     await db.execute(sql);
-    await expect(confirm(input, "admin")).rejects.toMatchObject({ status: 409 });
+    await expect(confirm(input, "office")).rejects.toMatchObject({ status: 409 });
     expect((await stored()).state).toBe("pending");
   });
   test("fallback proof cannot be upgraded after receipt or reused after owner changes", async () => {
@@ -374,7 +375,8 @@ describe("preview and confirmation", () => {
     expect(dto.hasExistingCommissions).toBe(true);
     const admin = (await getStudyResult(db, "c", "admin")).data!;
     expect(admin.current).toEqual({ agency: 10, sales: 3 });
-    const confirmed = await confirm(await decision());
+    await confirm(await decision());
+    const confirmed = await getStudyResult(db, "c", "owner");
     const serialized = JSON.stringify(confirmed);
     for (const term of ["agency", "percentage", "offer_euros", "commission_value", "raw_payload", "revision_salt", "base_percentage"]) expect(serialized).not.toContain(term);
     expect(confirmed.data?.resolution?.amounts).toEqual({ sales: 25 });
@@ -389,7 +391,7 @@ describe("preview and confirmation", () => {
     expect(await confirm(input)).toEqual(first);
     expect((await auditRows()).length).toBe(auditCount);
     await expect(confirm({ ...input, commissionDecision: "apply" })).rejects.toMatchObject({ status: 409 });
-    await expect(confirm(input, "admin")).rejects.toMatchObject({ status: 409 });
+    await expect(confirm(input, "office")).rejects.toMatchObject({ status: 409 });
     expect((await getStudyResult(db, "c", "owner")).data?.resolution?.amounts).toEqual({ sales: 3 });
   });
   test("second competing confirmation cannot overwrite the winner", async () => {
@@ -410,6 +412,7 @@ describe("preview and confirmation", () => {
   });
   test("audit failure rolls back plan, amounts and result resolution", async () => {
     await receive({ oferta_tipo: "indexada" });
+    const auditBefore = await auditRows();
     const input = await decision({ planDecision: "replace" });
     await db.execute(`CREATE TRIGGER fail_audit BEFORE INSERT ON comparativa_changes WHEN NEW.field_name = 'study_result_resolution'
       BEGIN SELECT RAISE(ABORT, 'audit failure'); END`);
@@ -417,15 +420,16 @@ describe("preview and confirmation", () => {
     expect((await row()).plan).toBe('["fijo"]');
     expect((await row()).comision_indexado).toBeNull();
     expect((await stored()).state).toBe("pending");
-    expect(await auditRows()).toEqual([]);
+    expect(await auditRows()).toEqual(auditBefore);
   });
   test("result failure rolls back amounts and audits", async () => {
     await conflict();
+    const auditBefore = await auditRows();
     const input = await decision();
     await db.execute(`CREATE TRIGGER fail_result BEFORE UPDATE ON comparison_study_results BEGIN SELECT RAISE(ABORT, 'result failure'); END`);
     await expect(confirm(input)).rejects.toThrow("result failure");
     expect((await row()).comision_fijo).toBe(10);
-    expect(await auditRows()).toEqual([]);
+    expect(await auditRows()).toEqual(auditBefore);
   });
 });
 
@@ -445,9 +449,9 @@ describe("authorization revalidation", () => {
   });
   test.each(["role", "permission", "ownership"])("revoked %s prevents confirmation", async (kind) => {
     await conflict();
-    const input = await decision();
+    const input = await decision({}, "owner");
     await db.execute(kind === "role" ? "UPDATE user SET role='3' WHERE id='owner'" : kind === "permission" ? "UPDATE role_permission_settings SET enabled=0" : "UPDATE comparativas SET user_id='other'");
-    await expect(confirm(input)).rejects.toMatchObject({ status: 403 });
+    await expect(confirm(input, "owner")).rejects.toMatchObject({ status: 403 });
     expect((await stored()).state).toBe("pending");
   });
   test("either review or complete permission suffices", async () => {
@@ -460,5 +464,48 @@ describe("authorization revalidation", () => {
     const input = await decision();
     await db.execute({ sql: "UPDATE comparativas SET status=?", args: [status] });
     await expect(confirm(input)).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+
+describe("future supplier receipts and restricted commercial review", () => {
+  test.each([
+    { comercializadora: "NORDY RESIDENCIAL", empresa: "NORDY RESIDENCIAL - Tarifa Estabilidad 3P" },
+    { empresa: "NORDY EMPRESA" },
+    { comercializadora: "NORDY", empresa: undefined },
+    { comercializadora: " ", empresa: "NORDY EMPRESA" },
+  ])("Nordy payload %j applies owner rule and assigns tenant supplier", async (fields) => {
+    await db.execute("UPDATE comercializadoras SET name='Nordy'");
+    await db.execute("INSERT INTO user_company_commissions VALUES ('u','owner','supplier','percent',85)");
+    await receive({ ...fields, comision_base: 20 });
+    expect(await row()).toMatchObject({ company_id: "supplier", comision_fijo: 100, comision_sales_person_fijo: 85 });
+    expect((await stored()).calculation_source).toBe("user_rule");
+  });
+  test("unknown company with shared identity cannot use fallback", async () => {
+    await receive({ empresa: undefined, comercializadora: undefined, crm_id: 999 });
+    expect((await row()).comision_sales_person_fijo).toBeNull();
+  });
+  test("gas-style payload without supplier uses explicit zero and verified percentage", async () => {
+    await receive({ empresa: undefined, comision_oferta: 0, comision_base: 100 });
+    expect(await row()).toMatchObject({ company_id: null, comision_fijo: 0, comision_sales_person_fijo: 0 });
+  });
+  test("missing offer stays unassigned", async () => {
+    await receive({ comision_oferta: undefined });
+    expect(await row()).toMatchObject({ comision_fijo: null, comision_sales_person_fijo: null });
+  });
+  test.each(["keep", "apply", "offer_keep_sales", "offer_clear_sales", "manual"] as const)("commercial cannot resolve %s", async (commissionDecision) => {
+    await conflict();
+    const before = await row();
+    const preview = (await getStudyResult(db, "c", "owner")).data!;
+    expect(preview.capabilities).toEqual({ canResolve: false, canChooseType: false, canManualSales: false, commissionDecisions: [] });
+    await expect(confirm(await decision({ commissionDecision, ...(commissionDecision === "manual" ? { manualSales: 999 } : {}) }, "owner"), "owner")).rejects.toMatchObject({ status: 403 });
+    expect(await row()).toEqual(before);
+  });
+  test("backoffice with complete but without review cannot resolve", async () => {
+    await conflict();
+    await db.execute("INSERT INTO role_permission_settings VALUES ('1','comparisons.study.review',0)");
+    const preview = (await getStudyResult(db, "c", "office")).data!;
+    expect(preview.capabilities.canResolve).toBe(false);
+    await expect(confirm(await decision({}, "office"), "office")).rejects.toMatchObject({ status: 403 });
   });
 });

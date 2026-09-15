@@ -57,6 +57,8 @@ const baseComparativa = {
   plan: ["fijo"],
   comision: { fijo: 0, indexado: 0 },
   comision_sales_person: { fijo: 0, indexado: 0 },
+  company_id: "supplier",
+  has_complete_commissions: { fijo: true, indexado: false },
   notes: [],
   user: { id: "", name: "Ana", email: "ana@example.com", role: "2" },
   creation_date: "2026-01-01",
@@ -172,7 +174,7 @@ describe("MainView study permissions", () => {
 
   test.each([
     { role: "1", complete: false, review: true },
-    { role: "2", complete: true, review: false },
+    { role: "admin", complete: true, review: true },
   ])("places result review inside actions for authorized role $role", ({ role, complete, review }) => {
     const controller = resultAction();
     renderMainView({ role, status: "awaiting_review", complete, review, pendingResult: true, studyResult: controller });
@@ -184,6 +186,14 @@ describe("MainView study permissions", () => {
     expect(controller.review).toHaveBeenCalledOnce();
     expect(screen.queryByText(/en la parte superior de la ficha/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Asignar Comercializadora y Comisiones" })).not.toBeInTheDocument();
+  });
+
+  test("commercial review cannot resolve pending financial decisions even with both permissions", () => {
+    const controller = resultAction();
+    renderMainView({ role: "2", status: "awaiting_review", complete: true, review: true, pendingResult: true, studyResult: controller });
+    expect(screen.queryByRole("button", { name: "Revisar resultado del estudio" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Revisar estudio" })).not.toBeInTheDocument();
+    expect(screen.getByText("Estudio en revisión")).toBeInTheDocument();
   });
 
   test("keeps result review disabled until the server confirms availability", () => {
@@ -502,7 +512,7 @@ describe("MainView study permissions", () => {
 
     expect(screen.getByText("Estudio con IA recibido")).toBeInTheDocument();
     const reviewButton = screen.getByRole("button", {
-      name: "Asignar Comercializadora y Comisiones",
+      name: "Revisar estudio",
     });
     fireEvent.click(reviewButton);
 
@@ -513,7 +523,7 @@ describe("MainView study permissions", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "El estudio con IA se ha recibido correctamente. Asigna la comercializadora ganadora y las comisiones para completar la comparativa.",
+        "Verifica el estudio recibido y confirma la revisión. La comisión asignada no se modificará.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -746,7 +756,7 @@ describe("CompletarEstudioModal AI review guards", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Asignar Comercializadora y Comisiones",
+        name: "Revisar estudio",
       }),
     ).toBeInTheDocument();
   });

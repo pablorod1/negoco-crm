@@ -152,6 +152,10 @@ function validateStatusTransition(
       break;
     case "awaiting_review":
       if (nextStatus !== "completed") return { allowed: false };
+      if (userRole === "2" && (currentComparison.companyId === null ||
+        (fields.companyId !== undefined && fields.companyId !== currentComparison.companyId))) {
+        return { allowed: false };
+      }
       requiredPermission = "comparisons.study.review";
       break;
     case "completed":

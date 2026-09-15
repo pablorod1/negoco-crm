@@ -109,6 +109,10 @@ export default function MainView({
   );
   const hasPendingStudyResult =
     comparativa.has_pending_study_result || studyResult?.canReview;
+  const canReviewReceivedStudy = canReviewStudies && (!isComercial || (
+    !hasPendingStudyResult && Boolean(comparativa.company_id) &&
+    comparativa.plan.every((plan) => comparativa.has_complete_commissions?.[plan] === true)
+  ));
   const canUseAiStudies =
     canCompleteStudies &&
     (isComercial
@@ -524,7 +528,7 @@ export default function MainView({
 
                 {/* Estudio con IA recibido — pendiente de revisión */}
                 {isAwaitingReview ? (
-                  canReviewStudies || (canCompleteStudies && hasPendingStudyResult) ? (
+                  canReviewReceivedStudy ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <div className="mb-3 flex items-center gap-3">
                         <div className="rounded-md bg-amber-100 p-1.5">
@@ -537,7 +541,7 @@ export default function MainView({
                           <p className="text-xs text-amber-700">
                             {hasPendingStudyResult
                               ? "Revisa los planes y las comisiones recibidos para continuar"
-                              : "Asigna la comercializadora y las comisiones para continuar"}
+                              : isComercial ? "Verifica el estudio y confirma la revisión. Tu comisión ya está asignada." : "Asigna la comercializadora y las comisiones para continuar"}
                           </p>
                         </div>
                       </div>

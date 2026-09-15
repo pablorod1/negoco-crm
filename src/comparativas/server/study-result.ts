@@ -3,6 +3,7 @@ import type { Client, InValue, Row } from "@libsql/client";
 import { z } from "zod";
 import { getEffectivePermissions } from "@/core/access-control/server";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
+import { getAbarcaSupplierName, resolveAbarcaSupplier } from "@/comparativas/utils/abarca-supplier";
 import type { AbarcaWebhookPayload } from "@/comparativas/types/abarca.types";
 import type {
   StudyCommissionDecision, StudyPlan, StudyResultAmounts,
@@ -99,19 +100,15 @@ async function identity(db: DB, crmId: number) {
   const shared = organizations.some((org) => Number(org.abarca_user_id) === crmId);
   return { users, organizations, verifiedId: !shared && users.length === 1 ? String(users[0].id) : null };
 }
-function normalizeName(name: string) {
-  return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleUpperCase("es");
-}
 async function calculate(db: DB, subject: Row, stored: Row) {
   const offer = money(stored.offer_euros);
   // No financial proposal exists without an offer, even for a fixed rule.
   if (offer === null) return { sales: null, source: "no_offer", inputs: null };
   const suppliers = (await db.execute("SELECT id, name FROM comercializadoras ORDER BY id")).rows;
-  const supplierName = normalizeName(String(stored.supplier_name ?? ""));
-  const exact = suppliers.filter((supplier) => normalizeName(String(supplier.name)) === supplierName);
-  const candidates = exact.length ? exact : suppliers.filter((supplier) =>
-    normalizeName(String(supplier.name)) === supplierName.split(" - ")[0]);
-  const supplier = supplierName && candidates.length === 1 ? candidates[0] : null;
+  const { supplier, ambiguous } = resolveAbarcaSupplier(
+    nullableString(stored.supplier_name),
+    suppliers.map((row) => ({ id: String(row.id), name: String(row.name) })),
+  );
   const owner = (await db.execute({ sql: "SELECT id, role, abarca_user_id FROM user WHERE id = ?", args: [subject.user_id] })).rows[0] ?? null;
   const proof = await identity(db, Number(stored.crm_id));
   let overrides: Row[] = [];
@@ -126,7 +123,9 @@ async function calculate(db: DB, subject: Row, stored: Row) {
   const rule = overrides[0] ?? defaults[0];
   let sales: number | null = null;
   let source = "unavailable";
-  if (supplier && offer !== null) {
+  // Unknown names may use the verified fallback; duplicate matches must not
+  // bypass a potentially configured supplier rule.
+  if (!ambiguous) {
     if (rule) {
       const value = money(rule.commission_value);
       if (value === null || value < 0 || !["fixed", "percent"].includes(String(rule.commission_type))) throw new Error("Invalid commission configuration");
@@ -179,8 +178,17 @@ export async function receiveStudyResult(db: DB, comparisonId: string, payload: 
      base_percentage, supplier_name, crm_id, verified_author_id, receipt_owner_id, revision_salt, state)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`, args: [id, comparisonId,
     createHash("sha256").update(rawPayload).digest("hex"), received, received, received ? "received" : null,
-    payload.comision_oferta ?? null, payload.comision_base ?? null, payload.empresa ?? null,
+    payload.comision_oferta ?? null, payload.comision_base ?? null, getAbarcaSupplierName(payload),
     payload.crm_id, proof.verifiedId, subject.user_id, randomBytes(32).toString("hex")] });
+  if (subject.company_id === null) {
+    const suppliers = (await db.execute("SELECT id, name FROM comercializadoras ORDER BY id")).rows;
+    const { supplier } = resolveAbarcaSupplier(getAbarcaSupplierName(payload),
+      suppliers.map((row) => ({ id: String(row.id), name: String(row.name) })));
+    if (supplier) {
+      await db.execute({ sql: "UPDATE comparativas SET company_id = ? WHERE id = ? AND company_id IS NULL", args: [supplier.id, comparisonId] });
+      await audit(db, comparisonId, null, "company_id", null, supplier.id);
+    }
+  }
   if (!received || !plansOf(subject).includes(received)) return;
   const current = amounts(subject, received);
   if (offer !== null && (current.agency !== null || current.sales !== null)) return;
@@ -225,7 +233,7 @@ function dto(subject: Row, stored: Row, role: string, target: StudyPlan | null, 
     else if (!plans.includes(target)) steps.push("plan");
     if (target && offer !== null && current && (current.agency !== null || current.sales !== null)) steps.push("commissions");
   }
-  const canResolve = pending && subject.status === "awaiting_review";
+  const canResolve = pending && role !== "2" && subject.status === "awaiting_review";
   return {
     id: String(stored.id), state: stored.state as StudyResultDTO["state"],
     receivedType: stored.received_type as StudyPlan | null,
@@ -254,7 +262,12 @@ export async function getStudyResult(db: DB, comparisonId: string, userId: strin
   const target = (stored.chosen_type ?? stored.received_type ?? previewPlan ?? null) as StudyPlan | null;
   const computed = stored.state === "pending" ? await proposal(db, subject, stored, target, role) : null;
   const revision = computed?.revision ?? String(stored.resolution_revision ?? createHmac("sha256", String(stored.revision_salt)).update(String(stored.id)).digest("hex"));
-  return { success: true, comparisonStatus: String(subject.status), data: dto(subject, stored, role, target, revision, computed?.calculation.sales ?? null) };
+  const data = dto(subject, stored, role, target, revision, computed?.calculation.sales ?? null);
+  const permissions = await getEffectivePermissions(db, { id: userId, role });
+  if (!permissions["comparisons.study.review"]) {
+    data.capabilities = { canResolve: false, canChooseType: false, canManualSales: false, commissionDecisions: [] };
+  }
+  return { success: true, comparisonStatus: String(subject.status), data };
 }
 
 /** Must run in a write transaction: authorization, revision, mutations and audit share a snapshot. */
@@ -272,6 +285,9 @@ export async function confirmStudyResult(db: DB, comparisonId: string, userId: s
     return { success: true, comparisonStatus: String(subject.status), data: dto(subject, stored, role, stored.chosen_type as StudyPlan, decision.revision, null) };
   }
   if (subject.status !== "awaiting_review") throw conflict();
+  if (role === "2") throw new StudyResultError(403, "La resolución del estudio requiere admin o backoffice con permiso de revisión");
+  const permissions = await getEffectivePermissions(db, { id: userId, role });
+  if (!permissions["comparisons.study.review"]) throw new StudyResultError(403, "Sin permiso para revisar el estudio con IA");
   if (stored.received_type && decision.chosenType !== undefined) throw new StudyResultError(400, "El tipo recibido no se puede cambiar");
   const target = (stored.received_type ?? decision.chosenType) as StudyPlan | undefined;
   if (!target) throw new StudyResultError(400, "Selecciona el tipo del estudio con IA");

@@ -4,6 +4,14 @@ Apply `migrations/019_comparison_study_results.sql` after migration 018 before d
 
 ## HTTP contract
 
+### Supplier resolution and review permissions — 2026-09-15
+
+New receipts prefer the nonblank `comercializadora` field and fall back to `empresa` when it is absent or blank. `empresa_cliente` describes the existing supplier and is never used to choose the new offer. Supplier matching normalizes case, accents and whitespace, recognizes explicit Nordy/Aire Limpio/Gana aliases, and refuses ambiguous catalogue matches. A uniquely matched supplier fills an empty comparison `company_id` with an audit entry. Existing assigned companies and historical receipts are not backfilled.
+
+`comision_oferta` remains the total in euros; `comision_base` is the fallback percentage. User rules take precedence over tenant defaults. An unknown or missing supplier may use the percentage only with the existing verified-author safeguards; ambiguous supplier matches do not bypass configuration. The separate `comision` payload field is not a substitute for `comision_oferta`. Missing amounts remain null; explicit zero remains a valid amount.
+
+Pending result decisions now require admin/backoffice and the effective `comparisons.study.review` permission. Commercial users receive no result-resolution capabilities and cannot PATCH a pending result. They may complete final review through the status endpoint only with review permission, resolved results, all required stored commissions and an already assigned supplier. They cannot submit commission changes or replace/select the supplier during AI review. This supersedes the earlier permission descriptions below that allowed commercial result decisions or complete-only result resolution.
+
 `GET /api/v2/comparisons/:id/study-result` returns `{ success: true, comparisonStatus, data: StudyResultDTO | null }`. `null` means no persisted result (including historical studies); it is not an error. Responses are `no-store`.
 
 Client-only types live in `src/comparativas/types/study-result.types.ts`. Import these types, not the server service.
