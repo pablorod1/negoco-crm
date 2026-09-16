@@ -328,6 +328,48 @@ const isBusinessClient = (client: ClientDB): boolean => {
   );
 };
 
+// Campos que exige validateAndBuildImaginaContractPayload para este cliente.
+// Sirve para medir cuánto falta (barra de progreso) sin duplicar la lógica de
+// validación: lo que falta lo sigue diciendo `missing`.
+export const listImaginaRequiredFields = (client: ClientDB): string[] => {
+  const common = [
+    "cups",
+    "provincia",
+    "municipio",
+    "cod_postal",
+    "tipo_via_cnmc",
+    "calle",
+    "numero_finca",
+    "potencia_contratada",
+    "id_tarifa",
+    "canal_envio",
+    "iban",
+    "telefono_titular",
+    "email_titular",
+    "provincia_titular",
+    "municipio_titular",
+    "cod_postal_titular",
+    "tipo_via_titular_cnmc",
+    "calle_titular",
+    "numero_finca_titular",
+    "tipo_documento_titular",
+    "numero_documento_titular",
+  ];
+
+  return isBusinessClient(client)
+    ? [
+        ...common,
+        "razon_social_titular",
+        "id_cnae",
+        "firmante",
+        "nombre_firmante",
+        "primer_apellido_firmante",
+        "tipo_documento_firmante",
+        "numero_documento_firmante",
+      ]
+    : [...common, "nombre_titular", "primer_apellido_titular"];
+};
+
 export const validateAndBuildImaginaContractPayload = (
   input: ImaginaContractBuildInput,
 ): ImaginaContractBuildResult => {

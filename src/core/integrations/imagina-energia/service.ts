@@ -4,8 +4,10 @@ import { readImaginaEnergiaConfig } from "./config";
 import { ImaginaEnergiaClient } from "./client";
 import {
   documentTypeForImaginaUpload,
+  listImaginaRequiredFields,
   validateAndBuildImaginaContractPayload,
 } from "./mappers";
+import type { ImaginaValidationError } from "./mappers";
 import {
   ImaginaAsyncAcceptedSchema,
   ImaginaContractCallback,
@@ -367,6 +369,60 @@ export const preflightImaginaContract = async (
     data: {
       endpoint: built.endpoint,
       referenciaExterna: built.referenciaExterna,
+    },
+  };
+};
+
+export interface ImaginaContractReadiness {
+  configured: boolean;
+  required: string[];
+  missing: ImaginaValidationError[];
+}
+
+// Igual que el preflight, pero pensado para pintar progreso: no lanza si la
+// integración no está configurada y devuelve también los campos requeridos.
+export const getImaginaContractReadiness = async (
+  context: ServiceContext,
+  params: { tramiteId: string; contractId?: string | null },
+): Promise<ServiceResult<ImaginaContractReadiness>> => {
+  const integration = await getImaginaIntegration(context.db);
+  if (!integration.configured) {
+    return {
+      success: true,
+      data: { configured: false, required: [], missing: [] },
+    };
+  }
+
+  const bundle = await getSubmissionBundle(
+    context.db,
+    params.tramiteId,
+    params.contractId,
+  );
+  if (!bundle) {
+    return {
+      success: false,
+      status: 404,
+      error: "No se ha encontrado el trámite, contrato, cliente o firmante",
+    };
+  }
+
+  const config = readImaginaEnergiaConfig();
+  const built = validateAndBuildImaginaContractPayload({
+    tenant: context.tenant,
+    webhookRootDomain: config.webhookPublicRootDomain,
+    tramite: bundle.tramite,
+    client: bundle.client,
+    contract: bundle.contract,
+    signer: bundle.signer,
+    rate: bundle.rate,
+  });
+
+  return {
+    success: true,
+    data: {
+      configured: true,
+      required: listImaginaRequiredFields(bundle.client),
+      missing: built.ok ? [] : built.missing,
     },
   };
 };

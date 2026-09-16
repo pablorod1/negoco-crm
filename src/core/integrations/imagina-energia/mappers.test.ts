@@ -5,7 +5,10 @@ import type {
   SignerDB,
   TramiteDB,
 } from "@/tramites/types";
-import { validateAndBuildImaginaContractPayload } from "./mappers";
+import {
+  listImaginaRequiredFields,
+  validateAndBuildImaginaContractPayload,
+} from "./mappers";
 
 const tramite: TramiteDB = {
   id: "tramite-12345678",
@@ -214,6 +217,93 @@ describe("Imagina contract mapper", () => {
           "numero_documento_firmante",
         ]),
       );
+    }
+  });
+});
+
+describe("listImaginaRequiredFields", () => {
+  test("residential clients need the holder name and surname but no signer nor CNAE", () => {
+    const required = listImaginaRequiredFields(residentialClient);
+
+    expect(required).toEqual(
+      expect.arrayContaining([
+        "nombre_titular",
+        "primer_apellido_titular",
+        "cups",
+        "id_tarifa",
+      ]),
+    );
+    expect(required).not.toContain("firmante");
+    expect(required).not.toContain("id_cnae");
+  });
+
+  test("companies need CNAE, signer and business name instead", () => {
+    const required = listImaginaRequiredFields({
+      ...residentialClient,
+      type: "Empresa",
+      document_type: "CIF",
+      document_number: "B12345678",
+    });
+
+    expect(required).toEqual(
+      expect.arrayContaining([
+        "razon_social_titular",
+        "id_cnae",
+        "firmante",
+        "nombre_firmante",
+        "primer_apellido_firmante",
+        "numero_documento_firmante",
+      ]),
+    );
+    expect(required).not.toContain("nombre_titular");
+  });
+
+  test("every required field is one the validator can actually report", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: {
+        ...residentialClient,
+        name: "",
+        last_name: "",
+        email: "",
+        phone: "",
+        IBAN: "",
+        province: "",
+        city: "",
+        postal_code: "",
+        document_type: "",
+        document_number: "",
+        tipo_via_cnmc: "",
+        calle: "",
+        address: "",
+        numero_finca: "",
+      },
+      contract: {
+        ...contract,
+        CUPS: "",
+        province: "",
+        city: "",
+        postal_code: "",
+        tipo_via_cnmc: "",
+        calle: "",
+        address: "",
+        numero_finca: "",
+        pot1: 0,
+        pot2: 0,
+        rate_id: null,
+        signature_channel: "fax",
+      },
+      rate: null,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const reported = new Set(result.missing.map((item) => item.field));
+      for (const field of listImaginaRequiredFields(residentialClient)) {
+        expect(reported.has(field), field).toBe(true);
+      }
     }
   });
 });

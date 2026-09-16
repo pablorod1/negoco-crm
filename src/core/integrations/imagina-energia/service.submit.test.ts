@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient, type Client } from "@libsql/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { submitImaginaContract } from "./service";
+import { getImaginaContractReadiness, submitImaginaContract } from "./service";
 import { markTramiteSentToSupplier } from "./persistence";
 import type { ImaginaEnergiaClient } from "./client";
 
@@ -189,4 +189,36 @@ test("markTramiteSentToSupplier only advances from 'Verificado'", async () => {
   expect(
     (await db.execute("SELECT COUNT(*) AS n FROM tramite_changes")).rows[0].n,
   ).toBe(0);
+});
+
+test("readiness lists required fields and what is still missing", async () => {
+  await db.execute("UPDATE clients SET IBAN = '', email = 'no-es-un-email' WHERE id = 'client-1'");
+
+  const result = await getImaginaContractReadiness(
+    { db, tenant: "test" },
+    { tramiteId: "tramite-1", contractId: "contract-1" },
+  );
+
+  expect(result.success).toBe(true);
+  expect(result.data?.configured).toBe(true);
+  expect(result.data?.required).toContain("nombre_titular");
+  expect(result.data?.required).not.toContain("id_cnae");
+  expect(result.data?.missing.map((item) => item.field).sort()).toEqual([
+    "email_titular",
+    "iban",
+  ]);
+});
+
+test("readiness reports an unconfigured integration instead of failing", async () => {
+  await db.execute("UPDATE integrations SET enabled = 0");
+
+  const result = await getImaginaContractReadiness(
+    { db, tenant: "test" },
+    { tramiteId: "tramite-1", contractId: "contract-1" },
+  );
+
+  expect(result).toEqual({
+    success: true,
+    data: { configured: false, required: [], missing: [] },
+  });
 });
