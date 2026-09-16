@@ -41,6 +41,10 @@ import {
   createEmptyTramiteDB,
   createEmptyClientDB,
 } from "@/tramites/utils/tramite.factories";
+import {
+  formatImaginaMissing,
+  type ImaginaMissingField,
+} from "@/tramites/utils/imagina-missing-fields";
 
 interface AddTramiteDialogProps {
   variant?: string;
@@ -335,25 +339,14 @@ export default function AddTramiteDialog({
         const preflightResult = (await preflightRes.json()) as {
           success?: boolean;
           error?: string;
-          missing?: Array<{
-            field?: string;
-            source?: string;
-            message?: string;
-          }>;
+          missing?: ImaginaMissingField[];
         };
 
         if (!preflightResult.success) {
-          const missing = preflightResult.missing
-            ?.map((item) =>
-              [item.source, item.field, item.message]
-                .filter(Boolean)
-                .join(" · "),
-            )
-            .join("\n");
           showCustomToast({
             title: "Faltan datos para Imagina",
             message:
-              missing ||
+              formatImaginaMissing(preflightResult.missing) ||
               preflightResult.error ||
               "Completa los datos obligatorios antes de enviar.",
             iconColor: "var(--danger-color)",

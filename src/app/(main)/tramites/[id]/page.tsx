@@ -87,6 +87,7 @@ export default function TramiteDetails() {
             isRenewable={isRenewable}
             isActive={isActive}
             isSubcomercial={!!isSubcomercial}
+            signer={signer}
           />
         )}
 

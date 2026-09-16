@@ -1,10 +1,11 @@
 "use client";
 import ButtonGroupComponent from "@/core/components/ButtonGroupComponent";
-import { Notification, User } from "@/core/types";
+import { User } from "@/core/types";
 import {
   ClientDB,
   ContractDB,
   LiquidezStatus,
+  SignerDB,
   Status,
   TramiteVM,
 } from "@/tramites/types";
@@ -19,6 +20,7 @@ import {
   COMERCIAL_STATUS_TYPES,
   PLAIN_LIQUIDEZ_STATUS,
   PLAIN_STATUS_TYPES,
+  SENT_TO_SUPPLIER_STATUS,
 } from "@/tramites/constants";
 import { NOW_DATE, RENOVATION_DATE } from "@/dashboard/constants";
 import { useState, useEffect, useMemo } from "react";
@@ -28,13 +30,14 @@ import {
   Coins,
   CircleX,
   CheckSquare,
+  CircleCheck,
+  Loader2,
 } from "lucide-react";
 import { formatDate, formatUUID } from "@/core/utils/format";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { Textarea } from "@/core/components/ui/textarea";
 import { Checkbox } from "@/core/components/ui/checkbox";
 import { Switch } from "@/core/components/ui/switch";
-import { generateTramiteUpdatedNotification } from "@/core/utils/notifications.helpers";
 import LoadingStateModal from "@/core/components/LoadingStateModal";
 import {
   Dialog,
@@ -53,14 +56,30 @@ import TooltipComponent from "@/core/components/TooltipComponent";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { useImaginaIntegrationStatus } from "@/tramites/hooks/useImaginaIntegrationStatus";
+import { findImaginaContract } from "@/tramites/utils/imagina-contract";
+import {
+  formatImaginaMissing,
+  type ImaginaMissingField,
+} from "@/tramites/utils/imagina-missing-fields";
+import { notifyTramiteStatusChange } from "@/tramites/utils/notify-status-change";
+import ImaginaMissingFieldsForm from "./imagina/ImaginaMissingFieldsForm";
 
 interface Props {
   tramite: TramiteVM;
   userData: User;
-  onUpdate: () => void;
+  onUpdate: () => void | Promise<void>;
   client: ClientDB;
   contracts: ContractDB[];
+  signer?: SignerDB | null;
 }
+
+type ImaginaCheck =
+  | { status: "idle" }
+  | { status: "checking" }
+  | { status: "ok" }
+  | { status: "missing"; missing: ImaginaMissingField[] }
+  | { status: "error"; error: string };
 
 interface FormData {
   status: Status;
@@ -77,21 +96,20 @@ interface FormData {
   tramitation_date: Date | null;
 }
 
-const normalizeSupplier = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .trim();
-
-const formatImaginaMissing = (
-  missing?: Array<{ field?: string; source?: string; message?: string }>,
-) =>
-  missing
-    ?.map((item) =>
-      [item.source, item.field, item.message].filter(Boolean).join(" · "),
-    )
-    .join("\n");
+const buildInitialFormData = (tramite: TramiteVM): FormData => ({
+  status: tramite.status,
+  liquidez_status: tramite.liquidez_status,
+  comision: tramite.comision,
+  comision_sales_person: tramite.comision_sales_person,
+  note: "",
+  comisionConfirmed: false,
+  comisionSalesPersonConfirmed: false,
+  collection_date: null,
+  payment_date: null,
+  activation_date: null,
+  renovation_date: null,
+  tramitation_date: null,
+});
 
 export default function UpdateTramiteStatusModal({
   tramite,
@@ -99,21 +117,11 @@ export default function UpdateTramiteStatusModal({
   onUpdate,
   client,
   contracts,
+  signer,
 }: Props) {
-  const [formData, setFormData] = useState<FormData>({
-    status: tramite.status,
-    liquidez_status: tramite.liquidez_status,
-    comision: tramite.comision,
-    comision_sales_person: tramite.comision_sales_person,
-    note: "",
-    comisionConfirmed: false,
-    comisionSalesPersonConfirmed: false,
-    collection_date: null,
-    payment_date: null,
-    activation_date: null,
-    renovation_date: null,
-    tramitation_date: null,
-  });
+  const [formData, setFormData] = useState<FormData>(() =>
+    buildInitialFormData(tramite),
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [salesCommissionTouched, setSalesCommissionTouched] = useState(false);
   const { activeSuppliers } = useActiveEnergySuppliers();
@@ -129,61 +137,104 @@ export default function UpdateTramiteStatusModal({
   const isVerificado = formData.status === "Verificado";
   const [loading, setLoading] = useState(false);
   const [sendToImagina, setSendToImagina] = useState(false);
-  const [imaginaStatus, setImaginaStatus] = useState<{
-    enabled: boolean;
-    configured: boolean;
-  } | null>(null);
+  const [imaginaCheck, setImaginaCheck] = useState<ImaginaCheck>({
+    status: "idle",
+  });
 
   // Estado para controlar si podemos actualizar
   const [canUpdate, setCanUpdate] = useState(isTramitable || isBorrador);
 
-  const imaginaContract = useMemo(() => {
-    const imaginaName = normalizeSupplier("Imagina Energía");
-    return contracts.find((contract) => {
-      const supplier = activeSuppliers.find(
-        (item) =>
-          item.id === contract.new_company ||
-          normalizeSupplier(item.name) === normalizeSupplier(contract.new_company),
-      );
-      const supplierName = supplier?.name || contract.new_company;
-      return normalizeSupplier(supplierName) === imaginaName;
-    });
-  }, [activeSuppliers, contracts]);
+  const imaginaContract = useMemo(
+    () => findImaginaContract(contracts, activeSuppliers),
+    [activeSuppliers, contracts],
+  );
+
+  const { integration: imaginaStatus } = useImaginaIntegrationStatus({
+    contractId: imaginaContract?.id,
+    enabled: isOpen,
+  });
 
   const canShowImaginaSwitch =
     isVerificado &&
     Boolean(imaginaContract) &&
-    Boolean(imaginaStatus?.enabled && imaginaStatus.configured);
+    Boolean(imaginaStatus?.enabled && imaginaStatus.configured) &&
+    // Si Imagina ya creó el contrato, reenviarlo lo duplicaría.
+    !imaginaStatus?.submission?.external_contract_id;
 
-  useEffect(() => {
-    if (!isOpen) return;
+  // El estado "Enviado a comercializadora" no se ofrece en el desplegable,
+  // pero si es el actual hay que poder mostrarlo (y mantenerlo).
+  const statusItems = useMemo(() => {
+    const base = isComercial ? COMERCIAL_STATUS_TYPES : PLAIN_STATUS_TYPES;
+    return tramite.status === SENT_TO_SUPPLIER_STATUS
+      ? [SENT_TO_SUPPLIER_STATUS, ...base]
+      : base;
+  }, [isComercial, tramite.status]);
 
-    const controller = new AbortController();
-    const loadImaginaStatus = async () => {
-      try {
-        const response = await fetch(
-          "/api/v2/integrations/imagina-energia/status",
-          { signal: controller.signal },
-        );
-        const result = (await response.json()) as {
-          success?: boolean;
-          data?: { enabled: boolean; configured: boolean };
-        };
-        setImaginaStatus(
-          result.success && result.data
-            ? result.data
-            : { enabled: false, configured: false },
-        );
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          setImaginaStatus({ enabled: false, configured: false });
-        }
+  // Al abrir, partir siempre del trámite actual (puede haber cambiado desde
+  // fuera, p. ej. por el envío a Imagina o por un webhook).
+  const onOpen = () => {
+    setFormData(buildInitialFormData(tramite));
+    setSalesCommissionTouched(false);
+    setSendToImagina(false);
+    setImaginaCheck({ status: "idle" });
+    setIsOpen(true);
+  };
+
+  // Valida los datos contra el mapper de Imagina sin enviar nada. Se lanza
+  // al activar el switch (para mostrar el formulario cuanto antes), tras
+  // guardar desde el formulario y como última comprobación al Actualizar.
+  const runImaginaPreflight = async (): Promise<boolean> => {
+    if (!imaginaContract) return false;
+    setImaginaCheck({ status: "checking" });
+    try {
+      const response = await fetch(
+        "/api/v2/integrations/imagina-energia/contracts/preflight",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tramite_id: tramite.id,
+            contract_id: imaginaContract.id,
+          }),
+        },
+      );
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        missing?: ImaginaMissingField[];
+      };
+      if (result.success) {
+        setImaginaCheck({ status: "ok" });
+        return true;
       }
-    };
+      setImaginaCheck(
+        result.missing?.length
+          ? { status: "missing", missing: result.missing }
+          : {
+              status: "error",
+              error: result.error || "No se han podido validar los datos.",
+            },
+      );
+      return false;
+    } catch (error) {
+      setImaginaCheck({
+        status: "error",
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+  };
 
-    loadImaginaStatus();
-    return () => controller.abort();
-  }, [isOpen]);
+  const handleSendToImaginaChange = (checked: boolean) => {
+    setSendToImagina(checked);
+    if (checked) void runImaginaPreflight();
+    else setImaginaCheck({ status: "idle" });
+  };
+
+  const handleImaginaFieldsSaved = async () => {
+    await onUpdate();
+    await runImaginaPreflight();
+  };
 
   useEffect(() => {
     if (salesCommissionTouched) return;
@@ -306,10 +357,6 @@ export default function UpdateTramiteStatusModal({
     );
   };
 
-  const checkStatusChanged = () => {
-    return formData.status !== tramite.status;
-  };
-
   const onClose = () => {
     setIsOpen(false);
   };
@@ -342,43 +389,21 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
-      if (canShowImaginaSwitch && sendToImagina && imaginaContract) {
-        const preflightRes = await fetch(
-          "/api/v2/integrations/imagina-energia/contracts/preflight",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              tramite_id: tramite.id,
-              contract_id: imaginaContract.id,
-            }),
-          },
-        );
-        const preflightResult = (await preflightRes.json()) as {
-          success?: boolean;
-          error?: string;
-          missing?: Array<{
-            field?: string;
-            source?: string;
-            message?: string;
-          }>;
-        };
+      const shouldSendToImagina =
+        canShowImaginaSwitch && sendToImagina && Boolean(imaginaContract);
 
-        if (!preflightResult.success) {
-          showCustomToast({
-            title: "Faltan datos para Imagina",
-            message:
-              formatImaginaMissing(preflightResult.missing) ||
-              preflightResult.error ||
-              "Completa los datos obligatorios antes de enviar.",
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          return;
-        }
+      // Última comprobación antes de tocar el estado: si faltan datos, el
+      // formulario del modal los muestra y no se guarda nada.
+      if (shouldSendToImagina && !(await runImaginaPreflight())) {
+        showCustomToast({
+          title: "Faltan datos para Imagina",
+          message:
+            "Completa y guarda los campos marcados en el modal antes de actualizar.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
       }
 
       const res = await fetch(`/api/v2/contracts/${tramite.id}/status`, {
@@ -429,7 +454,12 @@ export default function UpdateTramiteStatusModal({
         return;
       }
 
-      if (canShowImaginaSwitch && sendToImagina && imaginaContract) {
+      // A partir de aquí el estado ya está guardado: pase lo que pase con
+      // Imagina, el modal se cierra y el trámite se refresca.
+      let finalStatus: Status = formData.status;
+      let imaginaError: string | null = null;
+
+      if (shouldSendToImagina && imaginaContract) {
         const imaginaRes = await fetch(
           "/api/v2/integrations/imagina-energia/contracts/submit",
           {
@@ -440,107 +470,71 @@ export default function UpdateTramiteStatusModal({
             body: JSON.stringify({
               tramite_id: tramite.id,
               contract_id: imaginaContract.id,
+              user_id: userData.id,
             }),
           },
         );
         const imaginaResult = (await imaginaRes.json()) as {
           success?: boolean;
           error?: string;
-          missing?: Array<{ field: string; message: string }>;
+          missing?: ImaginaMissingField[];
+          data?: { status?: string | null };
         };
 
-        if (!imaginaResult.success) {
-          const missing = imaginaResult.missing
-            ?.map((item) => `${item.field}: ${item.message}`)
-            .join("\n");
-          showCustomToast({
-            title: "Estado guardado; Imagina no enviado",
-            message:
-              missing ||
-              imaginaResult.error ||
-              "No se ha podido enviar el contrato a Imagina Energía.",
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          onUpdate();
-          return;
+        if (imaginaResult.success) {
+          finalStatus =
+            (imaginaResult.data?.status as Status | null | undefined) ||
+            SENT_TO_SUPPLIER_STATUS;
+        } else {
+          imaginaError =
+            formatImaginaMissing(imaginaResult.missing) ||
+            imaginaResult.error ||
+            "No se ha podido enviar el contrato a Imagina Energía.";
         }
       }
 
-      const notification: Notification = generateTramiteUpdatedNotification({
-        changes: { tramite: { status: formData.status } },
-        client: `${client.name} ${client.last_name}`,
-        tramite_id: tramite.id,
-        user_id: tramite.user_id,
+      const notified = await notifyTramiteStatusChange({
+        tramite,
+        client,
+        userData,
+        oldStatus: tramite.status,
+        newStatus: finalStatus,
       });
 
-      const notificationRes = await fetch("/api/v2/notifications", {
-        method: "POST",
-        body: JSON.stringify({ notification }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      const { success: notificationSuccess, error: notificationError } =
-        await notificationRes.json();
-
-      if (!notificationSuccess) {
+      if (!notified.success) {
         showCustomToast({
-          title: "Error al enviar notificación",
-          message: notificationError as string,
+          title:
+            notified.step === "email"
+              ? "Error al enviar notificación por email"
+              : "Error al enviar notificación",
+          message: notified.error as string,
           iconColor: "var(--danger-color)",
           iconSize: 24,
           icon: CircleX,
         });
-        return;
       }
 
-      if (checkStatusChanged()) {
-        const emailRes = await fetch(
-          "/api/v2/communications/emails/status-updates",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              type: "tramite",
-              user_to: {
-                email: tramite.user.email,
-                name: tramite.user.name,
-                org_logo: userData.organization.logo,
-              },
-              tramite_id: tramite.id,
-              status: { old: tramite.status, new: formData.status },
-              client: { name: client.name, last_name: client.last_name },
-            }),
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const { success: emailSuccess, error: emailError } =
-          await emailRes.json();
-
-        if (!emailSuccess) {
-          showCustomToast({
-            title: "Error al enviar notificación por email",
-            message: emailError as string,
-            iconColor: "var(--danger-color)",
-            iconSize: 24,
-            icon: CircleX,
-          });
-          return;
-        }
+      if (imaginaError) {
+        showCustomToast({
+          title: "Estado guardado; Imagina no enviado",
+          message: `${imaginaError}\nPuedes reintentarlo desde "Enviar a Imagina Energía" en las acciones del trámite.`,
+          iconColor: "var(--warning-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+      } else if (notified.success) {
+        showCustomToast({
+          title: "Cambios guardados",
+          message:
+            finalStatus === SENT_TO_SUPPLIER_STATUS
+              ? `Contrato enviado a Imagina Energía. Se ha notificado a ${tramite.user.name}.`
+              : `Los cambios se han guardado correctamente. Se ha notificado a ${tramite.user.name}.`,
+          iconColor: "var(--success-color)",
+          iconSize: 24,
+          icon: CheckSquare,
+        });
       }
 
-      showCustomToast({
-        title: "Cambios guardados",
-        message: `Los cambios se han guardado correctamente. Se ha notificado a ${tramite.user.name}.`,
-        iconColor: "var(--success-color)",
-        iconSize: 24,
-        icon: CheckSquare,
-      });
       onClose();
       onUpdate();
     } catch (error) {
@@ -620,7 +614,7 @@ export default function UpdateTramiteStatusModal({
   return (
     <Dialog open={isOpen} modal>
       <DialogTrigger asChild>
-        <Button variant="outline" onClick={() => setIsOpen(true)}>
+        <Button variant="outline" onClick={onOpen}>
           Actualizar Estado
         </Button>
       </DialogTrigger>
@@ -687,11 +681,7 @@ export default function UpdateTramiteStatusModal({
                   onChange={(value) => handleSelectChange(value, "status")}
                   name="status"
                   label="Estado"
-                  items={
-                    userData.role === "2"
-                      ? COMERCIAL_STATUS_TYPES
-                      : PLAIN_STATUS_TYPES
-                  }
+                  items={statusItems}
                   selectedKey={formData.status}
                   disabled={tramite.status === "Activo"}
                   isRequired
@@ -748,20 +738,55 @@ export default function UpdateTramiteStatusModal({
                   </div>
 
                   {canShowImaginaSwitch ? (
-                    <div className="flex items-center justify-between rounded-md border border-primary-100 bg-primary-50 p-3">
-                      <div className="space-y-1">
-                        <Label htmlFor="send-to-imagina">
-                          Enviar contrato a Imagina Energía
-                        </Label>
-                        <p className="text-xs text-primary-500">
-                          Se enviará tras guardar el estado Verificado.
-                        </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-md border border-primary-100 bg-primary-50 p-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="send-to-imagina">
+                            Enviar contrato a Imagina Energía
+                          </Label>
+                          <p className="text-xs text-primary-500">
+                            Se enviará tras guardar el estado Verificado y el
+                            trámite pasará a &quot;{SENT_TO_SUPPLIER_STATUS}&quot;.
+                          </p>
+                        </div>
+                        <Switch
+                          id="send-to-imagina"
+                          checked={canShowImaginaSwitch && sendToImagina}
+                          onCheckedChange={handleSendToImaginaChange}
+                        />
                       </div>
-                      <Switch
-                        id="send-to-imagina"
-                        checked={canShowImaginaSwitch && sendToImagina}
-                        onCheckedChange={setSendToImagina}
-                      />
+
+                      {sendToImagina && imaginaCheck.status === "checking" ? (
+                        <p className="flex items-center gap-2 text-xs text-primary-500">
+                          <Loader2 className="size-3.5 animate-spin" />
+                          Comprobando los datos para Imagina Energía…
+                        </p>
+                      ) : null}
+                      {sendToImagina && imaginaCheck.status === "ok" ? (
+                        <p className="flex items-center gap-2 rounded-md border border-success-400 bg-success-50 p-2 text-xs text-success-600">
+                          <CircleCheck className="size-4" />
+                          Datos completos: el contrato se enviará al actualizar.
+                        </p>
+                      ) : null}
+                      {sendToImagina && imaginaCheck.status === "error" ? (
+                        <p className="rounded-md border border-danger-400 bg-danger-50 p-2 text-xs text-danger">
+                          {imaginaCheck.error}
+                        </p>
+                      ) : null}
+                      {sendToImagina &&
+                      imaginaCheck.status === "missing" &&
+                      imaginaContract ? (
+                        <ImaginaMissingFieldsForm
+                          missing={imaginaCheck.missing}
+                          tramiteId={tramite.id}
+                          client={client}
+                          contract={imaginaContract}
+                          signer={signer}
+                          userData={userData}
+                          onSaved={handleImaginaFieldsSaved}
+                          disabled={loading}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </>

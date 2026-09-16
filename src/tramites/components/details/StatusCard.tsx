@@ -8,6 +8,7 @@ import {
   TramiteVM,
   ClientDB,
   ContractDB,
+  SignerDB,
 } from "@/tramites/types/tramite.types";
 import { User } from "@/core/types";
 import TramiteStatusSection from "@/tramites/components/editTramite/TramiteStatusSection";
@@ -21,7 +22,7 @@ interface StatusCardProps {
   client: ClientDB;
   contracts: ContractDB[];
   isActive: boolean;
-  mode?: "full" | "actions";
+  signer?: SignerDB | null;
 }
 
 export default function StatusCard({
@@ -33,7 +34,7 @@ export default function StatusCard({
   client,
   contracts,
   isActive,
-  mode = "full",
+  signer,
 }: StatusCardProps) {
   const isComercial = userData.role === "2";
   const showLiquidez = isComercial && tramite.status === "Baja" ? false : true;
@@ -42,7 +43,7 @@ export default function StatusCard({
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <div className="size-2 bg-gray-600 rounded-full"></div>
-          {mode === "actions" ? "Acciones" : "Estado del Trámite"}
+          Estado del trámite
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -57,7 +58,7 @@ export default function StatusCard({
           contracts={contracts}
           isActive={isActive}
           showLiquidez={showLiquidez}
-          mode={mode}
+          signer={signer}
         />
       </CardContent>
     </Card>

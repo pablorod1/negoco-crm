@@ -11,6 +11,7 @@ import {
   ContractDB,
   TramiteVM,
   ClientDB,
+  SignerDB,
 } from "@/tramites/types/tramite.types";
 import { User, UserDefaultNote } from "@/core/types";
 import StatusCard from "./StatusCard";
@@ -33,6 +34,7 @@ interface MainViewProps {
   isRenewable: boolean;
   isActive: boolean;
   isSubcomercial: boolean;
+  signer?: SignerDB | null;
 }
 
 export default function MainView({
@@ -46,6 +48,7 @@ export default function MainView({
   isRenewable,
   isActive,
   isSubcomercial,
+  signer,
 }: MainViewProps) {
   const assignedCommercialId = tramite.user.id || tramite.user_id;
   const showPrioritySummary = !isSubcomercial;
@@ -144,7 +147,7 @@ export default function MainView({
           client={client}
           contracts={contracts}
           isActive={isActive}
-          mode="actions"
+          signer={signer}
         />
 
         <Card className="h-full min-w-0">
