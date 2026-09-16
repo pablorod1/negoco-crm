@@ -82,6 +82,25 @@ const rate = {
 };
 
 describe("Imagina contract mapper", () => {
+  test("sends the holder's structured fiscal address separately from the supply address", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant", webhookRootDomain: "negoco.test", tramite, contract, rate,
+      client: {
+        ...residentialClient, address: "Avenida Mayor 12", tipo_via_cnmc: "Avenida",
+        calle: "Mayor", numero_finca: "12", aclarador_finca: "2º B",
+        postal_code: "08001", city: "Barcelona", province: "Barcelona",
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Expected a valid holder");
+    expect(result.payload).toMatchObject({
+      calle: "Alcala", numero_finca: "1",
+      calle_titular: "Mayor", numero_finca_titular: "12", tipo_via_titular_cnmc: "Avenida",
+      aclarador_finca_titular: "2º B", cod_postal_titular: "08001",
+      municipio_titular: "Barcelona", provincia_titular: "Barcelona",
+    });
+  });
+
   test("blocks submission when no Imagina rate is selected", () => {
     const result = validateAndBuildImaginaContractPayload({
       tenant: "tenant",

@@ -46,6 +46,12 @@ describe("PUT /api/v2/clients", () => {
           postal_code: "28001",
           province: "Madrid",
           city: "Madrid",
+          tipo_via_cnmc: "Calle",
+          calle: "Mayor",
+          numero_finca: "1",
+          aclarador_finca: "2º B",
+          phone_prefix: "34",
+          cnae: "6201",
         },
         signer: {
           name: "Ana",
@@ -64,6 +70,13 @@ describe("PUT /api/v2/clients", () => {
 
     expect(response.status).toBe(201);
     expect(body.success).toBe(true);
+    expect(mocks.addClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: "Calle Mayor 1", tipo_via_cnmc: "Calle", calle: "Mayor",
+        numero_finca: "1", aclarador_finca: "2º B", phone_prefix: "34", cnae: "6201",
+      }),
+      expect.anything(),
+    );
 
     const signerCall = mocks.execute.mock.calls.find(([statement]) =>
       String(statement.sql).includes("INSERT INTO signers"),

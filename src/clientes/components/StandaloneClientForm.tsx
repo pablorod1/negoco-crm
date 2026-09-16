@@ -213,6 +213,22 @@ export default function StandaloneClientForm({
 
           {/* IBAN */}
           <InputComponent
+            name="phone_prefix"
+            label="Prefijo telefónico"
+            onChange={handleFieldChange}
+            type="text"
+            value={formData.phone_prefix || "34"}
+          />
+          {showSignerForm && (
+            <InputComponent
+              name="cnae"
+              label="CNAE (necesario para Imagina Energía)"
+              onChange={handleFieldChange}
+              type="text"
+              value={formData.cnae || ""}
+            />
+          )}
+          <InputComponent
             name="IBAN"
             label="IBAN"
             onChange={handleFieldChange}
@@ -318,9 +334,25 @@ export default function StandaloneClientForm({
 
             {/* Document and Position */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
+              <SelectComponent
+                name="signer.document_type"
+                items={["DNI", "NIE", "Pasaporte"]}
+                onChange={(value) => handleSelectChange("signer.document_type", value)}
+                label="Tipo de documento"
+                selectedKey={signerData.document_type || "DNI"}
+              />
+              <InputComponent
+                name="signer.phone_prefix"
+                label="Prefijo telefónico"
+                onChange={handleFieldChange}
+                type="text"
+                value={signerData.phone_prefix || "34"}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
               <InputComponent
                 name="signer.document_number"
-                label="DNI"
+                label="Número de documento"
                 onChange={handleFieldChange}
                 type="text"
                 errors={signerErrors.document_number}

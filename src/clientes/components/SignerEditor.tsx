@@ -15,6 +15,7 @@ import { Input } from "@/core/components/ui/input";
 import { Label } from "@/core/components/ui/label";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { SignerDB } from "@/tramites/types/tramite.types";
+import { SelectComponent } from "@/tramites/components/createTramite/InputComponent";
 
 interface SignerEditorProps {
   clientId: string;
@@ -23,6 +24,8 @@ interface SignerEditorProps {
 }
 
 interface SignerFormState {
+  document_type: string;
+  phone_prefix: string;
   name: string;
   last_name: string;
   email: string;
@@ -32,6 +35,8 @@ interface SignerFormState {
 }
 
 const getSignerForm = (signer: SignerDB | null): SignerFormState => ({
+  document_type: signer?.document_type || "DNI",
+  phone_prefix: signer?.phone_prefix || "34",
   name: signer?.name ?? "",
   last_name: signer?.last_name ?? "",
   email: signer?.email ?? "",
@@ -43,6 +48,8 @@ const getSignerForm = (signer: SignerDB | null): SignerFormState => ({
 const getSignerFormKey = (signer: SignerDB | null) =>
   [
     signer?.id ?? "",
+    signer?.document_type ?? "",
+    signer?.phone_prefix ?? "",
     signer?.name ?? "",
     signer?.last_name ?? "",
     signer?.email ?? "",
@@ -83,6 +90,8 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
             last_name: form.last_name,
             email: form.email,
             phone: form.phone,
+            phone_prefix: form.phone_prefix,
+            document_type: form.document_type,
             document_number: form.document_number,
             cargo: form.cargo || null,
           },
@@ -131,6 +140,19 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-4">
+            <SelectComponent
+              name="document_type"
+              label="Tipo de documento"
+              items={["DNI", "NIE", "Pasaporte"]}
+              selectedKey={form.document_type}
+              onChange={(value) => setForm((prev) => ({ ...prev, document_type: value }))}
+            />
+            <div className="space-y-2">
+              <Label htmlFor="signer-prefix">Prefijo telefónico</Label>
+              <Input id="signer-prefix" value={form.phone_prefix} onChange={handleChange("phone_prefix")} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="signer-name">Nombre</Label>
               <Input
@@ -173,7 +195,7 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="signer-dni">DNI/NIE</Label>
+              <Label htmlFor="signer-dni">Número de documento</Label>
               <Input
                 id="signer-dni"
                 value={form.document_number}

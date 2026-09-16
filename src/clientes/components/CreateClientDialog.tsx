@@ -168,6 +168,12 @@ export default function CreateClientDialog({
         document_number: formData.document_number || "",
         IBAN: formData.IBAN || "",
         type: formData.type,
+        tipo_via_cnmc: formData.tipo_via_cnmc,
+        calle: formData.calle,
+        numero_finca: formData.numero_finca,
+        aclarador_finca: formData.aclarador_finca,
+        phone_prefix: formData.phone_prefix || "34",
+        cnae: formData.cnae,
       };
 
       // Create signer object if needed
@@ -179,6 +185,8 @@ export default function CreateClientDialog({
           last_name: signerData.last_name || "",
           email: signerData.email || "",
           phone: signerData.phone || "",
+          document_type: signerData.document_type || "DNI",
+          phone_prefix: signerData.phone_prefix || "34",
           document_number: signerData.document_number || "",
           cargo: signerData.cargo || null,
           client_id: newClient.id,
