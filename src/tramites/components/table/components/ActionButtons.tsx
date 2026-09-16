@@ -37,6 +37,7 @@ export function ActionButtons<TData>({
   serverExport,
 }: ActionButtonsProps<TData>) {
   const isComercial = userData?.role === "2";
+  const isAdmin = userData?.role === "admin";
 
   return (
     <div className="flex items-center gap-3">
@@ -48,8 +49,8 @@ export function ActionButtons<TData>({
         }
       />
 
-      {/* Export Button */}
-      {!isComercial && (
+      {/* Export Button (admin only; the export endpoint enforces it too) */}
+      {isAdmin && (
         <Popover>
           <TooltipComponent content="Exportar datos">
             <PopoverTrigger asChild>

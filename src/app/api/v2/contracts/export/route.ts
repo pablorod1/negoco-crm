@@ -75,7 +75,7 @@ const chunk = <T,>(items: T[], size: number): T[][] => {
 
 export async function GET(request: NextRequest) {
   try {
-    // Exports are backoffice-only: the button is hidden for comerciales in the
+    // Exports are admin-only: the button is hidden for every other role in the
     // UI, and the payload can carry internal notes, so enforce it server-side too.
     const authResult = await validateUserSession(request);
     if (!authResult.success || !authResult.user) {
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     }
 
     const user = authResult.user;
-    if (user.role !== "admin" && user.role !== "1") {
+    if (user.role !== "admin") {
       return NextResponse.json(
         { success: false, error: "Forbidden" },
         { status: 403 },
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
 /**
  * Loads quick notes (tickets of type "note") for the given tramite ids,
  * oldest first, grouped by tramite. Internal notes are included: only
- * backoffice roles reach this endpoint.
+ * admins reach this endpoint.
  */
 async function fetchQuickNotes(
   tursoClient: NonNullable<ReturnType<typeof getTursoClient>>,

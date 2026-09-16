@@ -25,10 +25,10 @@ type Row = Record<string, unknown>;
 const buildRequest = (query = "") =>
   new NextRequest(`http://localhost/api/v2/contracts/export${query}`);
 
-const asBackoffice = () =>
+const asAdmin = () =>
   mocks.validateUserSession.mockResolvedValue({
     success: true,
-    user: { id: "USER-1", role: "1", email: "bo@negoco.com", name: "Backoffice" },
+    user: { id: "USER-1", role: "admin", email: "dir@negoco.com", name: "Dirección" },
   });
 
 /**
@@ -91,8 +91,20 @@ describe("GET /api/v2/contracts/export", () => {
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
+  test("rejects backoffice: exports are admin-only", async () => {
+    mocks.validateUserSession.mockResolvedValue({
+      success: true,
+      user: { id: "USER-3", role: "1", email: "bo@negoco.com", name: "Backoffice" },
+    });
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toBe(403);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
   test("refuses to export beyond the row cap instead of truncating", async () => {
-    asBackoffice();
+    asAdmin();
     stubQueries({ total: 8312 });
 
     const response = await GET(buildRequest());
@@ -110,7 +122,7 @@ describe("GET /api/v2/contracts/export", () => {
   });
 
   test("returns quick notes as dated, attributed lines per tramite", async () => {
-    asBackoffice();
+    asAdmin();
     stubQueries({
       total: 2,
       tramites: [
@@ -150,7 +162,7 @@ describe("GET /api/v2/contracts/export", () => {
   });
 
   test("skips the tickets query entirely when notes are not requested", async () => {
-    asBackoffice();
+    asAdmin();
     stubQueries({ total: 1, tramites: [{ id: "TR-1" }] });
 
     const response = await GET(buildRequest());
@@ -164,7 +176,7 @@ describe("GET /api/v2/contracts/export", () => {
   });
 
   test("hydrates in chunks so GROUP_CONCAT never spans the whole export", async () => {
-    asBackoffice();
+    asAdmin();
     const tramites = Array.from({ length: 1200 }, (_, i) => ({ id: `TR-${i}` }));
     stubQueries({ total: tramites.length, tramites });
 
@@ -186,7 +198,7 @@ describe("GET /api/v2/contracts/export", () => {
   });
 
   test("applies the same filters as the paginated listing", async () => {
-    asBackoffice();
+    asAdmin();
     stubQueries({ total: 0 });
 
     await GET(

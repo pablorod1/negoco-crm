@@ -23,15 +23,15 @@ export function ActionButtons<TData>({
   table,
   userData,
 }: ActionButtonsProps<TData>) {
-  const isComercial = userData?.role === "2";
+  const isAdmin = userData?.role === "admin";
 
   return (
     <div className="flex items-center gap-3">
       {/* Column Selector */}
       <ColumnSelector table={table} tableId="comparativas" />
 
-      {/* Export Button */}
-      {!isComercial && (
+      {/* Export Button (admin only) */}
+      {isAdmin && (
         <Popover>
           <TooltipComponent content="Exportar datos">
             <PopoverTrigger asChild>
