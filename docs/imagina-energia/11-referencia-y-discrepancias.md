@@ -147,3 +147,9 @@ Decision: confirmar unidad con Imagina antes de mostrar valores en UI o calcular
 4. Confirmar unidades definitivas de `fee_energia` y `fee_autoconsumo`.
 5. Confirmar catalogo documental esperado para DNI/NIE/CIF.
 6. Decision interna: las URLs de callback y notificaciones usaran subdominio de tenant (`https://{tenant-subdomain}.{app-domain}/...`) para resolver el branch/base Turso correcto. Validar en PRE que Imagina firma y reintenta correctamente con esos hosts publicos.
+
+### `primer_apellido_titular` es obligatorio aunque el YAML lo marque opcional
+
+`ContratoResidencialRequest.required` no incluye `primer_apellido_titular`, pero la API rechaza el alta con `Error en 'cliente.primer_apellido': None is not of type 'string'` si va vacio o ausente.
+
+Decision: el mapper lo trata como obligatorio (bloquea el envio, aparece en la barra de progreso y en el formulario inline) y lo envia siempre como string. El CRM no obliga a apellidos, asi que es un caso habitual.

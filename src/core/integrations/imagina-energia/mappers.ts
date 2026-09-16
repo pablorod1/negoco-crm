@@ -602,6 +602,17 @@ export const validateAndBuildImaginaContractPayload = (
     }
   }
 
+  // El spec lo marca opcional, pero la API lo rechaza si falta ("None is not
+  // of type 'string'"). El CRM no obliga a apellidos, así que se pide aquí.
+  if (!hasValue(client.last_name)) {
+    addMissing(
+      missing,
+      "primer_apellido_titular",
+      "clients",
+      "Completa los apellidos del titular; Imagina los exige para contratos residenciales",
+    );
+  }
+
   if (missing.length > 0) {
     return {
       ok: false,
@@ -618,7 +629,7 @@ export const validateAndBuildImaginaContractPayload = (
     payload: {
       ...commonPayload,
       nombre_titular: client.name,
-      primer_apellido_titular: client.last_name || undefined,
+      primer_apellido_titular: (client.last_name || "").trim(),
       tipo_documento_titular: titularDocumentType,
       numero_documento_titular: client.document_number,
       telefono_firmante: client.phone,

@@ -199,6 +199,44 @@ describe("Imagina contract mapper", () => {
   });
 });
 
+describe("Imagina residential holder surname", () => {
+  test("blocks residential contracts without the holder's surname", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: { ...residentialClient, last_name: "" },
+      contract,
+      rate,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const surname = result.missing.find(
+        (item) => item.field === "primer_apellido_titular",
+      );
+      expect(surname?.source).toBe("clients");
+      expect(surname?.message).toContain("apellidos");
+    }
+  });
+
+  test("always sends the surname as a string", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: { ...residentialClient, last_name: "  Pérez García " },
+      contract,
+      rate,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload.primer_apellido_titular).toBe("Pérez García");
+    }
+  });
+});
+
 describe("Imagina enum normalisation", () => {
   test("translates CartoCiudad province and road type names into Imagina's enums", () => {
     const result = validateAndBuildImaginaContractPayload({
