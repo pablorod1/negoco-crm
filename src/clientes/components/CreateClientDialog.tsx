@@ -275,7 +275,7 @@ export default function CreateClientDialog({
             </div>
           </DialogHeader>
 
-          <div className="flex-1 px-6 py-4 overflow-hidden">
+          <div className="flex-1 min-h-0 px-6 py-4 overflow-y-auto">
             <StandaloneClientForm
               formData={formData}
               setFormData={setFormData}
