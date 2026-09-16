@@ -11,6 +11,7 @@ import {
   isImaginaSupplierName,
 } from "./mappers";
 import type { NegocoImaginaStatus } from "./state-mapper";
+import { SENT_TO_SUPPLIER_STATUS } from "@/tramites/constants/tramite.constants";
 
 export interface ImaginaTenantIntegration {
   enabled: boolean;
@@ -29,6 +30,18 @@ export interface ImaginaSubmissionBundle {
 export interface LocalContractRef {
   id: string;
   tramite_id: string;
+}
+
+export interface ContractIntegrationRef {
+  contract_id: string;
+  tramite_id: string;
+  external_contract_id: string | null;
+  external_contract_code: string | null;
+  external_reference: string | null;
+  request_id: string | null;
+  status: string | null;
+  substatus: string | null;
+  synced_at: string | null;
 }
 
 type DbArg = string | number | null;
@@ -246,6 +259,37 @@ export const findContractByIntegrationRef = async (
   return {
     id: String(row.id),
     tramite_id: String(row.tramite_id),
+  };
+};
+
+export const getContractIntegrationRef = async (
+  db: Client,
+  provider: string,
+  contractId: string,
+): Promise<ContractIntegrationRef | null> => {
+  const result = await db.execute({
+    sql: `SELECT contract_id, tramite_id, external_contract_id,
+                 external_contract_code, external_reference, request_id,
+                 status, substatus, synced_at
+          FROM contract_integration_refs
+          WHERE provider = ? AND contract_id = ?
+          LIMIT 1`,
+    args: [provider, contractId],
+  });
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    contract_id: String(row.contract_id),
+    tramite_id: String(row.tramite_id),
+    external_contract_id: optionalString(row.external_contract_id),
+    external_contract_code: optionalString(row.external_contract_code),
+    external_reference: optionalString(row.external_reference),
+    request_id: optionalString(row.request_id),
+    status: optionalString(row.status),
+    substatus: optionalString(row.substatus),
+    synced_at: optionalString(row.synced_at),
   };
 };
 
@@ -485,6 +529,66 @@ export const updateCrmStatusFromImagina = async (
       now,
     ],
   });
+};
+
+// Solo avanza desde "Verificado": si el callback de Imagina ya movió el
+// trámite (p. ej. a "Pendiente de Firma") no debe pisarlo.
+export const markTramiteSentToSupplier = async (
+  db: Client,
+  params: {
+    tramiteId: string;
+    userId?: string | null;
+    description: string;
+  },
+): Promise<{ updated: boolean; previousStatus: string | null }> => {
+  const current = await db.execute({
+    sql: `SELECT status, tramitation_date FROM tramites WHERE id = ? LIMIT 1`,
+    args: [params.tramiteId],
+  });
+  const row = current.rows[0];
+  if (!row) return { updated: false, previousStatus: null };
+
+  const previousStatus = String(row.status || "");
+  if (previousStatus !== "Verificado") {
+    return { updated: false, previousStatus };
+  }
+
+  const now = new Date().toISOString();
+  const fields = ["status = ?", "updated_at = ?"];
+  const args: DbArg[] = [SENT_TO_SUPPLIER_STATUS, now];
+
+  if (!row.tramitation_date) {
+    fields.push("tramitation_date = ?");
+    args.push(now);
+  }
+
+  args.push(params.tramiteId, "Verificado");
+  const result = await db.execute({
+    sql: `UPDATE tramites SET ${fields.join(", ")} WHERE id = ? AND status = ?`,
+    args,
+  });
+
+  if (result.rowsAffected === 0) {
+    return { updated: false, previousStatus };
+  }
+
+  await db.execute({
+    sql: `INSERT INTO tramite_changes (
+            id, tramite_id, user_id, change_type, field_name,
+            old_value, new_value, description, created_at
+          ) VALUES (?, ?, ?, 'status_change', 'status', ?, ?, ?, ?)`,
+    args: [
+      crypto.randomUUID(),
+      params.tramiteId,
+      params.userId ?? null,
+      previousStatus,
+      SENT_TO_SUPPLIER_STATUS,
+      params.description,
+      now,
+    ],
+  });
+
+  return { updated: true, previousStatus };
 };
 
 export const persistContractSnapshot = async (

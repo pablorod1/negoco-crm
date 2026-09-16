@@ -36,10 +36,16 @@ export const PLAIN_CONTRACT_TYPES = [
 
 export const CARGOS = ["Presidente de la Comunidad", "Administrador de Fincas"];
 
+// Estado que asigna el sistema cuando el contrato se envía a la comercializadora
+// (hoy, integración de Imagina Energía). No se ofrece en los desplegables de
+// cambio de estado: solo se alcanza de forma automática.
+export const SENT_TO_SUPPLIER_STATUS = "Enviado a comercializadora" as const;
+
 export const STATUS_TYPES = [
   { label: "Borrador", value: "Borrador" },
   { label: "Tramitable", value: "Tramitable" },
   { label: "Verificado", value: "Verificado" },
+  { label: SENT_TO_SUPPLIER_STATUS, value: SENT_TO_SUPPLIER_STATUS },
   { label: "Pendiente de Firma", value: "Pendiente de Firma" },
   { label: "Procesando", value: "Procesando" },
   { label: "Activo", value: "Activo" },

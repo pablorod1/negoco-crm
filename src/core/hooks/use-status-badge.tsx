@@ -14,6 +14,7 @@ import {
   FilePen,
   FileSignature,
   Gauge,
+  MailCheck,
   RefreshCw,
   Send,
   TriangleAlert,
@@ -77,6 +78,12 @@ const STATUS_BADGES = {
       Verificado
     </Badge>
   ),
+  "Enviado a comercializadora": (
+    <Badge className="border-transparent bg-info-500 text-white hover:bg-info-500">
+      <MailCheck className="size-3" />
+      Enviado a comercializadora
+    </Badge>
+  ),
   "Pendiente de Firma": (
     <Badge variant="info">
       <FileSignature className="size-3" />
@@ -126,6 +133,12 @@ const STATUS_BADGES = {
 // etiquetas cortas en los que rompen la UI por su longitud.
 const TABLE_STATUS_BADGES = {
   ...STATUS_BADGES,
+  "Enviado a comercializadora": (
+    <Badge className="border-transparent bg-info-500 text-white hover:bg-info-500">
+      <MailCheck className="size-3" />
+      Enviado
+    </Badge>
+  ),
   "Pendiente de Firma": (
     <Badge variant="info">
       <FileSignature className="size-3" />

@@ -21,15 +21,18 @@ import {
 import {
   findContractByIntegrationRef,
   findSubmissionByCorrelation,
+  getContractIntegrationRef,
   getImaginaComercializadora,
   getImaginaIntegration,
   getSelectedImaginaRate,
   getSubmissionBundle,
   insertContractSubmission,
+  markTramiteSentToSupplier,
   persistContractSnapshot,
   upsertContractIntegrationRef,
   updateCrmStatusFromImagina,
 } from "./persistence";
+import type { ContractIntegrationRef } from "./persistence";
 import {
   mapContractCallbackToNegoco,
   mapContractInfoToNegoco,
@@ -37,6 +40,7 @@ import {
   mapScoringCodeToNegoco,
 } from "./state-mapper";
 import { IMAGINA_PROVIDER } from "./config";
+import { SENT_TO_SUPPLIER_STATUS } from "@/tramites/constants/tramite.constants";
 
 interface ServiceContext {
   db: Client;
@@ -95,11 +99,21 @@ const firstNumericTariffPrice = (tariff: ImaginaTarifa): number => {
 
 export const getImaginaIntegrationStatus = async (
   db: Client,
-): Promise<{ enabled: boolean; configured: boolean }> => {
+  params?: { contractId?: string | null },
+): Promise<{
+  enabled: boolean;
+  configured: boolean;
+  submission: ContractIntegrationRef | null;
+}> => {
   const integration = await getImaginaIntegration(db);
+  const submission =
+    integration.configured && params?.contractId
+      ? await getContractIntegrationRef(db, IMAGINA_PROVIDER, params.contractId)
+      : null;
   return {
     enabled: integration.enabled,
     configured: integration.configured,
+    submission,
   };
 };
 
@@ -207,8 +221,14 @@ export const syncImaginaTarifas = async (
 
 export const submitImaginaContract = async (
   context: ServiceContext,
-  params: { tramiteId: string; contractId?: string | null },
-): Promise<ServiceResult<{ requestId?: string | number; referenciaExterna: string }>> => {
+  params: { tramiteId: string; contractId?: string | null; userId?: string | null },
+): Promise<
+  ServiceResult<{
+    requestId?: string | number;
+    referenciaExterna: string;
+    status: string | null;
+  }>
+> => {
   const channelId = await requireChannel(context.db);
   const bundle = await getSubmissionBundle(
     context.db,
@@ -221,6 +241,21 @@ export const submitImaginaContract = async (
       success: false,
       status: 404,
       error: "No se ha encontrado el trámite, contrato, cliente o firmante",
+    };
+  }
+
+  // Un external_contract_id solo existe cuando Imagina confirmó la creación:
+  // reenviar crearía un contrato duplicado en su lado.
+  const existingRef = await getContractIntegrationRef(
+    context.db,
+    IMAGINA_PROVIDER,
+    bundle.contract.id,
+  );
+  if (existingRef?.external_contract_id) {
+    return {
+      success: false,
+      status: 409,
+      error: `Este contrato ya existe en Imagina Energía (id ${existingRef.external_contract_id}); no se puede enviar de nuevo.`,
     };
   }
 
@@ -272,11 +307,18 @@ export const submitImaginaContract = async (
     syncedAt: new Date().toISOString(),
   });
 
+  const sent = await markTramiteSentToSupplier(context.db, {
+    tramiteId: bundle.tramite.id,
+    userId: params.userId ?? null,
+    description: `Contrato enviado a Imagina Energía (ref. ${built.referenciaExterna})`,
+  });
+
   return {
     success: true,
     data: {
       requestId: parsed.request_id,
       referenciaExterna: built.referenciaExterna,
+      status: sent.updated ? SENT_TO_SUPPLIER_STATUS : null,
     },
   };
 };

@@ -9,6 +9,7 @@ import {
 const SubmitSchema = z.object({
   tramite_id: z.string().min(1),
   contract_id: z.string().optional().nullable(),
+  user_id: z.string().optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
       {
         tramiteId: parsed.data.tramite_id,
         contractId: parsed.data.contract_id,
+        userId: parsed.data.user_id,
       },
     );
 

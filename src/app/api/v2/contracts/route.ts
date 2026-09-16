@@ -35,6 +35,7 @@ const StatusSchema = z.enum([
   "Borrador",
   "Tramitable",
   "Verificado",
+  "Enviado a comercializadora",
   "Pendiente de Firma",
   "Procesando",
   "Activo",

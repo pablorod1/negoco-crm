@@ -471,6 +471,7 @@ export default function AddTramiteDialog({
             body: JSON.stringify({
               tramite_id: tramite.id,
               contract_id: imaginaContract.id,
+              user_id: userData?.id,
             }),
           },
         );

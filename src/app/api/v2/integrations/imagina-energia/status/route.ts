@@ -5,7 +5,8 @@ import { getImaginaIntegrationStatus } from "@/core/integrations/imagina-energia
 export async function GET(request: NextRequest) {
   try {
     const db = getTursoClient(request);
-    const status = await getImaginaIntegrationStatus(db);
+    const contractId = request.nextUrl.searchParams.get("contract_id");
+    const status = await getImaginaIntegrationStatus(db, { contractId });
 
     return NextResponse.json({
       success: true,

@@ -22,6 +22,7 @@ export const updateTramite = async (
       if (
         tramite.tramitation_date === "" &&
         (tramite.status === "Verificado" ||
+          tramite.status === "Enviado a comercializadora" ||
           tramite.status === "Procesando" ||
           tramite.status === "Pendiente de Firma" ||
           tramite.status === "Activo")

@@ -5,6 +5,7 @@ export type Status =
   | "Borrador"
   | "Tramitable"
   | "Verificado"
+  | "Enviado a comercializadora"
   | "Pendiente de Firma"
   | "Procesando"
   | "Activo"
