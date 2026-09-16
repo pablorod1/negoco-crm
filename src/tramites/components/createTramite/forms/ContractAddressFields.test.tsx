@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEmptyContractDB } from "@/tramites/utils/tramite.factories";
 import type { ContractDB } from "@/tramites/types";
-import ContractAddressFields from "./ContractAddressFields";
+import AddressFields from "@/core/components/AddressFields";
 
 const candidate = {
   id: "1",
@@ -41,7 +41,7 @@ function renderField() {
       postal_code: "08001",
     });
     return (
-      <ContractAddressFields
+      <AddressFields
         formData={data}
         onChange={(fields) => {
           onChange(fields);

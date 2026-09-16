@@ -1,4 +1,5 @@
-﻿import {
+import AddressFields from "@/core/components/AddressFields";
+import {
   createEmptySignerForm,
   SecondForm,
   SecondFormError,
@@ -8,19 +9,6 @@
 import { InputComponent, SelectComponent } from "../../InputComponent";
 import { Separator } from "@/core/components/ui/separator";
 import { CARGOS, CLIENT_TYPES, DOCUMENT_TYPES } from "@/tramites/constants";
-
-const TIPO_VIA_CNMC = [
-  "Calle",
-  "Avenida",
-  "Plaza",
-  "Paseo",
-  "Camino",
-  "Carretera",
-  "Ronda",
-  "Travesía",
-  "Urbanización",
-  "Polígono",
-];
 
 interface Props {
   formData: SecondForm;
@@ -238,17 +226,16 @@ export default function NewClientForm({
           />
         )}
 
+        <AddressFields
+          formData={formData}
+          label="Dirección fiscal"
+          error={errors.address}
+          onChange={(fields) => {
+            setFormData((prev) => ({ ...prev, ...fields }));
+            setErrors((prev) => ({ ...prev, address: "" }));
+          }}
+        />
         <div className="flex items-stretch gap-8 w-full">
-          <InputComponent
-            name="address"
-            label="Dirección Fiscal"
-            onChange={handleFieldChange}
-            type="text"
-            errors={errors.address}
-            isRequired
-            value={formData.address}
-          />
-
           <InputComponent
             name="postal_code"
             label="Código Postal"
@@ -271,37 +258,6 @@ export default function NewClientForm({
             onChange={handleFieldChange}
             value={formData.city}
             type="text"
-          />
-        </div>
-
-        <div className="flex items-stretch gap-8 w-full">
-          <SelectComponent
-            name="tipo_via_cnmc"
-            items={TIPO_VIA_CNMC}
-            onChange={(value) => handleSelectChange("tipo_via_cnmc", value)}
-            label="Tipo vía fiscal"
-            selectedKey={formData.tipo_via_cnmc || ""}
-          />
-          <InputComponent
-            name="calle"
-            label="Calle fiscal"
-            onChange={handleFieldChange}
-            type="text"
-            value={formData.calle || ""}
-          />
-          <InputComponent
-            name="numero_finca"
-            label="Número fiscal"
-            onChange={handleFieldChange}
-            type="text"
-            value={formData.numero_finca || ""}
-          />
-          <InputComponent
-            name="aclarador_finca"
-            label="Aclarador fiscal"
-            onChange={handleFieldChange}
-            type="text"
-            value={formData.aclarador_finca || ""}
           />
         </div>
       </div>

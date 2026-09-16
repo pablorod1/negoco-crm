@@ -21,7 +21,7 @@ import { useImaginaRates } from "@/comercializadoras/hooks/useImaginaRates";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { ComparativaVM } from "@/comparativas/types";
 import { useUser } from "@/core/contexts/UserContext";
-import ContractAddressFields from "./ContractAddressFields";
+import AddressFields from "@/core/components/AddressFields";
 import ImaginaContractFields from "./ImaginaContractFields";
 import {
   resolveSupplierSelection,
@@ -439,7 +439,7 @@ export default function ContractForm({
                 selectedKey={formData.plan}
               />
             </div>
-            <ContractAddressFields
+            <AddressFields
               formData={formData}
               error={errors.address}
               onChange={(fields) => {

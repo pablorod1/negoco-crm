@@ -19,7 +19,7 @@ import {
 import { Label } from "@/core/components/ui/label";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useImaginaRates } from "@/comercializadoras/hooks/useImaginaRates";
-import ContractAddressFields from "../../createTramite/forms/ContractAddressFields";
+import AddressFields from "@/core/components/AddressFields";
 import ImaginaContractFields from "../../createTramite/forms/ImaginaContractFields";
 import {
   resolveSupplierSelection,
@@ -214,7 +214,7 @@ export default function EditContractForm({
               selectedKey={formData.plan}
             />
           </div>
-          <ContractAddressFields
+          <AddressFields
             formData={formData}
             error={errors.address}
             onChange={(fields) => {

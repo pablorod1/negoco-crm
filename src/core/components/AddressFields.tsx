@@ -10,7 +10,7 @@ import {
 } from "@/core/components/ui/popover";
 import type { CartoCiudadCandidate } from "@/core/addresses/cartociudad";
 import type { ContractDB } from "@/tramites/types";
-import { InputComponent } from "../InputComponent";
+import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 
 type AddressFields = Pick<
   ContractDB,
@@ -24,15 +24,19 @@ type AddressFields = Pick<
   | "postal_code"
 >;
 interface Props {
-  formData: ContractDB;
+  formData: AddressFields;
   onChange: (fields: Partial<AddressFields>) => void;
   error?: string;
+  label?: string;
+  required?: boolean;
 }
 
-export default function ContractAddressFields({
+export default function AddressFields({
   formData,
   onChange,
   error,
+  label = "Dirección",
+  required = true,
 }: Props) {
   const [query, setQuery] = React.useState("");
   const [open, setOpen] = React.useState(false);
@@ -112,7 +116,7 @@ export default function ContractAddressFields({
   return (
     <div className="space-y-2">
       <Label htmlFor={`${listId}-input`}>
-        Dirección <span className="text-red-500">*</span>
+        {label} {required && <span className="text-red-500">*</span>}
       </Label>
       <Popover
         open={open}

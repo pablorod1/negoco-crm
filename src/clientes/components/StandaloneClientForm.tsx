@@ -14,6 +14,7 @@ import {
 } from "@/tramites/components/createTramite/InputComponent";
 import { CARGOS, CLIENT_TYPES, DOCUMENT_TYPES } from "@/tramites/constants";
 import { UserCheck } from "lucide-react";
+import AddressFields from "@/core/components/AddressFields";
 
 interface StandaloneClientFormProps {
   formData: SecondForm;
@@ -226,13 +227,15 @@ export default function StandaloneClientForm({
               Dirección
             </div>
 
-            <InputComponent
-              name="address"
-              label="Dirección"
-              onChange={handleFieldChange}
-              type="text"
-              errors={errors.address}
-              value={formData.address}
+            <AddressFields
+              formData={formData}
+              label="Dirección fiscal"
+              required={false}
+              error={errors.address}
+              onChange={(fields) => {
+                setFormData((prev) => ({ ...prev, ...fields }));
+                setErrors((prev) => ({ ...prev, address: "" }));
+              }}
             />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
