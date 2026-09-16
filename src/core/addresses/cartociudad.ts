@@ -61,7 +61,9 @@ export function normalizeCandidate(
     calle: street.trim(),
     numero_finca: numero,
     postal_code: text(candidate.postalCode),
-    city: text(candidate.poblacion) || text(candidate.muni),
+    // Municipio INE, no la localidad: es lo que exigen las comercializadoras
+    // (Imagina lo valida contra su catálogo) y el resto de sistemas postales.
+    city: text(candidate.muni) || text(candidate.poblacion),
     province: text(candidate.province),
   };
 }

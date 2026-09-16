@@ -24,7 +24,7 @@ test("separates the street, extended portal and locality from real candidate lab
     postal_code: "28013",
   });
 });
-test("preserves numbers in street names and prefers population over municipality", () => {
+test("preserves numbers in street names and prefers municipality over population", () => {
   expect(
     normalizeCandidate({
       type: "portal",
@@ -37,7 +37,7 @@ test("preserves numbers in street names and prefers population over municipality
   ).toMatchObject({
     calle: "12 DE OCTUBRE",
     numero_finca: "0",
-    city: "Localidad",
+    city: "Madrid",
   });
 });
 test("does not invent a portal or postcode for a street candidate", () => {

@@ -198,3 +198,98 @@ describe("Imagina contract mapper", () => {
     }
   });
 });
+
+describe("Imagina enum normalisation", () => {
+  test("translates CartoCiudad province and road type names into Imagina's enums", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: {
+        ...residentialClient,
+        province: "A Coruña",
+        tipo_via_cnmc: "Rúa",
+      },
+      contract: {
+        ...contract,
+        province: "València/Valencia",
+        tipo_via_cnmc: "Carrer",
+      },
+      rate,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload).toMatchObject({
+        provincia: "Valencia/València",
+        tipo_via_cnmc: "Calle",
+        provincia_titular: "Coruña, A",
+        tipo_via_titular_cnmc: "Calle",
+      });
+    }
+  });
+
+  test("translates municipality names into the INE catalogue names", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: { ...residentialClient, city: "La Coruña", province: "A Coruña" },
+      contract: {
+        ...contract,
+        city: "Castellón de la Plana",
+        province: "Castelló/Castellón",
+      },
+      rate,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload).toMatchObject({
+        municipio: "Castellón de la Plana/Castelló de la Plana",
+        municipio_titular: "Coruña, A",
+      });
+    }
+  });
+
+  test("blocks localities that are not municipalities", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: residentialClient,
+      contract: { ...contract, city: "El Palmar" },
+      rate,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const municipio = result.missing.find((item) => item.field === "municipio");
+      expect(municipio?.source).toBe("contracts");
+      expect(municipio?.message).toContain("El Palmar");
+      expect(municipio?.message).toContain("lista de Imagina");
+    }
+  });
+
+  test("reports unrecognised provinces and road types instead of sending them", () => {
+    const result = validateAndBuildImaginaContractPayload({
+      tenant: "tenant",
+      webhookRootDomain: "negoco.test",
+      tramite,
+      client: { ...residentialClient, province: "Comunidad Valenciana" },
+      contract: { ...contract, tipo_via_cnmc: "Boulevard" },
+      rate,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const byField = Object.fromEntries(
+        result.missing.map((item) => [item.field, item.message]),
+      );
+      expect(byField.provincia_titular).toContain("Comunidad Valenciana");
+      expect(byField.provincia_titular).toContain("lista de Imagina");
+      expect(byField.tipo_via_cnmc).toContain("Boulevard");
+      expect(byField.provincia).toBeUndefined();
+    }
+  });
+});

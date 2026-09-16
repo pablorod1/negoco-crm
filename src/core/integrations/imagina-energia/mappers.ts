@@ -14,6 +14,8 @@ import {
   buildTenantWebhookUrl,
   IMAGINA_SUPPLIER_NAME,
 } from "./config";
+import { resolveImaginaProvince, resolveImaginaRoadType } from "./catalogs";
+import { resolveImaginaMunicipio } from "./municipios";
 
 export interface ImaginaValidationError {
   field: string;
@@ -170,19 +172,50 @@ const buildPowerArray = (
   return watts;
 };
 
+// Imagina solo admite valores de sus enums; el CRM guarda lo que devuelve
+// CartoCiudad o escribe el usuario, así que se traduce aquí. Un valor vacío y
+// uno no reconocido son errores distintos para que el formulario los explique.
+const resolveEnumField = (
+  missing: ImaginaValidationError[],
+  field: string,
+  source: string,
+  value: string | null | undefined,
+  resolve: (value: string) => string | null,
+  labels: { empty: string; unknown: string },
+): string => {
+  if (!hasValue(value)) {
+    addMissing(missing, field, source, labels.empty);
+    return "";
+  }
+  const resolved = resolve(value);
+  if (!resolved) {
+    addMissing(
+      missing,
+      field,
+      source,
+      `${labels.unknown}: "${value.trim()}" no está en la lista de Imagina; selecciona un valor de la lista`,
+    );
+    return "";
+  }
+  return resolved;
+};
+
 const getSupplyAddress = (
   contract: ContractDB,
   missing: ImaginaValidationError[],
 ) => {
   const calle = contract.calle || contract.address;
-  if (!hasValue(contract.tipo_via_cnmc)) {
-    addMissing(
-      missing,
-      "tipo_via_cnmc",
-      "contracts",
-      "Completa el tipo de vía CNMC del punto de suministro",
-    );
-  }
+  const tipoVia = resolveEnumField(
+    missing,
+    "tipo_via_cnmc",
+    "contracts",
+    contract.tipo_via_cnmc,
+    resolveImaginaRoadType,
+    {
+      empty: "Completa el tipo de vía CNMC del punto de suministro",
+      unknown: "Tipo de vía del punto de suministro",
+    },
+  );
   if (!hasValue(calle)) {
     addMissing(
       missing,
@@ -203,7 +236,7 @@ const getSupplyAddress = (
   return {
     calle: (calle || "").trim(),
     numero_finca: (contract.numero_finca || "").trim(),
-    tipo_via_cnmc: (contract.tipo_via_cnmc || "").trim(),
+    tipo_via_cnmc: tipoVia,
     aclarador_finca: contract.aclarador_finca || undefined,
   };
 };
@@ -213,14 +246,17 @@ const getHolderAddress = (
   missing: ImaginaValidationError[],
 ) => {
   const calle = client.calle || client.address;
-  if (!hasValue(client.tipo_via_cnmc)) {
-    addMissing(
-      missing,
-      "tipo_via_titular_cnmc",
-      "clients",
-      "Completa el tipo de vía CNMC de la dirección del titular",
-    );
-  }
+  const tipoVia = resolveEnumField(
+    missing,
+    "tipo_via_titular_cnmc",
+    "clients",
+    client.tipo_via_cnmc,
+    resolveImaginaRoadType,
+    {
+      empty: "Completa el tipo de vía CNMC de la dirección del titular",
+      unknown: "Tipo de vía de la dirección del titular",
+    },
+  );
   if (!hasValue(calle)) {
     addMissing(
       missing,
@@ -241,7 +277,7 @@ const getHolderAddress = (
   return {
     calle_titular: (calle || "").trim(),
     numero_finca_titular: (client.numero_finca || "").trim(),
-    tipo_via_titular_cnmc: (client.tipo_via_cnmc || "").trim(),
+    tipo_via_titular_cnmc: tipoVia,
     aclarador_finca_titular: client.aclarador_finca || undefined,
   };
 };
@@ -323,16 +359,58 @@ export const validateAndBuildImaginaContractPayload = (
     );
   }
 
+  const supplyProvince = resolveEnumField(
+    missing,
+    "provincia",
+    "contracts",
+    contract.province,
+    resolveImaginaProvince,
+    {
+      empty: "Completa provincia antes de enviar el contrato a Imagina",
+      unknown: "Provincia del punto de suministro",
+    },
+  );
+  const holderProvince = resolveEnumField(
+    missing,
+    "provincia_titular",
+    "clients",
+    client.province,
+    resolveImaginaProvince,
+    {
+      empty: "Completa provincia_titular antes de enviar el contrato a Imagina",
+      unknown: "Provincia del titular",
+    },
+  );
+
+  const supplyMunicipio = resolveEnumField(
+    missing,
+    "municipio",
+    "contracts",
+    contract.city,
+    resolveImaginaMunicipio,
+    {
+      empty: "Completa municipio antes de enviar el contrato a Imagina",
+      unknown: "Municipio del punto de suministro",
+    },
+  );
+  const holderMunicipio = resolveEnumField(
+    missing,
+    "municipio_titular",
+    "clients",
+    client.city,
+    resolveImaginaMunicipio,
+    {
+      empty: "Completa municipio_titular antes de enviar el contrato a Imagina",
+      unknown: "Municipio del titular",
+    },
+  );
+
   const commonRequired: Array<[string, string, string | null | undefined]> = [
     ["cups", "contracts", contract.CUPS],
-    ["provincia", "contracts", contract.province],
-    ["municipio", "contracts", contract.city],
     ["cod_postal", "contracts", contract.postal_code],
     ["iban", "clients", client.IBAN],
     ["telefono_titular", "clients", client.phone],
     ["email_titular", "clients", client.email],
-    ["provincia_titular", "clients", client.province],
-    ["municipio_titular", "clients", client.city],
     ["cod_postal_titular", "clients", client.postal_code],
   ];
 
@@ -397,8 +475,8 @@ export const validateAndBuildImaginaContractPayload = (
 
   const commonPayload: Record<string, unknown> = {
     cups: cups ? cups.slice(0, 20) : contract.CUPS,
-    provincia: contract.province,
-    municipio: contract.city,
+    provincia: supplyProvince,
+    municipio: supplyMunicipio,
     cod_postal: contract.postal_code,
     ...supplyAddress,
     potencia_contratada: powerArray,
@@ -407,8 +485,8 @@ export const validateAndBuildImaginaContractPayload = (
     telefono_titular: client.phone,
     prefijo_telefono_titular: normalizePhonePrefix(client.phone_prefix),
     email_titular: client.email,
-    provincia_titular: client.province,
-    municipio_titular: client.city,
+    provincia_titular: holderProvince,
+    municipio_titular: holderMunicipio,
     cod_postal_titular: client.postal_code,
     ...holderAddress,
     canal_envio: signatureChannel,

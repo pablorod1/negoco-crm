@@ -105,6 +105,8 @@ Antes de llamar a Imagina, nuestro endpoint interno debe validar que el contrato
 | `id_tarifa` | `comercializadora_rates.external_rate_id` de una tarifa Imagina seleccionada/sincronizada | Bloquear envio si no hay tarifa Imagina seleccionada |
 | Potencias P1..P6 | `contracts.pot1..pot6` | Convertir/validar unidad antes de enviar `potencia_contratada` |
 | Direccion CNMC | Datos de contrato y normalizacion local | Imagina requiere `tipo_via_cnmc`, calle, numero, municipio, provincia y CP; no basta una direccion libre si faltan piezas |
+| `provincia` / `tipo_via_cnmc` (y `*_titular`) | Texto libre en `contracts`/`clients` (CartoCiudad devuelve el idioma local: `València/Valencia`, `Carrer`) | Son enums cerrados (`Provincia` INE, `TipoViaCnmc` ATR 12). `catalogs.ts` los traduce con alias (idiomas cooficiales, abreviaturas, nombres antiguos) justo antes de construir el payload; si no hay mapeo, se bloquea el envio y el formulario ofrece la lista de Imagina. El CRM no cambia lo que guarda. |
+| `municipio` / `municipio_titular` | `contracts.city` / `clients.city`. Desde CartoCiudad se guarda el municipio (`muni`), no la localidad | Catalogo cerrado de 8.116 municipios INE (`docs/imagina-energia/municipios.enum.yml` → `municipios.data.ts`, regenerar con `npm run imagina:municipios`). `municipios.ts` resuelve variantes (`Valencia`→`València`, `La Coruña`→`Coruña, A`, `L'Hospitalet`…); si no hay mapeo se bloquea y el formulario ofrece un buscador sobre el catalogo. |
 | CNAE | Datos del cliente/empresa | Obligatorio en `/contrato/empresa` |
 | Firmante empresa | Tabla/datos de firmante | Obligatorio en `/contrato/empresa` para la persona fisica que firma |
 
