@@ -241,7 +241,7 @@ export const TicketRepliesSheet: React.FC<TicketRepliesSheetProps> = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[500px] sm:w-[600px] flex flex-col h-full">
+      <SheetContent className="w-[500px] sm:w-[600px] flex flex-col gap-4 h-full">
         <SheetHeader className="pb-4 border-b">
           <div className="flex items-center gap-3">
             <MessageSquare className="h-5 w-5 text-blue-600" />

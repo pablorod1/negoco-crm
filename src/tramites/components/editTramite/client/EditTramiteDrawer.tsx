@@ -43,7 +43,6 @@ export default function EditDrawer({
   const [isOpen, setIsOpen] = useState(false);
 
   const onClose = () => setIsOpen(false);
-  const onOpen = () => setIsOpen(true);
   const handleUpdate = () => {
     if (onUpdate) onUpdate();
     onClose();
@@ -54,9 +53,9 @@ export default function EditDrawer({
     onClose();
   };
   return (
-    <Sheet open={isOpen}>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" onClick={onOpen}>
+        <Button variant="outline">
           <UserPen size={16} />
           {!newContract
             ? `Editar ${client ? "Cliente" : signer ? "Firmante" : contract ? "Contrato" : ""} `
@@ -65,7 +64,7 @@ export default function EditDrawer({
       </SheetTrigger>
       <SheetContent
         aria-describedby={undefined}
-        className={`${newContract || contract ? "w-[1200px] mx-auto rounded-t-md" : "w-[480px]"}`}
+        className={`${newContract || contract ? "w-full max-w-[1200px] mx-auto rounded-t-md" : "w-[480px]"}`}
         side={newContract || contract ? "bottom" : "right"}
       >
         <SheetHeader className="mb-8">

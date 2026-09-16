@@ -191,7 +191,7 @@ export default function EditFotovoltaicaClientForm({
   };
 
   return (
-    <div className="h-full">
+    <div className="flex flex-col h-full">
       <div className="flex flex-col gap-12 w-full">
         <InputComponent
           label="Nombre del Cliente"
@@ -230,7 +230,7 @@ export default function EditFotovoltaicaClientForm({
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-0 w-full px-4">
+      <div className="mt-auto">
         <ButtonGroupComponent
           onSubmit={handleSubmit}
           onCancel={onCancel}

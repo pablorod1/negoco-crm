@@ -326,8 +326,8 @@ export default function EditClientForm({
   };
 
   return (
-    <div className="h-full">
-      <div className="flex flex-col gap-4 w-full h-full">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-col gap-4 w-full">
         <div className="flex items-stretch gap-4">
           <InputComponent
             name="name"
@@ -476,7 +476,7 @@ export default function EditClientForm({
         />
       </div>
 
-      <div className="absolute bottom-4 left-0 w-full px-4">
+      <div className="mt-auto">
         <ButtonGroupComponent
           onSubmit={handleSubmit}
           onCancel={onCancel}

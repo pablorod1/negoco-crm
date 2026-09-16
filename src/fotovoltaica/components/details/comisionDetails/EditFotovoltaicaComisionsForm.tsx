@@ -121,7 +121,7 @@ export default function EditFotovoltaicaComisionsForm({
   };
 
   return (
-    <div className="h-full">
+    <div className="flex flex-col h-full">
       <div className="flex flex-col gap-12 w-full">
         <InputComponent
           label="Comisión"
@@ -144,7 +144,7 @@ export default function EditFotovoltaicaComisionsForm({
         />
       </div>
 
-      <div className="absolute bottom-4 left-0 w-full px-4">
+      <div className="mt-auto">
         <ButtonGroupComponent
           onSubmit={handleSubmit}
           onCancel={onCancel}
