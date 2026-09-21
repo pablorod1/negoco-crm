@@ -29,6 +29,12 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   !Array.isArray(value) &&
   Object.getPrototypeOf(value) === Object.prototype;
 
+const compareJsonKeys = (left: string, right: string): number => {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+};
+
 export const stripCallbackSignature = (payload: unknown): unknown => {
   if (Array.isArray(payload)) {
     return payload.map(stripCallbackSignature);
@@ -58,7 +64,7 @@ export const canonicalizeJson = (value: unknown): string => {
   if (isPlainObject(value)) {
     const entries = Object.entries(value)
       .filter(([, entryValue]) => entryValue !== undefined)
-      .sort(([left], [right]) => left.localeCompare(right));
+      .sort(([left], [right]) => compareJsonKeys(left, right));
 
     return `{${entries
       .map(
