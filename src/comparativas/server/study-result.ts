@@ -106,7 +106,7 @@ async function calculate(db: DB, subject: Row, stored: Row) {
   // No financial proposal exists without an offer, even for a fixed rule.
   if (offer === null) return { sales: null, source: "no_offer", inputs: null };
   const suppliers = (await db.execute("SELECT id, name FROM comercializadoras ORDER BY id")).rows;
-  const { supplier, ambiguous } = resolveAbarcaSupplier(
+  const { supplier } = resolveAbarcaSupplier(
     nullableString(stored.supplier_name),
     suppliers.map((row) => ({ id: String(row.id), name: String(row.name) })),
   );
@@ -124,9 +124,9 @@ async function calculate(db: DB, subject: Row, stored: Row) {
   const rule = overrides[0] ?? defaults[0];
   let sales: number | null = null;
   let source = "unavailable";
-  // Unknown names may use the verified fallback; duplicate matches must not
-  // bypass a potentially configured supplier rule.
-  if (!ambiguous) {
+  // A percentage without a uniquely identified supplier could apply the
+  // wrong commercial agreement, so every calculation requires a match.
+  if (supplier) {
     if (rule) {
       const value = money(rule.commission_value);
       if (value === null || value < 0 || !["fixed", "percent"].includes(String(rule.commission_type))) throw new Error("Invalid commission configuration");

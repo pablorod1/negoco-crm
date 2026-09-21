@@ -127,10 +127,10 @@ describe("study receipt and server commissions", () => {
     expect((await row()).comision_sales_person_fijo).toBe(90);
     expect((await auditRows()).some((entry) => String(entry.field_name).startsWith("comision_"))).toBe(false);
   });
-  test.each(["missing", "NAT", "NATURGY EXTRA"])("unknown supplier %s uses verified base fallback", async (empresa) => {
+  test.each(["missing", "NAT", "NATURGY EXTRA"])("unknown supplier %s cannot use verified base fallback", async (empresa) => {
     await receive({ empresa });
-    expect((await row()).comision_sales_person_fijo).toBe(25);
-    expect((await stored()).calculation_source).toBe("verified_base_percentage");
+    expect((await row()).comision_sales_person_fijo).toBeNull();
+    expect((await stored()).calculation_source).toBe("unavailable");
   });
   test("ambiguous normalized suppliers do not select a first match", async () => {
     await db.execute("INSERT INTO comercializadoras VALUES ('duplicate',' naturgy ')");
@@ -492,9 +492,16 @@ describe("future supplier receipts and restricted commercial review", () => {
     await receive({ empresa: undefined, comercializadora: undefined, crm_id: 999 });
     expect((await row()).comision_sales_person_fijo).toBeNull();
   });
-  test("gas-style payload without supplier uses explicit zero and verified percentage", async () => {
+  test("gas-style payload without supplier keeps the sales commission unassigned", async () => {
     await receive({ empresa: undefined, comision_oferta: 0, comision_base: 100 });
-    expect(await row()).toMatchObject({ company_id: null, comision_fijo: 0, comision_sales_person_fijo: 0 });
+    expect(await row()).toMatchObject({ company_id: null, comision_fijo: 0, comision_sales_person_fijo: null });
+    expect((await stored()).calculation_source).toBe("unavailable");
+  });
+  test("compound supplier name assigns the supplier before using verified percentage", async () => {
+    await db.execute("UPDATE comercializadoras SET name='HOLALUZ'");
+    await receive({ empresa: "HOLA LUZ - Tarifa Clásica" });
+    expect(await row()).toMatchObject({ company_id: "supplier", comision_sales_person_fijo: 25 });
+    expect((await stored()).calculation_source).toBe("verified_base_percentage");
   });
   test("missing offer stays unassigned", async () => {
     await receive({ comision_oferta: undefined });
