@@ -40,6 +40,13 @@ export async function POST(request: Request) {
   });
 
   if (!signature.valid) {
+    console.warn("[imagina-webhook:contratacion] invalid signature", {
+      reason: signature.reason,
+      publicUrl,
+      timestamp: signature.timestamp,
+      hasSignatureHeader: request.headers.has("x-signature"),
+      hasTimestampHeader: request.headers.has("x-signature-timestamp"),
+    });
     return NextResponse.json(
       { success: false, error: "INVALID_SIGNATURE", reason: signature.reason },
       { status: 401 },
