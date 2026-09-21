@@ -13,6 +13,21 @@ describe("Imagina callback signature", () => {
     );
   });
 
+  test("canonicalizes keys using Unicode code-point order", () => {
+    expect(
+      canonicalizeJson({
+        z: 1,
+        A: 2,
+        _metadata: 3,
+        a: 4,
+        RequestForAdmissionResult: 5,
+        result_code: 6,
+      }),
+    ).toBe(
+      '{"A":2,"RequestForAdmissionResult":5,"_metadata":3,"a":4,"result_code":6,"z":1}',
+    );
+  });
+
   test("validates a signed payload and strips _callback_signature", () => {
     const payload = {
       request_id: 123,
