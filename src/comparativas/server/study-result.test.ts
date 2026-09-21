@@ -434,6 +434,13 @@ describe("preview and confirmation", () => {
 });
 
 describe("authorization revalidation", () => {
+  test("subcommercial cannot read study results containing commissions", async () => {
+    await receive({ oferta_tipo: null });
+    await db.execute("UPDATE user SET super_id='manager' WHERE id='owner'");
+
+    await expect(getStudyResult(db, "c", "owner")).rejects.toMatchObject({ status: 403 });
+  });
+
   test("own/subordinate visibility only for role2; admin/office can view all", async () => {
     await receive({ oferta_tipo: null });
     await expect(getStudyResult(db, "c", "other")).rejects.toMatchObject({ status: 403 });

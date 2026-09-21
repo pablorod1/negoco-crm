@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import { validateUserSession } from "@/core/auth/session-utils";
 import { TimeRange } from "@/core/types";
 import { DateRange } from "react-day-picker";
 
@@ -21,9 +22,7 @@ interface ContractAnalyticsData {
 
 // Zod Validation Schemas
 const PersonalContractsRequestSchema = z.object({
-  role: z.string().min(1, "Role is required"),
   id: z.string().min(1, "User ID is required"),
-  isSubcomercial: z.boolean(),
   time_range: z
     .enum(["year", "current_month", "current_week", "last_week", "90d"])
     .optional(),
@@ -41,9 +40,17 @@ const PersonalContractsRequestSchema = z.object({
  * @returns Promise<NextResponse<PersonalContractsResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<PersonalContractsResponse>> {
   try {
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     const body = await request.json();
 
     // Validate request body
@@ -54,12 +61,17 @@ export async function POST(
           success: false,
           error: `Validation error: ${validation.error.issues.map((e) => e.message).join(", ")}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { role, id, isSubcomercial, time_range, date_range } =
-      validation.data;
+    const { id, time_range, date_range } = validation.data;
+    if (id !== authResult.user.id) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
+      );
+    }
 
     // Get database client
     const tursoClient = getTursoClient(request);
@@ -69,9 +81,23 @@ export async function POST(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
+
+    const userResponse = await tursoClient.execute({
+      sql: "SELECT super_id FROM user WHERE id = ?",
+      args: [id],
+    });
+    if (userResponse.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 404 },
+      );
+    }
+
+    const role = authResult.user.role;
+    const isSubcomercial = Boolean(userResponse.rows[0].super_id);
 
     // Build dynamic query based on role and permissions
     let query = `
@@ -79,7 +105,7 @@ export async function POST(
         date(activation_date) as date,
         COUNT(CASE WHEN status = 'Activo' THEN 1 ELSE NULL END) as active,
         COUNT(CASE WHEN status = 'Baja' THEN 1 ELSE NULL END) as baja
-        ${role !== "2" ? ",SUM(comision) as comision" : ""}
+        ${!isSubcomercial && role !== "2" ? ",SUM(comision) as comision" : ""}
         ${!isSubcomercial ? ",SUM(comision_sales_person) as comision_sales_person" : ""}
       FROM tramites
       WHERE user_id = ?`;
@@ -97,19 +123,19 @@ export async function POST(
           break;
         case "current_month":
           conditions.push(
-            `strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now')`
+            `strftime('%Y-%m', activation_date) = strftime('%Y-%m', 'now')`,
           );
           groupBy = `strftime('%d', activation_date)`;
           break;
         case "current_week":
           conditions.push(
-            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now')`
+            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now')`,
           );
           groupBy = `strftime('%w', activation_date)`;
           break;
         case "last_week":
           conditions.push(
-            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now', '-7 days')`
+            `strftime('%Y-%W', activation_date) = strftime('%Y-%W', 'now', '-7 days')`,
           );
           groupBy = `strftime('%w', activation_date)`;
           break;
@@ -160,9 +186,13 @@ export async function POST(
         field,
         active: values.active,
         baja: values.baja,
-        comision: values.comision,
-        comision_sales_person: values.comision_sales_person,
-      })
+        ...(!isSubcomercial
+          ? {
+              comision: values.comision,
+              comision_sales_person: values.comision_sales_person,
+            }
+          : {}),
+      }),
     );
 
     return NextResponse.json({
@@ -176,7 +206,7 @@ export async function POST(
         success: false,
         error: "Error fetching personal contract analytics",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -187,7 +217,7 @@ export async function POST(
 function initializeResultsStructure(
   results: Map<string, Omit<ContractAnalyticsData, "field">>,
   timeRange?: TimeRange,
-  dateRange?: DateRange
+  dateRange?: DateRange,
 ): void {
   const defaultData = {
     active: 0,
@@ -217,14 +247,14 @@ function initializeResultsStructure(
     const daysInMonth = new Date(
       new Date().getFullYear(),
       new Date().getMonth() + 1,
-      0
+      0,
     ).getDate();
 
     for (let i = 1; i <= daysInMonth; i++) {
       const currentDate = new Date(
         new Date().getFullYear(),
         new Date().getMonth(),
-        i
+        i,
       );
       const dayStr = currentDate.toLocaleDateString("es-ES", {
         weekday: "long",
@@ -286,7 +316,7 @@ function populateResults(
   results: Map<string, Omit<ContractAnalyticsData, "field">>,
   rows: Record<string, unknown>[],
   timeRange?: TimeRange,
-  dateRange?: DateRange
+  dateRange?: DateRange,
 ): void {
   rows.forEach((row) => {
     const date = new Date(row.date as string);

@@ -80,6 +80,7 @@ function renderMainView({
   onUpdate = () => {},
   pendingResult = false,
   studyResult,
+  assignedCommercialId = "",
 }: {
   role: string;
   status:
@@ -97,15 +98,19 @@ function renderMainView({
   onUpdate?: () => void;
   pendingResult?: boolean;
   studyResult?: React.ComponentProps<typeof MainView>["studyResult"];
+  assignedCommercialId?: string;
 }) {
   render(
     <MainView
-      comparativa={{
-        ...baseComparativa,
-        status,
-        has_pending_study_result: pendingResult,
-        ...(aiStudyData ? { abarca_estudio: aiStudyData } : {}),
-      } as never}
+      comparativa={
+        {
+          ...baseComparativa,
+          user: { ...baseComparativa.user, id: assignedCommercialId },
+          status,
+          has_pending_study_result: pendingResult,
+          ...(aiStudyData ? { abarca_estudio: aiStudyData } : {}),
+        } as never
+      }
       userData={
         {
           id: "viewer-1",
@@ -167,49 +172,118 @@ function expectPendingActions({
 
 describe("MainView study permissions", () => {
   const resultAction = () => ({
-    canReview: true, loading: false, submitting: false, open: false,
-    error: null, review: vi.fn(), startWatching: vi.fn(), panelOpen: false,
+    canReview: true,
+    loading: false,
+    submitting: false,
+    open: false,
+    error: null,
+    review: vi.fn(),
+    startWatching: vi.fn(),
+    panelOpen: false,
     setPanelOpen: vi.fn(),
   });
 
   test.each([
     { role: "1", complete: false, review: true },
     { role: "admin", complete: true, review: true },
-  ])("places result review inside actions for authorized role $role", ({ role, complete, review }) => {
-    const controller = resultAction();
-    renderMainView({ role, status: "awaiting_review", complete, review, pendingResult: true, studyResult: controller });
-    const actions = screen.getByRole("region", { name: "Acciones" });
-    const button = within(actions).getByRole("button", { name: "Revisar resultado del estudio" });
-    expect(screen.getAllByRole("button", { name: "Revisar resultado del estudio" })).toHaveLength(1);
-    expect(button).toHaveClass("w-full");
-    fireEvent.click(button);
-    expect(controller.review).toHaveBeenCalledOnce();
-    expect(screen.queryByText(/en la parte superior de la ficha/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Asignar Comercializadora y Comisiones" })).not.toBeInTheDocument();
-  });
+  ])(
+    "places result review inside actions for authorized role $role",
+    ({ role, complete, review }) => {
+      const controller = resultAction();
+      renderMainView({
+        role,
+        status: "awaiting_review",
+        complete,
+        review,
+        pendingResult: true,
+        studyResult: controller,
+      });
+      const actions = screen.getByRole("region", { name: "Acciones" });
+      const button = within(actions).getByRole("button", {
+        name: "Revisar resultado del estudio",
+      });
+      expect(
+        screen.getAllByRole("button", {
+          name: "Revisar resultado del estudio",
+        }),
+      ).toHaveLength(1);
+      expect(button).toHaveClass("w-full");
+      fireEvent.click(button);
+      expect(controller.review).toHaveBeenCalledOnce();
+      expect(
+        screen.queryByText(/en la parte superior de la ficha/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: "Asignar Comercializadora y Comisiones",
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   test("commercial review cannot resolve pending financial decisions even with both permissions", () => {
     const controller = resultAction();
-    renderMainView({ role: "2", status: "awaiting_review", complete: true, review: true, pendingResult: true, studyResult: controller });
-    expect(screen.queryByRole("button", { name: "Revisar resultado del estudio" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Revisar estudio" })).not.toBeInTheDocument();
+    renderMainView({
+      role: "2",
+      status: "awaiting_review",
+      complete: true,
+      review: true,
+      pendingResult: true,
+      studyResult: controller,
+    });
+    expect(
+      screen.queryByRole("button", { name: "Revisar resultado del estudio" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Revisar estudio" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Estudio en revisión")).toBeInTheDocument();
   });
 
   test("keeps result review disabled until the server confirms availability", () => {
-    renderMainView({ role: "1", status: "awaiting_review", complete: true, review: true, pendingResult: true, studyResult: { ...resultAction(), canReview: false } });
-    expect(screen.getByRole("button", { name: "Revisar resultado del estudio" })).toBeDisabled();
+    renderMainView({
+      role: "1",
+      status: "awaiting_review",
+      complete: true,
+      review: true,
+      pendingResult: true,
+      studyResult: { ...resultAction(), canReview: false },
+    });
+    expect(
+      screen.getByRole("button", { name: "Revisar resultado del estudio" }),
+    ).toBeDisabled();
   });
 
   test("does not show result actions without effective permissions", () => {
-    renderMainView({ role: "2", status: "awaiting_review", complete: false, review: false, pendingResult: true, studyResult: resultAction() });
-    expect(screen.queryByRole("button", { name: "Revisar resultado del estudio" })).not.toBeInTheDocument();
+    renderMainView({
+      role: "2",
+      status: "awaiting_review",
+      complete: false,
+      review: false,
+      pendingResult: true,
+      studyResult: resultAction(),
+    });
+    expect(
+      screen.queryByRole("button", { name: "Revisar resultado del estudio" }),
+    ).not.toBeInTheDocument();
   });
 
   test("shows background errors with the actions instead of above navigation", () => {
-    renderMainView({ role: "1", status: "awaiting_review", complete: true, review: true, pendingResult: true, studyResult: { ...resultAction(), error: "No se pudo comprobar el estudio." } });
+    renderMainView({
+      role: "1",
+      status: "awaiting_review",
+      complete: true,
+      review: true,
+      pendingResult: true,
+      studyResult: {
+        ...resultAction(),
+        error: "No se pudo comprobar el estudio.",
+      },
+    });
     const actions = screen.getByRole("region", { name: "Acciones" });
-    expect(within(actions).getByRole("status")).toHaveTextContent("No se pudo comprobar el estudio.");
+    expect(within(actions).getByRole("status")).toHaveTextContent(
+      "No se pudo comprobar el estudio.",
+    );
   });
 
   test.each([
@@ -292,6 +366,19 @@ describe("MainView study permissions", () => {
         "Selecciona la comercializadora que ganó la comparativa",
       ),
     ).toHaveAttribute("id", "supplier-select");
+  });
+
+  test("subcommercial cannot access study actions even with effective permissions", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: true,
+      review: true,
+      isSubcomercial: true,
+    });
+
+    expectPendingActions({ ai: false, manual: false, reject: false });
+    expect(screen.getByText("No hay acciones disponibles")).toBeInTheDocument();
   });
 
   test("role 2 sees AI studies with an individual identity and no organization identity", () => {
@@ -544,7 +631,9 @@ describe("MainView study permissions", () => {
     });
 
     expect(screen.getByText("Datos del estudio con IA")).toBeVisible();
-    expect(screen.queryByText("Estudio Negoco Cloud IA")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Estudio Negoco Cloud IA"),
+    ).not.toBeInTheDocument();
   });
 
   test("review denial keeps the waiting state regardless of complete permission", () => {
@@ -596,6 +685,68 @@ describe("MainView study permissions", () => {
 });
 
 describe("MainView commercial summary permissions", () => {
+  test.each(["admin", "1"])(
+    "role %s requests and displays predefined notes",
+    async (role) => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            targeted_notes: [
+              {
+                id: "note-1",
+                user_id: "commercial-1",
+                target: "comparativas",
+                note: "Nota interna",
+              },
+            ],
+          },
+        }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      try {
+        renderMainView({
+          role,
+          status: "pending",
+          complete: false,
+          review: false,
+          assignedCommercialId: "commercial-1",
+        });
+
+        expect(await screen.findByText("Nota interna")).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/v2/users/commercial-1",
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
+  test("commercial users neither request nor display predefined notes", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      renderMainView({
+        role: "2",
+        status: "pending",
+        complete: false,
+        review: false,
+        isSubcomercial: true,
+        assignedCommercialId: "commercial-1",
+      });
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.queryByText("Notas predefinidas")).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   test.each([
     { role: "admin", status: "pending", isSubcomercial: false },
     { role: "1", status: "awaiting_review", isSubcomercial: false },
@@ -677,11 +828,13 @@ describe("MainView commercial summary permissions", () => {
     const { rerender } = render(
       <MainView
         {...mainViewProps}
-        comparativa={{
-          ...baseComparativa,
-          status: "completed",
-          plan: ["fijo"],
-        } as never}
+        comparativa={
+          {
+            ...baseComparativa,
+            status: "completed",
+            plan: ["fijo"],
+          } as never
+        }
       />,
     );
 
@@ -694,11 +847,13 @@ describe("MainView commercial summary permissions", () => {
     rerender(
       <MainView
         {...mainViewProps}
-        comparativa={{
-          ...baseComparativa,
-          status: "completed",
-          plan: ["indexado"],
-        } as never}
+        comparativa={
+          {
+            ...baseComparativa,
+            status: "completed",
+            plan: ["indexado"],
+          } as never
+        }
       />,
     );
 
@@ -706,7 +861,9 @@ describe("MainView commercial summary permissions", () => {
       screen.getByText("Negoco").parentElement as HTMLElement,
     );
     expect(organizationCommissions.getByText("Indexado:")).toBeVisible();
-    expect(organizationCommissions.queryByText("Fijo:")).not.toBeInTheDocument();
+    expect(
+      organizationCommissions.queryByText("Fijo:"),
+    ).not.toBeInTheDocument();
   });
 });
 

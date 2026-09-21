@@ -48,6 +48,8 @@ export default function MainView({
   isSubcomercial,
 }: MainViewProps) {
   const assignedCommercialId = tramite.user.id || tramite.user_id;
+  const canViewPredefinedNotes =
+    userData.role === "admin" || userData.role === "1";
   const showPrioritySummary = !isSubcomercial;
   const showProvider = showPrioritySummary && !isComercialUser(userData.role);
   const [predefinedNotesByUser, setPredefinedNotesByUser] = useState<{
@@ -86,6 +88,10 @@ export default function MainView({
   );
 
   useEffect(() => {
+    if (!canViewPredefinedNotes) {
+      return;
+    }
+
     const controller = new AbortController();
 
     const loadPredefinedNotes = async () => {
@@ -126,7 +132,7 @@ export default function MainView({
     loadPredefinedNotes();
 
     return () => controller.abort();
-  }, [assignedCommercialId]);
+  }, [assignedCommercialId, canViewPredefinedNotes]);
 
   return (
     <div className="space-y-6">
@@ -190,9 +196,7 @@ export default function MainView({
                     showProvider={false}
                   />
                 ) : null}
-                {!isComercialUser(userData.role)
-                  ? predefinedNotesSection
-                  : null}
+                {canViewPredefinedNotes ? predefinedNotesSection : null}
               </div>
             </div>
           </CardContent>

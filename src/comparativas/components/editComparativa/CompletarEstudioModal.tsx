@@ -58,7 +58,8 @@ export default function CompletarEstudioModal({
   const [actionType, setActionType] = useState<ActionType>(null);
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [selectedSupplierOverride, setSelectedSupplierId] = useState<string>("");
+  const [selectedSupplierOverride, setSelectedSupplierId] =
+    useState<string>("");
   const [manualSalesCommissionFields, setManualSalesCommissionFields] =
     useState<Partial<Record<keyof ComissionFormValues, boolean>>>({});
 
@@ -68,8 +69,13 @@ export default function CompletarEstudioModal({
     mode === "manual" && !isSalesPerson ? comparativa.user.id : undefined,
   );
 
-  const matchedSupplierId = resolveAbarcaSupplier(comparativa.abarca_estudio?.empresa, activeSuppliers).supplier?.id ?? "";
-  const selectedSupplierId = selectedSupplierOverride || comparativa.company_id || (mode === "ai_review" ? matchedSupplierId : "");
+  const matchedSupplierId =
+    resolveAbarcaSupplier(comparativa.abarca_estudio?.empresa, activeSuppliers)
+      .supplier?.id ?? "";
+  const selectedSupplierId =
+    selectedSupplierOverride ||
+    comparativa.company_id ||
+    (mode === "ai_review" ? matchedSupplierId : "");
 
   // Comisiones state
   const [formDataComissions, setFormDataComissions] = useState<
@@ -77,22 +83,22 @@ export default function CompletarEstudioModal({
   >(
     comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
       ? {
-        comision_fijo: comparativa.comision.fijo,
-        comision_indexado: comparativa.comision.indexado,
-        comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-        comision_sales_person_indexado:
-          comparativa.comision_sales_person.indexado,
-      }
-      : comparativa.plan.includes("fijo")
-        ? {
           comision_fijo: comparativa.comision.fijo,
-          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-        }
-        : {
           comision_indexado: comparativa.comision.indexado,
+          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
           comision_sales_person_indexado:
             comparativa.comision_sales_person.indexado,
-        },
+        }
+      : comparativa.plan.includes("fijo")
+        ? {
+            comision_fijo: comparativa.comision.fijo,
+            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
+          }
+        : {
+            comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_indexado:
+              comparativa.comision_sales_person.indexado,
+          },
   );
 
   useEffect(() => {
@@ -102,7 +108,8 @@ export default function CompletarEstudioModal({
       let changed = false;
 
       if (
-        comparativa.plan.includes("fijo") && next.comision_fijo != null &&
+        comparativa.plan.includes("fijo") &&
+        next.comision_fijo != null &&
         !manualSalesCommissionFields.comision_sales_person_fijo
       ) {
         const calculatedCommission = calculateSalesPersonCommission({
@@ -122,7 +129,8 @@ export default function CompletarEstudioModal({
       }
 
       if (
-        comparativa.plan.includes("indexado") && next.comision_indexado != null &&
+        comparativa.plan.includes("indexado") &&
+        next.comision_indexado != null &&
         !manualSalesCommissionFields.comision_sales_person_indexado
       ) {
         const calculatedCommission = calculateSalesPersonCommission({
@@ -164,31 +172,38 @@ export default function CompletarEstudioModal({
     setFormDataComissions(
       comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
         ? {
-          comision_fijo: comparativa.comision.fijo,
-          comision_indexado: comparativa.comision.indexado,
-          comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
-          comision_sales_person_indexado:
-            comparativa.comision_sales_person.indexado,
-        }
-        : comparativa.plan.includes("fijo")
-          ? {
             comision_fijo: comparativa.comision.fijo,
-            comision_sales_person_fijo:
-              comparativa.comision_sales_person.fijo,
-          }
-          : {
             comision_indexado: comparativa.comision.indexado,
+            comision_sales_person_fijo: comparativa.comision_sales_person.fijo,
             comision_sales_person_indexado:
               comparativa.comision_sales_person.indexado,
-          },
+          }
+        : comparativa.plan.includes("fijo")
+          ? {
+              comision_fijo: comparativa.comision.fijo,
+              comision_sales_person_fijo:
+                comparativa.comision_sales_person.fijo,
+            }
+          : {
+              comision_indexado: comparativa.comision.indexado,
+              comision_sales_person_indexado:
+                comparativa.comision_sales_person.indexado,
+            },
     );
   };
 
   const handleOpen = (action: ActionType) => {
-    setFormDataComissions(Object.fromEntries(comparativa.plan.flatMap((plan) => [
-      [`comision_${plan}`, comparativa.comision[plan]],
-      [`comision_sales_person_${plan}`, comparativa.comision_sales_person[plan]],
-    ])));
+    setFormDataComissions(
+      Object.fromEntries(
+        comparativa.plan.flatMap((plan) => [
+          [`comision_${plan}`, comparativa.comision[plan]],
+          [
+            `comision_sales_person_${plan}`,
+            comparativa.comision_sales_person[plan],
+          ],
+        ]),
+      ),
+    );
     setSelectedSupplierId(comparativa.company_id ?? "");
     setManualSalesCommissionFields({});
     setIsOpen(true);
@@ -196,10 +211,15 @@ export default function CompletarEstudioModal({
   };
 
   const checkEmptyComissions = () => {
-    if (isSalesPerson) return comparativa.plan.some((plan) => comparativa.has_complete_commissions?.[plan] !== true);
+    if (isSalesPerson)
+      return comparativa.plan.some(
+        (plan) => comparativa.has_complete_commissions?.[plan] !== true,
+      );
     return comparativa.plan.some((plan) =>
-      [formDataComissions[`comision_${plan}`], formDataComissions[`comision_sales_person_${plan}`]]
-        .some((value) => typeof value !== "number" || !Number.isFinite(value)),
+      [
+        formDataComissions[`comision_${plan}`],
+        formDataComissions[`comision_sales_person_${plan}`],
+      ].some((value) => typeof value !== "number" || !Number.isFinite(value)),
     );
   };
 
@@ -215,12 +235,12 @@ export default function CompletarEstudioModal({
           : undefined,
       comision_sales_person_fijo:
         formDataComissions.comision_sales_person_fijo !==
-          comparativa.comision_sales_person.fijo
+        comparativa.comision_sales_person.fijo
           ? formDataComissions.comision_sales_person_fijo
           : undefined,
       comision_sales_person_indexado:
         formDataComissions.comision_sales_person_indexado !==
-          comparativa.comision_sales_person.indexado
+        comparativa.comision_sales_person.indexado
           ? formDataComissions.comision_sales_person_indexado
           : undefined,
     };
@@ -552,8 +572,11 @@ export default function CompletarEstudioModal({
   const hasAllowedStatus =
     mode === "ai_review"
       ? comparativa.status === "awaiting_review"
-      : comparativa.status === "pending" ||
-      comparativa.status === "processing";
+      : comparativa.status === "pending" || comparativa.status === "processing";
+  if (userData.super_id) {
+    return null;
+  }
+
   if (!hasAllowedStatus) {
     return null;
   }
@@ -569,7 +592,18 @@ export default function CompletarEstudioModal({
   if (comparativa.has_pending_study_result) {
     return null;
   }
-  const salesSummary = <div>{comparativa.plan.map((plan) => <p key={plan}>Comisión comercial {plan}: {comparativa.comision_sales_person[plan] === null ? "Sin asignar" : `${comparativa.comision_sales_person[plan]} €`}</p>)}</div>;
+  const salesSummary = (
+    <div>
+      {comparativa.plan.map((plan) => (
+        <p key={plan}>
+          Comisión comercial {plan}:{" "}
+          {comparativa.comision_sales_person[plan] === null
+            ? "Sin asignar"
+            : `${comparativa.comision_sales_person[plan]} €`}
+        </p>
+      ))}
+    </div>
+  );
   if (mode === "ai_review") {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -581,7 +615,9 @@ export default function CompletarEstudioModal({
             onClick={() => handleOpen("complete")}
           >
             <CheckCircle className="h-4 w-4" />
-            {isSalesPerson ? "Revisar estudio" : "Asignar Comercializadora y Comisiones"}
+            {isSalesPerson
+              ? "Revisar estudio"
+              : "Asignar Comercializadora y Comisiones"}
           </Button>
         </DialogTrigger>
         <DialogContent
@@ -650,18 +686,22 @@ export default function CompletarEstudioModal({
                 {isSalesPerson ? "Comisión asignada" : "Asignar Comisiones"}{" "}
                 <span className="text-red-500 text-xs">*</span>
               </h3>
-              {isSalesPerson ? salesSummary : <ComissionsForm
-                comparativa={comparativa}
-                formDataComissions={formDataComissions}
-                setFormDataComissions={setFormDataComissions}
-                onSalesCommissionManualChange={(field) =>
-                  setManualSalesCommissionFields((prev) => ({
-                    ...prev,
-                    [field]: true,
-                  }))
-                }
-                showAutoSalesCommissionHint={false}
-              />}
+              {isSalesPerson ? (
+                salesSummary
+              ) : (
+                <ComissionsForm
+                  comparativa={comparativa}
+                  formDataComissions={formDataComissions}
+                  setFormDataComissions={setFormDataComissions}
+                  onSalesCommissionManualChange={(field) =>
+                    setManualSalesCommissionFields((prev) => ({
+                      ...prev,
+                      [field]: true,
+                    }))
+                  }
+                  showAutoSalesCommissionHint={false}
+                />
+              )}
             </div>
           </div>
 
@@ -824,21 +864,25 @@ export default function CompletarEstudioModal({
                 {isSalesPerson ? "Comisión asignada" : "Asignar Comisiones"}{" "}
                 <span className="text-red-500 text-xs">*</span>
               </h3>
-              {isSalesPerson ? salesSummary : <ComissionsForm
-                comparativa={comparativa}
-                formDataComissions={formDataComissions}
-                setFormDataComissions={setFormDataComissions}
-                onSalesCommissionManualChange={(field) =>
-                  setManualSalesCommissionFields((prev) => ({
-                    ...prev,
-                    [field]: true,
-                  }))
-                }
-                showAutoSalesCommissionHint={
-                  !manualSalesCommissionFields.comision_sales_person_fijo ||
-                  !manualSalesCommissionFields.comision_sales_person_indexado
-                }
-              />}
+              {isSalesPerson ? (
+                salesSummary
+              ) : (
+                <ComissionsForm
+                  comparativa={comparativa}
+                  formDataComissions={formDataComissions}
+                  setFormDataComissions={setFormDataComissions}
+                  onSalesCommissionManualChange={(field) =>
+                    setManualSalesCommissionFields((prev) => ({
+                      ...prev,
+                      [field]: true,
+                    }))
+                  }
+                  showAutoSalesCommissionHint={
+                    !manualSalesCommissionFields.comision_sales_person_fijo ||
+                    !manualSalesCommissionFields.comision_sales_person_indexado
+                  }
+                />
+              )}
               <div className="flex items-start gap-1">
                 <small className="text-gray-500">*</small>
                 <p className="text-sm text-gray-500">

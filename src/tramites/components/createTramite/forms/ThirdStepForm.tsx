@@ -57,6 +57,7 @@ export default function ThirdStepForm({
   userData,
   comparativa,
 }: Props) {
+  const isSubcomercial = Boolean(userData.super_id);
   const [showContractForm, setShowContractForm] = useState(
     !!comparativa?.abarca_estudio,
   );
@@ -68,7 +69,7 @@ export default function ThirdStepForm({
   const { activeSuppliers } = useActiveEnergySuppliers();
   const { settings } = useCrmSettings();
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
-    comparativa ? undefined : tramite.user_id,
+    comparativa || isSubcomercial ? undefined : tramite.user_id,
   );
   const configuredProviders = useMemo(
     () => settings?.providers.map((provider) => provider.name) ?? [],
@@ -96,7 +97,7 @@ export default function ThirdStepForm({
   const supplierName = tramite.provider || firstContract?.new_company;
 
   useEffect(() => {
-    if (comparativa || salesCommissionTouched) return;
+    if (comparativa || isSubcomercial || salesCommissionTouched) return;
 
     const calculatedCommission = calculateSalesPersonCommission({
       baseCommission: tramite.comision,
@@ -120,6 +121,7 @@ export default function ThirdStepForm({
     });
   }, [
     comparativa,
+    isSubcomercial,
     activeSuppliers,
     supplierId,
     supplierName,
@@ -205,15 +207,20 @@ export default function ThirdStepForm({
             value === "Verificado"
               ? new Date().toISOString()
               : "",
-          comision: comparativa && tramite.plan
-            ? (value === "Baja" ? -1 : 1) * (comparativa.comision[tramite.plan] ?? 0)
-            : value === "Baja" ? -prevState.comision : prevState.comision,
+          comision:
+            comparativa && tramite.plan
+              ? (value === "Baja" ? -1 : 1) *
+                (comparativa.comision[tramite.plan] ?? 0)
+              : value === "Baja"
+                ? -prevState.comision
+                : prevState.comision,
           comision_sales_person:
             comparativa && tramite.plan
-              ? (value === "Baja" ? -1 : 1) * (comparativa.comision_sales_person[tramite.plan] ?? 0)
+              ? (value === "Baja" ? -1 : 1) *
+                (comparativa.comision_sales_person[tramite.plan] ?? 0)
               : value === "Baja"
-              ? -prevState.comision_sales_person
-              : prevState.comision_sales_person,
+                ? -prevState.comision_sales_person
+                : prevState.comision_sales_person,
         };
       } else {
         return {
@@ -260,26 +267,28 @@ export default function ThirdStepForm({
             {userData &&
               (userData.role === "admin" || userData.role === "1") && (
                 <>
-                  {!comparativa && <>
-                  <InputComponent
-                    type="number"
-                    label="Comisión"
-                    name="comision"
-                    value={tramite.comision || ""}
-                    onChange={handleComisionChange}
-                    isRequired={tramite.status === "Activo"}
-                    endContent={<Euro size={16} />}
-                  />
-                  <InputComponent
-                    type="number"
-                    label="Comisión Comercial"
-                    name="comision_sales_person"
-                    value={tramite.comision_sales_person || ""}
-                    onChange={handleComisionSalesChange}
-                    isRequired={tramite.status === "Activo"}
-                    endContent={<Euro size={16} />}
-                  />
-                  </>}
+                  {!comparativa && (
+                    <>
+                      <InputComponent
+                        type="number"
+                        label="Comisión"
+                        name="comision"
+                        value={tramite.comision || ""}
+                        onChange={handleComisionChange}
+                        isRequired={tramite.status === "Activo"}
+                        endContent={<Euro size={16} />}
+                      />
+                      <InputComponent
+                        type="number"
+                        label="Comisión Comercial"
+                        name="comision_sales_person"
+                        value={tramite.comision_sales_person || ""}
+                        onChange={handleComisionSalesChange}
+                        isRequired={tramite.status === "Activo"}
+                        endContent={<Euro size={16} />}
+                      />
+                    </>
+                  )}
                   {configuredProviders.length > 0 ? (
                     <div className="flex w-full flex-col gap-2">
                       <Label htmlFor="provider">Proveedor</Label>
@@ -319,11 +328,13 @@ export default function ThirdStepForm({
                 </>
               )}
           </div>
-          {comparativa && <div>
-            <p>Las comisiones se copiarán desde la comparativa.</p>
-            {userData.role !== "2" && <p>Comisión: {tramite.comision} €</p>}
-            <p>Comisión comercial: {tramite.comision_sales_person} €</p>
-          </div>}
+          {comparativa && !userData.super_id ? (
+            <div>
+              <p>Las comisiones se copiarán desde la comparativa.</p>
+              {userData.role !== "2" && <p>Comisión: {tramite.comision} €</p>}
+              <p>Comisión comercial: {tramite.comision_sales_person} €</p>
+            </div>
+          ) : null}
         </div>
         <Separator className="my-8" />
         <div className="flex items-center gap-4 mb-4">
@@ -365,12 +376,21 @@ export default function ThirdStepForm({
           </div>
         )}
       </form>
-      {comparativa ? (
-        <ButtonGroupComponent onCancel={onCancel} onBack={onBack} onSubmit={onSubmit}
-          submitDisabled={!tramite.plan || !eligibleComparisonPlans(comparativa).includes(tramite.plan)} />
+      {comparativa || isSubcomercial ? (
+        <ButtonGroupComponent
+          onCancel={onCancel}
+          onBack={onBack}
+          onSubmit={onSubmit}
+          submitDisabled={
+            comparativa
+              ? !tramite.plan ||
+                !eligibleComparisonPlans(comparativa).includes(tramite.plan)
+              : false
+          }
+        />
       ) : tramite.status !== "Tramitable" &&
-      tramite.status !== "Borrador" &&
-      tramite.status !== "Activo" ? (
+        tramite.status !== "Borrador" &&
+        tramite.status !== "Activo" ? (
         <CheckComisionModal
           tramite={tramite}
           onSubmit={onSubmit}

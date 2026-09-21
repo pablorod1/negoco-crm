@@ -53,9 +53,18 @@ interface MainViewProps {
   isEditable: boolean;
   isComercialEditable: boolean;
   isProcessed: boolean;
-  studyResult?: Pick<StudyResultController,
-    "canReview" | "loading" | "submitting" | "open" | "error" | "review" |
-    "startWatching" | "panelOpen" | "setPanelOpen">;
+  studyResult?: Pick<
+    StudyResultController,
+    | "canReview"
+    | "loading"
+    | "submitting"
+    | "open"
+    | "error"
+    | "review"
+    | "startWatching"
+    | "panelOpen"
+    | "setPanelOpen"
+  >;
 }
 
 const PERIODS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
@@ -90,6 +99,8 @@ export default function MainView({
   studyResult,
 }: MainViewProps) {
   const isComercial = userData.role === "2";
+  const canViewPredefinedNotes =
+    userData.role === "admin" || userData.role === "1";
   const isStudied = comparativa.status === "completed";
   const isAwaitingReview = comparativa.status === "awaiting_review";
   const isPendingStudy =
@@ -97,22 +108,30 @@ export default function MainView({
   const canMarkAsProcessing =
     comparativa.status === "pending" &&
     (userData.role === "admin" || userData.role === "1");
-  const canCompleteStudies = hasPermission(
-    userData.permissions,
-    userData.role,
-    "comparisons.study.complete",
-  );
-  const canReviewStudies = hasPermission(
-    userData.permissions,
-    userData.role,
-    "comparisons.study.review",
-  );
+  const canCompleteStudies =
+    !isSubcomercial &&
+    hasPermission(
+      userData.permissions,
+      userData.role,
+      "comparisons.study.complete",
+    );
+  const canReviewStudies =
+    !isSubcomercial &&
+    hasPermission(
+      userData.permissions,
+      userData.role,
+      "comparisons.study.review",
+    );
   const hasPendingStudyResult =
     comparativa.has_pending_study_result || studyResult?.canReview;
-  const canReviewReceivedStudy = canReviewStudies && (!isComercial || (
-    !hasPendingStudyResult && Boolean(comparativa.company_id) &&
-    comparativa.plan.every((plan) => comparativa.has_complete_commissions?.[plan] === true)
-  ));
+  const canReviewReceivedStudy =
+    canReviewStudies &&
+    (!isComercial ||
+      (!hasPendingStudyResult &&
+        Boolean(comparativa.company_id) &&
+        comparativa.plan.every(
+          (plan) => comparativa.has_complete_commissions?.[plan] === true,
+        )));
   const canUseAiStudies =
     canCompleteStudies &&
     (isComercial
@@ -125,26 +144,26 @@ export default function MainView({
   const abarcaEstudio = comparativa.abarca_estudio;
   const contractedPowers = abarcaEstudio
     ? PERIODS.map((period, index) => ({
-      period,
-      value: abarcaEstudio[ABARCA_POWER_FIELDS[index]],
-    }))
+        period,
+        value: abarcaEstudio[ABARCA_POWER_FIELDS[index]],
+      }))
     : [];
   const abarcaConsumption = abarcaEstudio
     ? PERIODS.map((period, index) => ({
-      period,
-      value: abarcaEstudio[ABARCA_CONSUMPTION_FIELDS[index]],
-    }))
+        period,
+        value: abarcaEstudio[ABARCA_CONSUMPTION_FIELDS[index]],
+      }))
     : [];
   const totalAbarcaConsumption = getNullableTotal(
     abarcaConsumption.map((item) => item.value),
   );
   const apoloDemandPower = abarcaEstudio?.apolo_sips
     ? PERIODS.map((period) => ({
-      period,
-      value:
-        abarcaEstudio.apolo_sips?.max_demand_power_kw_by_period[period] ??
-        null,
-    }))
+        period,
+        value:
+          abarcaEstudio.apolo_sips?.max_demand_power_kw_by_period[period] ??
+          null,
+      }))
     : [];
   const maxApoloDemandPower = getNullableTotal(
     apoloDemandPower.length
@@ -213,7 +232,7 @@ export default function MainView({
     : false;
 
   useEffect(() => {
-    if (!assignedCommercialId) {
+    if (!assignedCommercialId || !canViewPredefinedNotes) {
       return;
     }
 
@@ -236,7 +255,7 @@ export default function MainView({
           data?: { targeted_notes?: UserDefaultNote[] };
         };
 
-        const notes = data.success ? data.data?.targeted_notes ?? [] : [];
+        const notes = data.success ? (data.data?.targeted_notes ?? []) : [];
         setPredefinedNotes(
           notes.filter(
             (note) =>
@@ -257,7 +276,7 @@ export default function MainView({
     loadPredefinedNotes();
 
     return () => controller.abort();
-  }, [assignedCommercialId]);
+  }, [assignedCommercialId, canViewPredefinedNotes]);
 
   const handleFlagChange = async (
     field: "has_permanencia" | "has_renovacion",
@@ -297,14 +316,11 @@ export default function MainView({
   const handleRechazarCliente = async () => {
     setRechazando(true);
     try {
-      const res = await fetch(
-        `/api/v2/comparisons/${comparativa.id}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "rechazado_cliente" }),
-        },
-      );
+      const res = await fetch(`/api/v2/comparisons/${comparativa.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rechazado_cliente" }),
+      });
       const data = await res.json();
       if (data.success) {
         showCustomToast({
@@ -336,14 +352,11 @@ export default function MainView({
   const handleMarkAsProcessing = async () => {
     setMarkingAsProcessing(true);
     try {
-      const res = await fetch(
-        `/api/v2/comparisons/${comparativa.id}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "processing" }),
-        },
-      );
+      const res = await fetch(`/api/v2/comparisons/${comparativa.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "processing" }),
+      });
 
       if (!res.ok) {
         showCustomToast({
@@ -414,11 +427,13 @@ export default function MainView({
                     <ServiceInfo service={comparativa.service} size="sm" />
                   </div>
                   <div>
-                    <p className="mb-1 text-xs text-gray-500">Comercializadora</p>
+                    <p className="mb-1 text-xs text-gray-500">
+                      Comercializadora
+                    </p>
                     <p className="text-sm font-medium text-gray-900">
                       {comparativa.company_id
-                        ? supplier?.name ??
-                        (isLoadingSupplier ? "Cargando" : "—")
+                        ? (supplier?.name ??
+                          (isLoadingSupplier ? "Cargando" : "—"))
                         : "—"}
                     </p>
                   </div>
@@ -541,7 +556,9 @@ export default function MainView({
                           <p className="text-xs text-amber-700">
                             {hasPendingStudyResult
                               ? "Revisa los planes y las comisiones recibidos para continuar"
-                              : isComercial ? "Verifica el estudio y confirma la revisión. Tu comisión ya está asignada." : "Asigna la comercializadora y las comisiones para continuar"}
+                              : isComercial
+                                ? "Verifica el estudio y confirma la revisión. Tu comisión ya está asignada."
+                                : "Asigna la comercializadora y las comisiones para continuar"}
                           </p>
                         </div>
                       </div>
@@ -552,7 +569,11 @@ export default function MainView({
                           size="sm"
                           className="w-full gap-2"
                           onClick={studyResult?.review}
-                          disabled={!studyResult?.canReview || studyResult.loading || studyResult.submitting}
+                          disabled={
+                            !studyResult?.canReview ||
+                            studyResult.loading ||
+                            studyResult.submitting
+                          }
                         >
                           <ShieldCheck className="h-4 w-4 shrink-0" />
                           Revisar resultado del estudio
@@ -765,7 +786,7 @@ export default function MainView({
                 </div>
               </div>
 
-              {!isComercial ? (
+              {canViewPredefinedNotes ? (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-5">
                   <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-500">
                     Notas predefinidas
@@ -807,8 +828,9 @@ export default function MainView({
           <CardContent>
             {hasStudyData ? (
               <div
-                className={`grid gap-x-8 gap-y-0 ${hasSupplyPointData && hasEnergyData ? "lg:grid-cols-2" : ""
-                  }`}
+                className={`grid gap-x-8 gap-y-0 ${
+                  hasSupplyPointData && hasEnergyData ? "lg:grid-cols-2" : ""
+                }`}
               >
                 {hasSupplyPointData ? (
                   <div className="min-w-0">
@@ -877,12 +899,12 @@ export default function MainView({
 
                 {hasEnergyData ? (
                   <div
-                    className={`min-w-0 ${hasSupplyPointData
-                      ? "mt-5 border-t border-gray-100 pt-5 lg:mt-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
-                      : ""
-                      }`}
+                    className={`min-w-0 ${
+                      hasSupplyPointData
+                        ? "mt-5 border-t border-gray-100 pt-5 lg:mt-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
+                        : ""
+                    }`}
                   >
-
                     {hasConsumptionData ? (
                       <StudySection title="Consumo" layout="stack">
                         <StudyPeriodChips
@@ -928,8 +950,6 @@ export default function MainView({
           </CardContent>
         </Card>
       )}
-
-
 
       {/* Documentos Section */}
       <Card>

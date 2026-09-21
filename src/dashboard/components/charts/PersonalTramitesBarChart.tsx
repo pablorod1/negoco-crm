@@ -46,7 +46,7 @@ const CHART_COLORS = {
 // Helper function to get time range display text
 const getFilterDescription = (
   timeRange?: TimeRange,
-  dateRange?: DateRange
+  dateRange?: DateRange,
 ): string => {
   if (dateRange?.from) {
     const fromDate = dateRange.from.toLocaleDateString("es-ES");
@@ -188,10 +188,12 @@ export default function PersonalTramitesChart({
   const [chartData, setChartData] =
     React.useState<ChartData[]>(createEmptyData);
   const [chartView, setChartView] = React.useState<"tramites" | "comision">(
-    "tramites"
+    "tramites",
   );
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
   const isComercial = userData && userData.role === "2";
+  const isSubcomercial = Boolean(userData.super_id);
+  const visibleChartView = isSubcomercial ? "tramites" : chartView;
   const [showFilters, setShowFilters] = React.useState(false);
 
   const fetchData = React.useCallback(async () => {
@@ -203,13 +205,15 @@ export default function PersonalTramitesChart({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          role: userData.role,
           id: userData.id,
-          isSubcomercial: userData.super_id ? true : false,
           time_range: timeRange,
           date_range: dateRange,
         }),
       });
+
+      if (!res.ok) {
+        throw new Error("Error fetching personal tramites data");
+      }
 
       const { data, success, error } = await res.json();
       if (!success) {
@@ -229,7 +233,7 @@ export default function PersonalTramitesChart({
   const handleTimeRangeChange = (value: string) => {
     setDateRange(undefined);
     setTimeRange(
-      value as "year" | "current_month" | "current_week" | "last_week" | "90d"
+      value as "year" | "current_month" | "current_week" | "last_week" | "90d",
     );
   };
 
@@ -253,17 +257,17 @@ export default function PersonalTramitesChart({
 
   const totalTramites = chartData.reduce(
     (acc, item) => acc + item.active + item.baja,
-    0
+    0,
   );
 
   const totalComision = chartData.reduce(
     (acc, item) => acc + item.comision - item.comision_sales_person,
-    0
+    0,
   );
 
   const totalComisionSalesPerson = chartData.reduce(
     (acc, item) => acc + item.comision_sales_person,
-    0
+    0,
   );
 
   const refreshData = () => {
@@ -306,13 +310,13 @@ export default function PersonalTramitesChart({
         <div className="flex items-center gap-4 ">
           {/* Metrics toggle */}
           <ViewToggle
-            chartView={chartView}
+            chartView={visibleChartView}
             onViewChange={setChartView}
             totalTramites={totalTramites}
             totalComision={totalComision}
             totalComisionSalesPerson={totalComisionSalesPerson}
             isComercial={isComercial}
-            showComisionView={!userData.super_id}
+            showComisionView={!isSubcomercial}
           />
 
           {/* Filters */}
@@ -361,7 +365,7 @@ export default function PersonalTramitesChart({
                             "h-8 text-xs justify-start",
                             timeRange === option.value
                               ? "bg-primary-600 text-white"
-                              : "border-gray-200 hover:bg-primary-50"
+                              : "border-gray-200 hover:bg-primary-50",
                           )}
                           onClick={() => {
                             handleTimeRangeChange(option.value);
@@ -479,7 +483,7 @@ export default function PersonalTramitesChart({
                     <Legend
                       content={() => (
                         <div className="flex justify-center gap-6 mt-8 text-xs text-gray-600">
-                          {chartView === "tramites" ? (
+                          {visibleChartView === "tramites" ? (
                             <>
                               <div className="flex items-center gap-2">
                                 <div
@@ -551,41 +555,45 @@ export default function PersonalTramitesChart({
                                   typeof entry.value === "number"
                                     ? entry.value
                                     : Number(entry.value ?? 0);
-                                const itemKey = dataKey || entry.graphicalItemId;
+                                const itemKey =
+                                  dataKey || entry.graphicalItemId;
 
                                 return (
-                                <div
-                                  key={itemKey}
-                                  className={cn(
-                                    "flex items-center justify-between gap-4 mb-1"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className="w-3 h-3 rounded-full"
-                                      style={{ backgroundColor: color }}
-                                    />
-                                    <span className="text-gray-600">
-                                      {dataKey === "active"
-                                        ? "Activos"
-                                        : dataKey === "baja"
-                                          ? "Bajas"
-                                          : dataKey === "comision"
-                                            ? "Comisión"
-                                            : dataKey === "comision_sales_person"
-                                              ? isComercial
-                                                ? "Comisión"
-                                                : "Comisión Comercial"
-                                              : dataKey}
+                                  <div
+                                    key={itemKey}
+                                    className={cn(
+                                      "flex items-center justify-between gap-4 mb-1",
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className="w-3 h-3 rounded-full"
+                                        style={{ backgroundColor: color }}
+                                      />
+                                      <span className="text-gray-600">
+                                        {dataKey === "active"
+                                          ? "Activos"
+                                          : dataKey === "baja"
+                                            ? "Bajas"
+                                            : dataKey === "comision"
+                                              ? "Comisión"
+                                              : dataKey ===
+                                                  "comision_sales_person"
+                                                ? isComercial
+                                                  ? "Comisión"
+                                                  : "Comisión Comercial"
+                                                : dataKey}
+                                      </span>
+                                    </div>
+                                    <span className="font-medium text-gray-900">
+                                      {value}
+                                      {visibleChartView === "comision"
+                                        ? "€"
+                                        : ""}
                                     </span>
                                   </div>
-                                  <span className="font-medium text-gray-900">
-                                    {value}
-                                    {chartView === "comision" ? "€" : ""}
-                                  </span>
-                                </div>
                                 );
-                              }
+                              },
                             )}
                           </div>
                         );
@@ -598,7 +606,9 @@ export default function PersonalTramitesChart({
                         <Area
                           type="monotone"
                           dataKey={
-                            chartView === "tramites" ? "active" : "comision"
+                            visibleChartView === "tramites"
+                              ? "active"
+                              : "comision"
                           }
                           stroke="var(--primary-color-500)"
                           fill="var(--primary-color-500)"
@@ -609,7 +619,7 @@ export default function PersonalTramitesChart({
                         <Area
                           type="monotone"
                           dataKey={
-                            chartView === "tramites"
+                            visibleChartView === "tramites"
                               ? "baja"
                               : "comision_sales_person"
                           }
@@ -619,7 +629,7 @@ export default function PersonalTramitesChart({
                           strokeWidth={2}
                         />
                       </>
-                    ) : chartView === "tramites" ? (
+                    ) : visibleChartView === "tramites" ? (
                       <>
                         <Area
                           type="monotone"

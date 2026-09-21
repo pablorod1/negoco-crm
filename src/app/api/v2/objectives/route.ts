@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTursoClient } from "@/core/libsql/client";
+import { validateUserSession } from "@/core/auth/session-utils";
 import { NOW_DATE } from "@/dashboard/constants";
 import {
   getComparativasRatio,
@@ -42,8 +43,6 @@ const CreateObjectiveSchema = z.object({
 
 const GetObjectivesSchema = z.object({
   id: z.string().min(1),
-  role: z.string().min(1),
-  isSubcomercial: z.boolean().optional(),
 });
 
 // ===== ROUTE HANDLERS =====
@@ -54,7 +53,7 @@ const GetObjectivesSchema = z.object({
  * @returns Promise<NextResponse<ObjectiveResponse>>
  */
 export async function POST(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ObjectiveResponse>> {
   try {
     const body = await request.json();
@@ -69,7 +68,7 @@ export async function POST(
             "Invalid parameters: " +
             validation.error.issues.map((e) => e.message).join(", "),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -82,7 +81,7 @@ export async function POST(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -108,7 +107,7 @@ export async function POST(
           success: false,
           error: "Failed to create objective",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -126,7 +125,7 @@ export async function POST(
           created_at: NOW_DATE.toISOString(),
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error creating objective:", error);
@@ -135,7 +134,7 @@ export async function POST(
         success: false,
         error: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -146,17 +145,23 @@ export async function POST(
  * @returns Promise<NextResponse<ObjectiveResponse>>
  */
 export async function GET(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse<ObjectiveResponse>> {
   try {
+    const authResult = await validateUserSession(request);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     // Extract query parameters from URL
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    const role = searchParams.get("role");
-    const super_id = searchParams.get("super_id");
 
     // Validate query parameters
-    const validation = GetObjectivesSchema.safeParse({ id, role, super_id });
+    const validation = GetObjectivesSchema.safeParse({ id });
     if (!validation.success) {
       return NextResponse.json(
         {
@@ -165,11 +170,17 @@ export async function GET(
             "Invalid parameters: " +
             validation.error.issues.map((e) => e.message).join(", "),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { id: userId, role: userRole, isSubcomercial } = validation.data;
+    const { id: userId } = validation.data;
+    if (userId !== authResult.user.id) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
+      );
+    }
 
     const tursoClient = getTursoClient(request);
     if (!tursoClient) {
@@ -178,13 +189,29 @@ export async function GET(
           success: false,
           error: "Database client not initialized",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
+    const userResponse = await tursoClient.execute({
+      sql: "SELECT super_id FROM user WHERE id = ?",
+      args: [userId],
+    });
+    if (userResponse.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 404 },
+      );
+    }
+
+    const isSubcomercial = Boolean(userResponse.rows[0].super_id);
+    const userRole = authResult.user.role;
+
     // Execute optimized query with prepared statement
     const response = await tursoClient.execute({
-      sql: `SELECT * FROM objectives WHERE user_id = ? ORDER BY created_at DESC`,
+      sql: `SELECT * FROM objectives WHERE user_id = ?${
+        isSubcomercial ? " AND type != 'comisiones'" : ""
+      } ORDER BY created_at DESC`,
       args: [userId],
     });
 
@@ -217,45 +244,40 @@ export async function GET(
               userId,
               userRole,
               objective.period, // Use the objective's period, not current period
-              isSubcomercial ? true : false
+              isSubcomercial,
             );
             objective.current = Number(activeTramitesValues.active);
           }
 
           if (objective.type === "comisiones") {
-            // Subcomerciales should not see commission objectives
-            if (isSubcomercial) {
-              objective.current = 0;
-            } else {
-              const activeTramitesValues = await getObjectivesTramitesValues(
-                tursoClient,
-                userId,
-                userRole,
-                objective.period, // Use the objective's period, not current period
-                isSubcomercial ? true : false
-              );
-              objective.current = Number(activeTramitesValues.comision);
-            }
+            const activeTramitesValues = await getObjectivesTramitesValues(
+              tursoClient,
+              userId,
+              userRole,
+              objective.period, // Use the objective's period, not current period
+              false,
+            );
+            objective.current = Number(activeTramitesValues.comision);
           }
 
           if (objective.type === "ratio") {
             const ratioPercentage = await getComparativasRatio(
               tursoClient,
               userId,
-              objective.period // Use the objective's period, not current period
+              objective.period, // Use the objective's period, not current period
             );
             objective.current = ratioPercentage;
           }
         } catch (error) {
           console.error(
             `Error calculating current value for objective ${objective.id}:`,
-            error
+            error,
           );
           // Keep the stored current value if calculation fails
         }
 
         return objective;
-      })
+      }),
     );
 
     return NextResponse.json({
@@ -269,7 +291,7 @@ export async function GET(
         success: false,
         error: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

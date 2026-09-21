@@ -96,9 +96,12 @@ const formatValue = (value: number, type: string) => {
 };
 
 const getObjectivesQuery = (userData: User) =>
-  `id=${encodeURIComponent(userData.id)}&role=${encodeURIComponent(
-    userData.role
-  )}${userData.super_id ? "&isSubcomercial=true" : ""}`;
+  `id=${encodeURIComponent(userData.id)}`;
+
+const getVisibleObjectives = (objectives: Objective[], userData: User) =>
+  userData.super_id
+    ? objectives.filter((objective) => objective.type !== "comisiones")
+    : objectives;
 
 const calculateObjectiveProgress = (objetivo: Objective) => {
   if (objetivo.peak <= 0) return 0;
@@ -119,12 +122,12 @@ const buildObjectiveExportRows = (objetivos: Objective[]) =>
     const progress = calculateObjectiveProgress(objetivo);
 
     return {
-      "Tipo": getObjectiveLabel(objetivo.type),
-      "Período": objetivo.period,
+      Tipo: getObjectiveLabel(objetivo.type),
+      Período: objetivo.period,
       "Valor actual": objetivo.current,
-      "Objetivo": objetivo.peak,
+      Objetivo: objetivo.peak,
       "Progreso %": progress,
-      "Estado":
+      Estado:
         objetivo.completed || objetivo.current >= objetivo.peak
           ? "Completado"
           : "En progreso",
@@ -162,7 +165,7 @@ const ProgressDashboard = ({
     objetivos.reduce((acc, obj) => acc + calculateObjectiveProgress(obj), 0) /
     objetivos.length;
   const completedObjectives = objetivos.filter(
-    (obj) => obj.current >= obj.peak
+    (obj) => obj.current >= obj.peak,
   ).length;
 
   return (
@@ -307,7 +310,7 @@ const ObjectiveViewToggle: React.FC<ObjectiveViewToggleProps> = React.memo(
         label="Histórico"
       />
     </div>
-  )
+  ),
 );
 
 ObjectiveViewToggle.displayName = "ObjectiveViewToggle";
@@ -359,11 +362,11 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
 
   const [open, setOpen] = useState(false);
   const [editingObjetivo, setEditingObjetivo] = useState<Objective | null>(
-    null
+    null,
   );
 
-  const [newObjetivo, setNewObjetivo] = useState<Objective>(
-    createEmptyObjective(userData)
+  const [newObjetivo, setNewObjetivo] = useState<Objective>(() =>
+    createEmptyObjective(userData),
   );
 
   const fetchObjetivos = useCallback(async () => {
@@ -376,8 +379,12 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
+
+      if (!res.ok) {
+        throw new Error("Error al obtener objetivos");
+      }
 
       const { success, data, error } = await res.json();
 
@@ -392,7 +399,7 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
       }
 
       if (data) {
-        setObjetivos(data);
+        setObjetivos(getVisibleObjectives(data, userData));
       }
     } catch (error) {
       showCustomToast({
@@ -428,8 +435,12 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
+
+    if (!res.ok) {
+      throw new Error("Error al obtener objetivos");
+    }
 
     const { success, data, error } = (await res.json()) as {
       success: boolean;
@@ -441,7 +452,8 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
       throw new Error(error || "Error al obtener objetivos");
     }
 
-    return Array.isArray(data) ? data : data ? [data] : [];
+    const objectives = Array.isArray(data) ? data : data ? [data] : [];
+    return getVisibleObjectives(objectives, userData);
   }, [userData]);
 
   const handleEditObjective = (objetivo: Objective) => {
@@ -491,7 +503,9 @@ export const ObjetivosCard = ({ userData, loading }: ObjetivosCardProps) => {
       showCustomToast({
         title: "Error al exportar",
         message:
-          error instanceof Error ? error.message : "Error al exportar objetivos",
+          error instanceof Error
+            ? error.message
+            : "Error al exportar objetivos",
         icon: CircleX,
         iconColor: "var(--danger-color)",
         iconSize: 24,

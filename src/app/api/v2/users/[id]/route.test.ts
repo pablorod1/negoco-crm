@@ -34,35 +34,35 @@ const permissions = {
   "comparisons.study.review": true,
 };
 
+const requestedUserRow = {
+  id: "user-1",
+  email: "user@example.com",
+  email_verified: 1,
+  name: "User",
+  created_at: "2026-01-01",
+  updated_at: "2026-01-02",
+  banned: 0,
+  image: null,
+  role: "2",
+  super_id: null,
+  should_reset_password: 0,
+  notifications: 0,
+  company: null,
+  org_id: "org-1",
+  org_name: "Organization",
+  org_logo: null,
+  org_metadata: null,
+  org_plan: "plan-1",
+  org_abarca_user_id: 123,
+  plan_name: "premium",
+};
+
 beforeEach(() => {
   mocks.execute.mockReset();
   mocks.execute.mockImplementation(({ sql }: { sql: string }) => {
     if (sql.includes("FROM user u")) {
       return {
-        rows: [
-          {
-            id: "user-1",
-            email: "user@example.com",
-            email_verified: 1,
-            name: "User",
-            created_at: "2026-01-01",
-            updated_at: "2026-01-02",
-            banned: 0,
-            image: null,
-            role: "2",
-            super_id: null,
-            should_reset_password: 0,
-            notifications: 0,
-            company: null,
-            org_id: "org-1",
-            org_name: "Organization",
-            org_logo: null,
-            org_metadata: null,
-            org_plan: "plan-1",
-            org_abarca_user_id: 123,
-            plan_name: "premium",
-          },
-        ],
+        rows: [requestedUserRow],
         rowsAffected: 0,
       };
     }
@@ -129,6 +129,81 @@ describe("GET /api/v2/users/[id]", () => {
       "comparisons.study.review": true,
     });
   });
+
+  test.each(["admin", "1"])(
+    "returns predefined notes to authorized role %s",
+    async (role) => {
+      mocks.validateUserSession.mockResolvedValue({
+        success: true,
+        user: { id: "viewer-1", role },
+      });
+      mocks.execute.mockImplementation(({ sql }: { sql: string }) => {
+        if (sql.includes("FROM user u")) {
+          return { rows: [requestedUserRow], rowsAffected: 0 };
+        }
+        if (sql.includes("FROM user_default_notes")) {
+          return {
+            rows: [
+              {
+                id: "note-1",
+                user_id: "user-1",
+                target: "tramites",
+                note: "Nota interna",
+                created_at: "2026-01-01",
+                updated_at: null,
+              },
+            ],
+            rowsAffected: 0,
+          };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+
+      const request = new Request(
+        "https://tenant.example.com/api/v2/users/user-1",
+        { headers: { host: "tenant.example.com" } },
+      ) as NextRequest;
+      const response = await route.GET(request, {
+        params: Promise.resolve({ id: "user-1" }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.data.targeted_notes).toEqual([
+        expect.objectContaining({ id: "note-1", note: "Nota interna" }),
+      ]);
+    },
+  );
+
+  test.each([
+    { label: "commercial", super_id: null },
+    { label: "subcommercial", super_id: "manager-1" },
+  ])(
+    "does not query or return predefined notes to a $label user",
+    async ({ super_id }) => {
+      mocks.validateUserSession.mockResolvedValue({
+        success: true,
+        user: { id: "viewer-1", role: "2", super_id },
+      });
+      const request = new Request(
+        "https://tenant.example.com/api/v2/users/user-1",
+        { headers: { host: "tenant.example.com" } },
+      ) as NextRequest;
+
+      const response = await route.GET(request, {
+        params: Promise.resolve({ id: "user-1" }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.data.targeted_notes).toEqual([]);
+      expect(mocks.execute).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          sql: expect.stringContaining("FROM user_default_notes"),
+        }),
+      );
+    },
+  );
 
   test.each([
     [321, true],

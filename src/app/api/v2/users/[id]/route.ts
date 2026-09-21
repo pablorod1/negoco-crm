@@ -85,6 +85,8 @@ export async function GET(
         { status: 401 },
       );
     }
+    const canViewPredefinedNotes =
+      authResult.user.role === "admin" || authResult.user.role === "1";
 
     const { id } = await params;
 
@@ -158,6 +160,16 @@ export async function GET(
       metadata: orgMetadata,
     });
     const userRole = String(row.role);
+    const notesPromise = canViewPredefinedNotes
+      ? tursoClient.execute({
+          sql: `SELECT id, user_id, target, note, created_at, updated_at
+          FROM user_default_notes
+          WHERE user_id = ?
+          ORDER BY created_at ASC`,
+          args: [id],
+        })
+      : Promise.resolve({ rows: [] });
+
     const [commissionsResponse, notesResponse, permissions] = await Promise.all([
       tursoClient.execute({
         sql: `SELECT
@@ -175,13 +187,7 @@ export async function GET(
         ORDER BY c.name ASC`,
         args: [id],
       }),
-      tursoClient.execute({
-        sql: `SELECT id, user_id, target, note, created_at, updated_at
-        FROM user_default_notes
-        WHERE user_id = ?
-        ORDER BY created_at ASC`,
-        args: [id],
-      }),
+      notesPromise,
       getEffectivePermissions(tursoClient, { id, role: userRole }),
     ]);
 

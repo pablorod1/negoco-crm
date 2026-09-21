@@ -29,14 +29,18 @@ export default function ObjectivesHistoryTab({
   const fetchObjetivos = useCallback(async () => {
     try {
       const res = await fetch(
-        `/api/v2/objectives?id=${userData.id}&role=${userData.role}${userData.super_id ? `&isSubcomercial=true` : ""}`,
+        `/api/v2/objectives?id=${encodeURIComponent(userData.id)}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
+
+      if (!res.ok) {
+        throw new Error("Error al obtener objetivos");
+      }
 
       const { success, data, error } = await res.json();
 
@@ -51,7 +55,13 @@ export default function ObjectivesHistoryTab({
       }
 
       if (data) {
-        setObjetivos(data);
+        setObjetivos(
+          userData.super_id
+            ? data.filter(
+                (objective: Objective) => objective.type !== "comisiones",
+              )
+            : data,
+        );
       }
     } catch (error) {
       showCustomToast({

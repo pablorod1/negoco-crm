@@ -78,9 +78,10 @@ async function result(db: DB, id: string) {
 
 /** Check visibility before querying result amounts, supplier rules or identities. */
 export async function authorizeStudyResult(db: DB, comparisonId: string, userId: string) {
-  const actor = (await db.execute({ sql: "SELECT id, role FROM user WHERE id = ?", args: [userId] })).rows[0];
+  const actor = (await db.execute({ sql: "SELECT id, role, super_id FROM user WHERE id = ?", args: [userId] })).rows[0];
   const role = String(actor?.role ?? "");
   if (!["admin", "1", "2"].includes(role)) throw new StudyResultError(403, "Sin acceso al estudio con IA");
+  if (actor?.super_id) throw new StudyResultError(403, "Sin acceso al estudio con IA");
   const permissions = await getEffectivePermissions(db, { id: userId, role });
   if (!permissions["comparisons.study.complete"] && !permissions["comparisons.study.review"]) {
     throw new StudyResultError(403, "Sin permiso para el estudio con IA");
