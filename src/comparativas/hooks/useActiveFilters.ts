@@ -3,6 +3,7 @@ import type { DateRange } from "react-day-picker";
 
 interface UseActiveFiltersProps {
   statusFilter: string[] | undefined;
+  planFilter: string[] | undefined;
   dateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   isComercial: boolean;
@@ -11,6 +12,7 @@ interface UseActiveFiltersProps {
 
 export function useActiveFilters({
   statusFilter,
+  planFilter,
   dateRange,
   userFilter,
   isComercial,
@@ -21,6 +23,10 @@ export function useActiveFilters({
 
     if (statusFilter && statusFilter.length > 0) {
       filters.push("Estado");
+    }
+
+    if (planFilter && planFilter.length > 0) {
+      filters.push("Tipo de plan");
     }
 
     if (dateRange && (dateRange.from || dateRange.to)) {
@@ -36,5 +42,12 @@ export function useActiveFilters({
     }
 
     return filters;
-  }, [statusFilter, dateRange, userFilter, isComercial, companyFilter]);
+  }, [
+    statusFilter,
+    planFilter,
+    dateRange,
+    userFilter,
+    isComercial,
+    companyFilter,
+  ]);
 }

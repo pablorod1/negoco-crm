@@ -15,7 +15,10 @@ import { Label } from "@/core/components/ui/label";
 import { Switch } from "@/core/components/ui/switch";
 import { DateRangePicker } from "@/dashboard/components/DateRangePicker";
 import UserFilter from "@/core/components/table/UserFilter";
-import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
+import {
+  COMPARATIVA_PLAN_TYPES,
+  COMPARATIVA_STATUS_TYPES,
+} from "@/comparativas/constants";
 import TooltipComponent from "@/core/components/TooltipComponent";
 import { cn } from "@/core/utils";
 import type { User } from "@/core/types";
@@ -28,9 +31,11 @@ import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEne
 interface FilterSheetProps {
   activeFiltersCount: number;
   statusFilter: string[] | undefined;
+  planFilter: string[] | undefined;
   dateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   setStatusFilter: (value: string[]) => void;
+  setPlanFilter: (value: string[]) => void;
   setDateRange: (value: DateRange | undefined) => void;
   setUserFilter: (value: string[] | undefined) => void;
   resetFilters: () => void;
@@ -46,9 +51,11 @@ interface FilterSheetProps {
 export function FilterSheet({
   activeFiltersCount,
   statusFilter,
+  planFilter,
   dateRange,
   userFilter,
   setStatusFilter,
+  setPlanFilter,
   setDateRange,
   setUserFilter,
   resetFilters,
@@ -134,6 +141,27 @@ export function FilterSheet({
                 setStatusFilter(convertFromOptions(options))
               }
               placeholder="Seleccionar estado"
+              className="w-full"
+              hidePlaceholderWhenSelected
+              emptyIndicator={
+                <p className="text-center text-sm text-gray-500">
+                  No se encontraron resultados
+                </p>
+              }
+            />
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-medium text-gray-700">
+              Tipo de plan
+            </Label>
+            <MultipleSelector
+              value={getSelectedOptions(planFilter, COMPARATIVA_PLAN_TYPES)}
+              defaultOptions={convertToOptions(COMPARATIVA_PLAN_TYPES)}
+              onChange={(options) =>
+                setPlanFilter(convertFromOptions(options))
+              }
+              placeholder="Seleccionar tipo de plan"
               className="w-full"
               hidePlaceholderWhenSelected
               emptyIndicator={

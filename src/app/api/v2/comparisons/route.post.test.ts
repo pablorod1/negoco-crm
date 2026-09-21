@@ -255,6 +255,39 @@ describe("POST /api/v2/comparisons", () => {
     }] });
   });
 
+  test("filters comparisons by any selected plan", async () => {
+    const execute = vi.fn(async (statement: Statement) => ({
+      rows: statement.sql.includes("COUNT(*)")
+        ? [{ total: 1 }]
+        : [{
+            id: "comparison-fixed",
+            creation_date: "2026-09-02",
+            client: "Client",
+            service: "Luz",
+            status: "pending",
+            plan: '["fijo"]',
+            comision_fijo: null,
+            comision_indexado: null,
+            comision_sales_person_fijo: null,
+            comision_sales_person_indexado: null,
+          }],
+    }));
+    mocks.getTursoClient.mockReturnValue({ execute });
+
+    const response = await route.GET(
+      new NextRequest(
+        "https://tenant.example.com/api/v2/comparisons?planFilter=%5B%22fijo%22%5D",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(execute).toHaveBeenCalledTimes(2);
+    for (const [statement] of execute.mock.calls) {
+      expect(statement.sql).toContain("FROM json_each");
+      expect(statement.args).toContain("fijo");
+    }
+  });
+
   test("accepts null and explicit zero commissions without changing inserted values", async () => {
     const response = await route.POST(createRequest({
       ...comparativa,

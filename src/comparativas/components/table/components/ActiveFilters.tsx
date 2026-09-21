@@ -4,13 +4,17 @@ import { X } from "lucide-react";
 import { Badge } from "@/core/components/ui/badge";
 import { Button } from "@/core/components/ui/button";
 import { DateRange } from "react-day-picker";
-import { COMPARATIVA_STATUS_TYPES } from "@/comparativas/constants";
+import {
+  COMPARATIVA_PLAN_TYPES,
+  COMPARATIVA_STATUS_TYPES,
+} from "@/comparativas/constants";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 
 interface ActiveFiltersProps {
   statusFilter: string[] | undefined;
+  planFilter: string[] | undefined;
   dateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   companyFilter: string[] | undefined;
@@ -20,8 +24,57 @@ interface ActiveFiltersProps {
   onResetFilters: () => void;
 }
 
+function hasAnyActiveFilters({
+  statusFilter,
+  planFilter,
+  dateRange,
+  userFilter,
+  companyFilter,
+  isComercial,
+}: Pick<
+  ActiveFiltersProps,
+  | "statusFilter"
+  | "planFilter"
+  | "dateRange"
+  | "userFilter"
+  | "companyFilter"
+  | "isComercial"
+>) {
+  return Boolean(
+    statusFilter?.length ||
+      planFilter?.length ||
+      dateRange?.from ||
+      dateRange?.to ||
+      (userFilter?.length && !isComercial) ||
+      companyFilter?.length
+  );
+}
+
+function PlanFilterBadge({ values }: { values: string[] | undefined }) {
+  if (!values?.length) return null;
+
+  const label = values
+    .map(
+      (value) =>
+        COMPARATIVA_PLAN_TYPES.find((plan) => plan.value === value)?.label ||
+        value
+    )
+    .join(", ");
+
+  return (
+    <Badge
+      variant="secondary"
+      className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 flex items-center px-3 py-1"
+    >
+      <span className="text-xs font-medium">Tipo de plan:</span>
+      <span className="text-xs">{label}</span>
+    </Badge>
+  );
+}
+
 export function ActiveFilters({
   statusFilter,
+  planFilter,
   dateRange,
   userFilter,
   companyFilter,
@@ -32,11 +85,14 @@ export function ActiveFilters({
 }: ActiveFiltersProps) {
   const { activeSuppliers } = useActiveEnergySuppliers();
 
-  const hasActiveFilters =
-    (statusFilter && statusFilter.length > 0) ||
-    (dateRange && (dateRange.from || dateRange.to)) ||
-    (userFilter && userFilter.length > 0 && !isComercial) ||
-    (companyFilter && companyFilter.length > 0);
+  const hasActiveFilters = hasAnyActiveFilters({
+    statusFilter,
+    planFilter,
+    dateRange,
+    userFilter,
+    companyFilter,
+    isComercial,
+  });
 
   if (!hasActiveFilters) return null;
 
@@ -87,6 +143,8 @@ export function ActiveFilters({
               <span className="text-xs">{getStatusLabel(statusFilter)}</span>
             </Badge>
           )}
+
+          <PlanFilterBadge values={planFilter} />
 
           {dateRange && (dateRange.from || dateRange.to) && (
             <Badge

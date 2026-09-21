@@ -40,8 +40,10 @@ export default function ComparativasTable<TData, TValue>({
   const {
     filterValue,
     statusFilter,
+    planFilter,
     setFilterValue,
     setStatusFilter,
+    setPlanFilter,
     resetFilters,
     creationDateRange,
     setCreationDateRange,
@@ -77,6 +79,9 @@ export default function ComparativasTable<TData, TValue>({
           }
           if (statusFilter && statusFilter.length > 0) {
             params.set("statusFilter", JSON.stringify(statusFilter));
+          }
+          if (planFilter && planFilter.length > 0) {
+            params.set("planFilter", JSON.stringify(planFilter));
           }
           if (
             creationDateRange &&
@@ -126,6 +131,7 @@ export default function ComparativasTable<TData, TValue>({
       pageSize,
       filterValue,
       statusFilter,
+      planFilter,
       userData,
       creationDateRange,
       userFilter,
@@ -182,8 +188,10 @@ export default function ComparativasTable<TData, TValue>({
     () => ({
       filterValue,
       statusFilter,
+      planFilter,
       setFilterValue,
       setStatusFilter,
+      setPlanFilter,
       resetFilters: handleResetFilters,
       saveFiltersToStorage,
       totalComparativas,
@@ -202,8 +210,10 @@ export default function ComparativasTable<TData, TValue>({
     [
       filterValue,
       statusFilter,
+      planFilter,
       setFilterValue,
       setStatusFilter,
+      setPlanFilter,
       handleResetFilters,
       saveFiltersToStorage,
       userData,

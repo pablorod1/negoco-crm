@@ -8,6 +8,11 @@ export const COMPARATIVA_STATUS_TYPES = [
   { value: "rechazado_cliente", label: "Rechazado Cliente" },
 ];
 
+export const COMPARATIVA_PLAN_TYPES = [
+  { value: "fijo", label: "Fijo" },
+  { value: "indexado", label: "Indexado" },
+];
+
 export const PLAIN_COMPARATIVA_STATUS_TYPES = [
   "pending",
   "processing",

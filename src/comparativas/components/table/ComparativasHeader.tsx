@@ -15,8 +15,10 @@ import { useActiveFilters } from "@/comparativas/hooks/useActiveFilters";
 interface Props<TData> {
   filterValue: string;
   statusFilter: string[] | undefined;
+  planFilter: string[] | undefined;
   setFilterValue: (value: string) => void;
   setStatusFilter: (value: string[]) => void;
+  setPlanFilter: (value: string[]) => void;
   resetFilters: () => void;
   saveFiltersToStorage: () => void;
   table: Table<TData>;
@@ -37,8 +39,10 @@ interface Props<TData> {
 const ComparativasHeader = <TData,>({
   filterValue,
   statusFilter,
+  planFilter,
   setFilterValue,
   setStatusFilter,
+  setPlanFilter,
   resetFilters,
   saveFiltersToStorage,
   table,
@@ -59,6 +63,7 @@ const ComparativasHeader = <TData,>({
 
   const activeFilters = useActiveFilters({
     statusFilter,
+    planFilter,
     dateRange,
     userFilter,
     isComercial,
@@ -70,6 +75,7 @@ const ComparativasHeader = <TData,>({
     if (activeFilters.length > 0) saveFiltersToStorage();
   }, [
     statusFilter,
+    planFilter,
     dateRange,
     userFilter,
     companyFilter,
@@ -111,9 +117,11 @@ const ComparativasHeader = <TData,>({
             <FilterSheet
               activeFiltersCount={activeFilters.length}
               statusFilter={statusFilter}
+              planFilter={planFilter}
               dateRange={dateRange}
               userFilter={userFilter}
               setStatusFilter={setStatusFilter}
+              setPlanFilter={setPlanFilter}
               setDateRange={setDateRange}
               setUserFilter={setUserFilter}
               resetFilters={resetFilters}
@@ -134,6 +142,7 @@ const ComparativasHeader = <TData,>({
         {/* Active Filters */}
         <ActiveFilters
           statusFilter={statusFilter}
+          planFilter={planFilter}
           dateRange={dateRange}
           userFilter={userFilter}
           companyFilter={companyFilter}

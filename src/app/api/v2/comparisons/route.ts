@@ -29,6 +29,7 @@ interface PaginatedComparisonsRequest {
   user_role: string;
   filterValue?: string;
   statusFilter?: string[];
+  planFilter?: ComparativaPlan[];
   dateRange?: DateRange | undefined;
   userFilter?: string[];
   companyFilter?: string[];
@@ -139,6 +140,7 @@ const PaginationQuerySchema = z.object({
   user_role: z.string().min(1),
   filterValue: z.string().optional(),
   statusFilter: z.array(z.string()).optional(),
+  planFilter: z.array(ComparativaPlanSchema).optional(),
   dateRange: z
     .object({
       from: z.coerce.date().optional(),
@@ -211,6 +213,9 @@ export async function GET(
       user_role: auth.user.role,
       filterValue: searchParams.get("filterValue") || undefined,
       statusFilter: parseJsonParam<string[]>(searchParams.get("statusFilter")),
+      planFilter: parseJsonParam<ComparativaPlan[]>(
+        searchParams.get("planFilter"),
+      ),
       dateRange: parseJsonParam<DateRange>(searchParams.get("dateRange")),
       userFilter: parseJsonParam<string[]>(searchParams.get("userFilter")),
       companyFilter: parseJsonParam<string[]>(searchParams.get("companyFilter")),
@@ -237,6 +242,7 @@ export async function GET(
       user_role,
       filterValue,
       statusFilter,
+      planFilter,
       dateRange,
       userFilter,
       companyFilter,
@@ -337,6 +343,17 @@ export async function GET(
 
     // Apply status and user filters
     if (statusFilter) addArrayFilter("c.status", statusFilter);
+    if (planFilter && planFilter.length > 0) {
+      const placeholders = planFilter.map(() => "?").join(", ");
+      filters.push(`EXISTS (
+        SELECT 1
+        FROM json_each(
+          CASE WHEN JSON_VALID(c.plan) THEN c.plan ELSE JSON_ARRAY(c.plan) END
+        ) AS comparison_plan
+        WHERE comparison_plan.value IN (${placeholders})
+      )`);
+      params.push(...planFilter);
+    }
     if (userFilter && userFilter.length > 0) {
       const placeholders = userFilter.map(() => "?").join(", ");
       if (excludeUser) {
@@ -680,6 +697,9 @@ async function handlePaginatedRequest(
     ...(requestData.filterValue && { filterValue: requestData.filterValue }),
     ...(requestData.statusFilter && {
       statusFilter: JSON.stringify(requestData.statusFilter),
+    }),
+    ...(requestData.planFilter && {
+      planFilter: JSON.stringify(requestData.planFilter),
     }),
     ...(requestData.dateRange && {
       dateRange: JSON.stringify(requestData.dateRange),
