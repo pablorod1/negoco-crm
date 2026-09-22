@@ -72,6 +72,8 @@ beforeEach(async () => {
       id TEXT PRIMARY KEY, provider TEXT, tramite_id TEXT, contract_id TEXT,
       external_contract_id TEXT, external_contract_code TEXT, external_reference TEXT,
       request_id TEXT, status TEXT, substatus TEXT, synced_at TEXT,
+      outcome_code TEXT, outcome_phase TEXT, outcome_message TEXT,
+      recovery_action TEXT, outcome_terminal INTEGER DEFAULT 0, circuito_id TEXT,
       created_at TEXT, updated_at TEXT, UNIQUE(provider, contract_id)
     );
     CREATE TABLE imagina_contract_submissions (

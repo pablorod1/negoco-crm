@@ -10,6 +10,26 @@ export interface ImaginaSubmissionRef {
   status: string | null;
   substatus: string | null;
   synced_at: string | null;
+  outcome_code: string | null;
+  outcome_phase:
+    | "submission"
+    | "scoring"
+    | "contract"
+    | "signature"
+    | "processing"
+    | "activation"
+    | null;
+  outcome_message: string | null;
+  recovery_action:
+    | "retry_submission"
+    | "send_signature"
+    | "resend_signature"
+    | "sync"
+    | "manual_review"
+    | "none"
+    | null;
+  outcome_terminal: boolean;
+  circuito_id: string | null;
 }
 
 export interface ImaginaIntegrationState {
@@ -54,6 +74,9 @@ export function useImaginaIntegrationStatus({
           `/api/v2/integrations/imagina-energia/status${query ? `?${query}` : ""}`,
           { signal: controller.signal },
         );
+        if (!response.ok) {
+          throw new Error("No se pudo consultar el estado de Imagina");
+        }
         const result = (await response.json()) as {
           success?: boolean;
           data?: Partial<ImaginaIntegrationState>;

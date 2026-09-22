@@ -39,6 +39,7 @@ import {
 } from "@/tramites/utils/imagina-missing-fields";
 import { notifyTramiteStatusChange } from "@/tramites/utils/notify-status-change";
 import ImaginaMissingFieldsForm from "./ImaginaMissingFieldsForm";
+import ImaginaIntegrationPanel from "./ImaginaIntegrationPanel";
 
 interface Props {
   tramite: TramiteVM;
@@ -56,9 +57,6 @@ type ImaginaCheck =
   | { status: "missing"; missing: ImaginaMissingField[] }
   | { status: "error"; error: string };
 
-// Envío (o reintento) a Imagina Energía desde las acciones del trámite, sin
-// pasar por un cambio de estado. Solo tiene sentido en "Verificado": antes no
-// está listo y después ya se ha enviado.
 export default function SendToImaginaAction({
   tramite,
   client,
@@ -69,6 +67,9 @@ export default function SendToImaginaAction({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [integrationAction, setIntegrationAction] = useState<
+    "signature" | "sync" | null
+  >(null);
   const [check, setCheck] = useState<ImaginaCheck>({ status: "idle" });
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -78,26 +79,31 @@ export default function SendToImaginaAction({
     [activeSuppliers, contracts],
   );
 
-  const canSend =
-    tramite.status === "Verificado" &&
+  const canManage =
     (userData.role === "admin" || userData.role === "1") &&
     Boolean(imaginaContract);
 
   const { integration } = useImaginaIntegrationStatus({
     contractId: imaginaContract?.id,
-    enabled: canSend,
+    enabled: canManage,
     refreshKey,
   });
 
   const previousSubmission = integration?.submission ?? null;
   const alreadyCreated = Boolean(previousSubmission?.external_contract_id);
+  const recoveryAction = previousSubmission?.recovery_action;
+  const canSend =
+    canManage &&
+    !alreadyCreated &&
+    (tramite.status === "Verificado" ||
+      (tramite.status === "Incidencia" &&
+        (!recoveryAction || recoveryAction === "retry_submission")));
 
   if (
-    !canSend ||
+    !canManage ||
     !imaginaContract ||
     !integration?.enabled ||
-    !integration.configured ||
-    alreadyCreated
+    !integration.configured
   ) {
     return null;
   }
@@ -118,11 +124,25 @@ export default function SendToImaginaAction({
           }),
         },
       );
-      const result = (await response.json()) as {
+      type PreflightResponse = {
         success?: boolean;
         error?: string;
         missing?: ImaginaMissingField[];
       };
+      if (!response.ok) {
+        const failure = (await response.json()) as PreflightResponse;
+        setCheck(
+          failure.missing?.length
+            ? { status: "missing", missing: failure.missing }
+            : {
+                status: "error",
+                error:
+                  failure.error || "No se han podido validar los datos.",
+              },
+        );
+        return false;
+      }
+      const result = (await response.json()) as PreflightResponse;
       if (result.success) {
         setCheck({ status: "ok" });
         return true;
@@ -185,12 +205,27 @@ export default function SendToImaginaAction({
           }),
         },
       );
-      const submitResult = (await submitRes.json()) as {
+      type SubmitResponse = {
         success?: boolean;
         error?: string;
         missing?: ImaginaMissingField[];
         data?: { status?: string | null };
       };
+      if (!submitRes.ok) {
+        const failure = (await submitRes.json()) as SubmitResponse;
+        showCustomToast({
+          title: "Imagina no enviado",
+          message:
+            formatImaginaMissing(failure.missing) ||
+            failure.error ||
+            "No se ha podido enviar el contrato a Imagina Energía.",
+          iconColor: "var(--danger-color)",
+          iconSize: 24,
+          icon: CircleX,
+        });
+        return;
+      }
+      const submitResult = (await submitRes.json()) as SubmitResponse;
 
       if (!submitResult.success) {
         showCustomToast({
@@ -256,14 +291,121 @@ export default function SendToImaginaAction({
     }
   };
 
-  return (
-    <>
-      <Button variant="outline" onClick={onOpen}>
-        <SendHorizontal size={16} />
-        {isRetry ? "Reenviar a Imagina Energía" : "Enviar a Imagina Energía"}
-      </Button>
+  const handleIntegrationAction = async (action: "signature" | "sync") => {
+    if (!previousSubmission) return;
+    setIntegrationAction(action);
+    try {
+      const isResend = recoveryAction === "resend_signature";
+      let response: Response;
 
-      <Dialog open={isOpen} modal>
+      if (action === "sync") {
+        response = await fetch(
+          `/api/v2/integrations/imagina-energia/contracts/sync?contract_id=${encodeURIComponent(previousSubmission.external_contract_id || "")}`,
+        );
+      } else {
+        const rawChannel = imaginaContract.signature_channel || "sms";
+        const channel = ["sms", "email", "email_otp"].includes(rawChannel)
+          ? (rawChannel as "sms" | "email" | "email_otp")
+          : "sms";
+        const email = signer?.email || client.email;
+        const phone = signer?.phone || client.phone;
+        const destination =
+          channel === "email"
+            ? email
+            : channel === "email_otp"
+              ? `${email};${phone}`
+              : phone;
+        const payload = isResend
+          ? {
+              action: "resend",
+              payload: {
+                circuito_id: previousSubmission.circuito_id,
+                referencia_externa:
+                  previousSubmission.external_reference || undefined,
+              },
+            }
+          : {
+              action: "send",
+              payload: {
+                contrato_id: Number(previousSubmission.external_contract_id),
+                canal_envio: channel,
+                direcciones_firma: destination,
+                referencia_externa:
+                  previousSubmission.external_reference || undefined,
+              },
+            };
+        response = await fetch(
+          "/api/v2/integrations/imagina-energia/signature",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+      }
+
+      if (!response.ok) {
+        const failure = (await response.json()) as { error?: string };
+        throw new Error(
+          failure.error || "Imagina no pudo completar la operación.",
+        );
+      }
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!result.success) {
+        throw new Error(result.error || "Imagina no pudo completar la operación.");
+      }
+
+      showCustomToast({
+        title:
+          action === "sync"
+            ? "Contrato sincronizado"
+            : isResend
+              ? "Firma reenviada"
+              : "Firma enviada",
+        message:
+          action === "sync"
+            ? "Se ha actualizado el estado desde Imagina Energía."
+            : "La solicitud de firma se ha enviado correctamente.",
+        iconColor: "var(--success-color)",
+        iconSize: 24,
+        icon: CircleCheck,
+      });
+      setRefreshKey((key) => key + 1);
+      await onUpdate();
+    } catch (error) {
+      showCustomToast({
+        title: "No se pudo completar la acción",
+        message: error instanceof Error ? error.message : String(error),
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+    } finally {
+      setIntegrationAction(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {previousSubmission ? (
+        <ImaginaIntegrationPanel
+          submission={previousSubmission}
+          actionInProgress={integrationAction}
+          onAction={(action) => void handleIntegrationAction(action)}
+        />
+      ) : null}
+
+      {canSend ? (
+        <Button variant="outline" onClick={onOpen}>
+          <SendHorizontal size={16} />
+          {isRetry ? "Reenviar a Imagina Energía" : "Enviar a Imagina Energía"}
+        </Button>
+      ) : null}
+
+      {canSend ? <Dialog open={isOpen} modal>
         <DialogContent className="[&>button]:hidden overflow-auto max-h-[90vh]">
           <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="flex items-center space-x-2">
@@ -377,7 +519,7 @@ export default function SendToImaginaAction({
             </div>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
-    </>
+      </Dialog> : null}
+    </div>
   );
 }

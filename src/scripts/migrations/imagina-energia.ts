@@ -10,17 +10,23 @@ export async function migrateImaginaEnergia(client: Client, apply = false) {
   const statements = source.replace(/^--.*$/gm, "").split(";").map((sql) => sql.trim()).filter(Boolean);
   const transaction = await client.transaction(apply ? "write" : "read");
   const pending: string[] = [];
+  const tablesCreatedByThisMigration = new Set<string>();
   try {
     for (const sql of statements) {
       const alter = sql.match(/^ALTER TABLE (\w+) ADD COLUMN (\w+) /i);
       if (alter) {
         const [, table, column] = alter;
         const { rows } = await transaction.execute(`PRAGMA table_info(${table})`);
-        if (!rows.length) throw new Error(`Falta la tabla base ${table}`);
+        if (!rows.length && !tablesCreatedByThisMigration.has(table)) {
+          throw new Error(`Falta la tabla base ${table}`);
+        }
         if (rows.some((row) => row.name === column)) continue;
       } else {
         const create = sql.match(/^CREATE (?:UNIQUE )?(TABLE|INDEX) IF NOT EXISTS (\w+)/i);
         if (!create) throw new Error("La migración contiene una sentencia no soportada");
+        if (create[1].toLowerCase() === "table") {
+          tablesCreatedByThisMigration.add(create[2]);
+        }
         const { rows } = await transaction.execute({
           sql: "SELECT name FROM sqlite_schema WHERE type = ? AND name = ?",
           args: [create[1].toLowerCase(), create[2]],

@@ -10,6 +10,7 @@ import {
 import type { ImaginaValidationError } from "./mappers";
 import {
   ImaginaAsyncAcceptedSchema,
+  ImaginaContractCallbackSchema,
   ImaginaContractCallback,
   ImaginaContractChangeWebhook,
   ImaginaContractDetailResponseSchema,
@@ -22,6 +23,7 @@ import {
 } from "./schemas";
 import {
   findContractByIntegrationRef,
+  findContractBySignatureCircuit,
   findSubmissionByCorrelation,
   getContractIntegrationRef,
   getImaginaComercializadora,
@@ -41,6 +43,7 @@ import {
   mapChangeWebhookToNegoco,
   mapScoringCodeToNegoco,
 } from "./state-mapper";
+import type { ImaginaStatusMapping } from "./state-mapper";
 import { IMAGINA_PROVIDER } from "./config";
 import { SENT_TO_SUPPLIER_STATUS } from "@/tramites/constants/tramite.constants";
 
@@ -112,10 +115,49 @@ export const getImaginaIntegrationStatus = async (
     integration.configured && params?.contractId
       ? await getContractIntegrationRef(db, IMAGINA_PROVIDER, params.contractId)
       : null;
+  let resolvedSubmission = submission;
+
+  // Compatibilidad con callbacks recibidos antes de guardar el resultado
+  // normalizado: se deriva al consultar, sin modificar datos desde este GET.
+  if (submission && !submission.outcome_code && params?.contractId) {
+    const latest = await db.execute({
+      sql: `SELECT response FROM imagina_contract_submissions
+            WHERE contract_id = ? AND response IS NOT NULL
+            ORDER BY updated_at DESC
+            LIMIT 1`,
+      args: [params.contractId],
+    });
+    const rawResponse = latest.rows[0]?.response;
+    if (typeof rawResponse === "string") {
+      try {
+        const parsed = ImaginaContractCallbackSchema.safeParse(
+          JSON.parse(rawResponse),
+        );
+        if (parsed.success) {
+          const outcome = mapContractCallbackToNegoco(parsed.data);
+          resolvedSubmission = {
+            ...submission,
+            outcome_code: outcome.code,
+            outcome_phase: outcome.phase,
+            outcome_message: outcome.message,
+            recovery_action: outcome.recoveryAction,
+            outcome_terminal: outcome.terminal,
+            circuito_id:
+              submission.circuito_id ||
+              (parsed.data.firma_result?.circuito_id == null
+                ? null
+                : String(parsed.data.firma_result.circuito_id)),
+          };
+        }
+      } catch {
+        // La respuesta histórica se conserva en bruto aunque no sea JSON válido.
+      }
+    }
+  }
   return {
     enabled: integration.enabled,
     configured: integration.configured,
-    submission,
+    submission: resolvedSubmission,
   };
 };
 
@@ -545,7 +587,29 @@ export const sendImaginaSignature = async (
     channelId,
     json: payload,
   });
-  await persistSignatureOperation(context.db, "send", payload, response.data);
+  const [circuitoId, localContract] = await Promise.all([
+    persistSignatureOperation(context.db, "send", payload, response.data),
+    findContractByIntegrationRef(context.db, IMAGINA_PROVIDER, {
+      externalContractId: payload.contrato_id,
+    }),
+  ]);
+  if (localContract) {
+    const outcome = signatureSentOutcome();
+    await upsertContractIntegrationRef(context.db, {
+      provider: IMAGINA_PROVIDER,
+      tramiteId: localContract.tramite_id,
+      contractId: localContract.id,
+      circuitoId,
+      syncedAt: new Date().toISOString(),
+      outcome,
+    });
+    await updateCrmStatusFromImagina(
+      context.db,
+      localContract.tramite_id,
+      outcome.status,
+      outcome.reason,
+    );
+  }
   return { success: true, data: response.data };
 };
 
@@ -564,7 +628,31 @@ export const resendImaginaSignature = async (
     channelId,
     json: payload,
   });
-  await persistSignatureOperation(context.db, "resend", payload, response.data);
+  const [circuitoId, localContract] = await Promise.all([
+    persistSignatureOperation(context.db, "resend", payload, response.data),
+    findContractBySignatureCircuit(
+      context.db,
+      IMAGINA_PROVIDER,
+      payload.circuito_id,
+    ),
+  ]);
+  if (localContract) {
+    const outcome = signatureSentOutcome("Firma reenviada correctamente.");
+    await upsertContractIntegrationRef(context.db, {
+      provider: IMAGINA_PROVIDER,
+      tramiteId: localContract.tramite_id,
+      contractId: localContract.id,
+      circuitoId: circuitoId || payload.circuito_id,
+      syncedAt: new Date().toISOString(),
+      outcome,
+    });
+    await updateCrmStatusFromImagina(
+      context.db,
+      localContract.tramite_id,
+      outcome.status,
+      outcome.reason,
+    );
+  }
   return { success: true, data: response.data };
 };
 
@@ -595,12 +683,24 @@ export const getImaginaSignatureHealth = async (
   return { success: true, data: response.data };
 };
 
+const signatureSentOutcome = (
+  message = "La firma se ha enviado correctamente al cliente.",
+): ImaginaStatusMapping => ({
+  status: "Pendiente de Firma",
+  reason: "Firma enviada desde Negoco a través de Imagina",
+  terminal: false,
+  code: "SIGNATURE_SENT",
+  phase: "signature",
+  message,
+  recoveryAction: "sync",
+});
+
 const persistSignatureOperation = async (
   db: Client,
   operation: string,
   payload: Record<string, unknown>,
   result: unknown,
-): Promise<void> => {
+): Promise<string | null> => {
   const resultObject = result && typeof result === "object" ? result : {};
   const requestId = (resultObject as { request_id?: unknown }).request_id;
   const firmaResult = (resultObject as { firma_result?: unknown }).firma_result;
@@ -631,6 +731,7 @@ const persistSignatureOperation = async (
       new Date().toISOString(),
     ],
   });
+  return circuitoId == null ? null : String(circuitoId);
 };
 
 export const syncImaginaContractsDump = async (
@@ -727,6 +828,7 @@ const persistImaginaContractInfo = async (
       substatus:
         contract.subestado?.descripcion || contract.subestado?.subestado || null,
       syncedAt: new Date().toISOString(),
+      outcome: mapping,
     });
 
     if (options.applyStatus) {
@@ -779,6 +881,8 @@ export const processImaginaContractCallback = async (
       substatus:
         content.subestado?.descripcion || content.subestado?.subestado || null,
       syncedAt: new Date().toISOString(),
+      outcome: mapping,
+      circuitoId: callback.firma_result?.circuito_id ?? null,
     });
 
     await persistContractSnapshot(context.db, {
@@ -802,6 +906,17 @@ export const processImaginaContractCallback = async (
       contractId: String(submission.contract_id),
       imaginaContractId: String(content.id),
       cups: supplyPoint?.cups ? String(supplyPoint.cups) : null,
+    });
+  } else {
+    await upsertContractIntegrationRef(context.db, {
+      provider: IMAGINA_PROVIDER,
+      tramiteId: String(submission.tramite_id),
+      contractId: String(submission.contract_id),
+      externalReference: callback.referencia_externa || null,
+      requestId: callback.request_id,
+      syncedAt: new Date().toISOString(),
+      outcome: mapping,
+      circuitoId: callback.firma_result?.circuito_id ?? null,
     });
   }
 
@@ -880,6 +995,7 @@ export const processImaginaContractChangeWebhook = async (
     status: estadoChange?.descripcion_nueva || null,
     substatus: subestadoChange?.descripcion_nueva || null,
     syncedAt: new Date().toISOString(),
+    outcome: mapping,
   });
 
   await persistContractSnapshot(context.db, {
@@ -916,7 +1032,22 @@ export const processImaginaScoringCallback = async (
   context: ServiceContext,
   callback: ImaginaScoringCallback,
 ): Promise<ServiceResult<{ status: string | null }>> => {
-  const mapping = mapScoringCodeToNegoco(callback.result?.codigo);
+  const callbackError =
+    typeof callback.error === "string"
+      ? callback.error
+      : callback.error && typeof callback.error === "object"
+        ? String(
+            (callback.error as { message?: unknown; error?: unknown }).message ||
+              (callback.error as { error?: unknown }).error ||
+              "Error de scoring comunicado por Imagina",
+          )
+        : undefined;
+  const scoringDetail =
+    callback.result?.error || callback.result?.texto || callbackError;
+  const mapping = mapScoringCodeToNegoco(
+    callback.result?.codigo,
+    scoringDetail,
+  );
   await context.db.execute({
     sql: `UPDATE imagina_scoring_requests
           SET result = ?, status = ?, updated_at = ?
@@ -931,7 +1062,7 @@ export const processImaginaScoringCallback = async (
   });
 
   const local = await context.db.execute({
-    sql: `SELECT tramite_id FROM imagina_scoring_requests
+    sql: `SELECT tramite_id, contract_id FROM imagina_scoring_requests
           WHERE request_id = ? OR referencia_externa = ?
           ORDER BY created_at DESC
           LIMIT 1`,
@@ -939,6 +1070,17 @@ export const processImaginaScoringCallback = async (
   });
 
   if (local.rows[0]?.tramite_id) {
+    if (local.rows[0].contract_id) {
+      await upsertContractIntegrationRef(context.db, {
+        provider: IMAGINA_PROVIDER,
+        tramiteId: String(local.rows[0].tramite_id),
+        contractId: String(local.rows[0].contract_id),
+        externalReference: callback.referencia_externa || null,
+        requestId: callback.request_id,
+        syncedAt: new Date().toISOString(),
+        outcome: mapping,
+      });
+    }
     await updateCrmStatusFromImagina(
       context.db,
       String(local.rows[0].tramite_id),

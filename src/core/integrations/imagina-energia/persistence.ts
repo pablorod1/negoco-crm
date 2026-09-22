@@ -11,6 +11,11 @@ import {
   isImaginaSupplierName,
 } from "./mappers";
 import type { NegocoImaginaStatus } from "./state-mapper";
+import type {
+  ImaginaOutcomePhase,
+  ImaginaRecoveryAction,
+  ImaginaStatusMapping,
+} from "./state-mapper";
 import { SENT_TO_SUPPLIER_STATUS } from "@/tramites/constants/tramite.constants";
 
 export interface ImaginaTenantIntegration {
@@ -42,6 +47,12 @@ export interface ContractIntegrationRef {
   status: string | null;
   substatus: string | null;
   synced_at: string | null;
+  outcome_code: string | null;
+  outcome_phase: ImaginaOutcomePhase | null;
+  outcome_message: string | null;
+  recovery_action: ImaginaRecoveryAction | null;
+  outcome_terminal: boolean;
+  circuito_id: string | null;
 }
 
 type DbArg = string | number | null;
@@ -147,6 +158,8 @@ export const upsertContractIntegrationRef = async (
     status?: string | null;
     substatus?: string | null;
     syncedAt?: string | null;
+    outcome?: ImaginaStatusMapping | null;
+    circuitoId?: string | number | null;
   },
 ): Promise<void> => {
   const now = new Date().toISOString();
@@ -208,6 +221,27 @@ export const upsertContractIntegrationRef = async (
   appendOptional("status", "status", params.status ?? null);
   appendOptional("substatus", "substatus", params.substatus ?? null);
   appendOptional("syncedAt", "synced_at", params.syncedAt ?? now);
+  if (hasOwn(params, "outcome")) {
+    fields.push(
+      "outcome_code = ?",
+      "outcome_phase = ?",
+      "outcome_message = ?",
+      "recovery_action = ?",
+      "outcome_terminal = ?",
+    );
+    args.push(
+      params.outcome?.code ?? null,
+      params.outcome?.phase ?? null,
+      params.outcome?.message ?? null,
+      params.outcome?.recoveryAction ?? null,
+      params.outcome?.terminal ? 1 : 0,
+    );
+  }
+  appendOptional(
+    "circuitoId",
+    "circuito_id",
+    optionalString(params.circuitoId),
+  );
 
   args.push(params.provider, params.contractId);
 
@@ -262,6 +296,24 @@ export const findContractByIntegrationRef = async (
   };
 };
 
+export const findContractBySignatureCircuit = async (
+  db: Client,
+  provider: string,
+  circuitoId: string,
+): Promise<LocalContractRef | null> => {
+  const result = await db.execute({
+    sql: `SELECT contract_id AS id, tramite_id
+          FROM contract_integration_refs
+          WHERE provider = ? AND circuito_id = ?
+          LIMIT 1`,
+    args: [provider, circuitoId],
+  });
+  const row = result.rows[0];
+  return row
+    ? { id: String(row.id), tramite_id: String(row.tramite_id) }
+    : null;
+};
+
 export const getContractIntegrationRef = async (
   db: Client,
   provider: string,
@@ -270,7 +322,8 @@ export const getContractIntegrationRef = async (
   const result = await db.execute({
     sql: `SELECT contract_id, tramite_id, external_contract_id,
                  external_contract_code, external_reference, request_id,
-                 status, substatus, synced_at
+                 status, substatus, synced_at, outcome_code, outcome_phase,
+                 outcome_message, recovery_action, outcome_terminal, circuito_id
           FROM contract_integration_refs
           WHERE provider = ? AND contract_id = ?
           LIMIT 1`,
@@ -290,6 +343,14 @@ export const getContractIntegrationRef = async (
     status: optionalString(row.status),
     substatus: optionalString(row.substatus),
     synced_at: optionalString(row.synced_at),
+    outcome_code: optionalString(row.outcome_code),
+    outcome_phase: optionalString(row.outcome_phase) as ImaginaOutcomePhase | null,
+    outcome_message: optionalString(row.outcome_message),
+    recovery_action: optionalString(
+      row.recovery_action,
+    ) as ImaginaRecoveryAction | null,
+    outcome_terminal: Boolean(row.outcome_terminal),
+    circuito_id: optionalString(row.circuito_id),
   };
 };
 

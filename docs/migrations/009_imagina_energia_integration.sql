@@ -74,6 +74,13 @@ WHERE request_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_contract_integration_refs_provider_status
 ON contract_integration_refs(provider, status, substatus);
 
+ALTER TABLE contract_integration_refs ADD COLUMN outcome_code TEXT;
+ALTER TABLE contract_integration_refs ADD COLUMN outcome_phase TEXT;
+ALTER TABLE contract_integration_refs ADD COLUMN outcome_message TEXT;
+ALTER TABLE contract_integration_refs ADD COLUMN recovery_action TEXT;
+ALTER TABLE contract_integration_refs ADD COLUMN outcome_terminal INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE contract_integration_refs ADD COLUMN circuito_id TEXT;
+
 ALTER TABLE clients ADD COLUMN tipo_via_cnmc TEXT;
 ALTER TABLE clients ADD COLUMN calle TEXT;
 ALTER TABLE clients ADD COLUMN numero_finca TEXT;

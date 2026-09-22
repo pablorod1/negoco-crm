@@ -53,4 +53,56 @@ describe("Imagina state mapper", () => {
       "KO",
     );
   });
+
+  test("classifies a failed contract creation as retryable", () => {
+    const result = mapContractCallbackToNegoco({
+      request_id: 2,
+      error: { message: "CUPS no válido" },
+    });
+
+    expect(result).toMatchObject({
+      status: "Incidencia",
+      code: "SUBMISSION_ERROR",
+      message: "CUPS no válido",
+      recoveryAction: "retry_submission",
+      terminal: false,
+    });
+  });
+
+  test("classifies a signature failure without allowing contract resubmission", () => {
+    const result = mapContractCallbackToNegoco({
+      request_id: 3,
+      contrato_result: {
+        result_operation: "OK",
+        content: { id: 99, codigo: "C-99" },
+      },
+      firma_result: {
+        result_operation: "ERROR al enviar firma",
+        circuito_id: "circuit-1",
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: "Incidencia",
+      code: "SIGNATURE_FAILED",
+      recoveryAction: "resend_signature",
+    });
+  });
+
+  test("keeps manual scoring review separate from a denial", () => {
+    expect(mapScoringCodeToNegoco(4, "Revisión necesaria")).toMatchObject({
+      status: "Incidencia",
+      code: "SCORING_MANUAL_REVIEW",
+      recoveryAction: "manual_review",
+      message: "Revisión necesaria",
+    });
+  });
+
+  test("classifies a scoring callback error as an incident", () => {
+    expect(mapScoringCodeToNegoco(undefined, "Servicio no disponible")).toMatchObject({
+      status: "Incidencia",
+      code: "SCORING_ERROR",
+      recoveryAction: "manual_review",
+    });
+  });
 });
