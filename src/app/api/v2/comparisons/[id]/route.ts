@@ -23,6 +23,7 @@ interface ComparativaRow extends Record<string, unknown> {
   id: string;
   client: string;
   service: string;
+  commission_segment?: string | null;
   plan: string;
   status: string;
   comision_fijo: number | null;
@@ -63,6 +64,7 @@ const ComparisonPatchSchema = z
   .strictObject({
     client: z.string().min(1).optional(),
     service: z.enum(["Luz", "Gas"]).optional(),
+    commission_segment: z.enum(["luz_20td", "luz_pymes", "gas"]).optional(),
     plan: z
       .array(z.enum(["fijo", "indexado"]))
       .min(1)
@@ -91,6 +93,7 @@ interface ComparisonByIdResponse {
     id: string;
     client: string;
     service: "Luz" | "Gas";
+    commission_segment: "luz_20td" | "luz_pymes" | "gas" | null;
     plan: ComparativaPlan[];
     status: string;
     comision: {
@@ -178,6 +181,7 @@ async function fetchComparisonData(
       c.id,
       c.client,
       c.service,
+      c.commission_segment,
       c.plan,
       c.status,
       EXISTS(SELECT 1 FROM comparison_study_results sr WHERE sr.comparativa_id = c.id AND sr.state = 'pending') AS has_pending_study_result,
@@ -307,6 +311,9 @@ function transformComparisonData(
     id: String(comparativa.id),
     client: String(comparativa.client),
     service: String(comparativa.service) as "Luz" | "Gas",
+    commission_segment: comparativa.commission_segment
+      ? String(comparativa.commission_segment) as "luz_20td" | "luz_pymes" | "gas"
+      : null,
     plan: JSON.parse(comparativa.plan as string) as ComparativaPlan[],
     status: String(comparativa.status),
     comision: {
@@ -383,7 +390,7 @@ export async function PATCH(
     const updates = validation.data;
 
     if (
-      updates.plan !== undefined &&
+      (updates.plan !== undefined || updates.commission_segment !== undefined) &&
       authenticatedUser.role !== "admin" &&
       authenticatedUser.role !== "1"
     ) {
@@ -437,8 +444,32 @@ export async function PATCH(
       }
 
       const previousData = existingComparison.data[0];
+      const nextService = updates.service ?? String(previousData.service);
+      const resolvedSegmentUpdate = updates.commission_segment !== undefined
+        ? updates.commission_segment
+        : updates.service === "Gas"
+          ? "gas"
+          : updates.service === "Luz" && previousData.commission_segment === "gas"
+            ? null
+            : undefined;
+      const nextSegment = resolvedSegmentUpdate !== undefined
+        ? resolvedSegmentUpdate
+        :
+        (previousData.commission_segment
+          ? String(previousData.commission_segment)
+          : null);
       if (
-        updates.plan !== undefined &&
+        (nextService === "Gas" && nextSegment !== "gas") ||
+        (nextService === "Luz" && nextSegment === "gas")
+      ) {
+        await transaction.rollback();
+        return NextResponse.json(
+          { success: false, error: "El segmento no corresponde al servicio" },
+          { status: 400 },
+        );
+      }
+      if (
+        (updates.plan !== undefined || updates.commission_segment !== undefined) &&
         previousData.status !== "completed"
       ) {
         await transaction.rollback();
@@ -452,7 +483,7 @@ export async function PATCH(
       }
 
       const updateFields: string[] = [];
-      const updateArgs: string[] = [];
+      const updateArgs: (string | null)[] = [];
       if (updates.client !== undefined) {
         updateFields.push("client = ?");
         updateArgs.push(updates.client);
@@ -460,6 +491,18 @@ export async function PATCH(
       if (updates.service !== undefined) {
         updateFields.push("service = ?");
         updateArgs.push(updates.service);
+      }
+      if (resolvedSegmentUpdate !== undefined) {
+        updateFields.push("commission_segment = ?");
+        updateArgs.push(resolvedSegmentUpdate);
+        updateFields.push("commission_segment_origin = ?");
+        updateArgs.push(
+          resolvedSegmentUpdate === null
+            ? null
+            : updates.commission_segment !== undefined
+              ? "user"
+              : "service",
+        );
       }
       if (updates.plan !== undefined) {
         updateFields.push("plan = ?");
@@ -524,6 +567,18 @@ export async function PATCH(
           old_value: previousData.service,
           new_value: updates.service,
           description: `Servicio actualizado de "${previousData.service}" a "${updates.service}"`,
+        });
+      }
+      if (
+        resolvedSegmentUpdate !== undefined &&
+        resolvedSegmentUpdate !== previousData.commission_segment
+      ) {
+        auditChanges.push({
+          change_type: "field_update" as const,
+          field_name: "commission_segment",
+          old_value: previousData.commission_segment ?? null,
+          new_value: resolvedSegmentUpdate,
+          description: `Segmento de comisión actualizado a ${resolvedSegmentUpdate ?? "pendiente"}`,
         });
       }
       if (updates.plan !== undefined) {

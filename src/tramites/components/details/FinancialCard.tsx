@@ -16,6 +16,7 @@ interface FinancialCardProps {
   onUpdate: () => void;
   isEditable: boolean | null;
   embedded?: boolean;
+  commissionTariff?: string;
 }
 
 export default function FinancialCard({
@@ -24,6 +25,7 @@ export default function FinancialCard({
   onUpdate,
   isEditable,
   embedded = false,
+  commissionTariff,
 }: FinancialCardProps) {
   const content = (
     <>
@@ -52,6 +54,7 @@ export default function FinancialCard({
           userData={userData}
           onUpdate={onUpdate}
           isEditable={isEditable}
+          commissionTariff={commissionTariff}
         />
       </CardContent>
     </>

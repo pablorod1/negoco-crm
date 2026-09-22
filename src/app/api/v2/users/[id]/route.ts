@@ -177,7 +177,8 @@ export async function GET(
           ucc.user_id,
           ucc.comercializadora_id,
           c.name as comercializadora_name,
-          ucc.commission_type,
+        ucc.segment,
+        ucc.commission_type,
           ucc.commission_value,
           ucc.created_at,
           ucc.updated_at
@@ -227,6 +228,7 @@ export async function GET(
           comercializadora_name: commission.comercializadora_name
             ? String(commission.comercializadora_name)
             : null,
+          segment: String(commission.segment),
           commission_type: String(commission.commission_type) as
             | "percent"
             | "fixed",

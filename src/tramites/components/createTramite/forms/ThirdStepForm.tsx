@@ -22,6 +22,7 @@ import { eligibleComparisonPlans } from "@/comparativas/utils/commission-complet
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 import { useCrmSettings } from "@/crm-settings/hooks/useCrmSettings";
 import { Label } from "@/core/components/ui/label";
 import {
@@ -95,6 +96,7 @@ export default function ThirdStepForm({
   const supplierId =
     comparativa?.company_id || providerSupplierId || contractSupplierId;
   const supplierName = tramite.provider || firstContract?.new_company;
+  const commissionSegment = commissionSegmentFromTariff(firstContract?.plan);
 
   useEffect(() => {
     if (comparativa || isSubcomercial || salesCommissionTouched) return;
@@ -105,6 +107,7 @@ export default function ThirdStepForm({
       supplierName,
       commissions: userCompanyCommissions,
       suppliers: activeSuppliers,
+      segment: commissionSegment,
     });
 
     if (calculatedCommission === null) return;
@@ -125,6 +128,7 @@ export default function ThirdStepForm({
     activeSuppliers,
     supplierId,
     supplierName,
+    commissionSegment,
     salesCommissionTouched,
     setTramite,
     tramite.comision,

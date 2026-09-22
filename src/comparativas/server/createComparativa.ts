@@ -36,8 +36,9 @@ async function insertComparativa(
     sql: `INSERT INTO comparativas (
       id, client, service, plan, comision_fijo, comision_indexado,
       comision_sales_person_fijo, comision_sales_person_indexado,
-      notes, user_id, creation_date, status, tramite_id, company_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      notes, user_id, creation_date, status, tramite_id, company_id,
+      commission_segment, commission_segment_origin
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       comparativa.id,
       comparativa.client,
@@ -53,6 +54,8 @@ async function insertComparativa(
       comparativa.status,
       comparativa.tramite_id ?? null,
       null,
+      comparativa.service === "Gas" ? "gas" : (comparativa.commission_segment ?? null),
+      comparativa.service === "Gas" ? "service" : comparativa.commission_segment ? "user" : null,
     ],
   });
 }

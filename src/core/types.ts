@@ -24,6 +24,7 @@ export interface User {
 }
 
 export type CommissionType = "percent" | "fixed";
+export type CommissionSegment = "luz_20td" | "luz_pymes" | "gas";
 export type UserDefaultNoteTarget = "global" | "tramites" | "comparativas";
 
 /** De dónde sale una comisión: del override del colaborador o del valor por defecto de la asesoría. */
@@ -34,6 +35,7 @@ export interface UserCompanyCommission {
   user_id: string;
   comercializadora_id: string;
   comercializadora_name?: string | null;
+  segment: CommissionSegment;
   commission_type: CommissionType;
   commission_value: number;
   created_at: string | null;
@@ -46,6 +48,7 @@ export interface DefaultCompanyCommission {
   id: string;
   comercializadora_id: string;
   comercializadora_name?: string | null;
+  segment: CommissionSegment;
   commission_type: CommissionType;
   commission_value: number;
   created_at: string | null;

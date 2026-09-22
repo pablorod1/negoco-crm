@@ -10,12 +10,14 @@ import { TramiteDB } from "@/tramites/types";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 
 interface Props {
   userData: User;
   tramite: TramiteDB;
   onUpdate: () => void;
   isEditable: boolean | null;
+  commissionTariff?: string;
 }
 
 interface FormData {
@@ -28,6 +30,7 @@ export default function TramiteComissionsSection({
   tramite,
   onUpdate,
   isEditable,
+  commissionTariff,
 }: Props) {
   const [isSalesComissionEditMode, setIsSalesComissionEditMode] =
     useState(false);
@@ -53,6 +56,7 @@ export default function TramiteComissionsSection({
       supplierName: tramite.provider,
       commissions: userCompanyCommissions,
       suppliers: activeSuppliers,
+      segment: commissionSegmentFromTariff(commissionTariff),
     });
 
     if (calculatedCommission === null) return;
@@ -70,6 +74,7 @@ export default function TramiteComissionsSection({
     formData.comision,
     salesCommissionTouched,
     tramite.provider,
+    commissionTariff,
     userCompanyCommissions,
   ]);
 

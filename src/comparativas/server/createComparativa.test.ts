@@ -86,7 +86,9 @@ beforeEach(async () => {
       creation_date TEXT NOT NULL,
       status TEXT NOT NULL,
       tramite_id TEXT,
-      company_id TEXT
+      company_id TEXT,
+      commission_segment TEXT,
+      commission_segment_origin TEXT
     );
     CREATE TABLE comparativa_changes (
       id TEXT PRIMARY KEY,

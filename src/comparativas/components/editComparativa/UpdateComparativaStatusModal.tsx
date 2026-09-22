@@ -25,6 +25,7 @@ import { formatUUID } from "@/core/utils/format";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 import {
   getAllowedStatusOptions,
   getStatusUpdatePayload,
@@ -75,6 +76,8 @@ export default function UpdateComparativaStatusModal({
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
     comparativa.user.id,
   );
+  const commissionSegment = comparativa.commission_segment ??
+    commissionSegmentFromTariff(comparativa.abarca_estudio?.tipo_tarifa, comparativa.service);
   const allowedStatusOptions = getAllowedStatusOptions(
     comparativa.status,
     userData,
@@ -96,6 +99,7 @@ export default function UpdateComparativaStatusModal({
           supplierName: comparativa.company_name,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
+          segment: commissionSegment,
         });
 
         if (
@@ -117,6 +121,7 @@ export default function UpdateComparativaStatusModal({
           supplierName: comparativa.company_name,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
+          segment: commissionSegment,
         });
 
         if (
@@ -135,6 +140,7 @@ export default function UpdateComparativaStatusModal({
     comparativa.company_id,
     comparativa.company_name,
     comparativa.plan,
+    commissionSegment,
     formDataComissions.comision_fijo,
     formDataComissions.comision_indexado,
     manualSalesCommissionFields,

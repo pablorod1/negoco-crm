@@ -45,6 +45,8 @@ const comparisonRow = {
   id: "comparison-1",
   client: "Old client",
   service: "Luz",
+  commission_segment: "luz_20td",
+  commission_segment_origin: "user",
   plan: JSON.stringify(["fijo"]),
   status: "pending",
   comision_fijo: 10,
@@ -77,6 +79,8 @@ const transaction = {
 const storedPatchColumns = [
   "client",
   "service",
+  "commission_segment",
+  "commission_segment_origin",
   "plan",
   "notes",
 ] as const;
@@ -270,6 +274,46 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
     },
   );
 
+  test("allows an audited segment correction on a completed comparison", async () => {
+    comparisonStatus = "completed";
+
+    const response = await patch({ commission_segment: "luz_pymes" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      data: { commission_segment: "luz_pymes" },
+    });
+    expect(mocks.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sql: expect.stringContaining("commission_segment = ?"),
+        args: ["luz_pymes", "user", "comparison-1"],
+      }),
+    );
+    expectAuditChanges({
+      change_type: "field_update",
+      field_name: "commission_segment",
+      old_value: "luz_20td",
+      new_value: "luz_pymes",
+      description: "Segmento de comisión actualizado a luz_pymes",
+    });
+    expect(mocks.commit).toHaveBeenCalledTimes(1);
+  });
+
+  test("rejects a segment that does not match the service", async () => {
+    comparisonStatus = "completed";
+
+    const response = await patch({ commission_segment: "gas" });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "El segmento no corresponde al servicio",
+    });
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.rollback).toHaveBeenCalledTimes(1);
+  });
+
   test("commits a completed mixed update and all audits atomically", async () => {
     comparisonStatus = "completed";
     mocks.validateUserSession.mockResolvedValue({
@@ -300,6 +344,8 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
         args: [
           "New client",
           "Gas",
+          "gas",
+          "service",
           JSON.stringify(["fijo", "indexado"]),
           JSON.stringify(["New note"]),
           "comparison-1",
@@ -322,6 +368,13 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
         new_value: "Gas",
         description: 'Servicio actualizado de "Luz" a "Gas"',
       },
+      {
+        change_type: "field_update",
+        field_name: "commission_segment",
+        old_value: "luz_20td",
+        new_value: "gas",
+        description: "Segmento de comisión actualizado a gas",
+      },
       planUpdateAudit,
       {
         change_type: "general_update",
@@ -340,6 +393,11 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
       name: "role 2 plan update",
       role: "2",
       body: { plan: ["fijo", "indexado"] },
+    },
+    {
+      name: "role 2 segment update",
+      role: "2",
+      body: { commission_segment: "luz_pymes" },
     },
     {
       name: "role 2 mixed update",
@@ -537,6 +595,8 @@ describe("PATCH /api/v2/comparisons/[id]", () => {
           args: [
             "New client",
             "Gas",
+            "gas",
+            "service",
             JSON.stringify(["New note"]),
             ...expectedArgs,
           ],

@@ -108,6 +108,7 @@ const ComparativaSchema = z.object({
   id: z.string().min(1, "Comparison ID is required"),
   client: z.string().min(1, "Client name is required"),
   service: ServiceSchema,
+  commission_segment: z.enum(["luz_20td", "luz_pymes", "gas"]).nullable().optional(),
   plan: z.array(ComparativaPlanSchema).min(1, "At least one plan is required"),
   comision: ComparativaComisionSchema,
   comision_sales_person: ComparativaComisionSchema,

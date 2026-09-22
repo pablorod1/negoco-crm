@@ -1,5 +1,5 @@
 import { ComercializadoraVM } from "@/comercializadoras/types";
-import { UserCompanyCommission } from "@/core/types";
+import type { CommissionSegment, UserCompanyCommission } from "@/core/types";
 
 function normalizeSupplierName(name: string) {
   return name.trim().toLowerCase();
@@ -15,6 +15,7 @@ interface SalesCommissionInput {
   supplierName?: string | null;
   commissions: UserCompanyCommission[];
   suppliers?: ComercializadoraVM[];
+  segment?: CommissionSegment | null;
 }
 
 export function calculateSalesPersonCommission({
@@ -23,6 +24,7 @@ export function calculateSalesPersonCommission({
   supplierName,
   commissions,
   suppliers = [],
+  segment,
 }: SalesCommissionInput) {
   if (!Number.isFinite(baseCommission) || baseCommission === 0) return null;
 
@@ -34,12 +36,13 @@ export function calculateSalesPersonCommission({
 
   const resolvedSupplierId = supplierId || supplierIdFromName;
 
-  if (!resolvedSupplierId) return null;
+  if (!resolvedSupplierId || !segment) return null;
 
   const rule = commissions.find(
     (commission) =>
-      commission.comercializadora_id === resolvedSupplierId ||
-      commission.comercializadora_id === supplierIdFromName,
+      (commission.comercializadora_id === resolvedSupplierId ||
+        commission.comercializadora_id === supplierIdFromName) &&
+      commission.segment === segment,
   );
   if (!rule) return null;
 

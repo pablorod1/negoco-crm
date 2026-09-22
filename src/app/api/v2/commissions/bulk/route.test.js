@@ -65,6 +65,7 @@ describe("POST /commissions/bulk", () => {
     const res = await postBulk({
       user_ids: ["u1", "u2"],
       comercializadora_ids: ["e1", "e2"],
+      segments: ["luz_20td"],
       mode: "overwrite",
       commission_type: "percent",
       commission_value: 15,
@@ -75,9 +76,12 @@ describe("POST /commissions/bulk", () => {
     expect(body.data.updated_users).toBe(2);
 
     const statements = batchedStatements();
-    expect(statements).toHaveLength(4);
+    const commissionStatements = statements.filter((statement) =>
+      statement.sql.includes("user_company_commissions"),
+    );
+    expect(commissionStatements).toHaveLength(4);
     expect(
-      statements.every(
+      commissionStatements.every(
         (statement) =>
           statement.sql.includes("INSERT INTO user_company_commissions") &&
           statement.sql.includes("DO UPDATE SET"),
@@ -92,6 +96,7 @@ describe("POST /commissions/bulk", () => {
     await postBulk({
       user_ids: ["u1"],
       comercializadora_ids: ["e1"],
+      segments: ["luz_20td"],
       mode: "only_missing",
       commission_type: "percent",
       commission_value: 15,
@@ -104,14 +109,18 @@ describe("POST /commissions/bulk", () => {
     const res = await postBulk({
       user_ids: ["u1"],
       comercializadora_ids: ["e1", "e2"],
+      segments: ["luz_20td"],
       mode: "inherit",
     });
 
     expect(res.status).toBe(200);
     const statements = batchedStatements();
-    expect(statements).toHaveLength(2);
+    const commissionStatements = statements.filter((statement) =>
+      statement.sql.includes("user_company_commissions"),
+    );
+    expect(commissionStatements).toHaveLength(2);
     expect(
-      statements.every((statement) =>
+      commissionStatements.every((statement) =>
         statement.sql.includes("DELETE FROM user_company_commissions"),
       ),
     ).toBe(true);
@@ -129,6 +138,7 @@ describe("POST /commissions/bulk", () => {
     const res = await postBulk({
       user_ids: ["u1", "admin1"],
       comercializadora_ids: ["e1"],
+      segments: ["luz_20td"],
       mode: "overwrite",
       commission_type: "percent",
       commission_value: 15,
@@ -137,7 +147,9 @@ describe("POST /commissions/bulk", () => {
     const body = await res.json();
     expect(body.data.updated_users).toBe(1);
     expect(body.data.skipped_users).toBe(1);
-    expect(batchedStatements()).toHaveLength(1);
+    expect(batchedStatements().filter((statement) =>
+      statement.sql.includes("user_company_commissions"),
+    )).toHaveLength(1);
   });
 
   test("rejects non-admin users", async () => {
@@ -149,6 +161,7 @@ describe("POST /commissions/bulk", () => {
     const res = await postBulk({
       user_ids: ["u2"],
       comercializadora_ids: ["e1"],
+      segments: ["luz_20td"],
       mode: "overwrite",
       commission_type: "percent",
       commission_value: 15,

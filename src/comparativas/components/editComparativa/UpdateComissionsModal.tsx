@@ -19,6 +19,7 @@ import { generateComparativaUpdatedNotification } from "@/core/utils/notificatio
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -37,6 +38,8 @@ export default function UpdateComissionsModal({
   const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
     comparativa.user.id,
   );
+  const commissionSegment = comparativa.commission_segment ??
+    commissionSegmentFromTariff(comparativa.abarca_estudio?.tipo_tarifa, comparativa.service);
   const [formDataComissions, setFormDataComissions] = useState<
     Partial<ComissionFormValues>
   >(
@@ -75,6 +78,7 @@ export default function UpdateComissionsModal({
           supplierName: comparativa.company_name,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
+          segment: commissionSegment,
         });
 
         if (
@@ -96,6 +100,7 @@ export default function UpdateComissionsModal({
           supplierName: comparativa.company_name,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
+          segment: commissionSegment,
         });
 
         if (
@@ -114,6 +119,7 @@ export default function UpdateComissionsModal({
     comparativa.company_id,
     comparativa.company_name,
     comparativa.plan,
+    commissionSegment,
     formDataComissions.comision_fijo,
     formDataComissions.comision_indexado,
     manualSalesCommissionFields,

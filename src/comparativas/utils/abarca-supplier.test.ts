@@ -15,6 +15,17 @@ const suppliers = [
   { id: "imagina", name: "Imagina Energía" },
 ];
 describe("Abarca supplier formats", () => {
+  test("persisted tenant mappings override aliases and respect segments", () => {
+    const mappings = [
+      { abarca_name: "GANA", segment: "gas", comercializadora_id: "COM-013" },
+      { abarca_name: "GANA", segment: "luz_20td", comercializadora_id: "COM-007" },
+    ];
+    expect(resolveAbarcaSupplier("GANA - Tarifa", suppliers, mappings, "gas").supplier?.id).toBe("COM-013");
+    expect(resolveAbarcaSupplier("GANA", suppliers, mappings).ambiguous).toBe(true);
+    expect(resolveAbarcaSupplier("GANA", suppliers, [
+      { abarca_name: "GANA", segment: "gas", comercializadora_id: null },
+    ], "gas").supplier).toBeNull();
+  });
   test.each([
     ["NORDY RESIDENCIAL - Tarifa Estabilidad 3P", "COM-023"],
     ["NORDY EMPRESA", "COM-023"], ["NORDY", "COM-023"],

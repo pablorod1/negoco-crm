@@ -71,6 +71,7 @@ describe("GET /users/[id]/config", () => {
               id: "c1",
               user_id: "u1",
               comercializadora_id: "e1",
+              segment: "luz_20td",
               comercializadora_name: "Energia Uno",
               commission_type: "percent",
               commission_value: 12.5,
@@ -205,6 +206,7 @@ describe("PATCH /users/[id]/config", () => {
           company_commissions: [
             {
               comercializadora_id: "e1",
+              segment: "luz_20td",
               commission_type: "fixed",
               commission_value: 25,
             },

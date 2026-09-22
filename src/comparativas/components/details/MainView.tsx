@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ComparativaVM, ComparativaFile } from "@/comparativas/types";
-import { User, UserDefaultNote } from "@/core/types";
+import { CommissionSegment, User, UserDefaultNote } from "@/core/types";
 import {
   Card,
   CardContent,
@@ -12,7 +12,6 @@ import {
 import { Button } from "@/core/components/ui/button";
 import { Switch } from "@/core/components/ui/switch";
 import { ServiceInfo } from "@/comparativas/components/editComparativa/ServiceInfo";
-import { formatDateTime } from "@/core/utils/format";
 import AvatarComponent from "@/core/components/AvatarComponent";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
 import {
@@ -44,6 +43,14 @@ import { hasPermission } from "@/core/access-control/client";
 import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
 import { PredefinedNote } from "@/core/components/PredefinedNote";
 import type { StudyResultController } from "./StudyResultDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/core/components/ui/select";
+import { COMMISSION_SEGMENT_LABELS } from "@/core/utils/commission-segment";
 
 interface MainViewProps {
   comparativa: ComparativaVM;
@@ -223,6 +230,8 @@ export default function MainView({
   const [updatingFlag, setUpdatingFlag] = useState<
     "has_permanencia" | "has_renovacion" | null
   >(null);
+  const [updatingCommissionSegment, setUpdatingCommissionSegment] =
+    useState(false);
   const [predefinedNotes, setPredefinedNotes] = useState<UserDefaultNote[]>([]);
   const [isLoadingPredefinedNotes, setIsLoadingPredefinedNotes] =
     useState(false);
@@ -310,6 +319,31 @@ export default function MainView({
       });
     } finally {
       setUpdatingFlag(null);
+    }
+  };
+
+  const handleCommissionSegmentChange = async (segment: CommissionSegment) => {
+    setUpdatingCommissionSegment(true);
+    try {
+      const response = await fetch(`/api/v2/comparisons/${comparativa.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commission_segment: segment }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "No se pudo actualizar el segmento");
+      }
+      onUpdate();
+    } catch (error) {
+      showCustomToast({
+        title: "Error",
+        message: error instanceof Error ? error.message : "Error de conexión",
+        icon: AlertTriangle,
+        iconColor: "var(--danger-color)",
+      });
+    } finally {
+      setUpdatingCommissionSegment(false);
     }
   };
 
@@ -425,6 +459,48 @@ export default function MainView({
                   <div>
                     <p className="mb-1 text-xs text-gray-500">Servicio</p>
                     <ServiceInfo service={comparativa.service} size="sm" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500">
+                      Segmento de comisión
+                    </p>
+                    {canEditCommercialSummary ? (
+                      <Select
+                        value={comparativa.commission_segment ?? ""}
+                        onValueChange={(value: CommissionSegment) =>
+                          void handleCommissionSegmentChange(value)
+                        }
+                        disabled={updatingCommissionSegment}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Pendiente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {comparativa.service === "Gas" ? (
+                            <SelectItem value="gas">
+                              {COMMISSION_SEGMENT_LABELS.gas}
+                            </SelectItem>
+                          ) : (
+                            <>
+                              <SelectItem value="luz_20td">
+                                {COMMISSION_SEGMENT_LABELS.luz_20td}
+                              </SelectItem>
+                              <SelectItem value="luz_pymes">
+                                {COMMISSION_SEGMENT_LABELS.luz_pymes}
+                              </SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm font-medium text-gray-900">
+                        {comparativa.commission_segment
+                          ? COMMISSION_SEGMENT_LABELS[
+                              comparativa.commission_segment
+                            ]
+                          : "Pendiente"}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="mb-1 text-xs text-gray-500">

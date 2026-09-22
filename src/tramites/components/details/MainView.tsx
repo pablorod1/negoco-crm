@@ -150,6 +150,7 @@ export default function MainView({
           client={client}
           isActive={isActive}
           mode="actions"
+          commissionTariff={contracts[0]?.plan}
         />
 
         <Card className="h-full min-w-0">
@@ -177,6 +178,7 @@ export default function MainView({
                     onUpdate={onUpdate}
                     isEditable={isEditable}
                     embedded
+                    commissionTariff={contracts[0]?.plan}
                   />
 
                   {showProvider ? (

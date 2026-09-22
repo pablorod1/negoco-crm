@@ -33,6 +33,7 @@ import {
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { resolveAbarcaSupplier } from "@/comparativas/utils/abarca-supplier";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -76,6 +77,8 @@ export default function CompletarEstudioModal({
     selectedSupplierOverride ||
     comparativa.company_id ||
     (mode === "ai_review" ? matchedSupplierId : "");
+  const commissionSegment = comparativa.commission_segment ??
+    commissionSegmentFromTariff(comparativa.abarca_estudio?.tipo_tarifa, comparativa.service);
 
   // Comisiones state
   const [formDataComissions, setFormDataComissions] = useState<
@@ -117,6 +120,7 @@ export default function CompletarEstudioModal({
           supplierId: selectedSupplierId,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
+          segment: commissionSegment,
         });
 
         if (
@@ -138,6 +142,7 @@ export default function CompletarEstudioModal({
           supplierId: selectedSupplierId,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
+          segment: commissionSegment,
         });
 
         if (
@@ -156,6 +161,7 @@ export default function CompletarEstudioModal({
     isSalesPerson,
     activeSuppliers,
     comparativa.plan,
+    commissionSegment,
     formDataComissions.comision_fijo,
     formDataComissions.comision_indexado,
     manualSalesCommissionFields,

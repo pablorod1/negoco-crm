@@ -46,12 +46,14 @@ import TooltipComponent from "@/core/components/TooltipComponent";
 import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEnergySuppliers";
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
+import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 
 interface Props {
   tramite: TramiteVM;
   userData: User;
   onUpdate: () => void;
   client: ClientDB;
+  commissionTariff?: string;
 }
 
 interface FormData {
@@ -74,6 +76,7 @@ export default function UpdateTramiteStatusModal({
   userData,
   onUpdate,
   client,
+  commissionTariff,
 }: Props) {
   const [formData, setFormData] = useState<FormData>({
     status: tramite.status,
@@ -116,6 +119,7 @@ export default function UpdateTramiteStatusModal({
       supplierName: tramite.provider,
       commissions: userCompanyCommissions,
       suppliers: activeSuppliers,
+      segment: commissionSegmentFromTariff(commissionTariff),
     });
 
     if (calculatedCommission === null) return;
@@ -133,6 +137,7 @@ export default function UpdateTramiteStatusModal({
     formData.comision,
     salesCommissionTouched,
     tramite.provider,
+    commissionTariff,
     userCompanyCommissions,
   ]);
 

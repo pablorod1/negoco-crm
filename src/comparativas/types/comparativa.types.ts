@@ -1,5 +1,6 @@
 import { User } from "@/core/types";
 import { AbarcaEstudio, AbarcaWebhookDocument } from "./abarca.types";
+import type { CommissionSegment } from "@/core/types";
 
 // Comparativa related types
 export type ComparativaStatus =
@@ -17,6 +18,7 @@ export interface ComparativaDB {
   id: string;
   client: string;
   service: "Luz" | "Gas";
+  commission_segment?: CommissionSegment | null;
   plan: ComparativaPlan[];
   comision: {
     fijo: number | null;
@@ -47,6 +49,7 @@ export interface ComparativaVM {
   id: string;
   client: string;
   service: "Luz" | "Gas";
+  commission_segment?: CommissionSegment | null;
   plan: ComparativaPlan[];
   comision: {
     fijo: number | null;
@@ -76,6 +79,7 @@ export interface ComparativaRow {
   id: string;
   client: string;
   service: "Luz" | "Gas";
+  commission_segment?: CommissionSegment | null;
   plan: ComparativaPlan[];
   comision: {
     fijo: number | null;

@@ -77,6 +77,7 @@ export const userCompanyCommissions = sqliteTable(
       .notNull()
       .references(() => user.id),
     comercializadoraId: text("comercializadora_id").notNull(),
+    segment: text("segment").notNull(),
     commissionType: text("commission_type").notNull(),
     commissionValue: real("commission_value").notNull().default(0),
     createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
@@ -86,6 +87,11 @@ export const userCompanyCommissions = sqliteTable(
     uniqueIndex("user_company_commissions_user_company_unique").on(
       table.userId,
       table.comercializadoraId,
+      table.segment,
+    ),
+    check(
+      "user_company_commissions_segment_check",
+      sql`${table.segment} IN ('luz_20td', 'luz_pymes', 'gas')`,
     ),
     check(
       "user_company_commissions_type_check",
@@ -99,6 +105,7 @@ export const defaultCompanyCommissions = sqliteTable(
   {
     id: text("id").primaryKey(),
     comercializadoraId: text("comercializadora_id").notNull(),
+    segment: text("segment").notNull(),
     commissionType: text("commission_type").notNull(),
     commissionValue: real("commission_value").notNull().default(0),
     createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
@@ -107,6 +114,11 @@ export const defaultCompanyCommissions = sqliteTable(
   (table) => [
     uniqueIndex("default_company_commissions_company_unique").on(
       table.comercializadoraId,
+      table.segment,
+    ),
+    check(
+      "default_company_commissions_segment_check",
+      sql`${table.segment} IN ('luz_20td', 'luz_pymes', 'gas')`,
     ),
     check(
       "default_company_commissions_type_check",

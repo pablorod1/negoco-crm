@@ -21,13 +21,14 @@ beforeEach(async () => {
     CREATE TABLE organization(abarca_user_id INTEGER);
     INSERT INTO organization VALUES (999);
     CREATE TABLE comparativas(id TEXT PRIMARY KEY, user_id TEXT, status TEXT, plan TEXT,
-      comision_fijo REAL, comision_indexado REAL, comision_sales_person_fijo REAL, comision_sales_person_indexado REAL);
-    INSERT INTO comparativas VALUES ('c','owner','processing','["fijo"]',NULL,NULL,NULL,NULL);
+      comision_fijo REAL, comision_indexado REAL, comision_sales_person_fijo REAL, comision_sales_person_indexado REAL,
+      service TEXT, commission_segment TEXT, commission_segment_origin TEXT);
+    INSERT INTO comparativas VALUES ('c','owner','processing','["fijo"]',NULL,NULL,NULL,NULL,'Luz','luz_20td','user');
     ALTER TABLE comparativas ADD COLUMN company_id TEXT;
     CREATE TABLE comercializadoras(id TEXT PRIMARY KEY, name TEXT);
     INSERT INTO comercializadoras VALUES ('supplier','NATURGY');
-    CREATE TABLE user_company_commissions(id TEXT PRIMARY KEY, user_id TEXT, comercializadora_id TEXT, commission_type TEXT, commission_value REAL);
-    CREATE TABLE default_company_commissions(id TEXT PRIMARY KEY, comercializadora_id TEXT, commission_type TEXT, commission_value REAL);
+    CREATE TABLE user_company_commissions(id TEXT PRIMARY KEY, user_id TEXT, comercializadora_id TEXT, commission_type TEXT, commission_value REAL, segment TEXT);
+    CREATE TABLE default_company_commissions(id TEXT PRIMARY KEY, comercializadora_id TEXT, commission_type TEXT, commission_value REAL, segment TEXT);
     CREATE TABLE role_permission_settings(role TEXT, permission_key TEXT, enabled INTEGER);
     INSERT INTO role_permission_settings VALUES ('2','comparisons.study.review',1);
     CREATE TABLE user_permission_overrides(user_id TEXT, permission_key TEXT, enabled INTEGER);
@@ -61,6 +62,24 @@ const confirm = (input: StudyResultDecision, actor = "admin") => write((tx) => c
 async function conflict() { await db.execute("UPDATE comparativas SET comision_fijo=10, comision_sales_person_fijo=3 WHERE id='c'"); await receive(); }
 
 describe("study receipt and server commissions", () => {
+  test("uses the organization's imported supplier mapping for receipt and commission rules", async () => {
+    await db.executeMultiple(readFileSync(new URL("../../../migrations/021_abarca_supplier_mappings.sql", import.meta.url), "utf8"));
+    await db.execute(`INSERT INTO abarca_supplier_mappings
+      (abarca_user_id, segment, name_key, abarca_name, comercializadora_id, source)
+      VALUES (999, 'luz_20td', 'naturgypymes', 'NATURGY PYMES', 'supplier', 'manual')`);
+    await db.execute("INSERT INTO default_company_commissions VALUES ('rule','supplier','fixed',12,'luz_20td')");
+    await receive({ empresa: "NATURGY PYMES - Oferta" });
+    expect((await row()).company_id).toBe("supplier");
+    expect((await row()).comision_sales_person_fijo).toBe(12);
+  });
+  test("does not use mappings belonging to a previous Abarca organization", async () => {
+    await db.executeMultiple(readFileSync(new URL("../../../migrations/021_abarca_supplier_mappings.sql", import.meta.url), "utf8"));
+    await db.execute(`INSERT INTO abarca_supplier_mappings
+      (abarca_user_id, segment, name_key, abarca_name, comercializadora_id, source)
+      VALUES (888, 'luz_20td', 'external', 'EXTERNAL', 'supplier', 'manual')`);
+    await receive({ empresa: "EXTERNAL" });
+    expect((await row()).company_id).toBeNull();
+  });
   test("migration is idempotent and has a unique comparison FK without historical backfill", async () => {
     await db.executeMultiple(migration);
     expect((await stored())).toBeUndefined();
@@ -86,14 +105,14 @@ describe("study receipt and server commissions", () => {
   test.each([
     ["percent", 12.345, 12.35], ["fixed", 23.456, 23.46], ["percent", 0, 0], ["fixed", 0, 0],
   ])("owner override %s %s wins", async (kind, value, expected) => {
-    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',999)");
-    await db.execute({ sql: "INSERT INTO user_company_commissions VALUES ('u','owner','supplier',?,?)", args: [kind, value] });
+    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',999,'luz_20td')");
+    await db.execute({ sql: "INSERT INTO user_company_commissions VALUES ('u','owner','supplier',?,?,'luz_20td')", args: [kind, value] });
     await receive();
     expect((await row()).comision_sales_person_fijo).toBe(expected);
     expect((await stored()).calculation_source).toBe("user_rule");
   });
   test.each([["percent", 35, 35], ["fixed", 15, 15], ["fixed", 0, 0]])("default %s applies", async (kind, value, expected) => {
-    await db.execute({ sql: "INSERT INTO default_company_commissions VALUES ('d','supplier',?,?)", args: [kind, value] });
+    await db.execute({ sql: "INSERT INTO default_company_commissions VALUES ('d','supplier',?,?,'luz_20td')", args: [kind, value] });
     await receive({ crm_id: 200 });
     expect((await row()).comision_sales_person_fijo).toBe(expected);
   });
@@ -120,7 +139,7 @@ describe("study receipt and server commissions", () => {
   });
   test.each([undefined, null])("missing offer %s never overwrites even with fixed rule and conflicts", async (comision_oferta) => {
     await db.execute("UPDATE comparativas SET comision_fijo=80, comision_sales_person_fijo=90");
-    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',777)");
+    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',777,'luz_20td')");
     await receive({ comision_oferta });
     expect((await stored()).state).toBe("resolved");
     expect((await row()).comision_fijo).toBe(80);
@@ -139,7 +158,7 @@ describe("study receipt and server commissions", () => {
   });
   test("exact full supplier name takes precedence over prefix", async () => {
     await db.execute("INSERT INTO comercializadoras VALUES ('full','NATURGY - POR USO LUZ')");
-    await db.execute("INSERT INTO default_company_commissions VALUES ('d','full','fixed',42)");
+    await db.execute("INSERT INTO default_company_commissions VALUES ('d','full','fixed',42,'luz_20td')");
     await receive();
     expect((await row()).comision_sales_person_fijo).toBe(42);
   });
@@ -171,12 +190,12 @@ describe("study receipt and server commissions", () => {
     expect(await auditRows()).toEqual([]);
   });
   test("nonfinite calculation fails instead of persisting", async () => {
-    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','percent',1e308)");
+    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','percent',1e308,'luz_20td')");
     await expect(receive({ comision_oferta: 100 })).rejects.toThrow("Non-finite");
     expect(await stored()).toBeUndefined();
   });
   test.each(["fixed", "percent"])("decimal half-cent rounding for %s rules", async (kind) => {
-    await db.execute({ sql: "INSERT INTO default_company_commissions VALUES ('d','supplier',?,1.005)", args: [kind] });
+    await db.execute({ sql: "INSERT INTO default_company_commissions VALUES ('d','supplier',?,1.005,'luz_20td')", args: [kind] });
     await receive({ comision_oferta: 100 });
     expect((await row()).comision_sales_person_fijo).toBe(1.01);
   });
@@ -210,7 +229,7 @@ describe("study receipt and server commissions", () => {
     expect(await auditRows()).toEqual([]);
   });
   test("out-of-range fixed commission rolls back receipt and financial writes", async () => {
-    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',1e14)");
+    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',1e14,'luz_20td')");
     await expect(receive()).rejects.toThrow("safe cent precision");
     expect(await stored()).toBeUndefined();
     expect((await row()).comision_fijo).toBeNull();
@@ -240,7 +259,7 @@ describe("study receipt and server commissions", () => {
     expect(await auditRows()).toEqual([]);
   });
   test("corrupt negative rules fail; negative fallback is unavailable", async () => {
-    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',-1)");
+    await db.execute("INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',-1,'luz_20td')");
     await expect(receive()).rejects.toThrow("Invalid commission configuration");
     await db.execute("DELETE FROM default_company_commissions");
     await receive({ comision_base: -1 });
@@ -345,7 +364,7 @@ describe("preview and confirmation", () => {
     "UPDATE comparativas SET comision_fijo=11",
     "UPDATE comparativas SET comision_sales_person_indexado=0",
     "UPDATE comparativas SET company_id='changed'",
-    "INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',77)",
+    "INSERT INTO default_company_commissions VALUES ('d','supplier','fixed',77,'luz_20td')",
     "UPDATE user SET abarca_user_id=101 WHERE id='owner'",
     "UPDATE user SET role='1' WHERE id='owner'",
     "UPDATE organization SET abarca_user_id=100",
@@ -405,7 +424,7 @@ describe("preview and confirmation", () => {
   });
   test("changing existing rule values invalidates revision", async () => {
     await conflict();
-    await db.execute("INSERT INTO user_company_commissions VALUES ('u','owner','supplier','percent',10)");
+    await db.execute("INSERT INTO user_company_commissions VALUES ('u','owner','supplier','percent',10,'luz_20td')");
     const input = await decision();
     await db.execute("UPDATE user_company_commissions SET commission_value=0");
     await expect(confirm(input)).rejects.toMatchObject({ status: 409 });
@@ -483,7 +502,7 @@ describe("future supplier receipts and restricted commercial review", () => {
     { comercializadora: " ", empresa: "NORDY EMPRESA" },
   ])("Nordy payload %j applies owner rule and assigns tenant supplier", async (fields) => {
     await db.execute("UPDATE comercializadoras SET name='Nordy'");
-    await db.execute("INSERT INTO user_company_commissions VALUES ('u','owner','supplier','percent',85)");
+    await db.execute("INSERT INTO user_company_commissions VALUES ('u','owner','supplier','percent',85,'luz_20td')");
     await receive({ ...fields, comision_base: 20 });
     expect(await row()).toMatchObject({ company_id: "supplier", comision_fijo: 100, comision_sales_person_fijo: 85 });
     expect((await stored()).calculation_source).toBe("user_rule");

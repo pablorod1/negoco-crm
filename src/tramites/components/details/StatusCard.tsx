@@ -17,6 +17,7 @@ interface StatusCardProps {
   client: ClientDB;
   isActive: boolean;
   mode?: "full" | "actions";
+  commissionTariff?: string;
 }
 
 export default function StatusCard({
@@ -28,6 +29,7 @@ export default function StatusCard({
   client,
   isActive,
   mode = "full",
+  commissionTariff,
 }: StatusCardProps) {
   const isComercial = userData.role === "2";
   const showLiquidez = isComercial && tramite.status === "Baja" ? false : true;
@@ -51,6 +53,7 @@ export default function StatusCard({
           isActive={isActive}
           showLiquidez={showLiquidez}
           mode={mode}
+          commissionTariff={commissionTariff}
         />
       </CardContent>
     </Card>

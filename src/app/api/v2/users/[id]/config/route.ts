@@ -8,6 +8,7 @@ import {
   mergeCommissions,
 } from "@/core/libsql/commissions/companyCommissions";
 import { z } from "zod";
+import { enqueueCommissionSyncStatements } from "@/integrations/abarca/commissions/sync-state";
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).optional(),
@@ -18,6 +19,7 @@ const profileSchema = z.object({
 
 const companyCommissionSchema = z.object({
   comercializadora_id: z.string().min(1),
+  segment: z.enum(["luz_20td", "luz_pymes", "gas"]),
   commission_type: z.enum(["percent", "fixed"]),
   commission_value: z.number().min(0),
 });
@@ -31,7 +33,16 @@ const targetedNoteSchema = z.object({
 
 const configUpdateSchema = z.object({
   profile: profileSchema.optional(),
-  company_commissions: z.array(companyCommissionSchema).optional(),
+  company_commissions: z.array(companyCommissionSchema).superRefine((rules, context) => {
+    const keys = new Set<string>();
+    rules.forEach((rule, index) => {
+      const key = `${rule.comercializadora_id}:${rule.segment}`;
+      if (keys.has(key)) {
+        context.addIssue({ code: "custom", path: [index], message: "Regla duplicada" });
+      }
+      keys.add(key);
+    });
+  }).optional(),
   targeted_notes: z.array(targetedNoteSchema).optional(),
 });
 
@@ -208,7 +219,17 @@ export async function PATCH(
       // La lista recibida es el conjunto completo de overrides del colaborador:
       // las comercializadoras que no vengan pasan a heredar el valor por defecto
       // de la asesoría.
-      await tursoClient.batch(
+      const current = await getUserCommissionOverrides(tursoClient, id);
+      const canonical = (rules: typeof company_commissions) => JSON.stringify(
+        rules.map((rule) => ({
+          comercializadora_id: rule.comercializadora_id,
+          segment: rule.segment,
+          commission_type: rule.commission_type,
+          commission_value: rule.commission_value,
+        })).sort((a, b) => `${a.comercializadora_id}:${a.segment}`.localeCompare(`${b.comercializadora_id}:${b.segment}`)),
+      );
+      const changed = canonical(current) !== canonical(company_commissions);
+      if (changed) await tursoClient.batch(
         [
           {
             sql: "DELETE FROM user_company_commissions WHERE user_id = ?",
@@ -219,19 +240,22 @@ export async function PATCH(
               id,
               user_id,
               comercializadora_id,
+              segment,
               commission_type,
               commission_value,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             args: [
               crypto.randomUUID(),
               id,
               commission.comercializadora_id,
+              commission.segment,
               commission.commission_type,
               commission.commission_value,
             ],
           })),
+          ...enqueueCommissionSyncStatements([id]),
         ],
         "write",
       );

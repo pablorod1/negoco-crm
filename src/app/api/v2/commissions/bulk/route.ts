@@ -8,6 +8,7 @@ const bulkSchema = z
   .object({
     user_ids: z.array(z.string().min(1)).min(1),
     comercializadora_ids: z.array(z.string().min(1)).min(1),
+    segments: z.array(z.enum(["luz_20td", "luz_pymes", "gas"])).min(1),
     mode: z.enum(["overwrite", "only_missing", "inherit"]),
     commission_type: z.enum(["percent", "fixed"]).optional(),
     commission_value: z.number().min(0).optional(),
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
     const {
       user_ids: userIds,
       comercializadora_ids: comercializadoraIds,
+      segments,
       mode,
       commission_type: commissionType,
       commission_value: commissionValue,
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
     await applyBulkCommissions(tursoClient, {
       userIds: validUserIds,
       comercializadoraIds,
+      segments,
       mode,
       commissionType,
       commissionValue,

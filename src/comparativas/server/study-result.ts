@@ -3,12 +3,14 @@ import type { Client, InValue, Row } from "@libsql/client";
 import { z } from "zod";
 import { getEffectivePermissions } from "@/core/access-control/server";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
-import { getAbarcaSupplierName, resolveAbarcaSupplier } from "@/comparativas/utils/abarca-supplier";
+import { getAbarcaSupplierName } from "@/comparativas/utils/abarca-supplier";
+import { resolveTenantAbarcaSupplier } from "./abarca-supplier";
 import type { AbarcaWebhookPayload } from "@/comparativas/types/abarca.types";
 import type {
   StudyCommissionDecision, StudyPlan, StudyResultAmounts,
   StudyResultDecision, StudyResultDTO, StudyResultResponse,
 } from "@/comparativas/types/study-result.types";
+import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 
 type DB = Pick<Client, "execute">;
 const PlanSchema = z.enum(["fijo", "indexado"]);
@@ -66,6 +68,7 @@ function amounts(comparison: Row, plan: StudyPlan): StudyResultAmounts {
 }
 async function comparison(db: DB, id: string) {
   const { rows } = await db.execute({ sql: `SELECT id, user_id, company_id, status, plan,
+    service, commission_segment, commission_segment_origin,
     comision_fijo, comision_indexado, comision_sales_person_fijo, comision_sales_person_indexado
     FROM comparativas WHERE id = ?`, args: [id] });
   if (!rows[0]) throw new StudyResultError(404, "Comparador no encontrado");
@@ -105,20 +108,18 @@ async function calculate(db: DB, subject: Row, stored: Row) {
   const offer = money(stored.offer_euros);
   // No financial proposal exists without an offer, even for a fixed rule.
   if (offer === null) return { sales: null, source: "no_offer", inputs: null };
-  const suppliers = (await db.execute("SELECT id, name FROM comercializadoras ORDER BY id")).rows;
-  const { supplier } = resolveAbarcaSupplier(
-    nullableString(stored.supplier_name),
-    suppliers.map((row) => ({ id: String(row.id), name: String(row.name) })),
-  );
+  const { supplier, suppliers, mappings } = await resolveTenantAbarcaSupplier(db,
+    nullableString(stored.supplier_name), nullableString(subject.commission_segment));
   const owner = (await db.execute({ sql: "SELECT id, role, abarca_user_id FROM user WHERE id = ?", args: [subject.user_id] })).rows[0] ?? null;
   const proof = await identity(db, Number(stored.crm_id));
   let overrides: Row[] = [];
   let defaults: Row[] = [];
-  if (supplier) {
+  const segment = nullableString(subject.commission_segment);
+  if (supplier && segment) {
     overrides = (await db.execute({ sql: `SELECT id, commission_type, commission_value FROM user_company_commissions
-      WHERE user_id = ? AND comercializadora_id = ? ORDER BY id`, args: [subject.user_id, supplier.id] })).rows;
+      WHERE user_id = ? AND comercializadora_id = ? AND segment = ? ORDER BY id`, args: [subject.user_id, supplier.id, segment] })).rows;
     defaults = (await db.execute({ sql: `SELECT id, commission_type, commission_value FROM default_company_commissions
-      WHERE comercializadora_id = ? ORDER BY id`, args: [supplier.id] })).rows;
+      WHERE comercializadora_id = ? AND segment = ? ORDER BY id`, args: [supplier.id, segment] })).rows;
   }
   if (overrides.length > 1 || defaults.length > 1) throw new Error("Ambiguous commission configuration");
   const rule = overrides[0] ?? defaults[0];
@@ -141,7 +142,7 @@ async function calculate(db: DB, subject: Row, stored: Row) {
       source = "verified_base_percentage";
     }
   }
-  return { sales, source, inputs: { suppliers, owner, proof, overrides, defaults } };
+  return { sales, source, inputs: { suppliers, mappings, owner, proof, overrides, defaults } };
 }
 
 async function audit(db: DB, id: string, actor: string | null, field: string, oldValue: InValue, newValue: InValue) {
@@ -170,6 +171,24 @@ export async function receiveStudyResult(db: DB, comparisonId: string, payload: 
   if (!["pending", "processing"].includes(String(subject.status))) throw conflict();
   const proof = await identity(db, payload.crm_id);
   const received = normalizeReceivedStudyType(payload.oferta_tipo);
+  const detectedSegment = commissionSegmentFromTariff(
+    payload.tipo_tarifa,
+    nullableString(subject.service),
+  );
+  const existingSegment = nullableString(subject.commission_segment);
+  const segmentConflict = Boolean(
+    detectedSegment && existingSegment && detectedSegment !== existingSegment,
+  );
+  if (!existingSegment && detectedSegment) {
+    await db.execute({
+      sql: `UPDATE comparativas
+        SET commission_segment = ?, commission_segment_origin = 'abarca'
+        WHERE id = ? AND commission_segment IS NULL`,
+      args: [detectedSegment, comparisonId],
+    });
+    subject.commission_segment = detectedSegment;
+    subject.commission_segment_origin = "abarca";
+  }
   const offer = payload.comision_oferta ?? null;
   // Also validate pending/unknown-type receipts before storing source amounts.
   if (offer !== null) round(offer);
@@ -182,15 +201,14 @@ export async function receiveStudyResult(db: DB, comparisonId: string, payload: 
     payload.comision_oferta ?? null, payload.comision_base ?? null, getAbarcaSupplierName(payload),
     payload.crm_id, proof.verifiedId, subject.user_id, randomBytes(32).toString("hex")] });
   if (subject.company_id === null) {
-    const suppliers = (await db.execute("SELECT id, name FROM comercializadoras ORDER BY id")).rows;
-    const { supplier } = resolveAbarcaSupplier(getAbarcaSupplierName(payload),
-      suppliers.map((row) => ({ id: String(row.id), name: String(row.name) })));
+    const { supplier } = await resolveTenantAbarcaSupplier(db, getAbarcaSupplierName(payload),
+      nullableString(subject.commission_segment));
     if (supplier) {
       await db.execute({ sql: "UPDATE comparativas SET company_id = ? WHERE id = ? AND company_id IS NULL", args: [supplier.id, comparisonId] });
       await audit(db, comparisonId, null, "company_id", null, supplier.id);
     }
   }
-  if (!received || !plansOf(subject).includes(received)) return;
+  if (!received || !plansOf(subject).includes(received) || segmentConflict) return;
   const current = amounts(subject, received);
   if (offer !== null && (current.agency !== null || current.sales !== null)) return;
   const calculation = offer === null ? { sales: null, source: "no_offer" } : await calculate(db, subject, (await result(db, comparisonId))!);

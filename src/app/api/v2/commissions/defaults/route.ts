@@ -9,12 +9,26 @@ import {
 
 const defaultCommissionSchema = z.object({
   comercializadora_id: z.string().min(1),
+  segment: z.enum(["luz_20td", "luz_pymes", "gas"]),
   commission_type: z.enum(["percent", "fixed"]),
   commission_value: z.number().min(0),
 });
 
 const putSchema = z.object({
   defaults: z.array(defaultCommissionSchema),
+}).superRefine(({ defaults }, context) => {
+  const keys = new Set<string>();
+  defaults.forEach((rule, index) => {
+    const key = `${rule.comercializadora_id}:${rule.segment}`;
+    if (keys.has(key)) {
+      context.addIssue({
+        code: "custom",
+        path: ["defaults", index],
+        message: "Regla duplicada",
+      });
+    }
+    keys.add(key);
+  });
 });
 
 /**

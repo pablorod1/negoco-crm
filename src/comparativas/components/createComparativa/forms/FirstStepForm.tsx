@@ -4,11 +4,13 @@ import FormWrapper from "@/tramites/components/createTramite/FormWrapper";
 import { InputComponent } from "@/tramites/components/createTramite/InputComponent";
 import { Label } from "@/core/components/ui/label";
 import MultipleSelector, { Option } from "@/core/components/ui/multiselect";
-import { User } from "@/core/types";
+import { CommissionSegment, User } from "@/core/types";
 import { Button } from "@/core/components/ui/button";
 import { CircleX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ComparativaDB, ComparativaPlan } from "@/comparativas/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
+import { COMMISSION_SEGMENT_LABELS } from "@/core/utils/commission-segment";
 
 interface Props {
   userData: User;
@@ -125,6 +127,8 @@ export default function FirstStepForm({
       setComparativa({
         ...comparativa,
         service: service,
+        commission_segment: service === "Gas" ? "gas" :
+          comparativa.commission_segment === "gas" ? "luz_20td" : comparativa.commission_segment,
       });
     }
   };
@@ -287,6 +291,27 @@ export default function FirstStepForm({
             {errors.plan && (
               <p className="text-red-600 text-xs">{errors.plan}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">Segmento de comisión</Label>
+            <Select
+              value={comparativa.commission_segment ?? ""}
+              onValueChange={(value: CommissionSegment) => setComparativa({ ...comparativa, commission_segment: value })}
+              disabled={comparativa.service === "Gas"}
+            >
+              <SelectTrigger><SelectValue placeholder="Selecciona segmento" /></SelectTrigger>
+              <SelectContent>
+                {comparativa.service === "Gas" ? (
+                  <SelectItem value="gas">{COMMISSION_SEGMENT_LABELS.gas}</SelectItem>
+                ) : (
+                  <>
+                    <SelectItem value="luz_20td">{COMMISSION_SEGMENT_LABELS.luz_20td}</SelectItem>
+                    <SelectItem value="luz_pymes">{COMMISSION_SEGMENT_LABELS.luz_pymes}</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

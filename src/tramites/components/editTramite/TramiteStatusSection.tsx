@@ -19,6 +19,7 @@ interface Props {
   isActive: boolean;
   showLiquidez?: boolean; // Nueva prop para mostrar sección de liquidez
   mode?: "full" | "actions";
+  commissionTariff?: string;
 }
 
 export default function TramiteStatusSection({
@@ -32,6 +33,7 @@ export default function TramiteStatusSection({
   isActive,
   showLiquidez = false,
   mode = "full",
+  commissionTariff,
 }: Props) {
   const isAdmin = userData.role === "admin";
   const isBackoffice = userData.role === "1";
@@ -190,6 +192,7 @@ export default function TramiteStatusSection({
                 userData={userData}
                 onUpdate={onUpdate}
                 client={client}
+                commissionTariff={commissionTariff}
               />
             )}
 
