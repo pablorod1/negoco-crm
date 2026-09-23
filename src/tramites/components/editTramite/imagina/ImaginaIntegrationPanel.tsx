@@ -15,6 +15,28 @@ const PHASE_LABELS = {
   activation: "Activación",
 } as const;
 
+const displayOutcomeMessage = (
+  message: string | null,
+  recoveryAction: ImaginaSubmissionRef["recovery_action"],
+): string => {
+  if (!message) {
+    return "La solicitud está enviada y pendiente de respuesta de Imagina.";
+  }
+
+  // El callback conserva el error original para soporte, pero la respuesta de
+  // Imagina puede incluir trazas de su servidor que no ayudan al usuario.
+  if (/traceback|unexpected keyword argument|\btypeerror:/i.test(message)) {
+    const explanation = /credit[\s_-]?check|awscredit/i.test(message)
+      ? "Imagina no ha podido completar la comprobación de solvencia por un error técnico."
+      : "Imagina no ha podido completar la operación por un error técnico.";
+    return recoveryAction === "retry_submission"
+      ? `${explanation} Imagina debe corregirlo; cuando confirme que está resuelto, podrás reenviar el contrato.`
+      : `${explanation} El equipo de Imagina debe revisarlo.`;
+  }
+
+  return message;
+};
+
 interface Props {
   submission: ImaginaSubmissionRef;
   actionInProgress: "signature" | "sync" | null;
@@ -52,8 +74,7 @@ export default function ImaginaIntegrationPanel({
       </div>
 
       <p className="text-xs leading-relaxed text-gray-700">
-        {submission.outcome_message ||
-          "La solicitud está enviada y pendiente de respuesta de Imagina."}
+        {displayOutcomeMessage(submission.outcome_message, recoveryAction)}
       </p>
 
       {submission.status || submission.substatus ? (
