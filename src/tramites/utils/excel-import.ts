@@ -78,6 +78,14 @@ function detectCommissionColumn(headers: string[]): number | null {
   return null;
 }
 
+/** The exported workbook uses this exact header for quick notes. */
+function detectNotesColumn(headers: string[]): number | null {
+  const index = headers.findIndex(
+    (header) => header.trim().toLocaleLowerCase("es") === "notas",
+  );
+  return index === -1 ? null : index;
+}
+
 /** Parse a raw cell value into a numeric commission */
 function parseCommissionValue(raw: string): number | null {
   if (!raw) return null;
@@ -121,6 +129,7 @@ export async function parseExcelFile(
 
   const detectedColumn = detectCupsColumn(headers, dataRows);
   const commissionColumn = detectCommissionColumn(headers);
+  const notesColumn = detectNotesColumn(headers);
 
   if (detectedColumn === -1) {
     return {
@@ -128,6 +137,7 @@ export async function parseExcelFile(
       headers,
       detectedColumn: -1,
       commissionColumn,
+      notesColumn,
       sheetNames,
       totalRows: dataRows.length,
       previewRows: dataRows.slice(0, 5).map((r) => r.map(String)),
@@ -139,6 +149,7 @@ export async function parseExcelFile(
     detectedColumn,
     headers,
     commissionColumn,
+    notesColumn,
   );
 
   return {
@@ -146,6 +157,7 @@ export async function parseExcelFile(
     headers,
     detectedColumn,
     commissionColumn,
+    notesColumn,
     sheetNames,
     totalRows: dataRows.length,
     previewRows: dataRows.slice(0, 5).map((r) => r.map(String)),
@@ -158,6 +170,7 @@ function extractCupsFromColumn(
   colIndex: number,
   headers: string[],
   commissionColIndex?: number | null,
+  notesColIndex?: number | null,
 ): ImportedCUPS[] {
   const result: ImportedCUPS[] = [];
 
@@ -177,11 +190,14 @@ function extractCupsFromColumn(
       commissionColIndex != null
         ? parseCommissionValue(String(rows[i][commissionColIndex] ?? ""))
         : null;
+    const notes =
+      notesColIndex != null ? String(rows[i][notesColIndex] ?? "").trim() : "";
 
     result.push({
       cups,
       rowIndex: i + 2, // +2 because: +1 for 0-index, +1 for header row
       commission,
+      notes,
       extraData,
     });
   }
@@ -239,11 +255,13 @@ export async function reparseWithColumn(
   // Use provided commission column or auto-detect
   const commissionColumn =
     commissionColumnIndex ?? detectCommissionColumn(headers);
+  const notesColumn = detectNotesColumn(headers);
   const cups = extractCupsFromColumn(
     dataRows,
     columnIndex,
     headers,
     commissionColumn,
+    notesColumn,
   );
 
   return {
@@ -251,6 +269,7 @@ export async function reparseWithColumn(
     headers,
     detectedColumn: columnIndex,
     commissionColumn,
+    notesColumn,
     sheetNames,
     totalRows: dataRows.length,
     previewRows: dataRows.slice(0, 5).map((r) => r.map(String)),

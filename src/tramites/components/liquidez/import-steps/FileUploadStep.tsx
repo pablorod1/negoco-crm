@@ -111,6 +111,14 @@ export default function FileUploadStep({
         )}
       </div>
 
+      {parseResult && (
+        <p className="text-xs text-gray-500">
+          {parseResult.notesColumn != null
+            ? `Columna «Notas» detectada. ${parseResult.cups.filter((item) => item.notes && item.notes !== "---").length} filas contienen texto; podrás revisar las notas nuevas antes de actualizar.`
+            : "No se ha encontrado la columna «Notas». La importación solo actualizará el estado de liquidez."}
+        </p>
+      )}
+
       {/* Error message */}
       {parseError && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">

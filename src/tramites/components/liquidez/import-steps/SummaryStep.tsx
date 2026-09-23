@@ -85,69 +85,75 @@ export default function SummaryStep({
             Actualización completada
           </p>
           <p className="text-sm text-green-600">
-            {summary.totalUpdated} trámites actualizados correctamente
+            {summary.totalUpdated} trámites actualizados ·{" "}
+            {summary.totalNotesAdded} notas añadidas
           </p>
         </div>
       </div>
 
       {/* Transitions table */}
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-gray-700">
-          Transiciones realizadas
-        </h3>
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2.5 text-left font-medium text-gray-500">
-                  Estado anterior
-                </th>
-                <th className="px-2 py-2.5 text-center w-8" />
-                <th className="px-4 py-2.5 text-left font-medium text-gray-500">
-                  Estado nuevo
-                </th>
-                <th className="px-4 py-2.5 text-right font-medium text-gray-500">
-                  Cantidad
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.transitions.map((t, idx) => (
-                <tr
-                  key={idx}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
-                >
-                  <td className="px-4 py-2.5">
-                    {getStatusBadge(t.fromStatus as LiquidezStatus, "liquidez")}
+      {summary.transitions.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium text-gray-700">
+            Transiciones realizadas
+          </h3>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium text-gray-500">
+                    Estado anterior
+                  </th>
+                  <th className="px-2 py-2.5 text-center w-8" />
+                  <th className="px-4 py-2.5 text-left font-medium text-gray-500">
+                    Estado nuevo
+                  </th>
+                  <th className="px-4 py-2.5 text-right font-medium text-gray-500">
+                    Cantidad
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.transitions.map((t, idx) => (
+                  <tr
+                    key={idx}
+                    className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
+                  >
+                    <td className="px-4 py-2.5">
+                      {getStatusBadge(
+                        t.fromStatus as LiquidezStatus,
+                        "liquidez",
+                      )}
+                    </td>
+                    <td className="px-2 py-2.5 text-center">
+                      <ArrowRight className="h-4 w-4 text-gray-400 mx-auto" />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {getStatusBadge(t.toStatus as LiquidezStatus, "liquidez")}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                      {t.count}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t bg-gray-50">
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-4 py-2.5 text-sm font-medium text-gray-700"
+                  >
+                    Total actualizados
                   </td>
-                  <td className="px-2 py-2.5 text-center">
-                    <ArrowRight className="h-4 w-4 text-gray-400 mx-auto" />
-                  </td>
-                  <td className="px-4 py-2.5">
-                    {getStatusBadge(t.toStatus as LiquidezStatus, "liquidez")}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                    {t.count}
+                  <td className="px-4 py-2.5 text-right font-bold text-gray-900">
+                    {summary.totalUpdated}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot className="border-t bg-gray-50">
-              <tr>
-                <td
-                  colSpan={3}
-                  className="px-4 py-2.5 text-sm font-medium text-gray-700"
-                >
-                  Total actualizados
-                </td>
-                <td className="px-4 py-2.5 text-right font-bold text-gray-900">
-                  {summary.totalUpdated}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+              </tfoot>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Skipped info */}
       {summary.totalSkipped > 0 && (
@@ -171,10 +177,12 @@ export default function SummaryStep({
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-2">
-        <Button variant="outline" onClick={handleDownloadReport}>
-          <Download className="h-4 w-4 mr-2" />
-          Descargar informe
-        </Button>
+        {summary.transitions.length > 0 && (
+          <Button variant="outline" onClick={handleDownloadReport}>
+            <Download className="h-4 w-4 mr-2" />
+            Descargar informe
+          </Button>
+        )}
         <Button onClick={onClose}>Cerrar</Button>
       </div>
     </div>

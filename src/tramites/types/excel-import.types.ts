@@ -5,6 +5,7 @@ export interface ImportedCUPS {
   cups: string;
   rowIndex: number;
   commission?: number | null;
+  notes?: string;
   extraData?: Record<string, string>;
 }
 
@@ -20,7 +21,13 @@ export interface MatchedCUPS {
   activationDate: string;
   comision: number;
   comisionExcel: number | null;
+  notes: string;
   selected: boolean;
+}
+
+export interface ExcelImportNote {
+  message: string;
+  isInternal: boolean | null;
 }
 
 /** CUPS que no se encontró en la base de datos */
@@ -50,6 +57,7 @@ export interface StatusTransition {
 export interface UpdateSummary {
   transitions: StatusTransition[];
   totalUpdated: number;
+  totalNotesAdded: number;
   totalSkipped: number;
   totalFailed: number;
   skippedCups: string[];
@@ -77,13 +85,19 @@ export interface ExcelParseResult {
   headers: string[];
   detectedColumn: number;
   commissionColumn: number | null;
+  notesColumn: number | null;
   sheetNames: string[];
   totalRows: number;
   previewRows: string[][];
 }
 
 /** Step del wizard */
-export type WizardStep = "upload" | "validation" | "selection" | "summary";
+export type WizardStep =
+  | "upload"
+  | "validation"
+  | "notes"
+  | "selection"
+  | "summary";
 
 /** Discrepancia de comisión entre Excel y BD */
 export interface CommissionMismatch {
@@ -98,7 +112,7 @@ export interface CommissionMismatch {
 /** Respuesta del endpoint match-cups */
 export interface MatchCupsResponse {
   success: boolean;
-  matched: Omit<MatchedCUPS, "selected" | "comisionExcel">[];
+  matched: Omit<MatchedCUPS, "selected" | "comisionExcel" | "notes">[];
   unmatched: string[];
   error?: string;
 }

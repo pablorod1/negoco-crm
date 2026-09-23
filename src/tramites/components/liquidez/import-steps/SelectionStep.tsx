@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/core/components/ui/dialog";
 import { getStatusBadge } from "@/core/hooks/use-status-badge";
+import { getProcessableCups } from "@/tramites/utils/excel-import-selection";
 import { SelectComponent } from "../../createTramite/InputComponent";
 import {
   PLAIN_LIQUIDEZ_STATUS,
@@ -29,14 +30,20 @@ import type {
   StatusTransition,
   ConflictWarning,
   UpdateProgress,
+  ExcelImportNote,
 } from "@/tramites/types";
+
+const KEEP_STATUS = "keep-status";
 
 interface SelectionStepProps {
   matchedCups: MatchedCUPS[];
+  newNotesByTramite: Record<string, ExcelImportNote[]>;
   selectedIds: Set<string>;
   targetStatus: LiquidezStatus;
   isUpdating: boolean;
+  updateError: string | null;
   batchTransitions: StatusTransition[];
+  notesAdded: number;
   conflictWarnings: ConflictWarning[];
   updateProgress: UpdateProgress | null;
   onToggleSelection: (cups: string) => void;
@@ -50,10 +57,13 @@ interface SelectionStepProps {
 
 export default function SelectionStep({
   matchedCups,
+  newNotesByTramite,
   selectedIds,
   targetStatus,
   isUpdating,
+  updateError,
   batchTransitions,
+  notesAdded,
   conflictWarnings,
   updateProgress,
   onToggleSelection,
@@ -121,12 +131,67 @@ export default function SelectionStep({
     () => filteredCups.filter((m) => selectedIds.has(m.cups)).length,
     [filteredCups, selectedIds],
   );
+  const selectedTotal = useMemo(
+    () => matchedCups.filter((m) => selectedIds.has(m.cups)).length,
+    [matchedCups, selectedIds],
+  );
+  const updateCount = new Set(
+    matchedCups
+      .filter(
+        (m) =>
+          selectedIds.has(m.cups) &&
+          targetStatus &&
+          m.liquidezStatus !== targetStatus,
+      )
+      .map((m) => m.tramiteId),
+  ).size;
+  const processableCount = new Set(
+    getProcessableCups(
+      matchedCups,
+      selectedIds,
+      targetStatus,
+      newNotesByTramite,
+    ).map((item) => item.tramiteId),
+  ).size;
 
   const allFilteredSelected =
     filteredCups.length > 0 &&
     filteredCups.every((m) => selectedIds.has(m.cups));
 
   const totalUpdatedSoFar = batchTransitions.reduce((s, t) => s + t.count, 0);
+
+  const selectedNotes = useMemo(() => {
+    const tramites = new Map<string, MatchedCUPS>();
+    for (const item of matchedCups) {
+      if (
+        selectedIds.has(item.cups) &&
+        (newNotesByTramite[item.tramiteId]?.length ?? 0) > 0
+      ) {
+        tramites.set(item.tramiteId, item);
+      }
+    }
+    return [...tramites.values()].map((item) => ({
+      tramite: item,
+      notes: newNotesByTramite[item.tramiteId],
+    }));
+  }, [matchedCups, selectedIds, newNotesByTramite]);
+
+  const selectedNoteCount = selectedNotes.reduce(
+    (count, item) => count + item.notes.length,
+    0,
+  );
+  const publicNoteCount = selectedNotes.reduce(
+    (count, item) =>
+      count + item.notes.filter((note) => note.isInternal === false).length,
+    0,
+  );
+  const internalNoteCount = selectedNotes.reduce(
+    (count, item) =>
+      count + item.notes.filter((note) => note.isInternal === true).length,
+    0,
+  );
+  const unclassifiedNoteCount =
+    selectedNoteCount - publicNoteCount - internalNoteCount;
 
   const allLiquidezStatuses = [
     ...PLAIN_LIQUIDEZ_STATUS,
@@ -136,12 +201,13 @@ export default function SelectionStep({
   return (
     <div className="flex flex-col gap-4">
       {/* Batch history indicator */}
-      {totalUpdatedSoFar > 0 && (
+      {(totalUpdatedSoFar > 0 || notesAdded > 0) && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-100">
-          <Badge variant="success">{totalUpdatedSoFar} actualizados</Badge>
+          <Badge variant="success">
+            {totalUpdatedSoFar} estados · {notesAdded} notas
+          </Badge>
           <span className="text-xs text-green-700">
-            en {batchTransitions.length} tanda
-            {batchTransitions.length > 1 ? "s" : ""}
+            aplicados en esta importación
           </span>
         </div>
       )}
@@ -210,11 +276,33 @@ export default function SelectionStep({
       <SelectComponent
         name="target-status"
         label="Estado Liquidez destino"
-        items={allLiquidezStatuses}
-        onChange={(value) => onSetTargetStatus(value as LiquidezStatus)}
-        selectedKey={(targetStatus as string) ?? ""}
-        isRequired
+        items={
+          selectedNoteCount > 0
+            ? [
+                { value: KEEP_STATUS, label: "Sin cambio de estado" },
+                ...allLiquidezStatuses,
+              ]
+            : allLiquidezStatuses
+        }
+        onChange={(value) =>
+          onSetTargetStatus(
+            value === KEEP_STATUS ? null : (value as LiquidezStatus),
+          )
+        }
+        selectedKey={
+          (targetStatus as string) ?? (selectedNoteCount > 0 ? KEEP_STATUS : "")
+        }
+        textValue={
+          targetStatus ??
+          (selectedNoteCount > 0 ? "Sin cambio de estado" : undefined)
+        }
+        isRequired={selectedNoteCount === 0}
       />
+      {selectedNoteCount > 0 && (
+        <p className="text-xs text-gray-500">
+          Puedes añadir las notas sin cambiar el estado de liquidez.
+        </p>
+      )}
 
       {/* Conflict warnings (Improvement 3) */}
       {conflictWarnings.length > 0 && (
@@ -236,6 +324,16 @@ export default function SelectionStep({
               <span>{warning.message}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {updateError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 p-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700"
+        >
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          {updateError}
         </div>
       )}
 
@@ -280,9 +378,23 @@ export default function SelectionStep({
           )}
         </div>
         <p className="text-sm text-gray-500">
-          {selectedCount} de {filteredCups.length} seleccionados
+          {selectedCount} de {filteredCups.length} visibles seleccionados ·{" "}
+          {selectedTotal} en total
         </p>
       </div>
+
+      {selectedNoteCount > 0 && (
+        <p className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-700">
+          Se añadirán {selectedNoteCount} notas nuevas a los trámites
+          seleccionados. Puedes cambiar su visibilidad en el paso «Notas».
+        </p>
+      )}
+      {unclassifiedNoteCount > 0 && (
+        <p role="alert" className="text-sm text-amber-700">
+          Clasifica las {unclassifiedNoteCount} notas pendientes en el paso
+          «Notas» antes de continuar.
+        </p>
+      )}
 
       {/* CUPS table (B.1: virtualized) */}
       <div
@@ -355,14 +467,16 @@ export default function SelectionStep({
           Anterior
         </Button>
         <div className="flex items-center gap-3">
-          {totalUpdatedSoFar > 0 && (
+          {(totalUpdatedSoFar > 0 || notesAdded > 0) && (
             <Button variant="outline" onClick={onNext}>
               Ver resumen
             </Button>
           )}
           <Button
             onClick={() => setShowConfirm(true)}
-            disabled={!targetStatus || selectedCount === 0 || isUpdating}
+            disabled={
+              processableCount === 0 || unclassifiedNoteCount > 0 || isUpdating
+            }
           >
             {isUpdating ? (
               <>
@@ -370,7 +484,7 @@ export default function SelectionStep({
                 Actualizando...
               </>
             ) : (
-              `Actualizar ${selectedCount} trámites`
+              `Aplicar a ${processableCount} trámites`
             )}
           </Button>
         </div>
@@ -382,10 +496,24 @@ export default function SelectionStep({
           <DialogHeader>
             <DialogTitle>Confirmar actualización masiva</DialogTitle>
             <DialogDescription>
-              Estás a punto de cambiar el estado de liquidez de{" "}
-              <strong>{selectedCount}</strong> trámite
-              {selectedCount !== 1 ? "s" : ""} a <strong>{targetStatus}</strong>
-              .
+              Se aplicarán los cambios a <strong>{processableCount}</strong>{" "}
+              trámite
+              {processableCount !== 1 ? "s" : ""}.
+              {updateCount > 0 && (
+                <span className="block mt-2">
+                  {updateCount} cambiará{updateCount !== 1 ? "n" : ""} su estado
+                  de liquidez a «{targetStatus}».
+                </span>
+              )}
+              {selectedNoteCount > 0 && (
+                <span className="block mt-2">
+                  Se añadirán {selectedNoteCount} nota
+                  {selectedNoteCount !== 1 ? "s" : ""}: {publicNoteCount}{" "}
+                  pública{publicNoteCount !== 1 ? "s" : ""} y{" "}
+                  {internalNoteCount} interna
+                  {internalNoteCount !== 1 ? "s" : ""}.
+                </span>
+              )}
               {conflictWarnings.length > 0 && (
                 <span className="block mt-2 text-amber-600">
                   ⚠ Hay {conflictWarnings.length} advertencia

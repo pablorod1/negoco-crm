@@ -20,6 +20,7 @@ import type {
 
 interface ValidationStepProps {
   isMatching: boolean;
+  error: string | null;
   matchedCups: MatchedCUPS[];
   unmatchedCups: UnmatchedCUPS[];
   duplicatesInExcel: string[];
@@ -35,6 +36,7 @@ interface ValidationStepProps {
 
 export default function ValidationStep({
   isMatching,
+  error,
   matchedCups,
   unmatchedCups,
   duplicatesInExcel,
@@ -107,6 +109,18 @@ export default function ValidationStep({
       <p className="text-sm text-gray-600">
         Resultado de la validación de los CUPS importados contra el CRM.
       </p>
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={onRunMatching}>
+            Reintentar
+          </Button>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { deduplicateCups, isValidCups } from "@/tramites/utils/excel-import";
+import { getProcessableCups } from "@/tramites/utils/excel-import-selection";
 import type {
   WorkerRequest,
   WorkerResponse,
@@ -22,6 +23,7 @@ import type {
   ConflictWarning,
   UpdateProgress,
   CommissionMismatch,
+  ExcelImportNote,
 } from "@/tramites/types";
 
 const SESSION_STORAGE_KEY = "excel-import-wizard-state";
@@ -30,11 +32,14 @@ interface PersistedState {
   step: WizardStep;
   fileName: string;
   matchedCups: MatchedCUPS[];
+  newNotesByTramite: Record<string, ExcelImportNote[]>;
+  hasNotesStep: boolean;
   unmatchedCups: UnmatchedCUPS[];
   duplicatesInExcel: string[];
   selectedIds: string[];
   targetStatus: LiquidezStatus;
   batchTransitions: StatusTransition[];
+  notesAdded: number;
   timestamp: number;
 }
 
@@ -57,6 +62,8 @@ interface UseExcelImportReturn {
   // Step 2: Validation
   isMatching: boolean;
   matchedCups: MatchedCUPS[];
+  newNotesByTramite: Record<string, ExcelImportNote[]>;
+  hasNotesStep: boolean;
   unmatchedCups: UnmatchedCUPS[];
   duplicatesInExcel: string[];
   runMatching: () => Promise<void>;
@@ -73,8 +80,16 @@ interface UseExcelImportReturn {
   targetStatus: LiquidezStatus;
   setTargetStatus: (status: LiquidezStatus) => void;
   isUpdating: boolean;
+  updateError: string | null;
   updateBatch: () => Promise<void>;
+  setNoteVisibility: (
+    tramiteId: string,
+    noteIndex: number,
+    isInternal: boolean,
+  ) => void;
+  setAllNotesVisibility: (isInternal: boolean) => void;
   batchTransitions: StatusTransition[];
+  notesAdded: number;
 
   // Conflict warnings
   conflictWarnings: ConflictWarning[];
@@ -105,6 +120,10 @@ export function useExcelImport(): UseExcelImportReturn {
   // Step 2 state
   const [isMatching, setIsMatching] = useState(false);
   const [matchedCups, setMatchedCups] = useState<MatchedCUPS[]>([]);
+  const [newNotesByTramite, setNewNotesByTramite] = useState<
+    Record<string, ExcelImportNote[]>
+  >({});
+  const [hasNotesStep, setHasNotesStep] = useState(false);
   const [unmatchedCups, setUnmatchedCups] = useState<UnmatchedCUPS[]>([]);
   const [duplicatesInExcel, setDuplicatesInExcel] = useState<string[]>([]);
   const [isCorrectingCommission, setIsCorrectingCommission] = useState(false);
@@ -113,9 +132,11 @@ export function useExcelImport(): UseExcelImportReturn {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [targetStatus, setTargetStatus] = useState<LiquidezStatus>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [batchTransitions, setBatchTransitions] = useState<StatusTransition[]>(
     [],
   );
+  const [notesAdded, setNotesAdded] = useState(0);
 
   // Step 4 state
   const [summary, setSummary] = useState<UpdateSummary | null>(null);
@@ -199,11 +220,14 @@ export function useExcelImport(): UseExcelImportReturn {
           step,
           fileName,
           matchedCups,
+          newNotesByTramite,
+          hasNotesStep,
           unmatchedCups,
           duplicatesInExcel,
           selectedIds: Array.from(selectedIds),
           targetStatus,
           batchTransitions,
+          notesAdded,
           timestamp: Date.now(),
         };
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(state));
@@ -214,11 +238,14 @@ export function useExcelImport(): UseExcelImportReturn {
     step,
     fileName,
     matchedCups,
+    newNotesByTramite,
+    hasNotesStep,
     unmatchedCups,
     duplicatesInExcel,
     selectedIds,
     targetStatus,
     batchTransitions,
+    notesAdded,
   ]);
 
   const restoreSavedProgress = useCallback(() => {
@@ -230,11 +257,14 @@ export function useExcelImport(): UseExcelImportReturn {
       setStep(parsed.step);
       setFileName(parsed.fileName);
       setMatchedCups(parsed.matchedCups);
+      setNewNotesByTramite(parsed.newNotesByTramite ?? {});
+      setHasNotesStep(parsed.hasNotesStep ?? false);
       setUnmatchedCups(parsed.unmatchedCups);
       setDuplicatesInExcel(parsed.duplicatesInExcel);
       setSelectedIds(new Set(parsed.selectedIds));
       setTargetStatus(parsed.targetStatus);
       setBatchTransitions(parsed.batchTransitions);
+      setNotesAdded(parsed.notesAdded ?? 0);
       setHasSavedProgress(false);
       // Allow saving again after restoring
       requestAnimationFrame(() => {
@@ -260,12 +290,16 @@ export function useExcelImport(): UseExcelImportReturn {
     setCurrentSheet(0);
     setIsMatching(false);
     setMatchedCups([]);
+    setNewNotesByTramite({});
+    setHasNotesStep(false);
     setUnmatchedCups([]);
     setDuplicatesInExcel([]);
     setSelectedIds(new Set());
     setTargetStatus(null);
     setIsUpdating(false);
+    setUpdateError(null);
     setBatchTransitions([]);
+    setNotesAdded(0);
     setSummary(null);
     setUpdateProgress(null);
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
@@ -378,6 +412,7 @@ export function useExcelImport(): UseExcelImportReturn {
   const runMatching = useCallback(async () => {
     if (!parseResult || parseResult.cups.length === 0) return;
 
+    setParseError(null);
     setIsMatching(true);
     try {
       // Separate invalid CUPS
@@ -424,6 +459,7 @@ export function useExcelImport(): UseExcelImportReturn {
         return {
           ...m,
           comisionExcel: excelEntry?.commission ?? null,
+          notes: excelEntry?.notes ?? "",
           selected: true,
         };
       });
@@ -434,11 +470,60 @@ export function useExcelImport(): UseExcelImportReturn {
         reason: "not_found" as const,
       }));
 
+      const notesById = new Map<string, string[]>();
+      for (const item of matched) {
+        if (item.notes && item.notes !== "---") {
+          notesById.set(item.tramiteId, [
+            ...(notesById.get(item.tramiteId) ?? []),
+            item.notes,
+          ]);
+        }
+      }
+
+      const newNotes: Record<string, ExcelImportNote[]> = {};
+      if (notesById.size > 0) {
+        const entries = [...notesById];
+        for (let i = 0; i < entries.length; i += 500) {
+          const previewRes = await fetch("/api/v2/contracts/import-liquidez", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mode: "preview",
+              updates: entries
+                .slice(i, i + 500)
+                .map(([id, notes]) => ({ id, notes })),
+            }),
+          });
+          const preview = await previewRes.json();
+          if (!previewRes.ok || !preview.success) {
+            throw new Error(
+              preview.error ?? "Error al revisar las notas del Excel.",
+            );
+          }
+          for (const [id, notes] of Object.entries(
+            preview.notesById as Record<string, string[]>,
+          )) {
+            newNotes[id] = notes.map((message) => ({
+              message,
+              isInternal: null,
+            }));
+          }
+        }
+      }
+
+      setNewNotesByTramite(newNotes);
+      setHasNotesStep(
+        Object.values(newNotes).some((notes) => notes.length > 0),
+      );
       setMatchedCups(matched);
       setUnmatchedCups([...invalidCups, ...dupUnmatched, ...notFoundUnmatched]);
       setSelectedIds(new Set(matched.map((m) => m.cups)));
-    } catch {
-      setParseError("Error de conexión al buscar CUPS.");
+    } catch (error) {
+      setParseError(
+        error instanceof Error
+          ? error.message
+          : "Error de conexión al buscar CUPS.",
+      );
     } finally {
       setIsMatching(false);
     }
@@ -546,12 +631,14 @@ export function useExcelImport(): UseExcelImportReturn {
 
     // 1. Already in target status
     const alreadyTarget = selected.filter(
-      (m) => m.liquidezStatus === targetStatus,
+      (m) =>
+        m.liquidezStatus === targetStatus &&
+        (newNotesByTramite[m.tramiteId]?.length ?? 0) === 0,
     );
     if (alreadyTarget.length > 0) {
       warnings.push({
         type: "already_target",
-        message: `${alreadyTarget.length} CUPS ya ${alreadyTarget.length === 1 ? "tiene" : "tienen"} el estado "${targetStatus}". Se omitirán automáticamente.`,
+        message: `${alreadyTarget.length} CUPS ya ${alreadyTarget.length === 1 ? "tiene" : "tienen"} el estado "${targetStatus}" y no ${alreadyTarget.length === 1 ? "tiene" : "tienen"} notas nuevas. Se ${alreadyTarget.length === 1 ? "omitirá" : "omitirán"} automáticamente.`,
         cups: alreadyTarget.map((m) => m.cups),
         severity: "info",
       });
@@ -590,7 +677,7 @@ export function useExcelImport(): UseExcelImportReturn {
     }
 
     return warnings;
-  }, [targetStatus, selectedIds, matchedCups]);
+  }, [targetStatus, selectedIds, matchedCups, newNotesByTramite]);
 
   const toggleSelection = useCallback((cups: string) => {
     setSelectedIds((prev) => {
@@ -616,30 +703,53 @@ export function useExcelImport(): UseExcelImportReturn {
     setSelectedIds(new Set());
   }, []);
 
+  const setNoteVisibility = useCallback(
+    (tramiteId: string, noteIndex: number, isInternal: boolean) => {
+      setNewNotesByTramite((prev) => ({
+        ...prev,
+        [tramiteId]: (prev[tramiteId] ?? []).map((note, index) =>
+          index === noteIndex ? { ...note, isInternal } : note,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const setAllNotesVisibility = useCallback((isInternal: boolean) => {
+    setNewNotesByTramite((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([id, notes]) => [
+          id,
+          notes.map((note) => ({ ...note, isInternal })),
+        ]),
+      ),
+    );
+  }, []);
+
   const updateBatch = useCallback(async () => {
-    if (!targetStatus || selectedIds.size === 0) return;
+    if (selectedIds.size === 0) return;
 
     setIsUpdating(true);
+    setUpdateError(null);
     setUpdateProgress({ current: 0, total: 0, percentage: 0 });
     try {
-      // Get tramite IDs for selected CUPS
-      const selectedCupsList = matchedCups.filter(
-        (m) => selectedIds.has(m.cups) && m.liquidezStatus !== targetStatus,
+      const selectedCupsList = getProcessableCups(
+        matchedCups,
+        selectedIds,
+        targetStatus,
+        newNotesByTramite,
       );
 
       if (selectedCupsList.length === 0) {
-        setIsUpdating(false);
-        setUpdateProgress(null);
         return;
       }
 
-      // Deduplicate tramite IDs (multiple CUPS can belong to same tramite)
       const tramiteIds = [...new Set(selectedCupsList.map((m) => m.tramiteId))];
-
-      // Send in batches of 50
       const BATCH_SIZE = 50;
-      let totalUpdated = 0;
       const totalBatches = Math.ceil(tramiteIds.length / BATCH_SIZE);
+      const updatedIds = new Set<string>();
+      const changedIds = new Set<string>();
+      let addedThisBatch = 0;
 
       setUpdateProgress({
         current: 0,
@@ -650,15 +760,29 @@ export function useExcelImport(): UseExcelImportReturn {
       for (let i = 0; i < tramiteIds.length; i += BATCH_SIZE) {
         const batch = tramiteIds.slice(i, i + BATCH_SIZE);
         const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
-        const res = await fetch("/api/v2/contracts/multiple", {
+        const res = await fetch("/api/v2/contracts/import-liquidez", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: batch, status: targetStatus }),
+          body: JSON.stringify({
+            mode: "apply",
+            status: targetStatus,
+            updates: batch.map((id) => ({
+              id,
+              notes: newNotesByTramite[id] ?? [],
+            })),
+          }),
         });
         const result = await res.json();
-        if (result.success) {
-          totalUpdated += batch.length;
+        if (!res.ok || !result.success || result.processed !== batch.length) {
+          setUpdateError(
+            result.error ??
+              "No se ha podido completar la actualización. Puedes reintentar con los trámites pendientes.",
+          );
+          break;
         }
+        batch.forEach((id) => updatedIds.add(id));
+        for (const id of result.changedIds as string[]) changedIds.add(id);
+        addedThisBatch += Number(result.notesAdded ?? 0);
 
         setUpdateProgress({
           current: batchIndex,
@@ -667,9 +791,16 @@ export function useExcelImport(): UseExcelImportReturn {
         });
       }
 
-      // Record transitions
+      if (updatedIds.size === 0) return;
+
+      const updatedCups = selectedCupsList.filter(
+        (item) =>
+          changedIds.has(item.tramiteId) &&
+          targetStatus &&
+          item.liquidezStatus !== targetStatus,
+      );
       const transitionMap = new Map<string, StatusTransition>();
-      for (const item of selectedCupsList) {
+      for (const item of updatedCups) {
         const key = `${item.liquidezStatus ?? "null"}→${targetStatus}`;
         const existing = transitionMap.get(key);
         if (existing) {
@@ -686,76 +817,114 @@ export function useExcelImport(): UseExcelImportReturn {
       }
 
       const newTransitions = Array.from(transitionMap.values());
-      setBatchTransitions((prev) => {
-        const merged = [...prev];
-        for (const t of newTransitions) {
-          const existing = merged.find(
-            (m) => m.fromStatus === t.fromStatus && m.toStatus === t.toStatus,
-          );
-          if (existing) {
-            existing.count += t.count;
-            existing.cups.push(...t.cups);
-          } else {
-            merged.push({ ...t });
-          }
+      const mergedTransitions = batchTransitions.map((transition) => ({
+        ...transition,
+        cups: [...transition.cups],
+      }));
+      for (const transition of newTransitions) {
+        const existing = mergedTransitions.find(
+          (item) =>
+            item.fromStatus === transition.fromStatus &&
+            item.toStatus === transition.toStatus,
+        );
+        if (existing) {
+          existing.count += transition.count;
+          existing.cups.push(...transition.cups);
+        } else {
+          mergedTransitions.push({ ...transition });
         }
-        return merged;
-      });
+      }
+      if (newTransitions.length > 0) setBatchTransitions(mergedTransitions);
+      setNotesAdded((prev) => prev + addedThisBatch);
 
-      // Update matched CUPS state to reflect new status
-      setMatchedCups((prev) =>
-        prev.map((m) =>
-          selectedIds.has(m.cups) && m.liquidezStatus !== targetStatus
-            ? { ...m, liquidezStatus: targetStatus }
-            : m,
+      if (targetStatus)
+        setMatchedCups((prev) =>
+          prev.map((m) =>
+            updatedIds.has(m.tramiteId) &&
+            selectedIds.has(m.cups) &&
+            m.liquidezStatus !== targetStatus
+              ? { ...m, liquidezStatus: targetStatus }
+              : m,
+          ),
+        );
+
+      setSelectedIds(
+        (prev) =>
+          new Set(
+            [...prev].filter(
+              (cups) =>
+                !matchedCups.some(
+                  (item) =>
+                    item.cups === cups && updatedIds.has(item.tramiteId),
+                ),
+            ),
+          ),
+      );
+      setNewNotesByTramite((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).filter(([id]) => !updatedIds.has(id)),
         ),
       );
-
-      // Clear selection after batch
-      setSelectedIds(new Set());
 
       // If all CUPS have been updated, prepare summary
       const skippedCups = matchedCups
         .filter(
-          (m) => selectedIds.has(m.cups) && m.liquidezStatus === targetStatus,
+          (m) =>
+            selectedIds.has(m.cups) &&
+            !updatedIds.has(m.tramiteId) &&
+            targetStatus &&
+            m.liquidezStatus === targetStatus,
         )
         .map((m) => m.cups);
 
-      if (totalUpdated > 0) {
-        setSummary({
-          transitions: [...batchTransitions, ...newTransitions],
-          totalUpdated:
-            batchTransitions.reduce((s, t) => s + t.count, 0) +
-            selectedCupsList.length,
-          totalSkipped: skippedCups.length,
-          totalFailed: 0,
-          skippedCups,
-          failedCups: [],
-        });
-        // Clear sessionStorage after successful update
+      setSummary({
+        transitions: mergedTransitions,
+        totalUpdated: mergedTransitions.reduce(
+          (sum, transition) => sum + transition.count,
+          0,
+        ),
+        totalNotesAdded: notesAdded + addedThisBatch,
+        totalSkipped: skippedCups.length,
+        totalFailed: 0,
+        skippedCups,
+        failedCups: [],
+      });
+      if (updatedIds.size === tramiteIds.length)
         sessionStorage.removeItem(SESSION_STORAGE_KEY);
-      }
     } catch (error) {
       console.error("Error al actualizar trámites:", error);
+      setUpdateError(
+        error instanceof Error
+          ? error.message
+          : "Error al actualizar trámites.",
+      );
     } finally {
       setIsUpdating(false);
       setUpdateProgress(null);
     }
-  }, [targetStatus, selectedIds, matchedCups, batchTransitions]);
+  }, [
+    targetStatus,
+    selectedIds,
+    matchedCups,
+    batchTransitions,
+    newNotesByTramite,
+    notesAdded,
+  ]);
 
   // Computed summary from accumulated transitions
   const currentSummary = useMemo<UpdateSummary | null>(() => {
     if (summary) return summary;
-    if (batchTransitions.length === 0) return null;
+    if (batchTransitions.length === 0 && notesAdded === 0) return null;
     return {
       transitions: batchTransitions,
       totalUpdated: batchTransitions.reduce((s, t) => s + t.count, 0),
+      totalNotesAdded: notesAdded,
       totalSkipped: 0,
       totalFailed: 0,
       skippedCups: [],
       failedCups: [],
     };
-  }, [summary, batchTransitions]);
+  }, [summary, batchTransitions, notesAdded]);
 
   return {
     step,
@@ -771,6 +940,8 @@ export function useExcelImport(): UseExcelImportReturn {
     changeCommissionColumn,
     isMatching,
     matchedCups,
+    newNotesByTramite,
+    hasNotesStep,
     unmatchedCups,
     duplicatesInExcel,
     runMatching,
@@ -785,8 +956,12 @@ export function useExcelImport(): UseExcelImportReturn {
     targetStatus,
     setTargetStatus,
     isUpdating,
+    updateError,
     updateBatch,
+    setNoteVisibility,
+    setAllNotesVisibility,
     batchTransitions,
+    notesAdded,
     conflictWarnings,
     updateProgress,
     hasSavedProgress,

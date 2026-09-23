@@ -16,31 +16,31 @@ import { useTramites } from "@/core/contexts/TramitesContext";
 import FileUploadStep from "./import-steps/FileUploadStep";
 import ValidationStep from "./import-steps/ValidationStep";
 import SelectionStep from "./import-steps/SelectionStep";
+import NotesStep from "./import-steps/NotesStep";
 import SummaryStep from "./import-steps/SummaryStep";
 
 const STEP_TITLES: Record<string, string> = {
   upload: "Importar archivo Excel",
   validation: "Validación de CUPS",
+  notes: "Notas",
   selection: "Selección y actualización",
   summary: "Resumen",
 };
 
 const STEP_DESCRIPTIONS: Record<string, string> = {
   upload:
-    "Importa el archivo de certificación de la compañía para actualizar el estado de liquidez.",
+    "Importa un Excel de trámites para actualizar la liquidez y añadir notas nuevas.",
   validation: "Se ha cruzado la información del Excel con los datos del CRM.",
-  selection: "Filtra, selecciona y actualiza los trámites por tandas.",
+  notes: "Revisa las notas nuevas y elige quién puede ver cada una.",
+  selection: "Filtra, selecciona y aplica los cambios por tandas.",
   summary: "Detalle de las actualizaciones realizadas.",
 };
 
-const STEP_NUMBER: Record<string, number> = {
-  upload: 1,
-  validation: 2,
-  selection: 3,
-  summary: 4,
-};
-
-export function ImportExcelLiquidezModal() {
+export function ImportExcelLiquidezModal({
+  allowInternalNotes,
+}: {
+  allowInternalNotes: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const {
     step,
@@ -55,6 +55,8 @@ export function ImportExcelLiquidezModal() {
     changeCommissionColumn,
     isMatching,
     matchedCups,
+    newNotesByTramite,
+    hasNotesStep,
     unmatchedCups,
     duplicatesInExcel,
     runMatching,
@@ -69,8 +71,12 @@ export function ImportExcelLiquidezModal() {
     targetStatus,
     setTargetStatus,
     isUpdating,
+    updateError,
     updateBatch,
+    setNoteVisibility,
+    setAllNotesVisibility,
     batchTransitions,
+    notesAdded,
     conflictWarnings,
     updateProgress,
     hasSavedProgress,
@@ -80,6 +86,11 @@ export function ImportExcelLiquidezModal() {
   } = useExcelImport();
 
   const { refreshTramites } = useTramites();
+  const steps = hasNotesStep
+    ? ["upload", "validation", "notes", "selection", "summary"]
+    : ["upload", "validation", "selection", "summary"];
+  const stepNumber = steps.indexOf(step) + 1;
+  const totalSteps = steps.length;
 
   const handleOpen = useCallback(() => {
     if (!hasSavedProgress) {
@@ -98,7 +109,7 @@ export function ImportExcelLiquidezModal() {
   }, [discardSavedProgress, reset]);
 
   const handleClose = useCallback(async () => {
-    const hadUpdates = batchTransitions.length > 0;
+    const hadUpdates = batchTransitions.length > 0 || notesAdded > 0;
     setIsOpen(false);
     reset();
     if (hadUpdates) {
@@ -108,7 +119,7 @@ export function ImportExcelLiquidezModal() {
         console.error("Error al refrescar trámites:", e);
       }
     }
-  }, [reset, refreshTramites, batchTransitions.length]);
+  }, [reset, refreshTramites, batchTransitions.length, notesAdded]);
 
   const handleModalOpenChange = useCallback(
     (open: boolean) => {
@@ -121,7 +132,7 @@ export function ImportExcelLiquidezModal() {
 
   return (
     <>
-      <TooltipComponent content="Importar Excel de certificación">
+      <TooltipComponent content="Importar Excel de liquidez y notas">
         <Button
           onClick={handleOpen}
           variant="outline"
@@ -138,19 +149,20 @@ export function ImportExcelLiquidezModal() {
             <div className="flex items-center gap-3">
               {/* Step indicator */}
               <div className="flex items-center gap-1.5">
-                {[1, 2, 3, 4].map((n) => (
+                {Array.from(
+                  { length: totalSteps },
+                  (_, index) => index + 1,
+                ).map((n) => (
                   <div
                     key={n}
                     className={`h-1.5 rounded-full transition-all ${
-                      n <= STEP_NUMBER[step]
-                        ? "w-8 bg-primary"
-                        : "w-4 bg-gray-200"
+                      n <= stepNumber ? "w-8 bg-primary" : "w-4 bg-gray-200"
                     }`}
                   />
                 ))}
               </div>
               <span className="text-xs text-gray-400">
-                Paso {STEP_NUMBER[step]} de 4
+                Paso {stepNumber} de {totalSteps}
               </span>
             </div>
             <DialogTitle className="text-lg font-semibold text-gray-900">
@@ -207,6 +219,7 @@ export function ImportExcelLiquidezModal() {
             {step === "validation" && (
               <ValidationStep
                 isMatching={isMatching}
+                error={parseError}
                 matchedCups={matchedCups}
                 unmatchedCups={unmatchedCups}
                 duplicatesInExcel={duplicatesInExcel}
@@ -216,18 +229,33 @@ export function ImportExcelLiquidezModal() {
                 onCorrectCommission={correctCommission}
                 onCorrectAllCommissions={correctAllCommissions}
                 onRunMatching={runMatching}
-                onNext={() => setStep("selection")}
+                onNext={() => setStep(hasNotesStep ? "notes" : "selection")}
                 onBack={() => setStep("upload")}
+              />
+            )}
+
+            {step === "notes" && (
+              <NotesStep
+                matchedCups={matchedCups}
+                newNotesByTramite={newNotesByTramite}
+                allowInternalNotes={allowInternalNotes}
+                onSetNoteVisibility={setNoteVisibility}
+                onSetAllNotesVisibility={setAllNotesVisibility}
+                onNext={() => setStep("selection")}
+                onBack={() => setStep("validation")}
               />
             )}
 
             {step === "selection" && (
               <SelectionStep
                 matchedCups={matchedCups}
+                newNotesByTramite={newNotesByTramite}
                 selectedIds={selectedIds}
                 targetStatus={targetStatus}
                 isUpdating={isUpdating}
+                updateError={updateError}
                 batchTransitions={batchTransitions}
+                notesAdded={notesAdded}
                 conflictWarnings={conflictWarnings}
                 updateProgress={updateProgress}
                 onToggleSelection={toggleSelection}
@@ -236,7 +264,7 @@ export function ImportExcelLiquidezModal() {
                 onSetTargetStatus={setTargetStatus}
                 onUpdateBatch={updateBatch}
                 onNext={() => setStep("summary")}
-                onBack={() => setStep("validation")}
+                onBack={() => setStep(hasNotesStep ? "notes" : "validation")}
               />
             )}
 

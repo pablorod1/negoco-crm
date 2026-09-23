@@ -12,6 +12,10 @@ import {
   mapContractRow,
   parseContractFilterParams,
 } from "@/core/libsql/contracts/contractFilters";
+import {
+  formatQuickNoteForExcel,
+  parseLegacyNotesForExcel,
+} from "@/tramites/utils/excel-notes";
 
 /**
  * GET /api/v2/contracts/export
@@ -39,50 +43,6 @@ interface QuickNote {
   created_at: string;
   author: string | null;
 }
-
-/** Short es-ES date used as the prefix of every note line. */
-const formatNoteDate = (value: string): string => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = String(date.getFullYear()).slice(-2);
-  return `${day}/${month}/${year}`;
-};
-
-/**
- * Renders one tramite's notes as newline-separated "fecha — autor: texto" lines.
- * Newlines inside a note body are flattened so each note stays on its own line.
- */
-const formatNotes = (notes: QuickNote[]): string =>
-  notes
-    .map((note) => {
-      const date = formatNoteDate(note.created_at);
-      const author = note.author?.trim();
-      const message = note.message.replace(/\s*\n+\s*/g, " ").trim();
-      const prefix = [date, author].filter(Boolean).join(" — ");
-      return prefix ? `${prefix}: ${message}` : message;
-    })
-    .join("\n");
-
-/** Older notes have no author or creation date; preserve their text in exports. */
-const parseLegacyNotes = (value: unknown, isInternal = false): string[] => {
-  if (typeof value !== "string" || !value.trim()) return [];
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    parsed = value;
-  }
-
-  const notes = Array.isArray(parsed) ? parsed : [parsed];
-  return notes
-    .filter((note): note is string => typeof note === "string")
-    .map((note) => note.replace(/\s*\n+\s*/g, " ").trim())
-    .filter(Boolean)
-    .map((note) => (isInternal ? `[Interna] ${note}` : note));
-};
 
 const chunk = <T,>(items: T[], size: number): T[][] => {
   const chunks: T[][] = [];
@@ -195,8 +155,8 @@ export async function GET(request: NextRequest) {
         rows.push(contract);
         if (includeNotes) {
           legacyNotesByTramite.set(contract.id, [
-            ...parseLegacyNotes(row.legacy_notes),
-            ...parseLegacyNotes(row.legacy_internal_notes, true),
+            ...parseLegacyNotesForExcel(row.legacy_notes),
+            ...parseLegacyNotesForExcel(row.legacy_internal_notes, true),
           ]);
         }
       }
@@ -212,7 +172,9 @@ export async function GET(request: NextRequest) {
       notes: includeNotes
         ? [
             ...(legacyNotesByTramite.get(row.id) ?? []),
-            formatNotes(notesByTramite.get(row.id) ?? []),
+            (notesByTramite.get(row.id) ?? [])
+              .map(formatQuickNoteForExcel)
+              .join("\n"),
           ]
             .filter(Boolean)
             .join("\n")

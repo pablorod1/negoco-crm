@@ -76,7 +76,7 @@ export function ActionButtons<TData>({
       {/* Update Multiple Tramites Modal for Liquidez */}
       {isLiquidezTable && (
         <>
-          <ImportExcelLiquidezModal />
+          <ImportExcelLiquidezModal allowInternalNotes={isAdmin || userData?.role === "1"} />
           <UpdateMultipleTramitesModal
             table={table}
             userData={userData as User}
