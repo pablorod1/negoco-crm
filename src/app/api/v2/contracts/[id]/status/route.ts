@@ -49,7 +49,6 @@ const ContractStatusUpdateSchema = z.object({
   comision: z.number().optional(),
   comision_sales_person: z.number().optional(),
   note: z.string().optional(),
-  notes: z.array(z.string()).optional(),
   liquidez_status: z.string().optional(),
   collection_date: z.string().optional(),
   payment_date: z.string().optional(),
@@ -150,15 +149,6 @@ function buildUpdateQuery(
     updateFields.push("comision_sales_person = ?");
     queryArgs.push(requestData.comision_sales_person);
     updatedFieldNames.push("comision_sales_person");
-  }
-
-  // Handle notes update with JSON serialization
-  if (requestData.note !== undefined && requestData.notes !== undefined) {
-    const updatedNotes = [...requestData.notes, requestData.note];
-    const notesJSON = JSON.stringify(updatedNotes);
-    updateFields.push("notes = ?");
-    queryArgs.push(notesJSON);
-    updatedFieldNames.push("notes");
   }
 
   if (requestData.liquidez_status !== undefined) {
@@ -354,10 +344,47 @@ export async function PATCH(
       processingDate,
     );
 
+    const note = validatedData.note?.trim();
     let result: { rowsAffected: number };
     try {
-      const updateResponse = await executeQuery(tursoClient, sql, args);
-      result = updateResponse.result;
+      if (note) {
+        const noteType = await tursoClient.execute({
+          sql: "SELECT id FROM ticket_types WHERE name = 'note'",
+          args: [],
+        });
+        if (!noteType.rows[0]) {
+          throw new Error("El tipo de ticket para notas no está disponible");
+        }
+
+        const now = new Date().toISOString();
+        const [updateResult] = await tursoClient.batch(
+          [
+            { sql, args },
+            {
+              sql: `INSERT INTO tickets (
+                id, subject, message, is_internal, status_id, type_id,
+                context, ref_id, priority, created_by, assigned_to,
+                created_at, updated_at
+              ) VALUES (?, ?, ?, 0, 1, ?, 'tramite', ?, 'medium', ?, NULL, ?, ?)`,
+              args: [
+                crypto.randomUUID(),
+                "Nota Rápida",
+                note,
+                Number(noteType.rows[0].id),
+                contractId,
+                validatedData.user_id,
+                now,
+                now,
+              ],
+            },
+          ],
+          "write",
+        );
+        result = updateResult;
+      } else {
+        const updateResponse = await executeQuery(tursoClient, sql, args);
+        result = updateResponse.result;
+      }
     } catch (error) {
       if (createdProcessingJob) {
         await cancelPendingProcessingJobsFromRequest({
@@ -482,12 +509,12 @@ export async function PATCH(
     }
 
     // Track note addition
-    if (validatedData.note) {
+    if (note) {
       await recordNoteChange(
         tursoClient,
         contractId,
         validatedData.user_id,
-        validatedData.note,
+        note,
       );
     }
 

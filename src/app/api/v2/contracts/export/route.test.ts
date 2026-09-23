@@ -161,6 +161,32 @@ describe("GET /api/v2/contracts/export", () => {
     expect(body.data[0].client_name).toBe("Acme SL");
   });
 
+  test("exports older public and internal notes alongside ticket notes", async () => {
+    asAdmin();
+    stubQueries({
+      total: 1,
+      tramites: [{
+        id: "TR-1",
+        legacy_notes: JSON.stringify(["Nota del cambio de estado", "Otra nota"]),
+        legacy_internal_notes: JSON.stringify(["Solo para el equipo"]),
+      }],
+      notes: [{
+        ref_id: "TR-1",
+        message: "Nota nueva",
+        created_at: "2026-03-12T09:00:00.000Z",
+        author: "Ana",
+      }],
+    });
+
+    const response = await GET(buildRequest("?includeNotes=true"));
+    const body = await response.json();
+
+    expect(body.data[0].notes).toBe(
+      "Nota del cambio de estado\nOtra nota\n[Interna] Solo para el equipo\n12/03/26 — Ana: Nota nueva",
+    );
+    expect(executedSql().some((sql) => sql.includes("t.notes AS legacy_notes"))).toBe(true);
+  });
+
   test("skips the tickets query entirely when notes are not requested", async () => {
     asAdmin();
     stubQueries({ total: 1, tramites: [{ id: "TR-1" }] });
@@ -173,6 +199,7 @@ describe("GET /api/v2/contracts/export", () => {
     expect(executedSql().some((sql) => sql.includes("FROM tickets"))).toBe(
       false,
     );
+    expect(executedSql().some((sql) => sql.includes("t.notes AS legacy_notes"))).toBe(false);
   });
 
   test("hydrates in chunks so GROUP_CONCAT never spans the whole export", async () => {

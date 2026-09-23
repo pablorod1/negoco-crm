@@ -325,7 +325,10 @@ export function buildContractBaseQuery({
  * Hydration query for a bounded set of tramite ids. GROUP_CONCAT only ever runs
  * over the ids passed in, which is what keeps SQLITE_NOMEM off the table.
  */
-export function buildContractHydrationQuery(idCount: number): string {
+export function buildContractHydrationQuery(
+  idCount: number,
+  includeLegacyNotes = false,
+): string {
   const idPlaceholders = Array.from({ length: idCount }, () => "?").join(", ");
 
   return `
@@ -343,6 +346,11 @@ export function buildContractHydrationQuery(idCount: number): string {
             t.status AS status,
             t.liquidez_status AS liquidez_status,
             t.provider AS provider,
+            ${
+              includeLegacyNotes
+                ? "t.notes AS legacy_notes, t.internal_notes AS legacy_internal_notes,"
+                : ""
+            }
             c.name AS client_name,
             c.last_name AS client_last_name,
             c.email AS client_email,

@@ -18,7 +18,7 @@ import {
  *
  * Returns every tramite matching the active table filters (not just the current
  * page) so the Excel export mirrors what the user has filtered, plus an optional
- * "Notas" column built from each tramite's quick notes (tickets of type "note").
+ * "Notas" column built from quick-note tickets and older notes stored on tramites.
  *
  * Cost/safety notes:
  * - Hard capped at MAX_EXPORT_ROWS. Over the cap we refuse instead of truncating,
@@ -64,6 +64,25 @@ const formatNotes = (notes: QuickNote[]): string =>
       return prefix ? `${prefix}: ${message}` : message;
     })
     .join("\n");
+
+/** Older notes have no author or creation date; preserve their text in exports. */
+const parseLegacyNotes = (value: unknown, isInternal = false): string[] => {
+  if (typeof value !== "string" || !value.trim()) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    parsed = value;
+  }
+
+  const notes = Array.isArray(parsed) ? parsed : [parsed];
+  return notes
+    .filter((note): note is string => typeof note === "string")
+    .map((note) => note.replace(/\s*\n+\s*/g, " ").trim())
+    .filter(Boolean)
+    .map((note) => (isInternal ? `[Interna] ${note}` : note));
+};
 
 const chunk = <T,>(items: T[], size: number): T[][] => {
   const chunks: T[][] = [];
@@ -163,16 +182,24 @@ export async function GET(request: NextRequest) {
     // Hydrate sequentially: parallel chunks would multiply peak DB memory,
     // which is precisely what the chunking exists to avoid.
     const rows: ReturnType<typeof mapContractRow>[] = [];
+    const legacyNotesByTramite = new Map<string, string[]>();
     for (const idChunk of idChunks) {
       const dataResult = await executeReadWithRetry(tursoClient, {
-        sql: buildContractHydrationQuery(idChunk.length),
+        sql: buildContractHydrationQuery(idChunk.length, includeNotes),
         args: idChunk,
       });
-      rows.push(
-        ...dataResult.rows.map((row) =>
-          mapContractRow(row as unknown as Record<string, unknown>),
-        ),
-      );
+      for (const row of dataResult.rows) {
+        const contract = mapContractRow(
+          row as unknown as Record<string, unknown>,
+        );
+        rows.push(contract);
+        if (includeNotes) {
+          legacyNotesByTramite.set(contract.id, [
+            ...parseLegacyNotes(row.legacy_notes),
+            ...parseLegacyNotes(row.legacy_internal_notes, true),
+          ]);
+        }
+      }
     }
 
     let notesByTramite = new Map<string, QuickNote[]>();
@@ -183,7 +210,12 @@ export async function GET(request: NextRequest) {
     const data = rows.map((row) => ({
       ...row,
       notes: includeNotes
-        ? formatNotes(notesByTramite.get(row.id) ?? [])
+        ? [
+            ...(legacyNotesByTramite.get(row.id) ?? []),
+            formatNotes(notesByTramite.get(row.id) ?? []),
+          ]
+            .filter(Boolean)
+            .join("\n")
         : undefined,
     }));
 

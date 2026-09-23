@@ -280,8 +280,7 @@ export default function UpdateTramiteStatusModal({
             ? formData.comision_sales_person
             : undefined,
           comision: checkComissionChanges() ? formData.comision : undefined,
-          note: formData.note ? formData.note : undefined,
-          notes: formData.note ? tramite.notes : undefined,
+          note: formData.note?.trim() || undefined,
           liquidez_status: formData.liquidez_status
             ? formData.liquidez_status
             : undefined,
