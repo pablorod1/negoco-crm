@@ -10,6 +10,12 @@ interface Options {
   onRefresh: () => void;
 }
 
+const WATCH_INITIAL_INTERVAL_MS = 5000;
+const WATCH_MAX_INTERVAL_MS = 60000;
+const PENDING_RESULT_INTERVAL_MS = 30000;
+const FOCUS_DEDUP_MS = 1000;
+const INITIAL_RETRY_LIMIT = 3;
+
 /** Mount under a comparison/user/role key: no financial state survives an identity change. */
 export function useStudyResult({ comparisonId, comparisonStatus, enabled, onRefresh }: Options) {
   const [result, setResult] = useState<StudyResultDTO | null>(null);
@@ -33,7 +39,7 @@ export function useStudyResult({ comparisonId, comparisonStatus, enabled, onRefr
   const previewRequest = useRef<AbortController | null>(null);
   const pollingRequest = useRef<AbortController | null>(null);
   const submitLock = useRef(false);
-  const checkNow = useRef<(() => void) | null>(null);
+  const checkNow = useRef<((restartWatch?: boolean) => void) | null>(null);
 
   const deny = useCallback(() => {
     blocked.current = true;
@@ -108,18 +114,41 @@ export function useStudyResult({ comparisonId, comparisonStatus, enabled, onRefr
     alive.current = true;
     if (!enabled) return () => { alive.current = false; };
     let disposed = false;
-    let terminal = false;
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     let failures = 0;
+    let watchInterval = WATCH_INITIAL_INTERVAL_MS;
+    let lastRequestAt = -FOCUS_DEDUP_MS;
+    const clearTimer = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+    };
+    const schedule = (delay: number | null) => {
+      clearTimer();
+      if (!disposed && alive.current && !blocked.current && !document.hidden && delay !== null) {
+        timer = setTimeout(() => { void poll(); }, delay);
+      }
+    };
+    const nextInterval = () => {
+      if (watch.current) {
+        const delay = watchInterval;
+        watchInterval = Math.min(watchInterval * 2, WATCH_MAX_INTERVAL_MS);
+        return delay;
+      }
+      // An existing review can change in another tab. Comparisons without
+      // a result do not need a running Vercel function every five seconds.
+      return latest.current?.state === "pending" ? PENDING_RESULT_INTERVAL_MS : null;
+    };
     const poll = async () => {
-      if (disposed || !alive.current || blocked.current) return;
+      if (disposed || !alive.current || blocked.current || document.hidden) return;
       if (previewRequest.current || submitLock.current || pollingRequest.current) {
-        timer = setTimeout(poll, 5000);
+        schedule(WATCH_INITIAL_INTERVAL_MS);
         return;
       }
       const controller = new AbortController();
       pollingRequest.current = controller;
       controllers.current.add(controller);
+      lastRequestAt = Date.now();
+      let failed = false;
       try {
         const response = await fetch(`/api/v2/comparisons/${comparisonId}/study-result`, { signal: controller.signal, cache: "no-store" });
         if (controller.signal.aborted || !alive.current) return;
@@ -128,34 +157,50 @@ export function useStudyResult({ comparisonId, comparisonStatus, enabled, onRefr
         const body: StudyResultResponse = await response.json();
         if (controller.signal.aborted || !alive.current) return;
         receive(body, true);
-        terminal = body.data?.state === "applied" || body.data?.state === "resolved" || (!["pending", "processing", "awaiting_review"].includes(body.comparisonStatus) && body.data?.state !== "pending");
         // Background reads update availability, never the revision being reviewed.
         if (failures > 0) setError(null);
         failures = 0;
       } catch {
         if (!controller.signal.aborted && alive.current) {
           failures++;
-          setError("No se pudo comprobar el estudio. Se volverá a intentar automáticamente.");
+          failed = true;
+          setError(watch.current || latest.current?.state === "pending" || failures < INITIAL_RETRY_LIMIT
+            ? "No se pudo comprobar el estudio. Se volverá a intentar automáticamente."
+            : "No se pudo comprobar el estudio. Recarga la página para reintentar.");
         }
       } finally {
         controllers.current.delete(controller);
         if (pollingRequest.current === controller) pollingRequest.current = null;
-        if (!disposed && alive.current && !blocked.current && !terminal) timer = setTimeout(poll, Math.min(5000 * 2 ** failures, 60000));
+        const retry = watch.current || latest.current?.state === "pending" || failures < INITIAL_RETRY_LIMIT;
+        schedule(failed
+          ? retry ? Math.min(WATCH_INITIAL_INTERVAL_MS * 2 ** (failures - 1), WATCH_MAX_INTERVAL_MS) : null
+          : nextInterval());
       }
     };
-    checkNow.current = () => {
-      if (pollingRequest.current || previewRequest.current || submitLock.current) return;
-      clearTimeout(timer);
+    checkNow.current = (restartWatch = false) => {
+      if (restartWatch) watchInterval = WATCH_INITIAL_INTERVAL_MS;
+      if (disposed || !alive.current || blocked.current || document.hidden) return;
+      if (!restartWatch && Date.now() - lastRequestAt < FOCUS_DEDUP_MS) return;
+      clearTimer();
       void poll();
     };
+    const checkOnResume = () => {
+      if (!document.hidden) checkNow.current?.();
+    };
+    document.addEventListener("visibilitychange", checkOnResume);
+    window.addEventListener("focus", checkOnResume);
     void poll();
     const activeControllers = controllers.current;
     return () => {
       alive.current = false;
       disposed = true;
       checkNow.current = null;
-      clearTimeout(timer);
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      document.removeEventListener("visibilitychange", checkOnResume);
+      window.removeEventListener("focus", checkOnResume);
       activeControllers.forEach((controller) => controller.abort());
+      pollingRequest.current = null;
     };
   }, [comparisonId, deny, enabled, receive]);
 
@@ -196,10 +241,10 @@ export function useStudyResult({ comparisonId, comparisonStatus, enabled, onRefr
   return {
     result: enabled && !denied ? result : null, draft: enabled && !denied ? draft : null,
     open: open && enabled && !denied, panelOpen,
-    setPanelOpen: (value: boolean) => { setPanelOpen(value); if (!value) checkNow.current?.(); },
+    setPanelOpen: (value: boolean) => { setPanelOpen(value); if (!value && watch.current) checkNow.current?.(); },
     loading, submitting, error, changed,
     canReview: enabled && !denied && result?.state === "pending" && result.capabilities.canResolve,
-    startWatching: () => { watch.current = { previousId: latest.current?.id ?? null }; checkNow.current?.(); },
+    startWatching: () => { watch.current = { previousId: latest.current?.id ?? null }; checkNow.current?.(true); },
     review: () => { setPanelOpen(false); setOpen(true); void requestPreview(); },
     close: () => { if (!submitLock.current) { previewRequest.current?.abort(); setOpen(false); setDraft(null); } },
     preview: requestPreview, submit,

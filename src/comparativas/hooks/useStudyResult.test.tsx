@@ -21,7 +21,7 @@ const deferred = () => {
 };
 
 beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); vi.stubGlobal("fetch", fetchMock); });
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("persistent study result controller", () => {
   test.each(["applied", "resolved"] as const)("first read of a %s result refreshes stale processing details once and stops polling", async (state) => {
@@ -46,7 +46,9 @@ describe("persistent study result controller", () => {
     expect(result.current.open).toBe(false);
     expect(result.current.draft).toBeNull();
     await tick(15000);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await tick(15000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(refresh).toHaveBeenCalledOnce();
     expect(result.current.open).toBe(false);
   });
@@ -58,21 +60,75 @@ describe("persistent study result controller", () => {
     expect(refresh).toHaveBeenCalledTimes(comparisonStatus === "pending" ? 1 : 0);
     await tick(10000);
     expect(refresh).toHaveBeenCalledTimes(comparisonStatus === "pending" ? 1 : 0);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  test("a persisted result arriving without a local watch refreshes details without auto-opening", async () => {
+  test("a persisted result arriving without a local watch refreshes on focus without auto-opening", async () => {
     let data: StudyResultDTO | null = null;
     fetchMock.mockImplementation(async () => response(data));
     const { result } = setup("awaiting_review");
     await tick();
     expect(refresh).not.toHaveBeenCalled();
     data = pending();
-    await tick(5000);
+    await tick(1000);
+    act(() => window.dispatchEvent(new Event("focus")));
+    await tick();
     expect(refresh).toHaveBeenCalledOnce();
     expect(result.current.open).toBe(false);
     expect(result.current.draft).toBeNull();
     await tick(10000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  test("local study watch backs off while waiting for a callback", async () => {
+    fetchMock.mockImplementation(async () => response(null, "processing"));
+    const { result } = setup();
+    await tick();
+    act(() => result.current.startWatching());
+    await tick();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await tick(5000);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    await tick(10000);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    await tick(15000);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  test("a hidden tab stops polling and checks immediately when visible again", async () => {
+    let hidden = false;
+    vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+    fetchMock.mockImplementation(async () => response(null, "processing"));
+    const { result } = setup();
+    await tick();
+    act(() => result.current.startWatching());
+    await tick();
+    hidden = true;
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    await tick(120000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    hidden = false;
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    await tick();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  test("an initial network failure stops retrying after three attempts", async () => {
+    fetchMock.mockRejectedValue(new Error("network"));
+    const { result } = setup();
+    await tick();
+    await tick(5000);
+    await tick(10000);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    await tick(60000);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(result.current.error).toContain("Recarga la página");
+    fetchMock.mockImplementation(async () => response(null, "processing"));
+    act(() => window.dispatchEvent(new Event("focus")));
+    await tick();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(result.current.error).toBeNull();
   });
 
   test.each([null, pending({ state: "applied" }), pending({ state: "resolved" })])("does not open historical, applied or resolved data", async (data) => {
@@ -182,7 +238,7 @@ describe("persistent study result controller", () => {
     await tick();
     await act(async () => result.current.review());
     data = pending({ revision: "v2", targetPlan: "fijo", proposed: { sales: 900 } });
-    await tick(5000);
+    await tick(30000);
     expect(result.current.result?.revision).toBe("v2");
     expect(result.current.draft?.revision).toBe("v1");
     expect(result.current.draft?.proposed?.sales).toBe(10);
@@ -223,7 +279,7 @@ describe("persistent study result controller", () => {
     refresh.mockClear();
     await act(async () => result.current.review());
     data = pending({ state: "resolved" });
-    await tick(5000);
+    await tick(30000);
     expect(result.current.open).toBe(false);
     expect(result.current.draft).toBeNull();
     expect(refresh).toHaveBeenCalledOnce();
@@ -253,7 +309,7 @@ describe("persistent study result controller", () => {
     await tick();
     await act(async () => result.current.review());
     fetchMock.mockResolvedValue(new Response("denied", { status }));
-    await tick(5000);
+    await tick(30000);
     expect(result.current.result).toBeNull();
     expect(result.current.draft).toBeNull();
     expect(result.current.open).toBe(false);
@@ -286,7 +342,7 @@ describe("persistent study result controller", () => {
     await tick();
     const count = fetchMock.mock.calls.length;
     await tick(10000);
-    expect(fetchMock).toHaveBeenCalledTimes(count + 2);
+    expect(fetchMock).toHaveBeenCalledTimes(count);
   });
 
   test.each(["route", "user", "role", "permission"])("keyed controller clears state immediately on %s change and rejects old response", async (change) => {
