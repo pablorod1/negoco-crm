@@ -18,11 +18,11 @@ import { useUser } from "@/core/contexts/UserContext";
 import { useComparativas } from "@/core/contexts/ComparativasContext";
 import { ComparativaVM } from "@/comparativas/types";
 
-interface Props<TData, TValue> {
+interface Props<TData extends { id: string }, TValue> {
   columns: ColumnDef<TData, TValue>[];
 }
 
-export default function ComparativasTable<TData, TValue>({
+export default function ComparativasTable<TData extends { id: string }, TValue>({
   columns,
 }: Props<TData, TValue>) {
   const { userData } = useUser();
@@ -165,8 +165,9 @@ export default function ComparativasTable<TData, TValue>({
 
   const tableConfig = useMemo(
     () => ({
-      data: comparativas as TData[],
+      data: comparativas as unknown as TData[],
       columns,
+      getRowId: (row: TData) => row.id,
       getCoreRowModel: getCoreRowModel(),
       getSortedRowModel: getSortedRowModel(),
       getFilteredRowModel: getFilteredRowModel(),
@@ -242,6 +243,7 @@ export default function ComparativasTable<TData, TValue>({
           table={table}
           loading={loading}
           columns={columns}
+          virtualize={false}
           rowsPerPage={pageSize}
           pageIndex={pageIndex}
           total={totalComparativas}

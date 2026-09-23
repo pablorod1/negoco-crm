@@ -21,6 +21,7 @@ interface TableContentProps<TData, TValue> {
   table: TableType<TData>;
   loading: boolean;
   columns: ColumnDef<TData, TValue>[];
+  virtualize?: boolean;
   rowsPerPage: number;
   pageIndex: number;
   setPageIndex: (pageIndex: number) => void;
@@ -32,6 +33,7 @@ export function TableContent<TData, TValue>({
   table,
   loading,
   columns,
+  virtualize = true,
   rowsPerPage,
   pageIndex,
   setPageIndex,
@@ -42,12 +44,19 @@ export function TableContent<TData, TValue>({
   const hasRows = rows && rows.length > 0;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+    count: virtualize ? rows.length : 0,
+    enabled: virtualize,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => 52,
     overscan: 8,
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
+  const renderedRows = virtualize
+    ? virtualRows.map((virtualRow) => ({
+        row: rows[virtualRow.index],
+        index: virtualRow.index,
+      }))
+    : rows.map((row, index) => ({ row, index }));
   const topPadding = virtualRows.length > 0 ? virtualRows[0].start : 0;
   const bottomPadding =
     virtualRows.length > 0
@@ -86,7 +95,7 @@ export function TableContent<TData, TValue>({
           <TableBody>
             {hasRows ? (
               <>
-                {topPadding > 0 && (
+                {virtualize && topPadding > 0 && (
                   <TableRow aria-hidden="true" className="border-0">
                     <TableCell
                       colSpan={columns.length}
@@ -95,14 +104,12 @@ export function TableContent<TData, TValue>({
                     />
                   </TableRow>
                 )}
-                {virtualRows.map((virtualRow) => {
-                  const row = rows[virtualRow.index];
-
+                {renderedRows.map(({ row, index }) => {
                   return (
                     <TableRow
                       key={row.id}
-                      ref={rowVirtualizer.measureElement}
-                      data-index={virtualRow.index}
+                      ref={virtualize ? rowVirtualizer.measureElement : undefined}
+                      data-index={virtualize ? index : undefined}
                       className="group cursor-default border-b border-gray-50 bg-white transition-colors duration-150 hover:bg-gray-50/30"
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -119,7 +126,7 @@ export function TableContent<TData, TValue>({
                     </TableRow>
                   );
                 })}
-                {bottomPadding > 0 && (
+                {virtualize && bottomPadding > 0 && (
                   <TableRow aria-hidden="true" className="border-0">
                     <TableCell
                       colSpan={columns.length}
