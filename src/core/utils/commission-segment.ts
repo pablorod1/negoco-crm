@@ -26,7 +26,7 @@ export const COMMISSION_SEGMENTS: readonly CommissionSegment[] = [
 ];
 
 export const COMMISSION_SEGMENT_LABELS: Record<CommissionSegment, string> = {
-  luz_20td: "Luz 2.0TD",
-  luz_pymes: "Luz pymes (3.0TD / 6.1TD)",
+  luz_20td: "2.0 TD",
+  luz_pymes: "3.0TD/6.1TD",
   gas: "Gas",
 };

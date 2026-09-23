@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
+  createComparativaChange: vi.fn(),
   commit: vi.fn(),
   execute: vi.fn(),
   getEffectivePermission: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/core/libsql/users/getSubcomerciales", () => ({
   getSubcomerciales: mocks.getSubcomerciales,
 }));
 vi.mock("@/comparativas/utils/comparativaChangesHelpers", () => ({
+  createComparativaChange: mocks.createComparativaChange,
   recordCommissionChange: mocks.recordCommissionChange,
   recordConvertedToContract: mocks.recordConvertedToContract,
   recordStatusChange: mocks.recordStatusChange,
@@ -38,6 +40,8 @@ const route = await import("./route");
 let currentComparison:
   | {
       status: string;
+      service: string;
+      commission_segment: string | null;
       tramite_id: string | null;
       company_id: string | null;
       plan: string;
@@ -61,7 +65,7 @@ const transaction = {
 function request(
   status: string,
   comissions?: Record<string, number | null | string>,
-  fields: { tramite_id?: string; company_id?: string } = {},
+  fields: { tramite_id?: string; company_id?: string; commission_segment?: string } = {},
 ) {
   return new NextRequest(
     "https://tenant.example.com/api/v2/comparisons/comparison-1/status",
@@ -82,7 +86,7 @@ function patchRequest(req: NextRequest, comparisonId = "comparison-1") {
 function patch(
   status: string,
   comissions?: Record<string, number | null | string>,
-  fields?: { tramite_id?: string; company_id?: string },
+  fields?: { tramite_id?: string; company_id?: string; commission_segment?: string },
 ) {
   return patchRequest(request(status, comissions, fields));
 }
@@ -91,6 +95,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   currentComparison = {
     status: "awaiting_review",
+    service: "Luz",
+    commission_segment: "luz_20td",
     tramite_id: null,
     company_id: "supplier-1",
     plan: JSON.stringify(["fijo"]),
@@ -125,6 +131,7 @@ beforeEach(() => {
   mocks.recordCommissionChange.mockResolvedValue(true);
   mocks.recordConvertedToContract.mockResolvedValue(true);
   mocks.recordStatusChange.mockResolvedValue(true);
+  mocks.createComparativaChange.mockResolvedValue(true);
   mocks.execute.mockImplementation(
     async (statement: { sql: string; args: unknown[] }) => {
       if (statement.sql.includes("FROM comparison_study_results")) return { rows: pendingStudyResult ? [{ exists: 1 }] : [] };
@@ -166,6 +173,41 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/v2/comparisons/[id]/status", () => {
+  test("requires a tariff when confirming an AI review without one", async () => {
+    currentComparison = { ...currentComparison!, commission_segment: null };
+    const response = await patch("completed");
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ success: false, error: "Selecciona el Tipo de Tarifa" });
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.recordStatusChange).not.toHaveBeenCalled();
+  });
+
+  test("stores a reviewed tariff atomically with completion", async () => {
+    currentComparison = { ...currentComparison!, commission_segment: null };
+    const response = await patch("completed", undefined, { commission_segment: "luz_pymes" });
+    expect(response.status).toBe(200);
+    expect(mocks.execute).toHaveBeenCalledWith(expect.objectContaining({
+      sql: expect.stringContaining("commission_segment = ?, commission_segment_origin = 'user'"),
+      args: expect.arrayContaining(["luz_pymes"]),
+    }));
+    expect(mocks.createComparativaChange).toHaveBeenCalledWith(transaction, expect.objectContaining({
+      field_name: "commission_segment", new_value: "luz_pymes",
+    }));
+    expect(mocks.commit).toHaveBeenCalledOnce();
+  });
+
+  test("allows a commercial reviewer to supply only a missing tariff", async () => {
+    mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
+    currentComparison = { ...currentComparison!, commission_segment: null };
+    expect((await patch("completed", undefined, { commission_segment: "luz_20td" })).status).toBe(200);
+    expect(mocks.recordCommissionChange).not.toHaveBeenCalled();
+  });
+
+  test("does not allow a review request to replace a tariff from Abarca", async () => {
+    expect((await patch("completed", undefined, { commission_segment: "luz_pymes" })).status).toBe(409);
+    expect(mocks.commit).not.toHaveBeenCalled();
+  });
+
   test.each([0, null, 999])("forbids role2 manual commission %s even with review permission", async (value) => {
     mocks.validateUserSession.mockResolvedValue({ success: true, user: { id: "user-1", role: "2" } });
     expect((await patch("completed", { comision_sales_person_fijo: value })).status).toBe(403);

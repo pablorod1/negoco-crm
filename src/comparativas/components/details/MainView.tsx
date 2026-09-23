@@ -462,7 +462,7 @@ export default function MainView({
                   </div>
                   <div>
                     <p className="mb-1 text-xs text-gray-500">
-                      Segmento de comisión
+                      Tipo de Tarifa
                     </p>
                     {canEditCommercialSummary ? (
                       <Select
@@ -960,7 +960,7 @@ export default function MainView({
                       <StudySection title="Suministro">
                         <StudyField label="CUPS" value={abarcaEstudio.cups} />
                         <StudyField
-                          label="Tarifa"
+                          label="Tipo de Tarifa"
                           value={abarcaEstudio.tipo_tarifa}
                         />
                         <StudyField

@@ -6,6 +6,7 @@ import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
 import { validateUserSession } from "@/core/auth/session-utils";
 import { getEffectivePermission } from "@/core/access-control/server";
 import {
+  createComparativaChange,
   recordStatusChange,
   recordCommissionChange,
   recordConvertedToContract,
@@ -45,6 +46,7 @@ const ComparisonStatusUpdateSchema = z.object({
   ]),
   tramite_id: SafeResourceIdSchema.optional(),
   company_id: SafeResourceIdSchema.optional(), // For completed comparisons
+  commission_segment: z.enum(["luz_20td", "luz_pymes"]).optional(),
   comissions: z
     .object({
       comision_fijo: optionalCommissionNumber,
@@ -75,6 +77,8 @@ type WriteTransaction = Pick<
 
 interface AccessibleComparison {
   status: string;
+  service: string;
+  commissionSegment: string | null;
   tramiteId: string | null;
   companyId: string | null;
   plan: string;
@@ -106,6 +110,7 @@ function validateStatusTransition(
   fields: {
     tramiteId: string | undefined;
     companyId: string | undefined;
+    commissionSegment: "luz_20td" | "luz_pymes" | undefined;
     commissions:
       | {
           comision_fijo?: number | null;
@@ -121,12 +126,18 @@ function validateStatusTransition(
 
   if (
     nextStatus !== "completed" &&
-    (fields.companyId !== undefined || fields.commissions !== undefined)
+    (fields.companyId !== undefined || fields.commissions !== undefined || fields.commissionSegment !== undefined)
   ) {
     return { allowed: false };
   }
 
   if (nextStatus !== "processed" && fields.tramiteId !== undefined) {
+    return { allowed: false };
+  }
+
+  if (fields.commissionSegment !== undefined &&
+    (currentStatus !== "awaiting_review" || nextStatus !== "completed" ||
+      currentComparison.service !== "Luz" || currentComparison.commissionSegment !== null)) {
     return { allowed: false };
   }
 
@@ -233,6 +244,8 @@ async function getAccessibleComparison(
   const args: string[] = [comparativaId];
   let sql = `SELECT
     status,
+    service,
+    commission_segment,
     tramite_id,
     company_id,
     plan,
@@ -263,6 +276,8 @@ async function getAccessibleComparison(
 
   return {
     status: String(row.status),
+    service: String(row.service),
+    commissionSegment: row.commission_segment == null ? null : String(row.commission_segment),
     plan: String(row.plan),
     tramiteId:
       row.tramite_id === null || row.tramite_id === undefined
@@ -408,6 +423,7 @@ async function executeStatusUpdate(
   tramiteId?: string,
   userId?: string,
   companyId?: string,
+  commissionSegment?: "luz_20td" | "luz_pymes",
 ): Promise<void> {
   let query = "UPDATE comparativas SET status = ?";
   const args: (string | null)[] = [status];
@@ -420,6 +436,11 @@ async function executeStatusUpdate(
   if (companyId !== undefined) {
     query += ", company_id = ?";
     args.push(companyId);
+  }
+
+  if (commissionSegment !== undefined) {
+    query += ", commission_segment = ?, commission_segment_origin = 'user'";
+    args.push(commissionSegment);
   }
 
   query += " WHERE id = ? AND status = ?";
@@ -449,6 +470,19 @@ async function executeStatusUpdate(
     if (!auditRecorded) {
       throw new Error("Status audit could not be recorded");
     }
+  }
+
+  if (commissionSegment !== undefined) {
+    const auditRecorded = await createComparativaChange(client, {
+      comparativa_id: comparativaId,
+      user_id: userId ?? null,
+      change_type: "field_update",
+      field_name: "commission_segment",
+      old_value: null,
+      new_value: commissionSegment,
+      description: "Tipo de Tarifa indicado al revisar el estudio",
+    });
+    if (!auditRecorded) throw new Error("Tariff audit could not be recorded");
   }
 
   if (tramiteId && !currentComparison.tramiteId) {
@@ -598,7 +632,7 @@ export async function PATCH(
       );
     }
 
-    const { status, tramite_id, comissions, company_id } = validation.data;
+    const { status, tramite_id, comissions, company_id, commission_segment } = validation.data;
     const comparisonId = comparisonIdValidation.data;
 
     if (authenticatedUser.role === "2" && comissions !== undefined) {
@@ -656,6 +690,7 @@ export async function PATCH(
         {
           tramiteId: tramite_id,
           companyId: company_id,
+          commissionSegment: commission_segment,
           commissions: comissions,
         },
       );
@@ -707,6 +742,13 @@ export async function PATCH(
         );
       }
 
+      if (accessibleComparison.status === "awaiting_review" && status === "completed" &&
+        accessibleComparison.service === "Luz" &&
+        !accessibleComparison.commissionSegment && !commission_segment) {
+        await transaction.rollback();
+        return NextResponse.json({ success: false, error: "Selecciona el Tipo de Tarifa" }, { status: 409 });
+      }
+
       if (
         status === "completed" &&
         !(await hasValidCompletionState(
@@ -745,6 +787,7 @@ export async function PATCH(
         transition.tramiteId,
         authenticatedUser.id,
         company_id,
+        commission_segment,
       );
 
       if (comissions) {

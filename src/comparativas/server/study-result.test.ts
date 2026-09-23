@@ -45,7 +45,7 @@ async function write<T>(run: (tx: Transaction) => Promise<T>): Promise<T> {
   finally { tx.close(); }
 }
 async function receive(overrides: Record<string, unknown> = {}) {
-  const payload = AbarcaWebhookSchema.parse({ ide: 1, crm_id: 100, oferta_tipo: "fija", empresa: "NATURGY - POR USO LUZ", comision_oferta: 100, comision_base: 25, ...overrides });
+  const payload = AbarcaWebhookSchema.parse({ ide: 1, crm_id: 100, oferta_tipo: "fija", tipo_tarifa: "2.0TD", empresa: "NATURGY - POR USO LUZ", comision_oferta: 100, comision_base: 25, ...overrides });
   await write(async (tx) => {
     await receiveStudyResult(tx, "c", payload, JSON.stringify(payload));
     await tx.execute("UPDATE comparativas SET status = 'awaiting_review' WHERE id = 'c'");
@@ -62,6 +62,31 @@ const confirm = (input: StudyResultDecision, actor = "admin") => write((tx) => c
 async function conflict() { await db.execute("UPDATE comparativas SET comision_fijo=10, comision_sales_person_fijo=3 WHERE id='c'"); await receive(); }
 
 describe("study receipt and server commissions", () => {
+  test("Abarca tariff replaces a legacy default before selecting commission rules", async () => {
+    await db.execute("INSERT INTO default_company_commissions VALUES ('home','supplier','fixed',12,'luz_20td')");
+    await db.execute("INSERT INTO default_company_commissions VALUES ('business','supplier','fixed',43,'luz_pymes')");
+    await receive({ tipo_tarifa: "3.0TD" });
+    expect((await row()).commission_segment).toBe("luz_pymes");
+    expect((await row()).commission_segment_origin).toBe("abarca");
+    expect((await row()).comision_sales_person_fijo).toBe(43);
+    expect((await stored()).state).toBe("applied");
+  });
+
+  test("attributes a matching legacy segment to the Abarca tariff", async () => {
+    await receive({ tipo_tarifa: "2.0TD" });
+    expect((await row()).commission_segment).toBe("luz_20td");
+    expect((await row()).commission_segment_origin).toBe("abarca");
+  });
+
+  test("missing Abarca tariff clears the legacy light segment", async () => {
+    await db.execute("INSERT INTO default_company_commissions VALUES ('home','supplier','fixed',12,'luz_20td')");
+    await receive({ tipo_tarifa: null });
+    expect((await row()).commission_segment).toBeNull();
+    expect((await row()).commission_segment_origin).toBeNull();
+    expect((await row()).comision_sales_person_fijo).toBeNull();
+    expect((await stored()).calculation_source).toBe("missing_tariff");
+  });
+
   test("uses the organization's imported supplier mapping for receipt and commission rules", async () => {
     await db.executeMultiple(readFileSync(new URL("../../../migrations/021_abarca_supplier_mappings.sql", import.meta.url), "utf8"));
     await db.execute(`INSERT INTO abarca_supplier_mappings

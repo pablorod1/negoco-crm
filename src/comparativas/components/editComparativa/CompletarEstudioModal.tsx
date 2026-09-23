@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "@/core/components/ui/dialog";
 import { Button } from "@/core/components/ui/button";
-import { User, Notification } from "@/core/types";
+import { User, Notification, type CommissionSegment } from "@/core/types";
 import { ComparativaVM, ComparativaFile } from "@/comparativas/types";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { CheckCircle, CircleX, XCircle } from "lucide-react";
@@ -33,7 +33,7 @@ import {
 import { useUserCompanyCommissions } from "@/core/hooks/use-user-company-commissions";
 import { resolveAbarcaSupplier } from "@/comparativas/utils/abarca-supplier";
 import { calculateSalesPersonCommission } from "@/core/utils/sales-commission";
-import { commissionSegmentFromTariff } from "@/core/utils/commission-segment";
+import { COMMISSION_SEGMENT_LABELS, commissionSegmentFromTariff } from "@/core/utils/commission-segment";
 
 interface Props {
   comparativa: ComparativaVM;
@@ -61,13 +61,17 @@ export default function CompletarEstudioModal({
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [selectedSupplierOverride, setSelectedSupplierId] =
     useState<string>("");
+  const [selectedTariffSegment, setSelectedTariffSegment] = useState<CommissionSegment | "">("");
   const [manualSalesCommissionFields, setManualSalesCommissionFields] =
     useState<Partial<Record<keyof ComissionFormValues, boolean>>>({});
+  const needsTariffSelection = mode === "ai_review" &&
+    comparativa.service === "Luz" && !comparativa.commission_segment;
 
   // Load active energy suppliers
   const { activeSuppliers } = useActiveEnergySuppliers();
-  const { commissions: userCompanyCommissions } = useUserCompanyCommissions(
-    mode === "manual" && !isSalesPerson ? comparativa.user.id : undefined,
+  const { commissions: userCompanyCommissions, loading: rulesLoading } = useUserCompanyCommissions(
+    (mode === "manual" || needsTariffSelection) && !isSalesPerson
+      ? comparativa.user.id : undefined,
   );
 
   const matchedSupplierId =
@@ -79,6 +83,9 @@ export default function CompletarEstudioModal({
     (mode === "ai_review" ? matchedSupplierId : "");
   const commissionSegment = comparativa.commission_segment ??
     commissionSegmentFromTariff(comparativa.abarca_estudio?.tipo_tarifa, comparativa.service);
+  const segmentForCalculation = needsTariffSelection
+    ? selectedTariffSegment || null
+    : commissionSegment;
 
   // Comisiones state
   const [formDataComissions, setFormDataComissions] = useState<
@@ -105,7 +112,8 @@ export default function CompletarEstudioModal({
   );
 
   useEffect(() => {
-    if (mode === "ai_review" || isSalesPerson) return;
+    if (isSalesPerson || (mode === "ai_review" &&
+      (!needsTariffSelection || !selectedTariffSegment))) return;
     setFormDataComissions((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -120,14 +128,17 @@ export default function CompletarEstudioModal({
           supplierId: selectedSupplierId,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
-          segment: commissionSegment,
+          segment: segmentForCalculation,
         });
+        const nextCommission = needsTariffSelection
+          ? calculatedCommission ?? comparativa.comision_sales_person.fijo
+          : calculatedCommission;
 
         if (
-          calculatedCommission !== null &&
-          next.comision_sales_person_fijo !== calculatedCommission
+          (nextCommission !== null || needsTariffSelection) &&
+          next.comision_sales_person_fijo !== nextCommission
         ) {
-          next.comision_sales_person_fijo = calculatedCommission;
+          next.comision_sales_person_fijo = nextCommission;
           changed = true;
         }
       }
@@ -142,14 +153,17 @@ export default function CompletarEstudioModal({
           supplierId: selectedSupplierId,
           commissions: userCompanyCommissions,
           suppliers: activeSuppliers,
-          segment: commissionSegment,
+          segment: segmentForCalculation,
         });
+        const nextCommission = needsTariffSelection
+          ? calculatedCommission ?? comparativa.comision_sales_person.indexado
+          : calculatedCommission;
 
         if (
-          calculatedCommission !== null &&
-          next.comision_sales_person_indexado !== calculatedCommission
+          (nextCommission !== null || needsTariffSelection) &&
+          next.comision_sales_person_indexado !== nextCommission
         ) {
-          next.comision_sales_person_indexado = calculatedCommission;
+          next.comision_sales_person_indexado = nextCommission;
           changed = true;
         }
       }
@@ -161,7 +175,11 @@ export default function CompletarEstudioModal({
     isSalesPerson,
     activeSuppliers,
     comparativa.plan,
-    commissionSegment,
+    comparativa.comision_sales_person.fijo,
+    comparativa.comision_sales_person.indexado,
+    needsTariffSelection,
+    selectedTariffSegment,
+    segmentForCalculation,
     formDataComissions.comision_fijo,
     formDataComissions.comision_indexado,
     manualSalesCommissionFields,
@@ -174,6 +192,7 @@ export default function CompletarEstudioModal({
     setActionType(null);
     setUploadedFiles([]);
     setSelectedSupplierId("");
+    setSelectedTariffSegment("");
     setManualSalesCommissionFields({});
     setFormDataComissions(
       comparativa.plan.includes("fijo") && comparativa.plan.includes("indexado")
@@ -211,6 +230,7 @@ export default function CompletarEstudioModal({
       ),
     );
     setSelectedSupplierId(comparativa.company_id ?? "");
+    setSelectedTariffSegment("");
     setManualSalesCommissionFields({});
     setIsOpen(true);
     setActionType(action);
@@ -384,6 +404,19 @@ export default function CompletarEstudioModal({
       return;
     }
 
+    if (needsTariffSelection && !selectedTariffSegment) {
+      showCustomToast({
+        title: "Tipo de Tarifa requerido",
+        message: "Selecciona el Tipo de Tarifa para completar la revisión",
+        iconColor: "var(--danger-color)",
+        iconSize: 24,
+        icon: CircleX,
+      });
+      return;
+    }
+
+    if (needsTariffSelection && rulesLoading) return;
+
     if (checkEmptyComissions()) {
       showCustomToast({
         title: "Comisiones requeridas",
@@ -442,6 +475,7 @@ export default function CompletarEstudioModal({
           status: "completed",
           comissions: changes ? changes : undefined,
           company_id: selectedSupplierId,
+          ...(needsTariffSelection ? { commission_segment: selectedTariffSegment } : {}),
         }),
         headers: {
           "Content-Type": "application/json",
@@ -450,7 +484,7 @@ export default function CompletarEstudioModal({
 
       const { success, error } = await res.json();
 
-      if (!success) {
+      if (!res.ok || !success) {
         showCustomToast({
           title: "Error al completar estudio",
           message: error,
@@ -649,6 +683,28 @@ export default function CompletarEstudioModal({
           )}
 
           <div className="space-y-6">
+            {needsTariffSelection && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="tariff-select-ai-review" className="text-sm font-medium text-gray-900">
+                    Tipo de Tarifa <span className="text-red-500 text-xs">*</span>
+                  </Label>
+                  <Select
+                    value={selectedTariffSegment}
+                    onValueChange={(value: CommissionSegment) => setSelectedTariffSegment(value)}
+                  >
+                    <SelectTrigger id="tariff-select-ai-review" className="w-full">
+                      <SelectValue placeholder="Selecciona el Tipo de Tarifa..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="luz_20td">{COMMISSION_SEGMENT_LABELS.luz_20td}</SelectItem>
+                      <SelectItem value="luz_pymes">{COMMISSION_SEGMENT_LABELS.luz_pymes}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Separator />
+              </>
+            )}
             {/* Seleccionar Comercializadora */}
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-gray-900">
@@ -718,7 +774,8 @@ export default function CompletarEstudioModal({
             <Button
               onClick={handleCompleteEstudio}
               disabled={
-                checkEmptyComissions() || !selectedSupplierId || loading
+                checkEmptyComissions() || !selectedSupplierId ||
+                (needsTariffSelection && (!selectedTariffSegment || rulesLoading)) || loading
               }
             >
               {loading ? "Completando..." : "Completar Revisión"}

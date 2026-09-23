@@ -122,6 +122,16 @@ afterEach(() => {
 });
 
 describe("createComparativaIdempotently", () => {
+  test("does not trust a light tariff segment supplied during creation", async () => {
+    await createComparativaIdempotently(client, {
+      ...comparativa,
+      commission_segment: "luz_20td",
+    }, []);
+    const result = await client.execute("SELECT commission_segment, commission_segment_origin FROM comparativas");
+    expect(result.rows[0].commission_segment).toBeNull();
+    expect(result.rows[0].commission_segment_origin).toBeNull();
+  });
+
   test("persists unassigned null commissions and explicit zero without conflating them", async () => {
     await createComparativaIdempotently(client, {
       ...comparativa,

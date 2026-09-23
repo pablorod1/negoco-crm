@@ -108,6 +108,7 @@ async function calculate(db: DB, subject: Row, stored: Row) {
   const offer = money(stored.offer_euros);
   // No financial proposal exists without an offer, even for a fixed rule.
   if (offer === null) return { sales: null, source: "no_offer", inputs: null };
+  if (!subject.commission_segment) return { sales: null, source: "missing_tariff", inputs: null };
   const { supplier, suppliers, mappings } = await resolveTenantAbarcaSupplier(db,
     nullableString(stored.supplier_name), nullableString(subject.commission_segment));
   const owner = (await db.execute({ sql: "SELECT id, role, abarca_user_id FROM user WHERE id = ?", args: [subject.user_id] })).rows[0] ?? null;
@@ -176,18 +177,18 @@ export async function receiveStudyResult(db: DB, comparisonId: string, payload: 
     nullableString(subject.service),
   );
   const existingSegment = nullableString(subject.commission_segment);
-  const segmentConflict = Boolean(
-    detectedSegment && existingSegment && detectedSegment !== existingSegment,
-  );
-  if (!existingSegment && detectedSegment) {
+  const segmentOrigin = detectedSegment
+    ? payload.tipo_tarifa ? "abarca" : "service"
+    : null;
+  if (existingSegment !== detectedSegment || nullableString(subject.commission_segment_origin) !== segmentOrigin) {
     await db.execute({
       sql: `UPDATE comparativas
-        SET commission_segment = ?, commission_segment_origin = 'abarca'
-        WHERE id = ? AND commission_segment IS NULL`,
-      args: [detectedSegment, comparisonId],
+        SET commission_segment = ?, commission_segment_origin = ?
+        WHERE id = ?`,
+      args: [detectedSegment, segmentOrigin, comparisonId],
     });
     subject.commission_segment = detectedSegment;
-    subject.commission_segment_origin = "abarca";
+    subject.commission_segment_origin = segmentOrigin;
   }
   const offer = payload.comision_oferta ?? null;
   // Also validate pending/unknown-type receipts before storing source amounts.
@@ -208,7 +209,7 @@ export async function receiveStudyResult(db: DB, comparisonId: string, payload: 
       await audit(db, comparisonId, null, "company_id", null, supplier.id);
     }
   }
-  if (!received || !plansOf(subject).includes(received) || segmentConflict) return;
+  if (!received || !plansOf(subject).includes(received)) return;
   const current = amounts(subject, received);
   if (offer !== null && (current.agency !== null || current.sales !== null)) return;
   const calculation = offer === null ? { sales: null, source: "no_offer" } : await calculate(db, subject, (await result(db, comparisonId))!);

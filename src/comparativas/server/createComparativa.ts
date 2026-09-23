@@ -54,8 +54,8 @@ async function insertComparativa(
       comparativa.status,
       comparativa.tramite_id ?? null,
       null,
-      comparativa.service === "Gas" ? "gas" : (comparativa.commission_segment ?? null),
-      comparativa.service === "Gas" ? "service" : comparativa.commission_segment ? "user" : null,
+      comparativa.service === "Gas" ? "gas" : null,
+      comparativa.service === "Gas" ? "service" : null,
     ],
   });
 }

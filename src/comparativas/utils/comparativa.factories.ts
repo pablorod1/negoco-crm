@@ -5,7 +5,7 @@ export const createEmptyComparativaDB = (userData: User): ComparativaDB => ({
   id: `CMP-${crypto.randomUUID()}`,
   client: "",
   service: "Luz",
-  commission_segment: "luz_20td",
+  commission_segment: null,
   plan: ["fijo"],
   comision: {
     fijo: null,

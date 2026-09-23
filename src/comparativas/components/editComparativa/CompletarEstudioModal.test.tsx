@@ -64,6 +64,7 @@ const comparison: ComparativaVM = {
   id: "cmp",
   client: "Client",
   service: "Luz",
+  commission_segment: "luz_20td",
   plan: ["fijo"],
   comision: { fijo: 100, indexado: null },
   comision_sales_person: { fijo: 37, indexado: null },
@@ -101,6 +102,26 @@ beforeEach(() => {
 });
 
 describe("AI study review values", () => {
+  test("asks for the tariff only when Abarca did not provide one", async () => {
+    const value = { ...comparison, commission_segment: null };
+    render(<CompletarEstudioModal {...props} comparativa={value} />);
+    expect(screen.getByText("Tipo de Tarifa")).toBeInTheDocument();
+    const complete = screen.getByRole("button", { name: "Completar Revisión" });
+    expect(complete).toBeDisabled();
+    fireEvent.click(screen.getByRole("combobox", { name: /Tipo de Tarifa/ }));
+    fireEvent.click(screen.getByRole("option", { name: "3.0TD/6.1TD" }));
+    expect(mocks.calculate).toHaveBeenCalledWith(expect.objectContaining({ segment: "luz_pymes" }));
+    expect(complete).toBeEnabled();
+    fireEvent.click(complete);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const call = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith("/status"));
+    expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+      status: "completed",
+      commission_segment: "luz_pymes",
+      comissions: { comision_sales_person_fijo: 999 },
+    });
+  });
+
   test("does not pick an ambiguous supplier prefix and prefers the persisted supplier", () => {
     mocks.suppliers.mockReturnValue({
       activeSuppliers: [
