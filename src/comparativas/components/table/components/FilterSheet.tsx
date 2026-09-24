@@ -17,6 +17,7 @@ import { DateRangePicker } from "@/dashboard/components/DateRangePicker";
 import UserFilter from "@/core/components/table/UserFilter";
 import {
   COMPARATIVA_PLAN_TYPES,
+  COMPARATIVA_SERVICE_TYPES,
   COMPARATIVA_STATUS_TYPES,
 } from "@/comparativas/constants";
 import TooltipComponent from "@/core/components/TooltipComponent";
@@ -32,10 +33,12 @@ interface FilterSheetProps {
   activeFiltersCount: number;
   statusFilter: string[] | undefined;
   planFilter: string[] | undefined;
+  serviceFilter: string[] | undefined;
   dateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   setStatusFilter: (value: string[]) => void;
   setPlanFilter: (value: string[]) => void;
+  setServiceFilter: (value: string[]) => void;
   setDateRange: (value: DateRange | undefined) => void;
   setUserFilter: (value: string[] | undefined) => void;
   resetFilters: () => void;
@@ -52,10 +55,12 @@ export function FilterSheet({
   activeFiltersCount,
   statusFilter,
   planFilter,
+  serviceFilter,
   dateRange,
   userFilter,
   setStatusFilter,
   setPlanFilter,
+  setServiceFilter,
   setDateRange,
   setUserFilter,
   resetFilters,
@@ -162,6 +167,30 @@ export function FilterSheet({
                 setPlanFilter(convertFromOptions(options))
               }
               placeholder="Seleccionar tipo de plan"
+              className="w-full"
+              hidePlaceholderWhenSelected
+              emptyIndicator={
+                <p className="text-center text-sm text-gray-500">
+                  No se encontraron resultados
+                </p>
+              }
+            />
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-medium text-gray-700">
+              Tipo de servicio
+            </Label>
+            <MultipleSelector
+              value={getSelectedOptions(
+                serviceFilter,
+                COMPARATIVA_SERVICE_TYPES
+              )}
+              defaultOptions={convertToOptions(COMPARATIVA_SERVICE_TYPES)}
+              onChange={(options) =>
+                setServiceFilter(convertFromOptions(options))
+              }
+              placeholder="Seleccionar tipo de servicio"
               className="w-full"
               hidePlaceholderWhenSelected
               emptyIndicator={

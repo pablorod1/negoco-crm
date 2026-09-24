@@ -30,6 +30,7 @@ interface PaginatedComparisonsRequest {
   filterValue?: string;
   statusFilter?: string[];
   planFilter?: ComparativaPlan[];
+  serviceFilter?: ("Luz" | "Gas")[];
   dateRange?: DateRange | undefined;
   userFilter?: string[];
   companyFilter?: string[];
@@ -142,6 +143,7 @@ const PaginationQuerySchema = z.object({
   filterValue: z.string().optional(),
   statusFilter: z.array(z.string()).optional(),
   planFilter: z.array(ComparativaPlanSchema).optional(),
+  serviceFilter: z.array(ServiceSchema).optional(),
   dateRange: z
     .object({
       from: z.coerce.date().optional(),
@@ -217,6 +219,9 @@ export async function GET(
       planFilter: parseJsonParam<ComparativaPlan[]>(
         searchParams.get("planFilter"),
       ),
+      serviceFilter: parseJsonParam<("Luz" | "Gas")[]>(
+        searchParams.get("serviceFilter"),
+      ),
       dateRange: parseJsonParam<DateRange>(searchParams.get("dateRange")),
       userFilter: parseJsonParam<string[]>(searchParams.get("userFilter")),
       companyFilter: parseJsonParam<string[]>(searchParams.get("companyFilter")),
@@ -244,6 +249,7 @@ export async function GET(
       filterValue,
       statusFilter,
       planFilter,
+      serviceFilter,
       dateRange,
       userFilter,
       companyFilter,
@@ -344,6 +350,7 @@ export async function GET(
 
     // Apply status and user filters
     if (statusFilter) addArrayFilter("c.status", statusFilter);
+    if (serviceFilter) addArrayFilter("c.service", serviceFilter);
     if (planFilter && planFilter.length > 0) {
       const placeholders = planFilter.map(() => "?").join(", ");
       filters.push(`EXISTS (
@@ -701,6 +708,9 @@ async function handlePaginatedRequest(
     }),
     ...(requestData.planFilter && {
       planFilter: JSON.stringify(requestData.planFilter),
+    }),
+    ...(requestData.serviceFilter && {
+      serviceFilter: JSON.stringify(requestData.serviceFilter),
     }),
     ...(requestData.dateRange && {
       dateRange: JSON.stringify(requestData.dateRange),

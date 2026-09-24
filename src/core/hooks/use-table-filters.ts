@@ -35,6 +35,9 @@ export function useTableFilters(id?: string) {
   const [planFilter, setPlanFilter] = useState<string[] | undefined>(
     initialValues.planFilter
   );
+  const [serviceFilter, setServiceFilter] = useState<string[] | undefined>(
+    initialValues.serviceFilter
+  );
   const [contractTypeFilter, setContractTypeFilter] = useState<
     string[] | undefined
   >(initialValues.contractTypeFilter);
@@ -101,6 +104,8 @@ export function useTableFilters(id?: string) {
         if (parsedFilters.statusFilter)
           setStatusFilter(parsedFilters.statusFilter);
         if (parsedFilters.planFilter) setPlanFilter(parsedFilters.planFilter);
+        if (parsedFilters.serviceFilter)
+          setServiceFilter(parsedFilters.serviceFilter);
         if (parsedFilters.contractTypeFilter)
           setContractTypeFilter(parsedFilters.contractTypeFilter);
         if (parsedFilters.liquidezStatusFilter)
@@ -155,6 +160,7 @@ export function useTableFilters(id?: string) {
         companyFilter,
         statusFilter,
         planFilter,
+        serviceFilter,
         contractTypeFilter,
         liquidezStatusFilter,
         activationDateRange,
@@ -177,6 +183,7 @@ export function useTableFilters(id?: string) {
     companyFilter,
     statusFilter,
     planFilter,
+    serviceFilter,
     contractTypeFilter,
     liquidezStatusFilter,
     activationDateRange,
@@ -201,6 +208,7 @@ export function useTableFilters(id?: string) {
     companyFilter,
     statusFilter,
     planFilter,
+    serviceFilter,
     contractTypeFilter,
     liquidezStatusFilter,
     activationDateRange,
@@ -221,6 +229,7 @@ export function useTableFilters(id?: string) {
     setCompanyFilter(undefined);
     setStatusFilter(undefined);
     setPlanFilter(undefined);
+    setServiceFilter(undefined);
     setContractTypeFilter(undefined);
     setFilterValue("");
     setLiquidezStatusFilter(undefined);
@@ -246,6 +255,7 @@ export function useTableFilters(id?: string) {
     companyFilter,
     statusFilter,
     planFilter,
+    serviceFilter,
     contractTypeFilter,
     liquidezStatusFilter,
     activationDateRange,
@@ -260,6 +270,7 @@ export function useTableFilters(id?: string) {
     setCompanyFilter: handleSetCompanyFilter,
     setStatusFilter,
     setPlanFilter,
+    setServiceFilter,
     setContractTypeFilter,
     resetFilters,
     setLiquidezStatusFilter,

@@ -16,9 +16,11 @@ interface Props<TData> {
   filterValue: string;
   statusFilter: string[] | undefined;
   planFilter: string[] | undefined;
+  serviceFilter: string[] | undefined;
   setFilterValue: (value: string) => void;
   setStatusFilter: (value: string[]) => void;
   setPlanFilter: (value: string[]) => void;
+  setServiceFilter: (value: string[]) => void;
   resetFilters: () => void;
   saveFiltersToStorage: () => void;
   table: Table<TData>;
@@ -40,9 +42,11 @@ const ComparativasHeader = <TData,>({
   filterValue,
   statusFilter,
   planFilter,
+  serviceFilter,
   setFilterValue,
   setStatusFilter,
   setPlanFilter,
+  setServiceFilter,
   resetFilters,
   saveFiltersToStorage,
   table,
@@ -64,6 +68,7 @@ const ComparativasHeader = <TData,>({
   const activeFilters = useActiveFilters({
     statusFilter,
     planFilter,
+    serviceFilter,
     dateRange,
     userFilter,
     isComercial,
@@ -76,6 +81,7 @@ const ComparativasHeader = <TData,>({
   }, [
     statusFilter,
     planFilter,
+    serviceFilter,
     dateRange,
     userFilter,
     companyFilter,
@@ -118,10 +124,12 @@ const ComparativasHeader = <TData,>({
               activeFiltersCount={activeFilters.length}
               statusFilter={statusFilter}
               planFilter={planFilter}
+              serviceFilter={serviceFilter}
               dateRange={dateRange}
               userFilter={userFilter}
               setStatusFilter={setStatusFilter}
               setPlanFilter={setPlanFilter}
+              setServiceFilter={setServiceFilter}
               setDateRange={setDateRange}
               setUserFilter={setUserFilter}
               resetFilters={resetFilters}
@@ -143,6 +151,7 @@ const ComparativasHeader = <TData,>({
         <ActiveFilters
           statusFilter={statusFilter}
           planFilter={planFilter}
+          serviceFilter={serviceFilter}
           dateRange={dateRange}
           userFilter={userFilter}
           companyFilter={companyFilter}

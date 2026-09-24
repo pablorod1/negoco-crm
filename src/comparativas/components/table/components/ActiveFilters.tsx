@@ -6,6 +6,7 @@ import { Button } from "@/core/components/ui/button";
 import { DateRange } from "react-day-picker";
 import {
   COMPARATIVA_PLAN_TYPES,
+  COMPARATIVA_SERVICE_TYPES,
   COMPARATIVA_STATUS_TYPES,
 } from "@/comparativas/constants";
 import { format } from "date-fns";
@@ -15,6 +16,7 @@ import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEne
 interface ActiveFiltersProps {
   statusFilter: string[] | undefined;
   planFilter: string[] | undefined;
+  serviceFilter: string[] | undefined;
   dateRange: DateRange | undefined;
   userFilter: string[] | undefined;
   companyFilter: string[] | undefined;
@@ -27,6 +29,7 @@ interface ActiveFiltersProps {
 function hasAnyActiveFilters({
   statusFilter,
   planFilter,
+  serviceFilter,
   dateRange,
   userFilter,
   companyFilter,
@@ -35,6 +38,7 @@ function hasAnyActiveFilters({
   ActiveFiltersProps,
   | "statusFilter"
   | "planFilter"
+  | "serviceFilter"
   | "dateRange"
   | "userFilter"
   | "companyFilter"
@@ -43,6 +47,7 @@ function hasAnyActiveFilters({
   return Boolean(
     statusFilter?.length ||
       planFilter?.length ||
+      serviceFilter?.length ||
       dateRange?.from ||
       dateRange?.to ||
       (userFilter?.length && !isComercial) ||
@@ -72,9 +77,32 @@ function PlanFilterBadge({ values }: { values: string[] | undefined }) {
   );
 }
 
+function ServiceFilterBadge({ values }: { values: string[] | undefined }) {
+  if (!values?.length) return null;
+
+  const label = values
+    .map(
+      (value) =>
+        COMPARATIVA_SERVICE_TYPES.find((service) => service.value === value)
+          ?.label || value
+    )
+    .join(", ");
+
+  return (
+    <Badge
+      variant="secondary"
+      className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 flex items-center px-3 py-1"
+    >
+      <span className="text-xs font-medium">Tipo de servicio:</span>
+      <span className="text-xs">{label}</span>
+    </Badge>
+  );
+}
+
 export function ActiveFilters({
   statusFilter,
   planFilter,
+  serviceFilter,
   dateRange,
   userFilter,
   companyFilter,
@@ -88,6 +116,7 @@ export function ActiveFilters({
   const hasActiveFilters = hasAnyActiveFilters({
     statusFilter,
     planFilter,
+    serviceFilter,
     dateRange,
     userFilter,
     companyFilter,
@@ -145,6 +174,7 @@ export function ActiveFilters({
           )}
 
           <PlanFilterBadge values={planFilter} />
+          <ServiceFilterBadge values={serviceFilter} />
 
           {dateRange && (dateRange.from || dateRange.to) && (
             <Badge

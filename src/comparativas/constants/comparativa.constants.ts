@@ -13,6 +13,11 @@ export const COMPARATIVA_PLAN_TYPES = [
   { value: "indexado", label: "Indexado" },
 ];
 
+export const COMPARATIVA_SERVICE_TYPES = [
+  { value: "Luz", label: "Luz" },
+  { value: "Gas", label: "Gas" },
+];
+
 export const PLAIN_COMPARATIVA_STATUS_TYPES = [
   "pending",
   "processing",
