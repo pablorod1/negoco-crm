@@ -53,7 +53,7 @@ export function isRenewableTramite(tramite: EditTramiteFormData): boolean {
   // new Date(tramite.renovation_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) esto significa
   return (
     new Date(tramite.tramite.renovation_date) <=
-    new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
+    new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 días en milisegundos
   );
 }
 
