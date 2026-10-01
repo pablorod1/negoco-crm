@@ -25,7 +25,6 @@ describe("Abarca commission contract", () => {
   });
 
   it("sends personalized null and never writes role commission", async () => {
-    vi.stubEnv("ABARCA_COMISION_API_URL", "https://abarca.example/users");
     vi.stubEnv("ABARCA_COMISION_API_KEY", "secret");
     const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async () => new Response(JSON.stringify({
       ok: true,
@@ -39,7 +38,7 @@ describe("Abarca commission contract", () => {
       valor: 10,
     }]);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://abarca.example/users/123");
+    expect(url).toBe("https://abarcaia.com/comparar/api/crm/usuarios/123/comisiones-comercializadora");
     expect(JSON.parse(String(init?.body))).toEqual({
       reglas: [{ comercializadora: "ENDESA", segmento: "luz_20td", tipo: "porcentaje", valor: 10 }],
       comision_personalizada: null,

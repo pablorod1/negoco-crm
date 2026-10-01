@@ -127,12 +127,8 @@ export function parseAbarcaCommissionSnapshot(value: unknown): AbarcaCommissionS
   return { ok: true, catalog: parseCatalog(root), rules, personalized, warnings, raw: value };
 }
 
-function endpoint(abarcaUserId: number) {
-  const configured = process.env.ABARCA_COMISION_API_URL?.trim();
-  if (!configured) throw new Error("La URL del Comparador no está configurada");
-  const base = configured.replace(/\/$/, "");
-  return `${base}/${abarcaUserId}`;
-}
+const endpoint = (abarcaUserId: number) =>
+  `https://abarcaia.com/comparar/api/crm/usuarios/${abarcaUserId}/comisiones-comercializadora`;
 
 async function request(abarcaUserId: number, init?: RequestInit) {
   const apiKey = process.env.ABARCA_COMISION_API_KEY;

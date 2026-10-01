@@ -8,13 +8,12 @@ sin `segment`.
 Variables de servidor necesarias:
 
 - `ABARCA_COMISION_API_KEY`: clave enviada en `X-API-KEY`.
-- `ABARCA_COMISION_API_URL`: URL base exacta y confirmada del endpoint por
-  usuario; el cliente añade `/<user.abarca_user_id>`.
 - `ABARCA_COMISION_TENANTS`: slugs de tenants separados por comas usados
   únicamente por el simulador de solo lectura.
 
-No se incluye una URL inferida de Abarca: su documentación pública no expone el
-contrato de comisiones. La URL debe copiarse del contrato privado ya probado.
+El endpoint (GET y PUT) es
+`https://abarcaia.com/comparar/api/crm/usuarios/<user.abarca_user_id>/comisiones-comercializadora`,
+confirmado por Abarca; va fijo en el código, como el resto de URLs de Abarca.
 
 Antes de permitir sincronizaciones manuales:
 
