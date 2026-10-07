@@ -86,7 +86,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
                     <p className="text-sm font-semibold">
                       {item.name} {item.last_name}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 group-data-[highlighted]:text-white/80">
                       {item.document_number}
                     </p>
                   </div>
@@ -94,7 +94,7 @@ export const SelectComponent: React.FC<SelectProps> = ({
                   <div className="flex items-center gap-2">
                     <AvatarComponent
                       userData={item as User}
-                      className="size-8 group-hover:text-black"
+                      className="size-8 group-data-[highlighted]:text-black"
                     />
                     <p className="text-sm font-semibold">{value}</p>
                   </div>
@@ -124,6 +124,7 @@ interface InputProps {
   disabled?: boolean;
   readOnly?: boolean;
   placeholder?: string;
+  uppercase?: boolean;
 }
 
 export const InputComponent: React.FC<InputProps> = ({
@@ -139,6 +140,7 @@ export const InputComponent: React.FC<InputProps> = ({
   disabled,
   readOnly,
   placeholder,
+  uppercase,
 }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -163,6 +165,7 @@ export const InputComponent: React.FC<InputProps> = ({
           disabled={disabled ? true : false}
           readOnly={readOnly}
           aria-readonly={readOnly}
+          uppercase={uppercase}
           color={errors ? "danger" : "primary"}
           className={`z-10 ${startContent ? "pl-8" : ""} ${
             endContent ? "pr-8" : ""
