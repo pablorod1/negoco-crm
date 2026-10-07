@@ -1,5 +1,5 @@
 import { DAYS_PER_YEAR } from "@/comparador/engine/cost";
-import { cleanName, productKeyOf } from "./names";
+import { cleanName, productKeyOf, productNameOf } from "./names";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
 import type { CommissionRuleInput, ProposedRate, RateDiscount } from "./types";
 
@@ -124,7 +124,7 @@ export function toProposedRates(
 
   return extraction.rates.map((rate) => {
     const power = normalizePower(rate);
-    const productName = cleanName(rate.productName);
+    const productName = productNameOf(rate.productName);
 
     return {
       productName,
@@ -187,8 +187,8 @@ export function toProposedCommissions(
         : hasFixed20,
     )
     .map((rule) => ({
-    productName: rule.productName ? cleanName(rule.productName) : null,
-    productKey: rule.productName ? productKeyOf(rule.productName) : null,
+    productName: rule.productName ? productNameOf(rule.productName) : null,
+    productKey: rule.productName ? productKeyOf(productNameOf(rule.productName)) : null,
     accessTariff: rule.accessTariff?.replace(/\s+/g, "").toUpperCase() ?? null,
     level: rule.level ? cleanName(rule.level) : null,
     channel: rule.channel === "both" ? null : rule.channel,

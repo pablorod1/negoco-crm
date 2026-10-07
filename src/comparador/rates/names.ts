@@ -11,6 +11,18 @@ export function cleanName(raw: string): string {
 }
 
 /**
+ * Nombre de un producto sin la tarifa de acceso delante: Iberdrola llama
+ * «2.0TD_2 Plan Estable» y «2.0TD_3 Plan Estable» al mismo producto en dos
+ * tramos de potencia, y Repsol «2.0TD PRECIO FIJO…». La tarifa y el tramo ya
+ * van en las condiciones; en el nombre harían dos productos de uno.
+ */
+export function productNameOf(raw: string): string {
+  const clean = cleanName(raw);
+  const stripped = clean.replace(/^(?:2[.,]?0\s?TD|2[.,]?01P)(?:\s?_\s?\d+)?\s*[-_:·]?\s*/i, "").trim();
+  return stripped || clean;
+}
+
+/**
  * Clave de comparación: sin acentos, sin signos, sin espacios y en minúsculas.
  * `"Gana Energía"`, `"gana energia"` y `"GANA-ENERGIA"` dan todos `ganaenergia`.
  */

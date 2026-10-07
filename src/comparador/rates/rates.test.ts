@@ -4,7 +4,7 @@ import { getRegulatedParams } from "@/comparador/engine/regulated";
 import { buildDiff, type ResolvedRow } from "./diff";
 import { isEligible, toTariffPrices } from "./engine-prices";
 import { matchProducts } from "./match";
-import { normalizeName } from "./names";
+import { normalizeName, productKeyOf, productNameOf } from "./names";
 import {
   appearsInText,
   energyToPerKwh,
@@ -230,6 +230,15 @@ describe("matchProducts", () => {
   test("normalizes names like the backoffice", () => {
     expect(normalizeName("  Gana  Energía ")).toBe("ganaenergia");
     expect(normalizeName("+Helsinki I")).toBe("helsinkii");
+  });
+
+  test("product names drop the access tariff and keep the plus sign in the key", () => {
+    expect(productNameOf("2.0TD_2 Plan Estable")).toBe("Plan Estable");
+    expect(productNameOf("2.0TD_3  Plan Estable")).toBe("Plan Estable");
+    expect(productNameOf("2.0TD PRECIO FIJO CDR 12M V29")).toBe("PRECIO FIJO CDR 12M V29");
+    expect(productNameOf("2.0TD")).toBe("2.0TD");
+    expect(productNameOf("Tarifa 2.0TD Open")).toBe("Tarifa 2.0TD Open");
+    expect(productKeyOf("TULUZ PRO+")).not.toBe(productKeyOf("TULUZ PRO"));
   });
 });
 

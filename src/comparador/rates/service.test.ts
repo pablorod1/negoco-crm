@@ -338,6 +338,36 @@ describe("rate ingest service", () => {
     ]);
   });
 
+  test("a commissions-only document never retires prices, and a product family can be kept", async () => {
+    const first = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    await approveIngest({
+      client, control, ingest: first, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+
+    // Nordy: un PDF de comisiones, sin precios.
+    const commissions: RateDocumentExtraction["commissions"] = [
+      { productName: null, accessTariff: "2.0TD", pricing: "fixed", level: null, channel: null, minKwh: null, maxKwh: null, ruleType: "fixed", feeBase: null, amount: 90 },
+    ];
+    const onlyCommissions = await ingestWith(client, extractionResult([], { commissions }), "COM-040");
+    const commissionReview = await buildReview({ client, control, ingest: onlyCommissions, today: "2026-10-07" });
+    expect(commissionReview?.review.entries.map(({ kind }) => kind)).toEqual(["carried"]);
+
+    // Quimera: el anexo de Fénix no trae Unicornio. Por defecto lo retira; el
+    // revisor puede mantenerlo.
+    const fenix = await ingestWith(
+      client,
+      extractionResult([rate({ productName: "Fénix", energyP1: 0.23011, energyP2: 0.1612, energyP3: 0.13554 })]),
+      "COM-040",
+    );
+    const replacing = await buildReview({ client, control, ingest: fenix, today: "2026-10-07" });
+    expect(replacing?.review.entries.map(({ kind }) => kind).sort()).toEqual(["added", "removed"]);
+    const keeping = await buildReview({
+      client, control, ingest: fenix, today: "2026-10-07", decisions: { partialUpdate: true },
+    });
+    expect(keeping?.review.entries.map(({ kind }) => kind).sort()).toEqual(["added", "carried"]);
+  });
+
   test("copies the active prices to the demo tenant by catalog link", async () => {
     const ingest = await ingestWith(client, extractionResult([rate({})]), "COM-040");
     await approveIngest({

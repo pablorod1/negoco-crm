@@ -277,7 +277,10 @@ export async function buildReview({
     ...row,
     match: matches.get(row.productKey)!,
   }));
-  const partialUpdate = decisions.partialUpdate ?? extracted.extraction.partialUpdate;
+  // Un documento sin precios 2.0TD (solo comisiones, como el de Nordy) no
+  // puede retirar ninguna tarifa: siempre es parcial.
+  const partialUpdate =
+    inScope.length === 0 || (decisions.partialUpdate ?? extracted.extraction.partialUpdate);
   const diff = buildDiff(resolved, activePrices, { partialUpdate });
 
   const commissionMatches = matchProducts(
