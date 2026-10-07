@@ -270,4 +270,26 @@ describe("readSpreadsheet", () => {
     );
     expect(result.result.status).toBe("ok");
   });
+
+  test("a sheet numbered with the edition is the same sheet next month, for free", async () => {
+    const edition = (name: string, energy: number) => ({ ...eleia(energy), name });
+    const store = memoryRecipeStore();
+    const july: SheetRecipe = {
+      ...simplexRecipe,
+      tables: simplexRecipe.tables.map((table) => ({ ...table, sheet: "Precios y13.2026" })),
+    };
+    await readSpreadsheet({
+      grids: [edition("Precios y13.2026", 0.258571)], supplierName: "YaLuz", context, store, models: ["a"],
+      generate: fakeGenerate([july]),
+    });
+
+    const generate = fakeGenerate([]);
+    const august = await readSpreadsheet({
+      grids: [edition("Precios y14.2026", 0.261)], supplierName: "YaLuz", context, store, models: ["a"], generate,
+    });
+    expect(generate).not.toHaveBeenCalled();
+    expect(august.recipe.source).toBe("cache");
+    if (august.result.status === "out_of_scope") throw new Error("unexpected");
+    expect(august.result.proposed[0].energy?.P1).toBe(0.261);
+  });
 });

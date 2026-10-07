@@ -121,7 +121,24 @@ export function gridText(grid: SheetGrid): string {
  */
 export function workbookSignature(grids: readonly SheetGrid[]): string {
   return grids
-    .map((grid) => normalizeName(grid.name.replace(/\d+/g, "")))
+    .map((grid) => sheetShape(grid.name))
     .sort()
     .join("|");
+}
+
+/** Nombre de hoja sin números: «Precios y13.2026» y «Precios y14.2026» son la misma hoja. */
+const sheetShape = (name: string) => normalizeName(name.replace(/\d+/g, ""));
+
+/**
+ * La hoja de un libro a la que se refiere una plantilla: por su nombre exacto,
+ * normalizado o, si la comercializadora numera la hoja con la edición, sin los
+ * números (solo si eso no deja dos candidatas).
+ */
+export function findSheet(grids: readonly SheetGrid[], name: string): SheetGrid | undefined {
+  const exact =
+    grids.find((grid) => grid.name === name) ??
+    grids.find((grid) => normalizeName(grid.name) === normalizeName(name));
+  if (exact) return exact;
+  const sameShape = grids.filter((grid) => sheetShape(grid.name) === sheetShape(name));
+  return sameShape.length === 1 ? sameShape[0] : undefined;
 }

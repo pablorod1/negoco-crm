@@ -4,7 +4,7 @@ import type {
   ExtractedRate,
   RateDocumentExtraction,
 } from "../schema";
-import { cellAt, cellIn, columnIndex, columnLetter, type SheetCell, type SheetGrid } from "./grid";
+import { cellAt, cellIn, columnIndex, columnLetter, findSheet, type SheetCell, type SheetGrid } from "./grid";
 import {
   parseBand,
   parseBoolean,
@@ -54,9 +54,7 @@ const key = (text: string | null | undefined) => (text ? normalizeName(text) : "
 const INDEXED_NAME = /\bomie\b|index|\bpool\b|pass.?through/i;
 const round6 = (value: number) => Math.round(value * 1e6) / 1e6;
 
-function findGrid(grids: readonly SheetGrid[], name: string) {
-  return grids.find((grid) => grid.name === name) ?? grids.find((grid) => key(grid.name) === key(name));
-}
+const findGrid = findSheet;
 
 /** Fila en la que aparece el texto ancla de una tabla (la más cercana a la esperada). */
 /** La IA a veces copia la coordenada del render («E=cents. €/kWh»). */

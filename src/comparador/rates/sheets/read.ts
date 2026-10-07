@@ -12,7 +12,7 @@ import {
   type RateIssue,
 } from "../validate";
 import { applyRecipe, locateAnchor, type AppliedRecipe, type StoredRecipe } from "./apply";
-import { columnLetter, renderGrid, workbookSignature, type SheetGrid } from "./grid";
+import { columnLetter, findSheet, renderGrid, workbookSignature, type SheetGrid } from "./grid";
 import { parseNumber, parseTariff } from "./parse";
 import { SheetRecipeSchema, type SheetRecipe } from "./recipe";
 import type { RecipeStore } from "./store";
@@ -290,16 +290,25 @@ function renderWorkbook(grids: readonly SheetGrid[]): { text: string; skipped: s
 }
 
 /**
- * Quita de una plantilla de otra versión del libro las tablas de hojas que ya
- * no existen: MasMax Mini parte de la plantilla de MasMax, pero la hoja
- * «PreciofijoMASMAX» no está en su libro y nunca encajaría.
+ * Ajusta una plantilla guardada a las hojas de este libro. Una hoja numerada
+ * con la edición («Precios y13.2026» → «Precios y14.2026») toma el nombre
+ * nuevo; una que ya no existe se quita con sus tablas (MasMax Mini parte de
+ * la plantilla de MasMax, cuya hoja «PreciofijoMASMAX» no está en su libro).
  */
-function withoutMissingSheets(grids: readonly SheetGrid[], recipe: StoredRecipe): StoredRecipe {
-  const present = new Set(grids.map(({ name }) => sheetKey(name)));
+function alignToWorkbook(grids: readonly SheetGrid[], recipe: StoredRecipe): StoredRecipe {
+  const current = (sheet: string) => findSheet(grids, sheet)?.name;
+  const dateCell = (ref: StoredRecipe["validFrom"]) =>
+    ref && current(ref.sheet) ? { ...ref, sheet: current(ref.sheet)! } : null;
   return {
     ...recipe,
-    tables: recipe.tables.filter(({ sheet }) => present.has(sheetKey(sheet))),
-    skippedSheets: recipe.skippedSheets.filter(({ sheet }) => present.has(sheetKey(sheet))),
+    validFrom: dateCell(recipe.validFrom),
+    validTo: dateCell(recipe.validTo),
+    tables: recipe.tables.flatMap((table) =>
+      current(table.sheet) ? [{ ...table, sheet: current(table.sheet)! }] : [],
+    ),
+    skippedSheets: recipe.skippedSheets.flatMap((skipped) =>
+      current(skipped.sheet) ? [{ ...skipped, sheet: current(skipped.sheet)! }] : [],
+    ),
   };
 }
 
@@ -410,7 +419,7 @@ export async function readSpreadsheet({
 
   const cached = supplierKey && store ? await store.find(supplierKey, signature) : null;
   if (cached) {
-    if (!cached.exact) cached.recipe = withoutMissingSheets(grids, cached.recipe);
+    cached.recipe = alignToWorkbook(grids, cached.recipe);
     const assessment = assess(grids, cached.recipe);
     // Un libro con otra forma (una hoja nueva) se lee con la última plantilla
     // de la comercializadora, pero las hojas que no conoce hay que añadirlas.
