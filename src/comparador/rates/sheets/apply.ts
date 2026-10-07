@@ -802,6 +802,7 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
   const covered = new Set(recipe.tables.map(({ sheet }) => key(sheet)));
   const skipped = [
     ...recipe.skippedSheets.map(({ sheet, reason }) => `${sheet} (${reason})`),
+    ...(recipe.skippedRanges ?? []).map(({ sheet, range, reason }) => `${sheet} ${range} (${reason})`),
     ...grids
       .filter((grid) => !covered.has(key(grid.name)) && !recipe.skippedSheets.some(({ sheet }) => key(sheet) === key(grid.name)))
       .map((grid) => `${grid.name} (sin tabla en la plantilla)`),

@@ -2,7 +2,7 @@
 import { describe, expect, test, vi } from "vitest";
 import type { generateStructured } from "@/comparador/ai/gateway";
 import type { SheetGrid } from "./grid";
-import { readSpreadsheet } from "./read";
+import { checkRecipe, readSpreadsheet } from "./read";
 import type { SheetRecipe } from "./recipe";
 import { memoryRecipeStore } from "./store";
 
@@ -291,5 +291,29 @@ describe("readSpreadsheet", () => {
     expect(august.recipe.source).toBe("cache");
     if (august.result.status === "out_of_scope") throw new Error("unexpected");
     expect(august.result.proposed[0].energy?.P1).toBe(0.261);
+  });
+
+  test("coverage ignores power columns and the blocks a recipe skips on purpose", () => {
+    // Logos: a la derecha de los fijos, un indexado con potencia €/kW día
+    // (0,1088 / 0,0349, que parece energía) y un coeficiente A en €/kWh.
+    const sheet = grid("SIMPLEX", {
+      2: { A: "PRODUCTO SIMPLEX S3826" },
+      12: { I: "Potencia €/kW día", L: "A (€/kWh)" },
+      13: { D: "€/kWh", E: "P1", F: "P2", G: "P3" },
+      14: { D: "2.0TD", E: 0.258571, F: 0.179856, G: 0.154568, H: "2.0TD", I: 0.108779, J: 0.034864, L: 0.162774, M: 0.093834 },
+      20: { D: "€/kW", E: "P1", F: "P2" },
+      21: { D: "2.0TD", E: 27.704413, F: 0.725423 },
+    });
+    const recipe = { ...simplexRecipe, tables: simplexRecipe.tables.map((table) => ({ ...table, anchorRow: null })) };
+    const unread = checkRecipe([sheet], recipe);
+    expect(unread.healthy).toBe(false);
+    expect(unread.report.join("\n")).toContain("la fila 14 tiene precios de 2.0TD que la plantilla no lee");
+
+    const skipped = checkRecipe([sheet], {
+      ...recipe,
+      skippedRanges: [{ sheet: "SIMPLEX", range: "H10:M30", reason: "indexado" }],
+    });
+    expect(skipped.healthy).toBe(true);
+    expect(skipped.applied.extraction.skipped).toContain("SIMPLEX H10:M30 (indexado)");
   });
 });

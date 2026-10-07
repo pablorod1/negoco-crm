@@ -131,6 +131,12 @@ export const SheetRecipeSchema = z.object({
   skippedSheets: z
     .array(z.object({ sheet: z.string(), reason: z.string() }))
     .describe("Hojas que no se leen y por qué (indexado, gas, simulador, 3.0TD…)"),
+  skippedRanges: z
+    .array(z.object({ sheet: z.string(), range: z.string(), reason: z.string() }))
+    .optional()
+    .describe(
+      "Bloques de una hoja con 2.0TD que no se leen a propósito (un indexado al lado de los fijos): rango «AO18:BB72» y por qué",
+    ),
 });
 
 export type SheetRecipe = z.infer<typeof SheetRecipeSchema>;

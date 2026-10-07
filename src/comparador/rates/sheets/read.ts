@@ -12,7 +12,7 @@ import {
   type RateIssue,
 } from "../validate";
 import { applyRecipe, locateAnchor, type AppliedRecipe, type StoredRecipe } from "./apply";
-import { columnLetter, findSheet, renderGrid, workbookSignature, type SheetGrid } from "./grid";
+import { columnIndex, columnLetter, findSheet, renderGrid, workbookSignature, type SheetGrid } from "./grid";
 import { parseNumber, parseTariff } from "./parse";
 import { SheetRecipeSchema, type SheetRecipe } from "./recipe";
 import type { RecipeStore } from "./store";
@@ -27,7 +27,7 @@ const MAX_WORKBOOK_CHARS = 80_000;
 
 export const RECIPE_INSTRUCTIONS = `Escribes plantillas para leer Excel de precios de comercializadoras españolas de electricidad. No copias precios: dices en qué hoja, filas y columnas está cada dato, y nuestro código lee las celdas.
 Cada hoja viene con sus filas numeradas como en Excel («12|») y cada celda con su columna («C=0.169233»).
-Solo interesan las tarifas 2.0TD de precio fijo (también «20TD» o «2.01P», que es 2.0TD de precio único) y las comisiones de la agencia. No hagas tablas de 3.0TD, 6.1TD, gas, productos indexados, simuladores ni calculadoras: menciónalas en skippedSheets si ocupan una hoja entera.
+Solo interesan las tarifas 2.0TD de precio fijo (también «20TD» o «2.01P», que es 2.0TD de precio único) y las comisiones de la agencia. No hagas tablas de 3.0TD, 6.1TD, gas, productos indexados, simuladores ni calculadoras: menciónalas en skippedSheets si ocupan una hoja entera, o en skippedRanges («AO18:BB72») si son un bloque junto a los fijos.
 Una comisión es lo que la comercializadora paga a la agencia por cada contrato (remuneración, comisión, «pago al canal»). No son comisiones: el precio de servicios que se venden con la luz (PyS, mantenimiento, urgencias, packs), el fee o margen de un producto indexado, ni los descuentos al cliente. Si dudas, no hagas tabla de comisiones.
 Una tabla es un bloque de filas de datos. kind prices para filas con precios de energía (y potencia si está en la misma fila); kind power para bloques que solo traen potencia y se unen a los de precios por productName, level, territory y bandas, así que ponles los mismos valores (el nivel de un bloque de potencia es el de su columna, no el territorio del título); kind commissions para comisiones.
 Si la potencia de cada bloque de precios está en una celda fija (un apartado «POTENCIAS» con una fila por tarifa), es más sencillo leerla desde la tabla de precios con cell. Con repeat la celda se mueve con cada copia; como en Excel, «C$40» se mueve de columna pero no de fila (la misma potencia para Baleares y Canarias) y «$C$40» no se mueve nunca. Igual con las columnas: «$Q» lee siempre la columna Q aunque la copia esté más a la derecha.
@@ -132,6 +132,29 @@ function rowDifference(
   return `${sameSheet ? "" : "están en hojas distintas; "}solo cambian ${changed.slice(0, 4).join(", ")}${changed.length > 4 ? "…" : ""}. Lee lo que las distingue (plazo, nivel, tarifario, banda…) o descarta la que no sea 2.0TD de precio fijo.`;
 }
 
+/** Cabecera de una columna de potencia o de fee, no de energía. */
+const POWER_HEADER = /potencia|€\s*\/\s*kw(?!h)|kw\s*(día|dia|año|mes)|\bfee\b/i;
+
+/**
+ * Los textos de encima de una celda en su columna (hasta seis filas, sin
+ * cifras), donde está su cabecera; si la columna no tiene, la del bloque a la
+ * izquierda en la fila de títulos (las cabeceras combinadas quedan en la
+ * primera columna del bloque).
+ */
+function headerAbove(grid: SheetGrid, row: number, column: number): string {
+  const texts: string[] = [];
+  for (let above = row - 1; above >= Math.max(1, row - 6); above--) {
+    for (let left = column; left >= Math.max(0, column - 3); left--) {
+      const cell = grid.rows[above - 1]?.[left];
+      if (!cell || !cell.text.trim()) continue;
+      if (parseNumber(cell).ok) break;
+      texts.push(cell.text);
+      break;
+    }
+  }
+  return texts.join(" ");
+}
+
 /** Precio de energía en €/kWh plausible: lo que sigue a una etiqueta 2.0TD en una fila de precios. */
 const ENERGY_LIKE = (value: number) => value >= 0.03 && value <= 0.6;
 
@@ -153,6 +176,28 @@ function unreadRows(
   const ignored = new Set(
     recipe.skippedSheets.map(({ sheet }) => sheetKey(sheet)).filter((sheet) => !withTables.has(sheet)),
   );
+  // Bloques que la plantilla descarta a propósito (el indexado «AB» de Logos).
+  const ranges = (recipe.skippedRanges ?? []).flatMap(({ sheet, range }) => {
+    const match = /^\$?([A-Z]{1,3})\$?(\d+):\$?([A-Z]{1,3})\$?(\d+)$/i.exec(range.trim());
+    return match
+      ? [{
+          sheet: sheetKey(sheet),
+          left: columnIndex(match[1]),
+          top: Number(match[2]),
+          right: columnIndex(match[3]),
+          bottom: Number(match[4]),
+        }]
+      : [];
+  });
+  const skippedCell = (sheet: string, row: number, column: number) =>
+    ranges.some(
+      (range) =>
+        range.sheet === sheetKey(sheet) &&
+        row >= range.top &&
+        row <= range.bottom &&
+        column >= range.left &&
+        column <= range.right,
+    );
   const read = new Map<string, number>();
   const origins = [
     ...applied.sheets.map((sheet, index) => ({ sheet, row: applied.rows[index] })),
@@ -171,6 +216,7 @@ function unreadRows(
       for (let column = 0; column < cells.length; column++) {
         const label = cells[column]?.text ?? "";
         if (parseTariff(label)?.tariff !== "2.0TD") continue;
+        if (skippedCell(grid.name, index + 1, column)) continue;
         // Las cifras que siguen a la etiqueta, hasta el primer texto: una
         // cabecera («P1») o la etiqueta del bloque de al lado.
         let seen = 0;
@@ -182,6 +228,9 @@ function unreadRows(
           if (parsed.value === null) continue;
           seen++;
           if (!ENERGY_LIKE(parsed.value)) continue;
+          // Una potencia en €/kW día (Logos: 0,1088 / 0,0349) parece energía:
+          // la cabecera de su columna lo aclara.
+          if (POWER_HEADER.test(headerAbove(grid, index + 1, next))) continue;
           // La cifra siguiente también ha de ser energía (o no haber más): una
           // potencia en €/kW día da 0,0759 / 0,0020 y no es una tarifa.
           const following = cells
@@ -314,6 +363,9 @@ function alignToWorkbook(grids: readonly SheetGrid[], recipe: StoredRecipe): Sto
     skippedSheets: recipe.skippedSheets.flatMap((skipped) =>
       current(skipped.sheet) ? [{ ...skipped, sheet: current(skipped.sheet)! }] : [],
     ),
+    skippedRanges: (recipe.skippedRanges ?? []).flatMap((skipped) =>
+      current(skipped.sheet) ? [{ ...skipped, sheet: current(skipped.sheet)! }] : [],
+    ),
   };
 }
 
@@ -368,6 +420,10 @@ function mergeRepair(base: StoredRecipe, patch: SheetRecipe, scope: readonly str
     skippedSheets: [
       ...base.skippedSheets.filter(({ sheet }) => !inScope(sheet)),
       ...patch.skippedSheets.filter(({ sheet }) => inScope(sheet)),
+    ],
+    skippedRanges: [
+      ...(base.skippedRanges ?? []).filter(({ sheet }) => !inScope(sheet)),
+      ...(patch.skippedRanges ?? []).filter(({ sheet }) => inScope(sheet)),
     ],
     tables: [
       ...base.tables.filter(({ sheet }) => !inScope(sheet)),
