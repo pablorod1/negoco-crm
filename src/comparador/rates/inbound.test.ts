@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import {
   inboundIngestId,
+  isTenantUser,
   isTrustedSender,
   selectAttachments,
   tenantFromRecipients,
@@ -76,6 +77,19 @@ describe("inbound routing", () => {
     expect(isTrustedSender("soporte@visalia.es", trusted)).toBe(true);
     expect(isTrustedSender("spam@example.com", trusted)).toBe(false);
     expect(isTrustedSender("dmontesf@grupoeficience.com", undefined)).toBe(false);
+  });
+
+  test("an active user of the tenant is trusted without any configuration", async () => {
+    const queries: unknown[][] = [];
+    const client = {
+      execute: async ({ args }: { sql: string; args: unknown[] }) => {
+        queries.push(args);
+        return { rows: args[0] === "ana@beenergy.es" ? [{ 1: 1 }] : [] };
+      },
+    } as never;
+    expect(await isTenantUser(client, "Ana <Ana@Beenergy.es>")).toBe(true);
+    expect(await isTenantUser(client, "otro@example.com")).toBe(false);
+    expect(queries[0]).toEqual(["ana@beenergy.es"]);
   });
 
   test("the same attachment always gets the same ingest id", () => {

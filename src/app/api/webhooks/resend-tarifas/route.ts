@@ -3,6 +3,7 @@ import { getTursoClientByTenant } from "@/core/libsql/client";
 import { getTenantModules } from "@/core/modules/server";
 import {
   inboundIngestId,
+  isTenantUser,
   isTrustedSender,
   selectAttachments,
   tenantFromRecipients,
@@ -121,7 +122,11 @@ export async function POST(request: NextRequest) {
       created.push(id);
     }
 
-    if (created.length && isTrustedSender(from, process.env.COMPARADOR_INBOUND_TRUSTED_SENDERS)) {
+    const trusted =
+      created.length > 0 &&
+      (isTrustedSender(from, process.env.COMPARADOR_INBOUND_TRUSTED_SENDERS) ||
+        (await isTenantUser(client, from)));
+    if (trusted) {
       after(async () => {
         for (const id of created) {
           const ingest = await getIngest(client, id);

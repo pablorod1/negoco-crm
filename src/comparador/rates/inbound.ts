@@ -1,3 +1,4 @@
+import type { Client } from "@libsql/client";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 /**
@@ -88,9 +89,31 @@ export function selectAttachments(
   });
 }
 
+/** Dirección de un remitente: «Ana <ana@x.es>» da «ana@x.es». */
+export function senderAddress(from: string): string {
+  return (from.match(/<([^>]+)>/)?.[1] ?? from).trim().toLowerCase();
+}
+
+/**
+ * Un usuario activo del tenant: sus correos se leen solos. Así cada tenant
+ * envía a su buzón desde sus propias cuentas sin tocar ninguna variable de
+ * entorno; `COMPARADOR_INBOUND_TRUSTED_SENDERS` queda para remitentes comunes
+ * (soporte de Negoco, una comercializadora que envía a todos).
+ */
+export async function isTenantUser(
+  client: Pick<Client, "execute">,
+  from: string,
+): Promise<boolean> {
+  const { rows } = await client.execute({
+    sql: "SELECT 1 FROM user WHERE lower(email) = ? AND coalesce(banned, 0) = 0 LIMIT 1",
+    args: [senderAddress(from)],
+  });
+  return rows.length > 0;
+}
+
 /** Remitentes de confianza: sus correos se procesan sin esperar a nadie. */
 export function isTrustedSender(from: string, trusted: string | undefined): boolean {
-  const address = (from.match(/<([^>]+)>/)?.[1] ?? from).trim().toLowerCase();
+  const address = senderAddress(from);
   return (trusted ?? "")
     .split(",")
     .map((entry) => entry.trim().toLowerCase())
