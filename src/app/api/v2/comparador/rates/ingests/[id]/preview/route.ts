@@ -8,6 +8,7 @@ import { ok, ratesError, requireRatesAccess } from "@/comparador/server/rates-ro
 const DecisionsSchema = z.object({
   excludedRowKeys: z.array(z.string()).default([]),
   regulatedPowerRowKeys: z.array(z.string()).default([]),
+  partialUpdate: z.boolean().optional(),
 });
 
 /** Revisión recalculada con las filas que el revisor excluye o completa. */

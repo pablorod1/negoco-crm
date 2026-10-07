@@ -73,7 +73,10 @@ export const ratesApi = {
       method: "POST",
     }),
   ingest: (id: string) => request<IngestDetailResponse>(`/api/v2/comparador/rates/ingests/${id}`),
-  preview: (id: string, decisions: { excludedRowKeys: string[]; regulatedPowerRowKeys: string[] }) =>
+  preview: (
+    id: string,
+    decisions: { excludedRowKeys: string[]; regulatedPowerRowKeys: string[]; partialUpdate: boolean },
+  ) =>
     request<{ review: IngestReview | null }>(
       `/api/v2/comparador/rates/ingests/${id}/preview`,
       json(decisions),
@@ -84,6 +87,7 @@ export const ratesApi = {
       validFrom: string;
       excludedRowKeys: string[];
       regulatedPowerRowKeys: string[];
+      partialUpdate: boolean;
       includeCommissions: boolean;
     },
   ) =>
@@ -159,6 +163,12 @@ export function describeConditions(
   }
   return parts.join(" · ") || "General";
 }
+
+/** «2026-10-07» como se lee en España: «07/10/2026». */
+export const formatDay = (day: string | null | undefined) => {
+  const match = day ? /^(\d{4})-(\d{2})-(\d{2})/.exec(day) : null;
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : (day ?? "");
+};
 
 export const formatPrice = (value: number | null | undefined) =>
   value === null || value === undefined ? "—" : value.toLocaleString("es-ES", { maximumFractionDigits: 6 });

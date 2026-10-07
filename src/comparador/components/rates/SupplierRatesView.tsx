@@ -17,6 +17,7 @@ import {
 import {
   describeConditions,
   describePower,
+  formatDay,
   formatPrice,
   ratesApi,
   type IngestSummary,
@@ -141,7 +142,7 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
           <CardTitle className="text-base">
             Precios vigentes
             {data.activeVersion &&
-              ` · desde ${data.activeVersion.validFrom}${data.activeVersion.validTo ? ` hasta ${data.activeVersion.validTo}` : ""}`}
+              ` · desde ${formatDay(data.activeVersion.validFrom)}${data.activeVersion.validTo ? ` hasta ${formatDay(data.activeVersion.validTo)}` : ""}`}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -214,7 +215,7 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
                           : `${rule.amount} % del fee`}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {rule.validFrom}
+                      {formatDay(rule.validFrom)}
                       {rule.validTo ? ` → ${rule.validTo}` : " → vigente"}
                     </TableCell>
                   </TableRow>
@@ -265,7 +266,7 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
                   {VERSION_STATUS[version.status]}
                 </Badge>
                 <span className="flex-1">
-                  {version.validFrom}
+                  {formatDay(version.validFrom)}
                   {version.validTo ? ` → ${version.validTo}` : ""}
                 </span>
                 {version.status === "scheduled" && data.canManage && (
@@ -319,7 +320,7 @@ function IngestList({ ingests, onOpen }: { ingests: IngestSummary[]; onOpen: (id
             {ingest.channel === "email" ? <Mail className="h-4 w-4" /> : <FileUp className="h-4 w-4" />}
             <span className="flex-1 truncate">
               {ingest.fileName ?? ingest.emailSubject ?? "Texto pegado"}
-              <span className="text-muted-foreground"> · {ingest.receivedAt.slice(0, 16)}</span>
+              <span className="text-muted-foreground"> · {formatDay(ingest.receivedAt)} {ingest.receivedAt.slice(11, 16)}</span>
             </span>
             <Badge variant={INGEST_STATUS[ingest.status]?.variant ?? "default"}>
               {INGEST_STATUS[ingest.status]?.label ?? ingest.status}

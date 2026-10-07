@@ -10,6 +10,7 @@ const ApprovalSchema = z.object({
   validTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   excludedRowKeys: z.array(z.string()).default([]),
   regulatedPowerRowKeys: z.array(z.string()).default([]),
+  partialUpdate: z.boolean().optional(),
   includeCommissions: z.boolean().default(true),
   notes: z.string().max(1000).nullable().optional(),
 });

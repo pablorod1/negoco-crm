@@ -216,6 +216,13 @@ export interface ReviewDecisions {
   excludedRowKeys?: readonly string[];
   /** rowKey de las filas sin potencia que llevan la regulada («BOE»). */
   regulatedPowerRowKeys?: readonly string[];
+  /**
+   * El anexo solo actualiza parte de las tarifas: las que no trae se mantienen
+   * en vez de darse de baja. Endesa manda un anexo por familia de producto
+   * (Open, Residencial); sin esto, aprobar uno borraría el otro. Si no se
+   * indica, vale lo que haya deducido la lectura.
+   */
+  partialUpdate?: boolean;
 }
 
 /**
@@ -270,9 +277,8 @@ export async function buildReview({
     ...row,
     match: matches.get(row.productKey)!,
   }));
-  const diff = buildDiff(resolved, activePrices, {
-    partialUpdate: extracted.extraction.partialUpdate,
-  });
+  const partialUpdate = decisions.partialUpdate ?? extracted.extraction.partialUpdate;
+  const diff = buildDiff(resolved, activePrices, { partialUpdate });
 
   const commissionMatches = matchProducts(
     toProposedCommissions(extracted.extraction)
@@ -318,7 +324,7 @@ export async function buildReview({
       activeVersion,
       validFrom: extracted.extraction.validFrom,
       validTo: extracted.extraction.validTo,
-      partialUpdate: extracted.extraction.partialUpdate,
+      partialUpdate,
       skipped: extracted.extraction.skipped,
       issues: [...(oldDocument ? [oldDocument] : []), ...extractionIssues, ...diff.issues],
       entries: diff.entries,

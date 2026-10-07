@@ -26,6 +26,7 @@ import { useActiveEnergySuppliers } from "@/comercializadoras/hooks/useActiveEne
 import {
   describeConditions,
   describePower,
+  formatDay,
   formatPrice,
   ratesApi,
   type DiffEntry,
@@ -106,6 +107,8 @@ export function IngestReviewSheet({
   const [review, setReview] = useState<IngestReview | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [regulated, setRegulated] = useState<Set<string>>(new Set());
+  // Mantener las tarifas que no trae el anexo (Endesa manda uno por familia).
+  const [partial, setPartial] = useState(false);
   const [validFrom, setValidFrom] = useState(today());
   const [includeCommissions, setIncludeCommissions] = useState(true);
   const [busy, setBusy] = useState<null | "preview" | "approve" | "reject" | "process">(null);
@@ -127,6 +130,7 @@ export function IngestReviewSheet({
         setReview(data.review);
         setExcluded(new Set());
         setRegulated(new Set());
+        setPartial(data.review?.partialUpdate ?? false);
         setValidFrom(data.review?.validFrom ?? today());
         setError(null);
       })
@@ -140,7 +144,11 @@ export function IngestReviewSheet({
 
   const loading = Boolean(ingestId) && detail?.ingest.id !== ingestId && !error;
 
-  const preview = async (nextExcluded: Set<string>, nextRegulated: Set<string>) => {
+  const preview = async (
+    nextExcluded: Set<string>,
+    nextRegulated: Set<string>,
+    nextPartial: boolean = partial,
+  ) => {
     if (!ingestId) return;
     const requestId = ++previewRequest.current;
     setBusy("preview");
@@ -148,6 +156,7 @@ export function IngestReviewSheet({
       const data = await ratesApi.preview(ingestId, {
         excludedRowKeys: [...nextExcluded],
         regulatedPowerRowKeys: [...nextRegulated],
+        partialUpdate: nextPartial,
       });
       if (requestId === previewRequest.current) setReview(data.review);
     } catch (cause) {
@@ -196,6 +205,7 @@ export function IngestReviewSheet({
           validFrom,
           excludedRowKeys: [...excluded],
           regulatedPowerRowKeys: [...regulated],
+          partialUpdate: partial,
           includeCommissions,
         });
       } else if (action === "reject") {
@@ -224,9 +234,9 @@ export function IngestReviewSheet({
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle>Revisar precios{review ? ` · ${review.supplier.name}` : ""}</SheetTitle>
           <SheetDescription>
-            {ingest?.fileName ?? ingest?.emailSubject ?? "Texto pegado"}
+            {ingest ? (ingest.fileName ?? ingest.emailSubject ?? "Texto pegado") : ""}
             {review?.activeVersion
-              ? ` · frente a la versión vigente desde ${review.activeVersion.validFrom}`
+              ? ` · frente a la versión vigente desde ${formatDay(review.activeVersion.validFrom)}`
               : review
                 ? " · primera versión de esta comercializadora"
                 : ""}
@@ -304,6 +314,26 @@ export function IngestReviewSheet({
                   {review.commissions.length > 0 ? "; solo comisiones." : "."} La v1 del comparador solo
                   guarda esas tarifas.
                 </p>
+              )}
+
+              {canDecide && review.activeVersion && review.entries.some(({ kind }) => kind === "removed" || kind === "carried") && (
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={partial}
+                    onCheckedChange={(value) => {
+                      const next = value === true;
+                      setPartial(next);
+                      void preview(excluded, regulated, next);
+                    }}
+                  />
+                  <span>
+                    Mantener las tarifas que no vienen en este anexo
+                    <span className="block text-xs text-muted-foreground">
+                      Márcalo si el anexo solo trae una parte (por ejemplo, una familia de productos). Si no, las que
+                      no vienen se retiran.
+                    </span>
+                  </span>
+                </label>
               )}
 
               {entries.length > 0 && (
