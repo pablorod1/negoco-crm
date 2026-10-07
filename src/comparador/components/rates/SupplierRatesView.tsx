@@ -18,6 +18,7 @@ import {
   describeConditions,
   describePower,
   formatDay,
+  formatMoment,
   formatPrice,
   ratesApi,
   type IngestSummary,
@@ -54,8 +55,11 @@ function FreshnessBadge({ freshness }: { freshness: SupplierRatesResponse["fresh
       </Badge>
     );
   }
-  return <Badge variant="success">Actualizada hace {freshness.days} días</Badge>;
+  return <Badge variant="success">Actualizada {sinceDays(freshness.days)}</Badge>;
 }
+
+const sinceDays = (days: number | null) =>
+  !days ? "hoy" : days === 1 ? "ayer" : `hace ${days} días`;
 
 function energyText(energy: { P1: number; P2: number; P3: number } | null) {
   if (!energy) return "—";
@@ -320,7 +324,7 @@ function IngestList({ ingests, onOpen }: { ingests: IngestSummary[]; onOpen: (id
             {ingest.channel === "email" ? <Mail className="h-4 w-4" /> : <FileUp className="h-4 w-4" />}
             <span className="flex-1 truncate">
               {ingest.fileName ?? ingest.emailSubject ?? "Texto pegado"}
-              <span className="text-muted-foreground"> · {formatDay(ingest.receivedAt)} {ingest.receivedAt.slice(11, 16)}</span>
+              <span className="text-muted-foreground"> · {formatMoment(ingest.receivedAt)}</span>
             </span>
             <Badge variant={INGEST_STATUS[ingest.status]?.variant ?? "default"}>
               {INGEST_STATUS[ingest.status]?.label ?? ingest.status}

@@ -75,7 +75,12 @@ export const ratesApi = {
   ingest: (id: string) => request<IngestDetailResponse>(`/api/v2/comparador/rates/ingests/${id}`),
   preview: (
     id: string,
-    decisions: { excludedRowKeys: string[]; regulatedPowerRowKeys: string[]; partialUpdate: boolean },
+    decisions: {
+      excludedRowKeys: string[];
+      regulatedPowerRowKeys: string[];
+      manualPower: Record<string, { p1: number; p2: number }>;
+      partialUpdate: boolean;
+    },
   ) =>
     request<{ review: IngestReview | null }>(
       `/api/v2/comparador/rates/ingests/${id}/preview`,
@@ -87,6 +92,7 @@ export const ratesApi = {
       validFrom: string;
       excludedRowKeys: string[];
       regulatedPowerRowKeys: string[];
+      manualPower: Record<string, { p1: number; p2: number }>;
       partialUpdate: boolean;
       includeCommissions: boolean;
     },
@@ -168,6 +174,21 @@ export function describeConditions(
 export const formatDay = (day: string | null | undefined) => {
   const match = day ? /^(\d{4})-(\d{2})-(\d{2})/.exec(day) : null;
   return match ? `${match[3]}/${match[2]}/${match[1]}` : (day ?? "");
+};
+
+/** Una marca de la base («2026-10-07 18:42:19», en UTC) en hora de España. */
+export const formatMoment = (stamp: string | null | undefined) => {
+  if (!stamp) return "";
+  const date = new Date(`${stamp.replace(" ", "T")}${/Z|[+-]\d\d:?\d\d$/.test(stamp) ? "" : "Z"}`);
+  if (Number.isNaN(date.getTime())) return stamp;
+  return date.toLocaleString("es-ES", {
+    timeZone: "Europe/Madrid",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 export const formatPrice = (value: number | null | undefined) =>

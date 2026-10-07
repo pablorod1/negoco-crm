@@ -311,6 +311,33 @@ describe("rate ingest service", () => {
     expect(price).toMatchObject({ powerMode: "regulated", energy: { P1: 0.139, P2: 0.139, P3: 0.139 } });
   });
 
+  test("the reviewer can type the power a supplier sends in another document", async () => {
+    // Holaluz: los precios en un PDF y la potencia (29,93 €/kW·año) en otro.
+    const text = "Clásico 1 precio 0,139 €/kWh";
+    const ingest = await ingestWith(
+      client,
+      extractionResult(
+        [rate({ productName: "Clásico 1 precio", singlePrice: true, energyP1: 0.139, energyP2: null, energyP3: null, powerMode: "not_stated", powerUnit: null, powerP1: null, powerP2: null })],
+        { text },
+      ),
+      "COM-041",
+    );
+    const [proposed] = (ingest.extraction as { proposed: Parameters<typeof rowKey>[0][] }).proposed;
+    const manualPower = { [rowKey(proposed)]: { p1: 29.93, p2: 29.93 } };
+
+    const review = await buildReview({ client, control, ingest, today: "2026-10-07", decisions: { manualPower } });
+    expect(review?.review.issues.filter(({ severity }) => severity === "blocking")).toEqual([]);
+
+    const approved = await approveIngest({
+      client, control, ingest,
+      input: { validFrom: "2026-10-05", manualPower },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    const [price] = await getVersionPrices(client, approved.versionId!);
+    expect(price.powerMode).toBe("fixed");
+    expect(price.power?.P1).toBeCloseTo(29.93 / 365, 9);
+  });
+
   test("commission rules close the previous ones", async () => {
     const commissions: RateDocumentExtraction["commissions"] = [
       { productName: null, accessTariff: "2.0TD", pricing: "fixed", level: "Agencia", channel: null, minKwh: 0, maxKwh: 10000, ruleType: "fixed", feeBase: null, amount: 200 },

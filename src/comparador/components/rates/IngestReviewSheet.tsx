@@ -94,6 +94,9 @@ function IssueList({ issues }: { issues: RateIssue[] }) {
  * fragmento del documento junto a cada fila. Las filas se pueden excluir y
  * las que no traen potencia pueden llevar la regulada; nada se teclea a mano.
  */
+/** «29,93» o «29.93» como número; NaN si no lo es. */
+const parseDecimal = (text: string) => (text.trim() ? Number(text.replace(",", ".")) : Number.NaN);
+
 export function IngestReviewSheet({
   ingestId,
   onClose,
@@ -109,6 +112,9 @@ export function IngestReviewSheet({
   const [regulated, setRegulated] = useState<Set<string>>(new Set());
   // Mantener las tarifas que no trae el anexo (Endesa manda uno por familia).
   const [partial, setPartial] = useState(false);
+  // Potencia indicada a mano (€/kW·año) para las filas que no la traen.
+  const [manualPower, setManualPower] = useState<Record<string, { p1: number; p2: number }>>({});
+  const [powerDraft, setPowerDraft] = useState({ p1: "", p2: "" });
   const [validFrom, setValidFrom] = useState(today());
   const [includeCommissions, setIncludeCommissions] = useState(true);
   const [busy, setBusy] = useState<null | "preview" | "approve" | "reject" | "process">(null);
@@ -131,6 +137,8 @@ export function IngestReviewSheet({
         setExcluded(new Set());
         setRegulated(new Set());
         setPartial(data.review?.partialUpdate ?? false);
+        setManualPower({});
+        setPowerDraft({ p1: "", p2: "" });
         setValidFrom(data.review?.validFrom ?? today());
         setError(null);
       })
@@ -148,6 +156,7 @@ export function IngestReviewSheet({
     nextExcluded: Set<string>,
     nextRegulated: Set<string>,
     nextPartial: boolean = partial,
+    nextManual: Record<string, { p1: number; p2: number }> = manualPower,
   ) => {
     if (!ingestId) return;
     const requestId = ++previewRequest.current;
@@ -156,6 +165,7 @@ export function IngestReviewSheet({
       const data = await ratesApi.preview(ingestId, {
         excludedRowKeys: [...nextExcluded],
         regulatedPowerRowKeys: [...nextRegulated],
+        manualPower: nextManual,
         partialUpdate: nextPartial,
       });
       if (requestId === previewRequest.current) setReview(data.review);
@@ -205,6 +215,7 @@ export function IngestReviewSheet({
           validFrom,
           excludedRowKeys: [...excluded],
           regulatedPowerRowKeys: [...regulated],
+          manualPower,
           partialUpdate: partial,
           includeCommissions,
         });
@@ -336,6 +347,65 @@ export function IngestReviewSheet({
                 </label>
               )}
 
+              {canDecide && missingPower.size > 0 && (
+                <div className="rounded-md border p-3 space-y-2 text-sm">
+                  <p>
+                    {missingPower.size === 1 ? "Una tarifa no trae" : `${missingPower.size} tarifas no traen`} la potencia.
+                    Marca «Usar la regulada (BOE)» en cada fila o, si la comercializadora la da en otro documento,
+                    indícala aquí para todas:
+                  </p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="manual-p1">P1 (€/kW·año)</Label>
+                      <Input
+                        id="manual-p1"
+                        inputMode="decimal"
+                        className="w-28"
+                        value={powerDraft.p1}
+                        onChange={(event) => setPowerDraft((draft) => ({ ...draft, p1: event.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="manual-p2">P2 (€/kW·año)</Label>
+                      <Input
+                        id="manual-p2"
+                        inputMode="decimal"
+                        className="w-28"
+                        value={powerDraft.p2}
+                        onChange={(event) => setPowerDraft((draft) => ({ ...draft, p2: event.target.value }))}
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      disabled={!(parseDecimal(powerDraft.p1) > 0) || !(parseDecimal(powerDraft.p2) >= 0) || busy !== null}
+                      onClick={() => {
+                        const typed = { p1: parseDecimal(powerDraft.p1), p2: parseDecimal(powerDraft.p2) };
+                        const next = Object.fromEntries(
+                          [...missingPower].filter((key) => !excluded.has(key)).map((key) => [key, typed]),
+                        );
+                        const nextRegulated = new Set([...regulated].filter((key) => !(key in next)));
+                        setManualPower(next);
+                        setRegulated(nextRegulated);
+                        void preview(excluded, nextRegulated, partial, next);
+                      }}
+                    >
+                      Aplicar a todas
+                    </Button>
+                    {Object.keys(manualPower).length > 0 && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setManualPower({});
+                          void preview(excluded, regulated, partial, {});
+                        }}
+                      >
+                        Quitar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {entries.length > 0 && (
               <Table>
                 <TableHeader>
@@ -377,7 +447,7 @@ export function IngestReviewSheet({
                         </TableCell>
                         <TableCell className="text-sm">{energyCell(entry)}</TableCell>
                         <TableCell className="text-sm">
-                          {rowKey && missingPower.has(rowKey) && canDecide ? (
+                          {rowKey && missingPower.has(rowKey) && canDecide && !manualPower[rowKey] ? (
                             <label className="flex items-center gap-2">
                               <Checkbox
                                 checked={regulated.has(rowKey)}

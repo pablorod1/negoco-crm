@@ -5,7 +5,7 @@ import { prepareDocument, type RateSource } from "./document";
 import { extractRateDocument, type RateExtractionResult } from "./extract";
 import { matchProducts, type RateMatch } from "./match";
 import { normalizeName } from "./names";
-import { toProposedCommissions } from "./normalize";
+import { powerToPerDay, toProposedCommissions } from "./normalize";
 import {
   claimIngest,
   decideIngestStatement,
@@ -217,6 +217,11 @@ export interface ReviewDecisions {
   /** rowKey de las filas sin potencia que llevan la regulada («BOE»). */
   regulatedPowerRowKeys?: readonly string[];
   /**
+   * Potencia indicada por el revisor (€/kW·año) para filas que no la traen:
+   * Holaluz manda la potencia en otro PDF y no es la del BOE.
+   */
+  manualPower?: Readonly<Record<string, { p1: number; p2: number }>>;
+  /**
    * El anexo solo actualiza parte de las tarifas: las que no trae se mantienen
    * en vez de darse de baja. Endesa manda un anexo por familia de producto
    * (Open, Residencial); sin esto, aprobar uno borraría el otro. Si no se
@@ -263,15 +268,26 @@ export async function buildReview({
 
   const excluded = new Set(decisions.excludedRowKeys ?? []);
   const regulated = new Set(decisions.regulatedPowerRowKeys ?? []);
+  const manual = decisions.manualPower ?? {};
 
   const inScope = extracted.proposed.filter(isInScope);
   const kept = inScope
     .filter((row) => !excluded.has(rowKey(row)))
-    .map((row) =>
-      regulated.has(rowKey(row)) && !row.powerStated
+    .map((row) => {
+      if (row.powerStated) return row;
+      const typed = manual[rowKey(row)];
+      if (typed) {
+        return {
+          ...row,
+          powerMode: "fixed" as const,
+          power: { P1: powerToPerDay(typed.p1, "eur_kw_year"), P2: powerToPerDay(typed.p2, "eur_kw_year") },
+          powerStated: true,
+        };
+      }
+      return regulated.has(rowKey(row))
         ? { ...row, powerMode: "regulated" as const, power: null, powerStated: true }
-        : row,
-    );
+        : row;
+    });
   const matches = matchProducts(kept, { tenantRates, catalog, aliases });
   const resolved: ResolvedRow[] = kept.map((row) => ({
     ...row,
@@ -307,7 +323,11 @@ export async function buildReview({
   const extractionIssues = extracted.issues.filter(
     (issue) =>
       !(issue.rowKey && excluded.has(issue.rowKey)) &&
-      !(issue.code === "missing_power" && issue.rowKey && regulated.has(issue.rowKey)) &&
+      !(
+        issue.code === "missing_power" &&
+        issue.rowKey &&
+        (regulated.has(issue.rowKey) || manual[issue.rowKey])
+      ) &&
       !(issue.code === "no_rates" && commissions.length > 0),
   );
 

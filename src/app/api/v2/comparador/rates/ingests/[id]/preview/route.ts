@@ -8,6 +8,9 @@ import { ok, ratesError, requireRatesAccess } from "@/comparador/server/rates-ro
 const DecisionsSchema = z.object({
   excludedRowKeys: z.array(z.string()).default([]),
   regulatedPowerRowKeys: z.array(z.string()).default([]),
+  manualPower: z
+    .record(z.string(), z.object({ p1: z.number().positive().max(500), p2: z.number().nonnegative().max(500) }))
+    .default({}),
   partialUpdate: z.boolean().optional(),
 });
 
