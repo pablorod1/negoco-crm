@@ -232,6 +232,16 @@ describe("matchProducts", () => {
     expect(normalizeName("+Helsinki I")).toBe("helsinkii");
   });
 
+  test("a figure glued to its neighbours in the PDF text still counts as in the document", () => {
+    // Texto real del PDF de Imagina tal como lo extrae unpdf.
+    const text = "0,1648660,1969670,2745892.0TD51\n0,72525527,7045952.0TD";
+    const numbers = numbersInText(text);
+    expect(appearsInText(0.274589, numbers, text)).toBe(true);
+    expect(appearsInText(27.704595, numbers, text)).toBe(true);
+    expect(appearsInText(0.725255, numbers, text)).toBe(true);
+    expect(appearsInText(0.284739, numbers, text)).toBe(false);
+  });
+
   test("product names drop the access tariff and keep the plus sign in the key", () => {
     expect(productNameOf("2.0TD_2 Plan Estable")).toBe("Plan Estable");
     expect(productNameOf("2.0TD_3  Plan Estable")).toBe("Plan Estable");

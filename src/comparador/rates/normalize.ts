@@ -234,6 +234,11 @@ export function numbersInText(text: string): Set<number> {
 }
 
 /** El valor aparece en el texto, admitiendo ceros de más o de menos al final. */
-export function appearsInText(value: number, numbers: Set<number>): boolean {
-  return numbers.has(round9(value));
+export function appearsInText(value: number, numbers: Set<number>, text: string | null = null): boolean {
+  if (numbers.has(round9(value))) return true;
+  if (!text) return false;
+  // Algunos PDF salen con las cifras pegadas («0,1648660,1969670,2745892.0TD»
+  // en el de Imagina): la cifra está, aunque no como número suelto.
+  const written = String(round9(value));
+  return written.includes(".") && (text.includes(written) || text.includes(written.replace(".", ",")));
 }

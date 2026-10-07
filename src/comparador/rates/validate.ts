@@ -208,7 +208,7 @@ export function validateProposedRates(
         raw.powerP2,
         raw.powerMargin,
       ].filter((value): value is number => typeof value === "number" && value !== 0);
-      const missing = copied.filter((value) => !appearsInText(value, numbers));
+      const missing = copied.filter((value) => !appearsInText(value, numbers, sourceText));
       if (missing.length > 0) {
         issues.push({
           severity: "blocking",
