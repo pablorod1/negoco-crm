@@ -203,3 +203,41 @@ describe("non-commercial visibility", () => {
     },
   );
 });
+
+describe("text search", () => {
+  beforeEach(async () => {
+    await client.batch([
+      "ALTER TABLE tramites ADD COLUMN client_id TEXT",
+      "ALTER TABLE tramites ADD COLUMN sales_name TEXT",
+      `CREATE TABLE clients (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        last_name TEXT,
+        email TEXT
+      )`,
+      "CREATE TABLE contracts (tramite_id TEXT, CUPS TEXT)",
+      "INSERT INTO clients VALUES ('upper', 'JOSÉ', 'PEÑA', NULL), ('mixed', 'Ana', 'Muñoz', NULL)",
+      "UPDATE tramites SET client_id = 'upper' WHERE id = 'admin-active'",
+      "UPDATE tramites SET client_id = 'mixed' WHERE id = 'backoffice-active'",
+    ]);
+  });
+
+  test.each([
+    ["peña", ["admin-active"]],
+    ["Peña", ["admin-active"]],
+    ["josé", ["admin-active"]],
+    ["MUÑOZ", ["backoffice-active"]],
+    ["muñoz", ["backoffice-active"]],
+  ])(
+    "'%s' matches names regardless of non-ASCII case",
+    async (filterValue, expectedIds) => {
+      const { ids } = await queryVisibleContracts({
+        user_id: "admin",
+        user_role: "admin",
+        filterValue,
+      });
+
+      expect(ids).toEqual(expectedIds);
+    },
+  );
+});

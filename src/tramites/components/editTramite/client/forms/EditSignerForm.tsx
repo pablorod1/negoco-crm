@@ -101,6 +101,7 @@ export default function EditSignerForm({
         <div className="flex items-stretch gap-4">
           <InputComponent
             name="name"
+            uppercase
             label="Nombre"
             value={formData.name}
             isRequired
@@ -109,6 +110,7 @@ export default function EditSignerForm({
           />
           <InputComponent
             name="last_name"
+            uppercase
             label="Apellidos"
             value={formData.last_name}
             isRequired
@@ -136,6 +138,7 @@ export default function EditSignerForm({
 
           <InputComponent
             name="document_number"
+            uppercase
             label="Número de documento"
             value={formData.document_number}
             isRequired

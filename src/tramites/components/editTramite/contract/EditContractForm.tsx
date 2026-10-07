@@ -152,6 +152,7 @@ export default function EditContractForm({
           <div className="flex items-stretch gap-4 w-full">
             <InputComponent
               name="province"
+              uppercase
               label="Provincia"
               onChange={handleFieldChange}
               errors={errors.province}
@@ -161,6 +162,7 @@ export default function EditContractForm({
             />
             <InputComponent
               name="city"
+              uppercase
               label="Población"
               onChange={handleFieldChange}
               errors={errors.city}
@@ -180,6 +182,7 @@ export default function EditContractForm({
           </div>
           <InputComponent
             name="address"
+            uppercase
             label="Dirección"
             onChange={handleFieldChange}
             errors={errors.address}
@@ -191,6 +194,7 @@ export default function EditContractForm({
           <div className="flex items-stretch gap-4 w-full">
             <InputComponent
               name="CUPS"
+              uppercase
               label="CUPS"
               onChange={handleFieldChange}
               errors={errors.CUPS}

@@ -378,6 +378,7 @@ export default function ContractForm({
             <div className="flex items-stretch gap-4 w-full">
               <InputComponent
                 name="province"
+                uppercase
                 label="Provincia"
                 onChange={handleFieldChange}
                 value={formData.province}
@@ -387,6 +388,7 @@ export default function ContractForm({
               />
               <InputComponent
                 name="city"
+                uppercase
                 label="Población"
                 onChange={handleFieldChange}
                 value={formData.city}
@@ -406,6 +408,7 @@ export default function ContractForm({
             </div>
             <InputComponent
               name="address"
+              uppercase
               label="Dirección"
               onChange={handleFieldChange}
               value={formData.address}
@@ -416,6 +419,7 @@ export default function ContractForm({
             <div className="flex items-stretch gap-4 w-full">
               <InputComponent
                 name="CUPS"
+                uppercase
                 label="CUPS"
                 onChange={handleFieldChange}
                 value={formData.CUPS}

@@ -135,6 +135,7 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
               <Label htmlFor="signer-name">Nombre</Label>
               <Input
                 id="signer-name"
+                uppercase
                 value={form.name}
                 onChange={handleChange("name")}
                 placeholder="Nombre"
@@ -144,6 +145,7 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
               <Label htmlFor="signer-lastname">Apellidos</Label>
               <Input
                 id="signer-lastname"
+                uppercase
                 value={form.last_name}
                 onChange={handleChange("last_name")}
                 placeholder="Apellidos"
@@ -176,6 +178,7 @@ export function SignerEditor({ clientId, signer, onUpdated }: SignerEditorProps)
               <Label htmlFor="signer-dni">DNI/NIE</Label>
               <Input
                 id="signer-dni"
+                uppercase
                 value={form.document_number}
                 onChange={handleChange("document_number")}
                 placeholder="12345678X"

@@ -195,22 +195,25 @@ export async function GET(
     }
 
     if (search) {
+      // LOWER() de SQLite solo pasa a minúsculas ASCII: "PEÑA" queda "peÑa".
+      // Se compara también con el término en mayúsculas para encontrar los
+      // datos guardados en mayúsculas desde los formularios.
       const searchPattern = `%${search.toLocaleLowerCase("es")}%`;
-      whereClauses.push(`
-        (
-          LOWER(clients.name) LIKE ?
-          OR LOWER(COALESCE(clients.last_name, '')) LIKE ?
-          OR LOWER(COALESCE(clients.email, '')) LIKE ?
-          OR LOWER(COALESCE(clients.document_number, '')) LIKE ?
-          OR LOWER(clients.name || ' ' || COALESCE(clients.last_name, '')) LIKE ?
-        )
-      `);
-      whereArgs.push(
-        searchPattern,
-        searchPattern,
-        searchPattern,
-        searchPattern,
-        searchPattern,
+      const upperSearchPattern = `%${search.toLocaleUpperCase("es")}%`;
+      const searchFields = [
+        "clients.name",
+        "COALESCE(clients.last_name, '')",
+        "COALESCE(clients.email, '')",
+        "COALESCE(clients.document_number, '')",
+        "clients.name || ' ' || COALESCE(clients.last_name, '')",
+      ];
+      whereClauses.push(
+        `(${searchFields
+          .map((field) => `LOWER(${field}) LIKE ? OR ${field} LIKE ?`)
+          .join(" OR ")})`,
+      );
+      searchFields.forEach(() =>
+        whereArgs.push(searchPattern, upperSearchPattern),
       );
     }
 
