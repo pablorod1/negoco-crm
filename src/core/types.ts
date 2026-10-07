@@ -1,5 +1,6 @@
 ﻿import type { ResolvedBranding } from "@/core/branding/types";
 import type { PermissionMap } from "@/core/access-control/types";
+import type { TenantModules } from "@/core/modules/types";
 
 export interface User {
   id: string;
@@ -70,6 +71,8 @@ export interface Organization {
   logo: string | null;
   plan: string | null;
   abarca_user_id?: number;
+  /** Módulos contratados por el tenant; ausente equivale a ninguno. */
+  modules?: TenantModules;
   branding?: ResolvedBranding;
 }
 

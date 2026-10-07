@@ -9,6 +9,7 @@ import { hasAiStudiesCapability } from "./capabilities";
 import { hasPermission } from "./client";
 import {
   AccessControlRequestError,
+  getAccessControlSnapshot,
   resolveEffectivePermission,
   resolveEffectivePermissions,
   updateAccessControl,
@@ -16,10 +17,11 @@ import {
 
 const COMPLETE = "comparisons.study.complete";
 const REVIEW = "comparisons.study.review";
+const NEGOCO = "comparisons.study.negoco";
 
 describe("access-control catalog", () => {
   test("defines all study permissions and their current role defaults", () => {
-    expect(PERMISSION_KEYS).toEqual([COMPLETE, REVIEW]);
+    expect(PERMISSION_KEYS).toEqual([COMPLETE, REVIEW, NEGOCO]);
     expect(Object.isFrozen(PERMISSION_KEYS)).toBe(true);
     expect(() =>
       (PERMISSION_KEYS as unknown as string[]).push("unknown.permission"),
@@ -43,7 +45,20 @@ describe("access-control catalog", () => {
         label: "Revisar estudios con IA",
         description:
           "Permite completar la revisión de estudios con IA. Los comerciales no pueden modificar comisiones y necesitan importes ya asignados; admin y backoffice pueden resolver los casos pendientes.",
-        requiredCapability: "ai_studies",
+        requiredCapability: ["ai_studies", "negoco_studies"],
+        defaults: {
+          admin: true,
+          "1": true,
+          "2": false,
+        },
+      },
+      {
+        key: NEGOCO,
+        group: "Comparativas",
+        label: "Usar Estudio Negoco Cloud",
+        description:
+          "Permite analizar facturas y comparar tarifas con el comparador propio de Negoco Cloud. Requiere además poder completar estudios.",
+        requiredCapability: "negoco_studies",
         defaults: {
           admin: true,
           "1": true,
@@ -55,14 +70,17 @@ describe("access-control catalog", () => {
     expect(getDefaultPermissions("admin")).toEqual({
       [COMPLETE]: true,
       [REVIEW]: true,
+      [NEGOCO]: true,
     });
     expect(getDefaultPermissions("1")).toEqual({
       [COMPLETE]: true,
       [REVIEW]: true,
+      [NEGOCO]: true,
     });
     expect(getDefaultPermissions("2")).toEqual({
       [COMPLETE]: false,
       [REVIEW]: false,
+      [NEGOCO]: false,
     });
   });
 });
@@ -117,10 +135,12 @@ describe("effective permission resolver", () => {
     expect(resolveEffectivePermissions({ userRole: "1" })).toEqual({
       [COMPLETE]: true,
       [REVIEW]: true,
+      [NEGOCO]: true,
     });
     expect(resolveEffectivePermissions({ userRole: "2" })).toEqual({
       [COMPLETE]: false,
       [REVIEW]: false,
+      [NEGOCO]: false,
     });
   });
 
@@ -134,6 +154,7 @@ describe("effective permission resolver", () => {
     ).toEqual({
       [COMPLETE]: true,
       [REVIEW]: true,
+      [NEGOCO]: true,
     });
   });
 
@@ -159,6 +180,7 @@ describe("effective permission resolver", () => {
     ).toEqual({
       [COMPLETE]: false,
       [REVIEW]: true,
+      [NEGOCO]: true,
     });
   });
 
@@ -419,5 +441,39 @@ describe("access-control updates", () => {
     expect(transaction.rollback).toHaveBeenCalledTimes(1);
     expect(transaction.commit).not.toHaveBeenCalled();
     expect(client.execute).not.toHaveBeenCalled();
+  });
+});
+
+describe("module capabilities", () => {
+  function snapshotClient(abarcaUserId: number | null) {
+    return {
+      execute: vi.fn(async ({ sql }: { sql: string }) => {
+        if (sql === "SELECT abarca_user_id FROM organization LIMIT 1") {
+          return { rows: [{ abarca_user_id: abarcaUserId }], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      }),
+    } as unknown as Client;
+  }
+
+  test("hides both comparator permissions without Abarca or the module", async () => {
+    const snapshot = await getAccessControlSnapshot(snapshotClient(null));
+    expect(snapshot.catalog.map(({ key }) => key)).toEqual([COMPLETE]);
+  });
+
+  test("the negoco_studies module opens its own permission and the review one", async () => {
+    const snapshot = await getAccessControlSnapshot(snapshotClient(null), {
+      capabilities: ["negoco_studies"],
+    });
+    expect(snapshot.catalog.map(({ key }) => key)).toEqual([
+      COMPLETE,
+      REVIEW,
+      NEGOCO,
+    ]);
+  });
+
+  test("Abarca alone opens the review permission but not the Negoco one", async () => {
+    const snapshot = await getAccessControlSnapshot(snapshotClient(42));
+    expect(snapshot.catalog.map(({ key }) => key)).toEqual([COMPLETE, REVIEW]);
   });
 });

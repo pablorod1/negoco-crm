@@ -8,6 +8,8 @@ import { getEffectivePermissions } from "@/core/access-control/server";
 import type { PermissionMap } from "@/core/access-control/types";
 import { validateUserSession } from "@/core/auth/session-utils";
 import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
+import { getTenantModulesForRequest } from "@/core/modules/server";
+import type { TenantModules } from "@/core/modules/types";
 
 // Request Validation Schema
 const GetUserParamsSchema = z.object({
@@ -38,6 +40,7 @@ interface UserResponse {
       logo: string | null;
       plan: string | null;
       abarca_user_id?: number;
+      modules: TenantModules;
       branding: ResolvedBranding;
     };
     company_commissions: {
@@ -170,7 +173,8 @@ export async function GET(
         })
       : Promise.resolve({ rows: [] });
 
-    const [commissionsResponse, notesResponse, permissions] = await Promise.all([
+    const [commissionsResponse, notesResponse, permissions, modules] =
+      await Promise.all([
       tursoClient.execute({
         sql: `SELECT
           ucc.id,
@@ -190,6 +194,7 @@ export async function GET(
       }),
       notesPromise,
       getEffectivePermissions(tursoClient, { id, role: userRole }),
+      getTenantModulesForRequest(request),
     ]);
 
     return NextResponse.json({
@@ -219,6 +224,7 @@ export async function GET(
             row.org_abarca_user_id !== undefined
               ? Number(row.org_abarca_user_id)
               : undefined,
+          modules,
           branding,
         },
         company_commissions: commissionsResponse.rows.map((commission) => ({

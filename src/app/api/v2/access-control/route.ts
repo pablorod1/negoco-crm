@@ -11,6 +11,15 @@ import {
   updateAccessControl,
 } from "@/core/access-control/server";
 import { getTursoClient } from "@/core/libsql/client";
+import {
+  getModuleCapabilities,
+  getTenantModulesForRequest,
+} from "@/core/modules/server";
+
+async function getRequestAccessControlOptions(request: NextRequest) {
+  const modules = await getTenantModulesForRequest(request);
+  return { capabilities: getModuleCapabilities(modules) };
+}
 
 const PermissionKeySchema = z
   .string()
@@ -82,7 +91,10 @@ export async function GET(request: NextRequest) {
     const authError = await requireAdmin(request);
     if (authError) return authError;
 
-    const snapshot = await getAccessControlSnapshot(getTursoClient(request));
+    const snapshot = await getAccessControlSnapshot(
+      getTursoClient(request),
+      await getRequestAccessControlOptions(request),
+    );
     return NextResponse.json({ success: true, data: snapshot });
   } catch (error) {
     console.error("Error fetching access control:", error);
@@ -122,6 +134,7 @@ export async function PATCH(request: NextRequest) {
     const snapshot = await updateAccessControl(
       getTursoClient(request),
       validation.data.updates,
+      await getRequestAccessControlOptions(request),
     );
     return NextResponse.json({ success: true, data: snapshot });
   } catch (error) {

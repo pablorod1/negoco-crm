@@ -26,6 +26,7 @@ const values = (
       permissions: {
         "comparisons.study.complete": complete,
         "comparisons.study.review": review,
+        "comparisons.study.negoco": false,
       },
     },
     hasTramite,

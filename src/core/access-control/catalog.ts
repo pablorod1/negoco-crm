@@ -32,7 +32,20 @@ export const PERMISSION_CATALOG = [
     label: "Revisar estudios con IA",
     description:
       "Permite completar la revisión de estudios con IA. Los comerciales no pueden modificar comisiones y necesitan importes ya asignados; admin y backoffice pueden resolver los casos pendientes.",
-    requiredCapability: "ai_studies",
+    requiredCapability: ["ai_studies", "negoco_studies"],
+    defaults: {
+      admin: true,
+      "1": true,
+      "2": false,
+    },
+  },
+  {
+    key: "comparisons.study.negoco",
+    group: "Comparativas",
+    label: "Usar Estudio Negoco Cloud",
+    description:
+      "Permite analizar facturas y comparar tarifas con el comparador propio de Negoco Cloud. Requiere además poder completar estudios.",
+    requiredCapability: "negoco_studies",
     defaults: {
       admin: true,
       "1": true,

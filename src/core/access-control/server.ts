@@ -17,6 +17,7 @@ import type {
   PermissionResolutionInput,
   PermissionSettings,
   PublicPermissionDefinition,
+  TenantCapability,
   UserPermissionOverride,
 } from "./types";
 
@@ -154,23 +155,33 @@ export class AccessControlRequestError extends Error {
   }
 }
 
+/** Capacidades que no salen de la base del tenant, como los módulos contratados. */
+export interface AccessControlOptions {
+  capabilities?: readonly TenantCapability[];
+}
+
 async function getAvailablePermissionCatalog(
   client: QueryClient,
+  options: AccessControlOptions = {},
 ): Promise<readonly PermissionDefinition[]> {
   const organizationResponse = await client.execute({
     sql: "SELECT abarca_user_id FROM organization LIMIT 1",
     args: [],
   });
-  const hasAiStudies = hasAiStudiesCapability(
-    organizationResponse.rows[0]?.abarca_user_id,
-  );
+  const capabilities = new Set<TenantCapability>(options.capabilities);
+  if (hasAiStudiesCapability(organizationResponse.rows[0]?.abarca_user_id)) {
+    capabilities.add("ai_studies");
+  }
   const catalog: readonly PermissionDefinition[] = PERMISSION_CATALOG;
 
-  return catalog.filter(
-    ({ requiredCapability }) =>
-      requiredCapability === undefined ||
-      (requiredCapability === "ai_studies" && hasAiStudies),
-  );
+  return catalog.filter(({ requiredCapability }) => {
+    if (requiredCapability === undefined) return true;
+    const required: readonly TenantCapability[] =
+      typeof requiredCapability === "string"
+        ? [requiredCapability]
+        : requiredCapability;
+    return required.some((capability) => capabilities.has(capability));
+  });
 }
 
 async function validateUpdateSubjects(
@@ -319,18 +330,20 @@ async function getAccessControlSnapshotForCatalog(
 
 export async function getAccessControlSnapshot(
   client: QueryClient,
+  options: AccessControlOptions = {},
 ): Promise<AccessControlSnapshot> {
-  const catalog = await getAvailablePermissionCatalog(client);
+  const catalog = await getAvailablePermissionCatalog(client, options);
   return getAccessControlSnapshotForCatalog(client, catalog);
 }
 
 export async function updateAccessControl(
   client: TransactionClient,
   updates: readonly AccessControlUpdate[],
+  options: AccessControlOptions = {},
 ): Promise<AccessControlSnapshot> {
   const transaction = await client.transaction("write");
   try {
-    const catalog = await getAvailablePermissionCatalog(transaction);
+    const catalog = await getAvailablePermissionCatalog(transaction, options);
     const availablePermissionKeys = new Set(catalog.map(({ key }) => key));
     if (
       updates.some(

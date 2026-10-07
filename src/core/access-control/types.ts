@@ -2,14 +2,15 @@ import type { PermissionKey } from "./catalog";
 
 export type AccessControlRole = "admin" | "1" | "2";
 export type ConfigurableRole = Exclude<AccessControlRole, "admin">;
-export type TenantCapability = "ai_studies";
+export type TenantCapability = "ai_studies" | "negoco_studies";
 
 export interface PermissionDefinition {
   key: string;
   group: string;
   label: string;
   description: string;
-  requiredCapability?: TenantCapability;
+  /** Basta con que el tenant tenga una de ellas. */
+  requiredCapability?: TenantCapability | readonly TenantCapability[];
   defaults: Record<AccessControlRole, boolean>;
 }
 

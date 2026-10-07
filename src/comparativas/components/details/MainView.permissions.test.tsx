@@ -49,6 +49,9 @@ vi.mock("@/core/contexts/UserContext", () => ({
 vi.mock("@/comparativas/components/details/AbarcaPanel", () => ({
   AbarcaPanel: () => <button type="button">Estudio con IA</button>,
 }));
+vi.mock("@/comparador/components/NegocoStudyPanel", () => ({
+  NegocoStudyPanel: () => <button type="button">Estudio Negoco Cloud</button>,
+}));
 
 const baseComparativa = {
   id: "comparison-1",
@@ -81,6 +84,9 @@ function renderMainView({
   pendingResult = false,
   studyResult,
   assignedCommercialId = "",
+  negocoModule = false,
+  negoco,
+  service = "Luz",
 }: {
   role: string;
   status:
@@ -99,12 +105,16 @@ function renderMainView({
   pendingResult?: boolean;
   studyResult?: React.ComponentProps<typeof MainView>["studyResult"];
   assignedCommercialId?: string;
+  negocoModule?: boolean;
+  negoco?: boolean;
+  service?: "Luz" | "Gas";
 }) {
   render(
     <MainView
       comparativa={
         {
           ...baseComparativa,
+          service,
           user: { ...baseComparativa.user, id: assignedCommercialId },
           status,
           has_pending_study_result: pendingResult,
@@ -118,11 +128,15 @@ function renderMainView({
           permissions: {
             "comparisons.study.complete": complete,
             "comparisons.study.review": review,
+            ...(negoco === undefined
+              ? {}
+              : { "comparisons.study.negoco": negoco }),
           },
           has_abarca_user_id: hasAbarcaUserId,
           organization: {
             id: "organization-1",
             abarca_user_id: aiStudiesUserId,
+            modules: { negoco_studies: negocoModule },
           },
         } as never
       }
@@ -929,5 +943,108 @@ describe("CompletarEstudioModal AI review guards", () => {
         name: "Asignar Comercializadora y Comisiones",
       }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Estudio Negoco Cloud button", () => {
+  const negocoButton = () =>
+    screen.queryByRole("button", { name: "Estudio Negoco Cloud" });
+
+  test("shows next to Abarca for backoffice when the tenant has the module", () => {
+    renderMainView({
+      role: "1",
+      status: "pending",
+      complete: true,
+      review: true,
+      negocoModule: true,
+    });
+
+    expect(negocoButton()).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Estudio con IA" })).toBeTruthy();
+  });
+
+  test("stays hidden without the module, even for admin", () => {
+    renderMainView({
+      role: "admin",
+      status: "pending",
+      complete: true,
+      review: true,
+      negocoModule: false,
+    });
+
+    expect(negocoButton()).toBeNull();
+  });
+
+  test("works without Abarca configured", () => {
+    renderMainView({
+      role: "1",
+      status: "pending",
+      complete: true,
+      review: true,
+      aiStudiesUserId: null,
+      negocoModule: true,
+    });
+
+    expect(negocoButton()).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Estudio con IA" })).toBeNull();
+  });
+
+  test("needs the comparator permission for a comercial", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: true,
+      review: false,
+      negocoModule: true,
+    });
+    expect(negocoButton()).toBeNull();
+  });
+
+  test("shows for a comercial with both permissions granted", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: true,
+      review: false,
+      negocoModule: true,
+      negoco: true,
+    });
+    expect(negocoButton()).not.toBeNull();
+  });
+
+  test("never shows for a subcomercial", () => {
+    renderMainView({
+      role: "2",
+      status: "pending",
+      complete: true,
+      review: false,
+      negocoModule: true,
+      negoco: true,
+      isSubcomercial: true,
+    });
+    expect(negocoButton()).toBeNull();
+  });
+
+  test("is not offered for gas comparisons", () => {
+    renderMainView({
+      role: "1",
+      status: "pending",
+      complete: true,
+      review: true,
+      negocoModule: true,
+      service: "Gas",
+    });
+    expect(negocoButton()).toBeNull();
+  });
+
+  test("disappears once the study is completed", () => {
+    renderMainView({
+      role: "1",
+      status: "completed",
+      complete: true,
+      review: true,
+      negocoModule: true,
+    });
+    expect(negocoButton()).toBeNull();
   });
 });

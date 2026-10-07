@@ -38,6 +38,8 @@ import ComparativaPlanSection from "@/comparativas/components/editComparativa/Co
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
+import { NegocoStudyPanel } from "@/comparador/components/NegocoStudyPanel";
+import { canUseNegocoStudies } from "@/comparador/access";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { hasPermission } from "@/core/access-control/client";
 import { hasAiStudiesCapability } from "@/core/access-control/capabilities";
@@ -144,6 +146,15 @@ export default function MainView({
     (isComercial
       ? userData.has_abarca_user_id
       : hasAiStudiesCapability(userData.organization.abarca_user_id));
+  // De momento el comparador propio solo cubre luz 2.0TD.
+  const canUseNegocoComparator =
+    comparativa.service === "Luz" &&
+    canUseNegocoStudies({
+      modules: userData.organization.modules,
+      role: userData.role,
+      isSubcomercial,
+      permissions: userData.permissions,
+    });
   const assignedCommercialId = comparativa.user.id;
   const canEditCommercialSummary =
     (userData.role === "admin" || userData.role === "1") && isStudied;
@@ -593,6 +604,10 @@ export default function MainView({
                             onOpenChange={studyResult?.setPanelOpen}
                             files={comparativa.files}
                           />
+                        ) : null}
+
+                        {canUseNegocoComparator ? (
+                          <NegocoStudyPanel />
                         ) : null}
 
                         <div className="flex items-center gap-4">
