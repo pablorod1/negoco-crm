@@ -16,6 +16,7 @@ const CONTROL_TABLES = [
   "ai_usage_events",
   "rate_catalog",
   "rate_catalog_aliases",
+  "rate_sheet_recipes",
 ];
 
 const TENANT_TABLES = [

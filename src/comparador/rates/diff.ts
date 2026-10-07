@@ -1,6 +1,6 @@
 import { conditionsKey } from "./keys";
 import type { RateMatch } from "./match";
-import { normalizeName } from "./names";
+import { productKeyOf } from "./names";
 import { rowKey, type RateIssue } from "./validate";
 import type {
   ProposedRate,
@@ -228,7 +228,7 @@ export function buildDiff(
       rateId: row.rateId,
       catalogRateId: row.catalogRateId,
       productName: row.rateName,
-      productKey: normalizeName(row.rateName),
+      productKey: productKeyOf(row.rateName),
       sourceExcerpt: row.sourceExcerpt,
       sourceValues: null,
     });

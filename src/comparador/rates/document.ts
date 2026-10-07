@@ -1,6 +1,7 @@
 import type { FilePart, TextPart } from "ai";
 import { extractText, getDocumentProxy } from "unpdf";
 import * as XLSX from "xlsx";
+import { readWorkbook, type SheetGrid } from "./sheets/grid";
 
 /** Lo que llega a una ingesta: un archivo o un texto (pegado o cuerpo de correo). */
 export type RateSource =
@@ -20,32 +21,11 @@ export interface PreparedDocument {
   sentChars: number;
   pages: number | null;
   /**
-   * Partes que se extraen por separado (hojas de un Excel grande). Con más de
-   * una, cada parte va en su propia llamada: un anexo como el de Axpo trae más
-   * filas de las que caben en una respuesta.
+   * Celdas de un Excel o CSV. Si están, el documento se lee con una plantilla
+   * (las cifras salen de las celdas) en vez de pedirle las filas a la IA.
    */
-  chunks?: DocumentChunk[];
-  /** Hojas que no se leen por su nombre (indexadas, gas). */
-  skippedSections?: string[];
+  grids?: SheetGrid[];
 }
-
-export interface DocumentChunk {
-  label: string;
-  text: string;
-}
-
-/**
- * Texto por llamada. En el Excel de Axpo cada línea trae tres niveles (N1–N3),
- * así que 20.000 letras podían pasar de 100 filas y cortar la respuesta;
- * 10.000 es, en la práctica, una hoja por llamada.
- */
-export const CHUNK_CHARS = 10_000;
-
-/**
- * Hojas que no se leen por su nombre: indexadas y gas. La v1 no las guarda y
- * leerlas cuesta: en el Excel de Axpo son 5 de 13 hojas.
- */
-const SKIPPED_SHEET = /index|omie|\bpool\b|din[aá]mica|pass.?through|\bgas\b|\bRL\.?\s?\d/i;
 
 /** Tope de texto por documento: el Excel completo de Axpo ronda 85.000 caracteres. */
 export const MAX_DOCUMENT_CHARS = 120_000;
@@ -111,58 +91,6 @@ export function sheetToText(data: Uint8Array): string {
     .join("\n\n");
 }
 
-/**
- * Agrupa las hojas útiles en partes de hasta CHUNK_CHARS. Una hoja más larga
- * se parte por líneas, repitiendo su cabecera para que la IA sepa qué producto es.
- */
-export function chunkSheets(sheets: readonly { name: string; csv: string }[]): {
-  chunks: DocumentChunk[];
-  skipped: string[];
-} {
-  const skipped: string[] = [];
-  const pieces: DocumentChunk[] = [];
-  for (const { name, csv } of sheets) {
-    if (SKIPPED_SHEET.test(name)) {
-      skipped.push(name);
-      continue;
-    }
-    const header = `### Hoja: ${name}`;
-    if (csv.length <= CHUNK_CHARS) {
-      pieces.push({ label: name, text: `${header}\n${csv}` });
-      continue;
-    }
-    const lines = csv.split("\n");
-    let current: string[] = [];
-    let size = 0;
-    let part = 1;
-    for (const line of lines) {
-      if (size + line.length > CHUNK_CHARS && current.length) {
-        pieces.push({ label: `${name} (${part++})`, text: `${header} (continúa)\n${current.join("\n")}` });
-        current = [];
-        size = 0;
-      }
-      current.push(line);
-      size += line.length + 1;
-    }
-    if (current.length) {
-      pieces.push({ label: part > 1 ? `${name} (${part})` : name, text: `${header}\n${current.join("\n")}` });
-    }
-  }
-
-  // Hojas pequeñas juntas, para no gastar una llamada en cada una.
-  const chunks: DocumentChunk[] = [];
-  for (const piece of pieces) {
-    const last = chunks.at(-1);
-    if (last && last.text.length + piece.text.length + 2 <= CHUNK_CHARS) {
-      last.label = `${last.label} · ${piece.label}`;
-      last.text = `${last.text}\n\n${piece.text}`;
-    } else {
-      chunks.push({ ...piece });
-    }
-  }
-  return { chunks, skipped };
-}
-
 async function pdfToText(data: Uint8Array) {
   const pdf = await getDocumentProxy(new Uint8Array(data));
   const { totalPages, text } = await extractText(pdf, { mergePages: false });
@@ -219,20 +147,17 @@ export async function prepareDocument(source: RateSource): Promise<PreparedDocum
     };
   }
 
-  if (SHEET_EXTENSIONS.test(name) || mime.includes("spreadsheet") || mime.includes("excel")) {
-    const sheets = readSheets(data);
-    const text = truncate(sheetToText(data));
-    const { chunks, skipped } = chunkSheets(sheets);
-    const sent = chunks.reduce((sum, chunk) => sum + chunk.text.length, 0);
+  const isCsv = mime === "text/csv" || /\.csv$/i.test(name);
+  if (isCsv || SHEET_EXTENSIONS.test(name) || mime.includes("spreadsheet") || mime.includes("excel")) {
+    // Los Excel se leen con plantilla: a la IA no le llega el texto, sino la
+    // forma del libro (ver sheets/read.ts).
     return {
       format: "sheet",
-      // El texto completo sirve para comprobar las cifras; a la IA van las partes.
-      text,
-      parts: chunks.length === 1 ? [{ type: "text", text: chunks[0].text }] : [],
-      sentChars: sent,
+      text: truncate(sheetToText(data)),
+      parts: [],
+      sentChars: 0,
       pages: null,
-      chunks,
-      skippedSections: skipped,
+      grids: readWorkbook(data),
     };
   }
 

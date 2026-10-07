@@ -1,7 +1,10 @@
 import { NoObjectGeneratedError } from "ai";
+import { readSpreadsheet, type SheetReadResult } from "./sheets/read";
+import { controlRecipeStore, type RecipeStore } from "./sheets/store";
 import { generateStructured } from "@/comparador/ai/gateway";
 import {
   getRateExtractionModels,
+  getSheetRecipeModels,
   RATE_CLASSIFICATION_MODEL,
 } from "@/comparador/ai/models";
 import type { AiJobContext } from "@/comparador/ai/usage";
@@ -56,12 +59,16 @@ export interface RateExtractionAttempt {
   outputTokens: number | null;
 }
 
+/** Cómo se ha leído un Excel: con la plantilla guardada o con una nueva. */
+export type SheetReader = SheetReadResult["recipe"];
+
 export type RateExtractionResult =
   | {
       status: "out_of_scope";
       reason: string;
       classification: RateDocumentClassification;
       costUsd: number | null;
+      reader?: SheetReader;
     }
   | {
       status: "ok" | "needs_review";
@@ -71,6 +78,7 @@ export type RateExtractionResult =
       issues: RateIssue[];
       attempts: RateExtractionAttempt[];
       costUsd: number | null;
+      reader?: SheetReader;
     };
 
 /** Motivo para no extraer, o `null` si el documento merece la extracción. */
@@ -112,156 +120,10 @@ function worthRetrying(issues: readonly RateIssue[]): boolean {
   );
 }
 
-/** Límite del crédito gratuito de la Gateway: 5 peticiones por minuto y modelo. */
-export const REQUESTS_PER_MINUTE = 5;
-
-type ContentPart = PreparedDocument["parts"][number];
-
-interface PartResult {
-  label: string | null;
-  extraction: RateDocumentExtraction | null;
-  attempts: RateExtractionAttempt[];
-  costUsd: number | null;
-  /** Por qué no se ha podido leer esta parte (respuesta cortada…). */
-  failure: string | null;
-}
-
-/**
- * Lee una parte del documento con la cascada: el modelo siguiente solo entra
- * si la extracción no cuadra con el texto del documento.
- */
-async function extractPart({
-  parts,
-  label,
-  document,
-  context,
-  instructions,
-  models,
-  generate,
-}: {
-  parts: ContentPart[];
-  label: string | null;
-  document: PreparedDocument;
-  context: AiJobContext;
-  instructions: string;
-  models: readonly string[];
-  generate: typeof generateStructured;
-}): Promise<PartResult> {
-  const attempts: RateExtractionAttempt[] = [];
-  let costUsd: number | null = null;
-  let extraction: RateDocumentExtraction | null = null;
-
-  for (const model of models) {
-    let result;
-    try {
-      result = await generate({
-        context: { ...context, jobType: "rate_extraction" },
-        model,
-        schema: RateDocumentSchema,
-        instructions,
-        messages: [
-          {
-            role: "user",
-            content: [
-              ...parts,
-              { type: "text", text: "Extrae los precios 2.0TD y las comisiones de este documento." },
-            ],
-          },
-        ],
-        maxOutputTokens: RATE_MAX_OUTPUT_TOKENS,
-      });
-    } catch (error) {
-      // Una respuesta cortada no mejora con un modelo más caro: se marca la
-      // parte y se sigue con las demás.
-      if (NoObjectGeneratedError.isInstance(error)) {
-        return {
-          label,
-          extraction,
-          attempts,
-          costUsd,
-          failure:
-            error.finishReason === "length"
-              ? "la respuesta no cabe en una llamada"
-              : "la respuesta de la IA no se ha podido leer",
-        };
-      }
-      throw error;
-    }
-    costUsd = addCost(costUsd, result.costUsd);
-    extraction = result.output;
-
-    const proposed = toProposedRates(extraction, document.text);
-    const issues = validateProposedRates(proposed, {
-      sourceText: document.text,
-      partialUpdate: extraction.partialUpdate,
-      validFrom: extraction.validFrom,
-    });
-    attempts.push({
-      model,
-      issues,
-      costUsd: result.costUsd,
-      inputTokens: result.usage?.inputTokens ?? null,
-      outputTokens: result.usage?.outputTokens ?? null,
-    });
-    if (!worthRetrying(issues)) break;
-  }
-  return { label, extraction, attempts, costUsd, failure: null };
-}
-
-/** Lanza las partes en tandas que respetan el límite por minuto de la Gateway. */
-async function inBatches<T, R>(
-  items: readonly T[],
-  run: (item: T) => Promise<R>,
-  {
-    size,
-    intervalMs,
-    sleep,
-  }: { size: number; intervalMs: number; sleep: (ms: number) => Promise<void> },
-): Promise<R[]> {
-  const results: R[] = [];
-  for (let start = 0; start < items.length; start += size) {
-    const began = Date.now();
-    results.push(...(await Promise.all(items.slice(start, start + size).map(run))));
-    const wait = intervalMs - (Date.now() - began);
-    if (start + size < items.length && wait > 0) await sleep(wait);
-  }
-  return results;
-}
-
-/** Junta las extracciones de varias partes en una sola. */
-export function mergeExtractions(
-  extractions: readonly RateDocumentExtraction[],
-): RateDocumentExtraction {
-  const firstOf = (values: (string | null)[]) => values.find((value) => value) ?? null;
-  const hasPrices = extractions.some(({ rates }) => rates.length > 0);
-  const hasCommissions = extractions.some(({ commissions }) => commissions.length > 0);
-
-  return {
-    supplierName: firstOf(extractions.map(({ supplierName }) => supplierName)),
-    documentKind:
-      hasPrices && hasCommissions
-        ? "prices_and_commissions"
-        : hasPrices
-          ? "prices"
-          : hasCommissions
-            ? "commissions"
-            : "other",
-    validFrom: firstOf(extractions.map(({ validFrom }) => validFrom)),
-    validTo: firstOf(extractions.map(({ validTo }) => validTo)),
-    partialUpdate:
-      extractions.length > 0 && extractions.every(({ partialUpdate }) => partialUpdate),
-    rates: extractions.flatMap(({ rates }) => rates),
-    commissions: extractions.flatMap(({ commissions }) => commissions),
-    skipped: [...new Set(extractions.flatMap(({ skipped }) => skipped))],
-  };
-}
-
-const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
 export class RateDocumentTooLargeError extends Error {
   constructor(detail: string) {
     super(
-      `No se ha podido leer el documento (${detail}). Si es un Excel muy grande, sube solo las hojas de 2.0TD.`,
+      `No se ha podido leer el documento (${detail}). Si es muy largo, sube solo las páginas de 2.0TD.`,
     );
     this.name = "RateDocumentTooLargeError";
   }
@@ -269,8 +131,10 @@ export class RateDocumentTooLargeError extends Error {
 
 /**
  * Clasifica el documento con el modelo más barato y, si trae precios 2.0TD
- * fijos o comisiones, los extrae en cascada. Un Excel grande se lee por
- * partes (hojas), en tandas que respetan el límite por minuto de la Gateway.
+ * fijos o comisiones, los extrae en cascada: el modelo siguiente solo entra si
+ * la extracción no cuadra con el texto del documento. Los Excel no pasan por
+ * aquí: se leen con una plantilla (sheets/read.ts) y sus cifras salen de las
+ * celdas.
  */
 export async function extractRateDocument({
   document,
@@ -278,7 +142,8 @@ export async function extractRateDocument({
   supplierName = null,
   models = getRateExtractionModels(),
   generate = generateStructured,
-  sleep = realSleep,
+  recipes = controlRecipeStore(),
+  recipeModels = getSheetRecipeModels(),
 }: {
   document: PreparedDocument;
   context: AiJobContext;
@@ -286,11 +151,28 @@ export async function extractRateDocument({
   supplierName?: string | null;
   models?: readonly string[];
   generate?: typeof generateStructured;
-  sleep?: (ms: number) => Promise<void>;
+  /** Plantillas de lectura de Excel; `null` para no guardarlas ni buscarlas. */
+  recipes?: RecipeStore | null;
+  /** Modelos para escribir plantillas de Excel. */
+  recipeModels?: readonly string[];
 }): Promise<RateExtractionResult> {
   if (models.length === 0) throw new Error("No rate extraction models configured");
-  let costUsd: number | null = null;
 
+  // Nunca se le piden a la IA las filas de un Excel: con uno grande eso
+  // costaba 0,25 $ y se cortaba.
+  if (document.grids?.length) {
+    const { result, recipe } = await readSpreadsheet({
+      grids: document.grids,
+      supplierName,
+      context,
+      store: recipes,
+      models: recipeModels,
+      generate,
+    });
+    return { ...result, reader: recipe };
+  }
+
+  let costUsd: number | null = null;
   let classification: RateDocumentClassification | null = null;
   if (document.text) {
     const result = await generate({
@@ -312,79 +194,82 @@ export async function extractRateDocument({
     if (reason) return { status: "out_of_scope", reason, classification, costUsd };
   }
 
-  const skippedSections = document.skippedSections ?? [];
-  if (document.chunks && document.chunks.length === 0 && classification) {
-    return {
-      status: "out_of_scope",
-      reason: `Solo trae hojas indexadas o de gas (${skippedSections.join(", ")}).`,
-      classification,
-      costUsd,
-    };
-  }
-
   const instructions =
     RATE_INSTRUCTIONS +
     (supplierName ? `\n\nEl documento es de la comercializadora ${supplierName}.` : "");
-  const pieces: { parts: ContentPart[]; label: string | null }[] = document.chunks?.length
-    ? document.chunks.map(({ label, text }) => ({
-        label: document.chunks!.length > 1 ? label : null,
-        parts: [{ type: "text", text }],
-      }))
-    : [{ label: null, parts: document.parts }];
+  const attempts: RateExtractionAttempt[] = [];
+  let extraction: RateDocumentExtraction | null = null;
 
-  const results = await inBatches(
-    pieces,
-    ({ parts, label }) =>
-      extractPart({ parts, label, document, context, instructions, models, generate }),
-    { size: REQUESTS_PER_MINUTE, intervalMs: 61_000, sleep },
-  );
+  for (const model of models) {
+    let result;
+    try {
+      result = await generate({
+        context: { ...context, jobType: "rate_extraction" },
+        model,
+        schema: RateDocumentSchema,
+        instructions,
+        messages: [
+          {
+            role: "user",
+            content: [
+              ...document.parts,
+              { type: "text", text: "Extrae los precios 2.0TD y las comisiones de este documento." },
+            ],
+          },
+        ],
+        maxOutputTokens: RATE_MAX_OUTPUT_TOKENS,
+      });
+    } catch (error) {
+      // Una respuesta cortada no mejora con un modelo más caro.
+      if (NoObjectGeneratedError.isInstance(error)) {
+        throw new RateDocumentTooLargeError(
+          error.finishReason === "length"
+            ? "la respuesta no cabe en una llamada"
+            : "la respuesta de la IA no se ha podido leer",
+        );
+      }
+      throw error;
+    }
+    costUsd = addCost(costUsd, result.costUsd);
+    extraction = result.output;
 
-  const attempts = results.flatMap((result) => result.attempts);
-  for (const result of results) costUsd = addCost(costUsd, result.costUsd);
-  const failures = results.filter((result) => result.failure);
-  const extractions = results
-    .map((result) => result.extraction)
-    .filter((extraction): extraction is RateDocumentExtraction => extraction !== null);
-
-  if (extractions.length === 0) {
-    // Ninguna parte se ha podido leer: el documento no cabe ni por partes.
-    throw new RateDocumentTooLargeError(failures.map((failure) => failure.failure).join("; "));
+    const proposed = toProposedRates(extraction, document.text);
+    const issues = validateProposedRates(proposed, {
+      sourceText: document.text,
+      partialUpdate: extraction.partialUpdate,
+      validFrom: extraction.validFrom,
+    });
+    attempts.push({
+      model,
+      issues,
+      costUsd: result.costUsd,
+      inputTokens: result.usage?.inputTokens ?? null,
+      outputTokens: result.usage?.outputTokens ?? null,
+    });
+    if (!worthRetrying(issues)) break;
   }
 
-  const extraction = mergeExtractions(extractions);
-  if (skippedSections.length) {
-    extraction.skipped = [...extraction.skipped, `Hojas no leídas: ${skippedSections.join(", ")}`];
-  }
-  const proposed = toProposedRates(extraction, document.text);
+  const final = extraction!;
+  const proposed = toProposedRates(final, document.text);
   let issues = validateProposedRates(proposed, {
     sourceText: document.text,
-    partialUpdate: extraction.partialUpdate,
-    validFrom: extraction.validFrom,
+    partialUpdate: final.partialUpdate,
+    validFrom: final.validFrom,
   });
-
   // Un documento de solo comisiones no trae precios: no es un error.
-  if (toProposedCommissions(extraction).length > 0) {
+  if (toProposedCommissions(final).length > 0) {
     issues = issues.filter(({ code }) => code !== "no_rates");
   }
-  for (const failure of failures) {
-    issues.unshift({
-      severity: "blocking",
-      code: "partial_read",
-      message: `No se ha podido leer ${failure.label ? `la parte «${failure.label}»` : "una parte del documento"}: ${failure.failure}. Faltarían sus tarifas; vuelve a leerlo antes de aprobar.`,
-    });
-  }
 
-  const inScopeRows = proposed.filter(isInScope).length;
   if (
-    inScopeRows === 0 &&
-    toProposedCommissions(extraction).length === 0 &&
-    failures.length === 0 &&
+    proposed.filter(isInScope).length === 0 &&
+    toProposedCommissions(final).length === 0 &&
     classification
   ) {
     // La extracción no encuentra nada que guardar: indexadas, por franjas…
     return {
       status: "out_of_scope",
-      reason: `No trae precios fijos de 2.0TD${extraction.skipped.length ? ` (${extraction.skipped.join(", ")})` : ""}.`,
+      reason: `No trae precios fijos de 2.0TD${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`,
       classification,
       costUsd,
     };
@@ -392,7 +277,7 @@ export async function extractRateDocument({
   return {
     status: hasBlockingIssues(issues) ? "needs_review" : "ok",
     classification,
-    extraction,
+    extraction: final,
     proposed,
     issues,
     attempts,

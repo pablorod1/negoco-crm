@@ -66,11 +66,17 @@ export function validateProposedRates(
     sourceText,
     partialUpdate,
     validFrom,
+    readFromCells = false,
   }: {
     /** Texto del documento. `null` en imágenes y PDF escaneados. */
     sourceText: string | null;
     partialUpdate: boolean;
     validFrom: string | null;
+    /**
+     * Las cifras salen de las celdas de un Excel (plantilla), no las ha escrito
+     * la IA: no hace falta buscarlas en el texto.
+     */
+    readFromCells?: boolean;
   },
 ): RateIssue[] {
   const issues: RateIssue[] = [];
@@ -85,7 +91,7 @@ export function validateProposedRates(
     });
   }
 
-  if (!numbers) {
+  if (!numbers && !readFromCells) {
     issues.push({
       severity: "warning",
       code: "unverifiable_source",

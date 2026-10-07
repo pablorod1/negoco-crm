@@ -1,9 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import type { generateStructured } from "@/comparador/ai/gateway";
 import type { PreparedDocument } from "./document";
-import { NoObjectGeneratedError } from "ai";
-import { chunkSheets } from "./document";
-import { extractRateDocument, mergeExtractions } from "./extract";
+import { extractRateDocument } from "./extract";
 import type { ExtractedRate, RateDocumentClassification, RateDocumentExtraction } from "./schema";
 
 const TEXT = `ANEXO DE PRECIOS UNICORNIO
@@ -137,76 +135,5 @@ describe("extractRateDocument", () => {
     const result = await extractRateDocument({ document, context, generate, models: ["a", "b"] });
     expect(result.status).toBe("out_of_scope");
     expect(generate).toHaveBeenCalledTimes(2);
-  });
-
-  test("a large spreadsheet is read sheet by sheet, in batches, and a cut part blocks approval", async () => {
-    const sheets = Array.from({ length: 7 }, (_, index) => ({
-      name: `Producto ${index + 1}`,
-      csv: `2.0TD\t${"x".repeat(15_000)}`,
-    }));
-    const { chunks } = chunkSheets(sheets);
-    expect(chunks).toHaveLength(7);
-
-    const cut = new NoObjectGeneratedError({
-      response: { id: "r", timestamp: new Date(), modelId: "a" },
-      usage: { inputTokens: 1, outputTokens: 40_000, totalTokens: 40_001 } as never,
-      finishReason: "length",
-    });
-    const generate = fakeGenerate([
-      classification(),
-      ...Array.from({ length: 6 }, () => extraction([unicornio])),
-      cut,
-    ]);
-    const sleep = vi.fn(async () => undefined);
-    const result = await extractRateDocument({
-      document: { ...document, format: "sheet", parts: [], chunks },
-      context,
-      generate,
-      models: ["a"],
-      sleep,
-    });
-    // 7 partes: una tanda de 5, espera de un minuto y otra de 2.
-    expect(sleep).toHaveBeenCalledTimes(1);
-    expect(result.status).toBe("needs_review");
-    if (result.status === "out_of_scope") throw new Error("unexpected");
-    expect(result.issues[0]).toMatchObject({ code: "partial_read", severity: "blocking" });
-    expect(result.issues[0].message).toContain("Producto 7");
-  });
-});
-
-describe("chunkSheets", () => {
-  test("skips indexed and gas sheets and groups the small ones", () => {
-    // Las hojas del Excel de Axpo, resumidas.
-    const { chunks, skipped } = chunkSheets([
-      { name: "1P Plus SSCC Libres (Península)", csv: "2.0TD\t0.169233" },
-      { name: "Estable", csv: "2.0TD\t0.15" },
-      { name: "Dinámica (Indexado)", csv: "2.0TD\t0.01" },
-      { name: "Dinámica Control (Omie+B)", csv: "2.0TD\t0.01" },
-      { name: "Gas RL", csv: "RL1\t0.08" },
-    ]);
-    expect(skipped).toEqual(["Dinámica (Indexado)", "Dinámica Control (Omie+B)", "Gas RL"]);
-    expect(chunks).toHaveLength(1);
-    expect(chunks[0].label).toBe("1P Plus SSCC Libres (Península) · Estable");
-  });
-
-  test("splits a sheet that does not fit, repeating its header", () => {
-    const lines = Array.from({ length: 3_000 }, (_, index) => `2.0TD\tfila ${index}\t0.1`);
-    const { chunks } = chunkSheets([{ name: "Enorme", csv: lines.join("\n") }]);
-    expect(chunks.length).toBeGreaterThan(1);
-    expect(chunks.every(({ text }) => text.startsWith("### Hoja: Enorme"))).toBe(true);
-    expect(chunks.every(({ text }) => text.length <= 20_100)).toBe(true);
-  });
-});
-
-describe("mergeExtractions", () => {
-  test("joins rates and keeps the first dates", () => {
-    const merged = mergeExtractions([
-      { ...extraction([unicornio]), validFrom: null },
-      { ...extraction([{ ...unicornio, productName: "Fénix" }]), validFrom: "2026-10-06", skipped: ["3.0TD"] },
-    ]);
-    expect(merged.rates.map(({ productName }) => productName)).toEqual(["Unicornio", "Fénix"]);
-    expect(merged.validFrom).toBe("2026-10-06");
-    expect(merged.skipped).toEqual(["3.0TD"]);
-    expect(merged.partialUpdate).toBe(false);
   });
 });

@@ -2,7 +2,8 @@
  * Banco de pruebas de la ingesta de anexos de precios.
  *
  *   pnpm eval:rates <fichero> [<fichero>…] [--estimate] [--max-usd 0.25]
- *                   [--models a,b] [--supplier "Nombre"] [--out carpeta]
+ *                   [--models a,b] [--supplier "Nombre"|carpeta] [--out carpeta]
+ *                   [--recipes plantillas.json]
  *
  * Prepara cada documento como en producción (PDF e imágenes enteros, Excel a
  * CSV, texto tal cual) y lo extrae con la cascada. Los anexos no llevan datos
@@ -14,10 +15,15 @@
  * Gateway: el banco se para antes de un documento que pueda pasarlo. Cada
  * resultado se guarda en --out (por defecto ~/negoco-golden/precios/eval) para
  * analizarlo sin volver a pagarlo.
+ *
+ * Excel: se leen con plantilla. --recipes guarda las plantillas en un JSON
+ * local para comprobar que se reutilizan entre versiones (sin coste).
+ * --supplier carpeta usa el nombre de la carpeta de cada fichero.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, extname, join } from "node:path";
+import { existsSync } from "node:fs";
+import { basename, dirname, extname, join } from "node:path";
 import { createGateway } from "ai";
 import { z } from "zod";
 import {
@@ -28,6 +34,9 @@ import { prepareDocument, type PreparedDocument } from "@/comparador/rates/docum
 import { extractRateDocument, RATE_INSTRUCTIONS } from "@/comparador/rates/extract";
 import { RateDocumentSchema } from "@/comparador/rates/schema";
 import { isInScope } from "@/comparador/rates/validate";
+import { renderGrid } from "@/comparador/rates/sheets/grid";
+import { RECIPE_INSTRUCTIONS } from "@/comparador/rates/sheets/read";
+import { memoryRecipeStore } from "@/comparador/rates/sheets/store";
 import { loadLocalEnv, readOption } from "./golden/paths";
 
 const MIME: Record<string, string> = {
@@ -70,6 +79,7 @@ function parseArgs(argv: string[]) {
     ],
     supplier: readOption(argv, "--supplier") ?? null,
     out: readOption(argv, "--out") ?? join(homedir(), "negoco-golden/precios/eval"),
+    recipes: readOption(argv, "--recipes"),
     // El plan gratuito admite 5 peticiones por minuto y modelo.
     delayMs: Number(readOption(argv, "--delay-ms") ?? 13_000),
   };
@@ -77,14 +87,29 @@ function parseArgs(argv: string[]) {
 
 type PriceTable = Map<string, { input: number; output: number }>;
 
+/** Salida prevista de una plantilla de Excel (unas pocas tablas). */
+const RECIPE_OUTPUT_TOKENS = 8_000;
+
 function estimateUsd(prices: PriceTable, models: readonly string[], document: PreparedDocument) {
+  // Un Excel se lee con plantilla: entra el libro con coordenadas (como mucho
+  // 120.000 caracteres) y sale la plantilla, no las filas.
+  if (document.grids?.length) {
+    const workbookChars = Math.min(
+      document.grids.reduce((sum, grid) => sum + renderGrid(grid, 30_000).length, 0),
+      120_000,
+    );
+    const input = (RECIPE_INSTRUCTIONS.length + workbookChars) / CHARS_PER_TOKEN;
+    return models.reduce((total, model) => {
+      const price = prices.get(model);
+      if (!price) throw new Error(`Sin precio en la Gateway para ${model}`);
+      return total + input * price.input + RECIPE_OUTPUT_TOKENS * price.output;
+    }, 0);
+  }
   const promptChars =
     RATE_INSTRUCTIONS.length + JSON.stringify(z.toJSONSchema(RateDocumentSchema)).length;
-  // Un Excel grande se lee por partes: cada una repite las instrucciones y
-  // tiene su propia salida.
-  const calls = Math.max(document.chunks?.length ?? 1, 1);
+  const calls = 1;
   const inputTokens =
-    (promptChars * calls + document.sentChars) / CHARS_PER_TOKEN +
+    (promptChars + document.sentChars) / CHARS_PER_TOKEN +
     (document.format === "pdf" || document.format === "image"
       ? (document.pages ?? 1) * TOKENS_PER_PAGE
       : 0);
@@ -126,9 +151,8 @@ async function main() {
     prepared.push({ file, document, estimate });
     console.log(
       `${basename(file)}: ${document.format}, ${document.pages ?? "-"} pág., ` +
-        `${document.text?.length ?? 0} caracteres de texto, ${document.sentChars} enviados` +
-        (document.chunks && document.chunks.length > 1 ? ` en ${document.chunks.length} partes` : "") +
-        (document.skippedSections?.length ? ` (sin leer: ${document.skippedSections.length} hojas)` : "") +
+        `${document.text?.length ?? 0} caracteres de texto` +
+        (document.grids ? `, ${document.grids.length} hojas (plantilla)` : `, ${document.sentChars} enviados`) +
         " · " +
         `peor caso ${usd(estimate)}`,
     );
@@ -138,6 +162,15 @@ async function main() {
   if (options.estimateOnly) return;
 
   await mkdir(options.out, { recursive: true });
+  const recipes = memoryRecipeStore();
+  if (options.recipes && existsSync(options.recipes)) {
+    const saved = JSON.parse(await readFile(options.recipes, "utf8")) as [string, never][];
+    for (const [key, entry] of saved) recipes.entries.set(key, entry);
+  }
+  const supplierFor = (file: string) =>
+    options.supplier === "carpeta"
+      ? basename(dirname(file)).replace(/^\d{4}-\d{2}-\d{2}$/, basename(dirname(dirname(file))))
+      : options.supplier;
   const balance = async () => Number((await gateway.getCredits()).balance);
   const startBalance = await balance();
   let tracked = 0;
@@ -153,24 +186,31 @@ async function main() {
     const result = await extractRateDocument({
       document,
       context: { tenantSlug: "eval", jobType: "rate_extraction", subjectId: basename(file) },
-      supplierName: options.supplier,
+      supplierName: supplierFor(file),
       models: options.models,
+      recipes,
     });
+    if (options.recipes) {
+      await writeFile(options.recipes, JSON.stringify([...recipes.entries], null, 1));
+    }
     tracked += result.costUsd ?? 0;
     spent = Math.max(tracked, startBalance - (await balance()));
 
     const name = basename(file).replace(/[^\w.-]/g, "_");
     await writeFile(join(options.out, `${name}.json`), JSON.stringify(result, null, 2));
 
+    const reader = result.reader
+      ? ` · plantilla ${{ cache: "reutilizada", repaired: "reparada", generated: "nueva", none: "ninguna" }[result.reader.source]} (${result.reader.tables} tablas)`
+      : "";
     if (result.status === "out_of_scope") {
-      console.log(`${basename(file)}: fuera de alcance · ${result.reason}`);
+      console.log(`${basename(file)}: fuera de alcance${reader} · ${result.reason} · ${usd(result.costUsd ?? 0)}`);
       continue;
     }
     const inScope = result.proposed.filter(isInScope).length;
     console.log(
       `${basename(file)}: ${result.status} · ${inScope} filas 2.0TD fijas, ` +
         `${result.extraction.commissions.length} comisiones · ` +
-        `${result.attempts.map(({ model }) => model).join(" → ")} · ${usd(result.costUsd ?? 0)}`,
+        `${result.attempts.map(({ model }) => model).join(" → ") || "sin IA"}${reader} · ${usd(result.costUsd ?? 0)}`,
     );
     for (const issue of result.issues.filter(({ severity }) => severity !== "info")) {
       console.log(`  [${issue.severity}] ${issue.message}`);

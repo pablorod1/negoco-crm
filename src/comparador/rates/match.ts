@@ -1,4 +1,4 @@
-import { normalizeName } from "./names";
+import { productKeyOf } from "./names";
 
 /** Tarifa del tenant (`comercializadora_rates`). */
 export interface TenantRate {
@@ -80,7 +80,7 @@ export function matchProducts(
   const unlinkedByName = new Map(
     tenantRates
       .filter(({ catalogRateId }) => !catalogRateId)
-      .map((rate) => [normalizeName(rate.name), rate]),
+      .map((rate) => [productKeyOf(rate.name), rate]),
   );
 
   const matches = new Map<string, RateMatch>();

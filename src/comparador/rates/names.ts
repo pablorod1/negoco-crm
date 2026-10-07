@@ -21,3 +21,12 @@ export function normalizeName(raw: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 }
+
+/**
+ * Clave de un producto. Como la de comercializadora, salvo el «+»: «TULUZ
+ * PRO» y «TULUZ PRO+» son productos distintos (el segundo cobra margen en la
+ * potencia) y no pueden compartir clave.
+ */
+export function productKeyOf(raw: string): string {
+  return normalizeName(raw.replace(/\+/g, " plus "));
+}
