@@ -180,7 +180,7 @@ export async function getActiveVersion(
   return rows[0] ? toVersion(rows[0]) : null;
 }
 
-function toStoredPrice(row: Row): StoredRatePrice {
+export function toStoredPrice(row: Row): StoredRatePrice {
   const power =
     row.power_p1 !== null && row.power_p2 !== null
       ? { P1: Number(row.power_p1), P2: Number(row.power_p2) }
@@ -542,7 +542,11 @@ export async function listCommissionRules(
       ORDER BY valid_from DESC, level, min_annual_kwh`,
     args: [comercializadoraId],
   });
-  return rows.map((row) => ({
+  return rows.map(toCommissionRule);
+}
+
+function toCommissionRule(row: Row): CommissionRule {
+  return {
     id: String(row.id),
     comercializadoraId: String(row.comercializadora_id),
     rateId: str(row.rate_id),
@@ -556,6 +560,69 @@ export async function listCommissionRules(
     amount: Number(row.amount),
     validFrom: String(row.valid_from),
     validTo: str(row.valid_to),
+  };
+}
+
+/** Reglas de comisión de todas las comercializadoras que siguen vigentes en una fecha. */
+export async function listCurrentCommissionRules(
+  client: QueryClient,
+  today: string,
+): Promise<CommissionRule[]> {
+  const { rows } = await client.execute({
+    sql: `SELECT * FROM rate_commission_rules
+      WHERE valid_from <= ? AND (valid_to IS NULL OR valid_to >= ?)`,
+    args: [today, today],
+  });
+  return rows.map(toCommissionRule);
+}
+
+/** Una fila de precios vigente con su comercializadora, lista para el estudio. */
+export interface ActiveOfferPrice {
+  comercializadoraId: string;
+  comercializadoraName: string;
+  versionId: string;
+  versionValidFrom: string | null;
+  price: StoredRatePrice;
+}
+
+/**
+ * Precios 2.0TD fijos vigentes de todas las comercializadoras del tenant, de
+ * las tarifas activas. Antes activa las versiones programadas que ya han
+ * empezado (como al abrir la ficha de cada una).
+ */
+export async function listActiveOfferPrices(
+  client: QueryClient,
+  today: string,
+): Promise<ActiveOfferPrice[]> {
+  const due = await client.execute({
+    sql: `SELECT DISTINCT comercializadora_id FROM comercializadora_rate_versions
+      WHERE status = 'scheduled' AND valid_from <= ?`,
+    args: [today],
+  });
+  for (const row of due.rows) {
+    await getActiveVersion(client, String(row.comercializadora_id), today);
+  }
+
+  const { rows } = await client.execute({
+    sql: `SELECT p.*, r.name AS rate_name, r.catalog_rate_id,
+        v.comercializadora_id AS supplier_id, v.valid_from AS version_valid_from,
+        c.name AS supplier_name
+      FROM comercializadora_rate_versions v
+      JOIN comercializadora_rate_prices p ON p.version_id = v.id
+      JOIN comercializadora_rates r ON r.id = p.rate_id
+      JOIN comercializadoras c ON c.id = v.comercializadora_id
+      WHERE v.status = 'active'
+        AND COALESCE(r.enabled, 1) = 1
+        AND p.access_tariff = '2.0TD'
+        AND p.pricing = 'fixed'`,
+    args: [],
+  });
+  return rows.map((row) => ({
+    comercializadoraId: String(row.supplier_id),
+    comercializadoraName: String(row.supplier_name),
+    versionId: String(row.version_id),
+    versionValidFrom: str(row.version_valid_from),
+    price: toStoredPrice(row),
   }));
 }
 

@@ -25,6 +25,7 @@ const TENANT_TABLES = [
   "comercializadora_rate_prices",
   "rate_ingests",
   "rate_commission_rules",
+  "comparison_studies",
 ];
 
 async function existingTables(db: Client, names: readonly string[]) {

@@ -11,10 +11,11 @@ import {
   SheetTitle,
 } from "@/core/components/ui/sheet";
 import { Button } from "@/core/components/ui/button";
+import { NegocoStudy } from "./study/NegocoStudy";
 
 type PanelState = "checking" | "ready" | "error";
 
-export function NegocoStudyPanel() {
+export function NegocoStudyPanel({ comparativaId }: { comparativaId: string }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<PanelState>("checking");
   const request = useRef<AbortController | null>(null);
@@ -92,7 +93,9 @@ export function NegocoStudyPanel() {
             </div>
           </SheetHeader>
 
-          <div className="flex-1 flex items-center justify-center bg-gray-50 p-6">
+          <div
+            className={`flex-1 bg-gray-50 p-6 ${state === "ready" ? "overflow-y-auto" : "flex items-center justify-center"}`}
+          >
             {state === "checking" && (
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
@@ -112,17 +115,7 @@ export function NegocoStudyPanel() {
               </div>
             )}
 
-            {state === "ready" && (
-              <div className="max-w-md text-center space-y-2">
-                <p className="text-sm font-medium text-gray-900">
-                  El comparador está en construcción
-                </p>
-                <p className="text-sm text-gray-500">
-                  Aquí se podrá analizar la factura, comparar las tarifas y
-                  cerrar el estudio sin salir del CRM.
-                </p>
-              </div>
-            )}
+            {state === "ready" && <NegocoStudy comparativaId={comparativaId} />}
           </div>
         </SheetContent>
       </Sheet>
