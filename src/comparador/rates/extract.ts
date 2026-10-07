@@ -175,6 +175,8 @@ export async function extractRateDocument({
   let costUsd: number | null = null;
   let classification: RateDocumentClassification | null = null;
   if (document.text) {
+    // La clasificación solo ahorra la extracción de lo que no es 2.0TD: si
+    // su respuesta no se puede leer (Candela), se extrae igualmente.
     const result = await generate({
       context: { ...context, jobType: "classification" },
       model: RATE_CLASSIFICATION_MODEL,
@@ -187,11 +189,16 @@ export async function extractRateDocument({
         },
       ],
       maxOutputTokens: 1_000,
+    }).catch((error: unknown) => {
+      if (NoObjectGeneratedError.isInstance(error)) return null;
+      throw error;
     });
-    classification = result.output;
-    costUsd = addCost(costUsd, result.costUsd);
-    const reason = outOfScopeReason(classification);
-    if (reason) return { status: "out_of_scope", reason, classification, costUsd };
+    if (result) {
+      classification = result.output;
+      costUsd = addCost(costUsd, result.costUsd);
+      const reason = outOfScopeReason(classification);
+      if (reason) return { status: "out_of_scope", reason, classification, costUsd };
+    }
   }
 
   const instructions =

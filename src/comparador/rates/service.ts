@@ -54,7 +54,7 @@ export async function findComercializadoraByName(
   name: string | null,
 ): Promise<{ id: string; name: string } | null> {
   const key = name ? normalizeName(name) : "";
-  if (key.length < 3) return null;
+  if (!key) return null;
   const { rows } = await client.execute("SELECT id, name FROM comercializadoras");
   const suppliers = rows.map((row) => ({
     id: String(row.id),
@@ -63,7 +63,9 @@ export async function findComercializadoraByName(
   }));
   const exact = suppliers.find((supplier) => supplier.key === key);
   if (exact) return exact;
-  // «Quimera Infinita» en el anexo y «Quimera» en el CRM, o al revés.
+  // «Quimera Infinita» en el anexo y «Quimera» en el CRM, o al revés. Un
+  // nombre corto («VM») solo casa entero: «vm» está dentro de muchos nombres.
+  if (key.length < 4) return null;
   const partial = suppliers.filter(
     (supplier) =>
       supplier.key.length >= 4 && (key.includes(supplier.key) || supplier.key.includes(key)),
@@ -144,13 +146,28 @@ export async function processIngest({
     });
     return status;
   } catch (error) {
+    // Los errores propios ya explican qué hacer; uno de la IA o de la red
+    // («No object generated…») no le dice nada a quien revisa.
+    const explained =
+      error instanceof Error && EXPLAINED_ERRORS.has(error.name) ? error.message.slice(0, 500) : null;
+    if (!explained) console.error("[comparador] ingest failed", ingest.id, error);
     await saveIngestResult(client, ingest.id, {
       status: "failed",
-      error: error instanceof Error ? error.message.slice(0, 500) : "Error desconocido",
+      error:
+        explained ??
+        "No se ha podido leer el documento. Prueba a volver a leerlo; si sigue fallando, avisa a soporte.",
     });
     throw error;
   }
 }
+
+/** Errores con un mensaje pensado para quien revisa la ingesta. */
+const EXPLAINED_ERRORS = new Set([
+  "RateDocumentTooLargeError",
+  "RateIngestError",
+  "SheetRecipeUnavailableError",
+  "UnsupportedDocumentError",
+]);
 
 type ExtractedResult = Extract<RateExtractionResult, { status: "ok" | "needs_review" }>;
 
