@@ -68,11 +68,20 @@ function energyCell(entry: DiffEntry) {
 }
 
 function IssueList({ issues }: { issues: RateIssue[] }) {
-  const visible = issues.filter(({ severity }) => severity !== "info");
-  if (visible.length === 0) return null;
+  // El mismo aviso para varias filas («Clásico 1 precio: no da la
+  // potencia» en cuatro niveles) se enseña una vez con cuántas son.
+  const grouped = new Map<string, { issue: RateIssue; count: number }>();
+  for (const issue of issues) {
+    if (issue.severity === "info") continue;
+    const key = `${issue.severity}|${issue.message}`;
+    const entry = grouped.get(key);
+    if (entry) entry.count++;
+    else grouped.set(key, { issue, count: 1 });
+  }
+  if (grouped.size === 0) return null;
   return (
     <ul className="space-y-1">
-      {visible.map((issue, index) => (
+      {[...grouped.values()].map(({ issue, count }, index) => (
         <li
           key={`${issue.code}-${index}`}
           className={`flex gap-2 text-sm ${issue.severity === "blocking" ? "text-danger" : "text-warning-600"}`}
@@ -82,7 +91,10 @@ function IssueList({ issues }: { issues: RateIssue[] }) {
           ) : (
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           )}
-          {issue.message}
+          <span>
+            {issue.message}
+            {count > 1 && <span className="text-muted-foreground"> ({count} filas)</span>}
+          </span>
         </li>
       ))}
     </ul>

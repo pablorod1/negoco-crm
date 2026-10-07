@@ -349,7 +349,19 @@ export async function buildReview({
       validTo: extracted.extraction.validTo,
       partialUpdate,
       skipped: extracted.extraction.skipped,
-      issues: [...(oldDocument ? [oldDocument] : []), ...extractionIssues, ...diff.issues],
+      // La comparación repite «no da la potencia» para las filas que la
+      // lectura ya ha marcado: un aviso por fila basta.
+      issues: [
+        ...(oldDocument ? [oldDocument] : []),
+        ...extractionIssues,
+        ...diff.issues.filter(
+          (issue) =>
+            !(
+              issue.code === "missing_power" &&
+              extractionIssues.some(({ code, rowKey: key }) => code === "missing_power" && key === issue.rowKey)
+            ),
+        ),
+      ],
       entries: diff.entries,
       newProducts,
       commissions,
