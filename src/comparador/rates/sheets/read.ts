@@ -29,7 +29,7 @@ export const RECIPE_INSTRUCTIONS = `Escribes plantillas para leer Excel de preci
 Cada hoja viene con sus filas numeradas como en Excel («12|») y cada celda con su columna («C=0.169233»).
 Solo interesan las tarifas 2.0TD de precio fijo (también «20TD» o «2.01P», que es 2.0TD de precio único) y las comisiones de la agencia. No hagas tablas de 3.0TD, 6.1TD, gas, productos indexados, simuladores ni calculadoras: menciónalas en skippedSheets si ocupan una hoja entera.
 Una tabla es un bloque de filas de datos. kind prices para filas con precios de energía (y potencia si está en la misma fila); kind power para bloques que solo traen potencia y se unen a los de precios por productName, level, territory y bandas, así que ponles los mismos valores (el nivel de un bloque de potencia es el de su columna, no el territorio del título); kind commissions para comisiones.
-Si la potencia de cada bloque de precios está en una celda fija (un apartado «POTENCIAS» con una fila por tarifa), es más sencillo leerla desde la tabla de precios con cell. Con repeat la celda se mueve con cada copia; como en Excel, «C$40» se mueve de columna pero no de fila (la misma potencia para Baleares y Canarias) y «$C$40» no se mueve nunca.
+Si la potencia de cada bloque de precios está en una celda fija (un apartado «POTENCIAS» con una fila por tarifa), es más sencillo leerla desde la tabla de precios con cell. Con repeat la celda se mueve con cada copia; como en Excel, «C$40» se mueve de columna pero no de fila (la misma potencia para Baleares y Canarias) y «$C$40» no se mueve nunca. Igual con las columnas: «$Q» lee siempre la columna Q aunque la copia esté más a la derecha.
 firstRow y lastRow son las filas de datos (sin la cabecera). startText es un texto fijo del título o cabecera que hay justo encima de los datos (por ejemplo «SUPER (N1)» o «2.0TD _ 2 P1 <= 10kW»), para encontrarlos si se mueven filas. expect son dos o tres celdas de título o cabecera con su texto exacto (nunca precios ni fechas).
 Si en las filas se mezclan tarifas, usa rowFilter sobre la columna de la tarifa con un patrón como «^2[.,]?0».
 Si una columna solo tiene valor en la primera fila de cada grupo (subsistema, tarifa), ponla en fillDown.
@@ -153,10 +153,14 @@ function unreadRows(
     recipe.skippedSheets.map(({ sheet }) => sheetKey(sheet)).filter((sheet) => !withTables.has(sheet)),
   );
   const read = new Map<string, number>();
-  applied.sheets.forEach((sheet, index) => {
-    const at = `${sheet}\u0000${applied.rows[index]}`;
+  const origins = [
+    ...applied.sheets.map((sheet, index) => ({ sheet, row: applied.rows[index] })),
+    ...applied.repeated,
+  ];
+  for (const { sheet, row } of origins) {
+    const at = `${sheet}\u0000${row}`;
     read.set(at, (read.get(at) ?? 0) + 1);
-  });
+  }
   const missing: { sheet: string; rows: number[] }[] = [];
   for (const grid of grids) {
     if (SKIPPED_SHEET.test(grid.name) || ignored.has(sheetKey(grid.name))) continue;
@@ -372,6 +376,11 @@ function mergeRepair(base: StoredRecipe, patch: SheetRecipe, scope: readonly str
 }
 
 const failureText = (assessment: Assessment) => assessment.report.slice(0, 20).join("\n");
+
+/** Una plantilla escrita a mano, con las anclas que pone el código al guardarla. */
+export function prepareRecipe(grids: readonly SheetGrid[], recipe: SheetRecipe | StoredRecipe): StoredRecipe {
+  return withAnchors(grids, recipe);
+}
 
 /** Lo que diría la lectura de una plantilla, sin llamar a la IA (para el banco de pruebas). */
 export function checkRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe) {

@@ -624,4 +624,55 @@ describe("applyRecipe", () => {
     expect(problems).toEqual([]);
     expect(extraction.rates.map(({ productName }) => productName)).toEqual(["Fijo", "Fijo 2"]);
   });
+
+  test("a $ column stays put in the copies; a zero price is not a rate", () => {
+    // EDP: periodos en C-E, precio único en F-H y la potencia (J, K) común a los dos.
+    const sheet = grid("Precios", {
+      3: { A: "Fijo", B: "2.0TD", C: 0.24, D: 0.16, E: 0.13, F: 0.17, G: 0.17, H: 0.17, J: 0.08, K: 0.007 },
+      4: { A: "Digital", B: "2.0TD", C: 0, D: 0, E: 0, F: 0, G: 0, H: 0, J: 0, K: 0 },
+    });
+    const { extraction, problems } = applyRecipe(
+      [sheet],
+      recipe([
+        priceTable({
+          lastRow: 3,
+          rowFilter: { column: "$B", pattern: "^2" },
+          repeat: [{ columnShift: 3, rowShift: 0, values: [{ field: "singlePrice", value: "true" }] }],
+          sources: [
+            { field: "productName", column: "$A", cell: null, value: null },
+            { field: "accessTariff", column: "$B", cell: null, value: null },
+            { field: "energyP1", column: "C", cell: null, value: null },
+            { field: "energyP2", column: "D", cell: null, value: null },
+            { field: "energyP3", column: "E", cell: null, value: null },
+            { field: "singlePrice", column: null, cell: null, value: "false" },
+            { field: "powerP1", column: "$J", cell: null, value: null },
+            { field: "powerP2", column: "$K", cell: null, value: null },
+            { field: "powerUnit", column: null, cell: null, value: "eur_kw_day" },
+          ],
+        }),
+      ]),
+    );
+    expect(problems).toEqual([]);
+    expect(extraction.rates.map(({ productName, energyP1, powerP1 }) => [productName, energyP1, powerP1])).toEqual([
+      ["Fijo", 0.24, 0.08],
+      ["Fijo (precio único)", 0.17, 0.08],
+    ]);
+  });
+
+  test("a block the workbook repeats is one rate; power read from the energy column is not", () => {
+    const sheet = grid("Precios", {
+      3: { A: "Fijo", B: "2.0TD", C: 0.2, D: 0.15, E: 0.12 },
+      6: { A: "Fijo", B: "2.0TD", C: 0.2, D: 0.15, E: 0.12 },
+    });
+    const twice = applyRecipe([sheet], recipe([priceTable(), priceTable({ firstRow: 6, lastRow: 6 })]));
+    expect(twice.problems).toEqual([]);
+    expect(twice.extraction.rates).toHaveLength(1);
+    expect(twice.repeated).toEqual([{ sheet: "Precios", row: 6 }]);
+
+    const sameColumn = priceTable();
+    sameColumn.sources = sameColumn.sources.filter(({ field }) => field !== "powerMode");
+    sameColumn.sources.push({ field: "powerP1", column: "C", cell: null, value: null });
+    const mixed = applyRecipe([sheet], recipe([sameColumn]));
+    expect(mixed.problems.some(({ message }) => message.includes("la potencia sale de las mismas celdas"))).toBe(true);
+  });
 });

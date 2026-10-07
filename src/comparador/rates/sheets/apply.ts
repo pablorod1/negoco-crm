@@ -37,6 +37,8 @@ export interface AppliedRecipe {
   /** Hoja y fila de cada tarifa, en el mismo orden que `extraction.rates`. */
   sheets: string[];
   rows: number[];
+  /** Filas idénticas a otra ya leída (el libro repite un bloque): leídas, pero no son otra tarifa. */
+  repeated: { sheet: string; row: number }[];
   /** Lo que no encaja: si hay algo, la plantilla no sirve para este documento. */
   problems: RecipeProblem[];
   /** Avisos que no invalidan la plantilla (una tabla de comisiones vacía). */
@@ -72,8 +74,11 @@ export function locateAnchor(grid: SheetGrid, text: string, near: number | null)
   return rows.reduce((best, row) => (Math.abs(row - near) < Math.abs(best - near) ? row : best));
 }
 
+/** Columna de una copia; «$Q», como en Excel, no se mueve (la potencia común a dos bloques). */
 function shiftColumn(column: string, shift: number): string {
-  return columnLetter(columnIndex(column) + shift);
+  const absolute = column.trim().startsWith("$");
+  const letters = column.replace(/\$/g, "").trim();
+  return absolute ? letters : columnLetter(columnIndex(letters) + shift);
 }
 
 /**
@@ -185,7 +190,9 @@ function readTable(
     table.sources.find(({ field, column }) => column && (field === "energyP1" || field === "powerP1" || field === "commissionAmount"))
       ?.column ?? null;
 
-  const sourceColumns = table.sources.flatMap(({ column }) => (column ? [columnIndex(column)] : []));
+  const sourceColumns = table.sources.flatMap(({ column }) =>
+    column && !column.includes("$") ? [columnIndex(column)] : [],
+  );
   for (const copy of copies) {
     const filled = new Map<string, SheetCell>();
     const overrides = new Map(copy.values.map(({ field, value }) => [field, value]));
@@ -203,7 +210,7 @@ function readTable(
     const hasPrice = (row: number) => {
       if (!priceColumn) return false;
       const parsed = parseNumber(cellIn(grid, row, shiftColumn(priceColumn, copy.columnShift)));
-      return parsed.ok && parsed.value !== null;
+      return parsed.ok && parsed.value !== null && parsed.value !== 0;
     };
     while (hasPrice(end + 1)) end++;
 
@@ -265,9 +272,10 @@ function readTable(
         .map((field) => values[field])
         .filter((value): value is SheetCell | string => value !== null && value !== undefined)
         .map((value) => (typeof value === "string" ? { value, text: value } : value));
+      // Un precio 0 tampoco es un precio: Naturgy deja «Digital Luz 2.0» a cero.
       const rowHasPrice = priceCells.some((cell) => {
         const parsed = parseNumber(cell);
-        return !parsed.ok || parsed.value !== null;
+        return !parsed.ok || (parsed.value !== null && parsed.value !== 0);
       });
       if (!rowHasPrice) continue;
       // Una subcabecera dentro del bloque («P1», «Tarifa») no es una fila de
@@ -548,6 +556,22 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
       problems.push({ sheet: table.sheet, message: `No está la hoja «${table.sheet}».` });
       continue;
     }
+    // La potencia y la energía no salen de la misma columna: Eleia leía las
+    // dos de F. (Que coincidan las cifras sí puede pasar: INER cobra 0,1197 en
+    // las dos.)
+    const sourceOf = (field: RecipeField) => {
+      const source = table.sources.find((candidate) => candidate.field === field);
+      return source?.column?.replace(/\$/g, "") ?? source?.cell?.replace(/\$/g, "") ?? null;
+    };
+    if (
+      sourceOf("powerP1") &&
+      (sourceOf("powerP1") === sourceOf("energyP1") || sourceOf("powerP2") === sourceOf("energyP2"))
+    ) {
+      problems.push({
+        sheet: table.sheet,
+        message: `Hoja «${table.sheet}», ${tableName(table)}: la potencia sale de las mismas celdas que la energía; búscala en su bloque («TÉRMINO DE POTENCIA», «€/kW»).`,
+      });
+    }
     const records = readTable(grid, table, problems, notes);
     let labels = 0;
     for (const record of records) {
@@ -566,7 +590,6 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
   const powerRows = typed.filter(({ kind }) => kind === "power");
   const unjoined = new Map<string, { sheet: string; table: string; count: number }>();
   const ambiguous = new Map<string, { sheet: string; table: string; count: number }>();
-  const sameAsEnergy = new Map<string, { sheet: string; table: string; count: number }>();
   const tally = (map: typeof unjoined, row: TypedRow) => {
     const where = `${row.sheet}\u0000${row.table}`;
     const entry = map.get(where) ?? { sheet: row.sheet, table: row.table, count: 0 };
@@ -617,13 +640,6 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
     // plantilla no encaja, aunque declare «BOE»: en las islas de Axpo eso
     // dejaba la potencia regulada en vez de la del libro.
     const ownPower = row.numbers.powerP1 != null || row.numbers.powerP2 != null;
-    if (
-      ownPower &&
-      row.numbers.powerP1 === row.numbers.energyP1 &&
-      row.numbers.powerP2 === row.numbers.energyP2
-    ) {
-      tally(sameAsEnergy, row);
-    }
     const sheetHasPower = powerRows.some(({ sheet }) => sheet === row.sheet);
     if (!ownPower && !joined && !tied && (sheetHasPower || (powerMode === "not_stated" && powerRows.length > 0))) {
       tally(unjoined, row);
@@ -718,16 +734,30 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
     }
   }
 
+  // Un libro que repite un bloque entero (YaLuz da los precios base en dos
+  // hojas) no tiene dos tarifas: si dos filas son idénticas en todo, nombre,
+  // condiciones y precios, se queda una. Si cambia un precio, sí es un
+  // duplicado y lo detecta la validación.
+  const repeated: { sheet: string; row: number }[] = [];
+  const identical = new Set<string>();
+  for (let index = 0; index < rates.length; index++) {
+    const fingerprint = JSON.stringify({ ...rates[index], productName: key(rates[index].productName) });
+    if (!identical.has(fingerprint)) {
+      identical.add(fingerprint);
+      continue;
+    }
+    repeated.push({ sheet: sheets[index], row: origins[index] });
+    rates.splice(index, 1);
+    excerpts.splice(index, 1);
+    sheets.splice(index, 1);
+    origins.splice(index, 1);
+    index--;
+  }
+
   for (const { sheet, table, count } of unjoined.values()) {
     problems.push({
       sheet,
       message: `Hoja «${sheet}», ${table}: ${count} filas sin potencia y ninguna fila de potencia casa con ellas (producto, nivel, territorio o banda).`,
-    });
-  }
-  for (const { sheet, table, count } of sameAsEnergy.values()) {
-    problems.push({
-      sheet,
-      message: `Hoja «${sheet}», ${table}: en ${count} filas la potencia sale de las mismas celdas que la energía; búscala en su bloque («TÉRMINO DE POTENCIA», «€/kW»).`,
     });
   }
   for (const { sheet, table, count } of ambiguous.values()) {
@@ -799,6 +829,7 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
     excerpts,
     sheets,
     rows: origins,
+    repeated,
     problems,
     notes,
   };

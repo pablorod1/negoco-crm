@@ -62,7 +62,9 @@ const SourceSchema = z.object({
   column: z
     .string()
     .nullable()
-    .describe("Columna de la que se lee el valor en cada fila de datos (letra: «C», «AA»)"),
+    .describe(
+      "Columna de la que se lee el valor en cada fila de datos (letra: «C», «AA»). Con repeat se mueve con cada copia; «$Q» no se mueve",
+    ),
   cell: z
     .string()
     .nullable()
