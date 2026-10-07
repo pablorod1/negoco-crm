@@ -477,6 +477,9 @@ export async function readSpreadsheet({
           schema: SheetRecipeSchema,
           instructions: RECIPE_INSTRUCTIONS + (supplierName ? `\n\nEl libro es de ${supplierName}.` : ""),
           messages: [{ role: "user", content }],
+          // Una plantilla es entender cómo está montado el libro, no copiar:
+          // un poco de razonamiento evita los errores de bloque y de nivel.
+          reasoning: "low",
           maxOutputTokens: 32_000,
         });
       } catch (error) {

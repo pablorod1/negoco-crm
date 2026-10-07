@@ -70,18 +70,30 @@ function readGatewayString(
 const MAX_OUTPUT_TOKENS = 6_000;
 
 /**
- * Opciones propias de cada proveedor. Los GPT-5 razonan por defecto y ese
- * razonamiento se factura como salida; para copiar cifras basta el mínimo.
+ * Cuánto razona el modelo. Copiar cifras de una factura no lo necesita
+ * («minimal»); entender cómo está montado un Excel para escribir su plantilla,
+ * sí. El razonamiento se factura como salida.
  */
+export type ReasoningLevel = "minimal" | "low" | "medium";
+
+/** Tokens de razonamiento de Gemini 2.5 para cada nivel. */
+const GEMINI_THINKING_BUDGET: Record<ReasoningLevel, number> = {
+  minimal: 0,
+  low: 4_096,
+  medium: 12_288,
+};
+
+/** Opciones propias de cada proveedor. Los GPT-5 y Gemini 2.5 razonan por defecto. */
 export function buildProviderSpecificOptions(
   model: string,
+  reasoning: ReasoningLevel = "minimal",
 ): Record<string, Record<string, string | Record<string, number>>> {
   if (model.startsWith("openai/gpt-5")) {
-    return { openai: { reasoningEffort: "minimal" } };
+    return { openai: { reasoningEffort: reasoning } };
   }
-  // Gemini 2.5 razona por defecto y puede agotar el tope de salida.
+  // Sin tope, Gemini 2.5 puede gastar en razonar todo el tope de salida.
   if (model.startsWith("google/gemini-2.5")) {
-    const thinking = { thinkingConfig: { thinkingBudget: 0 } };
+    const thinking = { thinkingConfig: { thinkingBudget: GEMINI_THINKING_BUDGET[reasoning] } };
     return { google: thinking, vertex: thinking };
   }
   return {};
@@ -96,6 +108,8 @@ export interface StructuredRequest<SCHEMA extends z.ZodType> {
   messages: ModelMessage[];
   /** Tope de salida; por defecto, el de una factura. */
   maxOutputTokens?: number;
+  /** Cuánto razona el modelo; por defecto, lo mínimo. */
+  reasoning?: ReasoningLevel;
   recordUsage?: RecordAiUsage;
 }
 
@@ -117,6 +131,7 @@ export async function generateStructured<SCHEMA extends z.ZodType>({
   instructions,
   messages,
   maxOutputTokens = MAX_OUTPUT_TOKENS,
+  reasoning = "minimal",
   recordUsage = recordAiUsage,
 }: StructuredRequest<SCHEMA>): Promise<StructuredResult<z.infer<SCHEMA>>> {
   try {
@@ -128,7 +143,7 @@ export async function generateStructured<SCHEMA extends z.ZodType>({
       maxOutputTokens,
       providerOptions: {
         gateway: buildGatewayOptions(context),
-        ...buildProviderSpecificOptions(model),
+        ...buildProviderSpecificOptions(model, reasoning),
       },
     });
 
