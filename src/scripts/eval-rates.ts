@@ -80,8 +80,11 @@ type PriceTable = Map<string, { input: number; output: number }>;
 function estimateUsd(prices: PriceTable, models: readonly string[], document: PreparedDocument) {
   const promptChars =
     RATE_INSTRUCTIONS.length + JSON.stringify(z.toJSONSchema(RateDocumentSchema)).length;
+  // Un Excel grande se lee por partes: cada una repite las instrucciones y
+  // tiene su propia salida.
+  const calls = Math.max(document.chunks?.length ?? 1, 1);
   const inputTokens =
-    (promptChars + document.sentChars) / CHARS_PER_TOKEN +
+    (promptChars * calls + document.sentChars) / CHARS_PER_TOKEN +
     (document.format === "pdf" || document.format === "image"
       ? (document.pages ?? 1) * TOKENS_PER_PAGE
       : 0);
@@ -90,7 +93,7 @@ function estimateUsd(prices: PriceTable, models: readonly string[], document: Pr
   for (const model of models) {
     const price = prices.get(model);
     if (!price) throw new Error(`Sin precio en la Gateway para ${model}`);
-    total += inputTokens * price.input + OUTPUT_TOKENS * price.output;
+    total += inputTokens * price.input + OUTPUT_TOKENS * calls * price.output;
   }
   return total;
 }
@@ -123,7 +126,10 @@ async function main() {
     prepared.push({ file, document, estimate });
     console.log(
       `${basename(file)}: ${document.format}, ${document.pages ?? "-"} pág., ` +
-        `${document.text?.length ?? 0} caracteres de texto, ${document.sentChars} enviados · ` +
+        `${document.text?.length ?? 0} caracteres de texto, ${document.sentChars} enviados` +
+        (document.chunks && document.chunks.length > 1 ? ` en ${document.chunks.length} partes` : "") +
+        (document.skippedSections?.length ? ` (sin leer: ${document.skippedSections.length} hojas)` : "") +
+        " · " +
         `peor caso ${usd(estimate)}`,
     );
   }

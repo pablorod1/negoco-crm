@@ -21,7 +21,8 @@ export interface RateIssue {
     | "unverifiable_source"
     | "big_change"
     | "missing_rate"
-    | "old_document";
+    | "old_document"
+    | "partial_read";
   message: string;
   /** Fila de `proposed` a la que se refiere, si es de una fila. */
   row?: number;

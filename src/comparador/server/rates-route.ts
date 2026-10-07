@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isCatalogAdmin } from "@/comparador/access";
 import { RateIngestError } from "@/comparador/rates/service";
 import { UnsupportedDocumentError } from "@/comparador/rates/document";
+import { RateDocumentTooLargeError } from "@/comparador/rates/extract";
 import { requireNegocoStudiesAccess, type NegocoStudiesContext } from "./guard";
 
 export interface RatesContext extends NegocoStudiesContext {
@@ -54,7 +55,7 @@ export function ratesError(scope: string, error: unknown) {
   if (error instanceof RateIngestError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
-  if (error instanceof UnsupportedDocumentError) {
+  if (error instanceof UnsupportedDocumentError || error instanceof RateDocumentTooLargeError) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
   console.error(`[comparador] ${scope} failed`, error);
