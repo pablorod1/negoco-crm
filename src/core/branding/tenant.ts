@@ -1,3 +1,5 @@
+import { aliasHostSegment } from "@/core/tenant-host-alias";
+
 export function getHostName(host: string | null | undefined): string {
   if (!host) return "localhost";
 
@@ -16,7 +18,7 @@ export function getTenantFromHost(host: string | null | undefined): string {
     return hostname.split(".")[0] || "localhost";
   }
 
-  return hostname.split(".")[0] || "default";
+  return aliasHostSegment(hostname.split(".")[0] || "default");
 }
 
 export function getTursoEnvNames(tenant: string) {

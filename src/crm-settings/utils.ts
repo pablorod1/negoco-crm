@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import type { DelayUnit } from "./types";
+import { hostTenantSegment } from "@/core/tenant-host-alias";
 
 export const cleanProviderName = (name: string) =>
   name.replace(/\s+/g, " ").trim();
@@ -44,7 +45,7 @@ export const addOneYear = (date: Date) => {
 };
 
 const getTenantSlugFromHost = (host: string) => {
-  const firstSegment = host.split(".")[0]?.replace(/:\d+$/, "").toLowerCase();
+  const firstSegment = hostTenantSegment(host);
   if (!firstSegment || firstSegment.includes("localhost")) return "test";
   return firstSegment;
 };

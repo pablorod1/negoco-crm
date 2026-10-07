@@ -1,5 +1,6 @@
 import { getTursoClient } from "@/core/libsql/client";
 import { NextRequest, NextResponse } from "next/server";
+import { hostTenantSegment } from "@/core/tenant-host-alias";
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("user_id");
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   const tursoClient = getTursoClient(req);
   const host = req.headers.get("host");
-  const tenant = host ? host.split(".")[0] : "unknown";
+  const tenant = host ? hostTenantSegment(host) : "unknown";
 
   // Expire stale sessions (>20 min TTL)
   await tursoClient.execute({

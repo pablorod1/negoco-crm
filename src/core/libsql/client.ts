@@ -1,5 +1,6 @@
 ﻿import { createClient } from "@libsql/client";
 import { NextRequest } from "next/server";
+import { hostTenantSegment } from "@/core/tenant-host-alias";
 
 export const getTursoClient = (req: NextRequest) => {
   // Obtener el host desde la cabecera "host"
@@ -9,7 +10,7 @@ export const getTursoClient = (req: NextRequest) => {
   }
 
   // Extraer el subdominio (client1, client2, etc.)
-  const subdomain = host.split(".")[0];
+  const subdomain = hostTenantSegment(host);
 
   // Construir el nombre de la variable de entorno
   const tursoUrlEnv =
