@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 
-export type ComercializadoraView = "tramites" | "documentos";
+/** «tarifas» solo aparece en los tenants con el comparador propio. */
+export type ComercializadoraView = "tramites" | "documentos" | "tarifas";
 
 export const DEFAULT_COMERCIALIZADORA_VIEW: ComercializadoraView = "tramites";
 

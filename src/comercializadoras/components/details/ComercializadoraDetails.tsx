@@ -14,6 +14,8 @@ import { ComercializadoraDocumentsExplorer } from "./ComercializadoraDocumentsEx
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { User } from "@/core/types";
 import { useUser } from "@/core/contexts/UserContext";
+import { canUseNegocoStudies } from "@/comparador/access";
+import { SupplierRatesView } from "@/comparador/components/rates/SupplierRatesView";
 
 function ErrorState({ message }: { message: string }) {
   return (
@@ -40,6 +42,15 @@ export default function ComercializadoraDetails() {
   const { comercializadora, loading, error, refetchSilently } =
     useComercializadora(id, userData as User);
   const { currentView, setCurrentView } = useComercializadoraViewNavigation();
+  const showRates = Boolean(
+    userData &&
+      canUseNegocoStudies({
+        modules: userData.organization.modules,
+        role: userData.role,
+        isSubcomercial: userData.role === "2" && Boolean(userData.super_id),
+        permissions: userData.permissions,
+      }),
+  );
 
   if (loading) {
     return (
@@ -89,6 +100,7 @@ export default function ComercializadoraDetails() {
           onViewChange={setCurrentView}
           numTramites={comercializadora.num_tramites}
           numFiles={comercializadora.num_files}
+          showRates={showRates}
         />
 
         {/* Content based on current view */}
@@ -99,6 +111,10 @@ export default function ComercializadoraDetails() {
               userData={userData as User}
             />
           </div>
+        )}
+
+        {currentView === "tarifas" && showRates && (
+          <SupplierRatesView comercializadoraId={comercializadora.id} />
         )}
 
         {currentView === "documentos" && (

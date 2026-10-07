@@ -8,7 +8,7 @@ import { getTenantModules } from "@/core/modules/server";
 import { getTenantInfoFromRequest } from "@/crm-settings/utils";
 
 export interface NegocoStudiesContext {
-  user: { id: string; role: string };
+  user: { id: string; role: string; email: string | null };
   tenantSlug: string;
   client: Client;
 }
@@ -63,6 +63,10 @@ export async function requireNegocoStudiesAccess(
 
   return {
     ok: true,
-    context: { user: { id: session.user.id, role }, tenantSlug, client },
+    context: {
+      user: { id: session.user.id, role, email: session.user.email ?? null },
+      tenantSlug,
+      client,
+    },
   };
 }

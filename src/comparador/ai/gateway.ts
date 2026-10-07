@@ -94,6 +94,8 @@ export interface StructuredRequest<SCHEMA extends z.ZodType> {
   schema: SCHEMA;
   instructions: string;
   messages: ModelMessage[];
+  /** Tope de salida; por defecto, el de una factura. */
+  maxOutputTokens?: number;
   recordUsage?: RecordAiUsage;
 }
 
@@ -114,6 +116,7 @@ export async function generateStructured<SCHEMA extends z.ZodType>({
   schema,
   instructions,
   messages,
+  maxOutputTokens = MAX_OUTPUT_TOKENS,
   recordUsage = recordAiUsage,
 }: StructuredRequest<SCHEMA>): Promise<StructuredResult<z.infer<SCHEMA>>> {
   try {
@@ -122,7 +125,7 @@ export async function generateStructured<SCHEMA extends z.ZodType>({
       output: Output.object({ schema }),
       instructions,
       messages,
-      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      maxOutputTokens,
       providerOptions: {
         gateway: buildGatewayOptions(context),
         ...buildProviderSpecificOptions(model),

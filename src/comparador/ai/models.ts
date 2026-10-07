@@ -27,6 +27,29 @@ export const FREE_TIER_MODELS = [
 ] as const;
 
 /**
+ * Cascada de extracción de anexos de precios. Gemini lee los PDF de forma
+ * nativa (unos 258 tokens por página); GPT-5 solo entra si la extracción no
+ * cuadra con el documento.
+ */
+export const RATE_EXTRACTION_MODELS = [
+  "google/gemini-2.5-flash",
+  "openai/gpt-5",
+] as const;
+
+/** Clasificación previa de un anexo: solo mira el principio del texto. */
+export const RATE_CLASSIFICATION_MODEL = "google/gemini-2.5-flash-lite";
+
+/** Igual que la de facturas, configurable con `COMPARADOR_RATE_MODELS`. */
+export function getRateExtractionModels(
+  env: Record<string, string | undefined> = process.env,
+): readonly string[] {
+  const configured = env.COMPARADOR_RATE_MODELS?.split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+  return configured?.length ? configured : RATE_EXTRACTION_MODELS;
+}
+
+/**
  * Cascada en uso. `COMPARADOR_INVOICE_MODELS` (ids separados por comas)
  * permite cambiarla desde Vercel sin desplegar, una vez validada con el banco
  * de evaluación.

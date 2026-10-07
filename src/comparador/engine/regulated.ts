@@ -20,7 +20,27 @@ export interface RegulatedParams {
   vatRate: number;
   /** Financiación del bono social, en €/día. */
   socialBonusPerDay: number;
+  /**
+   * Peajes y cargos del término de potencia de la 2.0TD, en €/kW·año. Es la
+   * potencia que los anexos llaman «BOE».
+   */
+  regulatedPowerPerKwYear: { P1: number; P2: number };
 }
+
+const REGULATED_POWER_PER_KW_YEAR: readonly ValidityRange<{
+  P1: number;
+  P2: number;
+}>[] = [
+  {
+    // Peajes 23,324952 y 0,443770 + cargos 4,379461 y 0,281653. Coincide con
+    // la «potencia BOE» de los anexos de Iberdrola, ADX, Visalia y Axpo.
+    from: "2026-01-01",
+    until: "2027-01-01",
+    value: { P1: 27.704413, P2: 0.725423 },
+    source:
+      "Resolución CNMC de 18/12/2025 (BOE-A-2025-26348) y Orden TED/1524/2025 (BOE-A-2025-26705)",
+  },
+];
 
 const ELECTRICITY_TAX_RATE: readonly ValidityRange<number>[] = [
   {
@@ -82,5 +102,10 @@ export function getRegulatedParams(date: string): RegulatedParams {
     electricityTaxRate: valueOn(ELECTRICITY_TAX_RATE, date, "IEE"),
     vatRate: valueOn(VAT_RATE, date, "IVA"),
     socialBonusPerDay: valueOn(SOCIAL_BONUS_PER_DAY, date, "bono social"),
+    regulatedPowerPerKwYear: valueOn(
+      REGULATED_POWER_PER_KW_YEAR,
+      date,
+      "peajes y cargos de potencia",
+    ),
   };
 }

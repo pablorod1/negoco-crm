@@ -8,6 +8,7 @@ interface ComercializadoraNavigationProps {
   onViewChange: (view: ComercializadoraView) => void;
   numTramites?: number;
   numFiles?: number;
+  showRates?: boolean;
 }
 
 export function ComercializadoraNavigation({
@@ -15,6 +16,7 @@ export function ComercializadoraNavigation({
   onViewChange,
   numTramites,
   numFiles,
+  showRates,
 }: ComercializadoraNavigationProps) {
   return (
     <div className="ms-4">
@@ -23,6 +25,7 @@ export function ComercializadoraNavigation({
         onViewChange={onViewChange}
         numTramites={numTramites}
         numFiles={numFiles}
+        showRates={showRates}
       />
     </div>
   );
