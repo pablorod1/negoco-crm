@@ -141,6 +141,21 @@ describe("validateProposedRates", () => {
     );
   });
 
+  test("a PDF whose price table has no text is flagged for review, not blocked", () => {
+    // Plenitude: el texto extraído no trae el cuadro de precios.
+    const text = "PRECIO FINAL TÉRMINO DE ENERGÍA FIJO PRECIO TÉRMINO DE POTENCIA\nELECTRICIDAD";
+    const rates = toProposedRates({ rates: [extracted()] }, text);
+    const issues = validateProposedRates(rates, { ...options, sourceText: text });
+    expect(issues.some(({ code }) => code === "not_in_source")).toBe(false);
+    expect(issues).toContainEqual(expect.objectContaining({ severity: "warning", code: "unverifiable_source" }));
+
+    // Si el texto sí trae precios y ninguno coincide, el error es de la lectura.
+    const wrong = toProposedRates({ rates: [extracted({ energyP1: 0.29, energyP2: 0.21, energyP3: 0.18 })] });
+    expect(validateProposedRates(wrong, options)).toContainEqual(
+      expect.objectContaining({ severity: "blocking", code: "not_in_source" }),
+    );
+  });
+
   test("a wrong unit is caught by the plausible ranges", () => {
     // 0,0896 €/kW·día leído como €/kW·año da una potencia ridícula.
     const rates = toProposedRates({

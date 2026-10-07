@@ -118,6 +118,8 @@ export function validateProposedRates(
   }
 
   const seen = new Map<string, number>();
+  let copiedCount = 0;
+  let foundCount = 0;
   proposed.forEach((row, index) => {
     if (!isInScope(row)) {
       issues.push({
@@ -209,6 +211,8 @@ export function validateProposedRates(
         raw.powerMargin,
       ].filter((value): value is number => typeof value === "number" && value !== 0);
       const missing = copied.filter((value) => !appearsInText(value, numbers, sourceText));
+      copiedCount += copied.length;
+      foundCount += copied.length - missing.length;
       if (missing.length > 0) {
         issues.push({
           severity: "blocking",
@@ -221,6 +225,25 @@ export function validateProposedRates(
     }
   });
 
+  // Si no aparece ninguna cifra de ninguna fila, no es la IA la que se ha
+  // equivocado: el texto del PDF no trae el cuadro de precios (Plenitude lo
+  // tiene sin texto extraíble). Se avisa una vez en vez de bloquear cada fila.
+  // Si el texto sí trae precios y ninguno coincide, el error es de la lectura
+  // y sigue bloqueando.
+  const priceLike = numbers
+    ? [...numbers].filter((value) => value > 0.01 && value < 1 && String(value).split(".")[1]?.length >= 4).length
+    : 0;
+  if (copiedCount > 0 && foundCount === 0 && priceLike < 3) {
+    return [
+      ...issues.filter(({ code }) => code !== "not_in_source"),
+      {
+        severity: "warning",
+        code: "unverifiable_source",
+        message:
+          "Las cifras no se pueden comprobar con el texto del documento (el cuadro de precios no tiene texto): revísalas contra el original.",
+      },
+    ];
+  }
   return issues;
 }
 
