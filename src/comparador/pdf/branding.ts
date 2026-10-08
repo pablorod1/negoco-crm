@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type { NextRequest } from "next/server";
 import { getBrandingForRequest } from "@/core/branding/server";
 import type { ResolvedBranding } from "@/core/branding/types";
@@ -14,11 +16,24 @@ function isPngOrJpeg(data: Buffer): boolean {
   return png || jpeg;
 }
 
-async function fetchLogo(url: string, origin: string): Promise<Buffer | null> {
+const PUBLIC_DIR = path.join(process.cwd(), "public");
+
+/**
+ * Un logo de la app (`/logo_inline.png`) se lee de `public/`: pedirlo por HTTP
+ * sin sesión lo redirige al login. Uno externo (Storage) se descarga.
+ */
+async function readLogo(url: string): Promise<Buffer | null> {
   try {
-    const response = await fetch(new URL(url, origin), { signal: AbortSignal.timeout(LOGO_TIMEOUT_MS) });
-    if (!response.ok) return null;
-    const data = Buffer.from(await response.arrayBuffer());
+    let data: Buffer;
+    if (url.startsWith("/") && !url.startsWith("//")) {
+      const file = path.join(PUBLIC_DIR, decodeURIComponent(url.split(/[?#]/)[0]));
+      if (!file.startsWith(PUBLIC_DIR + path.sep)) return null;
+      data = await readFile(file);
+    } else {
+      const response = await fetch(url, { signal: AbortSignal.timeout(LOGO_TIMEOUT_MS) });
+      if (!response.ok) return null;
+      data = Buffer.from(await response.arrayBuffer());
+    }
     return data.length <= MAX_LOGO_BYTES && isPngOrJpeg(data) ? data : null;
   } catch {
     return null;
@@ -35,11 +50,10 @@ export function brandColor(branding: Pick<ResolvedBranding, "palette">): string 
 /** Nombre, logo y color del tenant para el PDF de una propuesta. */
 export async function proposalBranding(request: NextRequest): Promise<ProposalBranding> {
   const branding = await getBrandingForRequest(request);
-  const origin = request.nextUrl.origin;
   const candidates = [branding.logo.defaultUrl, branding.logo.emailUrl].filter(Boolean);
   let logo: Buffer | null = null;
   for (const url of new Set(candidates)) {
-    logo = await fetchLogo(url, origin);
+    logo = await readLogo(url);
     if (logo) break;
   }
   return { displayName: branding.displayName, logo, color: brandColor(branding) };

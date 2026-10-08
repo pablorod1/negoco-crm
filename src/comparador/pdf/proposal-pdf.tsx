@@ -38,7 +38,7 @@ const LINE = "#e5e7eb";
 const styles = StyleSheet.create({
   page: { padding: 36, fontSize: 9, fontFamily: "Inter", color: INK },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18 },
-  logo: { maxHeight: 40, maxWidth: 160, objectFit: "contain" },
+  logo: { height: 32, maxWidth: 180, objectFit: "contain", objectPositionX: 0 },
   brandName: { fontSize: 14, fontWeight: 600 },
   headerRight: { alignItems: "flex-end" },
   muted: { color: MUTED },
