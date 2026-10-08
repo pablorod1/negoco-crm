@@ -89,3 +89,9 @@ export const percentOf = (part: number, whole: number) => (whole > 0 ? Math.roun
 /** Precio unitario con 4 a 6 decimales, como en la propuesta. */
 export const unitPrice = (value: number) =>
   value.toLocaleString("es-ES", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+
+/** Euros sin céntimos, para cifras grandes y titulares. */
+export const eurosRound = (value: number) =>
+  value.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0, useGrouping: "always" });
+
+export const kw = (value: number) => `${value.toLocaleString("es-ES", { maximumFractionDigits: 3 })} kW`;

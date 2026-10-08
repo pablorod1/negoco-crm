@@ -106,6 +106,8 @@ export async function createStudy(
     priceDate: string;
     aiCostUsd: number | null;
     error: string | null;
+    /** Datos del titular leídos de la factura, para no tener que escribirlos. */
+    clientData?: StudyClientData | null;
     createdBy: string;
   },
 ): Promise<string> {
@@ -113,8 +115,8 @@ export async function createStudy(
   await client.execute({
     sql: `INSERT INTO comparison_studies (
         id, comparativa_id, status, invoice_file_id, invoice_file_name, cups,
-        extraction, issues, supply, options, price_date, ai_cost_usd, error, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        extraction, issues, supply, options, price_date, ai_cost_usd, error, client_data, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.comparativaId,
@@ -129,6 +131,7 @@ export async function createStudy(
       input.priceDate,
       input.aiCostUsd,
       input.error,
+      input.clientData ? JSON.stringify(input.clientData) : null,
       input.createdBy,
     ],
   });

@@ -49,8 +49,8 @@ vi.mock("@/core/contexts/UserContext", () => ({
 vi.mock("@/comparativas/components/details/AbarcaPanel", () => ({
   AbarcaPanel: () => <button type="button">Estudio con IA</button>,
 }));
-vi.mock("@/comparador/components/NegocoStudyPanel", () => ({
-  NegocoStudyPanel: () => <button type="button">Estudio Negoco Cloud</button>,
+vi.mock("@/comparador/components/NegocoStudyEntry", () => ({
+  NegocoStudyEntry: () => <button type="button">Estudio Negoco Cloud</button>,
 }));
 
 const baseComparativa = {

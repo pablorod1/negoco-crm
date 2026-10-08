@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
+import { cn } from "@/core/utils";
 
-const STEPS = ["Factura", "Elegir oferta", "Propuesta al cliente", "Completar"] as const;
+const STEPS = ["Factura", "Ofertas", "Propuestas", "Completar"] as const;
 
 /**
  * Dónde está el estudio: 0 eligiendo factura, 1 eligiendo oferta, 3 con
@@ -13,31 +14,37 @@ export function studyStep({ picking, proposals, closed }: { picking: boolean; pr
 }
 
 /** Los pasos del estudio, para saber siempre qué toca ahora. */
-export function StudySteps({ active }: { active: number }) {
+export function StudySteps({ active, className }: { active: number; className?: string }) {
   return (
-    <ol className="flex items-center gap-2 text-xs" aria-label="Pasos del estudio">
+    <ol
+      className={cn("flex items-center gap-1 rounded-full bg-white p-1 ring-1 ring-gray-950/[0.06]", className)}
+      aria-label="Pasos del estudio"
+    >
       {STEPS.map((label, index) => {
         const done = index < active;
         const current = index === active;
         return (
-          <li key={label} className="flex items-center gap-2 min-w-0" aria-current={current ? "step" : undefined}>
-            {index > 0 && <span className={`h-px w-4 sm:w-8 shrink-0 ${done || current ? "bg-primary" : "bg-gray-200"}`} />}
+          <li
+            key={label}
+            aria-current={current ? "step" : undefined}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors",
+              current && "bg-primary-50 font-medium text-primary-700",
+              done && "text-gray-700",
+              !done && !current && "text-gray-400",
+            )}
+          >
             <span
-              className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
-                done
-                  ? "bg-primary text-white"
-                  : current
-                    ? "border-2 border-primary text-primary"
-                    : "border border-gray-300 text-gray-400"
-              }`}
+              className={cn(
+                "flex size-4 items-center justify-center rounded-full text-[10px] font-semibold",
+                done && "bg-primary-600 text-white",
+                current && "bg-primary-600 text-white",
+                !done && !current && "ring-1 ring-gray-300",
+              )}
             >
-              {done ? <Check className="size-3" /> : index + 1}
+              {done ? <Check className="size-2.5" strokeWidth={3} /> : index + 1}
             </span>
-            <span
-              className={`hidden md:inline truncate ${current ? "font-medium text-gray-900" : done ? "text-gray-700" : "text-gray-400"}`}
-            >
-              {label}
-            </span>
+            <span className="hidden sm:inline">{label}</span>
           </li>
         );
       })}

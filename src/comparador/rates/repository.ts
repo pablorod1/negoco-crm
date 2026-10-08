@@ -609,6 +609,7 @@ export async function listCurrentCommissionRules(
 export interface ActiveOfferPrice {
   comercializadoraId: string;
   comercializadoraName: string;
+  comercializadoraLogo?: string | null;
   versionId: string;
   versionValidFrom: string | null;
   price: StoredRatePrice;
@@ -635,7 +636,7 @@ export async function listActiveOfferPrices(
   const { rows } = await client.execute({
     sql: `SELECT p.*, r.name AS rate_name, r.catalog_rate_id,
         v.comercializadora_id AS supplier_id, v.valid_from AS version_valid_from,
-        c.name AS supplier_name
+        c.name AS supplier_name, c.logo AS supplier_logo
       FROM comercializadora_rate_versions v
       JOIN comercializadora_rate_prices p ON p.version_id = v.id
       JOIN comercializadora_rates r ON r.id = p.rate_id
@@ -652,6 +653,7 @@ export async function listActiveOfferPrices(
   return rows.map((row) => ({
     comercializadoraId: String(row.supplier_id),
     comercializadoraName: String(row.supplier_name),
+    comercializadoraLogo: str(row.supplier_logo),
     versionId: String(row.version_id),
     versionValidFrom: str(row.version_valid_from),
     price: toStoredPrice(row),

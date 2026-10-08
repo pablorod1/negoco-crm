@@ -9,7 +9,7 @@ import type { InvoiceIssue, InvoiceIssueCode } from "@/comparador/extraction/val
 import { StudyError } from "@/comparador/study/service";
 
 /** Cuántas ofertas se enseñan: el resto no cambia la decisión. */
-export const SHOWN_OFFERS = 40;
+export const SHOWN_OFFERS = 150;
 
 export function studyError(label: string, error: unknown) {
   if (error instanceof StudyError) {
@@ -95,6 +95,10 @@ export function studyView(
     priceDate: study.priceDate,
     createdAt: study.createdAt,
     invoiceFileName: study.invoiceFileName,
+    invoiceFileId: study.invoiceFileId,
+    cups: study.cups,
+    /** Datos del cliente: leídos de la factura al analizarla, o los confirmados al completar. */
+    client: study.clientData,
     invoice: facts
       ? {
           supplierName: facts.supplierName,

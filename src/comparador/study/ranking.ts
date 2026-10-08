@@ -28,6 +28,8 @@ export interface StudyOffer {
   key: string;
   comercializadoraId: string;
   comercializadoraName: string;
+  /** Fichero del logo de la comercializadora (ver `companyLogoUrl`). */
+  comercializadoraLogo: string | null;
   rateId: string;
   productName: string;
   level: string | null;
@@ -153,6 +155,7 @@ export function rankStudy({
       key: price.id,
       comercializadoraId: offer.comercializadoraId,
       comercializadoraName: offer.comercializadoraName,
+      comercializadoraLogo: offer.comercializadoraLogo ?? null,
       rateId: price.rateId,
       productName: price.rateName,
       level: price.level,

@@ -32,6 +32,7 @@ const offer = (overrides: Partial<StudyOffer> = {}): StudyOffer => ({
   key: "price-1",
   comercializadoraId: "COM-005",
   comercializadoraName: "Eleia",
+  comercializadoraLogo: "eleia.webp",
   rateId: "rate-1",
   productName: "TRADERPOOL 3",
   level: null,

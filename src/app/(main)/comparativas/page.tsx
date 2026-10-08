@@ -16,8 +16,6 @@ import {
   useComparativasState,
 } from "@/comparativas/components/table/ComparativasColumns";
 import PlanUpgradeView from "@/core/components/PlanUpgradeView";
-import { canManageRates } from "@/comparador/access";
-import { StudyMetricsCard } from "@/comparador/components/StudyMetricsCard";
 
 export default function ComparativasPage() {
   const { userData, getPlan } = useUser();
@@ -70,16 +68,7 @@ export default function ComparativasPage() {
       {isStarter ? (
         <PlanUpgradeView />
       ) : (
-        <>
-          {userData &&
-            canManageRates({
-              modules: userData.organization.modules,
-              role: userData.role,
-              isSubcomercial: Boolean(userData.super_id),
-              permissions: userData.permissions,
-            }) && <StudyMetricsCard />}
-          <ComparativasTable columns={columns} />
-        </>
+        <ComparativasTable columns={columns} />
       )}
     </section>
   );

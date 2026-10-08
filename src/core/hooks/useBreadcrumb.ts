@@ -107,7 +107,9 @@ export const useBreadcrumb = () => {
 
       // Si hay una ruta padre, construir recursivamente
       if (config.parent && config.parent !== currentPath) {
-        chain.push(...buildBreadcrumbChain(config.parent));
+        // Un padre con segmentos dinámicos lleva los valores de la ruta actual.
+        const parent = config.parent.replace(/\[(\w+)\]/g, (segment, name: string) => config.dynamicValues?.[name] ?? segment);
+        chain.push(...buildBreadcrumbChain(parent));
       }
 
       // Resolver título dinámico si es necesario

@@ -31,21 +31,25 @@ const CLIENT_FIELDS: { key: keyof StudyClientDataInput; label: string; wide?: bo
   { key: "province", label: "Provincia" },
 ];
 
-/** Lo que se sabe del cliente antes de preguntar: el nombre de la comparativa y dónde está el suministro (SIPS). */
+/**
+ * Lo que se sabe del cliente antes de preguntar: lo leído de la factura, el
+ * nombre de la comparativa y dónde está el suministro (SIPS).
+ */
 export function initialClient(clientName: string | null, study: StudyView): ClientForm {
   const location = study.supply?.location ?? null;
+  const known = study.client;
   return {
-    name: clientName ?? "",
-    lastName: "",
-    kind: "Particular",
-    documentNumber: "",
-    email: "",
-    phone: "",
-    iban: "",
-    address: "",
-    postalCode: location?.postalCode ?? "",
-    city: location?.municipality ?? "",
-    province: location?.province ?? "",
+    name: known?.name ?? clientName ?? "",
+    lastName: known?.lastName ?? "",
+    kind: known?.kind ?? "Particular",
+    documentNumber: known?.documentNumber ?? "",
+    email: known?.email ?? "",
+    phone: known?.phone ?? "",
+    iban: known?.iban ?? "",
+    address: known?.address ?? "",
+    postalCode: known?.postalCode ?? location?.postalCode ?? "",
+    city: known?.city ?? location?.municipality ?? "",
+    province: known?.province ?? location?.province ?? "",
   };
 }
 
@@ -141,7 +145,7 @@ export function CompleteDialog({
           <DialogDescription>
             {step === "proposal"
               ? "Su PDF se guarda en los documentos y la comparativa pasa a «Pendiente de revisión» con esa comercializadora y su comisión."
-              : "Opcionales: rellenan el trámite al convertir la comparativa. Lo que falte se pide entonces."}
+              : "Lo leído de la factura y del SIPS ya está escrito: revísalo. Rellenan el trámite al convertir la comparativa; lo que falte se pide entonces."}
           </DialogDescription>
         </DialogHeader>
 

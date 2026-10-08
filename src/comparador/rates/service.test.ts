@@ -25,11 +25,11 @@ const sql = (name: string) => readFileSync(join(MIGRATIONS, name), "utf8");
 async function tenantDb(): Promise<Client> {
   const db = createClient({ url: ":memory:" });
   await db.executeMultiple(`
-    CREATE TABLE comercializadoras (id TEXT PRIMARY KEY, name TEXT, active INTEGER);
+    CREATE TABLE comercializadoras (id TEXT PRIMARY KEY, name TEXT, active INTEGER, logo TEXT);
     CREATE TABLE comercializadora_rates (id TEXT PRIMARY KEY NOT NULL, name TEXT, price REAL,
       created_at TEXT, updated_at TEXT, comercializadora_id TEXT, type TEXT, provider TEXT,
       descripcion TEXT);
-    INSERT INTO comercializadoras VALUES ('COM-040', 'Quimera', 1), ('COM-041', 'Gana Energía', 1);
+    INSERT INTO comercializadoras (id, name, active) VALUES ('COM-040', 'Quimera', 1), ('COM-041', 'Gana Energía', 1);
   `);
   await db.executeMultiple(sql("024_rate_versions.sql"));
   await db.executeMultiple(sql("024_rate_versions_columns.sql"));

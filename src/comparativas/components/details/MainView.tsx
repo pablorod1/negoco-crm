@@ -38,7 +38,7 @@ import ComparativaPlanSection from "@/comparativas/components/editComparativa/Co
 import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySupplierById";
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
-import { NegocoStudyPanel } from "@/comparador/components/NegocoStudyPanel";
+import { NegocoStudyEntry } from "@/comparador/components/NegocoStudyEntry";
 import { ChosenProposalCard } from "@/comparador/components/ChosenProposalCard";
 import { canUseNegocoStudies } from "@/comparador/access";
 import { showCustomToast } from "@/core/components/CustomToast";
@@ -161,21 +161,36 @@ export default function MainView({
     (userData.role === "admin" || userData.role === "1") && isStudied;
   const hasPrioritySummary = !isSubcomercial || isStudied;
   const abarcaEstudio = comparativa.abarca_estudio;
+  // Sin estudio de Abarca, el del comparador propio: factura, SIPS y los
+  // datos del cliente confirmados al completarlo.
+  const negocoEstudio = abarcaEstudio ? undefined : comparativa.negoco_estudio;
+  const negocoClient = negocoEstudio?.client ?? null;
   const contractedPowers = abarcaEstudio
     ? PERIODS.map((period, index) => ({
         period,
         value: abarcaEstudio[ABARCA_POWER_FIELDS[index]],
       }))
-    : [];
+    : negocoEstudio
+      ? (["P1", "P2"] as const).map((period) => ({
+          period,
+          value: negocoEstudio.contractedKw[period],
+        }))
+      : [];
   const abarcaConsumption = abarcaEstudio
     ? PERIODS.map((period, index) => ({
         period,
         value: abarcaEstudio[ABARCA_CONSUMPTION_FIELDS[index]],
       }))
-    : [];
+    : negocoEstudio?.annualKwhByPeriod
+      ? (["P1", "P2", "P3"] as const).map((period) => ({
+          period,
+          value: negocoEstudio.annualKwhByPeriod[period],
+        }))
+      : [];
   const totalAbarcaConsumption = getNullableTotal(
     abarcaConsumption.map((item) => item.value),
   );
+  const negocoDemand = negocoEstudio?.maxDemandKwByPeriod;
   const apoloDemandPower = abarcaEstudio?.apolo_sips
     ? PERIODS.map((period) => ({
         period,
@@ -183,37 +198,72 @@ export default function MainView({
           abarcaEstudio.apolo_sips?.max_demand_power_kw_by_period[period] ??
           null,
       }))
-    : [];
+    : negocoDemand
+      ? (["P1", "P2", "P3"] as const).map((period) => ({
+          period,
+          value: negocoDemand[period],
+        }))
+      : negocoEstudio?.power
+        ? // Estudios anteriores: solo guardaban la máxima de los 12 meses.
+          [{ period: "12 meses", value: negocoEstudio.power.maxDemandKw }]
+        : [];
   const maxApoloDemandPower = getNullableTotal(
     apoloDemandPower.length
       ? [Math.max(...apoloDemandPower.map((item) => item.value ?? 0))]
       : [],
   );
-  const titularName =
-    abarcaEstudio?.nombre_completo ||
-    [abarcaEstudio?.titular, abarcaEstudio?.ape1, abarcaEstudio?.ape2]
-      .filter(hasText)
-      .join(" ");
-  const supplyAddress = [abarcaEstudio?.calle_cups, abarcaEstudio?.numero_cups]
-    .filter(hasText)
-    .join(" ");
+  const titularName = abarcaEstudio
+    ? abarcaEstudio.nombre_completo ||
+      [abarcaEstudio.titular, abarcaEstudio.ape1, abarcaEstudio.ape2]
+        .filter(hasText)
+        .join(" ")
+    : [negocoClient?.name, negocoClient?.lastName].filter(hasText).join(" ");
+  const supplyAddress = abarcaEstudio
+    ? [abarcaEstudio.calle_cups, abarcaEstudio.numero_cups]
+        .filter(hasText)
+        .join(" ")
+    : (negocoClient?.address ?? "");
+  const studyFields = {
+    dni: abarcaEstudio ? abarcaEstudio.dni : negocoClient?.documentNumber,
+    email: abarcaEstudio ? abarcaEstudio.email : negocoClient?.email,
+    movil: abarcaEstudio ? abarcaEstudio.movil : negocoClient?.phone,
+    iban: abarcaEstudio ? abarcaEstudio.iban : negocoClient?.iban,
+    localidad: abarcaEstudio
+      ? abarcaEstudio.localidad_cups
+      : (negocoClient?.city ?? negocoEstudio?.location?.municipality),
+    codpostal: abarcaEstudio
+      ? abarcaEstudio.codpostal_cups
+      : (negocoClient?.postalCode ?? negocoEstudio?.location?.postalCode),
+    provincia: abarcaEstudio
+      ? null
+      : (negocoClient?.province ?? negocoEstudio?.location?.province),
+    observaciones: abarcaEstudio?.observaciones,
+    cups: abarcaEstudio ? abarcaEstudio.cups : negocoEstudio?.cups,
+    tipoTarifa: abarcaEstudio
+      ? abarcaEstudio.tipo_tarifa
+      : negocoEstudio?.accessTariff,
+    empresaCliente: abarcaEstudio
+      ? abarcaEstudio.empresa_cliente
+      : negocoEstudio?.currentSupplierName,
+    distribuidora: negocoEstudio?.distributor,
+  };
   const hasTitularData = [
     titularName,
-    abarcaEstudio?.dni,
-    abarcaEstudio?.email,
-    abarcaEstudio?.movil,
-    abarcaEstudio?.iban,
+    studyFields.dni,
+    studyFields.email,
+    studyFields.movil,
+    studyFields.iban,
   ].some(hasText);
   const hasAddressData = [
     supplyAddress,
-    abarcaEstudio?.localidad_cups,
-    abarcaEstudio?.codpostal_cups,
-    abarcaEstudio?.observaciones,
+    studyFields.localidad,
+    studyFields.codpostal,
+    studyFields.observaciones,
   ].some(hasText);
   const hasSupplyInfoData = [
-    abarcaEstudio?.cups,
-    abarcaEstudio?.tipo_tarifa,
-    abarcaEstudio?.empresa_cliente,
+    studyFields.cups,
+    studyFields.tipoTarifa,
+    studyFields.empresaCliente,
   ].some(hasText);
   const hasContractedPowerData = contractedPowers.some(
     (item) => item.value !== null && item.value !== undefined,
@@ -608,7 +658,7 @@ export default function MainView({
                         ) : null}
 
                         {canUseNegocoComparator ? (
-                          <NegocoStudyPanel comparativaId={comparativa.id} onCompleted={onUpdate} />
+                          <NegocoStudyEntry comparativaId={comparativa.id} />
                         ) : null}
 
                         <div className="flex items-center gap-4">
@@ -793,9 +843,9 @@ export default function MainView({
                 : "grid grid-cols-1 gap-5"
             }
           >
-            {canUseNegocoComparator ? (
-              <div className="empty:hidden xl:col-span-2">
-                <ChosenProposalCard comparativaId={comparativa.id} />
+            {canUseNegocoComparator && comparativa.negoco_estudio?.chosen ? (
+              <div className="xl:col-span-2">
+                <ChosenProposalCard comparativaId={comparativa.id} chosen={comparativa.negoco_estudio.chosen} />
               </div>
             ) : null}
 
@@ -912,7 +962,7 @@ export default function MainView({
       </div>
 
       {/* Estudio con IA */}
-      {abarcaEstudio && (
+      {(abarcaEstudio || negocoEstudio) && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -938,18 +988,15 @@ export default function MainView({
                           label="Nombre completo"
                           value={titularName}
                         />
-                        <StudyField
-                          label="DNI / NIF"
-                          value={abarcaEstudio.dni}
-                        />
-                        <StudyField label="Email" value={abarcaEstudio.email} />
+                        <StudyField label="DNI / NIF" value={studyFields.dni} />
+                        <StudyField label="Email" value={studyFields.email} />
                         <StudyField
                           label="Teléfono"
-                          value={abarcaEstudio.movil}
+                          value={studyFields.movil}
                         />
                         <StudyField
                           label="IBAN"
-                          value={abarcaEstudio.iban}
+                          value={studyFields.iban}
                           span="full"
                         />
                       </StudySection>
@@ -964,15 +1011,19 @@ export default function MainView({
                         />
                         <StudyField
                           label="Localidad"
-                          value={abarcaEstudio.localidad_cups}
+                          value={studyFields.localidad}
                         />
                         <StudyField
                           label="Código Postal"
-                          value={abarcaEstudio.codpostal_cups}
+                          value={studyFields.codpostal}
+                        />
+                        <StudyField
+                          label="Provincia"
+                          value={studyFields.provincia}
                         />
                         <StudyField
                           label="Observaciones"
-                          value={abarcaEstudio.observaciones}
+                          value={studyFields.observaciones}
                           span="full"
                         />
                       </StudySection>
@@ -980,15 +1031,18 @@ export default function MainView({
 
                     {hasSupplyInfoData ? (
                       <StudySection title="Suministro">
-                        <StudyField label="CUPS" value={abarcaEstudio.cups} />
+                        <StudyField label="CUPS" value={studyFields.cups} />
                         <StudyField
                           label="Tipo de Tarifa"
-                          value={abarcaEstudio.tipo_tarifa}
+                          value={studyFields.tipoTarifa}
                         />
                         <StudyField
                           label="Compañía actual"
-                          value={abarcaEstudio.empresa_cliente}
-                          span="full"
+                          value={studyFields.empresaCliente}
+                        />
+                        <StudyField
+                          label="Distribuidora"
+                          value={studyFields.distribuidora}
                         />
                       </StudySection>
                     ) : null}
@@ -1004,7 +1058,16 @@ export default function MainView({
                     }`}
                   >
                     {hasConsumptionData ? (
-                      <StudySection title="Consumo" layout="stack">
+                      <StudySection
+                        title={
+                          negocoEstudio
+                            ? negocoEstudio.consumptionSource === "sips"
+                              ? `Consumo anual (SIPS, ${negocoEstudio.sipsMonths ?? 12} meses)`
+                              : "Consumo anual (factura llevada a un año)"
+                            : "Consumo"
+                        }
+                        layout="stack"
+                      >
                         <StudyPeriodChips
                           items={abarcaConsumption}
                           unit="kWh"

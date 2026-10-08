@@ -2,6 +2,7 @@ import type { Client } from "@libsql/client";
 import { getRegulatedParams } from "@/comparador/engine/regulated";
 import { currentTariffFromInvoice } from "@/comparador/extraction/current-tariff";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
+import { clientFromInvoiceText } from "@/comparador/redaction/invoice-client";
 import { redactInvoiceText } from "@/comparador/redaction/redact";
 import {
   listActiveOfferPrices,
@@ -145,6 +146,8 @@ export async function analyzeInvoice({
     priceDate: today,
     aiCostUsd,
     error: null,
+    // Leídos en local del texto sin tapar: nunca han salido del CRM.
+    clientData: clientFromInvoiceText(text),
     createdBy: userId,
   });
 }

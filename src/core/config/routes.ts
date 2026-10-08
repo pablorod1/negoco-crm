@@ -68,6 +68,12 @@ export const routeConfig: Record<string, RouteConfig> = {
       },
     },
   },
+  "/comparativas/[id]/estudio": {
+    path: "/comparativas/[id]/estudio",
+    title: "Estudio de ahorro",
+    parent: "/comparativas/[id]",
+    category: "operaciones",
+  },
   "/tramites": {
     path: "/tramites",
     title: "Trámites",

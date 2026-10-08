@@ -22,6 +22,10 @@ export interface StudySupply {
   power: PowerAssessment | null;
   /** Dónde está el suministro según el SIPS, para el contrato. Sin SIPS, null. */
   location?: SupplyLocation | null;
+  /** Distribuidora según el SIPS. */
+  distributor?: string | null;
+  /** Máxima demanda de los últimos 12 meses por periodo (SIPS), en kW. */
+  maxDemandKwByPeriod?: EnergyByPeriod | null;
 }
 
 export interface SupplyLocation {
@@ -76,7 +80,7 @@ export function territoryFromProvince(code: string | null | undefined): Territor
  */
 export function annualKwhFromSips(
   rows: readonly ApoloSipsElectricityConsumptionRow[],
-): { annualKwh: EnergyByPeriod; months: number; maxDemandKw: number[] } | null {
+): { annualKwh: EnergyByPeriod; months: number; maxDemandKw: number[]; maxDemandKwByPeriod: EnergyByPeriod } | null {
   const dated = rows
     .map((row) => ({
       row,
@@ -95,16 +99,19 @@ export function annualKwhFromSips(
 
   const total = { P1: 0, P2: 0, P3: 0 };
   const demand: number[] = [];
+  const peak = { P1: 0, P2: 0, P3: 0 };
   for (const { row } of year) {
     total.P1 += kwh(row.consumoEnergiaActivaEnWhP1);
     total.P2 += kwh(row.consumoEnergiaActivaEnWhP2);
     total.P3 += kwh(row.consumoEnergiaActivaEnWhP3);
-    for (const value of [
-      row.potenciaDemandadaEnWP1,
-      row.potenciaDemandadaEnWP2,
-      row.potenciaDemandadaEnWP3,
-    ]) {
-      if (typeof value === "number" && value > 0) demand.push(value / 1000);
+    for (const [period, value] of [
+      ["P1", row.potenciaDemandadaEnWP1],
+      ["P2", row.potenciaDemandadaEnWP2],
+      ["P3", row.potenciaDemandadaEnWP3],
+    ] as const) {
+      if (typeof value !== "number" || value <= 0) continue;
+      demand.push(value / 1000);
+      peak[period] = Math.max(peak[period], value / 1000);
     }
   }
   const scale = Math.min(DAYS_PER_YEAR / days, 12);
@@ -113,6 +120,7 @@ export function annualKwhFromSips(
     annualKwh: { P1: round(total.P1), P2: round(total.P2), P3: round(total.P3) },
     months: year.length,
     maxDemandKw: demand,
+    maxDemandKwByPeriod: peak,
   };
 }
 
@@ -185,5 +193,7 @@ export function buildSupply({
     territorySource: territory ? "sips" : "default",
     power: fromSips ? assessPower(contractedKw, fromSips.maxDemandKw) : null,
     location: locationFromSips(sipsPoint),
+    distributor: sipsPoint?.nombreEmpresaDistribuidora?.trim() || null,
+    maxDemandKwByPeriod: fromSips && fromSips.maxDemandKw.length > 0 ? fromSips.maxDemandKwByPeriod : null,
   };
 }
