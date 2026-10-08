@@ -615,8 +615,8 @@ export interface ActiveOfferPrice {
 }
 
 /**
- * Precios 2.0TD fijos vigentes de todas las comercializadoras del tenant, de
- * las tarifas activas. Antes activa las versiones programadas que ya han
+ * Precios 2.0TD fijos vigentes de las comercializadoras activas del tenant,
+ * de las tarifas activas. Antes activa las versiones programadas que ya han
  * empezado (como al abrir la ficha de cada una).
  */
 export async function listActiveOfferPrices(
@@ -641,6 +641,9 @@ export async function listActiveOfferPrices(
       JOIN comercializadora_rates r ON r.id = p.rate_id
       JOIN comercializadoras c ON c.id = v.comercializadora_id
       WHERE v.status = 'active'
+        -- Solo las comercializadoras con las que trabaja el tenant (activas en
+        -- la lista), como en el resto del CRM.
+        AND c.active = 1
         AND COALESCE(r.enabled, 1) = 1
         AND p.access_tariff = '2.0TD'
         AND p.pricing = 'fixed'`,

@@ -10,6 +10,7 @@ import {
   getActiveVersion,
   getIngest,
   getVersionPrices,
+  listActiveOfferPrices,
   listCatalog,
   listCurrentCommissionRules,
   listTenantRates,
@@ -416,6 +417,17 @@ describe("rate ingest service", () => {
         user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
       }),
     ).rejects.toThrow("no puede ser anterior");
+  });
+
+  test("only active suppliers make offers", async () => {
+    const ingest = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    await approveIngest({
+      client, control, ingest, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    expect((await listActiveOfferPrices(client, "2026-10-07")).map(({ comercializadoraId }) => comercializadoraId)).toEqual(["COM-040"]);
+    await client.execute("UPDATE comercializadoras SET active = 0 WHERE id = 'COM-040'");
+    expect(await listActiveOfferPrices(client, "2026-10-07")).toEqual([]);
   });
 
   test("commission figures must appear in the document", () => {
