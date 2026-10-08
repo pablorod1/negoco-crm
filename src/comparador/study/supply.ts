@@ -12,7 +12,10 @@ import type {
 export interface StudySupply {
   contractedKw: PowerByPeriod;
   annualKwh: EnergyByPeriod;
-  /** De dónde sale el consumo anual. */
+  /**
+   * De dónde sale el consumo anual. Siempre el SIPS; «invoice» solo en
+   * estudios anteriores al 8 de octubre de 2026, que llevaban la factura a un año.
+   */
   consumptionSource: "sips" | "invoice";
   /** Meses de SIPS usados (12 si hay un año entero). */
   sipsMonths: number | null;
@@ -75,12 +78,23 @@ export function territoryFromProvince(code: string | null | undefined): Territor
 }
 
 /**
- * Consumo anual de los últimos 12 meses del SIPS. Si hay menos de un año, se
- * lleva a 365 días con los que haya; sin lecturas, null.
+ * Días de lecturas por debajo de los cuales no hay un año real. Las lecturas
+ * del SIPS no siempre son meses naturales: entre 350 y 365 días cubren el año
+ * con algún hueco de un par de semanas como mucho.
  */
-export function annualKwhFromSips(
-  rows: readonly ApoloSipsElectricityConsumptionRow[],
-): { annualKwh: EnergyByPeriod; months: number; maxDemandKw: number[]; maxDemandKwByPeriod: EnergyByPeriod } | null {
+export const MIN_SIPS_DAYS = 350;
+
+export type SipsYear =
+  | { annualKwh: EnergyByPeriod; months: number; days: number; maxDemandKw: number[]; maxDemandKwByPeriod: EnergyByPeriod }
+  | { insufficient: true; months: number; days: number };
+
+/**
+ * Consumo real de los últimos 12 meses del SIPS: las lecturas más recientes
+ * hasta cubrir un año, ajustadas a 365 días exactos (unos días arriba o
+ * abajo, nunca meses que falten). Con menos de un año de lecturas no hay
+ * consumo anual: no se estima. Sin lecturas, null.
+ */
+export function annualKwhFromSips(rows: readonly ApoloSipsElectricityConsumptionRow[]): SipsYear | null {
   const dated = rows
     .map((row) => ({
       row,
@@ -91,11 +105,15 @@ export function annualKwhFromSips(
     .sort((left, right) => right.to - left.to);
   if (dated.length === 0) return null;
 
-  // Los meses que caben en el último año de lecturas.
-  const latest = dated[0].to;
-  const year = dated.filter(({ from }) => from > latest - DAYS_PER_YEAR * DAY_MS);
-  const days = year.reduce((sum, { from, to }) => sum + Math.round((to - from) / DAY_MS) + 1, 0);
-  if (days <= 0) return null;
+  // Las lecturas más recientes hasta cubrir un año.
+  const year: typeof dated = [];
+  let days = 0;
+  for (const reading of dated) {
+    if (days >= DAYS_PER_YEAR) break;
+    year.push(reading);
+    days += Math.round((reading.to - reading.from) / DAY_MS) + 1;
+  }
+  if (days < MIN_SIPS_DAYS) return { insufficient: true, months: year.length, days };
 
   const total = { P1: 0, P2: 0, P3: 0 };
   const demand: number[] = [];
@@ -114,11 +132,12 @@ export function annualKwhFromSips(
       peak[period] = Math.max(peak[period], value / 1000);
     }
   }
-  const scale = Math.min(DAYS_PER_YEAR / days, 12);
+  const scale = DAYS_PER_YEAR / days;
   const round = (value: number) => Math.round(value * scale);
   return {
     annualKwh: { P1: round(total.P1), P2: round(total.P2), P3: round(total.P3) },
     months: year.length,
+    days,
     maxDemandKw: demand,
     maxDemandKwByPeriod: peak,
   };
@@ -135,14 +154,14 @@ export function contractedKwFromSips(
   return { P1: p1 / 1000, P2: p2 / 1000 };
 }
 
-/** Consumo de la factura llevado a un año. */
-export function annualKwhFromInvoice(invoice: InvoiceExtraction): EnergyByPeriod | null {
-  const days = invoice.billingPeriod?.days ?? 0;
-  const { P1, P2, P3 } = invoice.consumptionKwh;
-  if (days <= 0 || P1 === null || P2 === null || P3 === null) return null;
-  const scale = DAYS_PER_YEAR / days;
-  return { P1: Math.round(P1 * scale), P2: Math.round(P2 * scale), P3: Math.round(P3 * scale) };
-}
+/** Por qué no hay consumo real: se enseñan tal cual a quien hace el estudio. */
+export const SIPS_MESSAGES = {
+  noCups: "La factura no trae un CUPS válido, así que no se puede pedir al SIPS el consumo real de 12 meses. Comprueba que es la factura de luz completa, con todas sus páginas.",
+  unavailable: "El SIPS no responde ahora mismo y sin él no hay consumo real de 12 meses. Vuelve a intentarlo en unos minutos.",
+  noReadings: "El SIPS no tiene lecturas de consumo de este CUPS, así que no hay consumo real de 12 meses para comparar.",
+  insufficient: (months: number) =>
+    `El SIPS solo tiene ${months} ${months === 1 ? "lectura" : "lecturas"} de este suministro (alta o cambio recientes): no hay un año real de consumo para comparar.`,
+};
 
 export class SupplyUnavailableError extends Error {
   constructor(detail: string) {
@@ -152,8 +171,9 @@ export class SupplyUnavailableError extends Error {
 }
 
 /**
- * Suministro del estudio: el consumo de 12 meses y la potencia del SIPS si
- * los hay, y si no, los de la factura (llevada a un año).
+ * Suministro del estudio: el consumo real de 12 meses del SIPS y la potencia
+ * del SIPS o, si no la da, la de la factura. Sin un año de SIPS no hay
+ * estudio: el consumo de una factura no dice lo que gasta en un año.
  */
 export function buildSupply({
   invoice,
@@ -165,12 +185,9 @@ export function buildSupply({
   sipsConsumption: readonly ApoloSipsElectricityConsumptionRow[];
 }): StudySupply {
   const fromSips = annualKwhFromSips(sipsConsumption);
-  const annualKwh = fromSips?.annualKwh ?? annualKwhFromInvoice(invoice);
-  if (!annualKwh) {
-    throw new SupplyUnavailableError(
-      "No hay consumo: ni el SIPS lo da ni la factura trae el consumo por periodo y los días.",
-    );
-  }
+  if (!fromSips) throw new SupplyUnavailableError(SIPS_MESSAGES.noReadings);
+  if ("insufficient" in fromSips) throw new SupplyUnavailableError(SIPS_MESSAGES.insufficient(fromSips.months));
+  const annualKwh = fromSips.annualKwh;
 
   const invoiceKw =
     invoice.contractedKw.P1 && invoice.contractedKw.P2
@@ -187,13 +204,13 @@ export function buildSupply({
   return {
     contractedKw,
     annualKwh,
-    consumptionSource: fromSips ? "sips" : "invoice",
-    sipsMonths: fromSips?.months ?? null,
+    consumptionSource: "sips",
+    sipsMonths: fromSips.months,
     territory: territory ?? "peninsula",
     territorySource: territory ? "sips" : "default",
-    power: fromSips ? assessPower(contractedKw, fromSips.maxDemandKw) : null,
+    power: fromSips.maxDemandKw.length > 0 ? assessPower(contractedKw, fromSips.maxDemandKw) : null,
     location: locationFromSips(sipsPoint),
     distributor: sipsPoint?.nombreEmpresaDistribuidora?.trim() || null,
-    maxDemandKwByPeriod: fromSips && fromSips.maxDemandKw.length > 0 ? fromSips.maxDemandKwByPeriod : null,
+    maxDemandKwByPeriod: fromSips.maxDemandKw.length > 0 ? fromSips.maxDemandKwByPeriod : null,
   };
 }

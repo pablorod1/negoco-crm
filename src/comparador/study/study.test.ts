@@ -42,10 +42,21 @@ describe("supply", () => {
       return month(start.toISOString().slice(0, 10), end.toISOString().slice(0, 10), 100, index === 13 ? 4800 : 3200);
     });
     const result = annualKwhFromSips(rows)!;
+    if ("insufficient" in result) throw new Error("expected a full year");
     expect(result.months).toBe(12);
     expect(result.annualKwh.P1).toBeGreaterThanOrEqual(1199);
     expect(result.annualKwh.P1).toBeLessThanOrEqual(1203);
     expect(Math.max(...result.maxDemandKw)).toBe(4.8);
+  });
+
+  test("less than a year of SIPS readings is not stretched to a year", () => {
+    const rows = Array.from({ length: 5 }, (_, index) => {
+      const start = new Date(Date.UTC(2026, 4 + index, 1));
+      const end = new Date(Date.UTC(2026, 5 + index, 0));
+      return month(start.toISOString().slice(0, 10), end.toISOString().slice(0, 10), 100);
+    });
+    expect(annualKwhFromSips(rows)).toMatchObject({ insufficient: true, months: 5 });
+    expect(annualKwhFromSips([])).toBeNull();
   });
 
   test("the province of the supply point gives the territory", () => {

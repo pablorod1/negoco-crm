@@ -23,7 +23,7 @@ import {
   type StudyRecord,
 } from "./repository";
 import { detectSupplierInText } from "./supplier";
-import { buildSupply, SupplyUnavailableError } from "./supply";
+import { annualKwhFromSips, buildSupply, SIPS_MESSAGES, SupplyUnavailableError } from "./supply";
 
 type TenantClient = Pick<Client, "execute" | "batch">;
 
@@ -53,8 +53,8 @@ export interface InvoiceForStudy {
 
 /**
  * Analiza la factura de una comparativa: texto del PDF, anonimizado en local
- * (a la IA solo llegan los conceptos y cifras), extracción, suministro (SIPS
- * con el CUPS leído en local, o la factura) y lo que paga hoy. Guarda el
+ * (a la IA solo llegan los conceptos y cifras), consumo real de 12 meses del
+ * SIPS con el CUPS leído en local, extracción y lo que paga hoy. Guarda el
  * estudio; el ranking se calcula al verlo.
  */
 export async function analyzeInvoice({
@@ -96,6 +96,20 @@ export async function analyzeInvoice({
   }
   const cups = redaction.identifiers.cups[0] ?? null;
 
+  // Sin un año real de consumo del SIPS no hay estudio. Se comprueba antes
+  // de llamar a la IA: no se gasta en una factura que no se puede comparar.
+  if (!cups) throw new StudyError(SIPS_MESSAGES.noCups);
+  const [point, consumption] = await Promise.all([
+    fetchSips(cups, "PS").catch(() => null),
+    fetchSips(cups, "CONSUMOS").catch(() => null),
+  ]);
+  if (!consumption) throw new StudyError(SIPS_MESSAGES.unavailable, 503);
+  const sipsPoint = (point?.rows[0] as ApoloSipsElectricityPointSupplyRow | undefined) ?? null;
+  const sipsConsumption = consumption.rows as ApoloSipsElectricityConsumptionRow[];
+  const sipsYear = annualKwhFromSips(sipsConsumption);
+  if (!sipsYear) throw new StudyError(SIPS_MESSAGES.noReadings);
+  if ("insufficient" in sipsYear) throw new StudyError(SIPS_MESSAGES.insufficient(sipsYear.months));
+
   const extraction = await extract({
     file: { text: redaction.text },
     context: { tenantSlug, jobType: "invoice_extraction", userId, subjectId: comparativaId },
@@ -112,17 +126,6 @@ export async function analyzeInvoice({
   }
   if (facts.pricing === "indexed") {
     throw new StudyError("Es una factura de precio indexado; el comparador propio compara precio fijo.");
-  }
-
-  let sipsPoint: ApoloSipsElectricityPointSupplyRow | null = null;
-  let sipsConsumption: ApoloSipsElectricityConsumptionRow[] = [];
-  if (cups) {
-    const [point, consumption] = await Promise.all([
-      fetchSips(cups, "PS").catch(() => null),
-      fetchSips(cups, "CONSUMOS").catch(() => null),
-    ]);
-    sipsPoint = (point?.rows[0] as ApoloSipsElectricityPointSupplyRow | undefined) ?? null;
-    sipsConsumption = (consumption?.rows ?? []) as ApoloSipsElectricityConsumptionRow[];
   }
 
   let supply;
