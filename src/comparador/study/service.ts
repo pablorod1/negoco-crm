@@ -21,6 +21,7 @@ import {
   type SavedStudyOptions,
   type StudyRecord,
 } from "./repository";
+import { detectSupplierInText } from "./supplier";
 import { buildSupply, SupplyUnavailableError } from "./supply";
 
 type TenantClient = Pick<Client, "execute" | "batch">;
@@ -99,7 +100,9 @@ export async function analyzeInvoice({
     context: { tenantSlug, jobType: "invoice_extraction", userId, subjectId: comparativaId },
     knownCups: cups,
   });
-  const facts = extraction.extraction;
+  const facts = extraction.extraction.supplierName
+    ? extraction.extraction
+    : { ...extraction.extraction, supplierName: await supplierFromText(client, redaction.text) };
   const aiCostUsd = extraction.attempts.reduce((sum, { costUsd }) => sum + (costUsd ?? 0), 0);
 
   const tariff = (facts.accessTariff ?? "").replace(/\s/g, "").toUpperCase();
@@ -144,6 +147,13 @@ export async function analyzeInvoice({
     error: null,
     createdBy: userId,
   });
+}
+
+/** La comercializadora de la factura buscada en su texto, entre las del tenant. */
+async function supplierFromText(client: TenantClient, text: string): Promise<string | null> {
+  const { rows } = await client.execute("SELECT id, name FROM comercializadoras");
+  const suppliers = rows.map((row) => ({ id: String(row.id), name: String(row.name ?? "") }));
+  return detectSupplierInText(text, suppliers)?.name ?? null;
 }
 
 /** Ranking de un estudio con sus opciones, o con las que se prueban ahora. */

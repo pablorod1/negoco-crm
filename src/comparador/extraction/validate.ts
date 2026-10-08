@@ -51,6 +51,28 @@ function differs(expected: number, actual: number, tolerance: number) {
  * todo cuadra, un dato mal leído tendría que estar mal en dos sitios a la vez
  * de forma compatible, que es lo que evita los errores silenciosos.
  */
+/** Suma de lo que lleva potencia, energía, descuentos, otros y bono social: la base del impuesto eléctrico. */
+export function electricitySubtotalOf(invoice: InvoiceExtraction): number {
+  return sumEuros([
+    ...invoice.powerLines.map(({ amount }) => amount),
+    ...invoice.energyLines.map(({ amount }) => amount),
+    ...invoice.energyDiscounts.map(({ amount }) => amount),
+    ...invoice.otherElectricityLines.map(({ amount }) => amount),
+    ...invoice.socialBonusLines.map(({ amount }) => amount),
+  ]);
+}
+
+/** Base imponible que sale de las líneas: electricidad, impuesto eléctrico, contador y otros conceptos con IVA. */
+export function expectedTaxableBase(invoice: InvoiceExtraction): number {
+  const tax = invoice.electricityTax;
+  return sumEuros([
+    tax?.base ?? electricitySubtotalOf(invoice),
+    tax?.amount ?? 0,
+    invoice.meterRental?.amount ?? 0,
+    ...invoice.otherTaxableLines.map(({ amount }) => amount),
+  ]);
+}
+
 export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
   const issues: InvoiceIssue[] = [];
   const add = (issue: InvoiceIssue) => issues.push(issue);
@@ -211,13 +233,7 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     }
   }
 
-  const electricitySubtotal = sumEuros([
-    ...invoice.powerLines.map(({ amount }) => amount),
-    ...invoice.energyLines.map(({ amount }) => amount),
-    ...invoice.energyDiscounts.map(({ amount }) => amount),
-    ...invoice.otherElectricityLines.map(({ amount }) => amount),
-    ...invoice.socialBonusLines.map(({ amount }) => amount),
-  ]);
+  const electricitySubtotal = electricitySubtotalOf(invoice);
 
   const tax = invoice.electricityTax;
   if (tax) {
@@ -241,12 +257,7 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     }
   }
 
-  const expectedBase = sumEuros([
-    tax?.base ?? electricitySubtotal,
-    tax?.amount ?? 0,
-    invoice.meterRental?.amount ?? 0,
-    ...invoice.otherTaxableLines.map(({ amount }) => amount),
-  ]);
+  const expectedBase = expectedTaxableBase(invoice);
   const taxableBase = invoice.vat?.base ?? invoice.taxableBase;
   if (taxableBase !== null && differs(expectedBase, taxableBase, SUM_TOLERANCE)) {
     add({

@@ -10,7 +10,9 @@ export const InvoiceExtractionSchema = z.object({
   supplierName: z
     .string()
     .nullable()
-    .describe("Comercializadora que emite la factura"),
+    .describe(
+      "Comercializadora que emite la factura. Si la cabecera no la nombra (el logo es una imagen), búscala en el resto: pie, avisos legales («X está adherida a…»). Nunca la distribuidora (i-DE, e-distribución, UFD…)",
+    ),
   invoiceNumber: z.string().nullable(),
   issueDate: z.string().nullable().describe("Fecha de emisión, YYYY-MM-DD"),
   billingPeriod: z
@@ -126,7 +128,10 @@ export const InvoiceExtractionSchema = z.object({
   vatExemptLines: z
     .array(z.object({ description: z.string(), amount }))
     .describe("Conceptos sin IVA, por ejemplo seguros: suman al total fuera de la base"),
-  taxableBase: z.number().nullable(),
+  taxableBase: z
+    .number()
+    .nullable()
+    .describe("Base imponible del IVA si la factura la da; null si solo da el importe del IVA. Nunca el importe del IVA"),
   vat: z
     .object({
       ratePercent: z.number().describe("Por ejemplo 21"),

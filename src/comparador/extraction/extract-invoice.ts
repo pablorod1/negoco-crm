@@ -6,7 +6,7 @@ import {
   InvoiceExtractionSchema,
   type InvoiceExtraction,
 } from "./invoice-schema";
-import { normalizePowerLines } from "./normalize";
+import { normalizePowerLines, reconcileVat } from "./normalize";
 import { getSupplierHint } from "./supplier-hints";
 import {
   hasBlockingIssues,
@@ -134,7 +134,7 @@ export async function extractInvoice({
       messages: buildMessages(file),
     });
 
-    const normalized = normalizePowerLines(result.output);
+    const normalized = reconcileVat(normalizePowerLines(result.output));
     const output = knownCups ? { ...normalized, cups: knownCups } : normalized;
     const issues = validateInvoice(output);
     attempts.push({

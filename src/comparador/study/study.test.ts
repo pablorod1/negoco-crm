@@ -7,6 +7,7 @@ import type { CommissionRule, StoredRatePrice } from "@/comparador/rates/types";
 import type { ApoloSipsElectricityConsumptionRow } from "@/integrations/apolo-sips/types";
 import { layoutLines } from "./invoice-text";
 import { rankStudy } from "./ranking";
+import { detectSupplierInText } from "./supplier";
 import { annualKwhFromSips, territoryFromProvince, type StudySupply } from "./supply";
 
 describe("invoice text", () => {
@@ -117,6 +118,10 @@ describe("ranking", () => {
     id: "r1",
     comercializadoraId: "COM-1",
     rateId: null,
+    product: null,
+    minKw: null,
+    maxKw: null,
+    minAmount: null,
     accessTariff: "2.0TD",
     level: null,
     channel: null,
@@ -173,5 +178,25 @@ describe("ranking", () => {
   test("ordering by commission puts the best paid first", () => {
     const ranking = rank({ order: "commission", feeEnergyPerMwh: 20 });
     expect(ranking.offers[0].key).toBe("fee");
+  });
+});
+
+describe("supplier in the invoice text", () => {
+  const suppliers = [
+    { id: "COM-005", name: "Eleia" },
+    { id: "COM-010", name: "Iberdrola" },
+    { id: "COM-011", name: "Naturgy" },
+    { id: "COM-012", name: "VM" },
+  ];
+
+  test("finds the only supplier named in the text, not the distributor", () => {
+    const text =
+      "Distribuidora: Iberdrola Distribución Eléctrica\nLe informamos que Eleia Energía está adherida a la Junta Arbitral de Consumo";
+    expect(detectSupplierInText(text, suppliers)?.id).toBe("COM-005");
+  });
+
+  test("does not guess with two suppliers or a short name inside other words", () => {
+    expect(detectSupplierInText("Eleia y Naturgy", suppliers)).toBeNull();
+    expect(detectSupplierInText("consumo VM 2 kWh", suppliers)).toBeNull();
   });
 });
