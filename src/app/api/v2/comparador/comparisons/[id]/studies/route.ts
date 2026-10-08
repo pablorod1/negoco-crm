@@ -35,6 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         success: true,
         data: {
           service: comparativa.service,
+          clientName: comparativa.clientName,
           pdfs: pdfs.map(({ id: fileId, filename, uploadDate }) => ({ id: fileId, filename, uploadDate })),
           studies: studies.map((study) => ({
             id: study.id,

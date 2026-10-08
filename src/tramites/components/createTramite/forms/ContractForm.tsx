@@ -73,7 +73,7 @@ const createInitialApoloConsumptionState = (
   comparativa: ComparativaVM | undefined,
 ): ApoloConsumptionState => {
   const cups = sanitizeCups(
-    contract?.CUPS || comparativa?.abarca_estudio?.cups || "",
+    contract?.CUPS || comparativa?.abarca_estudio?.cups || comparativa?.negoco_estudio?.cups || "",
   );
 
   return isValidApoloSipsCups(cups)
@@ -125,6 +125,17 @@ export default function ContractForm({
 
   const autoMatchedOldCompanyId = React.useMemo(() => {
     if (formData.old_company || activeSuppliers.length === 0) return "";
+    const studySupplier = comparativa?.abarca_estudio
+      ? null
+      : comparativa?.negoco_estudio?.currentSupplierName?.trim().toLowerCase();
+    if (studySupplier) {
+      // La factura dice «Eleia Energía» y la comercializadora se llama «Eleia».
+      const match = activeSuppliers.find((s) => {
+        const supplier = s.name.trim().toLowerCase();
+        return supplier && (studySupplier.includes(supplier) || supplier.includes(studySupplier));
+      });
+      return match?.id ?? "";
+    }
     const empresaCliente = comparativa?.abarca_estudio?.empresa_cliente;
     if (!empresaCliente) return "";
 

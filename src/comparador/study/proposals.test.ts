@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { CostBreakdown } from "@/comparador/engine/types";
+import { StudyClientDataSchema } from "./client-data";
 import { closeStudy, type ProposalUploader } from "./close";
 import { createProposal, findSameProposal, listProposals, proposalFileName } from "./proposals";
 import type { StudyOffer } from "./ranking";
@@ -77,6 +78,7 @@ beforeEach(async () => {
   `);
   await client.executeMultiple(migration("026_comparison_studies.sql"));
   await client.executeMultiple(migration("027_comparison_study_proposals.sql"));
+  await client.executeMultiple(migration("028_comparison_studies_client.sql"));
   const id = await createStudy(client, {
     comparativaId: "cmp-1",
     status: "analyzed",
@@ -187,6 +189,18 @@ describe("close study", () => {
     ]);
   });
 
+  test("the client data written at completion is kept for the trámite", async () => {
+    const { upload } = uploader();
+    const clientData = StudyClientDataSchema.parse({
+      name: "Ana", lastName: "García", kind: "Particular", documentNumber: "12345678Z",
+      iban: "ES91 2100 0418 4502 0005 1332", postalCode: "28001", city: "Madrid", province: "Madrid",
+    });
+    await closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload, clientData });
+    expect((await getStudy(client, study.id))?.clientData).toMatchObject({
+      name: "Ana", documentNumber: "12345678Z", email: null, postalCode: "28001",
+    });
+  });
+
   test("a commission that was already set is not overwritten", async () => {
     await client.execute("UPDATE comparativas SET comision_fijo = 30");
     const { upload } = uploader();
@@ -212,5 +226,15 @@ describe("close study", () => {
     expect(remove).toHaveBeenCalled();
     expect((await getStudy(client, study.id))?.status).toBe("analyzed");
     expect((await client.execute("SELECT status FROM comparativas")).rows[0].status).toBe("pending");
+  });
+});
+
+describe("client data", () => {
+  test("everything is optional, but what is written must be valid", () => {
+    expect(StudyClientDataSchema.parse({})).toMatchObject({ name: null, documentNumber: null, iban: null });
+    expect(StudyClientDataSchema.parse({ name: "  ", email: "" })).toMatchObject({ name: null, email: null });
+    for (const wrong of [{ documentNumber: "12345678A" }, { iban: "ES91 2100 0418 4502 0005 1333" }, { email: "ana@" }, { postalCode: "2800" }]) {
+      expect(StudyClientDataSchema.safeParse(wrong).success).toBe(false);
+    }
   });
 });

@@ -254,6 +254,11 @@ export default function ComparativaToTramiteStep({
         </Card>
       )}
 
+      {/* Estudio Negoco Cloud: lo que se apuntó al completarlo */}
+      {!comparativa.abarca_estudio && comparativa.negoco_estudio && (
+        <NegocoStudySummary study={comparativa.negoco_estudio} />
+      )}
+
       {/* Progressive Disclosure - Additional Details */}
       <div className="mb-6">
         <Button
@@ -340,5 +345,47 @@ export default function ComparativaToTramiteStep({
       />
       {assignedPlans.length === 0 && <p role="status">No hay planes activos con todas las comisiones asignadas.</p>}
     </FormWrapper>
+  );
+}
+
+function NegocoStudySummary({ study }: { study: NonNullable<ComparativaVM["negoco_estudio"]> }) {
+  const client = study.client;
+  const fields: [string, string][] = [
+    ["Titular", [client?.name, client?.lastName].filter(Boolean).join(" ")],
+    ["DNI/CIF", client?.documentNumber ?? ""],
+    ["CUPS", study.cups ?? ""],
+    ["Tarifa", study.accessTariff],
+    ["Potencia", `${study.contractedKw.P1} / ${study.contractedKw.P2} kW`],
+    ["Consumo anual", `${study.annualKwh.toLocaleString("es-ES")} kWh`],
+    ["Compañía actual", study.currentSupplierName ?? ""],
+    [
+      "Localidad",
+      [client?.city || study.location?.municipality, client?.postalCode || study.location?.postalCode]
+        .filter(Boolean)
+        .join(" · "),
+    ],
+  ];
+  return (
+    <Card className="mb-4 border-primary-200 bg-primary-50/30">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-primary-500" />
+          <CardTitle className="text-sm font-medium text-gray-700">Datos del estudio Negoco Cloud</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          {fields.map(([label, value]) => (
+            <div key={label}>
+              <span className="text-gray-500">{label}:</span>
+              <p className="font-medium text-gray-900 break-all">{value || "—"}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-gray-500">
+          Rellenan el cliente y el contrato del trámite. Lo que falte, se pide en los pasos siguientes.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

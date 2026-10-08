@@ -1,5 +1,6 @@
 import type { Client, InValue, Transaction } from "@libsql/client";
 import { randomUUID } from "node:crypto";
+import type { StudyClientData } from "./client-data";
 import { proposalFileName, type ProposalRecord } from "./proposals";
 import type { StudyRecord } from "./repository";
 import { StudyError } from "./service";
@@ -54,6 +55,7 @@ export async function closeStudy({
   pdf,
   userId,
   upload,
+  clientData = null,
 }: {
   client: Pick<Client, "execute" | "transaction">;
   study: StudyRecord;
@@ -61,6 +63,8 @@ export async function closeStudy({
   pdf: Uint8Array;
   userId: string;
   upload: ProposalUploader;
+  /** Datos del cliente apuntados al completar; rellenan el trámite. */
+  clientData?: StudyClientData | null;
 }): Promise<{ fileId: string }> {
   if (study.status === "closed") throw new StudyError("Este estudio ya está completado.", 409);
   if (proposal.studyId !== study.id) throw new StudyError("Esa propuesta no es de este estudio.", 404);
@@ -184,7 +188,7 @@ export async function closeStudy({
     });
     await transaction.execute({
       sql: `UPDATE comparison_studies SET chosen_offer = ?, current_total = ?, chosen_total = ?,
-          savings = ?, commission = ?
+          savings = ?, commission = ?, client_data = ?
         WHERE id = ?`,
       args: [
         JSON.stringify({
@@ -200,6 +204,7 @@ export async function closeStudy({
         proposal.annualTotal,
         proposal.savings,
         proposal.commission,
+        clientData ? JSON.stringify(clientData) : null,
         study.id,
       ],
     });

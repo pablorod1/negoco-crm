@@ -59,7 +59,9 @@ export default function SecondStepForm({
   const [clients, setClients] = useState<ClientDB[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingMoreClients, setLoadingMoreClients] = useState(false);
-  const initialClientSearch = comparativa?.abarca_estudio?.dni ?? "";
+  // DNI del estudio: el de Abarca o el que se apuntó al completar el estudio Negoco Cloud.
+  const studyDni = comparativa?.abarca_estudio?.dni ?? comparativa?.negoco_estudio?.client?.documentNumber ?? undefined;
+  const initialClientSearch = studyDni ?? "";
   const [clientSearch, setClientSearch] = useState(initialClientSearch);
   const [debouncedClientSearch, setDebouncedClientSearch] =
     useState(initialClientSearch);
@@ -69,7 +71,7 @@ export default function SecondStepForm({
   const [selectedClient, setSelectedClient] = useState<string | null>(
     savedClient ? savedClient.id : null,
   );
-  const hasAbarcaData = !!comparativa?.abarca_estudio;
+  const hasAbarcaData = !!comparativa?.abarca_estudio || !!comparativa?.negoco_estudio;
   const [newClientState, setNewClientState] = useState<boolean>(false);
   const abarcaAutoApplied = useRef(false);
 
@@ -330,7 +332,7 @@ export default function SecondStepForm({
     )
       return;
 
-    const abarcaDni = comparativa?.abarca_estudio?.dni;
+    const abarcaDni = studyDni;
     if (!abarcaDni) {
       setNewClientState(true);
       abarcaAutoApplied.current = true;
@@ -356,6 +358,7 @@ export default function SecondStepForm({
     clientsLoaded,
     clients,
     comparativa,
+    studyDni,
     setClient,
     setTramite,
   ]);

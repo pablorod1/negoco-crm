@@ -33,6 +33,79 @@ import {
   type StudyOptionsInput,
   type StudyView,
 } from "./api";
+import type { StudyClientDataInput } from "@/comparador/study/client-data";
+
+type ClientForm = Record<keyof StudyClientDataInput, string>;
+
+const CLIENT_FIELDS: { key: keyof StudyClientDataInput; label: string; wide?: boolean; placeholder?: string }[] = [
+  { key: "name", label: "Nombre o razón social" },
+  { key: "lastName", label: "Apellidos" },
+  { key: "documentNumber", label: "DNI o CIF" },
+  { key: "phone", label: "Teléfono" },
+  { key: "email", label: "Correo", wide: true },
+  { key: "iban", label: "IBAN", wide: true, placeholder: "ES00 0000 0000 0000 0000 0000" },
+  { key: "address", label: "Dirección del suministro", wide: true },
+  { key: "postalCode", label: "Código postal" },
+  { key: "city", label: "Población" },
+  { key: "province", label: "Provincia" },
+];
+
+/** Lo que se sabe del cliente antes de preguntar: el nombre de la comparativa y dónde está el suministro (SIPS). */
+function initialClient(clientName: string | null, study: StudyView): ClientForm {
+  const location = study.supply?.location ?? null;
+  return {
+    name: clientName ?? "",
+    lastName: "",
+    kind: "Particular",
+    documentNumber: "",
+    email: "",
+    phone: "",
+    iban: "",
+    address: "",
+    postalCode: location?.postalCode ?? "",
+    city: location?.municipality ?? "",
+    province: location?.province ?? "",
+  };
+}
+
+/** Solo se envía lo que se ha escrito. */
+function clientPayload(form: ClientForm): StudyClientDataInput | null {
+  const entries = Object.entries(form).filter(([key, value]) => key !== "kind" && value.trim());
+  if (entries.length === 0) return null;
+  return { ...Object.fromEntries(entries), kind: form.kind === "Empresa" ? "Empresa" : "Particular" };
+}
+
+/** Datos del cliente, todos opcionales: rellenan el trámite al convertir la comparativa. */
+function ClientFields({ form, onChange }: { form: ClientForm; onChange: (form: ClientForm) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-4 text-sm">
+        {(["Particular", "Empresa"] as const).map((kind) => (
+          <label key={kind} className="flex items-center gap-1.5">
+            <input type="radio" name="client-kind" checked={form.kind === kind} onChange={() => onChange({ ...form, kind })} />
+            {kind}
+          </label>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {CLIENT_FIELDS.map(({ key, label, wide, placeholder }) => (
+          <div key={key} className={`space-y-1 ${wide ? "col-span-2" : ""}`}>
+            <Label htmlFor={`client-${key}`} className="text-xs">
+              {label}
+            </Label>
+            <Input
+              id={`client-${key}`}
+              className="h-8"
+              placeholder={placeholder}
+              value={form[key]}
+              onChange={(event) => onChange({ ...form, [key]: event.target.value })}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const TERRITORY: Record<string, string> = {
   peninsula: "Península",
@@ -152,16 +225,19 @@ const proposalFor = (proposals: readonly ProposalView[], offer: StudyOfferView) 
 /** Al completar: con qué propuesta se queda, de las generadas. */
 function CompleteDialog({
   proposals,
+  initial,
   open,
   onOpenChange,
   onComplete,
 }: {
   proposals: ProposalView[];
+  initial: ClientForm;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete: (proposalId: string) => Promise<void>;
+  onComplete: (proposalId: string, client: StudyClientDataInput | null) => Promise<void>;
 }) {
   const [selected, setSelected] = useState(proposals.at(-1)?.id ?? "");
+  const [client, setClient] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -169,7 +245,7 @@ function CompleteDialog({
     setSaving(true);
     setError(null);
     try {
-      await onComplete(selected);
+      await onComplete(selected, clientPayload(client));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se ha podido completar el estudio");
     } finally {
@@ -179,7 +255,7 @@ function CompleteDialog({
 
   return (
     <Dialog open={open} onOpenChange={(value) => !saving && onOpenChange(value)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>¿Con qué propuesta te quedas?</DialogTitle>
           <DialogDescription>
@@ -220,6 +296,15 @@ function CompleteDialog({
             </label>
           ))}
         </div>
+        <div className="space-y-2 border-t pt-3">
+          <div>
+            <p className="text-sm font-medium">Datos del cliente (opcionales)</p>
+            <p className="text-xs text-muted-foreground">
+              Rellenan el trámite al convertir la comparativa; lo que falte se pide entonces.
+            </p>
+          </div>
+          <ClientFields form={client} onChange={setClient} />
+        </div>
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}
@@ -242,10 +327,12 @@ function CompleteDialog({
 /** Las propuestas generadas, con su PDF, y el botón de completar el estudio. */
 function Proposals({
   study,
+  clientName,
   onComplete,
 }: {
   study: StudyView;
-  onComplete: (proposalId: string) => Promise<void>;
+  clientName: string | null;
+  onComplete: (proposalId: string, client: StudyClientDataInput | null) => Promise<void>;
 }) {
   const [completing, setCompleting] = useState(false);
   const closed = study.status === "closed";
@@ -306,6 +393,7 @@ function Proposals({
       {completing && (
         <CompleteDialog
           proposals={study.proposals}
+          initial={initialClient(clientName, study)}
           open={completing}
           onOpenChange={setCompleting}
           onComplete={onComplete}
@@ -324,6 +412,7 @@ function StudyResult({
   onPropose,
   onComplete,
   onRestart,
+  clientName,
 }: {
   study: StudyView;
   busy: boolean;
@@ -331,8 +420,9 @@ function StudyResult({
   proposing: string | null;
   onOptions: (options: StudyOptionsInput) => void;
   onPropose: (offer: StudyOfferView, options: StudyOptionsInput) => void;
-  onComplete: (proposalId: string) => Promise<void>;
+  onComplete: (proposalId: string, client: StudyClientDataInput | null) => Promise<void>;
   onRestart: () => void;
+  clientName: string | null;
 }) {
   const [feeText, setFeeText] = useState(
     study.options.feeEnergyPerMwh === null ? "" : String(study.options.feeEnergyPerMwh),
@@ -481,7 +571,7 @@ function StudyResult({
         </p>
       )}
 
-      <Proposals study={study} onComplete={onComplete} />
+      <Proposals study={study} clientName={clientName} onComplete={onComplete} />
 
       {study.offers.length === 0 ? (
         <p className="text-sm">
@@ -662,9 +752,9 @@ export function NegocoStudy({
   };
 
   /** Completa el estudio con la propuesta elegida. Los errores los enseña el diálogo. */
-  const complete = async (proposalId: string) => {
+  const complete = async (proposalId: string, client: StudyClientDataInput | null) => {
     if (!study) return;
-    await studyApi.close(study.id, proposalId);
+    await studyApi.close(study.id, proposalId, client);
     setStudy(await studyApi.view(study.id));
     showCustomToast({
       title: "Estudio completado",
@@ -703,6 +793,7 @@ export function NegocoStudy({
           onOptions={changeOptions}
           onPropose={propose}
           onComplete={complete}
+          clientName={list?.clientName ?? null}
           onRestart={() => setPicking(true)}
         />
       )}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getNegocoStudyForTramite, type NegocoStudyForTramite } from "@/comparador/study/tramite";
 import { z } from "zod";
 import { validateUserSession } from "@/core/auth/session-utils";
 import { getTursoClient } from "@/core/libsql/client";
@@ -118,6 +119,7 @@ interface ComparisonByIdResponse {
     has_renovacion: boolean;
     abarca_estudio?: AbarcaEstudio;
     abarca_documents?: AbarcaWebhookDocument[];
+    negoco_estudio?: NegocoStudyForTramite;
     files: Array<{
       id: string;
       filename: string;
@@ -303,6 +305,7 @@ function transformComparisonData(
   }>,
   abarcaEstudio?: AbarcaEstudio,
   abarcaDocuments?: AbarcaWebhookDocument[],
+  negocoEstudio?: NegocoStudyForTramite | null,
   role?: string,
 ): ComparisonByIdResponse["data"] {
   return {
@@ -342,6 +345,7 @@ function transformComparisonData(
       ? { ...abarcaEstudio, crm_id: null, comisiones: null, raw_payload: "" }
       : abarcaEstudio,
     abarca_documents: abarcaDocuments,
+    negoco_estudio: negocoEstudio ?? undefined,
     files,
   };
 }
@@ -650,6 +654,7 @@ export async function PATCH(
         filesResult.data || [],
         undefined,
         undefined,
+        undefined,
         authenticatedUser.role,
       );
       await transaction.commit();
@@ -866,12 +871,16 @@ export async function POST(
     const abarcaDocuments =
       parsedDocuments.length > 0 ? parsedDocuments : undefined;
 
+    // Estudio completado con el comparador propio: rellena el trámite.
+    const negocoEstudio = await getNegocoStudyForTramite(tursoClient, id);
+
     // Transform and return data
     const responseData = transformComparisonData(
       comparativa,
       files,
       abarcaEstudio,
       abarcaDocuments,
+      negocoEstudio,
       user_role,
     );
 

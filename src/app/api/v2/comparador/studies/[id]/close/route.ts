@@ -7,10 +7,14 @@ import { renderProposalPdf } from "@/comparador/pdf/proposal-pdf";
 import { requireNegocoStudiesAccess } from "@/comparador/server/guard";
 import { loadStudy, studyError } from "@/comparador/server/study-route";
 import { closeStudy, type ProposalUploader } from "@/comparador/study/close";
+import { StudyClientDataSchema } from "@/comparador/study/client-data";
 import { getProposal } from "@/comparador/study/proposals";
 import { StudyError } from "@/comparador/study/service";
 
-const CloseSchema = z.object({ proposalId: z.string().min(1) });
+const CloseSchema = z.object({
+  proposalId: z.string().min(1),
+  client: StudyClientDataSchema.nullable().optional(),
+});
 
 const uploadToStorage: ProposalUploader = async ({ path, data }) => {
   const target = ref(storage, path);
@@ -31,7 +35,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const study = await loadStudy(access.context, id);
 
     const parsed = CloseSchema.safeParse(await request.json());
-    if (!parsed.success) return NextResponse.json({ error: "Elige una propuesta" }, { status: 400 });
+    if (!parsed.success) {
+      // Los mensajes propios (DNI, IBAN, correo…) ya están en español.
+      const message = parsed.error.issues.find(({ code }) => code === "custom")?.message;
+      return NextResponse.json({ error: message ?? "Revisa la propuesta y los datos del cliente" }, { status: 400 });
+    }
     const proposal = await getProposal(client, parsed.data.proposalId);
     if (!proposal || proposal.studyId !== study.id) {
       throw new StudyError("Esa propuesta no es de este estudio.", 404);
@@ -45,6 +53,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       pdf: new Uint8Array(pdf),
       userId: user.id,
       upload: uploadToStorage,
+      clientData: parsed.data.client ?? null,
     });
     return NextResponse.json({ success: true, data: { fileId } });
   } catch (error) {

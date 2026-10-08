@@ -2,6 +2,7 @@ import type { Client, Row } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import type { InvoiceIssue } from "@/comparador/extraction/validate";
+import type { StudyClientData } from "./client-data";
 import type { StudyOptions } from "./ranking";
 import type { StudySupply } from "./supply";
 
@@ -42,6 +43,8 @@ export interface StudyRecord {
   commission: number | null;
   aiCostUsd: number | null;
   error: string | null;
+  /** Datos del cliente apuntados al completar (migración 028). */
+  clientData: StudyClientData | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -81,6 +84,7 @@ function toStudy(row: Row): StudyRecord {
     commission: num(row.commission),
     aiCostUsd: num(row.ai_cost_usd),
     error: str(row.error),
+    clientData: json<StudyClientData | null>(row.client_data, null),
     createdBy: str(row.created_by),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),

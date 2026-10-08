@@ -96,6 +96,27 @@ export const createEmptyTramiteDB = (
 
 export const createEmptyClientDB = (comparativa?: ComparativaVM): ClientDB => {
   const abarca = comparativa?.abarca_estudio;
+  const negoco = abarca ? undefined : comparativa?.negoco_estudio?.client;
+  if (negoco) {
+    // Estudio Negoco Cloud: los datos que se apuntaron al completarlo.
+    const company = negoco.kind === "Empresa";
+    return {
+      id: `CLI-${crypto.randomUUID()}`,
+      name: negoco.name || comparativa!.client,
+      last_name: negoco.lastName || "",
+      type: company ? "Empresa" : "Particular",
+      email: negoco.email || "",
+      phone: negoco.phone || "",
+      address: negoco.address || "",
+      postal_code: negoco.postalCode || "",
+      province: negoco.province || "",
+      city: negoco.city || "",
+      document_type: company ? "CIF" : "DNI",
+      document_number: negoco.documentNumber || "",
+      IBAN: negoco.iban?.replace(/\s/g, "") || "",
+      coordinates: null,
+    };
+  }
   return {
     id: `CLI-${crypto.randomUUID()}`,
     name: abarca?.titular || (comparativa ? comparativa.client : ""),
@@ -155,6 +176,33 @@ export const createEmptyContractDB = (
     } else if (isDifferentCompany) {
       type = "Cambio Compañía";
     }
+  }
+
+  const negoco = abarca ? undefined : comparativa?.negoco_estudio;
+  if (negoco) {
+    // Estudio Negoco Cloud: suministro del SIPS (o la factura) y la oferta elegida.
+    return {
+      id: `CTR-${crypto.randomUUID()}`,
+      // Puede ser la misma comercializadora (cambio de producto): lo elige quien da de alta.
+      type: "",
+      province: negoco.client?.province || negoco.location?.province || "",
+      city: negoco.client?.city || negoco.location?.municipality || "",
+      address: negoco.client?.address || "",
+      postal_code: negoco.client?.postalCode || negoco.location?.postalCode || "",
+      old_company: "",
+      new_company: comparativa?.company_id || "",
+      plan: negoco.accessTariff,
+      consumption: negoco.annualKwh,
+      CUPS: negoco.cups || "",
+      pot1: negoco.contractedKw.P1,
+      pot2: negoco.contractedKw.P2,
+      pot3: 0,
+      pot4: 0,
+      pot5: 0,
+      pot6: 0,
+      description: "",
+      tramite_id: "",
+    };
   }
 
   // Sum consumos

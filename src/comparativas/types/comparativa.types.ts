@@ -1,4 +1,5 @@
 import { User } from "@/core/types";
+import type { NegocoStudyForTramite } from "@/comparador/study/tramite";
 import { AbarcaEstudio, AbarcaWebhookDocument } from "./abarca.types";
 import type { CommissionSegment } from "@/core/types";
 
@@ -68,6 +69,7 @@ export interface ComparativaVM {
   company_id?: string; // ID reference to comercializadoras table
   company_name?: string; // Resolved name for display purposes
   abarca_estudio?: AbarcaEstudio; // Datos del estudio de Abarca si existe
+  negoco_estudio?: NegocoStudyForTramite; // Estudio completado con el comparador propio
   abarca_documents?: AbarcaWebhookDocument[]; // Estado de los documentos del webhook
   has_permanencia: boolean;
   has_renovacion: boolean;
