@@ -679,6 +679,12 @@ export function replaceCommissionRulesStatements({
         WHERE comercializadora_id = ? AND valid_to IS NULL AND valid_from < ?`,
       args: [dayBefore(validFrom), comercializadoraId, validFrom],
     },
+    // Las que empiezan el mismo día son una lectura anterior del mismo anexo:
+    // se sustituyen. Si no, las dos valdrían a la vez.
+    {
+      sql: "DELETE FROM rate_commission_rules WHERE comercializadora_id = ? AND valid_from = ?",
+      args: [comercializadoraId, validFrom],
+    },
     ...rules.map((rule) => ({
       sql: `INSERT INTO rate_commission_rules
         (id, comercializadora_id, rate_id, access_tariff, level, channel, min_annual_kwh,

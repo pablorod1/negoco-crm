@@ -364,6 +364,22 @@ describe("rate ingest service", () => {
       [200, "2026-01-01", "2026-09-30"],
       [220, "2026-10-01", null],
     ]);
+
+    // Volver a leer el mismo anexo, con la misma fecha, sustituye sus reglas.
+    const reread = await ingestWith(
+      client,
+      extractionResult([rate({})], { commissions: [{ ...commissions[0], amount: 230 }] }),
+      "COM-040",
+    );
+    await approveIngest({
+      client, control, ingest: reread, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    const after = await client.execute("SELECT amount, valid_from, valid_to FROM rate_commission_rules ORDER BY valid_from");
+    expect(after.rows.map((row) => [row.amount, row.valid_from, row.valid_to])).toEqual([
+      [200, "2026-01-01", "2026-09-30"],
+      [230, "2026-10-01", null],
+    ]);
   });
 
   test("commission rules keep their product, power limit and minimum, and say which rates they cover", async () => {
