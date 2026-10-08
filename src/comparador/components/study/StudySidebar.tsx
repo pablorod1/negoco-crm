@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, type Ref } from "react";
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  ChevronDown,
-  ExternalLink,
-  FileText,
-  ScanText, Eye } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ExternalLink, Eye, FileText, PencilLine, ScanText } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import { cn } from "@/core/utils";
 import { euros, kw, kwh, percentOf, type ComparativaStudies, type StudyView } from "./api";
@@ -273,7 +266,15 @@ function ClientCard({ study }: { study: StudyView }) {
 }
 
 /** La factura analizada y lo que no cuadra en su lectura. */
-function InvoiceCard({ study, file }: { study: StudyView; file: ComparativaStudies["invoices"][number] | null }) {
+function InvoiceCard({
+  study,
+  file,
+  onReview,
+}: {
+  study: StudyView;
+  file: ComparativaStudies["invoices"][number] | null;
+  onReview: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const period = study.invoice?.billingPeriod;
@@ -343,10 +344,11 @@ function InvoiceCard({ study, file }: { study: StudyView; file: ComparativaStudi
             <span className="flex-1 text-gray-800">
               <span className="font-medium">
                 {blocking
-                  ? "La lectura no cuadra del todo."
+                  ? study.invoiceReview.acceptedMismatch
+                    ? "Las cuentas no cuadran, pero se han confirmado."
+                    : "La lectura no cuadra del todo."
                   : "Avisos de la lectura."}
-              </span>{" "}
-              {blocking ? "Comprueba lo que paga hoy contra el PDF." : ""}
+              </span>
             </span>
             <ChevronDown
               className={cn(
@@ -363,6 +365,24 @@ function InvoiceCard({ study, file }: { study: StudyView; file: ComparativaStudi
             </ul>
           )}
         </div>
+      )}
+      {study.invoiceReview.reviewedAt && (
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
+          <CheckCircle2 className="size-3.5 text-success-600" />
+          Revisada {study.invoiceReview.reviewedByEmail ? `por ${study.invoiceReview.reviewedByEmail} ` : ""}el{" "}
+          {new Date(study.invoiceReview.reviewedAt).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+        </p>
+      )}
+      {study.status !== "closed" && study.extraction && (
+        <Button
+          variant={study.invoiceReview.required ? "default" : "outline"}
+          size="sm"
+          className="mt-4 w-full rounded-lg"
+          onClick={onReview}
+        >
+          <PencilLine className="size-3.5" />
+          {study.invoiceReview.required ? "Revisar datos de la factura" : "Editar datos de la factura"}
+        </Button>
       )}
     </Panel>
   );
@@ -478,10 +498,12 @@ export function StudySidebar({
   onComplete,
   proposalsRef,
   invoiceFile,
+  onReviewInvoice,
 }: {
   study: StudyView;
   /** El PDF de la factura analizada, para abrirlo en el visor. */
   invoiceFile: ComparativaStudies["invoices"][number] | null;
+  onReviewInvoice: () => void;
   onComplete: () => void;
   /** La tarjeta de propuestas, para saber cuándo sale de la vista. */
   proposalsRef?: Ref<HTMLDivElement>;
@@ -495,7 +517,7 @@ export function StudySidebar({
       />
       <SupplyCard study={study} />
       <ClientCard study={study} />
-      <InvoiceCard study={study} file={invoiceFile} />
+      <InvoiceCard study={study} file={invoiceFile} onReview={onReviewInvoice} />
     </aside>
   );
 }

@@ -7,8 +7,10 @@ import { showCustomToast } from "@/core/components/CustomToast";
 import { Button } from "@/core/components/ui/button";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import type { StudyClientDataInput } from "@/comparador/study/client-data";
+import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { studyApi, type ComparativaStudies, type StudyOfferView, type StudyOptionsInput, type StudyView } from "./api";
 import { CompleteDialog, initialClient } from "./CompleteDialog";
+import { InvoiceEditor } from "./InvoiceEditor";
 import { InvoicePicker } from "./InvoicePicker";
 import { OfferList } from "./OfferList";
 import { OfferInsights } from "./OfferInsights";
@@ -64,6 +66,7 @@ function StudyResult({
   onOptions,
   onPropose,
   onComplete,
+  onReviewInvoice,
 }: {
   study: StudyView;
   invoices: ComparativaStudies["invoices"];
@@ -73,12 +76,15 @@ function StudyResult({
   onOptions: (options: StudyOptionsInput) => void;
   onPropose: (offer: StudyOfferView, options: StudyOptionsInput) => void;
   onComplete: (proposalId: string, client: StudyClientDataInput | null) => Promise<void>;
+  onReviewInvoice: (invoice: InvoiceExtraction, acceptMismatch: boolean) => Promise<void>;
 }) {
+  const [editing, setEditing] = useState(false);
   const [feeText, setFeeText] = useState(study.options.feeEnergyPerMwh === null ? "" : String(study.options.feeEnergyPerMwh));
   const [completing, setCompleting] = useState(false);
   const [suppliers, setSuppliers] = useState<ReadonlySet<string>>(new Set());
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const proposalsRef = useRef<HTMLDivElement>(null);
+  const invoiceFile = invoices.find(({ id }) => id === study.invoiceFileId) ?? null;
   const closed = study.status === "closed";
   const hasCurrent = study.current !== null;
 
@@ -102,7 +108,7 @@ function StudyResult({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0 space-y-6">
-        <SavingsHero study={study} best={best && (!hasCurrent || (best.savings ?? 0) > 0) ? best : null} />
+        <SavingsHero study={study} onReview={() => setEditing(true)} best={best && (!hasCurrent || (best.savings ?? 0) > 0) ? best : null} />
         {!closed && (
           <StudyFilters
             study={study}
@@ -141,8 +147,22 @@ function StudyResult({
       </div>
 
       <StudySidebar study={study} onComplete={() => setCompleting(true)} proposalsRef={proposalsRef}
-        invoiceFile={invoices.find(({ id }) => id === study.invoiceFileId) ?? null}
+        invoiceFile={invoiceFile}
+        onReviewInvoice={() => setEditing(true)}
       />
+      {editing && study.extraction && (
+        <InvoiceEditor
+          open={editing}
+          onOpenChange={setEditing}
+          initial={study.extraction}
+          file={invoiceFile}
+          required={study.invoiceReview.required}
+          onSave={async (invoice, acceptMismatch) => {
+            await onReviewInvoice(invoice, acceptMismatch);
+            setEditing(false);
+          }}
+        />
+      )}
       <ProposalDock study={study} anchor={proposalsRef} onComplete={() => setCompleting(true)} />
 
       {completing && (
@@ -261,6 +281,19 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
     }
   };
 
+  /** Guarda la factura revisada y recalcula lo que paga hoy y el ahorro. */
+  const reviewInvoice = async (invoice: InvoiceExtraction, acceptMismatch: boolean) => {
+    if (!study) return;
+    await studyApi.reviewInvoice(study.id, invoice, acceptMismatch);
+    setStudy(await studyApi.view(study.id));
+    showCustomToast({
+      title: "Factura revisada",
+      message: "Lo que paga hoy y el ahorro se han recalculado con los datos revisados.",
+      icon: CheckCircle2,
+      iconColor: "var(--success-color)",
+    });
+  };
+
   /** Completa el estudio y vuelve a la comparativa, que ya está pendiente de revisión. */
   const complete = async (proposalId: string, client: StudyClientDataInput | null) => {
     if (!study) return;
@@ -335,6 +368,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
           onOptions={changeOptions}
           onPropose={propose}
           onComplete={complete}
+          onReviewInvoice={reviewInvoice}
         />
       )}
     </div>

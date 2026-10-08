@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, TrendingDown } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileSearch, TrendingDown } from "lucide-react";
+import { Button } from "@/core/components/ui/button";
 import { SupplierLogo } from "@/comercializadoras/components/SupplierLogo";
 import { euros, eurosRound, percentOf, type StudyOfferView, type StudyView } from "./api";
 
@@ -29,7 +30,33 @@ function CostBar({ label, value, max, strong }: { label: React.ReactNode; value:
  * La decisión de un vistazo: cuánto puede ahorrar el cliente y con quién. Con
  * el estudio completado, lo que se le ofreció.
  */
-export function SavingsHero({ study, best }: { study: StudyView; best: StudyOfferView | null }) {
+/** La lectura no cuadra: antes de enseñar ahorros, alguien revisa la factura. */
+function ReviewHero({ onReview }: { onReview: () => void }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col gap-5 rounded-3xl bg-white p-6 ring-1 ring-warning-200 sm:flex-row sm:items-center sm:p-8"
+    >
+      <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-warning-50 text-warning-600">
+        <FileSearch className="size-6" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-lg font-semibold text-gray-900">Revisa los datos de la factura</p>
+        <p className="mt-1 text-sm text-gray-600">
+          Las cuentas de la factura leída no cuadran. Hasta que alguien las revise no se calcula lo que paga hoy ni el ahorro, y las
+          propuestas salen sin comparar con su factura.
+        </p>
+      </div>
+      <Button size="lg" className="shrink-0 rounded-xl" onClick={onReview}>
+        Revisar datos
+      </Button>
+    </motion.section>
+  );
+}
+
+export function SavingsHero({ study, best, onReview }: { study: StudyView; best: StudyOfferView | null; onReview: () => void }) {
+  if (study.invoiceReview.required) return <ReviewHero onReview={onReview} />;
   const chosen = study.proposals.find((proposal) => proposal.chosen);
   const current = study.current?.total ?? null;
   const target = chosen

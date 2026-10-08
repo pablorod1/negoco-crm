@@ -16,6 +16,7 @@ import type {
   ApoloSipsProcedureRow,
 } from "@/integrations/apolo-sips/types";
 import { StudyError } from "./errors";
+import { needsInvoiceReview } from "./invoice-review";
 import { readInvoice } from "./read-invoice";
 import { rankStudy, type StudyRanking } from "./ranking";
 import {
@@ -183,7 +184,8 @@ export async function rankSavedStudy({
   ]);
   const ranking = rankStudy({
     supply: study.supply,
-    current: currentTariffFromInvoice(study.extraction),
+    // Sin lo que paga hoy hasta que alguien revise una lectura que no cuadra.
+    current: needsInvoiceReview(study) ? null : currentTariffFromInvoice(study.extraction),
     offers,
     rules,
     regulated: getRegulatedParams(study.priceDate),

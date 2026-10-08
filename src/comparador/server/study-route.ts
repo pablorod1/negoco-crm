@@ -5,8 +5,10 @@ import { getStudyComparativa } from "@/comparador/study/comparativa";
 import type { StudyRanking } from "@/comparador/study/ranking";
 import type { ProposalRecord } from "@/comparador/study/proposals";
 import { getStudy, type StudyRecord } from "@/comparador/study/repository";
-import type { InvoiceIssue, InvoiceIssueCode } from "@/comparador/extraction/validate";
+import type { InvoiceIssue } from "@/comparador/extraction/validate";
+import { issueMessages } from "@/comparador/extraction/issue-text";
 import { StudyError } from "@/comparador/study/service";
+import { needsInvoiceReview, withoutReview, type ReviewedExtraction } from "@/comparador/study/invoice-review";
 
 /** Cuántas ofertas se enseñan: el resto no cambia la decisión. */
 export const SHOWN_OFFERS = 150;
@@ -27,38 +29,11 @@ export function canSeeAgencyCommission(role: string): boolean {
   return role === "admin" || role === "1";
 }
 
-const ISSUE_TEXT: Partial<Record<InvoiceIssueCode, string>> = {
-  not_2_0td: "La factura no es de 2.0TD.",
-  indexed_pricing: "La factura es de precio indexado.",
-  power_line_mismatch: "Las líneas de potencia no cuadran (kW × días × precio).",
-  energy_line_mismatch: "Las líneas de energía no cuadran (kWh × precio).",
-  social_bonus_mismatch: "El bono social no cuadra.",
-  meter_rental_mismatch: "El alquiler del contador no cuadra.",
-  consumption_mismatch: "El consumo por periodo no cuadra con las líneas de energía.",
-  energy_period_unpriced: "Falta el precio de energía de algún periodo.",
-  power_period_unpriced: "Falta el precio de potencia de algún periodo.",
-  electricity_tax_base_mismatch: "La base del impuesto eléctrico no cuadra.",
-  electricity_tax_mismatch: "El impuesto eléctrico no cuadra.",
-  taxable_base_mismatch: "La base imponible no cuadra.",
-  vat_mismatch: "El IVA no cuadra.",
-  total_mismatch: "El total de la factura no cuadra con sus líneas.",
-  read_from_image: "Factura leída de una imagen: comprueba lo que paga hoy contra el original.",
-};
-
 /**
  * Avisos de la factura en palabras. Los del titular y el CUPS no se enseñan:
  * se tapan antes de analizarla y el CUPS lo lee el CRM.
  */
-export function describeInvoiceIssues(issues: readonly InvoiceIssue[]) {
-  return issues
-    .filter(({ code, field }) => !["cups_invalid", "tax_id_invalid"].includes(code) && !/^(holder|cups|supplyAddress)/.test(field))
-    .map((issue) => ({
-      severity: issue.severity,
-      message:
-        ISSUE_TEXT[issue.code] ??
-        (issue.code === "missing_field" ? `La factura no trae ${issue.field}.` : `Revisa ${issue.field}.`),
-    }));
-}
+export const describeInvoiceIssues = (issues: readonly InvoiceIssue[]) => issueMessages(issues);
 
 /** Una propuesta generada, con el enlace a su PDF. */
 export function proposalView(proposal: ProposalRecord, showCommission: boolean) {
@@ -88,6 +63,7 @@ export function studyView(
   proposals: readonly ProposalRecord[] = [],
 ) {
   const facts = study.extraction;
+  const review = (facts as ReviewedExtraction | null)?.review ?? null;
   const hide = <T extends { commission: number | null }>(item: T): T =>
     showCommission ? item : { ...item, commission: null };
   return {
@@ -111,6 +87,15 @@ export function studyView(
         }
       : null,
     issues: describeInvoiceIssues(study.issues),
+    /** Lo leído de la factura, para revisarlo y corregirlo. */
+    extraction: facts ? withoutReview(facts as ReviewedExtraction) : null,
+    invoiceReview: {
+      /** La lectura no cuadra y nadie la ha revisado: no hay ahorro hasta revisarla. */
+      required: needsInvoiceReview(study),
+      reviewedAt: review?.reviewedAt ?? null,
+      reviewedByEmail: review?.reviewedByEmail ?? null,
+      acceptedMismatch: review?.acceptedMismatch ?? false,
+    },
     supply: study.supply,
     options: study.options,
     showCommission,
