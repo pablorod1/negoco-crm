@@ -26,6 +26,7 @@ import {
 } from "./api";
 import { IngestReviewSheet } from "./IngestReviewSheet";
 import { RateUploadDialog } from "./RateUploadDialog";
+import { commissionAmount, commissionScope } from "./commission-text";
 
 const INGEST_STATUS: Record<string, { label: string; variant: "success" | "warning" | "danger" | "default" | "info" | "pending" }> = {
   received: { label: "Sin leer", variant: "pending" },
@@ -201,23 +202,13 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
               <TableBody>
                 {data.commissionRules.map((rule) => (
                   <TableRow key={rule.id}>
-                    <TableCell className="text-sm">
-                      {[rule.accessTariff, rule.level, rule.channel === "renewal" ? "Renovación" : rule.channel ? "Captación" : null]
-                        .filter(Boolean)
-                        .join(" · ") || "Todas las tarifas"}
-                    </TableCell>
+                    <TableCell className="text-sm">{commissionScope(rule, { withConsumption: false })}</TableCell>
                     <TableCell className="text-sm">
                       {rule.minAnnualKwh === null && rule.maxAnnualKwh === null
                         ? "Cualquiera"
                         : `${(rule.minAnnualKwh ?? 0) / 1000}–${rule.maxAnnualKwh === null ? "∞" : rule.maxAnnualKwh / 1000} MWh`}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {rule.ruleType === "fixed"
-                        ? `${rule.amount} €`
-                        : rule.ruleType === "per_mwh"
-                          ? `${rule.amount} €/MWh`
-                          : `${rule.amount} % del fee`}
-                    </TableCell>
+                    <TableCell className="text-sm">{commissionAmount(rule)}</TableCell>
                     <TableCell className="text-sm">
                       {formatDay(rule.validFrom)}
                       {rule.validTo ? ` → ${rule.validTo}` : " → vigente"}

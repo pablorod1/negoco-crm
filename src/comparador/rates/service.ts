@@ -5,6 +5,7 @@ import { prepareDocument, type RateSource } from "./document";
 import { extractRateDocument, type RateExtractionResult } from "./extract";
 import { matchProducts, type RateMatch } from "./match";
 import { normalizeName } from "./names";
+import { ruleCoversRate } from "@/comparador/engine/commission";
 import { powerToPerDay, toProposedCommissions } from "./normalize";
 import {
   claimIngest,
@@ -171,8 +172,26 @@ const EXPLAINED_ERRORS = new Set([
 
 type ExtractedResult = Extract<RateExtractionResult, { status: "ok" | "needs_review" }>;
 
+/** Nombres de las tarifas a las que se aplica una regla, sin repetir, como «Oslo II» o «Clásico 1 precio (Alto)». */
+function ratesCoveredBy(
+  rule: Pick<CommissionRuleInput, "rateId" | "product" | "level">,
+  rates: readonly { rateId: string; productName: string; level: string | null }[],
+): string[] {
+  const names = new Set<string>();
+  for (const rate of rates) {
+    if (ruleCoversRate(rule, rate)) names.add(rate.level ? `${rate.productName} (${rate.level})` : rate.productName);
+  }
+  return [...names].sort((left, right) => left.localeCompare(right, "es"));
+}
+
 export interface ProposedCommission extends CommissionRuleInput {
   productName: string | null;
+  /**
+   * Tarifas de la comercializadora a las que se aplicaría (vigentes o de este
+   * documento), para ver en la revisión si casa bien. Vacío: no se aplica a
+   * ninguna.
+   */
+  covers: string[];
 }
 
 export interface IngestReview {
@@ -212,6 +231,8 @@ export function documentAgeIssue(validFrom: string | null, today: string): RateI
 }
 
 export interface ReviewDecisions {
+  /** false: las comisiones del documento no se guardan (y sus incidencias no cuentan). */
+  includeCommissions?: boolean;
   /** rowKey de las filas propuestas que no se guardan. */
   excludedRowKeys?: readonly string[];
   /** rowKey de las filas sin potencia que llevan la regulada («BOE»). */
@@ -305,18 +326,34 @@ export async function buildReview({
       .map((rule) => ({ productKey: rule.productKey!, productName: rule.productName! })),
     { tenantRates, catalog, aliases },
   );
-  const commissions = toProposedCommissions(extracted.extraction).map((rule) => ({
-    productName: rule.productName,
-    rateId: rule.productKey ? (commissionMatches.get(rule.productKey)?.rateId ?? null) : null,
-    accessTariff: rule.accessTariff,
-    level: rule.level,
-    channel: rule.channel,
-    minAnnualKwh: rule.minAnnualKwh,
-    maxAnnualKwh: rule.maxAnnualKwh,
-    ruleType: rule.ruleType,
-    feeBase: rule.feeBase,
-    amount: rule.amount,
-  }));
+  const coverable = [
+    ...activePrices.map((price) => ({ rateId: price.rateId, productName: price.rateName, level: price.level })),
+    ...resolved.map((row) => ({
+      rateId: row.match.rateId ?? `new:${row.productKey}`,
+      productName: row.productName,
+      level: row.level,
+    })),
+  ];
+  const commissions = toProposedCommissions(extracted.extraction).map((rule) => {
+    const rateId = rule.productKey ? (commissionMatches.get(rule.productKey)?.rateId ?? null) : null;
+    return {
+      productName: rule.productName,
+      rateId,
+      product: rule.product,
+      accessTariff: rule.accessTariff,
+      level: rule.level,
+      channel: rule.channel,
+      minAnnualKwh: rule.minAnnualKwh,
+      maxAnnualKwh: rule.maxAnnualKwh,
+      minKw: rule.minKw,
+      maxKw: rule.maxKw,
+      ruleType: rule.ruleType,
+      feeBase: rule.feeBase,
+      amount: rule.amount,
+      minAmount: rule.minAmount,
+      covers: ratesCoveredBy({ rateId, product: rule.product, level: rule.level }, coverable),
+    };
+  });
 
   // Las incidencias de filas excluidas ya no cuentan; la potencia regulada
   // elegida por el revisor resuelve la que faltaba.
@@ -328,7 +365,8 @@ export async function buildReview({
         issue.rowKey &&
         (regulated.has(issue.rowKey) || manual[issue.rowKey])
       ) &&
-      !(issue.code === "no_rates" && commissions.length > 0),
+      !(issue.code === "no_rates" && commissions.length > 0) &&
+      !(issue.code === "commission_not_in_source" && decisions.includeCommissions === false),
   );
 
   const newProducts = [
@@ -379,7 +417,6 @@ export interface ApprovalInput extends ReviewDecisions {
   /** YYYY-MM-DD. Si es futura, la versión queda programada. */
   validFrom: string;
   validTo?: string | null;
-  includeCommissions?: boolean;
   notes?: string | null;
 }
 

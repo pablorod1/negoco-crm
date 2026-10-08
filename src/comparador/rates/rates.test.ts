@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { computeCommission, type CommissionRuleForEngine } from "@/comparador/engine/commission";
+import { computeCommission, ruleCoversRate, type CommissionRuleForEngine } from "@/comparador/engine/commission";
 import { getRegulatedParams } from "@/comparador/engine/regulated";
 import { buildDiff, type ResolvedRow } from "./diff";
 import { isEligible, toTariffPrices } from "./engine-prices";
@@ -417,6 +417,93 @@ describe("computeCommission", () => {
 
   test("respects validity dates", () => {
     expect(computeCommission(rules, { ...context, date: "2025-12-31" })).toBeNull();
+  });
+
+  const base = {
+    rateId: null,
+    level: null,
+    accessTariff: "2.0TD",
+    channel: null,
+    minAnnualKwh: null,
+    maxAnnualKwh: null,
+    ruleType: "fixed" as const,
+    validFrom: "2026-01-01",
+    validTo: null,
+  };
+
+  test("levels match without accents, case or the codes the price annex adds", () => {
+    // Anexo de comisiones: «Estándar», «Super cliente». Precios: «ESTANDAR L2», «SUPERCLIENTE L8».
+    const repsol: CommissionRuleForEngine[] = [
+      { ...base, level: "Estándar", amount: 150 },
+      { ...base, level: "Cliente", amount: 120 },
+      { ...base, level: "Super cliente", amount: 100 },
+    ];
+    expect(computeCommission(repsol, { ...context, level: "ESTANDAR L2" })).toBe(150);
+    expect(computeCommission(repsol, { ...context, level: "SUPERCLIENTE L8" })).toBe(100);
+    expect(computeCommission(repsol, { ...context, level: "CLIENTE L4" })).toBe(120);
+  });
+
+  test("a power limit applies only above it, and not when the power is unknown", () => {
+    // Repsol, «2.0TD > 10 kW».
+    const repsol: CommissionRuleForEngine[] = [{ ...base, level: "Agencia", minKw: 10, amount: 200 }];
+    expect(computeCommission(repsol, { ...context, maxContractedKw: 2.2 })).toBeNull();
+    expect(computeCommission(repsol, { ...context, maxContractedKw: 10 })).toBeNull();
+    expect(computeCommission(repsol, { ...context, maxContractedKw: 12 })).toBe(200);
+    expect(computeCommission(repsol, context)).toBeNull();
+  });
+
+  test("product and level can both be in the rate name", () => {
+    // Nordy: Helsinki/Oslo/Estocolmo × I–IV; las tarifas se llaman «Oslo II», «+Oslo II».
+    const nordy: CommissionRuleForEngine[] = [
+      { ...base, product: "Helsinki", level: "I", amount: 4 },
+      { ...base, product: "Helsinki", level: "II", amount: 7 },
+      { ...base, product: "Oslo", level: "II", amount: 55 },
+    ];
+    const oslo = { ...context, level: null };
+    expect(computeCommission(nordy, { ...oslo, productName: "Oslo II" })).toBe(55);
+    expect(computeCommission(nordy, { ...oslo, productName: "+Oslo II" })).toBe(55);
+    expect(computeCommission(nordy, { ...oslo, productName: "Helsinki I" })).toBe(4);
+    expect(computeCommission(nordy, { ...oslo, productName: "Helsinki III" })).toBeNull();
+    expect(computeCommission(nordy, { ...oslo, productName: "Estocolmo II" })).toBeNull();
+  });
+
+  test("rules read without the product that tie with different amounts give no commission", () => {
+    const lost: CommissionRuleForEngine[] = [
+      { ...base, level: "I", amount: 4 },
+      { ...base, level: "I", amount: 25 },
+    ];
+    expect(computeCommission(lost, { ...context, level: null, productName: "Oslo I" })).toBeNull();
+  });
+
+  test("per MWh with a minimum pays the larger of the two", () => {
+    // HOLALUZ «Clásico (1 precio)», nivel Alto: 15 €/MWh, mínimo 75 €.
+    const holaluz: CommissionRuleForEngine[] = [
+      { ...base, product: "Clásico (1 precio)", level: "Alto", ruleType: "per_mwh", amount: 15, minAmount: 75 },
+      { ...base, product: "Clásico (3 precios)", ruleType: "per_mwh", amount: 10, minAmount: 55 },
+    ];
+    const alto = { ...context, level: "Alto", productName: "Clásico 1 precio" };
+    expect(computeCommission(holaluz, { ...alto, annualKwh: 3_000 })).toBe(75);
+    expect(computeCommission(holaluz, { ...alto, annualKwh: 8_000 })).toBe(120);
+    expect(computeCommission(holaluz, { ...context, level: null, productName: "Clásico 3 precios", annualKwh: 3_000 })).toBe(55);
+  });
+
+  test("a rule linked to a rate still covers only its level", () => {
+    const rule = { rateId: "r1", product: "Clásico (1 precio)", level: "Alto" };
+    expect(ruleCoversRate(rule, { rateId: "r1", productName: "Clásico 1 precio", level: "Alto" })).toBe(true);
+    expect(ruleCoversRate(rule, { rateId: "r1", productName: "Clásico 1 precio", level: "Bajo" })).toBe(false);
+    expect(ruleCoversRate(rule, { rateId: "r2", productName: "Clásico 1 precio", level: "Alto" })).toBe(false);
+  });
+
+  test("the longer product name wins, and a plus sign makes another product", () => {
+    const rules: CommissionRuleForEngine[] = [
+      { ...base, product: "La Tarifa Justa", level: "Alto", amount: 75 },
+      { ...base, product: "La Tarifa Justa Cloud", amount: 90 },
+      { ...base, product: "Levante+", amount: 48 },
+    ];
+    expect(computeCommission(rules, { ...context, level: "Alto", productName: "La Tarifa Justa Cloud" })).toBe(90);
+    expect(computeCommission(rules, { ...context, level: "Alto", productName: "La Tarifa Justa" })).toBe(75);
+    expect(computeCommission(rules, { ...context, level: null, productName: "Precio Fijo Levante+" })).toBe(48);
+    expect(computeCommission(rules, { ...context, level: null, productName: "Precio Fijo Levante" })).toBeNull();
   });
 });
 

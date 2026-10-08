@@ -769,7 +769,6 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
 
   const commissions: ExtractedCommission[] = typed
     .filter(({ kind }) => kind === "commissions")
-    .filter((row) => row.minKw === null && row.maxKw === null)
     .map((row) => {
       const type = text(row.raw.commissionType)?.toLowerCase() ?? "fixed";
       return {
@@ -780,14 +779,14 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
         channel: row.channel ?? "both",
         minKwh: row.minKwh,
         maxKwh: row.maxKwh,
+        minKw: row.minKw,
+        maxKw: row.maxKw,
         ruleType: (["fixed", "per_mwh", "fee_share"].includes(type) ? type : "fixed") as ExtractedCommission["ruleType"],
         feeBase: (text(row.raw.feeBase)?.toLowerCase() === "power" ? "power" : "energy") as "energy" | "power",
         amount: row.numbers.commissionAmount ?? 0,
+        minAmount: null,
       };
     });
-  const powerBandCommissions = typed.filter(
-    ({ kind, minKw, maxKw }) => kind === "commissions" && (minKw !== null || maxKw !== null),
-  ).length;
 
   const dateCell = (ref: SheetRecipe["validFrom"]) => {
     if (!ref) return [];
@@ -806,9 +805,6 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
     ...grids
       .filter((grid) => !covered.has(key(grid.name)) && !recipe.skippedSheets.some(({ sheet }) => key(sheet) === key(grid.name)))
       .map((grid) => `${grid.name} (sin tabla en la plantilla)`),
-    ...(powerBandCommissions
-      ? [`${powerBandCommissions} comisiones por tramo de potencia (no admitidas todavía)`]
-      : []),
   ];
 
   return {

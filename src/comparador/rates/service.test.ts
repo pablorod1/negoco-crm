@@ -11,11 +11,12 @@ import {
   getIngest,
   getVersionPrices,
   listCatalog,
+  listCurrentCommissionRules,
   listTenantRates,
 } from "./repository";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
 import { approveIngest, buildReview, processIngest, RateIngestError } from "./service";
-import { rowKey, validateProposedRates } from "./validate";
+import { rowKey, validateProposedCommissions, validateProposedRates } from "./validate";
 
 const MIGRATIONS = join(process.cwd(), "migrations");
 const sql = (name: string) => readFileSync(join(MIGRATIONS, name), "utf8");
@@ -340,7 +341,7 @@ describe("rate ingest service", () => {
 
   test("commission rules close the previous ones", async () => {
     const commissions: RateDocumentExtraction["commissions"] = [
-      { productName: null, accessTariff: "2.0TD", pricing: "fixed", level: "Agencia", channel: null, minKwh: 0, maxKwh: 10000, ruleType: "fixed", feeBase: null, amount: 200 },
+      { productName: null, accessTariff: "2.0TD", pricing: "fixed", level: "Agencia", channel: null, minKwh: 0, maxKwh: 10000, ruleType: "fixed", feeBase: null, amount: 200, minKw: null, maxKw: null, minAmount: null },
     ];
     const first = await ingestWith(client, extractionResult([rate({})], { commissions }), "COM-040");
     await approveIngest({
@@ -365,6 +366,37 @@ describe("rate ingest service", () => {
     ]);
   });
 
+  test("commission rules keep their product, power limit and minimum, and say which rates they cover", async () => {
+    const commissions: RateDocumentExtraction["commissions"] = [
+      { productName: "Unicornio", accessTariff: "2.0TD", pricing: "fixed", level: "Alto", channel: null, minKwh: null, maxKwh: null, ruleType: "per_mwh", feeBase: null, amount: 15, minKw: 10, maxKw: null, minAmount: 75 },
+      { productName: "Helsinki", accessTariff: "2.0TD", pricing: "fixed", level: "I", channel: null, minKwh: null, maxKwh: null, ruleType: "fixed", feeBase: null, amount: 4, minKw: null, maxKw: null, minAmount: null },
+    ];
+    const ingest = await ingestWith(client, extractionResult([rate({ level: "Alto" })], { commissions }), "COM-040");
+    const built = await buildReview({ client, control, ingest, today: "2026-10-07" });
+    expect(built?.review.commissions.map(({ covers }) => covers)).toEqual([["Unicornio (Alto)"], []]);
+
+    await approveIngest({
+      client, control, ingest, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    const rules = await listCurrentCommissionRules(client, "2026-10-07");
+    expect(rules.find(({ amount }) => amount === 15)).toMatchObject({
+      product: "Unicornio", level: "Alto", minKw: 10, maxKw: null, ruleType: "per_mwh", minAmount: 75,
+    });
+    // Un producto que no casa con ninguna tarifa no convierte la regla en general.
+    expect(rules.find(({ amount }) => amount === 4)).toMatchObject({ rateId: null, product: "Helsinki" });
+  });
+
+  test("commission figures must appear in the document", () => {
+    const text = "2.0TD > 10 kW  Agencia 0 - 10 MWh 200 €   Estándar 150 €";
+    expect(validateProposedCommissions([{ amount: 200, minAmount: null }, { amount: 150, minAmount: null }], text)).toEqual([]);
+    expect(validateProposedCommissions([{ amount: 220, minAmount: 75 }], text)).toMatchObject([
+      { severity: "blocking", code: "commission_not_in_source" },
+    ]);
+    // Sin texto (imagen) no se puede comprobar.
+    expect(validateProposedCommissions([{ amount: 220, minAmount: null }], null)).toEqual([]);
+  });
+
   test("a commissions-only document never retires prices, and a product family can be kept", async () => {
     const first = await ingestWith(client, extractionResult([rate({})]), "COM-040");
     await approveIngest({
@@ -374,7 +406,7 @@ describe("rate ingest service", () => {
 
     // Nordy: un PDF de comisiones, sin precios.
     const commissions: RateDocumentExtraction["commissions"] = [
-      { productName: null, accessTariff: "2.0TD", pricing: "fixed", level: null, channel: null, minKwh: null, maxKwh: null, ruleType: "fixed", feeBase: null, amount: 90 },
+      { productName: null, accessTariff: "2.0TD", pricing: "fixed", level: null, channel: null, minKwh: null, maxKwh: null, ruleType: "fixed", feeBase: null, amount: 90, minKw: null, maxKw: null, minAmount: null },
     ];
     const onlyCommissions = await ingestWith(client, extractionResult([], { commissions }), "COM-040");
     const commissionReview = await buildReview({ client, control, ingest: onlyCommissions, today: "2026-10-07" });

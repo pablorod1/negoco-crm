@@ -140,10 +140,12 @@ export function rankStudy({
     const cost = annualCost(supply, prices, regulated, meterRentalPerDay);
     const commission = computeCommission(rulesBySupplier.get(offer.comercializadoraId) ?? [], {
       rateId: price.rateId,
+      productName: price.rateName,
       accessTariff: "2.0TD",
       level: price.level,
       channel: options.channel,
       annualKwh: eligibility.annualKwh,
+      maxContractedKw: eligibility.maxContractedKw,
       feeEnergyPerMwh: fee,
       date: options.date,
     });

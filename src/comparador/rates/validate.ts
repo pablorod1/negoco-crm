@@ -22,7 +22,8 @@ export interface RateIssue {
     | "big_change"
     | "missing_rate"
     | "old_document"
-    | "partial_read";
+    | "partial_read"
+    | "commission_not_in_source";
   message: string;
   /** Fila de `proposed` a la que se refiere, si es de una fila. */
   row?: number;
@@ -245,6 +246,33 @@ export function validateProposedRates(
     ];
   }
   return issues;
+}
+
+/**
+ * Las cifras de las comisiones también tienen que estar en el documento: una
+ * comisión inventada o mal leída es dinero que la agencia no va a cobrar. Si
+ * falla, no se guardan las comisiones (los precios sí, si están bien).
+ */
+export function validateProposedCommissions(
+  rules: readonly { amount: number; minAmount: number | null }[],
+  sourceText: string | null,
+): RateIssue[] {
+  if (!sourceText || rules.length === 0) return [];
+  const numbers = numbersInText(sourceText);
+  const missing = new Set<number>();
+  for (const { amount, minAmount } of rules) {
+    for (const value of [amount, minAmount]) {
+      if (typeof value === "number" && value !== 0 && !appearsInText(value, numbers, sourceText)) missing.add(value);
+    }
+  }
+  if (missing.size === 0) return [];
+  return [
+    {
+      severity: "blocking",
+      code: "commission_not_in_source",
+      message: `Comisiones: ${[...missing].join(", ")} no aparece en el documento. Revisa el original o no guardes las comisiones.`,
+    },
+  ];
 }
 
 export function hasBlockingIssues(issues: readonly RateIssue[]): boolean {

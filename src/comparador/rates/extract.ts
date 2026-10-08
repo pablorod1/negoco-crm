@@ -20,6 +20,7 @@ import type { ProposedRate } from "./types";
 import {
   hasBlockingIssues,
   isInScope,
+  validateProposedCommissions,
   validateProposedRates,
   type RateIssue,
 } from "./validate";
@@ -38,7 +39,7 @@ Si un producto ofrece modalidades en las que un precio o un descuento solo vale 
 Que los servicios de ajuste vayan incluidos o aparte se indica solo en ancillaryIncluded, nunca en level.
 Si el consumo máximo depende del fee que elija el comercial (por ejemplo, «sin fee hasta 8.000 kWh, fee 10 hasta 15.000 kWh»), haz una fila por fee, con ese fee en feeMinMwh y feeMaxMwh, su consumo máximo y sin consumo mínimo.
 partialUpdate es true si el documento solo anuncia cambios en algunos precios (por ejemplo, una imagen con el nuevo precio de la energía) y no la tarifa completa.
-Si el documento trae comisiones de la agencia (marco o modelo retributivo, comisiones), extráelas en commissions: fixed para euros por contrato, per_mwh para euros por MWh de consumo, fee_share para un porcentaje del fee (con feeBase energy o power). Indica en accessTariff y pricing la sección del documento a la que pertenece cada comisión; déjalos en null solo si vale para todo. Los tramos de consumo, en kWh: si el documento los da en MWh, multiplícalos por 1000 (es la única conversión permitida).
+Si el documento trae comisiones de la agencia (marco o modelo retributivo, comisiones), extráelas en commissions: fixed para euros por contrato, per_mwh para euros por MWh de consumo, fee_share para un porcentaje del fee (con feeBase energy o power). Indica en accessTariff y pricing la sección del documento a la que pertenece cada comisión; déjalos en null solo si vale para todo. Los tramos de consumo, en kWh: si el documento los da en MWh, multiplícalos por 1000 (es la única conversión permitida). Si la tabla tiene una columna por producto (Helsinki, Oslo…) o una fila por producto (Clásico 1 precio, La Tarifa Justa…), cada comisión lleva su producto en productName, completo y con lo que lo distingue de otros de nombre parecido aunque esté en otra línea de la celda («Clásico (1 precio)» y «Clásico (3 precios)» son dos productos), y el nivel (I, II, Agencia, Alto…) en level: nunca dejes el producto fuera. Si la sección limita la potencia («2.0TD > 10 kW»), ponlo en minKw o maxKw. Si una comisión por MWh tiene una comisión mínima, es una sola regla per_mwh con minAmount, no dos. Solo son comisiones lo que se cobra por cada contrato activado: los bonus por crecimiento de cartera, rappels, incentivos por objetivos o por número de altas del mes, y lo que se paga por servicios o leads (SVA, instalación solar) no van en commissions.
 validFrom es la fecha desde la que valen los precios («entrada en vigor», «válidos desde»); si el documento solo da su fecha de publicación o de última actualización, úsala como validFrom. validTo, solo si el documento dice hasta cuándo valen.
 Los textos de los descuentos, breves. Las fechas, en formato YYYY-MM-DD.`;
 
@@ -267,6 +268,7 @@ export async function extractRateDocument({
   if (toProposedCommissions(final).length > 0) {
     issues = issues.filter(({ code }) => code !== "no_rates");
   }
+  issues = [...issues, ...validateProposedCommissions(toProposedCommissions(final), document.text)];
 
   if (
     proposed.filter(isInScope).length === 0 &&

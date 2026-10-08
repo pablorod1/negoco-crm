@@ -189,14 +189,18 @@ export function toProposedCommissions(
     .map((rule) => ({
     productName: rule.productName ? productNameOf(rule.productName) : null,
     productKey: rule.productName ? productKeyOf(productNameOf(rule.productName)) : null,
+    product: rule.productName ? productNameOf(rule.productName) : null,
     accessTariff: rule.accessTariff?.replace(/\s+/g, "").toUpperCase() ?? null,
     level: rule.level ? cleanName(rule.level) : null,
     channel: rule.channel === "both" ? null : rule.channel,
     minAnnualKwh: rule.minKwh,
     maxAnnualKwh: rule.maxKwh,
+    minKw: rule.minKw ?? null,
+    maxKw: rule.maxKw ?? null,
     ruleType: rule.ruleType,
     feeBase: rule.feeBase ?? "energy",
     amount: rule.amount,
+    minAmount: rule.ruleType === "per_mwh" ? (rule.minAmount ?? null) : null,
   }));
 }
 

@@ -122,15 +122,26 @@ export interface IngestFile {
 
 export interface CommissionRuleInput {
   rateId: string | null;
+  /**
+   * Producto tal como lo nombra el anexo de comisiones («Helsinki», «Clásico
+   * 1 precio»); null = todos los de la comercializadora. Se guarda aunque no
+   * case con una tarifa: sin él, la regla valdría para todas.
+   */
+  product: string | null;
   accessTariff: string | null;
   level: string | null;
   channel: RateChannel | null;
   minAnnualKwh: number | null;
   maxAnnualKwh: number | null;
+  /** Potencia contratada en kW («2.0TD > 10 kW»: minKw 10). */
+  minKw: number | null;
+  maxKw: number | null;
   ruleType: "fixed" | "per_mwh" | "fee_share";
   /** Con fee_share: porcentaje del fee de energía (por defecto) o del de potencia. */
   feeBase: "energy" | "power";
   amount: number;
+  /** Con per_mwh: comisión mínima en €; se cobra la mayor de las dos. */
+  minAmount: number | null;
 }
 
 export interface CommissionRule extends CommissionRuleInput {

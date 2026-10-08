@@ -545,19 +545,48 @@ export async function listCommissionRules(
   return rows.map(toCommissionRule);
 }
 
+/**
+ * Lo que la tabla no tiene en columnas va en `conditions` (JSON), para no
+ * migrar cada tenant: la base del fee (rule_type tiene un CHECK cerrado), el
+ * producto del anexo, la potencia y la comisión mínima.
+ */
+interface CommissionConditions {
+  feeBase?: "power";
+  product?: string;
+  minKw?: number;
+  maxKw?: number;
+  minAmount?: number;
+}
+
+function commissionConditionsJson(rule: CommissionRuleInput): string | null {
+  const conditions: CommissionConditions = {};
+  if (rule.ruleType === "fee_share" && rule.feeBase === "power") conditions.feeBase = "power";
+  if (rule.product) conditions.product = rule.product;
+  if (rule.minKw !== null) conditions.minKw = rule.minKw;
+  if (rule.maxKw !== null) conditions.maxKw = rule.maxKw;
+  if (rule.minAmount !== null) conditions.minAmount = rule.minAmount;
+  return Object.keys(conditions).length > 0 ? JSON.stringify(conditions) : null;
+}
+
 function toCommissionRule(row: Row): CommissionRule {
+  const conditions = parseJson<CommissionConditions>(row.conditions, {});
+  const number = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
   return {
     id: String(row.id),
     comercializadoraId: String(row.comercializadora_id),
     rateId: str(row.rate_id),
+    product: typeof conditions.product === "string" && conditions.product ? conditions.product : null,
     accessTariff: str(row.access_tariff),
     level: str(row.level),
     channel: str(row.channel) as CommissionRule["channel"],
     minAnnualKwh: num(row.min_annual_kwh),
     maxAnnualKwh: num(row.max_annual_kwh),
+    minKw: number(conditions.minKw),
+    maxKw: number(conditions.maxKw),
     ruleType: String(row.rule_type) as CommissionRule["ruleType"],
-    feeBase: parseJson<{ feeBase?: string }>(row.conditions, {}).feeBase === "power" ? "power" : "energy",
+    feeBase: conditions.feeBase === "power" ? "power" : "energy",
     amount: Number(row.amount),
+    minAmount: number(conditions.minAmount),
     validFrom: String(row.valid_from),
     validTo: str(row.valid_to),
   };
@@ -667,10 +696,7 @@ export function replaceCommissionRulesStatements({
         rule.ruleType,
         rule.amount,
         validFrom,
-        // La base del fee va en conditions: rule_type tiene un CHECK cerrado.
-        rule.ruleType === "fee_share" && rule.feeBase === "power"
-          ? JSON.stringify({ feeBase: "power" })
-          : null,
+        commissionConditionsJson(rule),
         ingestId,
         userId,
       ],

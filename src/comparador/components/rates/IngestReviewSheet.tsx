@@ -34,6 +34,7 @@ import {
   type IngestReview,
   type RateIssue,
 } from "./api";
+import { commissionAmount, commissionScope } from "./commission-text";
 
 const KIND_LABEL: Record<DiffEntry["kind"], { label: string; variant: "success" | "warning" | "default" | "danger" | "info" }> = {
   added: { label: "Nueva", variant: "success" },
@@ -213,7 +214,11 @@ export function IngestReviewSheet({
     return [...current, ...original.filter(({ rowKey, key }) => !shown.has(rowKey ?? key))];
   }, [review, detail]);
 
-  const blocking = (review?.issues ?? []).filter(({ severity }) => severity === "blocking");
+  // Las cifras de comisión que no están en el documento solo bloquean si se guardan las comisiones.
+  const blocking = (review?.issues ?? []).filter(
+    ({ severity, code }) =>
+      severity === "blocking" && !(code === "commission_not_in_source" && !includeCommissions),
+  );
   const canDecide = detail?.canManage && ["ready", "needs_review"].includes(detail.ingest.status);
   const newProductsBlocked = Boolean(review?.newProducts.length) && !detail?.canManageCatalog;
 
@@ -504,19 +509,19 @@ export function IngestReviewSheet({
                     />
                     Guardar las comisiones ({review.commissions.length} reglas)
                   </label>
-                  <ul className="text-sm text-muted-foreground space-y-0.5">
+                  <ul className="text-sm text-muted-foreground space-y-1">
                     {review.commissions.map((rule, index) => (
                       <li key={index}>
-                        {[rule.productName, rule.accessTariff, rule.level].filter(Boolean).join(" · ") || "Todas"}
-                        {rule.minAnnualKwh !== null || rule.maxAnnualKwh !== null
-                          ? ` · ${rule.minAnnualKwh ?? 0}–${rule.maxAnnualKwh ?? "∞"} kWh`
-                          : ""}
+                        {commissionScope(rule)}
                         {" → "}
-                        {rule.ruleType === "fixed"
-                          ? `${rule.amount} €`
-                          : rule.ruleType === "per_mwh"
-                            ? `${rule.amount} €/MWh`
-                            : `${rule.amount} % del fee`}
+                        {commissionAmount(rule)}
+                        <span
+                          className={`block text-xs ${rule.covers.length === 0 ? "text-warning-600" : ""}`}
+                        >
+                          {rule.covers.length === 0
+                            ? "No se aplica a ninguna tarifa de la comercializadora: revisa el producto y el nivel."
+                            : `Se aplica a: ${rule.covers.slice(0, 6).join(", ")}${rule.covers.length > 6 ? ` y ${rule.covers.length - 6} más` : ""}`}
+                        </span>
                       </li>
                     ))}
                   </ul>

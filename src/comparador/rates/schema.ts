@@ -84,7 +84,12 @@ export const RateDocumentSchema = z.object({
   rates: z.array(ExtractedRateSchema),
   commissions: z.array(
     z.object({
-      productName: z.string().nullable(),
+      productName: z
+        .string()
+        .nullable()
+        .describe(
+          "Producto o tarifa a la que se aplica, tal como aparece (Helsinki, Clásico 1 precio, Levante+). Cada producto con su propia regla; null solo si vale para todos los productos",
+        ),
       accessTariff: z
         .string()
         .nullable()
@@ -93,16 +98,24 @@ export const RateDocumentSchema = z.object({
         .enum(["fixed", "indexed"])
         .nullable()
         .describe("Si la comisión es de productos de precio fijo o indexados"),
-      level: z.string().nullable(),
+      level: z
+        .string()
+        .nullable()
+        .describe("Nivel o columna de comisión (I, II, Agencia, Alto…), sin repetir el producto"),
       channel: z.enum(["acquisition", "renewal", "both"]).nullable(),
       minKwh: price,
       maxKwh: price,
+      minKw: price.describe("Potencia contratada mínima en kW si la sección la limita («2.0TD > 10 kW»: 10)"),
+      maxKw: price.describe("Potencia contratada máxima en kW si la sección la limita"),
       ruleType: z.enum(["fixed", "per_mwh", "fee_share"]),
       feeBase: z
         .enum(["energy", "power"])
         .nullable()
         .describe("Con fee_share: si es un porcentaje del fee de energía o del de potencia"),
       amount: z.number(),
+      minAmount: price.describe(
+        "Con per_mwh: comisión mínima en € si el documento la da («se cobra la mínima salvo que consumo × coeficiente la supere»). Va en la misma regla, no en otra",
+      ),
     }),
   ),
   skipped: z
