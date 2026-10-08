@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { findLeaks, redactInvoiceText } from "./redact";
+import { isValidCups } from "@/comparador/extraction/identifiers";
+import { findLeaks, redactInvoiceText, repairOcrCups } from "./redact";
 
 // Factura inventada con la forma que da pdftotext; ningún dato es real.
 const INVOICE = `Comercializadora Ficticia S.A.
@@ -171,5 +172,19 @@ describe("findLeaks", () => {
     expect(findLeaks("CUPS ES0021000000000001RK0F")).toContain("cups");
     expect(findLeaks("NIF 12345678Z")).toContain("taxId");
     expect(findLeaks("ES68 2100 2291 7401 0071 ****")).toContain("iban");
+  });
+});
+
+describe("repairOcrCups", () => {
+  test("letters read in place of digits are fixed only if the control letters match", () => {
+    // ES0021000000000000RC: CUPS de ejemplo con sus letras de control correctas.
+    const valid = "ES0021000000000000RC";
+    expect(isValidCups(valid)).toBe(true);
+    expect(repairOcrCups("CUPS: ESOO21OOOOOOOOOOOORC")).toBe(`CUPS: ${valid}`);
+    expect(repairOcrCups(`CUPS: ${valid}OF`)).toBe(`CUPS: ${valid}0F`);
+    // Un punto frontera mal leído se separa; el CUPS vale sin él.
+    expect(repairOcrCups(`${valid}O9P TNP: 21,00%`)).toBe(`${valid} O9P TNP: 21,00%`);
+    // Con una cifra cambiada, las letras no cuadran: se queda como estaba.
+    expect(repairOcrCups("CUPS: ESOO21OOOOOOOOOOO1RC")).toBe("CUPS: ESOO21OOOOOOOOOOO1RC");
   });
 });

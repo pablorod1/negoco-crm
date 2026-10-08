@@ -1,5 +1,6 @@
 import { isValidSpanishTaxId, normalizeIdentifier } from "@/comparador/extraction/identifiers";
 import { isValidIban, type StudyClientData } from "@/comparador/study/client-data";
+import { ALLOWED_CAPITALIZED } from "./redact";
 
 /**
  * Datos del titular leídos en local del texto de la factura, sin IA: rellenan
@@ -12,8 +13,8 @@ import { isValidIban, type StudyClientData } from "@/comparador/study/client-dat
 const HOLDER = /\b(?:titular(?: del contrato| del suministro)?|nombre(?: y apellidos)?|raz[oó]n social)\s*[:\-]\s*(.+)$/i;
 const SUPPLY_ADDRESS = /\bdirecci[oó]n (?:del |de )?(?:suministro|punto de suministro)\s*[:\-]?\s*(.*)$/i;
 const POSTAL_AND_CITY = /\b((?:0[1-9]|[1-4]\d|5[0-2])\d{3})\b[\s,-]*([\p{L}][\p{L}' .-]*[\p{L}])?/u;
-/** Lo que corta el nombre del titular: otra etiqueta en la misma línea. */
-const HOLDER_STOP = /\s{2,}|\s+(?:NIF|N\.I\.F|DNI|D\.N\.I|CIF|NIE|CUPS|Direcci[oó]n|Contrato|Tel[eé]fono|Email|Correo)\b.*$/i;
+/** Lo que corta el nombre del titular: otra etiqueta en la misma línea («CNAE: 9820»). */
+const HOLDER_STOP = /\s{2,}|\t|\s+(?:NIF|N\.I\.F|DNI|D\.N\.I|CIF|NIE|CUPS|Direcci[oó]n|Contrato|Tel[eé]fono|Email|Correo)\b.*$|\s+[\p{L}.]+\s*:.*$/iu;
 /** Sufijos de sociedad: el titular es una empresa. */
 const COMPANY = /\b(S\.?\s?L\.?U?|S\.?\s?A\.?U?|S\.?\s?C\.?|S\.?\s?COOP|C\.?\s?B\.?|SOCIEDAD|ASOCIACI[OÓ]N|COMUNIDAD|AYUNTAMIENTO|FUNDACI[OÓ]N)\b/i;
 const DIRECT_DEBIT = /domicilia|cuenta de cargo|cargo en|su cuenta|iban de pago|mandato/i;
@@ -22,8 +23,19 @@ const SERVICE_LINE = /atenci[oó]n|whatsapp|aver[ií]as|urgencias|servicio|gratu
 const MOBILE = /(?<![,.\d])(?:\+34\s?)?\b([67]\d{2})\s?(\d{3})\s?(\d{3})\b/;
 /** Una línea solo de palabras en mayúsculas, de 2 a 6: un nombre en el bloque postal. */
 const UPPERCASE_NAME = /^\p{Lu}[\p{Lu}'.-]*(?:\s+\p{Lu}[\p{Lu}'.-]*){1,5}$/u;
-/** Una línea de dirección: lleva cifras o empieza por el tipo de vía. */
-const ADDRESS_LIKE = /\d|^(?:C\/|CL|CALLE|AV|AVDA|AVENIDA|PZ|PZA|PLAZA|PS|PASEO|CTRA|CARRETERA|CM|CAMINO|RD|RONDA|TR|TRAVESIA|URB|POL)\b/i;
+/**
+ * Una línea de la dirección postal: empieza por el tipo de vía o es el código
+ * postal con la población. Una línea cualquiera con cifras (un importe) no lo es.
+ */
+const ADDRESS_LIKE = /^(?:C\/|CL|CALLE|AV|AVDA|AVENIDA|PZ|PZA|PLAZA|PS|PASEO|CTRA|CARRETERA|CM|CAMINO|RD|RONDA|TR|TRAVESIA|URB|POL|EDIFICIO|BLOQUE|PORTAL)\b|^(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\b|\b(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\s*,?\s*\p{L}+/iu;
+const stripAccents = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+/** Una línea en mayúsculas con palabras de factura («TOTAL IMPORTE FACTURA») no es un nombre. */
+const isInvoiceWording = (line: string) =>
+  line
+    .split(/\s+/)
+    .map((word) => stripAccents(word.replace(/[^\p{L}]/gu, "")).toUpperCase())
+    // Los sufijos de sociedad sí van en el nombre de una empresa.
+    .some((word) => !/^(SA|SAU|SL|SLU)$/.test(word) && ALLOWED_CAPITALIZED.has(word));
 const TAX_ID = /\b(?:[XYZ]-?\d{7}-?[A-Z]|\d{8}-?[A-Z]|[ABCDEFGHJNPQRSUVW]-?\d{7}-?[0-9A-J])\b/gi;
 
 const titleCase = (value: string) =>
@@ -39,7 +51,7 @@ function holderName(lines: readonly string[]): { text: string; line: number } | 
     if (!match) continue;
     const value = match[1].replace(HOLDER_STOP, "").replace(/[,;:\s]+$/, "").trim();
     const words = value.split(/\s+/);
-    if (/\d/.test(value) || words.length < 2 || words.length > 8 || value.length > 120) continue;
+    if (/\d/.test(value) || words.length < 2 || words.length > 8 || value.length > 120 || isInvoiceWording(value)) continue;
     return { text: value, line: index };
   }
   return null;
@@ -57,7 +69,7 @@ function holderFromPostalBlock(lines: readonly string[], taxId: string | null): 
   let found: { text: string; line: number } | null = null;
   for (let index = idLine - 1; index >= Math.max(0, idLine - 6); index--) {
     const line = lines[index];
-    if (UPPERCASE_NAME.test(line) && !COMPANY.test(line)) found = { text: line, line: index };
+    if (UPPERCASE_NAME.test(line) && !COMPANY.test(line) && !isInvoiceWording(line)) found = { text: line, line: index };
     else if (found || !ADDRESS_LIKE.test(line)) break;
   }
   return found;

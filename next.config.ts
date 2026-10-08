@@ -27,14 +27,21 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Fuentes y logos de la app del PDF de propuestas del comparador: se leen
-  // del disco al generarlo.
+  // OCR local de facturas en foto: tesseract.js arranca su worker y su wasm
+  // desde su propia carpeta, así que no se empaqueta.
+  serverExternalPackages: ["tesseract.js", "tesseract.js-core"],
+  // Fuentes y logos de la app del PDF de propuestas del comparador, y el
+  // modelo de español del OCR: se leen del disco.
   outputFileTracingIncludes: {
     "/api/v2/comparador/**": [
       "./src/comparador/pdf/fonts/**",
       "./public/*.png",
       "./public/*.jpg",
       "./public/*.jpeg",
+      "./node_modules/@tesseract.js-data/spa/4.0.0_best_int/**",
+      // Con pnpm viven en .pnpm: el worker de Node y el motor wasm.
+      "./node_modules/.pnpm/tesseract.js@*/node_modules/tesseract.js/src/**",
+      "./node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/**",
     ],
   },
   allowedDevOrigins: [

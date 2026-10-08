@@ -57,7 +57,7 @@ function ResultSkeleton() {
 /** Resultado del estudio: la decisión arriba, el mapa y las ofertas, y al lado el suministro y las propuestas. */
 function StudyResult({
   study,
-  pdfs,
+  invoices,
   busy,
   proposing,
   clientName,
@@ -66,7 +66,7 @@ function StudyResult({
   onComplete,
 }: {
   study: StudyView;
-  pdfs: ComparativaStudies["pdfs"];
+  invoices: ComparativaStudies["invoices"];
   busy: boolean;
   proposing: string | null;
   clientName: string | null;
@@ -141,7 +141,7 @@ function StudyResult({
       </div>
 
       <StudySidebar study={study} onComplete={() => setCompleting(true)} proposalsRef={proposalsRef}
-        invoicePdf={pdfs.find(({ id }) => id === study.invoiceFileId) ?? null}
+        invoiceFile={invoices.find(({ id }) => id === study.invoiceFileId) ?? null}
       />
       <ProposalDock study={study} anchor={proposalsRef} onComplete={() => setCompleting(true)} />
 
@@ -194,7 +194,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
     void load();
   }, [load]);
 
-  const analyze = async (invoice: { fileId: string } | { file: File }) => {
+  const analyze = async (invoice: { fileId: string } | { files: File[] }) => {
     setBusy(true);
     setError(null);
     try {
@@ -322,13 +322,13 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
         </Panel>
       ) : showPicker ? (
         list && (
-          <InvoicePicker pdfs={list.pdfs} busy={busy} onAnalyze={analyze} onCancel={study ? () => setPicking(false) : undefined} />
+          <InvoicePicker invoices={list.invoices} busy={busy} onAnalyze={analyze} onCancel={study ? () => setPicking(false) : undefined} />
         )
       ) : (
         <StudyResult
           key={study.id}
           study={study}
-          pdfs={list?.pdfs ?? []}
+          invoices={list?.invoices ?? []}
           busy={busy}
           proposing={proposing}
           clientName={list?.clientName ?? null}

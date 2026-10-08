@@ -15,7 +15,8 @@ import type {
   ApoloSipsProcedureResult,
   ApoloSipsProcedureRow,
 } from "@/integrations/apolo-sips/types";
-import { invoiceTextFromPdf } from "./invoice-text";
+import { StudyError } from "./errors";
+import { readInvoice } from "./read-invoice";
 import { rankStudy, type StudyRanking } from "./ranking";
 import {
   createStudy,
@@ -27,16 +28,7 @@ import { annualKwhFromSips, buildSupply, SIPS_MESSAGES, SupplyUnavailableError }
 
 type TenantClient = Pick<Client, "execute" | "batch">;
 
-/** Un error que se enseña tal cual a quien hace el estudio. */
-export class StudyError extends Error {
-  constructor(
-    message: string,
-    readonly status = 422,
-  ) {
-    super(message);
-    this.name = "StudyError";
-  }
-}
+export { StudyError };
 
 /** Consulta al SIPS; null si no se puede (sin clave, caído, CUPS desconocido). */
 export type SipsFetcher = (
@@ -49,6 +41,8 @@ export interface InvoiceForStudy {
   fileName: string;
   fileId: string | null;
   mime: string;
+  /** Fotos de las demás páginas, en orden, cuando la factura llega en varias fotos. */
+  morePages?: Uint8Array[];
 }
 
 /**
@@ -78,17 +72,16 @@ export async function analyzeInvoice({
   fetchSips: SipsFetcher;
   extract?: typeof extractInvoice;
 }): Promise<string> {
-  if (invoice.mime !== "application/pdf" && !/\.pdf$/i.test(invoice.fileName)) {
-    throw new StudyError("De momento el estudio lee facturas en PDF. Sube el PDF de la comercializadora.");
-  }
-  const { text } = await invoiceTextFromPdf(invoice.data);
-  if (!text) {
-    throw new StudyError(
-      "La factura es una imagen escaneada y no se puede leer sin enviar sus datos personales. Sube el PDF original de la comercializadora.",
-    );
-  }
-
-  const redaction = redactInvoiceText(text);
+  const { text, fromImage } = await readInvoice(invoice);
+  // Datos del titular leídos en local: rellenan el cliente y, además, se
+  // tapan en todo el texto aunque no lleven etiqueta.
+  const clientData = clientFromInvoiceText(text.replace(/\t/g, "\n"));
+  const redaction = redactInvoiceText(text, {
+    fromImage,
+    knownHolderTokens: [clientData?.name, clientData?.lastName, clientData?.address]
+      .filter((value): value is string => Boolean(value))
+      .flatMap((value) => value.split(/\s+/)),
+  });
   if (redaction.leaks.length > 0) {
     throw new StudyError(
       "No se ha podido tapar todos los datos personales de esta factura, así que no se envía a analizar. Avisa a soporte con la comparativa.",
@@ -98,7 +91,13 @@ export async function analyzeInvoice({
 
   // Sin un año real de consumo del SIPS no hay estudio. Se comprueba antes
   // de llamar a la IA: no se gasta en una factura que no se puede comparar.
-  if (!cups) throw new StudyError(SIPS_MESSAGES.noCups);
+  if (!cups) {
+    throw new StudyError(
+      fromImage
+        ? "No se lee un CUPS válido en la imagen, así que no se puede pedir al SIPS el consumo real de 12 meses. Haz una foto más nítida de la página donde viene el CUPS, o pide el PDF."
+        : SIPS_MESSAGES.noCups,
+    );
+  }
   const [point, consumption] = await Promise.all([
     fetchSips(cups, "PS").catch(() => null),
     fetchSips(cups, "CONSUMOS").catch(() => null),
@@ -143,14 +142,16 @@ export async function analyzeInvoice({
     invoiceFileName: invoice.fileName,
     cups,
     extraction: facts,
-    issues: extraction.issues,
+    issues: fromImage
+      ? [{ code: "read_from_image", severity: "warning", field: "invoice" }, ...extraction.issues]
+      : extraction.issues,
     supply,
     options: { channel, feeEnergyPerMwh: null, order: "savings" },
     priceDate: today,
     aiCostUsd,
     error: null,
     // Leídos en local del texto sin tapar: nunca han salido del CRM.
-    clientData: clientFromInvoiceText(text),
+    clientData,
     createdBy: userId,
   });
 }

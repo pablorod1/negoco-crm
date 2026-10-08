@@ -49,6 +49,15 @@ describe("supply", () => {
     expect(Math.max(...result.maxDemandKw)).toBe(4.8);
   });
 
+  test("chained readings (one starts the day the previous ends) count each day once", () => {
+    const ends = ["2025-04-13", "2025-05-14", "2025-06-12", "2025-07-13", "2025-08-17", "2025-09-10", "2025-10-13", "2025-11-11", "2025-12-08", "2026-01-13", "2026-02-10", "2026-03-11", "2026-04-13"];
+    const rows = ends.slice(1).map((to, index) => month(ends[index], to, 100));
+    const result = annualKwhFromSips(rows)!;
+    if ("insufficient" in result) throw new Error("expected a full year");
+    expect(result.days).toBe(365);
+    expect(result.annualKwh.P1).toBe(1200);
+  });
+
   test("less than a year of SIPS readings is not stretched to a year", () => {
     const rows = Array.from({ length: 5 }, (_, index) => {
       const start = new Date(Date.UTC(2026, 4 + index, 1));

@@ -3,6 +3,7 @@
  *
  *   pnpm eval:invoices [carpeta] [--models a,b] [--cascade] [--limit N]
  *                      [--max-usd 0.25] [--estimate] [--out informe.json]
+ *                      [--redacted redacted-ocr]
  *
  * Sin carpeta usa el conjunto de prueba (`~/negoco-golden/piloto`): envía a la
  * IA solo el texto anonimizado y añade el CUPS leído en local, como en
@@ -73,10 +74,12 @@ function parseArgs(argv: string[]) {
     // El plan gratuito admite 5 peticiones por minuto y modelo.
     delayMs: Number(readOption(argv, "--delay-ms") ?? 13_000),
     out: readOption(argv, "--out"),
+    // Carpeta del texto anonimizado: `redacted-ocr` evalúa la lectura con OCR.
+    redacted: readOption(argv, "--redacted") ?? "redacted",
   };
 }
 
-async function loadGoldenDir(folder: string): Promise<GoldenCase[]> {
+async function loadGoldenDir(folder: string, redacted: string): Promise<GoldenCase[]> {
   const ids = (await readdir(join(folder, "fichas")))
     .filter((file) => file.endsWith(".json"))
     .map((file) => file.slice(0, -5))
@@ -84,7 +87,7 @@ async function loadGoldenDir(folder: string): Promise<GoldenCase[]> {
 
   return Promise.all(
     ids.map(async (id) => {
-      const text = await readFile(join(folder, "redacted", `${id}.txt`), "utf8");
+      const text = await readFile(join(folder, redacted, `${id}.txt`), "utf8");
       const privateData = JSON.parse(
         await readFile(join(folder, "private", `${id}.json`), "utf8"),
       ) as { cups: string[] };
@@ -168,7 +171,7 @@ async function main() {
   loadLocalEnv();
   const options = parseArgs(process.argv.slice(2));
   const golden = existsSync(join(options.folder, "fichas"));
-  const cases = (golden ? await loadGoldenDir(options.folder) : await loadPairs(options.folder)).slice(
+  const cases = (golden ? await loadGoldenDir(options.folder, options.redacted) : await loadPairs(options.folder)).slice(
     0,
     options.limit,
   );

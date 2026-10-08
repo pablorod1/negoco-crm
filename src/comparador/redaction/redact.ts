@@ -69,7 +69,7 @@ const HOLDER_LABEL =
   /\b(titular(?: del contrato)?|nombre(?: y apellidos)?|raz[oó]n social|cliente)\s*[:\-]\s*(.+)$/i;
 
 /** Palabras en mayúsculas que no son nombres de persona. */
-const ALLOWED_CAPITALIZED = new Set(
+export const ALLOWED_CAPITALIZED = new Set(
   `TOTAL IMPORTE FACTURA IVA IEE BASE IMPONIBLE ENERGIA ENERGÍA POTENCIA CONSUMO PEAJE PEAJES CARGOS BONO SOCIAL ALQUILER EQUIPOS CONTADOR SERVICIOS OTROS CONCEPTOS DETALLE DESCUENTO PUNTA LLANO VALLE KWH KW EUR TD DE DEL LA EL LOS LAS Y A EN POR PARA CON SIN SU SUS TU TUS AL PACK HOGAR ELECTRICIDAD LUZ GAS RESUMEN FECHA PERIODO PERÍODO CUPS NIF IBAN SA SAU SL SLU NATURGY IBERDROLA ENDESA REPSOL TOTALENERGIES PLENITUDE ENI GANA HOLALUZ OCTOPUS AUDAX AXPO APOLO IMAGINA ELEIA NEXUS FACTOR LUCERA PODO CLIENTES IBERIA ENERGIA ENERGÍA COMERCIALIZADORA MERCADO LIBRE REGULADO TARIFA CNMC BOE`.split(
     /\s+/,
   ),
@@ -136,7 +136,74 @@ export function findLeaks(text: string): string[] {
   return leaks;
 }
 
-export function redactInvoiceText(raw: string): RedactionResult {
+export interface RedactionOptions {
+  /**
+   * Palabras del titular y de su dirección leídas en local (por ejemplo, del
+   * bloque de la dirección postal): se tapan donde aparezcan, aunque no lleven
+   * etiqueta.
+   */
+  knownHolderTokens?: readonly string[];
+  /**
+   * Texto de un OCR: las columnas de una línea vienen separadas por un
+   * tabulador, y una columna con forma de nombre se descarta aunque comparta
+   * línea con cifras (en una imagen no hay otra forma de separarlas).
+   */
+  fromImage?: boolean;
+}
+
+/**
+ * Un CUPS leído con OCR suele traer letras donde van cifras («ESOO21…»,
+ * «…WCOF» por «…WC0F»). Se cambian solo en las posiciones de cifra, y el CUPS
+ * vale únicamente si sus letras de control cuadran: una cifra mal leída no
+ * puede dar el CUPS de otro suministro.
+ */
+const OCR_CUPS = /\bE[S5]\s?((?:[0-9OoIlD]\s?){16})([A-Z]{2})([0-9A-Za-z]{0,4})/g;
+const toDigits = (value: string) => value.replace(/[OoD]/g, "0").replace(/[Il]/g, "1").replace(/\s/g, "");
+
+export function repairOcrCups(text: string): string {
+  return text.replace(OCR_CUPS, (match, digits: string, control: string, tail: string) => {
+    const base = `ES${toDigits(digits)}${control}`;
+    if (!isValidCups(base)) return match;
+    // El punto frontera («0F») si se lee bien; si no, se deja aparte: el
+    // CUPS sin él vale para el SIPS.
+    const frontier = /^[0-9OoIlD][A-Z]$/.test(tail) ? `${toDigits(tail[0])}${tail[1]}` : null;
+    if (frontier && isValidCups(base + frontier)) return base + frontier;
+    return tail ? `${base} ${tail}` : base;
+  });
+}
+
+/** Una columna de texto (o la línea entera) tapada, o null si se descarta. */
+function redactSegment(segment: string, holderPattern: RegExp | null, fromImage: boolean): string | null {
+  const trimmed = segment.trim();
+  if (!trimmed) return null;
+
+  // Útil: conceptos de factura, unidades, fechas, periodos o solo cifras.
+  // Una línea con letras y cifras pero sin nada de eso (un portal y una
+  // puerta, un código de cuenta) se descarta.
+  const useful =
+    INVOICE_KEYWORDS.test(trimmed) ||
+    HAS_INVOICE_UNITS.test(trimmed) ||
+    HAS_DATE.test(trimmed) ||
+    HAS_PERIOD.test(trimmed) ||
+    ONLY_NUMBERS.test(trimmed);
+  const isAddress =
+    ADDRESS_LINE.test(trimmed) ||
+    (POSTAL_CODE_LINE.test(trimmed) && !HAS_INVOICE_UNITS.test(trimmed));
+  if (!useful || isAddress || HOLDER_LABEL.test(trimmed) || GREETING_LINE.test(trimmed)) return null;
+
+  // El orden importa: primero los patrones más específicos.
+  let redacted = trimmed;
+  for (const kind of ["cups", "iban", "maskedIban", "email", "taxId", "code", "phone", "longNumber"] as const) {
+    redacted = redacted.replace(new RegExp(PATTERNS[kind].source, PATTERNS[kind].flags), PLACEHOLDERS[kind]);
+  }
+  if (holderPattern) redacted = redacted.replace(holderPattern, "[TITULAR]");
+  if (fromImage && looksLikeName(redacted)) return null;
+  return redacted;
+}
+
+export function redactInvoiceText(raw: string, options: RedactionOptions = {}): RedactionResult {
+  const fromImage = options.fromImage ?? false;
+  if (fromImage) raw = repairOcrCups(raw);
   const lines = raw.split(/\r?\n/);
   const identifiers = Object.fromEntries(
     (Object.keys(PATTERNS) as IdentifierKind[]).map((kind) => [kind, [] as string[]]),
@@ -152,7 +219,10 @@ export function redactInvoiceText(raw: string): RedactionResult {
     isValidSpanishTaxId,
   );
 
-  const holderTokens = findHolderTokens(lines);
+  const known = (options.knownHolderTokens ?? [])
+    .map((token) => token.replace(/[^\p{L}'-]/gu, ""))
+    .filter((token) => token.length >= 3 && !ALLOWED_CAPITALIZED.has(stripAccents(token).toUpperCase()));
+  const holderTokens = [...new Set([...findHolderTokens(lines.flatMap((line) => line.split("\t"))), ...known])];
   const holderPattern = holderTokens.length
     ? new RegExp(`\\b(${holderTokens.map(escapeRegExp).join("|")})\\b`, "giu")
     : null;
@@ -162,49 +232,17 @@ export function redactInvoiceText(raw: string): RedactionResult {
   let suspiciousLines = 0;
 
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Útil: conceptos de factura, unidades, fechas, periodos o solo cifras.
-    // Una línea con letras y cifras pero sin nada de eso (un portal y una
-    // puerta, un código de cuenta) se descarta.
-    const useful =
-      INVOICE_KEYWORDS.test(trimmed) ||
-      HAS_INVOICE_UNITS.test(trimmed) ||
-      HAS_DATE.test(trimmed) ||
-      HAS_PERIOD.test(trimmed) ||
-      ONLY_NUMBERS.test(trimmed);
-    const isAddress =
-      ADDRESS_LINE.test(trimmed) ||
-      (POSTAL_CODE_LINE.test(trimmed) && !HAS_INVOICE_UNITS.test(trimmed));
-    if (
-      !useful ||
-      isAddress ||
-      HOLDER_LABEL.test(trimmed) ||
-      GREETING_LINE.test(trimmed)
-    ) {
+    if (!line.trim()) continue;
+    // Las columnas (OCR) se tapan una a una; las que se quedan, separadas por dos espacios.
+    const segments = line
+      .split("\t")
+      .map((segment) => redactSegment(segment, holderPattern, fromImage))
+      .filter((segment): segment is string => segment !== null);
+    if (segments.length === 0) {
       droppedLines += 1;
       continue;
     }
-
-    // El orden importa: primero los patrones más específicos.
-    let redacted = trimmed;
-    for (const kind of [
-      "cups",
-      "iban",
-      "maskedIban",
-      "email",
-      "taxId",
-      "code",
-      "phone",
-      "longNumber",
-    ] as const) {
-      redacted = redacted.replace(
-        new RegExp(PATTERNS[kind].source, PATTERNS[kind].flags),
-        PLACEHOLDERS[kind],
-      );
-    }
-    if (holderPattern) redacted = redacted.replace(holderPattern, "[TITULAR]");
+    const redacted = segments.join("  ");
     if (looksLikeName(redacted)) suspiciousLines += 1;
     kept.push(redacted);
   }

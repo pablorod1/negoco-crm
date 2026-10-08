@@ -11,12 +11,18 @@ export interface StudyComparativa {
   clientName: string | null;
 }
 
-export interface ComparativaPdf {
+/** Un documento de la comparativa que puede ser la factura: PDF o foto. */
+export interface ComparativaInvoiceFile {
   id: string;
   filename: string;
+  /** Sin punto y en minúsculas: «pdf», «jpg»… */
+  extension: string;
   uploadDate: string;
   downloadUrl: string;
 }
+
+/** Extensiones de factura que lee el estudio (las imágenes, con OCR). */
+export const INVOICE_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "webp", "heic", "heif", "tif", "tiff"];
 
 /**
  * La comparativa si este usuario puede verla, con la misma regla que el CRM:
@@ -47,21 +53,29 @@ export async function getStudyComparativa(
   };
 }
 
-/** Los PDF adjuntos a la comparativa, el más reciente primero. */
-export async function listComparativaPdfs(
+/** Los documentos de la comparativa que pueden ser la factura (PDF o foto), el más reciente primero. */
+export async function listComparativaInvoices(
   client: QueryClient,
   comparativaId: string,
-): Promise<ComparativaPdf[]> {
+): Promise<ComparativaInvoiceFile[]> {
   const { rows } = await client.execute({
-    sql: `SELECT id, filename, upload_date, download_url FROM comparativa_files
-      WHERE comparativa_id = ? AND (lower(extension) IN ('pdf', '.pdf') OR lower(filename) LIKE '%.pdf')
+    sql: `SELECT id, filename, extension, upload_date, download_url FROM comparativa_files
+      WHERE comparativa_id = ?
       ORDER BY upload_date DESC`,
     args: [comparativaId],
   });
-  return rows.map((row) => ({
-    id: String(row.id),
-    filename: String(row.filename),
-    uploadDate: String(row.upload_date),
-    downloadUrl: String(row.download_url),
-  }));
+  return rows
+    .map((row) => {
+      const filename = String(row.filename);
+      const extension = (String(row.extension ?? "").replace(/^\./, "") || filename.split(".").pop() || "").toLowerCase();
+      return {
+        id: String(row.id),
+        filename,
+        extension,
+        uploadDate: String(row.upload_date),
+        downloadUrl: String(row.download_url),
+      };
+    })
+    // Las propuestas del propio estudio también son PDF, pero no son facturas.
+    .filter(({ extension, filename }) => INVOICE_EXTENSIONS.includes(extension) && !/^Propuesta \d+ - /.test(filename));
 }

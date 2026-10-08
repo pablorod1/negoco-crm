@@ -42,6 +42,7 @@ const ISSUE_TEXT: Partial<Record<InvoiceIssueCode, string>> = {
   taxable_base_mismatch: "La base imponible no cuadra.",
   vat_mismatch: "El IVA no cuadra.",
   total_mismatch: "El total de la factura no cuadra con sus líneas.",
+  read_from_image: "Factura leída de una imagen: comprueba lo que paga hoy contra el original.",
 };
 
 /**

@@ -26,7 +26,9 @@ export type InvoiceIssueCode =
   | "electricity_tax_mismatch"
   | "taxable_base_mismatch"
   | "vat_mismatch"
-  | "total_mismatch";
+  | "total_mismatch"
+  /** La factura se leyó con OCR (foto o PDF escaneado). */
+  | "read_from_image";
 
 export interface InvoiceIssue {
   code: InvoiceIssueCode;

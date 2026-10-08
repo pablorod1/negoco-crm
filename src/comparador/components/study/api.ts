@@ -13,7 +13,8 @@ export interface StudyOptionsInput {
 export interface ComparativaStudies {
   service: string;
   clientName: string | null;
-  pdfs: { id: string; filename: string; uploadDate: string; downloadUrl: string }[];
+  /** Documentos que pueden ser la factura: PDF o foto. */
+  invoices: { id: string; filename: string; extension: string; uploadDate: string; downloadUrl: string }[];
   studies: {
     id: string;
     status: string;
@@ -45,10 +46,11 @@ function query(options: StudyOptionsInput): string {
 export const studyApi = {
   list: (comparativaId: string) =>
     request<ComparativaStudies>(`/api/v2/comparador/comparisons/${comparativaId}/studies`),
-  analyze: (comparativaId: string, invoice: { fileId: string } | { file: File }) => {
+  /** Una factura adjunta, o la subida: un PDF o las fotos de sus páginas, en orden. */
+  analyze: (comparativaId: string, invoice: { fileId: string } | { files: File[] }) => {
     const form = new FormData();
     if ("fileId" in invoice) form.set("fileId", invoice.fileId);
-    else form.set("file", invoice.file);
+    else for (const file of invoice.files) form.append("file", file);
     return request<{ id: string }>(`/api/v2/comparador/comparisons/${comparativaId}/studies`, {
       method: "POST",
       body: form,

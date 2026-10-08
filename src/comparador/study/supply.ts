@@ -105,13 +105,19 @@ export function annualKwhFromSips(rows: readonly ApoloSipsElectricityConsumption
     .sort((left, right) => right.to - left.to);
   if (dated.length === 0) return null;
 
+  // Las distribuidoras encadenan las lecturas (una empieza el día en que
+  // acaba la anterior) o las dan por meses naturales (del 1 al 31). En el
+  // primer caso el día de corte no se cuenta dos veces.
+  const chained = dated.some((reading, index) => index > 0 && dated[index - 1].from === reading.to);
+  const length = ({ from, to }: { from: number; to: number }) => Math.round((to - from) / DAY_MS) + (chained ? 0 : 1);
+
   // Las lecturas más recientes hasta cubrir un año.
   const year: typeof dated = [];
   let days = 0;
   for (const reading of dated) {
     if (days >= DAYS_PER_YEAR) break;
     year.push(reading);
-    days += Math.round((reading.to - reading.from) / DAY_MS) + 1;
+    days += length(reading);
   }
   if (days < MIN_SIPS_DAYS) return { insufficient: true, months: year.length, days };
 

@@ -1,12 +1,11 @@
-import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { storage } from "@/core/firebase/firebaseConfig";
+import { uploadToStorage } from "@/comparador/server/storage";
 import { proposalBranding } from "@/comparador/pdf/branding";
 import { renderProposalPdf } from "@/comparador/pdf/proposal-pdf";
 import { requireNegocoStudiesAccess } from "@/comparador/server/guard";
 import { loadStudy, studyError } from "@/comparador/server/study-route";
-import { closeStudy, type ProposalUploader } from "@/comparador/study/close";
+import { closeStudy } from "@/comparador/study/close";
 import { StudyClientDataSchema } from "@/comparador/study/client-data";
 import { getProposal } from "@/comparador/study/proposals";
 import { StudyError } from "@/comparador/study/service";
@@ -15,12 +14,6 @@ const CloseSchema = z.object({
   proposalId: z.string().min(1),
   client: StudyClientDataSchema.nullable().optional(),
 });
-
-const uploadToStorage: ProposalUploader = async ({ path, data }) => {
-  const target = ref(storage, path);
-  await uploadBytes(target, data, { contentType: "application/pdf" });
-  return { downloadUrl: await getDownloadURL(target), remove: () => deleteObject(target) };
-};
 
 /**
  * Completa el estudio con la propuesta elegida: su PDF pasa a los documentos

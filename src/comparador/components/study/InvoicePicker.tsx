@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Eye, FileText, Loader2, ScanText, ShieldCheck, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Eye, FileText, Image as ImageIcon, Loader2, ScanText, ShieldCheck, Upload, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/core/components/ui/button";
 import { cn } from "@/core/utils";
@@ -70,37 +70,46 @@ function Analyzing() {
 const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
 
-const isPdf = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+/** PDF o foto: lo que lee el estudio (las fotos y los escaneos, con OCR en el CRM). */
+const MAX_PHOTOS = 6;
+const isPdfFile = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+const isInvoiceFile = (file: File) =>
+  file.type === "application/pdf" || file.type.startsWith("image/") || /\.(pdf|jpe?g|png|webp|heic|heif|tiff?)$/i.test(file.name);
 
 /** Elegir la factura: un PDF adjunto a la comparativa o uno nuevo. */
 export function InvoicePicker({
-  pdfs,
+  invoices,
   busy,
   onAnalyze,
   onCancel,
 }: {
-  pdfs: ComparativaStudies["pdfs"];
+  invoices: ComparativaStudies["invoices"];
   busy: boolean;
-  onAnalyze: (invoice: { fileId: string } | { file: File }) => void;
+  onAnalyze: (invoice: { fileId: string } | { files: File[] }) => void;
   /** Volver al estudio que ya había, sin analizar otra factura. */
   onCancel?: () => void;
 }) {
-  const [fileId, setFileId] = useState(pdfs[0]?.id ?? "");
-  const [file, setFile] = useState<File | null>(null);
+  const [fileId, setFileId] = useState(invoices[0]?.id ?? "");
+  const [files, setFiles] = useState<File[]>([]);
   const [rejected, setRejected] = useState<string | null>(null);
+  const file = files[0] ?? null;
+  const photos = files.length > 0 && !isPdfFile(files[0]);
   const [dragging, setDragging] = useState(false);
-  const [previewing, setPreviewing] = useState<ComparativaStudies["pdfs"][number] | null>(null);
+  const [previewing, setPreviewing] = useState<ComparativaStudies["invoices"][number] | null>(null);
 
   if (busy) return <Analyzing />;
 
-  const pickFile = (picked: File | undefined | null) => {
-    if (!picked) return;
-    if (isPdf(picked)) {
-      setFile(picked);
-      setRejected(null);
-    } else {
-      setRejected(picked.name);
-    }
+  /** Un PDF, o hasta seis fotos (una por página): las fotos se van sumando. */
+  const pickFiles = (list: FileList | null | undefined) => {
+    const picked = Array.from(list ?? []);
+    if (picked.length === 0) return;
+    const unreadable = picked.find((item) => !isInvoiceFile(item));
+    if (unreadable) return setRejected(`«${unreadable.name}» no es una factura que se pueda leer. Sube el PDF de la comercializadora o fotos (JPG o PNG).`);
+    const pdfs = picked.filter(isPdfFile);
+    if (pdfs.length > 0 && picked.length > 1) return setRejected("Sube un solo PDF, o varias fotos de la misma factura (una por página).");
+    setRejected(null);
+    if (pdfs.length === 1) return setFiles(pdfs);
+    setFiles((current) => [...(current.length > 0 && !isPdfFile(current[0]) ? current : []), ...picked].slice(0, MAX_PHOTOS));
   };
 
   return (
@@ -112,14 +121,14 @@ export function InvoicePicker({
         </p>
       </div>
 
-      <InvoicePreview pdf={previewing} onClose={() => setPreviewing(null)} />
+      <InvoicePreview file={previewing} onClose={() => setPreviewing(null)} />
       <Panel className="mt-8 p-5 sm:p-6">
-        {pdfs.length > 0 && (
+        {invoices.length > 0 && (
           <fieldset>
             <legend className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">En la comparativa</legend>
             <div className="space-y-2">
-              {pdfs.map((pdf) => {
-                const selected = !file && fileId === pdf.id;
+              {invoices.map((pdf) => {
+                const selected = files.length === 0 && fileId === pdf.id;
                 return (
                   <label
                     key={pdf.id}
@@ -134,7 +143,7 @@ export function InvoicePicker({
                       className="sr-only"
                       checked={selected}
                       onChange={() => {
-                        setFile(null);
+                        setFiles([]);
                         setFileId(pdf.id);
                       }}
                     />
@@ -166,21 +175,34 @@ export function InvoicePicker({
           </fieldset>
         )}
 
-        <div className={pdfs.length > 0 ? "mt-5" : undefined}>
-          {file ? (
-            <div className="flex items-center gap-3 rounded-xl bg-primary-50/50 p-3 text-sm ring-2 ring-primary-500">
-              <span className="rounded-lg bg-primary-100 p-2 text-primary-700">
-                <FileText className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-gray-900">{file.name}</span>
-                <span className="text-xs text-gray-500">Factura nueva · se guarda en los documentos</span>
-              </span>
-              <Button variant="ghost" size="icon" className="size-8" onClick={() => setFile(null)} aria-label="Quitar el PDF">
-                <X className="size-4" />
-              </Button>
-            </div>
-          ) : (
+        <div className={invoices.length > 0 ? "mt-5" : undefined}>
+          {files.length > 0 && (
+            <ul className="space-y-2">
+              {files.map((item, index) => (
+                <li key={`${item.name}-${index}`} className="flex items-center gap-3 rounded-xl bg-primary-50/50 p-3 text-sm ring-2 ring-primary-500">
+                  <span className="rounded-lg bg-primary-100 p-2 text-primary-700">
+                    {photos ? <ImageIcon className="size-4" /> : <FileText className="size-4" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-gray-900">{item.name}</span>
+                    <span className="text-xs text-gray-500">
+                      {photos ? `Página ${index + 1} · foto, se lee con OCR en el CRM` : "PDF"} · al analizarla pasa a los documentos
+                    </span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setFiles((current) => current.filter((_, position) => position !== index))}
+                    aria-label={`Quitar ${item.name}`}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {(files.length === 0 || (photos && files.length < MAX_PHOTOS)) && (
             <label
               onDragOver={(event) => {
                 event.preventDefault();
@@ -190,24 +212,39 @@ export function InvoicePicker({
               onDrop={(event) => {
                 event.preventDefault();
                 setDragging(false);
-                pickFile(event.dataTransfer.files?.[0]);
+                pickFiles(event.dataTransfer.files);
               }}
               className={cn(
-                "flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors",
+                "flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed text-center transition-colors",
+                photos ? "mt-2 px-4 py-3" : "px-6 py-8",
                 dragging ? "border-primary-400 bg-primary-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50",
               )}
             >
-              <span className="flex size-10 items-center justify-center rounded-xl bg-gray-100 text-gray-500">
-                <Upload className="size-5" />
-              </span>
-              <span className="mt-1 text-sm font-medium text-gray-900">{pdfs.length > 0 ? "O sube otra factura" : "Sube la factura del cliente"}</span>
-              <span className="text-xs text-gray-500">Arrastra el PDF aquí o haz clic para elegirlo</span>
+              {photos ? (
+                <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Upload className="size-4 text-gray-400" />
+                  Añadir otra página
+                  <span className="font-normal text-gray-400">(si la factura tiene varias)</span>
+                </span>
+              ) : (
+                <>
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-gray-100 text-gray-500">
+                    <Upload className="size-5" />
+                  </span>
+                  <span className="mt-1 text-sm font-medium text-gray-900">{invoices.length > 0 ? "O sube otra factura" : "Sube la factura del cliente"}</span>
+                  <span className="text-xs text-gray-500">El PDF, o fotos de cada página. Arrástralos aquí o haz clic para elegirlos</span>
+                </>
+              )}
               <input
                 type="file"
+                multiple
                 accept="application/pdf,.pdf,image/*"
                 className="sr-only"
-                aria-label="Factura en PDF"
-                onChange={(event) => pickFile(event.target.files?.[0])}
+                aria-label="Factura en PDF o foto"
+                onChange={(event) => {
+                  pickFiles(event.target.files);
+                  event.target.value = "";
+                }}
               />
             </label>
           )}
@@ -215,9 +252,7 @@ export function InvoicePicker({
             <div role="alert" className="mt-3 flex gap-2.5 rounded-xl bg-warning-50 p-3 text-xs text-gray-800 ring-1 ring-warning-200">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning-600" />
               <p>
-                <span className="font-medium">«{rejected}» no es un PDF.</span> Una foto o un escaneo no se puede leer sin enviar a la IA los datos
-                personales del cliente, que es justo lo que el comparador evita. Pide la factura en PDF: se descarga del área de clientes de su
-                comercializadora o llega por correo.
+                {rejected}
               </p>
             </div>
           )}
@@ -234,7 +269,7 @@ export function InvoicePicker({
                 Volver al estudio
               </Button>
             )}
-            <Button className="rounded-xl" size="lg" disabled={!file && !fileId} onClick={() => onAnalyze(file ? { file } : { fileId })}>
+            <Button className="rounded-xl" size="lg" disabled={!file && !fileId} onClick={() => onAnalyze(files.length > 0 ? { files } : { fileId })}>
               Analizar factura
             </Button>
           </div>

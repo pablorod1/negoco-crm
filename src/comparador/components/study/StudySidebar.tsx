@@ -273,7 +273,7 @@ function ClientCard({ study }: { study: StudyView }) {
 }
 
 /** La factura analizada y lo que no cuadra en su lectura. */
-function InvoiceCard({ study, pdf }: { study: StudyView; pdf: ComparativaStudies["pdfs"][number] | null }) {
+function InvoiceCard({ study, file }: { study: StudyView; file: ComparativaStudies["invoices"][number] | null }) {
   const [open, setOpen] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const period = study.invoice?.billingPeriod;
@@ -283,7 +283,7 @@ function InvoiceCard({ study, pdf }: { study: StudyView; pdf: ComparativaStudies
     <Panel className="p-5">
       <div className="flex items-center justify-between gap-3">
         <Eyebrow>Factura</Eyebrow>
-        {pdf && (
+        {file && (
           <button
             type="button"
             onClick={() => setPreviewing(true)}
@@ -294,7 +294,7 @@ function InvoiceCard({ study, pdf }: { study: StudyView; pdf: ComparativaStudies
           </button>
         )}
       </div>
-      <InvoicePreview pdf={previewing ? pdf : null} onClose={() => setPreviewing(false)} />
+      <InvoicePreview file={previewing ? file : null} onClose={() => setPreviewing(false)} />
       <div className="mt-3 flex items-start gap-3">
         <span className="rounded-lg bg-gray-100 p-2 text-gray-500">
           <FileText className="size-4" />
@@ -477,11 +477,11 @@ export function StudySidebar({
   study,
   onComplete,
   proposalsRef,
-  invoicePdf,
+  invoiceFile,
 }: {
   study: StudyView;
   /** El PDF de la factura analizada, para abrirlo en el visor. */
-  invoicePdf: ComparativaStudies["pdfs"][number] | null;
+  invoiceFile: ComparativaStudies["invoices"][number] | null;
   onComplete: () => void;
   /** La tarjeta de propuestas, para saber cuándo sale de la vista. */
   proposalsRef?: Ref<HTMLDivElement>;
@@ -495,7 +495,7 @@ export function StudySidebar({
       />
       <SupplyCard study={study} />
       <ClientCard study={study} />
-      <InvoiceCard study={study} pdf={invoicePdf} />
+      <InvoiceCard study={study} file={invoiceFile} />
     </aside>
   );
 }

@@ -9,6 +9,8 @@ import { StudyError } from "./service";
 export type ProposalUploader = (input: {
   path: string;
   data: Uint8Array;
+  /** Por defecto, PDF. */
+  contentType?: string;
 }) => Promise<{ downloadUrl: string; remove: () => Promise<void> }>;
 
 type Executor = Pick<Transaction, "execute">;
