@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
   },
   // OCR local de facturas en foto: tesseract.js arranca su worker y su wasm
   // desde su propia carpeta, así que no se empaqueta.
-  serverExternalPackages: ["tesseract.js", "tesseract.js-core"],
+  serverExternalPackages: ["tesseract.js", "tesseract.js-core", "@napi-rs/canvas"],
   // Fuentes y logos de la app del PDF de propuestas del comparador, y el
   // modelo de español del OCR: se leen del disco.
   outputFileTracingIncludes: {
