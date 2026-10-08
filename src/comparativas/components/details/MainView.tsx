@@ -607,7 +607,7 @@ export default function MainView({
                         ) : null}
 
                         {canUseNegocoComparator ? (
-                          <NegocoStudyPanel comparativaId={comparativa.id} />
+                          <NegocoStudyPanel comparativaId={comparativa.id} onCompleted={onUpdate} />
                         ) : null}
 
                         <div className="flex items-center gap-4">

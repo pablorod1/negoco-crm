@@ -15,7 +15,14 @@ import { NegocoStudy } from "./study/NegocoStudy";
 
 type PanelState = "checking" | "ready" | "error";
 
-export function NegocoStudyPanel({ comparativaId }: { comparativaId: string }) {
+export function NegocoStudyPanel({
+  comparativaId,
+  onCompleted,
+}: {
+  comparativaId: string;
+  /** Al completar el estudio, para refrescar la comparativa. */
+  onCompleted?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<PanelState>("checking");
   const request = useRef<AbortController | null>(null);
@@ -115,7 +122,15 @@ export function NegocoStudyPanel({ comparativaId }: { comparativaId: string }) {
               </div>
             )}
 
-            {state === "ready" && <NegocoStudy comparativaId={comparativaId} />}
+            {state === "ready" && (
+              <NegocoStudy
+                comparativaId={comparativaId}
+                onCompleted={() => {
+                  handleOpenChange(false);
+                  onCompleted?.();
+                }}
+              />
+            )}
           </div>
         </SheetContent>
       </Sheet>

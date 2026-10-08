@@ -1,9 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileText, Loader2, RotateCcw, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, FileText, Loader2, RotateCcw, Upload } from "lucide-react";
+import { showCustomToast } from "@/core/components/CustomToast";
 import { Badge } from "@/core/components/ui/badge";
 import { Button } from "@/core/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/core/components/ui/dialog";
 import { Input } from "@/core/components/ui/input";
 import { Label } from "@/core/components/ui/label";
 import {
@@ -19,6 +28,7 @@ import {
   kwh,
   studyApi,
   type ComparativaStudies,
+  type ProposalView,
   type StudyOfferView,
   type StudyOptionsInput,
   type StudyView,
@@ -130,18 +140,198 @@ function InvoicePicker({
   );
 }
 
+/** La propuesta ya generada para esta oferta con este fee, si la hay. */
+const proposalFor = (proposals: readonly ProposalView[], offer: StudyOfferView) =>
+  proposals.find(
+    (proposal) =>
+      proposal.offerKey === offer.key &&
+      proposal.feeEnergyPerMwh === offer.feeEnergyPerMwh &&
+      proposal.annualTotal === offer.cost.total,
+  );
+
+/** Al completar: con qué propuesta se queda, de las generadas. */
+function CompleteDialog({
+  proposals,
+  open,
+  onOpenChange,
+  onComplete,
+}: {
+  proposals: ProposalView[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onComplete: (proposalId: string) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState(proposals.at(-1)?.id ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await onComplete(selected);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se ha podido completar el estudio");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => !saving && onOpenChange(value)}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>¿Con qué propuesta te quedas?</DialogTitle>
+          <DialogDescription>
+            Su PDF se guarda en los documentos de la comparativa, y la comparativa pasa a «Pendiente de revisión» con
+            esa comercializadora y su comisión.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          {proposals.map((proposal) => (
+            <label
+              key={proposal.id}
+              className="flex items-start gap-3 rounded-md border bg-white p-3 text-sm has-[:checked]:border-primary"
+            >
+              <input
+                type="radio"
+                name="final-proposal"
+                className="mt-1"
+                checked={selected === proposal.id}
+                onChange={() => setSelected(proposal.id)}
+              />
+              <span className="flex-1">
+                <span className="font-medium">
+                  Propuesta {proposal.number} · {proposal.comercializadoraName}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {proposal.productName} · {euros(proposal.annualTotal)} al año
+                  {proposal.savings !== null ? ` · ahorra ${euros(proposal.savings)}` : ""}
+                </span>
+              </span>
+              <a
+                href={proposal.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline"
+              >
+                Ver PDF
+              </a>
+            </label>
+          ))}
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <DialogFooter>
+          <Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button disabled={saving || !selected} onClick={submit}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving ? "Completando…" : "Completar estudio"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Las propuestas generadas, con su PDF, y el botón de completar el estudio. */
+function Proposals({
+  study,
+  onComplete,
+}: {
+  study: StudyView;
+  onComplete: (proposalId: string) => Promise<void>;
+}) {
+  const [completing, setCompleting] = useState(false);
+  const closed = study.status === "closed";
+
+  if (study.proposals.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Pulsa «Ver PDF» en una tarifa para ver la propuesta que recibiría el cliente. Puedes generar todas las que
+        quieras y, al completar el estudio, eliges con cuál te quedas.
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-white p-3 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">Propuestas generadas ({study.proposals.length})</p>
+        {!closed && (
+          <Button size="sm" onClick={() => setCompleting(true)}>
+            <CheckCircle2 className="h-4 w-4" />
+            Completar estudio
+          </Button>
+        )}
+      </div>
+      <ul className="divide-y text-sm">
+        {study.proposals.map((proposal) => (
+          <li key={proposal.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
+            <span className="w-24 shrink-0 text-muted-foreground">Propuesta {proposal.number}</span>
+            <span className="min-w-0 flex-1">
+              <span className="font-medium">{proposal.comercializadoraName}</span> · {proposal.productName}
+              {proposal.chosen && (
+                <Badge variant="success" className="ml-2">
+                  Elegida
+                </Badge>
+              )}
+            </span>
+            <span>{euros(proposal.annualTotal)}/año</span>
+            <span className={proposal.savings !== null && proposal.savings > 0 ? "text-success-700" : "text-danger"}>
+              {proposal.savings !== null ? `ahorra ${euros(proposal.savings)}` : "—"}
+            </span>
+            {study.showCommission && (
+              <span className="text-muted-foreground">
+                comisión {proposal.commission === null ? "—" : euros(proposal.commission)}
+              </span>
+            )}
+            <a
+              href={proposal.pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Abrir PDF
+            </a>
+          </li>
+        ))}
+      </ul>
+      {completing && (
+        <CompleteDialog
+          proposals={study.proposals}
+          open={completing}
+          onOpenChange={setCompleting}
+          onComplete={onComplete}
+        />
+      )}
+    </div>
+  );
+}
+
 /** Resultado del estudio: suministro, lo que paga hoy y las ofertas. */
 function StudyResult({
   study,
   busy,
+  proposing,
   onOptions,
-  onChoose,
+  onPropose,
+  onComplete,
   onRestart,
 }: {
   study: StudyView;
   busy: boolean;
+  /** La oferta cuya propuesta se está generando. */
+  proposing: string | null;
   onOptions: (options: StudyOptionsInput) => void;
-  onChoose: (offer: StudyOfferView) => void;
+  onPropose: (offer: StudyOfferView, options: StudyOptionsInput) => void;
+  onComplete: (proposalId: string) => Promise<void>;
   onRestart: () => void;
 }) {
   const [feeText, setFeeText] = useState(
@@ -150,7 +340,8 @@ function StudyResult({
   const supply = study.supply!;
   const annual = supply.annualKwh.P1 + supply.annualKwh.P2 + supply.annualKwh.P3;
   const power = supply.power ? POWER_STATUS[supply.power.status] : null;
-  const chosenKey = study.chosenOffer?.key ?? null;
+  const closed = study.status === "closed";
+  const chosen = study.proposals.find(({ chosen }) => chosen);
 
   return (
     <div className="space-y-5">
@@ -161,11 +352,21 @@ function StudyResult({
             ? ` · ${study.invoice.billingPeriod.from} a ${study.invoice.billingPeriod.to}`
             : ""}
         </p>
-        <Button variant="ghost" size="sm" onClick={onRestart}>
-          <RotateCcw className="h-3.5 w-3.5" />
-          Analizar otra factura
-        </Button>
+        {!closed && (
+          <Button variant="ghost" size="sm" onClick={onRestart}>
+            <RotateCcw className="h-3.5 w-3.5" />
+            Analizar otra factura
+          </Button>
+        )}
       </div>
+
+      {closed && (
+        <div className="rounded-lg border border-success-200 bg-success-50 p-3 text-sm">
+          Estudio completado
+          {chosen ? ` con la propuesta ${chosen.number} (${chosen.comercializadoraName} · ${chosen.productName})` : ""}.
+          Su PDF está en los documentos de la comparativa.
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Fact
@@ -280,6 +481,8 @@ function StudyResult({
         </p>
       )}
 
+      <Proposals study={study} onComplete={onComplete} />
+
       {study.offers.length === 0 ? (
         <p className="text-sm">
           No hay tarifas cargadas que encajen con este suministro. Revisa los precios vigentes en Comercializadoras →
@@ -299,8 +502,10 @@ function StudyResult({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {study.offers.map((offer) => (
-              <TableRow key={offer.key} className={offer.key === chosenKey ? "bg-success-50" : undefined}>
+            {study.offers.map((offer) => {
+              const proposal = proposalFor(study.proposals, offer);
+              return (
+              <TableRow key={offer.key} className={proposal ? "bg-primary-50" : undefined}>
                 <TableCell className="font-medium">{offer.comercializadoraName}</TableCell>
                 <TableCell>
                   <div>{offer.productName}</div>
@@ -324,43 +529,47 @@ function StudyResult({
                   {offer.feeRange ? `${offer.feeEnergyPerMwh} €/MWh` : "—"}
                 </TableCell>
                 <TableCell className="text-right">
-                  {offer.key === chosenKey ? (
-                    <Badge variant="success">
-                      <CheckCircle2 className="h-3 w-3" /> Elegida
-                    </Badge>
-                  ) : (
-                    <Button size="sm" variant="outline" disabled={busy} onClick={() => onChoose(offer)}>
-                      Elegir
+                  {!closed && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      disabled={proposing !== null}
+                      onClick={() => onPropose(offer, { feeEnergyPerMwh: parseFee(feeText) })}
+                    >
+                      {proposing === offer.key ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5" />
+                      )}
+                      {proposal ? `Propuesta ${proposal.number}` : "Ver PDF"}
                     </Button>
                   )}
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
-      )}
-
-      {study.chosenOffer && (
-        <div className="rounded-lg border border-success-200 bg-success-50 p-3 text-sm">
-          Elegida: <strong>{study.chosenOffer.comercializadoraName} · {study.chosenOffer.productName}</strong> —{" "}
-          {euros(study.chosenOffer.cost.total)} al año
-          {study.chosenOffer.savings !== null ? `, ahorra ${euros(study.chosenOffer.savings)}` : ""}
-          {study.showCommission && study.chosenOffer.commission !== null
-            ? ` · comisión ${euros(study.chosenOffer.commission)}`
-            : ""}
-          . El PDF para el cliente y el cierre del estudio llegan en el siguiente paso.
-        </div>
       )}
     </div>
   );
 }
 
 /** El estudio de una comparativa dentro del panel lateral. */
-export function NegocoStudy({ comparativaId }: { comparativaId: string }) {
+export function NegocoStudy({
+  comparativaId,
+  onCompleted,
+}: {
+  comparativaId: string;
+  /** Tras completar el estudio: la comparativa ha cambiado de estado y de documentos. */
+  onCompleted?: () => void;
+}) {
   const [list, setList] = useState<ComparativaStudies | null>(null);
   const [study, setStudy] = useState<StudyView | null>(null);
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [proposing, setProposing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const viewRequest = useRef(0);
 
@@ -412,16 +621,58 @@ export function NegocoStudy({ comparativaId }: { comparativaId: string }) {
     }
   };
 
-  const choose = async (offer: StudyOfferView) => {
+  /**
+   * Genera la propuesta de una oferta y abre su PDF en otra pestaña. La
+   * pestaña se abre en el mismo clic, antes de esperar al servidor: si se
+   * abriera después, el navegador la bloquearía como ventana emergente.
+   */
+  const propose = async (offer: StudyOfferView, options: StudyOptionsInput) => {
     if (!study) return;
-    setBusy(true);
+    const tab = window.open("", "_blank");
     try {
-      setStudy(await studyApi.choose(study.id, offer.key, study.options));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se ha podido elegir la oferta");
-    } finally {
-      setBusy(false);
+      if (tab) {
+        tab.document.title = "Generando la propuesta…";
+        tab.document.body.textContent = "Generando la propuesta…";
+      }
+    } catch {
+      // Solo es el aviso mientras carga.
     }
+    setProposing(offer.key);
+    setError(null);
+    try {
+      const proposal = await studyApi.propose(study.id, offer.key, { ...study.options, ...options });
+      if (tab) tab.location.href = proposal.pdfUrl;
+      else setError("El navegador ha bloqueado la pestaña nueva: abre el PDF desde «Propuestas generadas».");
+      setStudy((current) =>
+        current?.id === study.id
+          ? {
+              ...current,
+              proposals: [...current.proposals.filter(({ id }) => id !== proposal.id), proposal].sort(
+                (left, right) => left.number - right.number,
+              ),
+            }
+          : current,
+      );
+    } catch (cause) {
+      tab?.close();
+      setError(cause instanceof Error ? cause.message : "No se ha podido generar la propuesta");
+    } finally {
+      setProposing(null);
+    }
+  };
+
+  /** Completa el estudio con la propuesta elegida. Los errores los enseña el diálogo. */
+  const complete = async (proposalId: string) => {
+    if (!study) return;
+    await studyApi.close(study.id, proposalId);
+    setStudy(await studyApi.view(study.id));
+    showCustomToast({
+      title: "Estudio completado",
+      message: "El PDF está en los documentos y la comparativa, pendiente de revisión.",
+      icon: CheckCircle2,
+      iconColor: "var(--success-color)",
+    });
+    onCompleted?.();
   };
 
   if (!list && !error) {
@@ -448,8 +699,10 @@ export function NegocoStudy({ comparativaId }: { comparativaId: string }) {
           key={study.id}
           study={study}
           busy={busy}
+          proposing={proposing}
           onOptions={changeOptions}
-          onChoose={choose}
+          onPropose={propose}
+          onComplete={complete}
           onRestart={() => setPicking(true)}
         />
       )}

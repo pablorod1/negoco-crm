@@ -8,6 +8,7 @@ import {
   studyError,
   studyView,
 } from "@/comparador/server/study-route";
+import { listProposals } from "@/comparador/study/proposals";
 import { saveStudyOptions } from "@/comparador/study/repository";
 import { rankSavedStudy } from "@/comparador/study/service";
 
@@ -29,15 +30,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const study = await loadStudy(access.context, id);
     const parsed = optionsFromQuery(request);
-    const { ranking, options } = await rankSavedStudy({
-      client: access.context.client,
-      study,
-      options: Object.fromEntries(Object.entries(parsed).filter(([, value]) => value !== undefined)),
-    });
+    const [{ ranking, options }, proposals] = await Promise.all([
+      rankSavedStudy({
+        client: access.context.client,
+        study,
+        options: Object.fromEntries(Object.entries(parsed).filter(([, value]) => value !== undefined)),
+      }),
+      listProposals(access.context.client, id),
+    ]);
     return NextResponse.json(
       {
         success: true,
-        data: studyView({ ...study, options }, ranking, canSeeAgencyCommission(access.context.user.role)),
+        data: studyView({ ...study, options }, ranking, canSeeAgencyCommission(access.context.user.role), proposals),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

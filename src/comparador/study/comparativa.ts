@@ -7,6 +7,8 @@ export interface StudyComparativa {
   id: string;
   service: string;
   hasRenovacion: boolean;
+  /** Nombre del cliente tal como está en la comparativa; sale en el PDF. */
+  clientName: string | null;
 }
 
 export interface ComparativaPdf {
@@ -26,7 +28,7 @@ export async function getStudyComparativa(
   user: { id: string; role: string },
 ): Promise<StudyComparativa | null> {
   const args: string[] = [id];
-  let sql = "SELECT id, service, has_renovacion FROM comparativas WHERE id = ?";
+  let sql = "SELECT id, service, has_renovacion, client FROM comparativas WHERE id = ?";
   if (user.role === "2") {
     const owners = [user.id];
     const subcomerciales = await getSubcomerciales(client as Client, user.id);
@@ -41,6 +43,7 @@ export async function getStudyComparativa(
     id: String(row.id),
     service: String(row.service),
     hasRenovacion: Number(row.has_renovacion ?? 0) === 1,
+    clientName: typeof row.client === "string" && row.client.trim() ? row.client.trim() : null,
   };
 }
 

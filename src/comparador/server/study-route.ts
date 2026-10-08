@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { NegocoStudiesContext } from "@/comparador/server/guard";
 import { getStudyComparativa } from "@/comparador/study/comparativa";
 import type { StudyRanking } from "@/comparador/study/ranking";
+import type { ProposalRecord } from "@/comparador/study/proposals";
 import { getStudy, type StudyRecord } from "@/comparador/study/repository";
 import type { InvoiceIssue, InvoiceIssueCode } from "@/comparador/extraction/validate";
 import { StudyError } from "@/comparador/study/service";
@@ -58,11 +59,32 @@ export function describeInvoiceIssues(issues: readonly InvoiceIssue[]) {
     }));
 }
 
+/** Una propuesta generada, con el enlace a su PDF. */
+export function proposalView(proposal: ProposalRecord, showCommission: boolean) {
+  return {
+    id: proposal.id,
+    number: proposal.number,
+    offerKey: proposal.offerKey,
+    comercializadoraName: proposal.comercializadoraName,
+    productName: proposal.productName,
+    feeEnergyPerMwh: proposal.feeEnergyPerMwh,
+    annualTotal: proposal.annualTotal,
+    savings: proposal.savings,
+    commission: showCommission ? proposal.commission : null,
+    createdAt: proposal.createdAt,
+    chosen: proposal.chosenAt !== null,
+    pdfUrl: `/api/v2/comparador/proposals/${proposal.id}/pdf`,
+  };
+}
+
+export type ProposalView = ReturnType<typeof proposalView>;
+
 /** Lo que el panel necesita de un estudio, sin datos que no le tocan al usuario. */
 export function studyView(
   study: StudyRecord,
   ranking: StudyRanking | null,
   showCommission: boolean,
+  proposals: readonly ProposalRecord[] = [],
 ) {
   const facts = study.extraction;
   const hide = <T extends { commission: number | null }>(item: T): T =>
@@ -92,7 +114,7 @@ export function studyView(
     totalOffers: ranking?.offers.length ?? 0,
     ineligible: ranking?.ineligible ?? 0,
     noSavings: ranking?.noSavings ?? false,
-    chosenOffer: study.chosenOffer ? hide(study.chosenOffer) : null,
+    proposals: proposals.map((proposal) => proposalView(proposal, showCommission)),
   };
 }
 
@@ -104,11 +126,15 @@ export const OptionsSchema = z.object({
   order: z.enum(["savings", "commission"]).optional(),
 });
 
+/** El estudio y su comparativa, si este usuario puede verla. */
+export async function loadStudyWithComparativa(context: NegocoStudiesContext, id: string) {
+  const study = await getStudy(context.client, id);
+  const comparativa = study ? await getStudyComparativa(context.client, study.comparativaId, context.user) : null;
+  if (!study || !comparativa) throw new StudyError("Estudio no encontrado", 404);
+  return { study, comparativa };
+}
+
 /** El estudio, si es de una comparativa que este usuario puede ver. */
 export async function loadStudy(context: NegocoStudiesContext, id: string): Promise<StudyRecord> {
-  const study = await getStudy(context.client, id);
-  if (!study || !(await getStudyComparativa(context.client, study.comparativaId, context.user))) {
-    throw new StudyError("Estudio no encontrado", 404);
-  }
-  return study;
+  return (await loadStudyWithComparativa(context, id)).study;
 }

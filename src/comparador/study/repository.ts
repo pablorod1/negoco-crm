@@ -2,12 +2,23 @@ import type { Client, Row } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import type { InvoiceIssue } from "@/comparador/extraction/validate";
-import type { StudyOffer, StudyOptions } from "./ranking";
+import type { StudyOptions } from "./ranking";
 import type { StudySupply } from "./supply";
 
 type QueryClient = Pick<Client, "execute">;
 
 export type StudyStatus = "analyzed" | "chosen" | "closed" | "failed";
+
+/** La propuesta con la que se completó el estudio. */
+export interface ChosenProposal {
+  proposalId: string;
+  number: number;
+  key: string;
+  comercializadoraId: string;
+  comercializadoraName: string;
+  productName: string;
+  feeEnergyPerMwh: number;
+}
 
 /** Opciones que el usuario puede cambiar; la fecha es la del estudio. */
 export type SavedStudyOptions = Omit<StudyOptions, "date">;
@@ -24,7 +35,7 @@ export interface StudyRecord {
   supply: StudySupply | null;
   options: SavedStudyOptions;
   priceDate: string;
-  chosenOffer: StudyOffer | null;
+  chosenOffer: ChosenProposal | null;
   currentTotal: number | null;
   chosenTotal: number | null;
   savings: number | null;
@@ -63,7 +74,7 @@ function toStudy(row: Row): StudyRecord {
     supply: json<StudySupply | null>(row.supply, null),
     options: { ...DEFAULT_OPTIONS, ...json<Partial<SavedStudyOptions>>(row.options, {}) },
     priceDate: String(row.price_date),
-    chosenOffer: json<StudyOffer | null>(row.chosen_offer, null),
+    chosenOffer: json<ChosenProposal | null>(row.chosen_offer, null),
     currentTotal: num(row.current_total),
     chosenTotal: num(row.chosen_total),
     savings: num(row.savings),
@@ -140,28 +151,5 @@ export async function saveStudyOptions(client: QueryClient, id: string, options:
   await client.execute({
     sql: "UPDATE comparison_studies SET options = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     args: [JSON.stringify(options), id],
-  });
-}
-
-/** Guarda la oferta elegida tal como se vio: precios, coste, ahorro y comisión. */
-export async function chooseStudyOffer(
-  client: QueryClient,
-  id: string,
-  { offer, currentTotal, options }: { offer: StudyOffer; currentTotal: number | null; options: SavedStudyOptions },
-) {
-  await client.execute({
-    sql: `UPDATE comparison_studies SET status = 'chosen', chosen_offer = ?, options = ?,
-        current_total = ?, chosen_total = ?, savings = ?, commission = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?`,
-    args: [
-      JSON.stringify(offer),
-      JSON.stringify(options),
-      currentTotal,
-      offer.cost.total,
-      offer.savings,
-      offer.commission,
-      id,
-    ],
   });
 }

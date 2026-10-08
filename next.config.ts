@@ -27,6 +27,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Fuentes del PDF de propuestas del comparador: se leen del disco al generarlo.
+  outputFileTracingIncludes: {
+    "/api/v2/comparador/**": ["./src/comparador/pdf/fonts/**"],
+  },
   allowedDevOrigins: [
     "http://localhost:3000",
     "http://test.localhost:3000",

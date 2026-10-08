@@ -1,6 +1,6 @@
-import type { StudyView } from "@/comparador/server/study-route";
+import type { ProposalView, StudyView } from "@/comparador/server/study-route";
 
-export type { StudyView };
+export type { ProposalView, StudyView };
 export type StudyOfferView = StudyView["offers"][number];
 
 export interface StudyOptionsInput {
@@ -60,11 +60,17 @@ export const studyApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(options),
     }),
-  choose: (studyId: string, offerKey: string, options: StudyOptionsInput) =>
-    request<StudyView>(`/api/v2/comparador/studies/${studyId}/choose`, {
+  propose: (studyId: string, offerKey: string, options: StudyOptionsInput) =>
+    request<ProposalView>(`/api/v2/comparador/studies/${studyId}/proposals`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ offerKey, options }),
+    }),
+  close: (studyId: string, proposalId: string) =>
+    request<{ fileId: string }>(`/api/v2/comparador/studies/${studyId}/close`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proposalId }),
     }),
 };
 
