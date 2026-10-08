@@ -28,6 +28,34 @@ describe("clientFromInvoiceText", () => {
     });
   });
 
+  test("without labels, takes the holder from the postal block above the NIF", () => {
+    // La forma de una factura real (CMP-88a5), con datos inventados.
+    const client = clientFromInvoiceText(`Total factura:
+Nº de Factura: 2026X 12345678901
+contacto@comercializadora.es
+C/ Mayor de los Olivos, 12, edificio B, 3 izq. 28013 Madrid
+Para cualquier gestión sobre el contrato de suministro o reclamaciones
+612 345 678
+Les damos la bienvenida a la Comercializadora
+Destinatario
+JUAN PEREZ GARCIA
+GARCIA LOPEZ JUAN
+CL Camino de Santa Rosa 4 Nº PISO 2 PUERTA 1
+NIF: 12345678Z
+MADRID 28013, Madrid/Madrid
+Dirección de suministro
+CL Camino de Santa Rosa 4 - MADRID
+Potencia contratada 4,6 kW`);
+    expect(client).toMatchObject({
+      name: "Juan",
+      lastName: "Perez Garcia",
+      documentNumber: "12345678Z",
+      phone: null,
+      address: "Cl Camino de Santa Rosa 4",
+      city: "Madrid",
+    });
+  });
+
   test("a company holder keeps its name whole and takes the CIF on its line", () => {
     const client = clientFromInvoiceText(`Endesa Energía S.A. CIF A81948077
 Razón social: TALLERES PEREZ S.L. CIF B12345674`);

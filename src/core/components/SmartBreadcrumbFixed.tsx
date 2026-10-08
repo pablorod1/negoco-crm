@@ -135,8 +135,8 @@ export default function SmartBreadcrumb({
             if ("type" in item && item.type === "ellipsis") {
               return (
                 <React.Fragment key="ellipsis">
-                  <BreadcrumbEnhancedSeparator />
-                  <BreadcrumbEnhancedItem>
+                  <BreadcrumbEnhancedSeparator className="hidden lg:list-item" />
+                  <BreadcrumbEnhancedItem className="hidden lg:inline-flex">
                     <EllipsisDropdown hiddenItems={item.hiddenItems} />
                   </BreadcrumbEnhancedItem>
                 </React.Fragment>
@@ -144,10 +144,17 @@ export default function SmartBreadcrumb({
             }
 
             const breadcrumbItem = item as BreadcrumbItem;
+            // En pantallas estrechas solo la página actual: la ruta entera no
+            // cabe en la cabecera y se montaba encima del contenido.
+            const isLast = index === displayItems.length - 1;
             return (
               <React.Fragment key={breadcrumbItem.href}>
-                {index > 0 && <BreadcrumbEnhancedSeparator />}
-                <BreadcrumbEnhancedItem>
+                {index > 0 && (
+                  <BreadcrumbEnhancedSeparator className="hidden lg:list-item" />
+                )}
+                <BreadcrumbEnhancedItem
+                  className={isLast ? "min-w-0" : "hidden lg:inline-flex"}
+                >
                   <BreadcrumbItemComponent item={breadcrumbItem} />
                 </BreadcrumbEnhancedItem>
               </React.Fragment>

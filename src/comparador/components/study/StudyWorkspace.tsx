@@ -57,6 +57,7 @@ function ResultSkeleton() {
 /** Resultado del estudio: la decisión arriba, el mapa y las ofertas, y al lado el suministro y las propuestas. */
 function StudyResult({
   study,
+  pdfs,
   busy,
   proposing,
   clientName,
@@ -65,6 +66,7 @@ function StudyResult({
   onComplete,
 }: {
   study: StudyView;
+  pdfs: ComparativaStudies["pdfs"];
   busy: boolean;
   proposing: string | null;
   clientName: string | null;
@@ -138,7 +140,9 @@ function StudyResult({
         />
       </div>
 
-      <StudySidebar study={study} onComplete={() => setCompleting(true)} proposalsRef={proposalsRef} />
+      <StudySidebar study={study} onComplete={() => setCompleting(true)} proposalsRef={proposalsRef}
+        invoicePdf={pdfs.find(({ id }) => id === study.invoiceFileId) ?? null}
+      />
       <ProposalDock study={study} anchor={proposalsRef} onComplete={() => setCompleting(true)} />
 
       {completing && (
@@ -274,7 +278,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
   const notLight = list !== null && list.service !== "Luz";
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 pb-16 pt-2 sm:px-6">
+    <div className="w-full px-4 py-8 sm:px-6">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <Button asChild variant="ghost" size="icon" className="size-9 shrink-0 rounded-xl ring-1 ring-gray-200">
@@ -324,6 +328,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
         <StudyResult
           key={study.id}
           study={study}
+          pdfs={list?.pdfs ?? []}
           busy={busy}
           proposing={proposing}
           clientName={list?.clientName ?? null}

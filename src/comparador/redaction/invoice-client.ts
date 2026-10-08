@@ -4,8 +4,9 @@ import { isValidIban, type StudyClientData } from "@/comparador/study/client-dat
 /**
  * Datos del titular leídos en local del texto de la factura, sin IA: rellenan
  * de antemano los datos del cliente del estudio (y con ellos el trámite).
- * Nunca se envían fuera del CRM. Solo se toma lo que la factura dice con su
- * etiqueta: ante la duda, el campo se queda vacío y lo escribe una persona.
+ * Nunca se envían fuera del CRM. Se toma lo que la factura dice con su
+ * etiqueta o en el bloque de la dirección postal del titular (nombre, calle,
+ * NIF): ante la duda, el campo se queda vacío y lo escribe una persona.
  */
 
 const HOLDER = /\b(?:titular(?: del contrato| del suministro)?|nombre(?: y apellidos)?|raz[oó]n social)\s*[:\-]\s*(.+)$/i;
@@ -19,6 +20,10 @@ const DIRECT_DEBIT = /domicilia|cuenta de cargo|cargo en|su cuenta|iban de pago|
 /** Teléfonos de la comercializadora (atención, WhatsApp, averías): no son del cliente. */
 const SERVICE_LINE = /atenci[oó]n|whatsapp|aver[ií]as|urgencias|servicio|gratuit|ll[aá]m|horario|contacta/i;
 const MOBILE = /(?<![,.\d])(?:\+34\s?)?\b([67]\d{2})\s?(\d{3})\s?(\d{3})\b/;
+/** Una línea solo de palabras en mayúsculas, de 2 a 6: un nombre en el bloque postal. */
+const UPPERCASE_NAME = /^\p{Lu}[\p{Lu}'.-]*(?:\s+\p{Lu}[\p{Lu}'.-]*){1,5}$/u;
+/** Una línea de dirección: lleva cifras o empieza por el tipo de vía. */
+const ADDRESS_LIKE = /\d|^(?:C\/|CL|CALLE|AV|AVDA|AVENIDA|PZ|PZA|PLAZA|PS|PASEO|CTRA|CARRETERA|CM|CAMINO|RD|RONDA|TR|TRAVESIA|URB|POL)\b/i;
 const TAX_ID = /\b(?:[XYZ]-?\d{7}-?[A-Z]|\d{8}-?[A-Z]|[ABCDEFGHJNPQRSUVW]-?\d{7}-?[0-9A-J])\b/gi;
 
 const titleCase = (value: string) =>
@@ -41,6 +46,24 @@ function holderName(lines: readonly string[]): { text: string; line: number } | 
 }
 
 /**
+ * Sin etiqueta, el titular está en el bloque de la dirección postal: el nombre
+ * en mayúsculas encima de la calle, y el NIF debajo. Se busca hacia arriba
+ * desde la línea del DNI o NIE, saltando las de la dirección.
+ */
+function holderFromPostalBlock(lines: readonly string[], taxId: string | null): { text: string; line: number } | null {
+  if (!taxId || !/^[XYZ\d]/.test(taxId)) return null;
+  const idLine = lines.findIndex((line) => normalizeIdentifier(line).includes(taxId));
+  if (idLine < 0) return null;
+  let found: { text: string; line: number } | null = null;
+  for (let index = idLine - 1; index >= Math.max(0, idLine - 6); index--) {
+    const line = lines[index];
+    if (UPPERCASE_NAME.test(line) && !COMPANY.test(line)) found = { text: line, line: index };
+    else if (found || !ADDRESS_LIKE.test(line)) break;
+  }
+  return found;
+}
+
+/**
  * El DNI o NIE del titular: los de persona se toman sin más (la
  * comercializadora es una sociedad). Un CIF solo si está en la línea del
  * titular o en la siguiente; si no, sería el de la comercializadora.
@@ -59,15 +82,23 @@ function supplyAddress(lines: readonly string[]) {
   for (let index = 0; index < lines.length; index++) {
     const match = SUPPLY_ADDRESS.exec(lines[index]);
     if (!match) continue;
-    // La dirección puede seguir en la línea siguiente (código postal y población).
-    const text = [match[1], lines[index + 1] ?? ""].join(" ").trim();
+    // La etiqueta puede ir sola en su línea, con la dirección debajo; y el
+    // código postal y la población, en la línea siguiente.
+    const sameLine = match[1].trim();
+    const next = lines[index + 1] ?? "";
+    const text = !sameLine ? next : POSTAL_AND_CITY.test(sameLine) || !POSTAL_AND_CITY.test(next) ? sameLine : `${sameLine} ${next}`;
+    if (!text || /\b(potencia|consumo|cups|tarifa)\b/i.test(text)) continue;
     const postal = POSTAL_AND_CITY.exec(text);
-    const street = (postal ? text.slice(0, postal.index) : match[1]).replace(/[,\s-]+$/, "").trim();
+    let street = (postal ? text.slice(0, postal.index) : text).replace(/[,\s-]+$/, "").trim();
+    let city = postal?.[2]?.trim() ?? null;
+    // «CL MAYOR 5 - MADRID»: la población tras el guion.
+    const dash = /^(.*\d.*?)\s+-\s+(\p{L}[\p{L}' .]*)$/u.exec(street);
+    if (!city && dash) [street, city] = [dash[1], dash[2]];
     if (!street && !postal) continue;
     return {
       address: street ? titleCase(street) : null,
       postalCode: postal?.[1] ?? null,
-      city: postal?.[2] ? titleCase(postal[2].trim()) : null,
+      city: city ? titleCase(city) : null,
     };
   }
   return null;
@@ -75,8 +106,9 @@ function supplyAddress(lines: readonly string[]) {
 
 export function clientFromInvoiceText(raw: string): StudyClientData | null {
   const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const holder = holderName(lines);
-  const documentNumber = holderTaxId(lines, holder?.line ?? null);
+  const labelled = holderName(lines);
+  const documentNumber = holderTaxId(lines, labelled?.line ?? null);
+  const holder = labelled ?? holderFromPostalBlock(lines, documentNumber);
   const isCompany = documentNumber ? !/^[XYZ\d]/.test(documentNumber) : holder ? COMPANY.test(holder.text) : false;
 
   let name: string | null = null;
@@ -95,7 +127,11 @@ export function clientFromInvoiceText(raw: string): StudyClientData | null {
   const ibanLine = lines.find((line) => DIRECT_DEBIT.test(line));
   const ibanMatch = ibanLine?.match(/\b[A-Z]{2}\d{2}(?:\s?[\dA-Z]{4}){3,7}(?:\s?[\dA-Z]{1,4})?\b/);
   const iban = ibanMatch && isValidIban(ibanMatch[0]) ? ibanMatch[0].replace(/\s/g, "").replace(/(.{4})/g, "$1 ").trim() : null;
-  const mobile = lines.filter((line) => !SERVICE_LINE.test(line)).map((line) => MOBILE.exec(line)).find(Boolean);
+  // Un número de la comercializadora puede ir en la línea siguiente a su texto.
+  const mobile = lines
+    .filter((line, index) => !SERVICE_LINE.test(line) && !SERVICE_LINE.test(lines[index - 1] ?? "") && !/contrato de suministro/i.test(lines[index - 1] ?? ""))
+    .map((line) => MOBILE.exec(line))
+    .find(Boolean);
   const location = supplyAddress(lines);
 
   const client: StudyClientData = {

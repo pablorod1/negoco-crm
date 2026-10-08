@@ -145,7 +145,7 @@ function OfferRow({
           <div className="min-w-0">
             {withLogo && <p className="text-sm font-semibold text-gray-900">{offer.comercializadoraName}</p>}
             <p className="flex flex-wrap items-center gap-2">
-              <span className={cn("truncate text-sm", withLogo ? "text-gray-500" : "text-gray-700")} title={offer.productName}>
+              <span className={cn("line-clamp-2 break-words text-sm lg:line-clamp-1", withLogo ? "text-gray-500" : "text-gray-700")} title={offer.productName}>
                 {offer.productName}
               </span>
               {best && (

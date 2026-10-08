@@ -13,7 +13,7 @@ export interface StudyOptionsInput {
 export interface ComparativaStudies {
   service: string;
   clientName: string | null;
-  pdfs: { id: string; filename: string; uploadDate: string }[];
+  pdfs: { id: string; filename: string; uploadDate: string; downloadUrl: string }[];
   studies: {
     id: string;
     status: string;

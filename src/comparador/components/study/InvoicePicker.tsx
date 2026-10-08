@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, FileText, Loader2, ScanText, ShieldCheck, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Eye, FileText, Loader2, ScanText, ShieldCheck, Upload, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/core/components/ui/button";
 import { cn } from "@/core/utils";
 import type { ComparativaStudies } from "./api";
+import { InvoicePreview } from "./InvoicePreview";
 import { Panel } from "./ui";
 
 const PHASES = [
@@ -88,6 +89,7 @@ export function InvoicePicker({
   const [file, setFile] = useState<File | null>(null);
   const [rejected, setRejected] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [previewing, setPreviewing] = useState<ComparativaStudies["pdfs"][number] | null>(null);
 
   if (busy) return <Analyzing />;
 
@@ -110,7 +112,8 @@ export function InvoicePicker({
         </p>
       </div>
 
-      <Panel className="mt-8 p-6">
+      <InvoicePreview pdf={previewing} onClose={() => setPreviewing(null)} />
+      <Panel className="mt-8 p-5 sm:p-6">
         {pdfs.length > 0 && (
           <fieldset>
             <legend className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">En la comparativa</legend>
@@ -142,7 +145,18 @@ export function InvoicePicker({
                       <span className="block truncate font-medium text-gray-900">{pdf.filename}</span>
                       <span className="text-xs text-gray-500">Subida el {shortDate(pdf.uploadDate)}</span>
                     </span>
-                    <span className={cn("flex size-5 items-center justify-center rounded-full", selected ? "bg-primary-600 text-white" : "ring-1 ring-gray-300")}>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setPreviewing(pdf);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    >
+                      <Eye className="size-3.5" />
+                      Ver
+                    </button>
+                    <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-full", selected ? "bg-primary-600 text-white" : "ring-1 ring-gray-300")}>
                       {selected && <Check className="size-3" strokeWidth={3} />}
                     </span>
                   </label>

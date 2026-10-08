@@ -8,11 +8,11 @@ import {
   ChevronDown,
   ExternalLink,
   FileText,
-  ScanText,
-} from "lucide-react";
+  ScanText, Eye } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import { cn } from "@/core/utils";
-import { euros, kw, kwh, percentOf, type StudyView } from "./api";
+import { euros, kw, kwh, percentOf, type ComparativaStudies, type StudyView } from "./api";
+import { InvoicePreview } from "./InvoicePreview";
 import { Eyebrow, Panel } from "./ui";
 
 const TERRITORY: Record<string, string> = {
@@ -273,14 +273,28 @@ function ClientCard({ study }: { study: StudyView }) {
 }
 
 /** La factura analizada y lo que no cuadra en su lectura. */
-function InvoiceCard({ study }: { study: StudyView }) {
+function InvoiceCard({ study, pdf }: { study: StudyView; pdf: ComparativaStudies["pdfs"][number] | null }) {
   const [open, setOpen] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const period = study.invoice?.billingPeriod;
   const blocking = study.issues.some(({ severity }) => severity === "blocking");
 
   return (
     <Panel className="p-5">
-      <Eyebrow>Factura</Eyebrow>
+      <div className="flex items-center justify-between gap-3">
+        <Eyebrow>Factura</Eyebrow>
+        {pdf && (
+          <button
+            type="button"
+            onClick={() => setPreviewing(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-50"
+          >
+            <Eye className="size-3.5" />
+            Ver factura
+          </button>
+        )}
+      </div>
+      <InvoicePreview pdf={previewing ? pdf : null} onClose={() => setPreviewing(false)} />
       <div className="mt-3 flex items-start gap-3">
         <span className="rounded-lg bg-gray-100 p-2 text-gray-500">
           <FileText className="size-4" />
@@ -463,14 +477,17 @@ export function StudySidebar({
   study,
   onComplete,
   proposalsRef,
+  invoicePdf,
 }: {
   study: StudyView;
+  /** El PDF de la factura analizada, para abrirlo en el visor. */
+  invoicePdf: ComparativaStudies["pdfs"][number] | null;
   onComplete: () => void;
   /** La tarjeta de propuestas, para saber cuándo sale de la vista. */
   proposalsRef?: Ref<HTMLDivElement>;
 }) {
   return (
-    <aside className="space-y-4">
+    <aside className="grid content-start items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
       <ProposalsCard
         study={study}
         onComplete={onComplete}
@@ -478,7 +495,7 @@ export function StudySidebar({
       />
       <SupplyCard study={study} />
       <ClientCard study={study} />
-      <InvoiceCard study={study} />
+      <InvoiceCard study={study} pdf={invoicePdf} />
     </aside>
   );
 }
