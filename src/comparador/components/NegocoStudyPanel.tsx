@@ -18,10 +18,14 @@ type PanelState = "checking" | "ready" | "error";
 export function NegocoStudyPanel({
   comparativaId,
   onCompleted,
+  triggerLabel = "Estudio Negoco Cloud",
+  triggerVariant = "outline",
 }: {
   comparativaId: string;
   /** Al completar el estudio, para refrescar la comparativa. */
   onCompleted?: () => void;
+  triggerLabel?: string;
+  triggerVariant?: "outline" | "ghost";
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<PanelState>("checking");
@@ -55,12 +59,12 @@ export function NegocoStudyPanel({
     <>
       <Button
         onClick={() => handleOpenChange(true)}
-        variant="outline"
+        variant={triggerVariant}
         size="sm"
-        className="w-full"
+        className={triggerVariant === "outline" ? "w-full" : undefined}
       >
         <Calculator className="h-4 w-4" />
-        Estudio Negoco Cloud
+        {triggerLabel}
       </Button>
 
       <Sheet open={open} onOpenChange={handleOpenChange}>

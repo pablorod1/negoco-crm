@@ -56,6 +56,24 @@ describe("proposal pdf", () => {
     expect(pdf.toString("latin1")).toMatch(/Inter-Regular/);
   });
 
+  test("fits on one page with today's costs, a power tip and discounts", async () => {
+    const pdf = await renderProposalPdf(
+      {
+        ...document,
+        client: { name: "María López García", cups: "ES0021000012345678AB0F" },
+        current: {
+          supplierName: "Iberdrola Clientes",
+          prices: { power: { P1: 0.108192, P2: 0.046548 }, energy: { P1: 0.2149, P2: 0.1612, P3: 0.1189 } },
+          cost: { ...cost(620), services: 35.88, otherElectricity: 4.2, vatExempt: 2.1 },
+        },
+        offer: { ...document.offer, termMonths: 12 },
+        savings: 140,
+      },
+      { displayName: "Negoco Cloud", logo: null, color: "#2563eb" },
+    );
+    expect(pdf.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
+  });
+
   test("brand colors the PDF cannot read fall back to blue", () => {
     expect(brandColor({ palette: { primary: { "600": "#0f766e" } } })).toBe("#0f766e");
     expect(brandColor({ palette: { primary: { "600": "oklch(0.6 0.1 200)" } } })).toBe("#2563eb");

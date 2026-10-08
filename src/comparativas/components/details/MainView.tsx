@@ -39,6 +39,7 @@ import { useEnergySupplierById } from "@/comercializadoras/hooks/useEnergySuppli
 import { useSidebarSlideNavigation } from "@/core/view-transitions/useGenieEffect";
 import { AbarcaPanel } from "@/comparativas/components/details/AbarcaPanel";
 import { NegocoStudyPanel } from "@/comparador/components/NegocoStudyPanel";
+import { ChosenProposalCard } from "@/comparador/components/ChosenProposalCard";
 import { canUseNegocoStudies } from "@/comparador/access";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { hasPermission } from "@/core/access-control/client";
@@ -792,6 +793,12 @@ export default function MainView({
                 : "grid grid-cols-1 gap-5"
             }
           >
+            {canUseNegocoComparator ? (
+              <div className="empty:hidden xl:col-span-2">
+                <ChosenProposalCard comparativaId={comparativa.id} />
+              </div>
+            ) : null}
+
             {hasPrioritySummary ? (
               <div className="space-y-5">
                 {!isSubcomercial ? (

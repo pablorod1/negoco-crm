@@ -79,6 +79,13 @@ export const studyApi = {
 export const euros = (value: number | null | undefined) =>
   value === null || value === undefined
     ? "—"
-    : value.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+    : value.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 2, useGrouping: "always" });
 
-export const kwh = (value: number) => `${Math.round(value).toLocaleString("es-ES")} kWh`;
+export const kwh = (value: number) => `${Math.round(value).toLocaleString("es-ES", { useGrouping: "always" })} kWh`;
+
+/** Porcentaje entero de una parte sobre el total; 0 si el total no lo es. */
+export const percentOf = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
+
+/** Precio unitario con 4 a 6 decimales, como en la propuesta. */
+export const unitPrice = (value: number) =>
+  value.toLocaleString("es-ES", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
