@@ -238,3 +238,19 @@ describe("client data", () => {
     }
   });
 });
+
+describe("study metrics", () => {
+  test("counts analyses, completed studies and those that became a trámite, by month", async () => {
+    const { studyMetrics } = await import("./metrics");
+    await client.execute("ALTER TABLE comparativas ADD COLUMN tramite_id TEXT");
+    const { upload } = { upload: vi.fn<ProposalUploader>(async () => ({ downloadUrl: "u", remove: async () => undefined })) };
+    await closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload });
+    await createStudy(client, { ...study, status: "analyzed", createdBy: "user-1" });
+    await client.execute("UPDATE comparativas SET tramite_id = 'TRM-1', status = 'processed'");
+    const month = (await client.execute("SELECT substr(created_at, 1, 7) AS m FROM comparison_studies LIMIT 1")).rows[0].m;
+
+    expect(await studyMetrics(client, "2000-01-01")).toEqual([
+      { month, analyses: 2, completed: 1, inTramite: 1, aiCostUsd: 0.012, averageSavings: 88 },
+    ]);
+  });
+});
