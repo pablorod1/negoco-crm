@@ -403,6 +403,21 @@ describe("rate ingest service", () => {
     expect(rules.find(({ amount }) => amount === 4)).toMatchObject({ rateId: null, product: "Helsinki" });
   });
 
+  test("a new version cannot start before the active one", async () => {
+    const first = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    await approveIngest({
+      client, control, ingest: first, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    const older = await ingestWith(client, extractionResult([rate({ energyP1: 0.2 })]), "COM-040");
+    await expect(
+      approveIngest({
+        client, control, ingest: older, input: { validFrom: "2026-01-01" },
+        user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      }),
+    ).rejects.toThrow("no puede ser anterior");
+  });
+
   test("commission figures must appear in the document", () => {
     const text = "2.0TD > 10 kW  Agencia 0 - 10 MWh 200 €   Estándar 150 €";
     expect(validateProposedCommissions([{ amount: 200, minAmount: null }, { amount: 150, minAmount: null }], text)).toEqual([]);
@@ -427,6 +442,14 @@ describe("rate ingest service", () => {
     const onlyCommissions = await ingestWith(client, extractionResult([], { commissions }), "COM-040");
     const commissionReview = await buildReview({ client, control, ingest: onlyCommissions, today: "2026-10-07" });
     expect(commissionReview?.review.entries.map(({ kind }) => kind)).toEqual(["carried"]);
+    // Al aprobarlo solo se guardan las comisiones: la versión de precios no cambia.
+    const before = await getActiveVersion(client, "COM-040", "2026-10-07");
+    const approved = await approveIngest({
+      client, control, ingest: onlyCommissions, input: { validFrom: "2026-09-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    expect(approved.versionId).toBeNull();
+    expect((await getActiveVersion(client, "COM-040", "2026-10-07"))?.id).toBe(before?.id);
 
     // Quimera: el anexo de Fénix no trae Unicornio. Por defecto lo retira; el
     // revisor puede mantenerlo.

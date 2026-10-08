@@ -452,7 +452,11 @@ export async function approveIngest({
 
   const built = await buildReview({ client, control, ingest, today, decisions: input });
   if (!built) throw new RateIngestError("La ingesta no tiene una extracción revisable.", 409);
-  const { review, versionRows } = built;
+  const { review } = built;
+  // Un anexo que no trae ningún precio (solo comisiones) no crea versión: si
+  // no, copiaría los precios vigentes con la fecha del anexo y movería sus
+  // fechas (una versión con fecha anterior a la vigente, o sin su fin).
+  const versionRows = review.entries.some(({ kind }) => kind !== "carried") ? built.versionRows : [];
 
   const blocking = review.issues.filter(({ severity }) => severity === "blocking");
   if (blocking.length > 0) {
@@ -538,6 +542,14 @@ export async function approveIngest({
 
   let versionId: string | null = null;
   let status: RateVersion["status"] | null = null;
+  // Una versión que empieza antes que la vigente la cerraría antes de su
+  // inicio y dejaría las fechas del revés.
+  const active = review.activeVersion;
+  if (rows.length > 0 && active?.validFrom && input.validFrom < active.validFrom) {
+    throw new RateIngestError(
+      `La versión vigente empieza el ${active.validFrom}: la fecha de entrada en vigor no puede ser anterior.`,
+    );
+  }
   if (rows.length > 0) {
     versionId = randomUUID();
     const version = insertVersionStatements({
