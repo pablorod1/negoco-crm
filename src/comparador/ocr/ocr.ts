@@ -31,6 +31,27 @@ function workerPath(): string | undefined {
   }
 }
 
+/** TEMPORAL: cómo quedan en la función las carpetas de tesseract.js. */
+function describeLayout(): string {
+  const list = (dir: string, filter: (name: string) => boolean = () => true) => {
+    try {
+      return readdirSync(path.join(process.cwd(), dir)).filter(filter).join(",");
+    } catch (error) {
+      return `(${(error as NodeJS.ErrnoException).code})`;
+    }
+  };
+  const tesseract = (name: string) => /tesseract|bmp-js|zlibjs|wasm-feature|idb-keyval|is-url|regenerator/.test(name);
+  return [
+    `cwd=${process.cwd()}`,
+    `node_modules: ${list("node_modules", tesseract)}`,
+    `.pnpm: ${list("node_modules/.pnpm", tesseract)}`,
+    `.pnpm/node_modules: ${list("node_modules/.pnpm/node_modules", tesseract)}`,
+    `tesseract.js/src/worker-script: ${list("node_modules/tesseract.js/src/worker-script")}`,
+    `tesseract.js/node_modules: ${list("node_modules/tesseract.js/node_modules")}`,
+    `.next/node_modules: ${list(".next/node_modules", tesseract)}`,
+  ].join(" | ");
+}
+
 /** Páginas que se leen de un PDF escaneado: el detalle de la factura está al principio. */
 export const MAX_OCR_PAGES = 4;
 /** Ancho al que se lleva cada página: Tesseract lee mejor el texto de unos 30 px de alto. */
@@ -178,10 +199,13 @@ async function recognizeAll(
   step: (text: string) => void,
 ): Promise<OcrResult> {
   let status = "";
-  const worker = await createWorker("spa", OEM.LSTM_ONLY, {
+  const worker = workerPath();
+  step(`workerPath=${worker ?? "por defecto"} | ${describeLayout()}`);
+  const ocr = await createWorker("spa", OEM.LSTM_ONLY, {
     langPath: LANG_PATH,
     gzip: true,
-    workerPath: workerPath(),
+    // Sin la copia de pnpm, la ruta por defecto de tesseract.js (no se pasa `undefined`).
+    ...(worker ? { workerPath: worker } : {}),
     // Sin caché en disco: en el servidor solo se puede escribir en /tmp.
     cacheMethod: "none",
     logger: ({ status: next, progress }) => {
@@ -191,14 +215,14 @@ async function recognizeAll(
     },
     errorHandler: (error: unknown) => step(`error: ${String(error).slice(0, 300)}`),
   });
-  started(worker);
-  await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+  started(ocr);
+  await ocr.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
   const texts: string[] = [];
   const confidences: number[] = [];
   for (const image of images) {
     // rotateAuto endereza la foto: con la hoja algo girada, el concepto y su
     // importe caían en renglones distintos.
-    const { data } = await worker.recognize(image, { rotateAuto: true }, { text: false, blocks: true });
+    const { data } = await ocr.recognize(image, { rotateAuto: true }, { text: false, blocks: true });
     texts.push(layoutWords(data.blocks ?? []));
     confidences.push(data.confidence);
   }

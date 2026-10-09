@@ -41,6 +41,7 @@ const nextConfig: NextConfig = {
       "./node_modules/@tesseract.js-data/spa/4.0.0_best_int/**",
       // Con pnpm viven en .pnpm: el worker de Node y el motor wasm.
       "./node_modules/.pnpm/tesseract.js@*/node_modules/tesseract.js/src/**",
+      "./node_modules/tesseract.js/src/**",
       "./node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/**",
       // El worker se carga por ruta y el trazado no ve lo que importa: sin
       // estos paquetes no arranca y el análisis se queda colgado.
