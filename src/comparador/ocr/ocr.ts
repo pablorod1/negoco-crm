@@ -142,7 +142,11 @@ export function layoutWords(blocks: readonly Block[]): string {
 export const OCR_TIMEOUT_MS = 60_000;
 
 export class OcrTimeoutError extends Error {
-  constructor(timeoutMs: number) {
+  constructor(
+    timeoutMs: number,
+    /** Por dónde iba Tesseract, para saber en qué paso se quedó. */
+    readonly steps: string[],
+  ) {
     super(`El OCR no ha terminado en ${Math.round(timeoutMs / 1000)} s`);
     this.name = "OcrTimeoutError";
   }
@@ -150,12 +154,23 @@ export class OcrTimeoutError extends Error {
 
 type OcrWorker = Awaited<ReturnType<typeof createWorker>>;
 
-async function recognizeAll(images: readonly Buffer[], started: (worker: OcrWorker) => void): Promise<OcrResult> {
+async function recognizeAll(
+  images: readonly Buffer[],
+  started: (worker: OcrWorker) => void,
+  step: (text: string) => void,
+): Promise<OcrResult> {
+  let status = "";
   const worker = await createWorker("spa", OEM.LSTM_ONLY, {
     langPath: LANG_PATH,
     gzip: true,
     // Sin caché en disco: en el servidor solo se puede escribir en /tmp.
     cacheMethod: "none",
+    logger: ({ status: next, progress }) => {
+      if (next !== status) step(next);
+      status = next;
+      if (progress === 1) step(`${next} ✓`);
+    },
+    errorHandler: (error: unknown) => step(`error: ${String(error).slice(0, 300)}`),
   });
   started(worker);
   await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
@@ -177,17 +192,23 @@ export async function ocrImages(images: readonly Buffer[], timeoutMs = OCR_TIMEO
   let worker: OcrWorker | null = null;
   let finished = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const job = recognizeAll(images, (started) => {
-    worker = started;
-    // Arrancó después del tope: se cierra y lo que siga del OCR falla sin más.
-    if (finished) void started.terminate().catch(() => undefined);
-  });
+  const begin = Date.now();
+  const steps: string[] = [];
+  const job = recognizeAll(
+    images,
+    (started) => {
+      worker = started;
+      // Arrancó después del tope: se cierra y lo que siga del OCR falla sin más.
+      if (finished) void started.terminate().catch(() => undefined);
+    },
+    (text) => steps.push(`${Date.now() - begin} ms ${text}`),
+  );
   job.catch(() => undefined);
   try {
     return await Promise.race([
       job,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new OcrTimeoutError(timeoutMs)), timeoutMs);
+        timer = setTimeout(() => reject(new OcrTimeoutError(timeoutMs, steps)), timeoutMs);
       }),
     ]);
   } finally {

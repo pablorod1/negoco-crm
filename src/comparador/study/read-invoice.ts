@@ -60,7 +60,7 @@ export async function readInvoice({
   } catch (error) {
     if (error instanceof UnreadableImageError) throw new StudyError(error.message);
     if (error instanceof OcrTimeoutError) {
-      console.error("[comparador] OCR", error.message, { pages: images.length });
+      console.error("[comparador] OCR", error.message, { pages: images.length, steps: error.steps });
       throw new StudyError(
         "No se ha podido leer la imagen de la factura a tiempo. Vuelve a intentarlo y, si se repite, pide la factura en PDF.",
         503,
