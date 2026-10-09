@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { createWorker, OEM, PSM, type Block } from "tesseract.js";
@@ -12,6 +13,23 @@ import { renderPageAsImage } from "unpdf";
 
 /** Modelo de español «best_int»: el más preciso de Tesseract, cuantizado (2 MB). */
 const LANG_PATH = path.join(process.cwd(), "node_modules/@tesseract.js-data/spa/4.0.0_best_int");
+
+/**
+ * El script del worker, en la copia de tesseract.js que guarda pnpm. En
+ * Vercel, `node_modules/tesseract.js` es una carpeta con solo parte de sus
+ * archivos y el worker no encontraba los suyos (`Cannot find module '..'`);
+ * la de `.pnpm`, con sus dependencias al lado, va entera en la función
+ * (`outputFileTracingIncludes` de next.config). Sin pnpm, la de siempre.
+ */
+function workerPath(): string | undefined {
+  const store = path.join(process.cwd(), "node_modules/.pnpm");
+  try {
+    const folder = readdirSync(store).find((name) => name.startsWith("tesseract.js@"));
+    return folder ? path.join(store, folder, "node_modules/tesseract.js/src/worker-script/node/index.js") : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Páginas que se leen de un PDF escaneado: el detalle de la factura está al principio. */
 export const MAX_OCR_PAGES = 4;
@@ -154,58 +172,6 @@ export class OcrTimeoutError extends Error {
 
 type OcrWorker = Awaited<ReturnType<typeof createWorker>>;
 
-/** TEMPORAL: arranca un worker vacío y otro con el script de Tesseract y cuenta qué pasa. */
-async function probeWorker(): Promise<string> {
-  const { Worker } = await import("node:worker_threads");
-  const { createRequire } = await import("node:module");
-  const require = createRequire(path.join(process.cwd(), "package.json"));
-  const tryWorker = (label: string, make: () => InstanceType<typeof Worker>) =>
-    new Promise<string>((resolve) => {
-      const events: string[] = [];
-      let worker: InstanceType<typeof Worker>;
-      try {
-        worker = make();
-      } catch (error) {
-        resolve(`${label}: throw ${String(error).slice(0, 300)}`);
-        return;
-      }
-      const done = () => {
-        void worker.terminate().catch(() => undefined);
-        resolve(`${label}: ${events.join(", ") || "nada"}`);
-      };
-      worker.on("online", () => events.push("online"));
-      worker.on("message", (message) => events.push(`message ${JSON.stringify(message).slice(0, 100)}`));
-      worker.on("error", (error) => events.push(`error ${String(error).slice(0, 300)}`));
-      worker.on("exit", (code) => {
-        events.push(`exit ${code}`);
-        done();
-      });
-      setTimeout(done, 8_000);
-    });
-  let script = "";
-  try {
-    script = path.join(path.dirname(require.resolve("tesseract.js")), "worker-script/node/index.js");
-  } catch {
-    script = path.join(
-      process.cwd(),
-      "node_modules/.pnpm/tesseract.js@7.0.0/node_modules/tesseract.js/src/worker-script/node/index.js",
-    );
-  }
-  const results = await Promise.all([
-    // Reflect.construct: Turbopack intenta resolver en la compilación la ruta de un `new Worker(...)`.
-    tryWorker("eval", () =>
-      Reflect.construct(Worker, ["require('worker_threads').parentPort.postMessage('hola')", { eval: true }]),
-    ),
-    tryWorker("tesseract", () => Reflect.construct(Worker, [script])),
-  ]);
-  return [
-    `execArgv=${JSON.stringify(process.execArgv)}`,
-    `NODE_OPTIONS=${process.env.NODE_OPTIONS ?? ""}`,
-    `script=${script}`,
-    ...results,
-  ].join(" | ");
-}
-
 async function recognizeAll(
   images: readonly Buffer[],
   started: (worker: OcrWorker) => void,
@@ -215,6 +181,7 @@ async function recognizeAll(
   const worker = await createWorker("spa", OEM.LSTM_ONLY, {
     langPath: LANG_PATH,
     gzip: true,
+    workerPath: workerPath(),
     // Sin caché en disco: en el servidor solo se puede escribir en /tmp.
     cacheMethod: "none",
     logger: ({ status: next, progress }) => {
@@ -260,13 +227,7 @@ export async function ocrImages(images: readonly Buffer[], timeoutMs = OCR_TIMEO
     return await Promise.race([
       job,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          // TEMPORAL: diagnóstico del worker en Vercel.
-          void probeWorker().then((probe) => {
-            steps.push(probe);
-            reject(new OcrTimeoutError(timeoutMs, steps));
-          });
-        }, timeoutMs);
+        timer = setTimeout(() => reject(new OcrTimeoutError(timeoutMs, steps)), timeoutMs);
       }),
     ]);
   } finally {
