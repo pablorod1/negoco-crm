@@ -192,8 +192,11 @@ async function probeWorker(): Promise<string> {
     );
   }
   const results = await Promise.all([
-    tryWorker("eval", () => new Worker("require('worker_threads').parentPort.postMessage('hola')", { eval: true })),
-    tryWorker("tesseract", () => new Worker(script)),
+    // Reflect.construct: Turbopack intenta resolver en la compilación la ruta de un `new Worker(...)`.
+    tryWorker("eval", () =>
+      Reflect.construct(Worker, ["require('worker_threads').parentPort.postMessage('hola')", { eval: true }]),
+    ),
+    tryWorker("tesseract", () => Reflect.construct(Worker, [script])),
   ]);
   return [
     `execArgv=${JSON.stringify(process.execArgv)}`,
