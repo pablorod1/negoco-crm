@@ -154,6 +154,55 @@ export class OcrTimeoutError extends Error {
 
 type OcrWorker = Awaited<ReturnType<typeof createWorker>>;
 
+/** TEMPORAL: arranca un worker vacío y otro con el script de Tesseract y cuenta qué pasa. */
+async function probeWorker(): Promise<string> {
+  const { Worker } = await import("node:worker_threads");
+  const { createRequire } = await import("node:module");
+  const require = createRequire(path.join(process.cwd(), "package.json"));
+  const tryWorker = (label: string, make: () => InstanceType<typeof Worker>) =>
+    new Promise<string>((resolve) => {
+      const events: string[] = [];
+      let worker: InstanceType<typeof Worker>;
+      try {
+        worker = make();
+      } catch (error) {
+        resolve(`${label}: throw ${String(error).slice(0, 300)}`);
+        return;
+      }
+      const done = () => {
+        void worker.terminate().catch(() => undefined);
+        resolve(`${label}: ${events.join(", ") || "nada"}`);
+      };
+      worker.on("online", () => events.push("online"));
+      worker.on("message", (message) => events.push(`message ${JSON.stringify(message).slice(0, 100)}`));
+      worker.on("error", (error) => events.push(`error ${String(error).slice(0, 300)}`));
+      worker.on("exit", (code) => {
+        events.push(`exit ${code}`);
+        done();
+      });
+      setTimeout(done, 8_000);
+    });
+  let script = "";
+  try {
+    script = path.join(path.dirname(require.resolve("tesseract.js")), "worker-script/node/index.js");
+  } catch {
+    script = path.join(
+      process.cwd(),
+      "node_modules/.pnpm/tesseract.js@7.0.0/node_modules/tesseract.js/src/worker-script/node/index.js",
+    );
+  }
+  const results = await Promise.all([
+    tryWorker("eval", () => new Worker("require('worker_threads').parentPort.postMessage('hola')", { eval: true })),
+    tryWorker("tesseract", () => new Worker(script)),
+  ]);
+  return [
+    `execArgv=${JSON.stringify(process.execArgv)}`,
+    `NODE_OPTIONS=${process.env.NODE_OPTIONS ?? ""}`,
+    `script=${script}`,
+    ...results,
+  ].join(" | ");
+}
+
 async function recognizeAll(
   images: readonly Buffer[],
   started: (worker: OcrWorker) => void,
@@ -208,7 +257,13 @@ export async function ocrImages(images: readonly Buffer[], timeoutMs = OCR_TIMEO
     return await Promise.race([
       job,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new OcrTimeoutError(timeoutMs, steps)), timeoutMs);
+        timer = setTimeout(() => {
+          // TEMPORAL: diagnóstico del worker en Vercel.
+          void probeWorker().then((probe) => {
+            steps.push(probe);
+            reject(new OcrTimeoutError(timeoutMs, steps));
+          });
+        }, timeoutMs);
       }),
     ]);
   } finally {
