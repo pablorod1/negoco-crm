@@ -1,4 +1,4 @@
-import { ocrImages, pdfPagesAsImages, prepareImage, UnreadableImageError } from "@/comparador/ocr/ocr";
+import { OcrTimeoutError, ocrImages, pdfPagesAsImages, prepareImage, UnreadableImageError } from "@/comparador/ocr/ocr";
 import { invoiceTextFromPdf } from "./invoice-text";
 import { StudyError } from "./errors";
 
@@ -59,6 +59,13 @@ export async function readInvoice({
     return { text: ocr.text, fromImage: true };
   } catch (error) {
     if (error instanceof UnreadableImageError) throw new StudyError(error.message);
+    if (error instanceof OcrTimeoutError) {
+      console.error("[comparador] OCR", error.message, { pages: images.length });
+      throw new StudyError(
+        "No se ha podido leer la imagen de la factura a tiempo. Vuelve a intentarlo y, si se repite, pide la factura en PDF.",
+        503,
+      );
+    }
     throw error;
   }
 }

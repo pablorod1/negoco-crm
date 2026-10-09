@@ -134,26 +134,65 @@ export function layoutWords(blocks: readonly Block[]): string {
     .join("\n");
 }
 
-/** Texto de unas imágenes ya preparadas, página a página, con las columnas marcadas. */
-export async function ocrImages(images: readonly Buffer[]): Promise<OcrResult> {
+/**
+ * Tope del OCR entero; en local, dos páginas tardan unos 5 s. Si el worker de
+ * Tesseract no arranca (por ejemplo, le falta un archivo en el servidor), su
+ * promesa no acaba nunca: mejor un error claro que agotar la función.
+ */
+export const OCR_TIMEOUT_MS = 60_000;
+
+export class OcrTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`El OCR no ha terminado en ${Math.round(timeoutMs / 1000)} s`);
+    this.name = "OcrTimeoutError";
+  }
+}
+
+type OcrWorker = Awaited<ReturnType<typeof createWorker>>;
+
+async function recognizeAll(images: readonly Buffer[], started: (worker: OcrWorker) => void): Promise<OcrResult> {
   const worker = await createWorker("spa", OEM.LSTM_ONLY, {
     langPath: LANG_PATH,
     gzip: true,
     // Sin caché en disco: en el servidor solo se puede escribir en /tmp.
     cacheMethod: "none",
   });
+  started(worker);
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+  const texts: string[] = [];
+  const confidences: number[] = [];
+  for (const image of images) {
+    // rotateAuto endereza la foto: con la hoja algo girada, el concepto y su
+    // importe caían en renglones distintos.
+    const { data } = await worker.recognize(image, { rotateAuto: true }, { text: false, blocks: true });
+    texts.push(layoutWords(data.blocks ?? []));
+    confidences.push(data.confidence);
+  }
+  const confidence = confidences.length ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length : 0;
+  return { text: texts.join("\n\n").trim(), confidence, pages: images.length };
+}
+
+/** Texto de unas imágenes ya preparadas, página a página, con las columnas marcadas. */
+export async function ocrImages(images: readonly Buffer[], timeoutMs = OCR_TIMEOUT_MS): Promise<OcrResult> {
+  let worker: OcrWorker | null = null;
+  let finished = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const job = recognizeAll(images, (started) => {
+    worker = started;
+    // Arrancó después del tope: se cierra y lo que siga del OCR falla sin más.
+    if (finished) void started.terminate().catch(() => undefined);
+  });
+  job.catch(() => undefined);
   try {
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
-    const texts: string[] = [];
-    const confidences: number[] = [];
-    for (const image of images) {
-      const { data } = await worker.recognize(image, {}, { text: false, blocks: true });
-      texts.push(layoutWords(data.blocks ?? []));
-      confidences.push(data.confidence);
-    }
-    const confidence = confidences.length ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length : 0;
-    return { text: texts.join("\n\n").trim(), confidence, pages: images.length };
+    return await Promise.race([
+      job,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new OcrTimeoutError(timeoutMs)), timeoutMs);
+      }),
+    ]);
   } finally {
-    await worker.terminate();
+    finished = true;
+    clearTimeout(timer);
+    await (worker as OcrWorker | null)?.terminate().catch(() => undefined);
   }
 }

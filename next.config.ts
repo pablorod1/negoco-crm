@@ -42,6 +42,13 @@ const nextConfig: NextConfig = {
       // Con pnpm viven en .pnpm: el worker de Node y el motor wasm.
       "./node_modules/.pnpm/tesseract.js@*/node_modules/tesseract.js/src/**",
       "./node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/**",
+      // El worker se carga por ruta y el trazado no ve lo que importa: sin
+      // estos paquetes no arranca y el análisis se queda colgado.
+      "./node_modules/.pnpm/tesseract.js@*/node_modules/*",
+      "./node_modules/.pnpm/bmp-js@*/node_modules/bmp-js/**",
+      "./node_modules/.pnpm/idb-keyval@*/node_modules/idb-keyval/**",
+      "./node_modules/.pnpm/wasm-feature-detect@*/node_modules/wasm-feature-detect/**",
+      "./node_modules/.pnpm/zlibjs@*/node_modules/zlibjs/**",
     ],
   },
   allowedDevOrigins: [

@@ -54,3 +54,12 @@ describe("redacting OCR columns", () => {
     expect(text).not.toMatch(/Pérez/);
   });
 });
+
+describe("ocrImages", () => {
+  test("gives up with a clear error instead of hanging past the limit", async () => {
+    const { ocrImages, OcrTimeoutError } = await import("./ocr");
+    const sharp = (await import("sharp")).default;
+    const blank = await sharp({ create: { width: 200, height: 200, channels: 3, background: "#fff" } }).png().toBuffer();
+    await expect(ocrImages([blank], 1)).rejects.toBeInstanceOf(OcrTimeoutError);
+  });
+});
