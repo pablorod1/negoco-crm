@@ -39,17 +39,15 @@ const nextConfig: NextConfig = {
       "./public/*.jpg",
       "./public/*.jpeg",
       "./node_modules/@tesseract.js-data/spa/4.0.0_best_int/**",
-      // Con pnpm viven en .pnpm: el worker de Node y el motor wasm.
-      "./node_modules/.pnpm/tesseract.js@*/node_modules/tesseract.js/src/**",
+      // El worker de Tesseract se carga por ruta y el trazado no ve lo que
+      // importa. Vercel copia cada paquete a node_modules/<paquete> (sin
+      // .pnpm), así que van desde ahí: por eso tesseract.js-core, bmp-js y
+      // wasm-feature-detect son dependencias directas. Sin ellos el worker
+      // no arranca y el análisis espera hasta el tope.
       "./node_modules/tesseract.js/src/**",
-      "./node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/**",
-      // El worker se carga por ruta y el trazado no ve lo que importa: sin
-      // estos paquetes no arranca y el análisis se queda colgado.
-      "./node_modules/.pnpm/tesseract.js@*/node_modules/*",
-      "./node_modules/.pnpm/bmp-js@*/node_modules/bmp-js/**",
-      "./node_modules/.pnpm/idb-keyval@*/node_modules/idb-keyval/**",
-      "./node_modules/.pnpm/wasm-feature-detect@*/node_modules/wasm-feature-detect/**",
-      "./node_modules/.pnpm/zlibjs@*/node_modules/zlibjs/**",
+      "./node_modules/tesseract.js-core/**",
+      "./node_modules/bmp-js/**",
+      "./node_modules/wasm-feature-detect/**",
     ],
   },
   allowedDevOrigins: [

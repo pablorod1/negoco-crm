@@ -1,4 +1,3 @@
-import { readdirSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { createWorker, OEM, PSM, type Block } from "tesseract.js";
@@ -13,44 +12,6 @@ import { renderPageAsImage } from "unpdf";
 
 /** Modelo de español «best_int»: el más preciso de Tesseract, cuantizado (2 MB). */
 const LANG_PATH = path.join(process.cwd(), "node_modules/@tesseract.js-data/spa/4.0.0_best_int");
-
-/**
- * El script del worker, en la copia de tesseract.js que guarda pnpm. En
- * Vercel, `node_modules/tesseract.js` es una carpeta con solo parte de sus
- * archivos y el worker no encontraba los suyos (`Cannot find module '..'`);
- * la de `.pnpm`, con sus dependencias al lado, va entera en la función
- * (`outputFileTracingIncludes` de next.config). Sin pnpm, la de siempre.
- */
-function workerPath(): string | undefined {
-  const store = path.join(process.cwd(), "node_modules/.pnpm");
-  try {
-    const folder = readdirSync(store).find((name) => name.startsWith("tesseract.js@"));
-    return folder ? path.join(store, folder, "node_modules/tesseract.js/src/worker-script/node/index.js") : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** TEMPORAL: cómo quedan en la función las carpetas de tesseract.js. */
-function describeLayout(): string {
-  const list = (dir: string, filter: (name: string) => boolean = () => true) => {
-    try {
-      return readdirSync(path.join(process.cwd(), dir)).filter(filter).join(",");
-    } catch (error) {
-      return `(${(error as NodeJS.ErrnoException).code})`;
-    }
-  };
-  const tesseract = (name: string) => /tesseract|bmp-js|zlibjs|wasm-feature|idb-keyval|is-url|regenerator/.test(name);
-  return [
-    `cwd=${process.cwd()}`,
-    `node_modules: ${list("node_modules", tesseract)}`,
-    `.pnpm: ${list("node_modules/.pnpm", tesseract)}`,
-    `.pnpm/node_modules: ${list("node_modules/.pnpm/node_modules", tesseract)}`,
-    `tesseract.js/src/worker-script: ${list("node_modules/tesseract.js/src/worker-script")}`,
-    `tesseract.js/node_modules: ${list("node_modules/tesseract.js/node_modules")}`,
-    `.next/node_modules: ${list(".next/node_modules", tesseract)}`,
-  ].join(" | ");
-}
 
 /** Páginas que se leen de un PDF escaneado: el detalle de la factura está al principio. */
 export const MAX_OCR_PAGES = 4;
@@ -199,13 +160,9 @@ async function recognizeAll(
   step: (text: string) => void,
 ): Promise<OcrResult> {
   let status = "";
-  const worker = workerPath();
-  step(`workerPath=${worker ?? "por defecto"} | ${describeLayout()}`);
   const ocr = await createWorker("spa", OEM.LSTM_ONLY, {
     langPath: LANG_PATH,
     gzip: true,
-    // Sin la copia de pnpm, la ruta por defecto de tesseract.js (no se pasa `undefined`).
-    ...(worker ? { workerPath: worker } : {}),
     // Sin caché en disco: en el servidor solo se puede escribir en /tmp.
     cacheMethod: "none",
     logger: ({ status: next, progress }) => {
