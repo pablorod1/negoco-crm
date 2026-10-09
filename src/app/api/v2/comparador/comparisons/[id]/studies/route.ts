@@ -4,6 +4,7 @@ import { studyError } from "@/comparador/server/study-route";
 import { uploadToStorage } from "@/comparador/server/storage";
 import { getStudyComparativa, listComparativaInvoices } from "@/comparador/study/comparativa";
 import { attachUploadedInvoice } from "@/comparador/study/invoice-file";
+import { isValidCups, normalizeIdentifier } from "@/comparador/extraction/identifiers";
 import { isInvoiceImage } from "@/comparador/study/read-invoice";
 import { listStudies } from "@/comparador/study/repository";
 import { analyzeInvoice, StudyError, type SipsFetcher } from "@/comparador/study/service";
@@ -77,6 +78,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const form = await request.formData();
     const fileId = form.get("fileId");
     const uploads = form.getAll("file").filter((entry): entry is File => entry instanceof File);
+    // CUPS escrito a mano cuando la factura no lo trae legible.
+    const typedCups = typeof form.get("cups") === "string" ? normalizeIdentifier(form.get("cups") as string) : "";
+    if (typedCups && !isValidCups(typedCups)) {
+      throw new StudyError("Ese CUPS no es válido: revisa los números y las dos letras de control.", 422, "cups_missing");
+    }
 
     let invoice;
     if (typeof fileId === "string" && fileId) {
@@ -113,7 +119,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       tenantSlug,
       comparativaId: id,
       userId: user.id,
-      invoice,
+      invoice: { ...invoice, cups: typedCups || null },
       channel: comparativa.hasRenovacion ? "renewal" : "acquisition",
       today: todayInSpain(),
       fetchSips,

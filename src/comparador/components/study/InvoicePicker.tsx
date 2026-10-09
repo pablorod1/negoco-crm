@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Eye, FileText, Image as ImageIcon, Loader2, ScanText, ShieldCheck, Upload, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/core/components/ui/button";
+import { Input } from "@/core/components/ui/input";
+import { Label } from "@/core/components/ui/label";
+import { isValidCups } from "@/comparador/extraction/identifiers";
 import { cn } from "@/core/utils";
 import type { ComparativaStudies } from "./api";
 import { InvoicePreview } from "./InvoicePreview";
@@ -80,12 +83,15 @@ const isInvoiceFile = (file: File) =>
 export function InvoicePicker({
   invoices,
   busy,
+  cupsPrompt,
   onAnalyze,
   onCancel,
 }: {
   invoices: ComparativaStudies["invoices"];
   busy: boolean;
-  onAnalyze: (invoice: { fileId: string } | { files: File[] }) => void;
+  /** La factura no trae un CUPS legible: el motivo, y se pide aquí mismo. */
+  cupsPrompt?: string | null;
+  onAnalyze: (invoice: { fileId: string } | { files: File[] }, cups?: string) => void;
   /** Volver al estudio que ya había, sin analizar otra factura. */
   onCancel?: () => void;
 }) {
@@ -96,6 +102,8 @@ export function InvoicePicker({
   const photos = files.length > 0 && !isPdfFile(files[0]);
   const [dragging, setDragging] = useState(false);
   const [previewing, setPreviewing] = useState<ComparativaStudies["invoices"][number] | null>(null);
+  const [cups, setCups] = useState("");
+  const cupsValid = isValidCups(cups);
 
   if (busy) return <Analyzing />;
 
@@ -258,6 +266,35 @@ export function InvoicePicker({
           )}
         </div>
 
+        {cupsPrompt && (
+          <div role="alert" className="mt-5 rounded-xl bg-warning-50 p-4 ring-1 ring-warning-200">
+            <p className="flex gap-2.5 text-sm text-gray-800">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning-600" />
+              {cupsPrompt}
+            </p>
+            <div className="mt-3 space-y-1 pl-6">
+              <Label htmlFor="study-cups" className="text-xs">
+                CUPS
+              </Label>
+              <Input
+                id="study-cups"
+                autoFocus
+                autoComplete="off"
+                spellCheck={false}
+                className="h-9 bg-white font-mono uppercase"
+                placeholder="ES 0021 0000 0000 0000 XX"
+                value={cups}
+                onChange={(event) => setCups(event.target.value)}
+              />
+              {cups.trim() && (
+                <p className={cn("text-xs", cupsValid ? "text-success-700" : "text-gray-500")}>
+                  {cupsValid ? "CUPS válido." : "ES, 16 números y las dos letras de control (los espacios no importan)."}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2 text-xs text-gray-500">
             <ShieldCheck className="size-4 shrink-0 text-success-600" />
@@ -269,7 +306,12 @@ export function InvoicePicker({
                 Volver al estudio
               </Button>
             )}
-            <Button className="rounded-xl" size="lg" disabled={!file && !fileId} onClick={() => onAnalyze(files.length > 0 ? { files } : { fileId })}>
+            <Button
+              className="rounded-xl"
+              size="lg"
+              disabled={(!file && !fileId) || (Boolean(cups.trim()) && !cupsValid)}
+              onClick={() => onAnalyze(files.length > 0 ? { files } : { fileId }, cupsValid ? cups : undefined)}
+            >
               Analizar factura
             </Button>
           </div>

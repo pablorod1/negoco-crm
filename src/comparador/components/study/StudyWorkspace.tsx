@@ -8,7 +8,7 @@ import { Button } from "@/core/components/ui/button";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import type { StudyClientDataInput } from "@/comparador/study/client-data";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
-import { studyApi, type ComparativaStudies, type StudyOfferView, type StudyOptionsInput, type StudyView } from "./api";
+import { studyApi, StudyRequestError, type ComparativaStudies, type StudyOfferView, type StudyOptionsInput, type StudyView } from "./api";
 import { CompleteDialog, initialClient } from "./CompleteDialog";
 import { InvoiceEditor } from "./InvoiceEditor";
 import { InvoicePicker } from "./InvoicePicker";
@@ -188,6 +188,8 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
   const [busy, setBusy] = useState(false);
   const [proposing, setProposing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** La factura no trae un CUPS legible: se pide en el propio paso de la factura. */
+  const [cupsPrompt, setCupsPrompt] = useState<string | null>(null);
   const viewRequest = useRef(0);
   const comparativaHref = `/comparativas/${comparativaId}`;
 
@@ -214,15 +216,18 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
     void load();
   }, [load]);
 
-  const analyze = async (invoice: { fileId: string } | { files: File[] }) => {
+  const analyze = async (invoice: { fileId: string } | { files: File[] }, cups?: string) => {
     setBusy(true);
     setError(null);
+    setCupsPrompt(null);
     try {
-      const { id } = await studyApi.analyze(comparativaId, invoice);
+      const { id } = await studyApi.analyze(comparativaId, invoice, cups);
       setStudy(await studyApi.view(id));
       setPicking(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se ha podido analizar la factura");
+      const message = cause instanceof Error ? cause.message : "No se ha podido analizar la factura";
+      if (cause instanceof StudyRequestError && cause.code === "cups_missing") setCupsPrompt(message);
+      else setError(message);
     } finally {
       setBusy(false);
     }
@@ -355,7 +360,13 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
         </Panel>
       ) : showPicker ? (
         list && (
-          <InvoicePicker invoices={list.invoices} busy={busy} onAnalyze={analyze} onCancel={study ? () => setPicking(false) : undefined} />
+          <InvoicePicker
+            invoices={list.invoices}
+            busy={busy}
+            cupsPrompt={cupsPrompt}
+            onAnalyze={analyze}
+            onCancel={study ? () => setPicking(false) : undefined}
+          />
         )
       ) : (
         <StudyResult

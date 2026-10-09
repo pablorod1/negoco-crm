@@ -26,11 +26,22 @@ export interface ComparativaStudies {
   }[];
 }
 
+/** Un error de la API; `code` dice qué falta cuando se puede arreglar en la pantalla. */
+export class StudyRequestError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "StudyRequestError";
+  }
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
-  const body = (await response.json().catch(() => null)) as { data?: T; error?: string } | null;
+  const body = (await response.json().catch(() => null)) as { data?: T; error?: string; code?: string } | null;
   if (!response.ok || !body?.data) {
-    throw new Error(body?.error ?? "No se ha podido completar");
+    throw new StudyRequestError(body?.error ?? "No se ha podido completar", body?.code);
   }
   return body.data;
 }
@@ -47,11 +58,15 @@ function query(options: StudyOptionsInput): string {
 export const studyApi = {
   list: (comparativaId: string) =>
     request<ComparativaStudies>(`/api/v2/comparador/comparisons/${comparativaId}/studies`),
-  /** Una factura adjunta, o la subida: un PDF o las fotos de sus páginas, en orden. */
-  analyze: (comparativaId: string, invoice: { fileId: string } | { files: File[] }) => {
+  /**
+   * Una factura adjunta, o la subida: un PDF o las fotos de sus páginas, en
+   * orden. `cups`, escrito a mano si la factura no lo trae legible.
+   */
+  analyze: (comparativaId: string, invoice: { fileId: string } | { files: File[] }, cups?: string) => {
     const form = new FormData();
     if ("fileId" in invoice) form.set("fileId", invoice.fileId);
     else for (const file of invoice.files) form.append("file", file);
+    if (cups) form.set("cups", cups);
     return request<{ id: string }>(`/api/v2/comparador/comparisons/${comparativaId}/studies`, {
       method: "POST",
       body: form,

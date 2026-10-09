@@ -44,6 +44,8 @@ export interface InvoiceForStudy {
   mime: string;
   /** Fotos de las demás páginas, en orden, cuando la factura llega en varias fotos. */
   morePages?: Uint8Array[];
+  /** CUPS escrito a mano porque no se lee en la factura; ya validado. */
+  cups?: string | null;
 }
 
 /**
@@ -88,16 +90,12 @@ export async function analyzeInvoice({
       "No se ha podido tapar todos los datos personales de esta factura, así que no se envía a analizar. Avisa a soporte con la comparativa.",
     );
   }
-  const cups = redaction.identifiers.cups[0] ?? null;
+  const cups = redaction.identifiers.cups[0] ?? invoice.cups ?? null;
 
   // Sin un año real de consumo del SIPS no hay estudio. Se comprueba antes
   // de llamar a la IA: no se gasta en una factura que no se puede comparar.
   if (!cups) {
-    throw new StudyError(
-      fromImage
-        ? "No se lee un CUPS válido en la imagen, así que no se puede pedir al SIPS el consumo real de 12 meses. Haz una foto más nítida de la página donde viene el CUPS, o pide el PDF."
-        : SIPS_MESSAGES.noCups,
-    );
+    throw new StudyError(fromImage ? SIPS_MESSAGES.noCupsInImage : SIPS_MESSAGES.noCups, 422, "cups_missing");
   }
   const [point, consumption] = await Promise.all([
     fetchSips(cups, "PS").catch(() => null),

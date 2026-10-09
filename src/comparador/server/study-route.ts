@@ -15,7 +15,7 @@ export const SHOWN_OFFERS = 150;
 
 export function studyError(label: string, error: unknown) {
   if (error instanceof StudyError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json({ error: error.message, ...(error.code ? { code: error.code } : {}) }, { status: error.status });
   }
   console.error(`[comparador] ${label} failed`, error);
   return NextResponse.json({ error: "No se ha podido completar el estudio" }, { status: 500 });

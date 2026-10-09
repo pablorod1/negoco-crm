@@ -162,7 +162,8 @@ export function contractedKwFromSips(
 
 /** Por qué no hay consumo real: se enseñan tal cual a quien hace el estudio. */
 export const SIPS_MESSAGES = {
-  noCups: "La factura no trae un CUPS válido, así que no se puede pedir al SIPS el consumo real de 12 meses. Comprueba que es la factura de luz completa, con todas sus páginas.",
+  noCups: "No se encuentra el CUPS en la factura y sin él no se puede pedir al SIPS el consumo real de 12 meses. Escríbelo aquí o sube la factura completa, con todas sus páginas.",
+  noCupsInImage: "No se lee el CUPS en la imagen y sin él no se puede pedir al SIPS el consumo real de 12 meses. Escríbelo aquí tal y como viene en la factura.",
   unavailable: "El SIPS no responde ahora mismo y sin él no hay consumo real de 12 meses. Vuelve a intentarlo en unos minutos.",
   noReadings: "El SIPS no tiene lecturas de consumo de este CUPS, así que no hay consumo real de 12 meses para comparar.",
   insufficient: (months: number) =>
