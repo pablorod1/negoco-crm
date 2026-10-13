@@ -29,6 +29,7 @@ import { indexedEnergyPrices, marginOverMarket } from "./indexed";
 import { rankStudy, type AncillarySimulation, type CurrentPricing, type StudyRanking } from "./ranking";
 import {
   createStudy,
+  getStudy,
   saveStudySupply,
   type SavedStudyOptions,
   type StudyRecord,
@@ -141,7 +142,7 @@ export async function analyzeInvoice({
     throw error;
   }
 
-  return createStudy(client, {
+  const studyId = await createStudy(client, {
     comparativaId,
     status: "analyzed",
     invoiceFileId: invoice.fileId,
@@ -161,6 +162,12 @@ export async function analyzeInvoice({
     clientData,
     createdBy: userId,
   });
+  // Indexada: el mercado (OMIE) se descarga ya, para que el estudio se abra sin esperar.
+  if (facts.pricing === "indexed") {
+    const study = await getStudy(client, studyId);
+    if (study) await ensureMarket(client, study);
+  }
+  return studyId;
 }
 
 /** La comercializadora de la factura buscada en su texto, entre las del tenant. */

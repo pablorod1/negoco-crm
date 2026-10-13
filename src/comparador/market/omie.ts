@@ -104,7 +104,7 @@ export class MarketDataUnavailableError extends Error {
 
 /**
  * Media de OMIE por periodo (€/MWh) de varios tramos de fechas. Descarga cada
- * día una sola vez, de 12 en 12. Admite que falte algún día suelto (un
+ * día una sola vez, de 24 en 24. Admite que falte algún día suelto (un
  * fichero que no carga), pero no más de un 3 % de los días.
  */
 export async function omieAverages(
@@ -113,8 +113,8 @@ export async function omieAverages(
 ): Promise<EnergyByPeriod[]> {
   const wanted = [...new Set(ranges.flatMap(({ from, to }) => daysBetween(from, to)))];
   const days = new Map<string, PeriodSums | null>();
-  for (let start = 0; start < wanted.length; start += 12) {
-    const batch = wanted.slice(start, start + 12);
+  for (let start = 0; start < wanted.length; start += 24) {
+    const batch = wanted.slice(start, start + 24);
     const results = await Promise.all(batch.map((date) => fetchDay(date).catch(() => null)));
     batch.forEach((date, index) => {
       const prices = results[index];

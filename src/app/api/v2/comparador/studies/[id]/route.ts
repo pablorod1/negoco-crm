@@ -12,6 +12,9 @@ import { listProposals } from "@/comparador/study/proposals";
 import { saveStudyOptions } from "@/comparador/study/repository";
 import { rankSavedStudy } from "@/comparador/study/service";
 
+// Con una tarifa indexada sin mercado guardado, la primera vista descarga el OMIE de un año (~8 s).
+export const maxDuration = 60;
+
 function optionsFromQuery(request: NextRequest) {
   const query = request.nextUrl.searchParams;
   const fee = query.get("fee");
