@@ -15,9 +15,6 @@ import type {
 
 type QueryClient = Pick<Client, "execute" | "batch">;
 
-/** Proveedor con el que se marcan en `comercializadora_rates` las tarifas del catálogo. */
-export const CATALOG_PROVIDER = "negoco_catalog";
-
 const str = (value: unknown) => (value === null || value === undefined ? null : String(value));
 const num = (value: unknown) =>
   value === null || value === undefined ? null : Number(value);
@@ -66,19 +63,13 @@ export function insertTenantRateStatement(rate: {
   catalogRateId: string | null;
   accessTariff: string;
 }): InStatement {
+  // Solo columnas que tienen todos los tenants con el comparador: `provider`
+  // y `descripcion` son de la integración de Imagina y Beenergy no las tiene.
   return {
     sql: `INSERT INTO comercializadora_rates
-      (id, name, comercializadora_id, type, provider, descripcion, catalog_rate_id,
-       enabled, created_at, updated_at)
-      VALUES (?, ?, ?, 'fijo', ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-    args: [
-      rate.id,
-      rate.name,
-      rate.comercializadoraId,
-      CATALOG_PROVIDER,
-      rate.accessTariff,
-      rate.catalogRateId,
-    ],
+      (id, name, comercializadora_id, type, catalog_rate_id, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, 'fijo', ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    args: [rate.id, rate.name, rate.comercializadoraId, rate.catalogRateId],
   };
 }
 
