@@ -19,7 +19,7 @@ import type { RecipeStore } from "./store";
 
 /** Hojas que no se enseñan a la IA por su nombre: indexadas, gas, simuladores. */
 const SKIPPED_SHEET =
-  /index|omie|\bpool\b|din[aá]mica|pass.?through|\bgas\b|\bRL\.?\s?\d|simulador|calculadora|hist[oó]rico/i;
+  /index|omie|pool|din[aá]mica|pass.?through|\bgas\b|\bRL\.?\s?\d|simulador|calculadora|hist[oó]rico/i;
 
 /** Texto por hoja que se enseña a la IA: la forma, no hace falta cada fila. */
 const MAX_SHEET_CHARS = 25_000;

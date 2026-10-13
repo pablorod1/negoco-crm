@@ -551,6 +551,64 @@ describe("applyRecipe", () => {
     ]);
   });
 
+  test("a block whose header says it follows the market is indexed, whatever the recipe declares", () => {
+    // Hojas de Eleia: TRADERPOOL cobra «TÉRMINO A» por el OMIE más el
+    // «PRECIO TERMINO B»; TRADER SERVICES, al lado, es «PRECIO FIJO».
+    const sheet = (header: string) =>
+      grid("Eleia", {
+        2: { D: "PRODUCTO" },
+        3: { B: "TÉRMINO DE ENERGÍA", D: header },
+        4: { D: "€/kWh", E: "P1", F: "P2", G: "P3" },
+        5: { D: "2.0TD", E: 0.150653, F: 0.08174, G: 0.056162 },
+      });
+    const eleia = (productName: string) =>
+      recipe([
+        table({
+          sheet: "Eleia",
+          firstRow: 5,
+          lastRow: 5,
+          sources: [
+            { field: "productName", column: null, cell: null, value: productName },
+            { field: "accessTariff", column: "D", cell: null, value: null },
+            { field: "energyP1", column: "E", cell: null, value: null },
+            { field: "energyP2", column: "F", cell: null, value: null },
+            { field: "energyP3", column: "G", cell: null, value: null },
+            { field: "pricing", column: null, cell: null, value: "fixed" },
+          ],
+        }),
+      ]);
+    const pricing = (header: string, productName: string) =>
+      applyRecipe([sheet(header)], eleia(productName)).extraction.rates.map((rate) => rate.pricing);
+
+    expect(pricing("PRECIO TERMINO B", "Trader 3")).toEqual(["indexed"]);
+    expect(pricing("INDEXADO", "Tu Decides 3")).toEqual(["indexed"]);
+    expect(pricing("PRECIO FIJO", "Trace 3")).toEqual(["fixed"]);
+    // «pool» dentro de una palabra también: «TRADERPOOL» se guardaba como fijo.
+    expect(pricing("PRECIO FIJO", "TRADERPOOL 3")).toEqual(["indexed"]);
+
+    // Aletteo: «Fijo» sobre la energía e «Indexado» sobre el FEE de al lado.
+    const aletteo = grid("Preciario", {
+      12: { J: "Fijo", N: "Indexado" },
+      13: { J: "P1", K: "P2", L: "P3", N: "FEE" },
+      15: { I: "POWER PLUS", J: 0.18982, K: 0.18982, L: 0.18982, N: 12 },
+    });
+    const aletteoRecipe = recipe([
+      table({
+        sheet: "Preciario",
+        firstRow: 15,
+        lastRow: 15,
+        sources: [
+          { field: "productName", column: "I", cell: null, value: null },
+          { field: "accessTariff", column: null, cell: null, value: "2.0TD" },
+          { field: "energyP1", column: "J", cell: null, value: null },
+          { field: "energyP2", column: "K", cell: null, value: null },
+          { field: "energyP3", column: "L", cell: null, value: null },
+        ],
+      }),
+    ]);
+    expect(applyRecipe([aletteo], aletteoRecipe).extraction.rates.map((rate) => rate.pricing)).toEqual(["fixed"]);
+  });
+
   test("an impossible declared unit gives way to the magnitude", () => {
     const sheet = grid("Precios", { 3: { A: "Fijo", B: "2.0TD", C: 24.84, D: 21.68, E: 19.97 } });
     const withUnit = priceTable();

@@ -1,5 +1,5 @@
 import { DAYS_PER_YEAR } from "@/comparador/engine/cost";
-import { cleanName, productKeyOf, productNameOf } from "./names";
+import { cleanName, looksIndexed, productKeyOf, productNameOf } from "./names";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
 import type { CommissionRuleInput, ProposedRate, RateDiscount } from "./types";
 
@@ -130,7 +130,8 @@ export function toProposedRates(
       productName,
       productKey: productKeyOf(productName),
       accessTariff: rate.accessTariff.replace(/\s+/g, "").toUpperCase(),
-      pricing: rate.pricing,
+      // La IA a veces deja como fijo un producto que por su nombre es indexado.
+      pricing: rate.pricing === "fixed" && looksIndexed(productName) ? "indexed" : rate.pricing,
       level: rate.level ? cleanName(rate.level) : null,
       territory: rate.territory ?? "peninsula",
       channel: rate.channel === "both" ? null : rate.channel,

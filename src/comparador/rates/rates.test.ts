@@ -131,6 +131,17 @@ describe("validateProposedRates", () => {
     expect(rates[0].sourceExcerpt).toBe("Energía (€/kWh) con SS.AA. 0,24755 0,17927 0,15329");
   });
 
+  test("a product named as indexed is not stored as fixed, even if the AI says so", () => {
+    const rates = toProposedRates({
+      rates: [extracted({ productName: "TRADERPOOL 3" }), extracted({ productName: "Tarifa Index Plus" }), extracted()],
+    });
+    expect(rates.map(({ productName, pricing }) => [productName, pricing])).toEqual([
+      ["TRADERPOOL 3", "indexed"],
+      ["Tarifa Index Plus", "indexed"],
+      ["Unicornio", "fixed"],
+    ]);
+  });
+
   test("a figure that is not in the document blocks the ingest", () => {
     const rates = toProposedRates({
       rates: [extracted({ energyP1: 0.24775 })],

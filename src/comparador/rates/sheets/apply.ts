@@ -1,4 +1,4 @@
-import { normalizeName } from "../names";
+import { looksIndexed, normalizeName } from "../names";
 import type {
   ExtractedCommission,
   ExtractedRate,
@@ -52,8 +52,12 @@ const NUMERIC_FIELDS = new Set<RecipeField>([
 
 const key = (text: string | null | undefined) => (text ? normalizeName(text) : "");
 
-/** Productos que no son de precio fijo por su nombre (como las hojas en read.ts). */
-const INDEXED_NAME = /\bomie\b|index|\bpool\b|pass.?through/i;
+/**
+ * Cabecera de un bloque de precios indexados: el precio es una fórmula con el
+ * mercado («PRECIO TÉRMINO B», que se suma al «TÉRMINO A» por el OMIE).
+ */
+const INDEXED_HEADER = /t[ée]rmino\s*b\b|indexad|omie|pool|f[óo]rmula|pass.?through/i;
+const FIXED_HEADER = /\bfij[oa]s?\b|\bfixed\b/i;
 const round6 = (value: number) => Math.round(value * 1e6) / 1e6;
 
 const findGrid = findSheet;
@@ -101,6 +105,8 @@ interface RowRecord {
   row: number;
   /** Territorio que dice la cabecera del bloque («Precios Energía - Peninsula»), si dice uno. */
   headerTerritory: ExtractedRate["territory"] | null;
+  /** La cabecera del bloque dice que el precio es indexado, aunque la plantilla diga fijo. */
+  headerIndexed: boolean;
   values: Partial<Record<RecipeField, SheetCell | string | null>>;
   excerpt: string;
 }
@@ -130,6 +136,27 @@ function blockTerritory(
     }
   }
   return found.size === 1 ? [...found][0] : null;
+}
+
+/**
+ * Si las filas de encima de las columnas de energía (y la de su izquierda,
+ * donde Eleia escribe «PRECIO TERMINO B») dicen que el precio es indexado.
+ * Si dicen también «fijo», manda lo que declare la plantilla. No se mira todo
+ * el ancho de la tabla: Aletteo pone «Fijo» sobre la energía e «Indexado»
+ * sobre el FEE del producto de al lado.
+ */
+function blockIndexed(grid: SheetGrid, top: number, firstColumn: number, lastColumn: number): boolean {
+  let indexed = false;
+  let fixed = false;
+  for (let row = Math.max(1, top - 4); row < top; row++) {
+    for (let column = firstColumn; column <= lastColumn; column++) {
+      const cell = grid.rows[row - 1]?.[column];
+      if (!cell) continue;
+      if (INDEXED_HEADER.test(cell.text)) indexed = true;
+      if (FIXED_HEADER.test(cell.text)) fixed = true;
+    }
+  }
+  return indexed && !fixed;
 }
 
 /** Nombre corto de una tabla para los avisos: la IA a veces escribe un párrafo. */
@@ -193,6 +220,9 @@ function readTable(
   const sourceColumns = table.sources.flatMap(({ column }) =>
     column && !column.includes("$") ? [columnIndex(column)] : [],
   );
+  const energyColumns = table.sources.flatMap(({ field, column }) =>
+    column && !column.includes("$") && /^energyP\d$/.test(field) ? [columnIndex(column)] : [],
+  );
   for (const copy of copies) {
     const filled = new Map<string, SheetCell>();
     const overrides = new Map(copy.values.map(({ field, value }) => [field, value]));
@@ -204,6 +234,14 @@ function readTable(
           Math.max(...sourceColumns) + copy.columnShift,
         )
       : null;
+    const headerIndexed = energyColumns.length
+      ? blockIndexed(
+          grid,
+          firstRow + copy.rowShift,
+          Math.max(0, Math.min(...energyColumns) - 1) + copy.columnShift,
+          Math.max(...energyColumns) + copy.columnShift,
+        )
+      : false;
     // Si el bloque ha crecido (un producto nuevo al final), se siguen leyendo
     // las filas contiguas mientras traigan precio.
     let end = lastRow + copy.rowShift;
@@ -292,6 +330,7 @@ function readTable(
         table: tableName(table),
         row,
         headerTerritory,
+        headerIndexed,
         values,
         excerpt: rowExcerpt(grid, row),
       });
@@ -340,6 +379,7 @@ interface TypedRow {
   numbers: Partial<Record<RecipeField, number | null>>;
   excerpt: string;
   raw: RowRecord["values"];
+  headerIndexed: boolean;
 }
 
 /** Cifras que hacen de una fila una tarifa: sin ellas la fila es una etiqueta. */
@@ -456,6 +496,7 @@ function typeRow(record: RowRecord, problems: RecipeProblem[]): TypedRow | "labe
     numbers,
     excerpt: record.excerpt,
     raw: values,
+    headerIndexed: record.headerIndexed,
   };
 }
 
@@ -658,7 +699,7 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
     // OMIE o indexado no es de precio fijo aunque esté en la misma tabla.
     const declaredPricing = text(row.raw.pricing)?.toLowerCase() ?? "fixed";
     const twoBands = !single && energy.p1 !== null && energy.p2 !== null && energy.p3 === null;
-    const indexedName = INDEXED_NAME.test(row.productName ?? "");
+    const indexedName = looksIndexed(row.productName ?? "") || row.headerIndexed;
     const pricing = (
       declaredPricing === "fixed" && indexedName
         ? "indexed"

@@ -647,7 +647,11 @@ export async function listActiveOfferPrices(
         AND c.active = 1
         AND COALESCE(r.enabled, 1) = 1
         AND p.access_tariff = '2.0TD'
-        AND p.pricing = 'fixed'`,
+        AND p.pricing = 'fixed'
+        -- Sin los servicios de ajuste (INER «Serv. Ajuste NO INCLUIDOS»,
+        -- Quimera «sin SS.AA.») una parte del precio sigue al mercado: el
+        -- motor no la sabe calcular y la oferta saldría más barata de lo que es.
+        AND p.includes_ancillary_services = 1`,
     args: [],
   });
   return rows.map((row) => ({

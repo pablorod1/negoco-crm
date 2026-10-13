@@ -5,6 +5,15 @@
  * coinciden entre tenants, así que se casa siempre por nombre normalizado.
  */
 
+/**
+ * Un producto cuyo nombre dice que el precio sigue al mercado: OMIE, pool,
+ * indexado, pass-through. También dentro de una palabra («TRADERPOOL» de
+ * Eleia se guardó como fijo con solo su término B).
+ */
+export function looksIndexed(productName: string): boolean {
+  return /omie|index|pool|pass.?through/i.test(productName);
+}
+
 /** Nombre listo para mostrar: sin tabuladores ni espacios de más. */
 export function cleanName(raw: string): string {
   return raw.replace(/\s+/g, " ").trim();
