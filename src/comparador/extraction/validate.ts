@@ -133,9 +133,6 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
   if (invoice.energyLines.length === 0 && !flat) {
     add({ code: "missing_field", severity: "blocking", field: "energyLines" });
   }
-  if (flat && !invoice.otherTaxableLines.some(({ amount }) => amount > 0)) {
-    add({ code: "missing_field", severity: "blocking", field: "otherTaxableLines" });
-  }
 
   checkLines(
     invoice.powerLines,

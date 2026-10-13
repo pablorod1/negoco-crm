@@ -53,3 +53,7 @@ describe("readDiscounts", () => {
     ]);
   });
 });
+
+test("keeps the annex wording of each part", () => {
+  expect(readDiscounts([text("20% s/Te (+10% PyS Tier 1*)")]).parts.map(({ text: part }) => part)).toEqual(["20% s/Te", "10% PyS Tier 1*"]);
+});

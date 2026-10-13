@@ -280,7 +280,7 @@ async function resolveCurrent(
 
   if (pricing === "flat") {
     const tariff = flatTariffFromInvoice(extraction);
-    if (!tariff) info.unavailable = "La factura no trae la cuota de la tarifa plana: revísala y añádela en «Servicios y otros con IVA».";
+    if (!tariff) info.unavailable = "La factura no trae la base imponible ni el periodo, que dan la cuota de la tarifa plana: revísala.";
     return { tariff, supply, info };
   }
 

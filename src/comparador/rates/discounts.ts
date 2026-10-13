@@ -24,11 +24,12 @@ export interface DiscountReading {
   informative: { text: string; reason: string }[];
 }
 
-const ENERGY = /s\/\s*te\b|\bte\b|t[ée]rmino de energ|energ[íi]a|consumo/;
-const POWER = /s\/\s*tp\b|\btp\b|potencia/;
-const SECOND_YEAR = /\b(?:2|segundo)\s*[ºo°]?\s*a[ñn]o|a[ñn]o\s*2\b/;
+const ENERGY = /s\/\s*te\b|\bte\b|t[ée]rmino de energ|energ[íi]a|consumo/i;
+const POWER = /s\/\s*tp\b|\btp\b|potencia/i;
+const SECOND_YEAR = /\b(?:2|segundo)\s*[ºo°]?\s*a[ñn]o|a[ñn]o\s*2\b/i;
 /** El descuento depende de cuándo se consume: no se sabe sin la curva horaria. */
-const BY_TIME = /d[íi]as? vacacional|fines? de semana|franja|horas? (?:elegid|promocion)|festivos/;
+const BY_TIME = /d[íi]as? vacacional|fines? de semana|franja|horas? (?:elegid|promocion)|festivos/i;
+const CONDITION = /\bsi\b|contrat/i;
 
 function baseOf(text: string): DiscountPart["base"] | null {
   const energy = ENERGY.test(text);
@@ -45,7 +46,7 @@ function percents(text: string): number[] {
 }
 
 function euros(text: string): number | null {
-  const match = /(\d+(?:[.,]\d+)?)\s*(?:€|eur\b|euros)/.exec(text);
+  const match = /(\d+(?:[.,]\d+)?)\s*(?:€|eur\b|euros)/i.exec(text);
   return match ? Number(match[1].replace(",", ".")) : null;
 }
 
@@ -64,14 +65,15 @@ const pieces = (text: string) =>
  */
 function readText(discount: RateDiscount, index: number): DiscountReading {
   const original = discount.text.trim();
-  const text = original.toLowerCase().replace(/\s+/g, " ");
+  // Se conserva cómo lo escribe el anexo («20% s/Te»): las reglas no distinguen mayúsculas.
+  const text = original.replace(/\s+/g, " ");
   const reading: DiscountReading = { parts: [], informative: [] };
   // Un texto se enseña una sola vez, con el primer motivo.
   const skip = (reason: string) => {
     if (!reading.informative.some((item) => item.text === original)) reading.informative.push({ text: original, reason });
   };
 
-  if (/^s\/?\s*dto\.?$|^sin descuento$/.test(text)) return reading;
+  if (/^s\/?\s*dto\.?$|^sin descuento$/i.test(text)) return reading;
   if (BY_TIME.test(text)) {
     skip("Depende de cuándo consume el cliente");
     return reading;
@@ -101,7 +103,7 @@ function readText(discount: RateDiscount, index: number): DiscountReading {
         base,
         value: values[0],
         months: discount.months,
-        conditional: conditional || discount.conditional && /\bsi\b|contrat/.test(piece),
+        conditional: conditional || (discount.conditional && CONDITION.test(piece)),
       });
       return;
     }
@@ -113,11 +115,11 @@ function readText(discount: RateDiscount, index: number): DiscountReading {
         base: "fixed",
         value: amount,
         months: null,
-        conditional: conditional || /\bsi\b|contrat/.test(piece),
+        conditional: conditional || CONDITION.test(piece),
       });
     }
   };
-  for (const piece of pieces(outer)) add(piece, /\bsi\b/.test(piece));
+  for (const piece of pieces(outer)) add(piece, /\bsi\b/i.test(piece));
   for (const group of inner) for (const piece of pieces(group)) add(piece, true);
 
   if (reading.parts.length === 0 && reading.informative.length === 0) {

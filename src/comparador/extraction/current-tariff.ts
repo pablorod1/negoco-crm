@@ -16,11 +16,15 @@ const DAYS_PER_MONTH = DAYS_PER_YEAR / 12;
 
 /**
  * Lo que paga hoy con una tarifa plana: la cuota mensual por 12 (criterio de
- * Beenergy). La cuota es lo que la factura cobra con IVA y sin impuesto
- * eléctrico; una factura de 31 días es una cuota, no 31/30 de cuota.
+ * Beenergy). La cuota es la base imponible de la factura (Naturgy: «Total
+ * electricidad 29,00 €», sin impuesto eléctrico aparte); una factura de 31
+ * días es una cuota, no 31/30 de cuota.
  */
 export function flatTariffFromInvoice(invoice: InvoiceExtraction): CurrentTariff | null {
-  const fee = invoice.otherTaxableLines.reduce((sum, { amount }) => sum + amount, 0);
+  const fee =
+    invoice.vat?.base ??
+    invoice.taxableBase ??
+    invoice.otherTaxableLines.reduce((sum, { amount }) => sum + amount, 0);
   const days = invoice.billingPeriod?.days ?? 0;
   if (fee <= 0 || days <= 0) return null;
   const months = Math.max(1, Math.round(days / DAYS_PER_MONTH));

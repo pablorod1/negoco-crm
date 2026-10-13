@@ -145,6 +145,8 @@ function StudyResult({
             proposing,
             onPropose: (offer) => onPropose(offer, { feeEnergyPerMwh: parseFee(feeText) }),
             onToggleDiscount: (id, applied) => {
+              // La oferta puede cambiar de puesto: queda seleccionada para no perderla de vista.
+              setSelectedKey(id.slice(0, id.lastIndexOf(":")));
               const excluded = new Set(study.options.excludedDiscounts ?? []);
               if (applied) excluded.delete(id);
               else excluded.add(id);

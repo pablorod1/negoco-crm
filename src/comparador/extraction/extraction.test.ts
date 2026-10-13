@@ -216,9 +216,11 @@ describe("flat rate", () => {
       billingPeriod: { from: "2026-08-22", to: "2026-09-21", days: 31 },
       otherTaxableLines: [{ description: "Tarifa Plana Luz 29,00 €/mes", amount: 29 }],
       vatExemptLines: [],
+      taxableBase: 29,
+      vat: { ratePercent: 21, base: 29, amount: 6.09 },
     });
     expect(tariff?.flatAnnualFee).toBe(348);
-    expect(flatTariffFromInvoice({ ...naturgyInvoice, otherTaxableLines: [] })).toBeNull();
+    expect(flatTariffFromInvoice({ ...naturgyInvoice, billingPeriod: null })).toBeNull();
   });
 });
 

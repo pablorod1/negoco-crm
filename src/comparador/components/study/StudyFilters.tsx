@@ -105,7 +105,12 @@ function FeeInput({ text, onText, onApply }: { text: string; onText: (text: stri
   );
 }
 
-const PRICING_LABEL = { fixed: "fija", indexed: "indexada", flat: "tarifa plana", unknown: "sin saber" } as const;
+const PRICING_HINT = {
+  fixed: "en la factura se lee precio fijo",
+  indexed: "en la factura se lee indexada",
+  flat: "en la factura se lee tarifa plana",
+  unknown: "la factura no lo dice: confírmalo",
+} as const;
 
 /**
  * «Simular SSAA»: los servicios de ajuste con los que se ofertan las tarifas
@@ -228,7 +233,7 @@ export function StudyFilters({
       <div className="mb-5 flex flex-wrap items-end gap-x-6 gap-y-4 border-b border-gray-100 pb-5">
         <Segmented
           label="Su tarifa de hoy"
-          hint={study.invoice?.pricing ? `en la factura se lee ${PRICING_LABEL[study.invoice.pricing]}` : undefined}
+          hint={study.invoice?.pricing ? PRICING_HINT[study.invoice.pricing] : undefined}
           value={study.currentInfo?.pricing ?? "fixed"}
           options={[
             { value: "fixed", label: "Precio fijo" },
