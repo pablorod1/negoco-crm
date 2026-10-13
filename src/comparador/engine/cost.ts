@@ -18,6 +18,12 @@ export interface CostInput {
   regulated: RegulatedParams;
   /** Descuentos sobre el importe de la energía, en tanto por uno. */
   energyDiscountRates?: readonly number[];
+  /** Descuentos sobre el importe de la potencia, en tanto por uno. */
+  powerDiscountRates?: readonly number[];
+  /** Descuentos de importe fijo en el periodo, en € y en positivo. */
+  fixedDiscounts?: readonly number[];
+  /** Servicios de ajuste del periodo en € (solo tarifas que los cobran aparte). */
+  ancillaryAmount?: number;
   /** El alquiler puede cubrir días distintos de los de la potencia. */
   meterRental: { perDay: number; days?: number };
   /** Servicios del periodo en €; si falta, se prorratean los anuales. */
@@ -51,9 +57,12 @@ export function computeCost(input: CostInput): CostBreakdown {
   };
   const energyTotal = sumEuros([energy.P1, energy.P2, energy.P3]);
 
-  const energyDiscounts = (input.energyDiscountRates ?? []).map((rate) =>
-    roundEuros(-energyTotal * rate),
-  );
+  const energyDiscounts = [
+    ...(input.energyDiscountRates ?? []).map((rate) => roundEuros(-energyTotal * rate)),
+    ...(input.powerDiscountRates ?? []).map((rate) => roundEuros(-powerTotal * rate)),
+    ...(input.fixedDiscounts ?? []).map((amount) => roundEuros(-Math.abs(amount))),
+  ];
+  const ancillary = roundEuros(input.ancillaryAmount ?? 0);
   const otherElectricity = roundEuros(
     input.otherElectricityAmount ??
       ((prices.otherElectricityPerYear ?? 0) * days) / DAYS_PER_YEAR,
@@ -64,6 +73,7 @@ export function computeCost(input: CostInput): CostBreakdown {
     powerTotal,
     energyTotal,
     ...energyDiscounts,
+    ancillary,
     otherElectricity,
     socialBonus,
   ]);
@@ -96,6 +106,7 @@ export function computeCost(input: CostInput): CostBreakdown {
     power: { ...power, total: powerTotal },
     energy: { ...energy, total: energyTotal },
     energyDiscounts,
+    ...(ancillary !== 0 ? { ancillary } : {}),
     otherElectricity,
     socialBonus,
     electricitySubtotal,
@@ -106,6 +117,38 @@ export function computeCost(input: CostInput): CostBreakdown {
     vat,
     vatExempt,
     total: sumEuros([taxableBase, vat, vatExempt]),
+  };
+}
+
+/**
+ * Coste de un año con una tarifa plana: la cuota de 12 meses y su IVA. La
+ * cuota ya incluye energía, potencia, impuesto eléctrico, bono social y
+ * contador (Naturgy Tarifa Plana Luz: «Total electricidad 29,00 €»).
+ */
+export function computeFlatCost(
+  annualFee: number,
+  regulated: Pick<RegulatedParams, "vatRate">,
+  vatExemptAmount = 0,
+): CostBreakdown {
+  const flatFee = roundEuros(annualFee);
+  const vat = roundEuros(flatFee * regulated.vatRate);
+  const vatExempt = roundEuros(vatExemptAmount);
+  return {
+    days: DAYS_PER_YEAR,
+    power: { P1: 0, P2: 0, total: 0 },
+    energy: { P1: 0, P2: 0, P3: 0, total: 0 },
+    energyDiscounts: [],
+    flatFee,
+    otherElectricity: 0,
+    socialBonus: 0,
+    electricitySubtotal: 0,
+    electricityTax: 0,
+    meterRental: 0,
+    services: 0,
+    taxableBase: flatFee,
+    vat,
+    vatExempt,
+    total: sumEuros([flatFee, vat, vatExempt]),
   };
 }
 

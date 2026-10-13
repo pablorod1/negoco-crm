@@ -10,6 +10,7 @@ import type { StudyClientDataInput } from "@/comparador/study/client-data";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { studyApi, StudyRequestError, type ComparativaStudies, type StudyOfferView, type StudyOptionsInput, type StudyView } from "./api";
 import { CompleteDialog, initialClient } from "./CompleteDialog";
+import { CurrentTariffNote } from "./CurrentTariffNote";
 import { InvoiceEditor } from "./InvoiceEditor";
 import { InvoicePicker } from "./InvoicePicker";
 import { OfferList } from "./OfferList";
@@ -109,6 +110,7 @@ function StudyResult({
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0 space-y-6">
         <SavingsHero study={study} onReview={() => setEditing(true)} best={best && (!hasCurrent || (best.savings ?? 0) > 0) ? best : null} />
+        <CurrentTariffNote study={study} />
         {!closed && (
           <StudyFilters
             study={study}
@@ -142,6 +144,12 @@ function StudyResult({
             selectedKey,
             proposing,
             onPropose: (offer) => onPropose(offer, { feeEnergyPerMwh: parseFee(feeText) }),
+            onToggleDiscount: (id, applied) => {
+              const excluded = new Set(study.options.excludedDiscounts ?? []);
+              if (applied) excluded.delete(id);
+              else excluded.add(id);
+              onOptions({ excludedDiscounts: [...excluded] });
+            },
           }}
         />
       </div>

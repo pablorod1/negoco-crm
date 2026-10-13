@@ -1,6 +1,13 @@
 import type { Client } from "@libsql/client";
 import { getRegulatedParams, type RegulatedParams } from "@/comparador/engine/regulated";
-import { currentTariffFromInvoice, invoiceTaxRates } from "@/comparador/extraction/current-tariff";
+import {
+  currentTariffFromInvoice,
+  flatTariffFromInvoice,
+  invoiceTaxRates,
+  type CurrentTariff,
+} from "@/comparador/extraction/current-tariff";
+import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
+import { omieAverages, type OmieDayFetcher } from "@/comparador/market/omie";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
 import { clientFromInvoiceText } from "@/comparador/redaction/invoice-client";
 import { redactInvoiceText } from "@/comparador/redaction/redact";
@@ -18,14 +25,17 @@ import type {
 import { StudyError } from "./errors";
 import { needsInvoiceReview } from "./invoice-review";
 import { readInvoice } from "./read-invoice";
-import { rankStudy, type StudyRanking } from "./ranking";
+import { indexedEnergyPrices, marginOverMarket } from "./indexed";
+import { rankStudy, type AncillarySimulation, type CurrentPricing, type StudyRanking } from "./ranking";
 import {
   createStudy,
+  saveStudySupply,
   type SavedStudyOptions,
   type StudyRecord,
 } from "./repository";
+import { getDefaultAncillary } from "./settings";
 import { detectSupplierInText } from "./supplier";
-import { annualKwhFromSips, buildSupply, SIPS_MESSAGES, SupplyUnavailableError } from "./supply";
+import { annualKwhFromSips, buildSupply, SIPS_MESSAGES, SupplyUnavailableError, type StudySupply } from "./supply";
 
 type TenantClient = Pick<Client, "execute" | "batch">;
 
@@ -122,9 +132,6 @@ export async function analyzeInvoice({
   if (tariff && !tariff.startsWith("2.0")) {
     throw new StudyError(`El comparador propio compara 2.0TD; esta factura es ${facts.accessTariff}.`);
   }
-  if (facts.pricing === "indexed") {
-    throw new StudyError("Es una factura de precio indexado; el comparador propio compara precio fijo.");
-  }
 
   let supply;
   try {
@@ -145,6 +152,7 @@ export async function analyzeInvoice({
       ? [{ code: "read_from_image", severity: "warning", field: "invoice" }, ...extraction.issues]
       : extraction.issues,
     supply,
+    // El tipo de tarifa (fija, indexada, plana) lo confirma quien hace el estudio.
     options: { channel, feeEnergyPerMwh: null, order: "savings" },
     priceDate: today,
     aiCostUsd,
@@ -162,7 +170,6 @@ async function supplierFromText(client: TenantClient, text: string): Promise<str
   return detectSupplierInText(text, suppliers)?.name ?? null;
 }
 
-/** Ranking de un estudio con sus opciones, o con las que se prueban ahora. */
 /**
  * Las ofertas llevan el mismo impuesto y tipo que la factura del cliente
  * (Canarias, Ceuta y Melilla, IVA reducido…), como hace Beenergy.
@@ -181,6 +188,118 @@ function withInvoiceTaxes(
   };
 }
 
+/** Cómo es la tarifa de hoy: la que marca quien hace el estudio o, si no, la que leyó la IA. */
+export function currentPricingOf(study: Pick<StudyRecord, "extraction">, options: Pick<SavedStudyOptions, "currentPricing">): CurrentPricing {
+  if (options.currentPricing) return options.currentPricing;
+  const read = study.extraction?.pricing;
+  return read === "indexed" || read === "flat" ? read : "fixed";
+}
+
+/** Lo que paga hoy y cómo se ha calculado, para enseñarlo. */
+export interface CurrentInfo {
+  pricing: CurrentPricing;
+  /** Lo que la IA leyó en la factura, para avisar si quien hace el estudio lo cambia. */
+  readPricing: InvoiceExtraction["pricing"] | null;
+  /** Indexada: €/kWh por encima del OMIE que cobra su factura (peajes, cargos y margen). */
+  marginOverMarket: number | null;
+  /** Indexada: media de OMIE de sus 12 meses de consumo, en €/MWh. */
+  marketAverage: number | null;
+  /** Por qué no se sabe lo que paga hoy, si no se sabe. */
+  unavailable: string | null;
+}
+
+const MARKET_MESSAGES = {
+  noReadings: "Este estudio se analizó antes de guardar las lecturas del SIPS: vuelve a analizar la factura para compararla con el mercado.",
+  noPeriod: "La factura no tiene periodo de facturación: hace falta para compararla con el mercado.",
+  unavailable: "No se han podido descargar los precios de OMIE. Vuelve a intentarlo en unos minutos.",
+};
+
+/**
+ * El mercado (OMIE) de las lecturas del SIPS y de la factura, para comparar
+ * una tarifa indexada. Se calcula una vez y se guarda en el suministro; se
+ * repite si la revisión de la factura cambia su periodo.
+ */
+export async function ensureMarket(
+  client: TenantClient,
+  study: StudyRecord,
+  fetchDay?: OmieDayFetcher,
+): Promise<{ supply: StudySupply; error: string | null }> {
+  const supply = study.supply!;
+  const period = study.extraction?.billingPeriod;
+  if (!supply.readings?.length) return { supply, error: MARKET_MESSAGES.noReadings };
+  if (!period?.from || !period.to) return { supply, error: MARKET_MESSAGES.noPeriod };
+  const invoicePeriod = { from: period.from, to: period.to };
+  const market = supply.market;
+  if (market && market.invoicePeriod.from === invoicePeriod.from && market.invoicePeriod.to === invoicePeriod.to) {
+    return { supply, error: null };
+  }
+  try {
+    const averages = await omieAverages([...supply.readings, invoicePeriod], fetchDay);
+    const next: StudySupply = {
+      ...supply,
+      market: {
+        source: "omie",
+        readings: averages.slice(0, -1),
+        invoice: averages.at(-1)!,
+        invoicePeriod,
+        fetchedAt: new Date().toISOString(),
+      },
+    };
+    await saveStudySupply(client, study.id, next);
+    return { supply: next, error: null };
+  } catch (error) {
+    console.error("[comparador] OMIE prices", error);
+    return { supply, error: MARKET_MESSAGES.unavailable };
+  }
+}
+
+/** Lo que paga hoy, según el tipo de tarifa. */
+async function resolveCurrent(
+  client: TenantClient,
+  study: StudyRecord,
+  pricing: CurrentPricing,
+): Promise<{ tariff: CurrentTariff | null; supply: StudySupply; info: CurrentInfo }> {
+  const extraction = study.extraction!;
+  const info: CurrentInfo = {
+    pricing,
+    readPricing: extraction.pricing ?? null,
+    marginOverMarket: null,
+    marketAverage: null,
+    unavailable: null,
+  };
+  let supply = study.supply!;
+  // Sin lo que paga hoy hasta que alguien revise una lectura que no cuadra.
+  if (needsInvoiceReview(study)) return { tariff: null, supply, info };
+
+  if (pricing === "flat") {
+    const tariff = flatTariffFromInvoice(extraction);
+    if (!tariff) info.unavailable = "La factura no trae la cuota de la tarifa plana: revísala y añádela en «Servicios y otros con IVA».";
+    return { tariff, supply, info };
+  }
+
+  const tariff = currentTariffFromInvoice(extraction);
+  if (pricing === "fixed" || !tariff) return { tariff, supply, info };
+
+  const market = await ensureMarket(client, study);
+  supply = market.supply;
+  if (market.error) return { tariff: null, supply, info: { ...info, unavailable: market.error } };
+  const energy = indexedEnergyPrices(tariff.prices.energy, supply);
+  if (!energy) return { tariff: null, supply, info: { ...info, unavailable: MARKET_MESSAGES.noReadings } };
+  const readings = supply.readings ?? [];
+  const totalKwh = readings.reduce((sum, { kwh }) => sum + kwh.P1 + kwh.P2 + kwh.P3, 0);
+  info.marginOverMarket = marginOverMarket(tariff.prices.energy, supply, extraction.consumptionKwh);
+  info.marketAverage =
+    totalKwh > 0
+      ? readings.reduce(
+          (sum, { kwh }, index) =>
+            sum + (["P1", "P2", "P3"] as const).reduce((part, period) => part + kwh[period] * supply.market!.readings[index][period], 0),
+          0,
+        ) / totalKwh
+      : null;
+  return { tariff: { ...tariff, prices: { ...tariff.prices, energy } }, supply, info };
+}
+
+/** Ranking de un estudio con sus opciones, o con las que se prueban ahora. */
 export async function rankSavedStudy({
   client,
   study,
@@ -189,23 +308,37 @@ export async function rankSavedStudy({
   client: TenantClient;
   study: StudyRecord;
   options?: Partial<SavedStudyOptions>;
-}): Promise<{ ranking: StudyRanking; options: SavedStudyOptions }> {
+}): Promise<{
+  ranking: StudyRanking;
+  options: SavedStudyOptions;
+  current: CurrentTariff | null;
+  currentInfo: CurrentInfo;
+  supply: StudySupply;
+  /** SSAA con los que se ha calculado: los del estudio o los del tenant. */
+  ancillary: { value: AncillarySimulation | null; source: "study" | "tenant" | "none" };
+}> {
   if (!study.extraction || !study.supply) {
     throw new StudyError("Este estudio no tiene factura analizada.", 409);
   }
   const effective: SavedStudyOptions = { ...study.options, ...options };
-  const [offers, rules] = await Promise.all([
+  const pricing = currentPricingOf(study, effective);
+  const [offers, rules, tenantAncillary, current] = await Promise.all([
     listActiveOfferPrices(client, study.priceDate),
     listCurrentCommissionRules(client, study.priceDate),
+    effective.ancillary === undefined ? getDefaultAncillary(client) : Promise.resolve(null),
+    resolveCurrent(client, study, pricing),
   ]);
+  const ancillary =
+    effective.ancillary !== undefined
+      ? { value: effective.ancillary, source: effective.ancillary ? ("study" as const) : ("none" as const) }
+      : { value: tenantAncillary, source: tenantAncillary ? ("tenant" as const) : ("none" as const) };
   const ranking = rankStudy({
-    supply: study.supply,
-    // Sin lo que paga hoy hasta que alguien revise una lectura que no cuadra.
-    current: needsInvoiceReview(study) ? null : currentTariffFromInvoice(study.extraction),
+    supply: current.supply,
+    current: current.tariff,
     offers,
     rules,
     regulated: withInvoiceTaxes(getRegulatedParams(study.priceDate), invoiceTaxRates(study.extraction)),
-    options: { ...effective, date: study.priceDate },
+    options: { ...effective, ancillary: ancillary.value, date: study.priceDate },
   });
-  return { ranking, options: effective };
+  return { ranking, options: effective, current: current.tariff, currentInfo: current.info, supply: current.supply, ancillary };
 }

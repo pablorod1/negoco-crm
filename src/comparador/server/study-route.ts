@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { NegocoStudiesContext } from "@/comparador/server/guard";
 import { getStudyComparativa } from "@/comparador/study/comparativa";
-import type { StudyRanking } from "@/comparador/study/ranking";
+import type { AncillarySimulation, StudyRanking } from "@/comparador/study/ranking";
+import type { CurrentInfo } from "@/comparador/study/service";
 import type { ProposalRecord } from "@/comparador/study/proposals";
 import { getStudy, type StudyRecord } from "@/comparador/study/repository";
 import type { InvoiceIssue } from "@/comparador/extraction/validate";
@@ -56,12 +57,19 @@ export function proposalView(proposal: ProposalRecord, showCommission: boolean) 
 export type ProposalView = ReturnType<typeof proposalView>;
 
 /** Lo que el panel necesita de un estudio, sin datos que no le tocan al usuario. */
+export interface StudyCalculation {
+  ranking: StudyRanking;
+  currentInfo: CurrentInfo;
+  ancillary: { value: AncillarySimulation | null; source: "study" | "tenant" | "none" };
+}
+
 export function studyView(
   study: StudyRecord,
-  ranking: StudyRanking | null,
+  calculation: StudyCalculation | null,
   showCommission: boolean,
   proposals: readonly ProposalRecord[] = [],
 ) {
+  const ranking = calculation?.ranking ?? null;
   const facts = study.extraction;
   const review = (facts as ReviewedExtraction | null)?.review ?? null;
   const hide = <T extends { commission: number | null }>(item: T): T =>
@@ -84,8 +92,13 @@ export function studyView(
           contractedKw: facts.contractedKw,
           consumptionKwh: facts.consumptionKwh,
           hasSelfConsumption: facts.hasSelfConsumption,
+          pricing: facts.pricing,
         }
       : null,
+    /** Tipo de la tarifa de hoy y cómo se ha calculado lo que paga. */
+    currentInfo: calculation?.currentInfo ?? null,
+    /** SSAA simulados con los que se ha calculado, y de dónde salen. */
+    ancillary: calculation?.ancillary ?? { value: null, source: "none" as const },
     issues: describeInvoiceIssues(study.issues),
     /** Lo leído de la factura, para revisarlo y corregirlo. */
     extraction: facts ? withoutReview(facts as ReviewedExtraction) : null,
@@ -103,6 +116,7 @@ export function studyView(
     offers: ranking ? ranking.offers.slice(0, SHOWN_OFFERS).map(hide) : [],
     totalOffers: ranking?.offers.length ?? 0,
     ineligible: ranking?.ineligible ?? 0,
+    withoutAncillary: ranking?.withoutAncillary ?? 0,
     noSavings: ranking?.noSavings ?? false,
     proposals: proposals.map((proposal) => proposalView(proposal, showCommission)),
   };
@@ -110,10 +124,21 @@ export function studyView(
 
 export type StudyView = ReturnType<typeof studyView>;
 
+const PerMwh = z.number().min(0).max(200);
+
+export const AncillarySchema = z.object({
+  averagePerMwh: PerMwh.nullable(),
+  monthlyPerMwh: z.array(PerMwh.nullable()).length(12).nullable(),
+});
+
 export const OptionsSchema = z.object({
   channel: z.enum(["acquisition", "renewal"]).nullable().optional(),
   feeEnergyPerMwh: z.number().min(0).max(200).nullable().optional(),
   order: z.enum(["savings", "commission"]).optional(),
+  currentPricing: z.enum(["fixed", "indexed", "flat"]).nullable().optional(),
+  excludedDiscounts: z.array(z.string().max(200)).max(200).optional(),
+  /** null = sin simular; «default» = los del tenant. */
+  ancillary: z.union([AncillarySchema, z.null(), z.literal("default")]).optional(),
 });
 
 /** El estudio y su comparativa, si este usuario puede verla. */

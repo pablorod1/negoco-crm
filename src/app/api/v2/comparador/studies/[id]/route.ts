@@ -30,18 +30,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const study = await loadStudy(access.context, id);
     const parsed = optionsFromQuery(request);
-    const [{ ranking, options }, proposals] = await Promise.all([
+    const [calculation, proposals] = await Promise.all([
       rankSavedStudy({
         client: access.context.client,
         study,
-        options: Object.fromEntries(Object.entries(parsed).filter(([, value]) => value !== undefined)),
+        options: Object.fromEntries(
+          Object.entries(parsed).filter(([key, value]) => value !== undefined && ["channel", "feeEnergyPerMwh", "order"].includes(key)),
+        ),
       }),
       listProposals(access.context.client, id),
     ]);
     return NextResponse.json(
       {
         success: true,
-        data: studyView({ ...study, options }, ranking, canSeeAgencyCommission(access.context.user.role), proposals),
+        data: studyView(
+          { ...study, options: calculation.options, supply: calculation.supply },
+          calculation,
+          canSeeAgencyCommission(access.context.user.role),
+          proposals,
+        ),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -53,7 +60,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-/** Guarda las opciones del estudio (fee, canal, orden). */
+/** Guarda las opciones del estudio (fee, canal, orden, tipo de tarifa, descuentos, SSAA). */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const access = await requireNegocoStudiesAccess(request);
@@ -62,10 +69,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const study = await loadStudy(access.context, id);
     const parsed = OptionsSchema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Opciones no válidas" }, { status: 400 });
+    const { ancillary, ...rest } = parsed.data;
     const options = {
       ...study.options,
-      ...Object.fromEntries(Object.entries(parsed.data).filter(([, value]) => value !== undefined)),
+      ...Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined)),
     };
+    // «default»: vuelve a los SSAA del tenant (sin el campo en el estudio).
+    if (ancillary === "default") delete options.ancillary;
+    else if (ancillary !== undefined) options.ancillary = ancillary;
     await saveStudyOptions(access.context.client, id, options);
     return NextResponse.json({ success: true, data: { options } });
   } catch (error) {

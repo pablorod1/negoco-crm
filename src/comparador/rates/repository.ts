@@ -615,7 +615,9 @@ export interface ActiveOfferPrice {
 /**
  * Precios 2.0TD fijos vigentes de las comercializadoras activas del tenant,
  * de las tarifas activas. Antes activa las versiones programadas que ya han
- * empezado (como al abrir la ficha de cada una).
+ * empezado (como al abrir la ficha de cada una). Las que cobran los servicios
+ * de ajuste aparte (INER «Serv. Ajuste NO INCLUIDOS», Quimera «sin SS.AA.»)
+ * van también: el ranking solo las oferta con SSAA simulados.
  */
 export async function listActiveOfferPrices(
   client: QueryClient,
@@ -644,11 +646,7 @@ export async function listActiveOfferPrices(
         AND c.active = 1
         AND COALESCE(r.enabled, 1) = 1
         AND p.access_tariff = '2.0TD'
-        AND p.pricing = 'fixed'
-        -- Sin los servicios de ajuste (INER «Serv. Ajuste NO INCLUIDOS»,
-        -- Quimera «sin SS.AA.») una parte del precio sigue al mercado: el
-        -- motor no la sabe calcular y la oferta saldría más barata de lo que es.
-        AND p.includes_ancillary_services = 1`,
+        AND p.pricing = 'fixed'`,
     args: [],
   });
   return rows.map((row) => ({

@@ -160,3 +160,11 @@ export async function saveStudyOptions(client: QueryClient, id: string, options:
     args: [JSON.stringify(options), id],
   });
 }
+
+/** Guarda el suministro: por ejemplo, con el mercado (OMIE) ya calculado. */
+export async function saveStudySupply(client: QueryClient, id: string, supply: StudySupply) {
+  await client.execute({
+    sql: "UPDATE comparison_studies SET supply = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    args: [JSON.stringify(supply), id],
+  });
+}

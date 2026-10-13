@@ -7,6 +7,34 @@ export interface CurrentTariff {
   /** Descuentos sobre la energía en tanto por uno, para repetirlos al año. */
   energyDiscountRates: number[];
   meterRentalPerDay: number;
+  /** Tarifa plana: la cuota de 12 meses, sin IVA. Lleva dentro todo lo demás. */
+  flatAnnualFee?: number;
+}
+
+/** Días de un mes medio, para contar las cuotas de una factura de tarifa plana. */
+const DAYS_PER_MONTH = DAYS_PER_YEAR / 12;
+
+/**
+ * Lo que paga hoy con una tarifa plana: la cuota mensual por 12 (criterio de
+ * Beenergy). La cuota es lo que la factura cobra con IVA y sin impuesto
+ * eléctrico; una factura de 31 días es una cuota, no 31/30 de cuota.
+ */
+export function flatTariffFromInvoice(invoice: InvoiceExtraction): CurrentTariff | null {
+  const fee = invoice.otherTaxableLines.reduce((sum, { amount }) => sum + amount, 0);
+  const days = invoice.billingPeriod?.days ?? 0;
+  if (fee <= 0 || days <= 0) return null;
+  const months = Math.max(1, Math.round(days / DAYS_PER_MONTH));
+  const vatExempt = invoice.vatExemptLines.reduce((sum, { amount }) => sum + amount, 0);
+  return {
+    prices: {
+      power: { P1: 0, P2: 0 },
+      energy: { P1: 0, P2: 0, P3: 0 },
+      vatExemptPerYear: (vatExempt / months) * 12,
+    },
+    energyDiscountRates: [],
+    meterRentalPerDay: 0,
+    flatAnnualFee: (fee / months) * 12,
+  };
 }
 
 type PowerPeriod = "P1" | "P2";

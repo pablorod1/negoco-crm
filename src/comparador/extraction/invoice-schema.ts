@@ -33,8 +33,10 @@ export const InvoiceExtractionSchema = z.object({
     .nullable()
     .describe("Peaje de acceso: 2.0TD, 3.0TD, 6.1TD..."),
   pricing: z
-    .enum(["fixed", "indexed", "unknown"])
-    .describe("indexed si el precio de la energía depende del mercado"),
+    .enum(["fixed", "indexed", "flat", "unknown"])
+    .describe(
+      "indexed si el precio de la energía depende del mercado; flat si es una tarifa plana (una cuota fija al mes, que va en otherTaxableLines)",
+    ),
   hasSelfConsumption: z.boolean().describe("Autoconsumo o compensación de excedentes"),
   contractedKw: z.object({
     P1: z.number().nullable(),

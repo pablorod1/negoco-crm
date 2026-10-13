@@ -5,6 +5,7 @@ import type { CurrentTariff } from "@/comparador/extraction/current-tariff";
 import type { ActiveOfferPrice } from "@/comparador/rates/repository";
 import type { CommissionRule, StoredRatePrice } from "@/comparador/rates/types";
 import type { ApoloSipsElectricityConsumptionRow } from "@/integrations/apolo-sips/types";
+import { indexedEnergyPrices, marginOverMarket } from "./indexed";
 import { layoutLines } from "./invoice-text";
 import { rankStudy } from "./ranking";
 import { detectSupplierInText } from "./supplier";
@@ -198,6 +199,120 @@ describe("ranking", () => {
   test("ordering by commission puts the best paid first", () => {
     const ranking = rank({ order: "commission", feeEnergyPerMwh: 20 });
     expect(ranking.offers[0].key).toBe("fee");
+  });
+
+  const only = (price: ActiveOfferPrice, options: Partial<Parameters<typeof rankStudy>[0]["options"]> = {}, currentTariff: CurrentTariff | null = current) =>
+    rankStudy({
+      supply,
+      current: currentTariff,
+      offers: [price],
+      rules: [],
+      regulated: getRegulatedParams("2026-10-07"),
+      options: { date: "2026-10-07", channel: null, feeEnergyPerMwh: null, order: "savings", ...options },
+    });
+
+  test("rate discounts lower the final price; a conditional one can be left out", () => {
+    const plain = only(offer("base")).offers[0];
+    const withDiscount = offer("dto", { discounts: [{ kind: "other", value: null, months: null, conditional: true, text: "15% s/Te (+5% PyS Tier 1)" }] });
+    const [first] = only(withDiscount).offers;
+    // 15 % y 5 % sobre la energía.
+    expect(first.discountParts.map(({ amount }) => amount)).toEqual([
+      -Math.round(plain.cost.energy.total * 15) / 100,
+      -Math.round(plain.cost.energy.total * 5) / 100,
+    ]);
+    expect(first.cost.total).toBeLessThan(plain.cost.total);
+
+    const without = only(withDiscount, { excludedDiscounts: [first.discountParts[1].id] }).offers[0];
+    expect(without.discountParts[1]).toMatchObject({ applied: false, amount: 0 });
+    expect(without.cost.total).toBeGreaterThan(first.cost.total);
+  });
+
+  test("a rate without ancillary services is offered only with simulated SSAA", () => {
+    const noSsaa = offer("sin-ssaa", { includesAncillaryServices: false });
+    expect(only(noSsaa)).toMatchObject({ offers: [], withoutAncillary: 1 });
+
+    const average = only(noSsaa, { ancillary: { averagePerMwh: 10, monthlyPerMwh: null } }).offers[0];
+    // 3.000 kWh × 10 €/MWh.
+    expect(average.cost.ancillary).toBe(30);
+    expect(average.ancillarySimulated).toBe(true);
+
+    // Por mes: cada lectura con su mes. Enero a 40 y el resto a 0.
+    const withReadings: StudySupply = {
+      ...supply,
+      readings: [
+        { from: "2026-01-01", to: "2026-01-31", kwh: { P1: 100, P2: 100, P3: 100 } },
+        { from: "2026-02-01", to: "2026-12-31", kwh: { P1: 700, P2: 800, P3: 1200 } },
+      ],
+    };
+    const monthly = rankStudy({
+      supply: withReadings,
+      current,
+      offers: [noSsaa],
+      rules: [],
+      regulated: getRegulatedParams("2026-10-07"),
+      options: {
+        date: "2026-10-07",
+        channel: null,
+        feeEnergyPerMwh: null,
+        order: "savings",
+        ancillary: { averagePerMwh: null, monthlyPerMwh: [40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+      },
+    }).offers[0];
+    expect(monthly.cost.ancillary).toBe(12);
+  });
+
+  test("a flat rate costs its fee for 12 months plus VAT", () => {
+    const flat: CurrentTariff = {
+      prices: { power: { P1: 0, P2: 0 }, energy: { P1: 0, P2: 0, P3: 0 } },
+      energyDiscountRates: [],
+      meterRentalPerDay: 0,
+      flatAnnualFee: 348,
+    };
+    const ranking = only(offer("base"), {}, flat);
+    expect(ranking.current).toMatchObject({ flatFee: 348, vat: 73.08, total: 421.08 });
+    expect(ranking.offers[0].savings).toBeCloseTo(421.08 - ranking.offers[0].cost.total, 2);
+  });
+});
+
+describe("indexed tariff", () => {
+  const supply: StudySupply = {
+    contractedKw: { P1: 4.6, P2: 4.6 },
+    annualKwh: { P1: 600, P2: 600, P3: 600 },
+    consumptionSource: "sips",
+    sipsMonths: 2,
+    territory: "peninsula",
+    territorySource: "sips",
+    power: null,
+    readings: [
+      { from: "2026-01-01", to: "2026-06-30", kwh: { P1: 100, P2: 100, P3: 100 } },
+      { from: "2026-07-01", to: "2026-12-31", kwh: { P1: 300, P2: 100, P3: 0 } },
+    ],
+    market: {
+      source: "omie",
+      readings: [
+        { P1: 50, P2: 40, P3: 30 },
+        { P1: 150, P2: 140, P3: 130 },
+      ],
+      invoice: { P1: 100, P2: 90, P3: 80 },
+      invoicePeriod: { from: "2026-08-01", to: "2026-08-31" },
+      fetchedAt: "2026-10-14T00:00:00.000Z",
+    },
+  };
+
+  test("the invoice margin over OMIE is added to the market of each SIPS reading", () => {
+    const prices = indexedEnergyPrices({ P1: 0.2, P2: 0.18, P3: 0.15 }, supply)!;
+    // P1: margen 0,2 − 0,1 = 0,1; mercado (100×50 + 300×150)/400 = 125 €/MWh.
+    expect(prices.P1).toBeCloseTo(0.225, 10);
+    // P2: margen 0,09; mercado (40 + 140)/2 = 90.
+    expect(prices.P2).toBeCloseTo(0.18, 10);
+    // P3: solo consumió en la primera lectura.
+    expect(prices.P3).toBeCloseTo(0.07 + 0.03, 10);
+    expect(marginOverMarket({ P1: 0.2, P2: 0.18, P3: 0.15 }, supply, { P1: 10, P2: 10, P3: 0 })).toBeCloseTo(0.095, 10);
+  });
+
+  test("without readings or market there is no indexed price", () => {
+    expect(indexedEnergyPrices({ P1: 0.2, P2: 0.18, P3: 0.15 }, { ...supply, market: null })).toBeNull();
+    expect(indexedEnergyPrices({ P1: 0.2, P2: 0.18, P3: 0.15 }, { ...supply, readings: undefined })).toBeNull();
   });
 });
 

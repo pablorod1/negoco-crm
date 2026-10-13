@@ -94,7 +94,9 @@ export function SavingsHero({ study, best, onReview }: { study: StudyView; best:
                   ? `Un ${percentOf(target.savings!, current)} % menos de lo que paga hoy · unos ${euros(target.savings! / 12)} al mes`
                   : saves
                     ? `Unos ${euros(target.savings! / 12)} al mes`
-                    : "Coste de un año con impuestos. La factura no da todos los precios de hoy, así que no hay ahorro que calcular."}
+                    : study.currentInfo?.unavailable
+                      ? "Coste de un año con impuestos. Sin saber lo que paga hoy no hay ahorro que calcular."
+                      : "Coste de un año con impuestos. La factura no da todos los precios de hoy, así que no hay ahorro que calcular."}
               </p>
               <div className="mt-5 inline-flex max-w-full items-center gap-3 rounded-2xl bg-white/10 py-2 pl-2 pr-4 ring-1 ring-white/15 backdrop-blur">
                 <SupplierLogo supplier={{ name: target.name, logo: target.logo }} size={36} className="border-0" />

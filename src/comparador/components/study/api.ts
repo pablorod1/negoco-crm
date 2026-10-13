@@ -1,6 +1,7 @@
 import type { ProposalView, StudyView } from "@/comparador/server/study-route";
 import type { StudyClientDataInput } from "@/comparador/study/client-data";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
+import type { AncillarySimulation } from "@/comparador/study/ranking";
 
 export type { ProposalView, StudyView };
 export type StudyOfferView = StudyView["offers"][number];
@@ -9,6 +10,10 @@ export interface StudyOptionsInput {
   channel?: "acquisition" | "renewal" | null;
   feeEnergyPerMwh?: number | null;
   order?: "savings" | "commission";
+  currentPricing?: "fixed" | "indexed" | "flat" | null;
+  excludedDiscounts?: string[];
+  /** null = sin simular; «default» = los del tenant. */
+  ancillary?: AncillarySimulation | null | "default";
 }
 
 export interface ComparativaStudies {

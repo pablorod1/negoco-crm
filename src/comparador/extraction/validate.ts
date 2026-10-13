@@ -87,9 +87,10 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
       actual: invoice.accessTariff,
     });
   }
-  if (invoice.pricing === "indexed") {
-    add({ code: "indexed_pricing", severity: "unsupported", field: "pricing" });
-  }
+  // Las indexadas se comparan con el mercado (OMIE): ya no quedan fuera.
+  // Una tarifa plana no tiene líneas de potencia ni de energía: cobra una
+  // cuota con IVA que lleva dentro el impuesto eléctrico.
+  const flat = invoice.pricing === "flat";
 
   if (!invoice.cups) {
     add({ code: "missing_field", severity: "blocking", field: "cups" });
@@ -114,7 +115,7 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     ["contractedKw.P1", invoice.contractedKw.P1],
     ["contractedKw.P2", invoice.contractedKw.P2],
     ["billingPeriod", invoice.billingPeriod],
-    ["electricityTax", invoice.electricityTax],
+    ["electricityTax", flat ? 0 : invoice.electricityTax],
     ["vat", invoice.vat],
     ["total", invoice.total],
   ] as const) {
@@ -126,11 +127,14 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
       add({ code: "missing_field", severity: "blocking", field: `consumptionKwh.${period}` });
     }
   }
-  if (invoice.powerLines.length === 0) {
+  if (invoice.powerLines.length === 0 && !flat) {
     add({ code: "missing_field", severity: "blocking", field: "powerLines" });
   }
-  if (invoice.energyLines.length === 0) {
+  if (invoice.energyLines.length === 0 && !flat) {
     add({ code: "missing_field", severity: "blocking", field: "energyLines" });
+  }
+  if (flat && !invoice.otherTaxableLines.some(({ amount }) => amount > 0)) {
+    add({ code: "missing_field", severity: "blocking", field: "otherTaxableLines" });
   }
 
   checkLines(
@@ -211,7 +215,7 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     const consumed = invoice.consumptionKwh[period] ?? 0;
     const priced =
       hasSinglePrice || invoice.energyLines.some((line) => line.period === period);
-    if (consumed > 0 && !priced) {
+    if (consumed > 0 && !priced && !flat) {
       add({
         code: "energy_period_unpriced",
         severity: "blocking",
@@ -225,7 +229,7 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
   for (const period of ["P1", "P2"] as const) {
     const contracted = invoice.contractedKw[period] ?? 0;
     const priced = invoice.powerLines.some((line) => line.period === period);
-    if (contracted > 0 && !priced) {
+    if (contracted > 0 && !priced && !flat) {
       add({
         code: "power_period_unpriced",
         severity: "blocking",

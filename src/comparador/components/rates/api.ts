@@ -8,10 +8,11 @@ import type {
   StoredRatePrice,
 } from "@/comparador/rates/types";
 import type { RateIssue } from "@/comparador/rates/validate";
+import type { AncillarySimulation } from "@/comparador/study/ranking";
 import type { summarizeIngest } from "@/comparador/rates/views";
 
 export type IngestSummary = ReturnType<typeof summarizeIngest>;
-export type { DiffEntry, IngestReview, RateIssue, RateVersion, StoredRatePrice };
+export type { AncillarySimulation, DiffEntry, IngestReview, RateIssue, RateVersion, StoredRatePrice };
 
 export interface SupplierRatesResponse {
   supplier: { id: string; name: string; active: boolean };
@@ -26,6 +27,8 @@ export interface SupplierRatesResponse {
   medianDecisionHours: number | null;
   /** Dirección a la que se envían los anexos (beenergy@tarifas.negococloud.es). */
   mailbox: string | null;
+  /** SSAA por defecto del tenant para las tarifas que los cobran aparte. */
+  ancillaryDefault: AncillarySimulation | null;
   canManage: boolean;
   canManageCatalog: boolean;
 }
@@ -108,6 +111,12 @@ export const ratesApi = {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ comercializadora_id: comercializadoraId, enabled }),
+    }),
+  saveAncillaryDefault: (value: AncillarySimulation | null) =>
+    request<{ ancillaryDefault: AncillarySimulation | null }>("/api/v2/comparador/rates/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ancillaryDefault: value }),
     }),
   discardVersion: (versionId: string, comercializadoraId: string) =>
     request<{ id: string }>(

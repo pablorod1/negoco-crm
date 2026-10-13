@@ -29,6 +29,30 @@ export interface StudySupply {
   distributor?: string | null;
   /** Máxima demanda de los últimos 12 meses por periodo (SIPS), en kW. */
   maxDemandKwByPeriod?: EnergyByPeriod | null;
+  /**
+   * Las lecturas del SIPS que forman el año, tal cual (sin llevar a 365
+   * días). Faltan en estudios anteriores al 2026-10-14.
+   */
+  readings?: SupplyReading[];
+  /** Mercado (OMIE) de esas lecturas y de la factura, si su tarifa es indexada. */
+  market?: SupplyMarket | null;
+}
+
+export interface SupplyReading {
+  /** YYYY-MM-DD. */
+  from: string;
+  to: string;
+  kwh: EnergyByPeriod;
+}
+
+export interface SupplyMarket {
+  source: "omie";
+  /** Media de OMIE por periodo en €/MWh de cada lectura, en el orden de `readings`. */
+  readings: EnergyByPeriod[];
+  /** Media de OMIE por periodo en el periodo de la factura. */
+  invoice: EnergyByPeriod;
+  invoicePeriod: { from: string; to: string };
+  fetchedAt: string;
 }
 
 export interface SupplyLocation {
@@ -85,7 +109,14 @@ export function territoryFromProvince(code: string | null | undefined): Territor
 export const MIN_SIPS_DAYS = 350;
 
 export type SipsYear =
-  | { annualKwh: EnergyByPeriod; months: number; days: number; maxDemandKw: number[]; maxDemandKwByPeriod: EnergyByPeriod }
+  | {
+      annualKwh: EnergyByPeriod;
+      months: number;
+      days: number;
+      maxDemandKw: number[];
+      maxDemandKwByPeriod: EnergyByPeriod;
+      readings: SupplyReading[];
+    }
   | { insufficient: true; months: number; days: number };
 
 /**
@@ -124,7 +155,17 @@ export function annualKwhFromSips(rows: readonly ApoloSipsElectricityConsumption
   const total = { P1: 0, P2: 0, P3: 0 };
   const demand: number[] = [];
   const peak = { P1: 0, P2: 0, P3: 0 };
-  for (const { row } of year) {
+  const readings: SupplyReading[] = [];
+  for (const { row, from, to } of year) {
+    readings.push({
+      from: new Date(from).toISOString().slice(0, 10),
+      to: new Date(to).toISOString().slice(0, 10),
+      kwh: {
+        P1: kwh(row.consumoEnergiaActivaEnWhP1),
+        P2: kwh(row.consumoEnergiaActivaEnWhP2),
+        P3: kwh(row.consumoEnergiaActivaEnWhP3),
+      },
+    });
     total.P1 += kwh(row.consumoEnergiaActivaEnWhP1);
     total.P2 += kwh(row.consumoEnergiaActivaEnWhP2);
     total.P3 += kwh(row.consumoEnergiaActivaEnWhP3);
@@ -146,6 +187,8 @@ export function annualKwhFromSips(rows: readonly ApoloSipsElectricityConsumption
     days,
     maxDemandKw: demand,
     maxDemandKwByPeriod: peak,
+    // De la más antigua a la más reciente.
+    readings: readings.reverse(),
   };
 }
 
@@ -219,5 +262,6 @@ export function buildSupply({
     location: locationFromSips(sipsPoint),
     distributor: sipsPoint?.nombreEmpresaDistribuidora?.trim() || null,
     maxDemandKwByPeriod: fromSips.maxDemandKw.length > 0 ? fromSips.maxDemandKwByPeriod : null,
+    readings: fromSips.readings,
   };
 }

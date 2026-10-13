@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Copy,
   FileUp,
+  Gauge,
   Mail,
   Upload,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { Button } from "@/core/components/ui/button";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { Switch } from "@/core/components/ui/switch";
 import { cn } from "@/core/utils";
+import { AncillaryEditor, describeAncillary, draftOf, simulationOf } from "@/comparador/components/study/AncillaryEditor";
 import { Eyebrow, Panel, PanelHeader } from "@/comparador/components/study/ui";
 import {
   describeConditions,
@@ -22,6 +24,7 @@ import {
   formatDay,
   formatMoment,
   ratesApi,
+  type AncillarySimulation,
   type IngestSummary,
   type StoredRatePrice,
   type SupplierRatesResponse,
@@ -46,16 +49,17 @@ const sinceDays = (days: number | null) => (!days ? "hoy" : days === 1 ? "ayer" 
 
 /**
  * Por qué una fila no sale en los estudios; null si se oferta. Es la misma
- * regla que `listActiveOfferPrices`: 2.0TD, precio fijo, con los servicios de
- * ajuste, tarifa activada y comercializadora activa.
+ * regla que `listActiveOfferPrices` y el ranking: 2.0TD, precio fijo, tarifa
+ * activada, comercializadora activa y, si cobra los SSAA aparte, unos SSAA
+ * simulados (los del tenant por defecto o los del estudio).
  */
-function offerBlocker(row: StoredRatePrice, product: Product, supplierActive: boolean): string | null {
+function offerBlocker(row: StoredRatePrice, product: Product, supplierActive: boolean, ancillaryDefault: AncillarySimulation | null): string | null {
   if (!supplierActive) return "La comercializadora está desactivada en el CRM.";
   if (!product.enabled) return "Desactivada: no se ofrece en los estudios.";
   if (row.accessTariff !== "2.0TD") return `Es de ${row.accessTariff}; el comparador compara 2.0TD.`;
-  if (row.pricing !== "fixed") return "Precio indexado: el comparador aún solo calcula precio fijo.";
-  if (!row.includesAncillaryServices) {
-    return "Sin servicios de ajuste: se cobran aparte a precio de mercado y el comparador aún no los calcula.";
+  if (row.pricing !== "fixed") return "Precio indexado: el comparador oferta precio fijo.";
+  if (!row.includesAncillaryServices && !ancillaryDefault) {
+    return "Cobra los servicios de ajuste aparte: solo se oferta en los estudios que los simulen. Con unos SSAA por defecto se ofertaría siempre.";
   }
   return null;
 }
@@ -120,6 +124,7 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <ProductsPanel data={data} onToggle={toggleRate} />
         <div className="space-y-6">
+          <AncillaryDefaultPanel data={data} onSaved={load} />
           <CommissionsPanel data={data} />
           <ActivityPanel
             data={data}
@@ -151,10 +156,10 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
 function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload: () => void }) {
   const rows = data.rates.flatMap((product) => product.rows.map((row) => ({ row, product })));
   const offered = data.rates.filter((product) =>
-    product.rows.some((row) => !offerBlocker(row, product, data.supplier.active)),
+    product.rows.some((row) => !offerBlocker(row, product, data.supplier.active, data.ancillaryDefault)),
   );
   const cheapest = rows
-    .filter(({ row, product }) => row.energy && !offerBlocker(row, product, data.supplier.active))
+    .filter(({ row, product }) => row.energy && !offerBlocker(row, product, data.supplier.active, data.ancillaryDefault))
     .map(({ row }) => Math.min(row.energy!.P1, row.energy!.P2, row.energy!.P3));
   const lastUpdate = data.ingests.find(({ status }) => status === "approved");
 
@@ -309,6 +314,7 @@ function ProductsPanel({
               product={product}
               scale={scale}
               supplierActive={data.supplier.active}
+              ancillaryDefault={data.ancillaryDefault}
               canManage={data.canManage}
               onToggle={onToggle}
             />
@@ -323,16 +329,18 @@ function ProductCard({
   product,
   scale,
   supplierActive,
+  ancillaryDefault,
   canManage,
   onToggle,
 }: {
   product: Product;
   scale: number;
   supplierActive: boolean;
+  ancillaryDefault: AncillarySimulation | null;
   canManage: boolean;
   onToggle: (rateId: string, enabled: boolean) => void;
 }) {
-  const blockers = product.rows.map((row) => offerBlocker(row, product, supplierActive));
+  const blockers = product.rows.map((row) => offerBlocker(row, product, supplierActive, ancillaryDefault));
   const offeredRows = blockers.filter((blocker) => blocker === null).length;
   const status =
     offeredRows === product.rows.length
@@ -368,7 +376,14 @@ function ProductCard({
 
       <div className="mt-3 space-y-3 divide-y divide-gray-100">
         {product.rows.map((row, index) => (
-          <RowPrices key={row.id} row={row} scale={scale} blocker={blockers[index]} first={index === 0} />
+          <RowPrices
+            key={row.id}
+            row={row}
+            scale={scale}
+            blocker={blockers[index]}
+            ancillary={!row.includesAncillaryServices && !blockers[index] ? ancillaryDefault : null}
+            first={index === 0}
+          />
         ))}
       </div>
     </article>
@@ -379,11 +394,14 @@ function RowPrices({
   row,
   scale,
   blocker,
+  ancillary,
   first,
 }: {
   row: StoredRatePrice;
   scale: number;
   blocker: string | null;
+  /** SSAA por defecto con los que se oferta esta fila, si los cobra aparte. */
+  ancillary: AncillarySimulation | null;
   first: boolean;
 }) {
   const chips = conditionChips(row);
@@ -437,6 +455,13 @@ function RowPrices({
         </p>
       )}
 
+      {ancillary && (
+        <p className="flex gap-1.5 rounded-lg bg-info-50 px-2.5 py-1.5 text-[11px] text-info-700">
+          <Gauge className="mt-px size-3 shrink-0" />
+          SSAA aparte: se ofertan con {describeAncillary(ancillary)} por defecto.
+        </p>
+      )}
+
       {blocker && (
         <p className="flex gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[11px] text-gray-600">
           <AlertTriangle className="mt-px size-3 shrink-0 text-gray-400" />
@@ -444,6 +469,93 @@ function RowPrices({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * SSAA por defecto del tenant: con ellos se ofertan las tarifas que cobran
+ * los servicios de ajuste aparte, sin que nadie tenga que simularlos en cada
+ * estudio. Cada estudio los puede cambiar.
+ */
+function AncillaryDefaultPanel({ data, onSaved }: { data: SupplierRatesResponse; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(() => draftOf(data.ancillaryDefault));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const affected = data.rates.filter((product) => product.rows.some((row) => !row.includesAncillaryServices)).length;
+
+  const save = async (value: AncillarySimulation | null) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await ratesApi.saveAncillaryDefault(value);
+      setEditing(false);
+      onSaved();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se han podido guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Panel>
+      <PanelHeader
+        title="Servicios de ajuste por defecto"
+        description="Para todas las comercializadoras: con ellos se ofertan las tarifas que cobran los SSAA aparte. Cada estudio puede cambiarlos."
+        action={
+          data.canManage && !editing ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg"
+              onClick={() => {
+                setDraft(draftOf(data.ancillaryDefault));
+                setEditing(true);
+              }}
+            >
+              {data.ancillaryDefault ? "Cambiar" : "Poner"}
+            </Button>
+          ) : undefined
+        }
+      />
+      <div className="space-y-3 px-5 pb-5 pt-3">
+        {editing ? (
+          <>
+            <AncillaryEditor draft={draft} onChange={setDraft} />
+            {error && <p className="text-xs text-danger">{error}</p>}
+            <div className="flex justify-between gap-2">
+              {data.ancillaryDefault ? (
+                <Button size="sm" variant="ghost" disabled={saving} onClick={() => save(null)}>
+                  Quitar
+                </Button>
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={saving} onClick={() => setEditing(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" disabled={saving || !simulationOf(draft)} onClick={() => save(simulationOf(draft))}>
+                  Guardar
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-semibold tabular-nums text-gray-900">
+              {data.ancillaryDefault ? describeAncillary(data.ancillaryDefault) : "Sin valor por defecto"}
+            </p>
+            <p className="text-xs text-gray-500">
+              {affected > 0
+                ? `${affected} ${affected === 1 ? "tarifa" : "tarifas"} de ${data.supplier.name} ${affected === 1 ? "cobra" : "cobran"} los SSAA aparte.`
+                : `Ninguna tarifa de ${data.supplier.name} cobra los SSAA aparte.`}
+            </p>
+          </>
+        )}
+      </div>
+    </Panel>
   );
 }
 

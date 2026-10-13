@@ -41,11 +41,18 @@ export interface CostBreakdown {
   days: number;
   power: PowerByPeriod & { total: number };
   energy: EnergyByPeriod & { total: number };
-  /** Descuentos sobre el consumo, en negativo. */
+  /** Descuentos sobre la energía, la potencia o un importe fijo, en negativo. */
   energyDiscounts: number[];
+  /**
+   * Servicios de ajuste simulados, para las tarifas que los cobran aparte.
+   * Entran en la base del IEE. Falta en propuestas anteriores al 2026-10-14.
+   */
+  ancillary?: number;
+  /** Cuota de una tarifa plana: lleva dentro energía, potencia, IEE y contador. */
+  flatFee?: number;
   otherElectricity: number;
   socialBonus: number;
-  /** Base del IEE: potencia + energía − descuentos + otros + bono social. */
+  /** Base del IEE: potencia + energía − descuentos + SSAA + otros + bono social. */
   electricitySubtotal: number;
   electricityTax: number;
   meterRental: number;

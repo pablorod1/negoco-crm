@@ -193,9 +193,11 @@ function priceRows(current: TariffPrices | null, offer: TariffPrices) {
 function costRows(current: CostBreakdown | null, offer: CostBreakdown) {
   const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
   const lines: { label: string; pick: (cost: CostBreakdown) => number }[] = [
+    { label: "Cuota de la tarifa plana", pick: (cost) => cost.flatFee ?? 0 },
     { label: "Término de potencia", pick: (cost) => cost.power.total },
     { label: "Término de energía", pick: (cost) => cost.energy.total },
     { label: "Descuentos", pick: (cost) => sum(cost.energyDiscounts) },
+    { label: "Servicios de ajuste (estimados)", pick: (cost) => cost.ancillary ?? 0 },
     { label: "Otros conceptos", pick: (cost) => cost.otherElectricity },
     { label: "Financiación del bono social", pick: (cost) => cost.socialBonus },
     { label: "Impuesto eléctrico", pick: (cost) => cost.electricityTax },
@@ -264,6 +266,31 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
             tone: "#ecfdf5",
           }
         : null;
+  // Cómo es la tarifa de hoy y qué lleva estimado la propuesta.
+  const ancillary = offer.cost.ancillary ?? 0;
+  const tariffNotes = [
+    current?.pricing === "indexed"
+      ? {
+          title: "Su tarifa de hoy es indexada",
+          text: "Lo que paga hoy se ha estimado con el precio del mercado eléctrico (OMIE) de sus últimos 12 meses de consumo, más lo que su factura cobra por encima del mercado. Con una tarifa indexada su precio sube y baja con el mercado; esta propuesta es de precio fijo.",
+          tone: "#eef2ff",
+        }
+      : null,
+    current?.pricing === "flat"
+      ? {
+          title: "Su tarifa de hoy es una tarifa plana",
+          text: "Hoy paga una cuota fija al mes. Si supera el consumo anual pactado, su comercializadora le repercutirá el coste del exceso al final del contrato.",
+          tone: "#fef3c7",
+        }
+      : null,
+    offer.ancillarySimulated && ancillary > 0
+      ? {
+          title: "Servicios de ajuste estimados",
+          text: `Esta tarifa cobra aparte los servicios de ajuste del sistema, que varían cada mes. El coste incluye una estimación de ${euros(ancillary)} al año${annual > 0 ? ` (${(Math.round((ancillary / annual) * 1000 * 100) / 100).toLocaleString("es-ES")} €/MWh)` : ""}.`,
+          tone: SOFT,
+        }
+      : null,
+  ].filter((note): note is { title: string; text: string; tone: string } => note !== null);
   const consumptionSource =
     supply.consumptionSource === "sips"
       ? `Consumo real de ${supply.sipsMonths ?? 12} meses (distribuidora)`
@@ -407,14 +434,14 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
           />
         </View>
 
-        {powerNote && (
-          <View style={[styles.note, { backgroundColor: powerNote.tone }]} wrap={false}>
+        {[...(powerNote ? [powerNote] : []), ...tariffNotes].map((note) => (
+          <View key={note.title} style={[styles.note, { backgroundColor: note.tone }]} wrap={false}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.noteTitle}>{powerNote.title}</Text>
-              <Text>{powerNote.text}</Text>
+              <Text style={styles.noteTitle}>{note.title}</Text>
+              <Text>{note.text}</Text>
             </View>
           </View>
-        )}
+        ))}
 
         <Text style={styles.footer} fixed>
           Estimación de un año con su consumo y su potencia, los peajes, cargos e impuestos vigentes y los precios de

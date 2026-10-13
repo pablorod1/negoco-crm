@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { computeCost } from "@/comparador/engine/cost";
 import { getRegulatedParams } from "@/comparador/engine/regulated";
-import { currentTariffFromInvoice, discountMonths, invoiceTaxRates } from "./current-tariff";
+import { currentTariffFromInvoice, discountMonths, flatTariffFromInvoice, invoiceTaxRates } from "./current-tariff";
 import { extractInvoice, buildInstructions } from "./extract-invoice";
 import { iberdrolaInvoice, naturgyInvoice } from "./fixtures";
 import { isValidCups, isValidSpanishTaxId } from "./identifiers";
@@ -104,13 +104,33 @@ describe("validateInvoice", () => {
     expect(issues.map(({ code }) => code)).not.toContain("consumption_mismatch");
   });
 
-  test("marks 3.0TD and indexed invoices as out of scope", () => {
+  test("marks 3.0TD as out of scope; indexed invoices are compared with the market", () => {
     const issues = validateInvoice({
       ...naturgyInvoice,
       accessTariff: "3.0TD",
       pricing: "indexed",
     });
-    expect(issues.filter(({ severity }) => severity === "unsupported")).toHaveLength(2);
+    expect(issues.filter(({ severity }) => severity === "unsupported").map(({ code }) => code)).toEqual(["not_2_0td"]);
+  });
+
+  test("a flat-rate invoice only needs its fee, VAT and total", () => {
+    const issues = validateInvoice({
+      ...naturgyInvoice,
+      pricing: "flat",
+      powerLines: [],
+      energyLines: [],
+      energyDiscounts: [],
+      otherElectricityLines: [],
+      socialBonusLines: [],
+      electricityTax: null,
+      meterRental: null,
+      otherTaxableLines: [{ description: "Tarifa Plana Luz 29,00 €/mes", amount: 29 }],
+      vatExemptLines: [],
+      taxableBase: 29,
+      vat: { ratePercent: 21, base: 29, amount: 6.09 },
+      total: 35.09,
+    });
+    expect(issues.filter(({ severity }) => severity === "blocking")).toEqual([]);
   });
 
   test("an invalid CUPS blocks; an invalid tax id only warns", () => {
@@ -185,6 +205,20 @@ describe("temporary discounts", () => {
     expect(tariff.energyDiscountRates[1]).toBeCloseTo(full.energyDiscountRates[1] / 4, 10);
     const days = iberdrolaInvoice.billingPeriod!.days!;
     expect(tariff.prices.servicesPerYear).toBeCloseTo(((8.3 - 4.15 / 4) * 365) / days, 6);
+  });
+});
+
+describe("flat rate", () => {
+  test("the monthly fee of a 31-day invoice is one fee, times 12", () => {
+    const tariff = flatTariffFromInvoice({
+      ...naturgyInvoice,
+      pricing: "flat",
+      billingPeriod: { from: "2026-08-22", to: "2026-09-21", days: 31 },
+      otherTaxableLines: [{ description: "Tarifa Plana Luz 29,00 €/mes", amount: 29 }],
+      vatExemptLines: [],
+    });
+    expect(tariff?.flatAnnualFee).toBe(348);
+    expect(flatTariffFromInvoice({ ...naturgyInvoice, otherTaxableLines: [] })).toBeNull();
   });
 });
 

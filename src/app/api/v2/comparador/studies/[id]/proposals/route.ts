@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { currentTariffFromInvoice } from "@/comparador/extraction/current-tariff";
 import { requireNegocoStudiesAccess } from "@/comparador/server/guard";
 import {
   canSeeAgencyCommission,
@@ -33,11 +32,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const parsed = ProposalSchema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Propuesta no válida" }, { status: 400 });
+    // Del navegador solo se toman las opciones que se prueban sin guardar; el
+    // tipo de tarifa, los descuentos y los SSAA son los guardados.
     const wanted = Object.fromEntries(
-      Object.entries(parsed.data.options ?? {}).filter(([, value]) => value !== undefined),
+      Object.entries(parsed.data.options ?? {}).filter(
+        ([key, value]) => value !== undefined && ["channel", "feeEnergyPerMwh", "order"].includes(key),
+      ),
     );
 
-    const { ranking } = await rankSavedStudy({ client, study, options: wanted });
+    const { ranking, current, currentInfo } = await rankSavedStudy({ client, study, options: wanted });
     const offer = ranking.offers.find(({ key }) => key === parsed.data.offerKey);
     if (!offer) {
       throw new StudyError("Esa tarifa ya no está entre las que encajan con este suministro.", 409);
@@ -52,7 +55,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       study,
       offer,
       current: ranking.current,
-      currentPrices: study.extraction ? (currentTariffFromInvoice(study.extraction)?.prices ?? null) : null,
+      currentPrices: current && current.flatAnnualFee === undefined ? current.prices : null,
+      currentInfo,
       clientName: comparativa.clientName,
       createdBy: user.id,
     });

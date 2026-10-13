@@ -26,22 +26,84 @@ function conditions(offer: StudyOfferView) {
     offer.level,
     offer.segment,
     offer.feeRange ? `Fee ${offer.feeEnergyPerMwh} €/MWh` : null,
-    ...offer.discounts,
+    offer.ancillarySimulated ? "SSAA simulados" : null,
+    ...offer.discountParts.filter(({ applied }) => applied).map(({ text }) => text),
   ].filter((text): text is string => Boolean(text));
 }
 
 const COST_LINES: { label: string; pick: (cost: CostBreakdown) => number }[] = [
   { label: "Potencia", pick: (cost) => cost.power.total },
   { label: "Energía", pick: (cost) => cost.energy.total },
+  { label: "Cuota tarifa plana", pick: (cost) => cost.flatFee ?? 0 },
   { label: "Descuentos", pick: (cost) => cost.energyDiscounts.reduce((total, value) => total + value, 0) },
+  { label: "Servicios de ajuste", pick: (cost) => cost.ancillary ?? 0 },
   { label: "Otros y bono social", pick: (cost) => cost.otherElectricity + cost.socialBonus },
   { label: "Impuesto eléctrico", pick: (cost) => cost.electricityTax },
   { label: "Contador y servicios", pick: (cost) => cost.meterRental + cost.services },
   { label: "IVA y otros", pick: (cost) => cost.vat + cost.vatExempt },
 ];
 
+/**
+ * Los descuentos de la tarifa: los que se aplican, con lo que restan en un
+ * año; los condicionados se pueden quitar si el cliente no va a cumplir la
+ * condición; los que no se pueden calcular, con el motivo.
+ */
+function OfferDiscounts({
+  offer,
+  disabled,
+  onToggle,
+}: {
+  offer: StudyOfferView;
+  disabled: boolean;
+  onToggle: (id: string, applied: boolean) => void;
+}) {
+  if (offer.discountParts.length === 0 && offer.informativeDiscounts.length === 0) return null;
+  return (
+    <div className="sm:col-span-2">
+      <p className="mb-2 font-medium text-gray-700">Descuentos</p>
+      <ul className="space-y-1.5">
+        {offer.discountParts.map((part) => (
+          <li key={part.id} className="flex items-center justify-between gap-3">
+            <span className={cn("min-w-0", part.applied ? "text-gray-700" : "text-gray-400 line-through")}>
+              {part.text}
+              {part.conditional && <span className="ml-1.5 rounded bg-warning-50 px-1 py-px text-[10px] font-medium text-warning-700 no-underline">condicionado</span>}
+            </span>
+            <span className="flex shrink-0 items-center gap-3">
+              <span className="tabular-nums text-gray-900">{part.applied ? euros(part.amount) : "—"}</span>
+              {part.conditional && (
+                <Switch
+                  checked={part.applied}
+                  disabled={disabled}
+                  onCheckedChange={(checked) => onToggle(part.id, checked)}
+                  aria-label={`${part.applied ? "Quitar" : "Aplicar"} el descuento ${part.text}`}
+                />
+              )}
+            </span>
+          </li>
+        ))}
+        {offer.informativeDiscounts.map((item) => (
+          <li key={item.text} className="flex justify-between gap-3 text-gray-400">
+            <span className="min-w-0">{item.text}</span>
+            <span className="shrink-0 text-right">No se aplica · {item.reason.toLowerCase()}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** Precios y coste de una oferta frente a lo que paga hoy. */
-function OfferDetail({ offer, current }: { offer: StudyOfferView; current: CostBreakdown | null }) {
+function OfferDetail({
+  offer,
+  current,
+  closed,
+  onToggleDiscount,
+}: {
+  offer: StudyOfferView;
+  current: CostBreakdown | null;
+  closed: boolean;
+  onToggleDiscount: (id: string, applied: boolean) => void;
+}) {
   const prices = [
     ["Potencia P1", offer.prices.power.P1, "€/kW día"],
     ["Potencia P2", offer.prices.power.P2, "€/kW día"],
@@ -97,6 +159,7 @@ function OfferDetail({ offer, current }: { offer: StudyOfferView; current: CostB
           </tbody>
         </table>
       </div>
+      <OfferDiscounts offer={offer} disabled={closed} onToggle={onToggleDiscount} />
     </div>
   );
 }
@@ -111,6 +174,8 @@ export interface RowContext {
   selectedKey: string | null;
   proposing: string | null;
   onPropose: (offer: StudyOfferView) => void;
+  /** Aplica o quita un descuento condicionado («idPrecio:clave»). */
+  onToggleDiscount: (id: string, applied: boolean) => void;
 }
 
 /** Una tarifa: nombre, condiciones, coste, ahorro, comisión y su propuesta. */
@@ -126,7 +191,7 @@ function OfferRow({
   indent?: boolean;
   context: RowContext;
 }) {
-  const { study, bestKey, maxSavings, selectedKey, proposing, onPropose, withCommission } = context;
+  const { study, bestKey, maxSavings, selectedKey, proposing, onPropose, onToggleDiscount, withCommission } = context;
   const [open, setOpen] = useState(false);
   const proposal = proposalFor(study.proposals, offer);
   const closed = study.status === "closed";
@@ -242,7 +307,7 @@ function OfferRow({
           {withCommission && offer.commission !== null && <span>comisión {euros(offer.commission)}</span>}
         </div>
       </div>
-      {open && <OfferDetail offer={offer} current={current} />}
+      {open && <OfferDetail offer={offer} current={current} closed={closed} onToggleDiscount={onToggleDiscount} />}
     </li>
   );
 }

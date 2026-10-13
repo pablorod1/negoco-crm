@@ -1,7 +1,8 @@
 import type { Client, Row } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import type { CostBreakdown, EnergyByPeriod, PowerByPeriod, TariffPrices } from "@/comparador/engine/types";
-import type { StudyOffer } from "./ranking";
+import type { CurrentPricing, StudyOffer } from "./ranking";
+import type { CurrentInfo } from "./service";
 import type { StudyRecord } from "./repository";
 import type { StudySupply } from "./supply";
 
@@ -27,7 +28,16 @@ export interface ProposalDocument {
     power: { status: "adequate" | "oversized" | "exceeded"; maxDemandKw: number; suggestedKw: number } | null;
   };
   /** Lo que paga hoy en un año; null si la factura no da todos sus precios. */
-  current: { supplierName: string | null; prices: TariffPrices | null; cost: CostBreakdown } | null;
+  current: {
+    supplierName: string | null;
+    prices: TariffPrices | null;
+    cost: CostBreakdown;
+    /** Fija, indexada o plana. Falta en propuestas anteriores al 2026-10-14 (fija). */
+    pricing?: CurrentPricing;
+    /** Indexada: lo que cobra por encima del OMIE, €/kWh, y la media de OMIE del año, €/MWh. */
+    marginOverMarket?: number | null;
+    marketAverage?: number | null;
+  } | null;
   offer: {
     comercializadoraName: string;
     productName: string;
@@ -36,6 +46,8 @@ export interface ProposalDocument {
     discounts: string[];
     prices: TariffPrices;
     cost: CostBreakdown;
+    /** Cobra los SSAA aparte y van simulados en el coste. */
+    ancillarySimulated?: boolean;
   };
   savings: number | null;
 }
@@ -65,6 +77,7 @@ export function buildProposalDocument({
   offer,
   current,
   currentPrices,
+  currentInfo,
   clientName,
   number,
   generatedAt,
@@ -73,6 +86,7 @@ export function buildProposalDocument({
   offer: StudyOffer;
   current: CostBreakdown | null;
   currentPrices: TariffPrices | null;
+  currentInfo?: CurrentInfo | null;
   clientName: string | null;
   number: number;
   generatedAt: string;
@@ -99,7 +113,14 @@ export function buildProposalDocument({
         : null,
     },
     current: current
-      ? { supplierName: study.extraction?.supplierName ?? null, prices: currentPrices, cost: current }
+      ? {
+          supplierName: study.extraction?.supplierName ?? null,
+          prices: currentPrices,
+          cost: current,
+          pricing: currentInfo?.pricing ?? "fixed",
+          marginOverMarket: currentInfo?.marginOverMarket ?? null,
+          marketAverage: currentInfo?.marketAverage ?? null,
+        }
       : null,
     offer: {
       comercializadoraName: offer.comercializadoraName,
@@ -109,6 +130,7 @@ export function buildProposalDocument({
       discounts: offer.discounts,
       prices: offer.prices,
       cost: offer.cost,
+      ancillarySimulated: offer.ancillarySimulated,
     },
     savings: offer.savings,
   };
@@ -178,6 +200,7 @@ export async function createProposal(
     offer: StudyOffer;
     current: CostBreakdown | null;
     currentPrices: TariffPrices | null;
+    currentInfo?: CurrentInfo | null;
     clientName: string | null;
     createdBy: string;
     now?: Date;
@@ -208,6 +231,7 @@ async function insertProposal(
     offer,
     current: input.current,
     currentPrices: input.currentPrices,
+    currentInfo: input.currentInfo,
     clientName: input.clientName,
     number,
     generatedAt: (input.now ?? new Date()).toISOString(),
