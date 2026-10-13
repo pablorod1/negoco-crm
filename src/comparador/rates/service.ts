@@ -600,6 +600,75 @@ export async function approveIngest({
   return { versionId, status };
 }
 
+/** Por qué un anexo del buzón no se ha aprobado solo. */
+export type AutoApproval =
+  | { approved: true; versionId: string | null }
+  | { approved: false; reason: string };
+
+/**
+ * Aprobación sin nadie, para lo que llega al buzón de un remitente de
+ * confianza: la idea es que actualizar precios sea enviar un correo. Entra
+ * solo si la lectura es fiable (sin incidencias bloqueantes: cada cifra está
+ * en el documento) y con estas reglas:
+ * - nunca retira productos: Nordy manda un PDF por producto y se pisarían;
+ * - los productos nuevos se dan de alta en el catálogo;
+ * - vale desde la fecha del documento si la trae, o desde el día del correo;
+ * - un anexo anterior a los precios vigentes no los pisa: se descarta.
+ */
+export async function autoApproveIngest({
+  client,
+  control,
+  ingest,
+  approvedBy,
+  receivedOn,
+  today,
+}: {
+  client: TenantClient;
+  control: Pick<Client, "execute" | "batch">;
+  ingest: IngestRecord;
+  approvedBy: string;
+  /** Día en que llegó el correo (YYYY-MM-DD), si el documento no da fecha. */
+  receivedOn: string;
+  today: string;
+}): Promise<AutoApproval> {
+  if (ingest.status !== "ready") {
+    return { approved: false, reason: `la lectura ha quedado en «${ingest.status}»` };
+  }
+  const built = await buildReview({ client, control, ingest, today, decisions: { partialUpdate: true } });
+  if (!built) return { approved: false, reason: "no hay una lectura que aprobar" };
+  const { review } = built;
+
+  const blocking = review.issues.filter(({ severity }) => severity === "blocking");
+  if (blocking.length > 0) {
+    return { approved: false, reason: blocking.map(({ message }) => message).join(" · ") };
+  }
+
+  const validFrom = review.validFrom ?? receivedOn;
+  const active = review.activeVersion;
+  if (active?.validFrom && validFrom < active.validFrom) {
+    const reason = `El anexo es del ${validFrom} y los precios vigentes son desde el ${active.validFrom}: no se aplica.`;
+    await client.batch(
+      [
+        decideIngestStatement(ingest.id, { status: "rejected", userId: approvedBy, versionId: null }),
+        { sql: "UPDATE rate_ingests SET error = ? WHERE id = ?", args: [reason, ingest.id] },
+      ],
+      "write",
+    );
+    return { approved: false, reason };
+  }
+
+  const { versionId } = await approveIngest({
+    client,
+    control,
+    ingest,
+    input: { validFrom, partialUpdate: true, notes: "Aprobada sola: llegó al buzón de anexos" },
+    user: { id: approvedBy },
+    isCatalogAdmin: true,
+    today,
+  });
+  return { approved: true, versionId };
+}
+
 export async function rejectIngest({
   client,
   ingest,

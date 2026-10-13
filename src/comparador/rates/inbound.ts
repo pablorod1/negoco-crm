@@ -120,11 +120,19 @@ export async function isTenantUser(
   client: Pick<Client, "execute">,
   from: string,
 ): Promise<boolean> {
+  return (await tenantUserId(client, from)) !== null;
+}
+
+/** El usuario del tenant que envía el correo, para firmar lo que se aprueba solo. */
+export async function tenantUserId(
+  client: Pick<Client, "execute">,
+  from: string,
+): Promise<string | null> {
   const { rows } = await client.execute({
-    sql: "SELECT 1 FROM user WHERE lower(email) = ? AND coalesce(banned, 0) = 0 LIMIT 1",
+    sql: "SELECT id FROM user WHERE lower(email) = ? AND coalesce(banned, 0) = 0 LIMIT 1",
     args: [senderAddress(from)],
   });
-  return rows.length > 0;
+  return rows[0] ? String(rows[0].id) : null;
 }
 
 /** Remitentes de confianza: sus correos se procesan sin esperar a nadie. */

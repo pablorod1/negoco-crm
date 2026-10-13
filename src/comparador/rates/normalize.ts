@@ -247,3 +247,39 @@ export function appearsInText(value: number, numbers: Set<number>, text: string 
   const written = String(round9(value));
   return written.includes(".") && (text.includes(written) || text.includes(written.replace(".", ",")));
 }
+
+const MONTHS = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+/**
+ * Si una fecha (YYYY-MM-DD) aparece en el texto del documento, escrita de
+ * cualquiera de las formas habituales: 01/10/2026, 1-10-26, 2026-10-01,
+ * «1 de octubre de 2026», «1 de octubre» o, para el día 1, «octubre 2026».
+ */
+export function dateInText(iso: string, text: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return false;
+  const [, year, month, day] = match;
+  const plain = text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const d = String(Number(day));
+  const m = String(Number(month));
+  const monthName = MONTHS[Number(month) - 1];
+  const shortYear = year.slice(2);
+  const days = `0?${d}`;
+  const months = `0?${m}`;
+  const years = `(?:${year}|${shortYear})`;
+  const patterns = [
+    `(?<!\\d)${days}[/.-]${months}[/.-]${years}(?!\\d)`,
+    `(?<!\\d)${year}[/.-]${months}[/.-]${days}(?!\\d)`,
+    `(?<!\\d)${days}\\s+de\\s+${monthName}(?![a-z])`,
+    ...(d === "1"
+      ? [`${monthName}\\s*(?:de\\s+|-|/)?\\s*${years}(?!\\d)`, `(?<!\\d)${months}[/.-]${year}(?!\\d)`]
+      : []),
+  ];
+  return patterns.some((pattern) => new RegExp(pattern).test(plain));
+}

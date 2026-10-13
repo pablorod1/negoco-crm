@@ -4,15 +4,17 @@ import { getTenantModules } from "@/core/modules/server";
 import {
   inboundDomain,
   inboundIngestId,
-  isTenantUser,
   isTrustedSender,
   selectAttachments,
+  senderAddress,
+  tenantUserId,
   tenantFromRecipients,
   verifySvixSignature,
   type InboundAttachment,
 } from "@/comparador/rates/inbound";
 import { createIngest, getIngest } from "@/comparador/rates/repository";
-import { processIngest } from "@/comparador/rates/service";
+import { autoApproveIngest, processIngest, todayInSpain } from "@/comparador/rates/service";
+import { getTursoControlClient } from "@/core/libsql/client";
 import { MAX_RATE_FILE_BYTES, storeIngestFile } from "@/comparador/rates/storage";
 
 export const maxDuration = 300;
@@ -130,18 +132,41 @@ export async function POST(request: NextRequest) {
       created.push(id);
     }
 
+    // De confianza: un usuario del tenant o un remitente de la lista. Lo
+    // suyo se lee y, si la lectura es fiable, se aprueba sin nadie.
+    const senderId = created.length > 0 ? await tenantUserId(client, from) : null;
     const trusted =
       created.length > 0 &&
-      (isTrustedSender(from, process.env.COMPARADOR_INBOUND_TRUSTED_SENDERS) ||
-        (await isTenantUser(client, from)));
+      (senderId !== null || isTrustedSender(from, process.env.COMPARADOR_INBOUND_TRUSTED_SENDERS));
     if (trusted) {
+      const approvedBy = senderId ?? `email:${senderAddress(from)}`;
+      const receivedOn = todayInSpain();
       after(async () => {
+        // Uno detrás de otro: los anexos de una misma comercializadora
+        // encadenan versiones y no pueden aprobarse a la vez.
         for (const id of created) {
-          const ingest = await getIngest(client, id);
-          if (!ingest) continue;
-          await processIngest({ client, ingest, tenantSlug, userId: null }).catch((error) =>
-            console.error("[comparador] inbound processing failed", id, error),
-          );
+          try {
+            const ingest = await getIngest(client, id);
+            if (!ingest) continue;
+            await processIngest({ client, ingest, tenantSlug, userId: null });
+            const read = await getIngest(client, id);
+            if (!read) continue;
+            const result = await autoApproveIngest({
+              client,
+              control: getTursoControlClient(),
+              ingest: read,
+              approvedBy,
+              receivedOn,
+              today: todayInSpain(),
+            });
+            if (result.approved) {
+              console.info("[comparador] anexo aprobado solo", { tenantSlug, id, versionId: result.versionId });
+            } else {
+              console.warn("[comparador] anexo sin aprobar", { tenantSlug, id, reason: result.reason });
+            }
+          } catch (error) {
+            console.error("[comparador] inbound processing failed", id, error);
+          }
         }
       });
     }

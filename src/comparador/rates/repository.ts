@@ -314,10 +314,14 @@ export function insertVersionStatements({
   const statements: InStatement[] = [];
   if (status === "active") {
     statements.push({
+      // Si la sustituye el mismo día que empezó (varios anexos en un correo),
+      // termina ese día: el día anterior quedaría antes de su inicio.
       sql: `UPDATE comercializadora_rate_versions
-        SET status = 'superseded', valid_to = COALESCE(valid_to, ?), updated_at = CURRENT_TIMESTAMP
+        SET status = 'superseded',
+          valid_to = COALESCE(valid_to, CASE WHEN valid_from >= ? THEN valid_from ELSE ? END),
+          updated_at = CURRENT_TIMESTAMP
         WHERE comercializadora_id = ? AND status = 'active'`,
-      args: [dayBefore(version.validFrom), version.comercializadoraId],
+      args: [version.validFrom, dayBefore(version.validFrom), version.comercializadoraId],
     });
   }
   statements.push({

@@ -5,8 +5,10 @@ import { buildDiff, type ResolvedRow } from "./diff";
 import { isEligible, toTariffPrices } from "./engine-prices";
 import { matchProducts } from "./match";
 import { normalizeName, productKeyOf, productNameOf } from "./names";
+import { withDocumentDates } from "./extract";
 import {
   appearsInText,
+  dateInText,
   energyToPerKwh,
   numbersInText,
   powerToPerDay,
@@ -118,6 +120,26 @@ describe("numbers in the source text", () => {
     expect(appearsInText(43.99, numbers)).toBe(true);
     expect(appearsInText(28.99, numbers)).toBe(true);
     expect(appearsInText(0.215, numbers)).toBe(true);
+  });
+});
+
+describe("validity dates must be in the document", () => {
+  test("written as suppliers write them", () => {
+    expect(dateInText("2026-10-01", "Precios válidos desde el 01/10/2026")).toBe(true);
+    expect(dateInText("2026-10-01", "Vigencia: 1-10-26 a 31-12-26")).toBe(true);
+    expect(dateInText("2026-10-01", "Actualizado 2026-10-01")).toBe(true);
+    expect(dateInText("2026-10-15", "A partir del 15 de octubre de 2026")).toBe(true);
+    expect(dateInText("2026-10-01", "PRECIOS OCTUBRE 2026")).toBe(true);
+    expect(dateInText("2026-10-01", "Campaña Octubre-26")).toBe(true);
+  });
+
+  test("a date the document does not give is dropped", () => {
+    // Los PDF de Nordy no traen fecha y la IA ponía el 01/01/2024.
+    const nordy = "Tarifa Estabilidad 3P I · Punta P1 0,149 €/kWh · Ideal para consumos hasta 8.000 kWh/año";
+    expect(dateInText("2024-01-01", nordy)).toBe(false);
+    expect(dateInText("2026-10-01", "Precio 10,2026 €/MWh")).toBe(false);
+    expect(withDocumentDates({ validFrom: "2024-01-01", validTo: null }, nordy)).toEqual({ validFrom: null, validTo: null });
+    expect(withDocumentDates({ validFrom: "2026-10-01", validTo: null }, "desde el 01/10/2026").validFrom).toBe("2026-10-01");
   });
 });
 

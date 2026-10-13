@@ -16,7 +16,7 @@ import {
   listTenantRates,
 } from "./repository";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
-import { approveIngest, buildReview, processIngest, RateIngestError } from "./service";
+import { approveIngest, autoApproveIngest, buildReview, processIngest, RateIngestError } from "./service";
 import { rowKey, validateProposedCommissions, validateProposedRates } from "./validate";
 
 const MIGRATIONS = join(process.cwd(), "migrations");
@@ -87,12 +87,17 @@ function rate(overrides: Partial<ExtractedRate>): ExtractedRate {
 
 function extractionResult(
   rates: ExtractedRate[],
-  { partialUpdate = false, text = QUIMERA_TEXT as string | null, commissions = [] as RateDocumentExtraction["commissions"] } = {},
+  {
+    partialUpdate = false,
+    text = QUIMERA_TEXT as string | null,
+    commissions = [] as RateDocumentExtraction["commissions"],
+    validFrom = "2026-10-01" as string | null,
+  } = {},
 ): RateExtractionResult {
   const extraction: RateDocumentExtraction = {
     supplierName: "Quimera Infinita",
     documentKind: commissions.length ? "prices_and_commissions" : "prices",
-    validFrom: "2026-10-01",
+    validFrom,
     validTo: null,
     partialUpdate,
     rates,
@@ -210,6 +215,44 @@ describe("rate ingest service", () => {
       sourceExcerpt: "FÉNIX 2.0TD 0,23011 0,16120 0,13554",
     });
     expect((await getIngest(client, ingest.id))?.status).toBe("approved");
+  });
+
+  test("annexes from the mailbox approve themselves, one per product, without retiring any", async () => {
+    // Como Nordy: un correo con un PDF por producto, sin fecha, y cada uno
+    // parece «la lista completa» a la IA.
+    const unicornio = await ingestWith(client, extractionResult([rate({})], { validFrom: null }), null);
+    const fenix = await ingestWith(
+      client,
+      extractionResult([rate({ productName: "Fénix", energyP1: 0.23011, energyP2: 0.1612, energyP3: 0.13554 })], { validFrom: null }),
+      null,
+    );
+    const auto = (ingest: Awaited<ReturnType<typeof ingestWith>>) =>
+      autoApproveIngest({ client, control, ingest, approvedBy: "user-7", receivedOn: "2026-10-13", today: "2026-10-13" });
+
+    expect(await auto(unicornio)).toMatchObject({ approved: true });
+    expect(await auto(fenix)).toMatchObject({ approved: true });
+
+    // Entran los dos productos nuevos, en el catálogo y en la versión vigente,
+    // con la fecha del correo.
+    const { catalog } = await listCatalog(control, "quimera");
+    expect(catalog.map(({ productKey }) => productKey).sort()).toEqual(["fenix", "unicornio"]);
+    const active = await getActiveVersion(client, "COM-040", "2026-10-13");
+    expect(active?.validFrom).toBe("2026-10-13");
+    expect((await getVersionPrices(client, active!.id)).map(({ rateName }) => rateName).sort()).toEqual(["Fénix", "Unicornio"]);
+    // La versión del primer anexo, sustituida el mismo día, termina ese día.
+    const { rows } = await client.execute("SELECT valid_from, valid_to FROM comercializadora_rate_versions WHERE status = 'superseded'");
+    expect(rows[0]).toMatchObject({ valid_from: "2026-10-13", valid_to: "2026-10-13" });
+
+    // Un anexo anterior a los precios vigentes no los pisa.
+    const old = await ingestWith(client, extractionResult([rate({})], { validFrom: "2026-09-01" }), null);
+    const rejected = await auto(old);
+    expect(rejected).toMatchObject({ approved: false });
+    expect(await getIngest(client, old.id)).toMatchObject({ status: "rejected" });
+
+    // Una lectura con cifras que no están en el documento espera.
+    const doubtful = await ingestWith(client, extractionResult([rate({ energyP1: 0.31 })], { validFrom: null }), null);
+    expect(await auto(doubtful)).toMatchObject({ approved: false });
+    expect((await getIngest(client, doubtful.id))?.status).not.toBe("approved");
   });
 
   test("a partial update keeps untouched rates and can be scheduled", async () => {

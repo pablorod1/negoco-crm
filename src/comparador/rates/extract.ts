@@ -9,7 +9,7 @@ import {
 } from "@/comparador/ai/models";
 import type { AiJobContext } from "@/comparador/ai/usage";
 import type { PreparedDocument } from "./document";
-import { toProposedCommissions, toProposedRates } from "./normalize";
+import { dateInText, toProposedCommissions, toProposedRates } from "./normalize";
 import {
   RateDocumentClassificationSchema,
   RateDocumentSchema,
@@ -137,6 +137,20 @@ export class RateDocumentTooLargeError extends Error {
  * aquí: se leen con una plantilla (sheets/read.ts) y sus cifras salen de las
  * celdas.
  */
+/**
+ * Las fechas de vigencia solo valen si están en el documento: la IA se
+ * inventaba el 01/01/2024 en los PDF de Nordy, que no traen ninguna. Sin
+ * fecha, quien revisa (o el buzón, con la del correo) pone la de hoy.
+ */
+export function withDocumentDates<T extends { validFrom: string | null; validTo: string | null }>(
+  extraction: T,
+  text: string | null | undefined,
+): T {
+  if (!text) return extraction;
+  const keep = (value: string | null) => (value && dateInText(value, text) ? value : null);
+  return { ...extraction, validFrom: keep(extraction.validFrom), validTo: keep(extraction.validTo) };
+}
+
 export async function extractRateDocument({
   document,
   context,
@@ -239,7 +253,7 @@ export async function extractRateDocument({
       throw error;
     }
     costUsd = addCost(costUsd, result.costUsd);
-    extraction = result.output;
+    extraction = withDocumentDates(result.output, document.text);
 
     const proposed = toProposedRates(extraction, document.text);
     const issues = validateProposedRates(proposed, {
