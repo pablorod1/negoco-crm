@@ -5,7 +5,7 @@ import { ok, ratesError, requireRatesAccess } from "@/comparador/server/rates-ro
 /** Comercializadoras sin actualizar, ingestas pendientes y tiempo hasta aprobar. */
 export async function GET(request: NextRequest) {
   try {
-    const access = await requireRatesAccess(request, { manage: false });
+    const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     return ok(await getRatesOverview(access.context.client));
   } catch (error) {

@@ -32,10 +32,12 @@ function parseJson<T>(value: unknown, fallback: T): T {
 
 export async function getComercializadora(client: QueryClient, id: string) {
   const { rows } = await client.execute({
-    sql: "SELECT id, name FROM comercializadoras WHERE id = ? LIMIT 1",
+    sql: "SELECT id, name, active FROM comercializadoras WHERE id = ? LIMIT 1",
     args: [id],
   });
-  return rows[0] ? { id: String(rows[0].id), name: String(rows[0].name) } : null;
+  return rows[0]
+    ? { id: String(rows[0].id), name: String(rows[0].name), active: Number(rows[0].active ?? 1) === 1 }
+    : null;
 }
 
 export async function listTenantRates(

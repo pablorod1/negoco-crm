@@ -16,23 +16,21 @@ type RatesGuardResult =
   | { ok: false; response: NextResponse };
 
 /**
- * Guarda de las rutas de tarifas: la del comparador y, para escribir, ser
- * admin o backoffice. Dar de alta en el catálogo exige además ser de Negoco.
+ * Guarda de las rutas de tarifas: la del comparador y ser de dirección o
+ * backoffice, también para ver (los comerciales no ven precios de compra ni
+ * comisiones). Dar de alta en el catálogo a mano exige además ser de Negoco.
  */
-export async function requireRatesAccess(
-  request: NextRequest,
-  { manage }: { manage: boolean },
-): Promise<RatesGuardResult> {
+export async function requireRatesAccess(request: NextRequest): Promise<RatesGuardResult> {
   const access = await requireNegocoStudiesAccess(request);
   if (!access.ok) return access;
 
   const { role, email } = access.context.user;
   const canManage = role === "admin" || role === "1";
-  if (manage && !canManage) {
+  if (!canManage) {
     return {
       ok: false,
       response: NextResponse.json(
-        { error: "Solo admin y backoffice gestionan las tarifas" },
+        { error: "Solo dirección y backoffice ven y gestionan las tarifas" },
         { status: 403 },
       ),
     };

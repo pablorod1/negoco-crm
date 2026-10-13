@@ -14,7 +14,7 @@ import { ComercializadoraDocumentsExplorer } from "./ComercializadoraDocumentsEx
 import FullScreenLoaderComponent from "@/core/components/FullScreenLoaderComponent";
 import { User } from "@/core/types";
 import { useUser } from "@/core/contexts/UserContext";
-import { canUseNegocoStudies } from "@/comparador/access";
+import { canManageRates } from "@/comparador/access";
 import { SupplierRatesView } from "@/comparador/components/rates/SupplierRatesView";
 
 function ErrorState({ message }: { message: string }) {
@@ -44,7 +44,7 @@ export default function ComercializadoraDetails() {
   const { currentView, setCurrentView } = useComercializadoraViewNavigation();
   const showRates = Boolean(
     userData &&
-      canUseNegocoStudies({
+      canManageRates({
         modules: userData.organization.modules,
         role: userData.role,
         isSubcomercial: userData.role === "2" && Boolean(userData.super_id),

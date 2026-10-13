@@ -20,7 +20,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const access = await requireRatesAccess(request, { manage: true });
+    const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     const { id } = await params;
     const parsed = DecisionsSchema.safeParse(await request.json());

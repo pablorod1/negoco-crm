@@ -49,31 +49,34 @@ beforeEach(() => {
 describe("requireRatesAccess", () => {
   test("backoffice manages rates but is not Negoco", async () => {
     session("1");
-    const result = await requireRatesAccess(request(), { manage: true });
+    const result = await requireRatesAccess(request());
     expect(result.ok && result.context).toMatchObject({ canManage: true, canManageCatalog: false });
   });
 
-  test("commercials can read but not manage", async () => {
+  test("commercials do not see rates, not even to read them", async () => {
     session("2");
-    const read = await requireRatesAccess(request(), { manage: false });
-    expect(read.ok && read.context.canManage).toBe(false);
+    const result = await requireRatesAccess(request());
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.response.status).toBe(403);
+  });
 
-    const write = await requireRatesAccess(request(), { manage: true });
-    expect(write.ok).toBe(false);
-    if (!write.ok) expect(write.response.status).toBe(403);
+  test("dirección sees and manages them", async () => {
+    session("admin");
+    const result = await requireRatesAccess(request());
+    expect(result.ok && result.context.canManage).toBe(true);
   });
 
   test("Negoco staff are listed by email", async () => {
     vi.stubEnv("COMPARADOR_CATALOG_ADMINS", "pablo@negococloud.es, otra@negococloud.es");
     session("admin", "Pablo@NegocoCloud.es");
-    const result = await requireRatesAccess(request(), { manage: true });
+    const result = await requireRatesAccess(request());
     expect(result.ok && result.context.canManageCatalog).toBe(true);
   });
 
   test("no module, no rates", async () => {
     session("admin");
     mocks.getTenantModules.mockResolvedValue({ negoco_studies: false });
-    const result = await requireRatesAccess(request(), { manage: false });
+    const result = await requireRatesAccess(request());
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.response.status).toBe(403);
   });

@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
 /** Precios de una versión (activa, programada o del historial). */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const access = await requireRatesAccess(request, { manage: false });
+    const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     const { id } = await params;
     return ok(await getVersionPrices(access.context.client, id));
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 /** Descarta una versión programada que aún no ha entrado en vigor. */
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const access = await requireRatesAccess(request, { manage: true });
+    const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     const { id } = await params;
     const comercializadoraId = request.nextUrl.searchParams.get("comercializadora_id");

@@ -14,17 +14,9 @@ export type IngestSummary = ReturnType<typeof summarizeIngest>;
 export type { DiffEntry, IngestReview, RateIssue, RateVersion, StoredRatePrice };
 
 export interface SupplierRatesResponse {
-  supplier: { id: string; name: string };
-  rates: {
-    catalogRateId: string | null;
-    rateId: string | null;
-    name: string;
-    pricing: string;
-    accessTariffs: string;
-    catalogStatus: string | null;
-    enabled: boolean;
-    activeRows: number;
-  }[];
+  supplier: { id: string; name: string; active: boolean };
+  /** Tarifas con precios vigentes en este tenant, con sus filas. */
+  rates: { rateId: string; name: string; enabled: boolean; rows: StoredRatePrice[] }[];
   activeVersion: RateVersion | null;
   activePrices: StoredRatePrice[];
   versions: RateVersion[];
@@ -32,6 +24,8 @@ export interface SupplierRatesResponse {
   commissionRules: CommissionRule[];
   freshness: { status: "never" | "fresh" | "stale"; days: number | null };
   medianDecisionHours: number | null;
+  /** Dirección a la que se envían los anexos (beenergy@tarifas.negococloud.es). */
+  mailbox: string | null;
   canManage: boolean;
   canManageCatalog: boolean;
 }

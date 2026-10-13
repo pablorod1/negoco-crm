@@ -15,7 +15,7 @@ export async function PATCH(
   { params }: { params: Promise<{ rateId: string }> },
 ) {
   try {
-    const access = await requireRatesAccess(request, { manage: true });
+    const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     const { rateId } = await params;
     const parsed = BodySchema.safeParse(await request.json());

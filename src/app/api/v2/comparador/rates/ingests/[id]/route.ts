@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 /** Una ingesta con su revisión frente a la versión activa de hoy. */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const access = await requireRatesAccess(request, { manage: false });
+    const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     const { id } = await params;
 
@@ -47,7 +47,7 @@ const PatchSchema = z.object({ comercializadora_id: z.string().min(1) });
  */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const access = await requireRatesAccess(request, { manage: true });
+    const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     const { id } = await params;
     const parsed = PatchSchema.safeParse(await request.json());

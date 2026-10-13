@@ -1,10 +1,8 @@
 import type { Client } from "@libsql/client";
-import { normalizeName } from "./names";
 import {
   getActiveVersion,
   getComercializadora,
   getVersionPrices,
-  listCatalog,
   listCommissionRules,
   listIngests,
   listLastApprovals,
@@ -41,21 +39,18 @@ export function summarizeIngest(ingest: IngestRecord) {
 /** Todo lo que enseña la vista «Tarifas» de una comercializadora. */
 export async function getSupplierRatesView({
   client,
-  control,
   comercializadoraId,
   today,
 }: {
   client: TenantClient;
-  control: Pick<Client, "execute">;
   comercializadoraId: string;
   today: string;
 }) {
   const supplier = await getComercializadora(client, comercializadoraId);
   if (!supplier) throw new RateIngestError("Comercializadora no encontrada", 404);
 
-  const [{ catalog }, tenantRates, activeVersion, versions, ingests, commissionRules] =
+  const [tenantRates, activeVersion, versions, ingests, commissionRules] =
     await Promise.all([
-      listCatalog(control, normalizeName(supplier.name)),
       listTenantRates(client, supplier.id),
       getActiveVersion(client, supplier.id, today),
       listVersions(client, supplier.id),
@@ -64,43 +59,22 @@ export async function getSupplierRatesView({
     ]);
   const activePrices = activeVersion ? await getVersionPrices(client, activeVersion.id) : [];
 
-  const tenantByCatalog = new Map(
-    tenantRates.filter((rate) => rate.catalogRateId).map((rate) => [rate.catalogRateId!, rate]),
-  );
-  const rowsByRate = new Map<string, number>();
+  // Las tarifas de este tenant con precios vigentes, cada una con sus filas.
+  // El catálogo es común a todos los tenants: lo que otro tenant ha dado de
+  // alta (los Helsinki de Nordy que se aprobaron en test) no se enseña aquí.
+  const enabledByRate = new Map(tenantRates.map((rate) => [rate.id, rate.enabled]));
+  const products = new Map<string, { rateId: string; name: string; enabled: boolean; rows: typeof activePrices }>();
   for (const price of activePrices) {
-    rowsByRate.set(price.rateId, (rowsByRate.get(price.rateId) ?? 0) + 1);
+    const product = products.get(price.rateId) ?? {
+      rateId: price.rateId,
+      name: price.rateName,
+      enabled: enabledByRate.get(price.rateId) ?? true,
+      rows: [],
+    };
+    product.rows.push(price);
+    products.set(price.rateId, product);
   }
-
-  // Tarifas del catálogo y del tenant en una sola lista.
-  const rates = [
-    ...catalog.map((entry) => {
-      const tenantRate = tenantByCatalog.get(entry.id) ?? null;
-      return {
-        catalogRateId: entry.id,
-        rateId: tenantRate?.id ?? null,
-        name: entry.productName,
-        pricing: entry.pricing,
-        accessTariffs: entry.accessTariffs,
-        catalogStatus: entry.status,
-        enabled: tenantRate?.enabled ?? false,
-        activeRows: tenantRate ? (rowsByRate.get(tenantRate.id) ?? 0) : 0,
-      };
-    }),
-    ...tenantRates
-      .filter((rate) => !rate.catalogRateId || !catalog.some(({ id }) => id === rate.catalogRateId))
-      .filter((rate) => rowsByRate.has(rate.id))
-      .map((rate) => ({
-        catalogRateId: null,
-        rateId: rate.id,
-        name: rate.name,
-        pricing: "fixed",
-        accessTariffs: "2.0TD",
-        catalogStatus: null,
-        enabled: rate.enabled,
-        activeRows: rowsByRate.get(rate.id) ?? 0,
-      })),
-  ];
+  const rates = [...products.values()].sort((left, right) => left.name.localeCompare(right.name, "es"));
 
   const lastApproval = versions.find((version) => version.approvedAt)?.approvedAt ?? null;
   return {

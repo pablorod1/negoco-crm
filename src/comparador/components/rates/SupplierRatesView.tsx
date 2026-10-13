@@ -1,84 +1,82 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Clock, FileUp, Loader2, Mail, Upload } from "lucide-react";
-import { Badge } from "@/core/components/ui/badge";
-import { Button } from "@/core/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Switch } from "@/core/components/ui/switch";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/core/components/ui/table";
+  AlertTriangle,
+  CalendarClock,
+  Check,
+  CheckCircle2,
+  Copy,
+  FileUp,
+  Mail,
+  Upload,
+} from "lucide-react";
+import { Button } from "@/core/components/ui/button";
+import { Skeleton } from "@/core/components/ui/skeleton";
+import { Switch } from "@/core/components/ui/switch";
+import { cn } from "@/core/utils";
+import { Eyebrow, Panel, PanelHeader } from "@/comparador/components/study/ui";
 import {
   describeConditions,
   describePower,
   formatDay,
   formatMoment,
-  formatPrice,
   ratesApi,
   type IngestSummary,
+  type StoredRatePrice,
   type SupplierRatesResponse,
 } from "./api";
+import { commissionAmount, commissionScope } from "./commission-text";
 import { IngestReviewSheet } from "./IngestReviewSheet";
 import { RateUploadDialog } from "./RateUploadDialog";
-import { commissionAmount, commissionScope } from "./commission-text";
 
-const INGEST_STATUS: Record<string, { label: string; variant: "success" | "warning" | "danger" | "default" | "info" | "pending" }> = {
-  received: { label: "Sin leer", variant: "pending" },
-  processing: { label: "Leyendo", variant: "info" },
-  ready: { label: "Lista para aprobar", variant: "success" },
-  needs_review: { label: "Revisar", variant: "warning" },
-  approved: { label: "Aprobada", variant: "default" },
-  rejected: { label: "Descartada", variant: "default" },
-  failed: { label: "Error", variant: "danger" },
-  out_of_scope: { label: "Fuera de alcance", variant: "default" },
-};
+type Product = SupplierRatesResponse["rates"][number];
 
-const VERSION_STATUS: Record<string, string> = {
-  active: "Vigente",
-  scheduled: "Programada",
-  superseded: "Sustituida",
-  discarded: "Descartada",
-  draft: "Borrador",
-};
+const PERIODS = [
+  { key: "P1", label: "Punta" },
+  { key: "P2", label: "Llano" },
+  { key: "P3", label: "Valle" },
+] as const;
 
-function FreshnessBadge({ freshness }: { freshness: SupplierRatesResponse["freshness"] }) {
-  if (freshness.status === "never") return <Badge variant="warning">Sin precios cargados</Badge>;
-  if (freshness.status === "stale") {
-    return (
-      <Badge variant="danger">
-        <AlertTriangle className="h-3 w-3" /> Sin actualizar desde hace {freshness.days} días
-      </Badge>
-    );
+/** 0,149 €/kWh: tres decimales siempre, hasta seis si los tiene. */
+const euros = (value: number) =>
+  value.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 6 });
+
+const sinceDays = (days: number | null) => (!days ? "hoy" : days === 1 ? "ayer" : `hace ${days} días`);
+
+/**
+ * Por qué una fila no sale en los estudios; null si se oferta. Es la misma
+ * regla que `listActiveOfferPrices`: 2.0TD, precio fijo, con los servicios de
+ * ajuste, tarifa activada y comercializadora activa.
+ */
+function offerBlocker(row: StoredRatePrice, product: Product, supplierActive: boolean): string | null {
+  if (!supplierActive) return "La comercializadora está desactivada en el CRM.";
+  if (!product.enabled) return "Desactivada: no se ofrece en los estudios.";
+  if (row.accessTariff !== "2.0TD") return `Es de ${row.accessTariff}; el comparador compara 2.0TD.`;
+  if (row.pricing !== "fixed") return "Precio indexado: el comparador aún solo calcula precio fijo.";
+  if (!row.includesAncillaryServices) {
+    return "Sin servicios de ajuste: se cobran aparte a precio de mercado y el comparador aún no los calcula.";
   }
-  return <Badge variant="success">Actualizada {sinceDays(freshness.days)}</Badge>;
+  return null;
 }
 
-const sinceDays = (days: number | null) =>
-  !days ? "hoy" : days === 1 ? "ayer" : `hace ${days} días`;
-
-function energyText(energy: { P1: number; P2: number; P3: number } | null) {
-  if (!energy) return "—";
-  return energy.P1 === energy.P2 && energy.P2 === energy.P3
-    ? formatPrice(energy.P1)
-    : `${formatPrice(energy.P1)} / ${formatPrice(energy.P2)} / ${formatPrice(energy.P3)}`;
+/** Condiciones de una fila como etiquetas, sin lo que ya se explica aparte. */
+function conditionChips(row: StoredRatePrice): string[] {
+  return describeConditions({ ...row, includesAncillaryServices: true })
+    .split(" · ")
+    .filter((part) => part && part !== "General");
 }
 
 /**
- * Vista «Tarifas» de una comercializadora: precios vigentes, anexos
- * recibidos, historial de versiones, comisiones y tarifas del catálogo.
+ * Vista «Tarifas» de una comercializadora (dirección y backoffice): cómo están
+ * sus precios, cómo se actualizan (un correo al buzón), qué tarifas se ofertan
+ * y por qué no las que no, sus comisiones y lo que ha ido llegando.
  */
 export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: string }) {
   const [data, setData] = useState<SupplierRatesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
-
   const [reloadKey, setReloadKey] = useState(0);
   const load = useCallback(() => setReloadKey((key) => key + 1), []);
 
@@ -92,9 +90,7 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
         setError(null);
       })
       .catch((cause) => {
-        if (!cancelled) {
-          setError(cause instanceof Error ? cause.message : "No se han podido cargar las tarifas");
-        }
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "No se han podido cargar las tarifas");
       });
     return () => {
       cancelled = true;
@@ -102,9 +98,9 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
   }, [comercializadoraId, reloadKey]);
 
   if (error) return <p className="text-sm text-danger">{error}</p>;
-  if (!data) return <Loader2 className="h-5 w-5 animate-spin" />;
+  if (!data) return <RatesSkeleton />;
 
-  const pending = data.ingests.filter(({ status }) =>
+  const attention = data.ingests.filter(({ status }) =>
     ["received", "processing", "ready", "needs_review", "failed"].includes(status),
   );
 
@@ -115,175 +111,23 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <FreshnessBadge freshness={data.freshness} />
-        {data.medianDecisionHours !== null && (
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            De la llegada a la aprobación: {data.medianDecisionHours} h (mediana; objetivo &lt; 24 h)
-          </span>
-        )}
-        <div className="flex-1" />
-        {data.canManage && (
-          <Button onClick={() => setUploadOpen(true)}>
-            <Upload className="h-4 w-4" /> Subir anexo
-          </Button>
-        )}
-      </div>
+      <RatesHeader data={data} onUpload={() => setUploadOpen(true)} />
 
-      {pending.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Anexos pendientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <IngestList ingests={pending} onOpen={setReviewing} />
-          </CardContent>
-        </Card>
-      )}
+      {attention.length > 0 && <AttentionPanel ingests={attention} onOpen={setReviewing} />}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Precios vigentes
-            {data.activeVersion &&
-              ` · desde ${formatDay(data.activeVersion.validFrom)}${data.activeVersion.validTo ? ` hasta ${formatDay(data.activeVersion.validTo)}` : ""}`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.activePrices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Todavía no hay precios aprobados. Sube el anexo vigente de la comercializadora.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tarifa</TableHead>
-                  <TableHead>Condiciones</TableHead>
-                  <TableHead>Energía €/kWh (P1/P2/P3)</TableHead>
-                  <TableHead>Potencia €/kW·día (P1/P2)</TableHead>
-                  <TableHead>Descuentos</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.activePrices.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.rateName}</TableCell>
-                    <TableCell className="text-sm">{describeConditions(row)}</TableCell>
-                    <TableCell className="text-sm">{energyText(row.energy)}</TableCell>
-                    <TableCell className="text-sm">{describePower(row)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {row.discounts.map(({ text, conditional }) => `${text}${conditional ? " (condicionado)" : ""}`).join(" · ")}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {data.commissionRules.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Comisiones</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Alcance</TableHead>
-                  <TableHead>Consumo anual</TableHead>
-                  <TableHead>Comisión</TableHead>
-                  <TableHead>Vigencia</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.commissionRules.map((rule) => (
-                  <TableRow key={rule.id}>
-                    <TableCell className="text-sm">{commissionScope(rule, { withConsumption: false })}</TableCell>
-                    <TableCell className="text-sm">
-                      {rule.minAnnualKwh === null && rule.maxAnnualKwh === null
-                        ? "Cualquiera"
-                        : `${(rule.minAnnualKwh ?? 0) / 1000}–${rule.maxAnnualKwh === null ? "∞" : rule.maxAnnualKwh / 1000} MWh`}
-                    </TableCell>
-                    <TableCell className="text-sm">{commissionAmount(rule)}</TableCell>
-                    <TableCell className="text-sm">
-                      {formatDay(rule.validFrom)}
-                      {rule.validTo ? ` → ${rule.validTo}` : " → vigente"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tarifas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {data.rates.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                El catálogo no tiene tarifas de esta comercializadora. Se dan de alta al aprobar su primer anexo.
-              </p>
-            )}
-            {data.rates.map((rate) => (
-              <div key={rate.catalogRateId ?? rate.rateId} className="flex items-center gap-3 text-sm">
-                <span className="flex-1 font-medium">{rate.name}</span>
-                <span className="text-muted-foreground">
-                  {rate.activeRows ? `${rate.activeRows} filas vigentes` : "sin precios"}
-                </span>
-                {rate.rateId && data.canManage && (
-                  <Switch
-                    aria-label={`Ofrecer ${rate.name}`}
-                    checked={rate.enabled}
-                    onCheckedChange={(value) => void toggleRate(rate.rateId!, value)}
-                  />
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Historial</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {data.versions.map((version) => (
-              <div key={version.id} className="flex items-center gap-3 text-sm">
-                <Badge variant={version.status === "active" ? "success" : version.status === "scheduled" ? "info" : "default"}>
-                  {VERSION_STATUS[version.status]}
-                </Badge>
-                <span className="flex-1">
-                  {formatDay(version.validFrom)}
-                  {version.validTo ? ` → ${version.validTo}` : ""}
-                </span>
-                {version.status === "scheduled" && data.canManage && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={async () => {
-                      await ratesApi.discardVersion(version.id, comercializadoraId);
-                      load();
-                    }}
-                  >
-                    Descartar
-                  </Button>
-                )}
-              </div>
-            ))}
-            <IngestList
-              ingests={data.ingests.filter(({ status }) => ["approved", "rejected", "out_of_scope"].includes(status))}
-              onOpen={setReviewing}
-            />
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <ProductsPanel data={data} onToggle={toggleRate} />
+        <div className="space-y-6">
+          <CommissionsPanel data={data} />
+          <ActivityPanel
+            data={data}
+            onOpen={setReviewing}
+            onDiscard={async (versionId) => {
+              await ratesApi.discardVersion(versionId, comercializadoraId);
+              load();
+            }}
+          />
+        </div>
       </div>
 
       <RateUploadDialog
@@ -301,28 +145,438 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
   );
 }
 
-function IngestList({ ingests, onOpen }: { ingests: IngestSummary[]; onOpen: (id: string) => void }) {
-  if (ingests.length === 0) return null;
+/** Estado de los precios, tres cifras y cómo se actualizan. */
+function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload: () => void }) {
+  const rows = data.rates.flatMap((product) => product.rows.map((row) => ({ row, product })));
+  const offered = data.rates.filter((product) =>
+    product.rows.some((row) => !offerBlocker(row, product, data.supplier.active)),
+  );
+  const cheapest = rows
+    .filter(({ row, product }) => row.energy && !offerBlocker(row, product, data.supplier.active))
+    .map(({ row }) => Math.min(row.energy!.P1, row.energy!.P2, row.energy!.P3));
+  const lastUpdate = data.ingests.find(({ status }) => status === "approved");
+
+  const state =
+    data.freshness.status === "never"
+      ? { tone: "bg-gray-300", title: "Sin precios todavía", text: `Envía el anexo de ${data.supplier.name} al buzón y se aplicará solo.` }
+      : data.freshness.status === "stale"
+        ? { tone: "bg-warning-500", title: `Sin actualizar desde hace ${data.freshness.days} días`, text: "Comprueba que no hay un anexo más reciente." }
+        : {
+            tone: "bg-success-500",
+            title: "Precios al día",
+            text: `Actualizados ${sinceDays(data.freshness.days)}${lastUpdate?.channel === "email" ? " por correo" : ""}`,
+          };
+
   return (
-    <ul className="divide-y">
-      {ingests.map((ingest) => (
-        <li key={ingest.id}>
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 py-2 text-left text-sm hover:bg-muted/50"
-            onClick={() => onOpen(ingest.id)}
-          >
-            {ingest.channel === "email" ? <Mail className="h-4 w-4" /> : <FileUp className="h-4 w-4" />}
-            <span className="flex-1 truncate">
-              {ingest.fileName ?? ingest.emailSubject ?? "Texto pegado"}
-              <span className="text-muted-foreground"> · {formatMoment(ingest.receivedAt)}</span>
+    <Panel className="overflow-hidden">
+      <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="min-w-0 space-y-5">
+          <div className="flex items-start gap-3">
+            <span className={cn("mt-1.5 size-2.5 shrink-0 rounded-full", state.tone)} aria-hidden />
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-gray-900">{state.title}</h2>
+              <p className="text-sm text-gray-500">
+                {state.text}
+                {data.activeVersion?.validFrom && ` · vigentes desde el ${formatDay(data.activeVersion.validFrom)}`}
+              </p>
+            </div>
+          </div>
+          {!data.supplier.active && (
+            <p className="flex items-center gap-2 rounded-xl bg-warning-50 px-3 py-2 text-sm text-gray-800 ring-1 ring-warning-200">
+              <AlertTriangle className="size-4 shrink-0 text-warning-600" />
+              {data.supplier.name} está desactivada en el CRM: sus tarifas no salen en los estudios.
+            </p>
+          )}
+          <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
+            <Figure label="Tarifas" value={String(data.rates.length)} />
+            <Figure label="Se ofertan" value={String(offered.length)} />
+            <Figure label="Energía desde" value={cheapest.length ? euros(Math.min(...cheapest)) : "—"} unit={cheapest.length ? "€/kWh" : undefined} />
+          </dl>
+        </div>
+
+        <div className="space-y-3 rounded-2xl bg-gray-50 p-4 ring-1 ring-gray-950/[0.04] lg:w-[340px]">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+              <Mail className="size-4" />
             </span>
-            <Badge variant={INGEST_STATUS[ingest.status]?.variant ?? "default"}>
-              {INGEST_STATUS[ingest.status]?.label ?? ingest.status}
-            </Badge>
-          </button>
-        </li>
-      ))}
-    </ul>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Actualiza por correo</p>
+              <p className="text-xs text-gray-500">Reenvía los anexos y se aplican solos.</p>
+            </div>
+          </div>
+          {data.mailbox ? <MailboxAddress address={data.mailbox} /> : <p className="text-xs text-gray-500">El buzón no está configurado.</p>}
+          {data.canManage && (
+            <Button variant="outline" size="sm" className="w-full rounded-lg" onClick={onUpload}>
+              <Upload className="size-3.5" /> O sube el anexo aquí
+            </Button>
+          )}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function Figure({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  return (
+    <div className="rounded-xl bg-gray-50 px-3 py-2.5 ring-1 ring-gray-950/[0.04]">
+      <dt><Eyebrow>{label}</Eyebrow></dt>
+      <dd className="mt-1 text-lg font-semibold tabular-nums text-gray-900">
+        {value}
+        {unit && <span className="ml-1 text-xs font-normal text-gray-500">{unit}</span>}
+      </dd>
+    </div>
+  );
+}
+
+function MailboxAddress({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-gray-200">
+      <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-gray-900">{address}</span>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        onClick={() => {
+          void navigator.clipboard?.writeText(address).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1800);
+          });
+        }}
+      >
+        {copied ? <Check className="size-3.5 text-success-600" /> : <Copy className="size-3.5" />}
+        {copied ? "Copiada" : "Copiar"}
+      </button>
+    </div>
+  );
+}
+
+/** Solo si algo necesita a una persona: lecturas dudosas, errores o anexos sin leer. */
+function AttentionPanel({ ingests, onOpen }: { ingests: IngestSummary[]; onOpen: (id: string) => void }) {
+  return (
+    <Panel className="bg-warning-50/40 ring-warning-200">
+      <PanelHeader
+        title={ingests.length === 1 ? "Un anexo necesita revisión" : `${ingests.length} anexos necesitan revisión`}
+        description="No se han podido aplicar solos: la lectura no cuadra con el documento o ha fallado."
+      />
+      <ul className="divide-y divide-warning-100 px-5 pb-3 pt-2">
+        {ingests.map((ingest) => (
+          <li key={ingest.id} className="flex items-center gap-3 py-2.5">
+            <AlertTriangle className="size-4 shrink-0 text-warning-600" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-gray-900">{ingestTitle(ingest)}</p>
+              <p className="truncate text-xs text-gray-500">{ingest.error ?? ingest.reason ?? statusText(ingest).label}</p>
+            </div>
+            <Button size="sm" className="rounded-lg" onClick={() => onOpen(ingest.id)}>
+              Revisar
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+function ProductsPanel({
+  data,
+  onToggle,
+}: {
+  data: SupplierRatesResponse;
+  onToggle: (rateId: string, enabled: boolean) => void;
+}) {
+  // Una misma escala para todas: así se comparan las tarifas de un vistazo.
+  const scale = Math.max(
+    0.0001,
+    ...data.rates.flatMap(({ rows }) => rows.flatMap(({ energy }) => (energy ? [energy.P1, energy.P2, energy.P3] : []))),
+  );
+
+  return (
+    <Panel>
+      <PanelHeader
+        title="Tarifas vigentes"
+        description="Precios sin impuestos. Las que no se ofertan no salen en los estudios."
+      />
+      {data.rates.length === 0 ? (
+        <div className="px-5 pb-6 pt-4 text-sm text-gray-500">
+          Todavía no hay precios de {data.supplier.name}. En cuanto llegue su anexo al buzón, aparecerán aquí.
+        </div>
+      ) : (
+        <div className="grid gap-4 p-5 md:grid-cols-2">
+          {data.rates.map((product) => (
+            <ProductCard
+              key={product.rateId}
+              product={product}
+              scale={scale}
+              supplierActive={data.supplier.active}
+              canManage={data.canManage}
+              onToggle={onToggle}
+            />
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function ProductCard({
+  product,
+  scale,
+  supplierActive,
+  canManage,
+  onToggle,
+}: {
+  product: Product;
+  scale: number;
+  supplierActive: boolean;
+  canManage: boolean;
+  onToggle: (rateId: string, enabled: boolean) => void;
+}) {
+  const blockers = product.rows.map((row) => offerBlocker(row, product, supplierActive));
+  const offeredRows = blockers.filter((blocker) => blocker === null).length;
+  const status =
+    offeredRows === product.rows.length
+      ? { label: "Se oferta", className: "bg-success-50 text-success-700 ring-success-200" }
+      : offeredRows > 0
+        ? { label: "Se oferta en parte", className: "bg-info-50 text-info-700 ring-info-200" }
+        : { label: "No se oferta", className: "bg-gray-100 text-gray-600 ring-gray-200" };
+
+  return (
+    <article
+      className={cn(
+        "flex flex-col rounded-2xl bg-white p-4 ring-1 ring-gray-950/[0.07] transition-opacity",
+        offeredRows === 0 && "opacity-75",
+      )}
+    >
+      <header className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold text-gray-900" title={product.name}>
+            {product.name}
+          </h3>
+          <span className={cn("mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1", status.className)}>
+            {status.label}
+          </span>
+        </div>
+        {canManage && (
+          <Switch
+            aria-label={`Ofrecer ${product.name}`}
+            checked={product.enabled}
+            onCheckedChange={(value) => onToggle(product.rateId, value)}
+          />
+        )}
+      </header>
+
+      <div className="mt-3 space-y-3 divide-y divide-gray-100">
+        {product.rows.map((row, index) => (
+          <RowPrices key={row.id} row={row} scale={scale} blocker={blockers[index]} first={index === 0} />
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function RowPrices({
+  row,
+  scale,
+  blocker,
+  first,
+}: {
+  row: StoredRatePrice;
+  scale: number;
+  blocker: string | null;
+  first: boolean;
+}) {
+  const chips = conditionChips(row);
+  const single = row.energy && row.energy.P1 === row.energy.P2 && row.energy.P2 === row.energy.P3;
+
+  return (
+    <div className={cn("space-y-2.5", !first && "pt-3")}>
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {chips.map((chip) => (
+            <span key={chip} className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
+              {chip}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {row.energy ? (
+        <div className="space-y-1.5">
+          {(single ? [{ key: "P1" as const, label: "24 h" }] : PERIODS).map(({ key, label }) => (
+            <div key={key} className="grid grid-cols-[44px_minmax(0,1fr)_76px] items-center gap-2 text-xs">
+              <span className="text-gray-500">{label}</span>
+              <span className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                <span
+                  className={cn("block h-full rounded-full", blocker ? "bg-gray-300" : "bg-primary-500")}
+                  style={{ width: `${Math.max(4, (row.energy![key] / scale) * 100)}%` }}
+                />
+              </span>
+              <span className="text-right font-medium tabular-nums text-gray-900">{euros(row.energy![key])}</span>
+            </div>
+          ))}
+          <p className="text-right text-[11px] text-gray-400">€/kWh</p>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-500">Sin precio de energía.</p>
+      )}
+
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-gray-500">Potencia P1 / P2</span>
+        <span className="font-medium tabular-nums text-gray-900">
+          {describePower(row)}
+          {row.powerMode === "fixed" && row.power && <span className="ml-1 font-normal text-gray-400">€/kW·día</span>}
+        </span>
+      </div>
+
+      {row.discounts.length > 0 && (
+        <p className="text-[11px] text-gray-500">
+          {row.discounts.map(({ text, conditional }) => `${text}${conditional ? " (con condiciones)" : ""}`).join(" · ")}
+        </p>
+      )}
+
+      {blocker && (
+        <p className="flex gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[11px] text-gray-600">
+          <AlertTriangle className="mt-px size-3 shrink-0 text-gray-400" />
+          {blocker}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CommissionsPanel({ data }: { data: SupplierRatesResponse }) {
+  return (
+    <Panel>
+      <PanelHeader title="Comisiones" description="Lo que paga la comercializadora por cada contrato." />
+      {data.commissionRules.length === 0 ? (
+        <p className="px-5 pb-5 pt-3 text-sm text-gray-500">
+          Sin comisiones. Envía el marco de comisiones al mismo buzón y se aplicará solo.
+        </p>
+      ) : (
+        <ul className="divide-y divide-gray-100 px-5 pb-3 pt-2">
+          {data.commissionRules.map((rule) => (
+            <li key={rule.id} className="flex items-start gap-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-gray-900">{commissionScope(rule, { withConsumption: true })}</p>
+                <p className="text-[11px] text-gray-500">
+                  Desde el {formatDay(rule.validFrom)}
+                  {rule.validTo ? ` hasta el ${formatDay(rule.validTo)}` : ""}
+                </p>
+              </div>
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">{commissionAmount(rule)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+const ingestTitle = (ingest: IngestSummary) => ingest.fileName ?? ingest.emailSubject ?? "Texto pegado";
+
+function statusText(ingest: IngestSummary): { label: string; className: string } {
+  switch (ingest.status) {
+    case "approved":
+      return {
+        label: ingest.channel === "email" ? "Aplicado solo" : "Aplicado",
+        className: "bg-success-50 text-success-700 ring-success-200",
+      };
+    case "rejected":
+      return { label: "Descartado", className: "bg-gray-100 text-gray-600 ring-gray-200" };
+    case "out_of_scope":
+      return { label: "No aplica", className: "bg-gray-100 text-gray-600 ring-gray-200" };
+    case "failed":
+      return { label: "Error", className: "bg-danger-50 text-danger ring-danger-200" };
+    case "processing":
+    case "received":
+      return { label: "Leyendo", className: "bg-info-50 text-info-700 ring-info-200" };
+    default:
+      return { label: "Por revisar", className: "bg-warning-50 text-warning-700 ring-warning-200" };
+  }
+}
+
+/** Lo que ha ido llegando, lo más reciente arriba, y los precios programados. */
+function ActivityPanel({
+  data,
+  onOpen,
+  onDiscard,
+}: {
+  data: SupplierRatesResponse;
+  onOpen: (id: string) => void;
+  onDiscard: (versionId: string) => void;
+}) {
+  const scheduled = data.versions.filter(({ status }) => status === "scheduled");
+
+  return (
+    <Panel>
+      <PanelHeader title="Actividad" description="Anexos recibidos y qué se hizo con cada uno." />
+      {scheduled.length === 0 && data.ingests.length === 0 ? (
+        <p className="px-5 pb-5 pt-3 text-sm text-gray-500">Todavía no ha llegado ningún anexo.</p>
+      ) : (
+        <ol className="relative space-y-1 px-5 pb-4 pt-3">
+          {scheduled.map((version) => (
+            <li key={version.id} className="flex items-start gap-3 rounded-xl px-2 py-2">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-info-50 text-info-600">
+                <CalendarClock className="size-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900">Precios programados</p>
+                <p className="text-xs text-gray-500">Entran en vigor el {formatDay(version.validFrom)}</p>
+              </div>
+              {data.canManage && (
+                <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs" onClick={() => onDiscard(version.id)}>
+                  Descartar
+                </Button>
+              )}
+            </li>
+          ))}
+          {data.ingests.map((ingest) => {
+            const status = statusText(ingest);
+            const note = ingest.status === "rejected" || ingest.status === "failed" ? ingest.error : ingest.status === "out_of_scope" ? ingest.reason : null;
+            return (
+              <li key={ingest.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left hover:bg-gray-50"
+                  onClick={() => onOpen(ingest.id)}
+                >
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                    {ingest.status === "approved" ? (
+                      <CheckCircle2 className="size-3.5 text-success-600" />
+                    ) : ingest.channel === "email" ? (
+                      <Mail className="size-3.5" />
+                    ) : (
+                      <FileUp className="size-3.5" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-gray-900">{ingestTitle(ingest)}</span>
+                    <span className="block truncate text-xs text-gray-500">
+                      {formatMoment(ingest.receivedAt)}
+                      {ingest.channel === "email" && ingest.emailFrom ? ` · ${ingest.emailFrom}` : ""}
+                    </span>
+                    {note && <span className="mt-0.5 block text-xs text-gray-500">{note}</span>}
+                  </span>
+                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1", status.className)}>
+                    {status.label}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </Panel>
+  );
+}
+
+function RatesSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-44 rounded-2xl" />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <Skeleton className="h-96 rounded-2xl" />
+        <Skeleton className="h-96 rounded-2xl" />
+      </div>
+    </div>
   );
 }
