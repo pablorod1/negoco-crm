@@ -64,7 +64,9 @@ function offerBlocker(row: StoredRatePrice, product: Product, supplierActive: bo
 function conditionChips(row: StoredRatePrice): string[] {
   return describeConditions({ ...row, includesAncillaryServices: true })
     .split(" · ")
-    .filter((part) => part && part !== "General");
+    .filter((part) => part && part !== "General")
+    // El nivel suelto («I», «N2») no se entiende fuera de la tabla del anexo.
+    .map((part) => (row.level && part === row.level ? `Nivel ${part}` : part));
 }
 
 /**
@@ -194,7 +196,7 @@ function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload
           </dl>
         </div>
 
-        <div className="space-y-3 rounded-2xl bg-gray-50 p-4 ring-1 ring-gray-950/[0.04] lg:w-[340px]">
+        <div className="space-y-3 rounded-2xl bg-gray-50 p-4 ring-1 ring-gray-950/[0.04] lg:w-[360px]">
           <div className="flex items-center gap-2">
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
               <Mail className="size-4" />
@@ -232,7 +234,7 @@ function MailboxAddress({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-gray-200">
-      <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-gray-900">{address}</span>
+      <span className="min-w-0 flex-1 break-all font-mono text-xs text-gray-900">{address}</span>
       <button
         type="button"
         className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
@@ -401,6 +403,7 @@ function RowPrices({
 
       {row.energy ? (
         <div className="space-y-1.5">
+          <Eyebrow className="text-[10px]">Energía · €/kWh</Eyebrow>
           {(single ? [{ key: "P1" as const, label: "24 h" }] : PERIODS).map(({ key, label }) => (
             <div key={key} className="grid grid-cols-[44px_minmax(0,1fr)_76px] items-center gap-2 text-xs">
               <span className="text-gray-500">{label}</span>
@@ -413,14 +416,13 @@ function RowPrices({
               <span className="text-right font-medium tabular-nums text-gray-900">{euros(row.energy![key])}</span>
             </div>
           ))}
-          <p className="text-right text-[11px] text-gray-400">€/kWh</p>
         </div>
       ) : (
         <p className="text-xs text-gray-500">Sin precio de energía.</p>
       )}
 
       <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-500">Potencia P1 / P2</span>
+        <span className="text-gray-500">Potencia</span>
         <span className="font-medium tabular-nums text-gray-900">
           {describePower(row)}
           {row.powerMode === "fixed" && row.power && <span className="ml-1 font-normal text-gray-400">€/kW·día</span>}
