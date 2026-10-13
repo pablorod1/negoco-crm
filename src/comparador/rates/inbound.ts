@@ -46,12 +46,26 @@ export function verifySvixSignature({
   });
 }
 
+/**
+ * El dominio del buzón como lo escribe quien configura Vercel: sin comillas,
+ * espacios, «@» delante ni «https://».
+ */
+export function inboundDomain(raw: string | undefined): string | null {
+  const domain = (raw ?? "")
+    .replace(/["'\s]/g, "")
+    .replace(/^https?:\/\//i, "")
+    .replace(/^@/, "")
+    .replace(/\/.*$/, "")
+    .toLowerCase();
+  return domain || null;
+}
+
 /** Tenant al que va el correo, por la dirección de destino. */
 export function tenantFromRecipients(
   recipients: readonly string[],
   domain: string,
 ): string | null {
-  const suffix = `@${domain.toLowerCase()}`;
+  const suffix = `@${inboundDomain(domain) ?? domain.toLowerCase()}`;
   for (const raw of recipients) {
     const address = (raw.match(/<([^>]+)>/)?.[1] ?? raw).trim().toLowerCase();
     if (!address.endsWith(suffix)) continue;

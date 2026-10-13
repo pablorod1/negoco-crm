@@ -6,6 +6,7 @@ import {
   isTenantUser,
   isTrustedSender,
   selectAttachments,
+  inboundDomain,
   tenantFromRecipients,
   verifySvixSignature,
 } from "./inbound";
@@ -55,6 +56,14 @@ describe("inbound routing", () => {
     expect(tenantFromRecipients(["Beenergy <beenergy@tarifas.negococloud.es>"], "tarifas.negococloud.es")).toBe("beenergy");
     expect(tenantFromRecipients(["test+axpo@tarifas.negococloud.es"], "tarifas.negococloud.es")).toBe("test");
     expect(tenantFromRecipients(["info@negococloud.es"], "tarifas.negococloud.es")).toBeNull();
+  });
+
+  test("the domain as it gets pasted into Vercel still works", () => {
+    for (const domain of ['"tarifas.negococloud.es"', " tarifas.negococloud.es\n", "@tarifas.negococloud.es", "https://tarifas.negococloud.es/"]) {
+      expect(inboundDomain(domain)).toBe("tarifas.negococloud.es");
+      expect(tenantFromRecipients(["beenergy@tarifas.negococloud.es"], domain)).toBe("beenergy");
+    }
+    expect(inboundDomain("  ")).toBeNull();
   });
 
   test("keeps annexes and drops signature images", () => {

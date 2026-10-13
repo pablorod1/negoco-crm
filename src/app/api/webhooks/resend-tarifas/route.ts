@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getTursoClientByTenant } from "@/core/libsql/client";
 import { getTenantModules } from "@/core/modules/server";
 import {
+  inboundDomain,
   inboundIngestId,
   isTenantUser,
   isTrustedSender,
@@ -45,7 +46,7 @@ async function resend<T>(path: string): Promise<T> {
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.RESEND_INBOUND_WEBHOOK_SECRET;
-  const domain = process.env.COMPARADOR_INBOUND_DOMAIN;
+  const domain = inboundDomain(process.env.COMPARADOR_INBOUND_DOMAIN);
   if (!secret || !domain || !process.env.RESEND_API_KEY) {
     return NextResponse.json({ error: "Buzón no configurado" }, { status: 503 });
   }
@@ -65,19 +66,26 @@ export async function POST(request: NextRequest) {
     if (event.type !== "email.received") return NextResponse.json({ ignored: true });
 
     const { email_id: emailId, from, subject } = event.data;
-    const tenantSlug = tenantFromRecipients(
-      [...(event.data.to ?? []), ...(event.data.received_for ?? [])],
-      domain,
-    );
-    // Un destinatario desconocido no es un error de Resend: se acepta y se ignora.
-    if (!tenantSlug) return NextResponse.json({ ignored: "destinatario" });
+    const recipients = [...(event.data.to ?? []), ...(event.data.received_for ?? [])];
+    const tenantSlug = tenantFromRecipients(recipients, domain);
+    // Un destinatario desconocido no es un error de Resend: se acepta y se
+    // ignora, pero queda en el log (si no, un dominio mal escrito en Vercel
+    // solo se nota en que los anexos no llegan).
+    if (!tenantSlug) {
+      console.warn("[comparador] correo ignorado: destinatario", { recipients, domain });
+      return NextResponse.json({ ignored: "destinatario" });
+    }
     const modules = await getTenantModules(tenantSlug);
-    if (!modules.negoco_studies) return NextResponse.json({ ignored: "módulo" });
+    if (!modules.negoco_studies) {
+      console.warn("[comparador] correo ignorado: módulo apagado", { tenantSlug });
+      return NextResponse.json({ ignored: "módulo" });
+    }
 
     let client;
     try {
       client = getTursoClientByTenant(tenantSlug);
     } catch {
+      console.warn("[comparador] correo ignorado: sin base de datos", { tenantSlug });
       return NextResponse.json({ ignored: "tenant" });
     }
 
