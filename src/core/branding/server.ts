@@ -30,6 +30,11 @@ export async function getBrandingForHost(host: string | null): Promise<ResolvedB
   const authToken = process.env[envNames.authToken];
 
   if (!url || !authToken) {
+    // Sin esto, un alias de subdominio mal configurado solo se nota en que
+    // sale la marca por defecto.
+    if (tenant !== "localhost") {
+      console.warn(`[branding] sin base de datos para el tenant «${tenant}» (host ${host}, ${envNames.url}): marca por defecto`);
+    }
     return {
       ...DEFAULT_BRANDING,
       tenant,
@@ -52,6 +57,7 @@ export async function getBrandingForHost(host: string | null): Promise<ResolvedB
 
     const row = result.rows[0];
     if (!row) {
+      console.warn(`[branding] el tenant «${tenant}» no tiene organización: marca por defecto`);
       return {
         ...DEFAULT_BRANDING,
         tenant,
