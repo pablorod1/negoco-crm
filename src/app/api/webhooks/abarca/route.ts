@@ -24,7 +24,6 @@ import { deleteFiles } from "@/core/firebase/data/deleteFile";
 import { uploadBase64File } from "@/core/firebase/data/uploadBase64File";
 import { getTursoClientByTenant } from "@/core/libsql/client";
 import {
-  getApoloSipsBaseCups,
   isValidApoloSipsCups,
   sanitizeCups,
 } from "@/integrations/apolo-sips/cups";
@@ -1390,7 +1389,6 @@ async function fetchAbarcaApoloSipsSummary(
     return null;
   }
 
-  const apoloSipsCups = getApoloSipsBaseCups(sanitizedCups);
   const controller = new AbortController();
   const abortForOwnershipLoss = () => controller.abort();
   if (ownershipSignal.aborted) {
@@ -1408,14 +1406,14 @@ async function fetchAbarcaApoloSipsSummary(
   try {
     const consumptions = await fetchApoloSipsProcedure({
       apiKey,
-      cups: apoloSipsCups,
+      cups: sanitizedCups,
       procedure: "CONSUMOS",
       signal: controller.signal,
       supplyType: "ELECTRICIDAD",
     });
 
     return createAbarcaApoloSipsSummary(
-      apoloSipsCups,
+      consumptions.cups,
       consumptions.rows as ApoloSipsElectricityConsumptionRow[],
     );
   } catch (error) {

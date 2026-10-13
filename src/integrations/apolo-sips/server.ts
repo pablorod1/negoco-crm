@@ -1,5 +1,5 @@
 import { parseCsv, ApoloSipsCsvError } from "./csv";
-import { getApoloSipsBaseCups } from "./cups";
+import { getApoloSipsCupsCandidates } from "./cups";
 import { normalizeApoloSipsCsv, ApoloSipsParseError } from "./normalize";
 import type {
   ApoloSipsProcedure,
@@ -37,6 +37,33 @@ export async function fetchApoloSipsProcedure({
 }: FetchApoloSipsProcedureParams): Promise<
   ApoloSipsProcedureResult<ApoloSipsProcedureRow>
 > {
+  let result: ApoloSipsProcedureResult<ApoloSipsProcedureRow> | undefined;
+
+  // Una a una y parando en la primera con datos: cada intento cuenta contra
+  // el límite de peticiones por minuto de la clave.
+  for (const candidate of getApoloSipsCupsCandidates(cups)) {
+    result = await fetchApoloSipsProcedureForCups({
+      apiKey,
+      cups: candidate,
+      procedure,
+      signal,
+      supplyType,
+    });
+    if (result.hasData) return result;
+  }
+
+  return result!;
+}
+
+async function fetchApoloSipsProcedureForCups({
+  apiKey,
+  cups,
+  procedure,
+  signal,
+  supplyType,
+}: FetchApoloSipsProcedureParams): Promise<
+  ApoloSipsProcedureResult<ApoloSipsProcedureRow>
+> {
   let response: Response;
 
   try {
@@ -51,7 +78,7 @@ export async function fetchApoloSipsProcedure({
       body: JSON.stringify({
         Procedimiento: procedure,
         TipoSuministro: supplyType,
-        CUPS: getApoloSipsBaseCups(cups),
+        CUPS: cups,
       }),
     });
   } catch {
@@ -59,6 +86,13 @@ export async function fetchApoloSipsProcedure({
   }
 
   const rawText = await response.text();
+
+  if (response.status === 429) {
+    throw new ApoloSipsUpstreamError(
+      "SIPS ha alcanzado el límite de consultas por minuto. Inténtalo de nuevo en un minuto.",
+      response.status,
+    );
+  }
 
   if (!response.ok) {
     throw new ApoloSipsUpstreamError(
@@ -68,7 +102,10 @@ export async function fetchApoloSipsProcedure({
   }
 
   try {
-    return normalizeApoloSipsCsv(parseCsv(rawText), procedure, supplyType);
+    return {
+      ...normalizeApoloSipsCsv(parseCsv(rawText), procedure, supplyType),
+      cups,
+    };
   } catch (error) {
     if (
       error instanceof ApoloSipsCsvError ||

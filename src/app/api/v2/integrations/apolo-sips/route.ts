@@ -90,7 +90,11 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      data: buildResponseData(cups, tipoSuministro, results),
+      data: buildResponseData(
+        results.find((result) => result.hasData)?.cups ?? cups,
+        tipoSuministro,
+        results,
+      ),
     });
   } catch (error) {
     console.error(

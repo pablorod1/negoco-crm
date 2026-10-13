@@ -3,6 +3,8 @@ export type ApoloSipsProcedure = "PS" | "CONSUMOS";
 export type ApoloSipsSupplyType = "ELECTRICIDAD" | "GAS";
 
 export interface ApoloSipsProcedureResult<TRow> {
+  /** CUPS exacto con el que APOLO ha respondido (con su sufijo, si lo tiene). */
+  cups: string;
   procedure: ApoloSipsProcedure;
   supplyType: ApoloSipsSupplyType;
   columns: string[];

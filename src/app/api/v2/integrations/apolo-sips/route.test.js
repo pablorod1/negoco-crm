@@ -137,6 +137,48 @@ describe("POST /api/v2/integrations/apolo-sips", () => {
     expect(bodyText).not.toContain("test-secret-key");
   });
 
+  test("retries with the distributor suffix when Apolo has no data for the CUPS as typed", async () => {
+    const requestedCups = [];
+    globalThis.fetch = mock(async (_url, init) => {
+      const payload = JSON.parse(init.body);
+      requestedCups.push(payload.CUPS);
+      return new Response(
+        csvFor(ELECTRICITY_CONSUMPTION_COLUMNS, payload.CUPS === "ES0031103529801001TM0F"),
+        { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8" } },
+      );
+    });
+
+    const response = await route.POST(
+      request({
+        cups: "ES0031103529801001TM",
+        tipoSuministro: "ELECTRICIDAD",
+        procedimientos: ["CONSUMOS"],
+      }),
+    );
+    const body = await response.json();
+
+    expect(requestedCups).toEqual(["ES0031103529801001TM0F"]);
+    expect(body.data.cups).toBe("ES0031103529801001TM0F");
+    expect(body.data.consumos.hasData).toBe(true);
+  });
+
+  test("stops trying CUPS variants when Apolo rate-limits the key", async () => {
+    globalThis.fetch = mock(async () => new Response("Has alcanzado el número máximo", { status: 429 }));
+
+    const response = await route.POST(
+      request({
+        cups: "ES0031103529801001TM",
+        tipoSuministro: "ELECTRICIDAD",
+        procedimientos: ["CONSUMOS"],
+      }),
+    );
+    const body = await response.json();
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(502);
+    expect(body.error).toContain("límite de consultas");
+  });
+
   test("starts PS and CONSUMOS upstream requests before awaiting either result", async () => {
     let resolveFirst;
     let firstResponsePending = true;
