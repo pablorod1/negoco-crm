@@ -294,7 +294,10 @@ async function resolveCurrent(
   if (!energy) return { tariff: null, supply, info: { ...info, unavailable: MARKET_MESSAGES.noReadings } };
   const readings = supply.readings ?? [];
   const totalKwh = readings.reduce((sum, { kwh }) => sum + kwh.P1 + kwh.P2 + kwh.P3, 0);
-  info.marginOverMarket = marginOverMarket(tariff.prices.energy, supply, extraction.consumptionKwh);
+  // Sin consumo por periodo en la factura (foto, OCR), pesa el del año del SIPS.
+  const invoiceKwh = extraction.consumptionKwh;
+  const hasInvoiceKwh = (invoiceKwh.P1 ?? 0) + (invoiceKwh.P2 ?? 0) + (invoiceKwh.P3 ?? 0) > 0;
+  info.marginOverMarket = marginOverMarket(tariff.prices.energy, supply, hasInvoiceKwh ? invoiceKwh : supply.annualKwh);
   info.marketAverage =
     totalKwh > 0
       ? readings.reduce(
