@@ -115,6 +115,40 @@ export function indexLines(text: string | null) {
     .map((line) => ({ text: line.replace(/\t+/g, " · "), numbers: numbersInText(line) }));
 }
 
+const plainText = (text: string) =>
+  text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/** Servicios de ajuste: «SS.AA.», «servicios de ajuste», «Serv. Ajuste», «costes de Red Eléctrica». */
+const ANCILLARY = String.raw`(?:serv(?:icios?|\.)?\s*(?:de\s+)?ajuste|ss\.?\s?aa\.?|ssaa|costes? de (?:la )?red electrica)`;
+const ANCILLARY_EXCLUDED = new RegExp(
+  `${ANCILLARY}[^.\\n]{0,40}\\bno\\s+(?:estan\\s+)?incluid|\\bsin\\s+(?:los\\s+)?${ANCILLARY}`,
+);
+const ANCILLARY_INCLUDED = new RegExp(
+  `${ANCILLARY}[^.\\n]{0,20}(?<!\\bno\\s)\\bincluid|\\bcon\\s+(?:los\\s+)?${ANCILLARY}`,
+);
+
+/**
+ * Si el precio incluye los servicios de ajuste. Manda lo que diga el nombre
+ * del producto (INER: «EXPANSA (Serv. Ajuste NO INCLUIDOS)»); si no, lo que
+ * diga el documento cuando solo dice que no van incluidos (Nordy: «Costes de
+ * Red Eléctrica no incluidos»), en Península, que es donde se cobran. La IA
+ * lo leía unas veces sí y otras no, y sin nadie que revise no puede depender
+ * de eso: un precio sin ellos saldría más barato de lo que es.
+ */
+export function ancillaryIncluded(
+  rate: Pick<ExtractedRate, "productName" | "ancillaryIncluded" | "territory">,
+  text: string | null,
+): boolean {
+  const name = plainText(rate.productName);
+  if (ANCILLARY_EXCLUDED.test(name)) return false;
+  if (ANCILLARY_INCLUDED.test(name)) return true;
+  if (text && (rate.territory ?? "peninsula") === "peninsula") {
+    const plain = plainText(text);
+    if (ANCILLARY_EXCLUDED.test(plain) && !ANCILLARY_INCLUDED.test(plain)) return false;
+  }
+  return rate.ancillaryIncluded ?? true;
+}
+
 /** Convierte las filas extraídas a filas propuestas, en las unidades del motor. */
 export function toProposedRates(
   extraction: Pick<RateDocumentExtraction, "rates">,
@@ -145,7 +179,7 @@ export function toProposedRates(
       termMonths: rate.months,
       ...power,
       energy: normalizeEnergy(rate),
-      includesAncillaryServices: rate.ancillaryIncluded ?? true,
+      includesAncillaryServices: ancillaryIncluded(rate, sourceText),
       feeEnergyMinPerMwh: rate.feeMinMwh,
       feeEnergyMaxPerMwh: rate.feeMaxMwh,
       feePowerAllowed: rate.feeOnPower,

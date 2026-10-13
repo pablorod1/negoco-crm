@@ -7,6 +7,7 @@ import { matchProducts } from "./match";
 import { normalizeName, productKeyOf, productNameOf } from "./names";
 import { withDocumentDates } from "./extract";
 import {
+  ancillaryIncluded,
   appearsInText,
   dateInText,
   energyToPerKwh,
@@ -120,6 +121,32 @@ describe("numbers in the source text", () => {
     expect(appearsInText(43.99, numbers)).toBe(true);
     expect(appearsInText(28.99, numbers)).toBe(true);
     expect(appearsInText(0.215, numbers)).toBe(true);
+  });
+});
+
+describe("ancillary services", () => {
+  const nordy3p = `Tarifa Estabilidad 3P I
+Punta P1 0,149 €/kWh
+Costes de Red Eléctrica no incluidos
+Este coste se factura por separado, aplicando los precios oficiales que publica el operador del sistema.`;
+  const nordy1p = "Tarifa Estabilidad 1P 0,129 €/kWh · Servicios de ajuste no incluidos (solo Península)";
+
+  test("a document that only says they are not included decides it, whatever the AI read", () => {
+    expect(ancillaryIncluded(extracted({ productName: "Tarifa Estabilidad 3P", ancillaryIncluded: true }), nordy3p)).toBe(false);
+    expect(ancillaryIncluded(extracted({ productName: "Tarifa Estabilidad 1P", ancillaryIncluded: true }), nordy1p)).toBe(false);
+    // En las islas Nordy no los cobra aparte: manda la lectura.
+    expect(
+      ancillaryIncluded(extracted({ productName: "Tarifa Estabilidad 1P", territory: "baleares", ancillaryIncluded: true }), nordy1p),
+    ).toBe(true);
+  });
+
+  test("the product name wins, and a document that says both leaves it to the reading", () => {
+    const iner = "EXPAN (Serv. Ajuste INCLUIDOS) 0,12 · EXPANSA (Serv. Ajuste NO INCLUIDOS) 0,11";
+    expect(ancillaryIncluded(extracted({ productName: "EXPANSA (Serv. Ajuste NO INCLUIDOS)", ancillaryIncluded: true }), iner)).toBe(false);
+    expect(ancillaryIncluded(extracted({ productName: "EXPAN (Serv. Ajuste INCLUIDOS)", ancillaryIncluded: false }), iner)).toBe(true);
+    expect(ancillaryIncluded(extracted({ ancillaryIncluded: true }), UNICORNIO_TEXT)).toBe(true);
+    expect(ancillaryIncluded(extracted({ ancillaryIncluded: false }), "Energía con SS.AA. 0,24 · Fénix sin SS.AA. 0,22")).toBe(false);
+    expect(ancillaryIncluded(extracted({ ancillaryIncluded: true }), "Impuestos y costes regulados no incluidos.")).toBe(true);
   });
 });
 
