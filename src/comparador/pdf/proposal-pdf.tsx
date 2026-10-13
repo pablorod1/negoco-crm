@@ -118,17 +118,6 @@ const styles = StyleSheet.create({
   note: { flexDirection: "row", marginTop: 8, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 8 },
   noteTitle: { fontWeight: 600, color: INK, marginBottom: 2 },
 
-  steps: { flexDirection: "row", gap: 8 },
-  step: { flex: 1, flexDirection: "row" },
-  stepNumber: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 6,
-  },
-  stepDigit: { color: "#ffffff", fontSize: 7.5, fontWeight: 600 },
   footer: {
     position: "absolute",
     left: 40,
@@ -426,24 +415,6 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
             </View>
           </View>
         )}
-
-        <View style={styles.section} wrap={false}>
-          <Text style={styles.sectionTitle}>Cómo seguir</Text>
-          <View style={styles.steps}>
-            {[
-              `Confirme la propuesta con su asesor de ${branding.displayName}.`,
-              "Con su DNI o CIF y el IBAN preparamos el contrato para que lo firme.",
-              "El cambio no corta la luz ni cambia el contador, y no tiene que dar de baja su contrato actual.",
-            ].map((text, index) => (
-              <View key={text} style={styles.step}>
-                <View style={[styles.stepNumber, { backgroundColor: color }]}>
-                  <Text style={styles.stepDigit}>{index + 1}</Text>
-                </View>
-                <Text style={{ flex: 1 }}>{text}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
         <Text style={styles.footer} fixed>
           Estimación de un año con su consumo y su potencia, los peajes, cargos e impuestos vigentes y los precios de
