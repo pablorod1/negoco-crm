@@ -59,7 +59,7 @@ describe("inbound routing", () => {
   });
 
   test("the domain as it gets pasted into Vercel still works", () => {
-    for (const domain of ['"tarifas.negococloud.es"', " tarifas.negococloud.es\n", "@tarifas.negococloud.es", "https://tarifas.negococloud.es/"]) {
+    for (const domain of ['"tarifas.negococloud.es"', " tarifas.negococloud.es\n", "@tarifas.negococloud.es", "https://tarifas.negococloud.es/", "tarifas.negococloud.es."]) {
       expect(inboundDomain(domain)).toBe("tarifas.negococloud.es");
       expect(tenantFromRecipients(["beenergy@tarifas.negococloud.es"], domain)).toBe("beenergy");
     }

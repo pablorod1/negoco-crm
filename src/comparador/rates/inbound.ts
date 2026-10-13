@@ -48,7 +48,7 @@ export function verifySvixSignature({
 
 /**
  * El dominio del buzón como lo escribe quien configura Vercel: sin comillas,
- * espacios, «@» delante ni «https://».
+ * espacios, «@» delante, «https://» ni punto final.
  */
 export function inboundDomain(raw: string | undefined): string | null {
   const domain = (raw ?? "")
@@ -56,6 +56,8 @@ export function inboundDomain(raw: string | undefined): string | null {
     .replace(/^https?:\/\//i, "")
     .replace(/^@/, "")
     .replace(/\/.*$/, "")
+    // El punto final de un nombre DNS («tarifas.negococloud.es.»).
+    .replace(/\.+$/, "")
     .toLowerCase();
   return domain || null;
 }
