@@ -403,7 +403,9 @@ function RowPrices({
 
       {row.energy ? (
         <div className="space-y-1.5">
-          <Eyebrow className="text-[10px]">Energía · €/kWh</Eyebrow>
+          <p className="text-[10px] text-gray-500">
+            <span className="font-medium uppercase tracking-[0.08em]">Energía</span> · €/kWh
+          </p>
           {(single ? [{ key: "P1" as const, label: "24 h" }] : PERIODS).map(({ key, label }) => (
             <div key={key} className="grid grid-cols-[44px_minmax(0,1fr)_76px] items-center gap-2 text-xs">
               <span className="text-gray-500">{label}</span>
