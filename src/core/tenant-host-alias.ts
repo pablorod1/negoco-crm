@@ -14,7 +14,8 @@ export function aliasHostSegment(
 ): string {
   const aliases = env.TENANT_HOST_ALIASES;
   if (!aliases) return segment;
-  for (const pair of aliases.split(",")) {
+  // Al pegar el valor en Vercel se cuelan comillas, «;» o saltos de línea.
+  for (const pair of aliases.replace(/["']/g, "").split(/[,;\s]+/)) {
     const [from, to] = pair.split("=").map((value) => value.trim().toLowerCase());
     if (from && to && from === segment.toLowerCase()) return to;
   }
