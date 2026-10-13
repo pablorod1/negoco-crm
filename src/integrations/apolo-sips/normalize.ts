@@ -28,7 +28,7 @@ export function normalizeApoloSipsCsv(
   parsedCsv: ParsedCsv,
   procedure: ApoloSipsProcedure,
   supplyType: ApoloSipsSupplyType,
-): ApoloSipsProcedureResult<ApoloSipsProcedureRow> {
+): Omit<ApoloSipsProcedureResult<ApoloSipsProcedureRow>, "cups"> {
   const normalizedColumns = parsedCsv.columns.map(normalizeApoloSipsColumnName);
   assertExpectedColumns(normalizedColumns, procedure, supplyType);
 

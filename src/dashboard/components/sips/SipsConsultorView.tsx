@@ -19,7 +19,6 @@ import {
   ToggleGroupItem,
 } from "@/core/components/ui/toggle-group";
 import {
-  getApoloSipsBaseCups,
   isValidApoloSipsCups,
   sanitizeCups,
   summarizeElectricityConsumption,
@@ -114,13 +113,12 @@ export function SipsConsultorView() {
         return;
       }
 
-      const apoloSipsCups = getApoloSipsBaseCups(sanitizedCups);
       const supplyTypes = getSupplyTypesForMode(supplyMode);
 
       setMessage(null);
       setResult(null);
-      setLastConsultedCups(apoloSipsCups);
-      setCups(apoloSipsCups);
+      setLastConsultedCups(sanitizedCups);
+      setCups(sanitizedCups);
 
       try {
         const lookupSupplyType = async (
@@ -129,12 +127,15 @@ export function SipsConsultorView() {
         ) => {
           setProgress(getCheckingProgress(supplyType, index));
           const data = await fetchConsumptions({
-            cups: apoloSipsCups,
+            cups: sanitizedCups,
             tipoSuministro: supplyType,
           });
 
           setProgress(getCalculationProgress(supplyType));
-          return summarizeSipsResponse(data, supplyType);
+          const summary = summarizeSipsResponse(data, supplyType);
+          // El CUPS con el sufijo con el que APOLO lo tiene registrado.
+          if (summary && data) setLastConsultedCups(data.cups);
+          return summary;
         };
 
         let nextResult = await lookupSupplyType(supplyTypes[0], 0);

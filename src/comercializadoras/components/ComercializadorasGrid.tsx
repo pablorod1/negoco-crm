@@ -7,13 +7,16 @@ import { ComercializadoraVM } from "../types";
 interface ComercializadorasGridProps {
   comercializadoras: ComercializadoraVM[];
   userData: User;
-  refetch: () => void;
+  onToggleActive: (
+    comercializadora: ComercializadoraVM,
+    active: boolean
+  ) => void;
 }
 
 export const ComercializadorasGrid = memo(function ComercializadorasGrid({
   comercializadoras,
   userData,
-  refetch,
+  onToggleActive,
 }: ComercializadorasGridProps) {
   if (comercializadoras.length === 0) {
     return (
@@ -41,7 +44,7 @@ export const ComercializadorasGrid = memo(function ComercializadorasGrid({
           key={comercializadora.id}
           comercializadora={comercializadora}
           userData={userData}
-          refetch={refetch}
+          onToggleActive={onToggleActive}
         />
       ))}
     </div>

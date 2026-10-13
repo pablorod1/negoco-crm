@@ -136,6 +136,7 @@ export default function StandaloneClientForm({
             </div>
             <InputComponent
               name="name"
+              uppercase
               label="Nombre/Razón Social"
               onChange={handleFieldChange}
               type="text"
@@ -148,6 +149,7 @@ export default function StandaloneClientForm({
               formData.type !== "Comunidad de Propietarios" && (
                 <InputComponent
                   name="last_name"
+                  uppercase
                   label="Apellidos"
                   onChange={handleFieldChange}
                   type="text"
@@ -182,6 +184,7 @@ export default function StandaloneClientForm({
             </div>
             <InputComponent
               name="document_number"
+              uppercase
               label="Número de documento"
               onChange={handleFieldChange}
               errors={errors.document_number}
@@ -213,6 +216,7 @@ export default function StandaloneClientForm({
           {/* IBAN */}
           <InputComponent
             name="IBAN"
+            uppercase
             label="IBAN"
             onChange={handleFieldChange}
             type="text"
@@ -228,6 +232,7 @@ export default function StandaloneClientForm({
 
             <InputComponent
               name="address"
+              uppercase
               label="Dirección"
               onChange={handleFieldChange}
               type="text"
@@ -245,6 +250,7 @@ export default function StandaloneClientForm({
               />
               <InputComponent
                 name="city"
+                uppercase
                 label="Ciudad"
                 onChange={handleFieldChange}
                 type="text"
@@ -253,6 +259,7 @@ export default function StandaloneClientForm({
               <div className="col-span-2 sm:col-span-1">
                 <InputComponent
                   name="province"
+                  uppercase
                   label="Provincia"
                   onChange={handleFieldChange}
                   type="text"
@@ -277,6 +284,7 @@ export default function StandaloneClientForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
               <InputComponent
                 name="signer.name"
+                uppercase
                 label="Nombre/Razón Social"
                 onChange={handleFieldChange}
                 type="text"
@@ -285,6 +293,7 @@ export default function StandaloneClientForm({
               />
               <InputComponent
                 name="signer.last_name"
+                uppercase
                 label="Apellidos"
                 onChange={handleFieldChange}
                 type="text"
@@ -317,6 +326,7 @@ export default function StandaloneClientForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
               <InputComponent
                 name="signer.document_number"
+                uppercase
                 label="DNI"
                 onChange={handleFieldChange}
                 type="text"

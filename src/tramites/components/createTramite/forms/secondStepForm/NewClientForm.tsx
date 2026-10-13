@@ -144,6 +144,7 @@ export default function NewClientForm({
 
           <InputComponent
             name="document_number"
+            uppercase
             label="Número de documento"
             onChange={handleFieldChange}
             errors={errors.document_number}
@@ -154,6 +155,7 @@ export default function NewClientForm({
 
           <InputComponent
             name="name"
+            uppercase
             label="Nombre"
             onChange={handleFieldChange}
             type="text"
@@ -166,6 +168,7 @@ export default function NewClientForm({
             formData.type !== "Comunidad de Propietarios" && (
               <InputComponent
                 name="last_name"
+                uppercase
                 label="Apellidos"
                 onChange={handleFieldChange}
                 type="text"
@@ -197,6 +200,7 @@ export default function NewClientForm({
 
           <InputComponent
             name="IBAN"
+            uppercase
             label="Número de cuenta"
             onChange={handleFieldChange}
             type="text"
@@ -209,6 +213,7 @@ export default function NewClientForm({
         <div className="flex items-stretch gap-8 w-full">
           <InputComponent
             name="address"
+            uppercase
             label="Dirección Fiscal"
             onChange={handleFieldChange}
             type="text"
@@ -227,6 +232,7 @@ export default function NewClientForm({
 
           <InputComponent
             name="province"
+            uppercase
             label="Provincia"
             onChange={handleFieldChange}
             value={formData.province}
@@ -235,6 +241,7 @@ export default function NewClientForm({
 
           <InputComponent
             name="city"
+            uppercase
             label="Ciudad"
             onChange={handleFieldChange}
             value={formData.city}
@@ -253,6 +260,7 @@ export default function NewClientForm({
             <div className="flex items-stretch gap-8 w-full">
               <InputComponent
                 name="signer.document_number"
+                uppercase
                 label="Número de documento"
                 value={signerData.document_number}
                 onChange={handleFieldChange}
@@ -263,6 +271,7 @@ export default function NewClientForm({
 
               <InputComponent
                 name="signer.name"
+                uppercase
                 label="Nombre"
                 value={signerData.name}
                 onChange={handleFieldChange}
@@ -273,6 +282,7 @@ export default function NewClientForm({
 
               <InputComponent
                 name="signer.last_name"
+                uppercase
                 label="Apellidos"
                 value={signerData.last_name}
                 onChange={handleFieldChange}

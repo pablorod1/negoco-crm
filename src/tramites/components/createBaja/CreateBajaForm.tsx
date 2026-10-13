@@ -222,6 +222,7 @@ export default function CreateBajaForm({
               type="text"
               label="Nombre Cliente"
               name="name"
+              uppercase
               onChange={handleFieldChange}
             />
             <InputComponent
@@ -229,6 +230,7 @@ export default function CreateBajaForm({
               isRequired
               label="DNI"
               name="document_number"
+              uppercase
               onChange={handleFieldChange}
               type="text"
             />
@@ -238,6 +240,7 @@ export default function CreateBajaForm({
             isRequired
             label="CUPS"
             name="CUPS"
+            uppercase
             onChange={handleFieldChange}
             type="text"
           />

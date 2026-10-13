@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  APOLO_SIPS_CUPS_REGEX,
-  getApoloSipsBaseCups,
-  sanitizeCups,
-} from "./cups";
+import { APOLO_SIPS_CUPS_REGEX, sanitizeCups } from "./cups";
 
 export const ApoloSipsProcedureSchema = z.enum(["PS", "CONSUMOS"]);
 
@@ -18,8 +14,7 @@ export const ApoloSipsRequestSchema = z
       .refine(
         (cups) => APOLO_SIPS_CUPS_REGEX.test(cups),
         "El CUPS no es válido.",
-      )
-      .transform(getApoloSipsBaseCups),
+      ),
     tipoSuministro: ApoloSipsSupplyTypeSchema,
     procedimientos: z
       .array(ApoloSipsProcedureSchema)

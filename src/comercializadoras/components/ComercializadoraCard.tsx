@@ -1,18 +1,11 @@
-﻿import { memo, useState } from "react";
-import {
-  Building2,
-  ClipboardList,
-  CloudAlert,
-  FileText,
-  ChevronRight,
-} from "lucide-react";
+﻿import { memo } from "react";
+import { Building2, ChevronRight } from "lucide-react";
 import Image from "next/image";
 
 import { ComercializadoraVM } from "@/comercializadoras/types/comercializadora.types";
 import { User } from "@/core/types";
 import { useTransitionRouter } from "next-view-transitions";
 import { Switch } from "@/core/components/ui/switch";
-import { showCustomToast } from "@/core/components/CustomToast";
 import { formatConsumption } from "@/core/utils/format";
 import {
   companyLogoUrl,
@@ -22,72 +15,24 @@ import {
 interface ComercializadoraCardProps {
   comercializadora: ComercializadoraVM;
   userData: User;
-  refetch: () => void;
+  onToggleActive: (
+    comercializadora: ComercializadoraVM,
+    active: boolean
+  ) => void;
 }
 
 export const ComercializadoraCard = memo(function ComercializadoraCard({
   comercializadora,
   userData,
-  refetch,
+  onToggleActive,
 }: ComercializadoraCardProps) {
   const router = useTransitionRouter();
   const isComercial = userData.role === "2";
 
-  const [isActive, setIsActive] = useState(comercializadora.active);
+  const isActive = comercializadora.active;
 
   const handleClick = () => {
     router.push(`/comercializadoras/${comercializadora.name}`);
-  };
-
-  const handleCheckChange = async (checked: boolean) => {
-    const previousValue = isActive;
-    setIsActive(checked);
-    try {
-      const response = await fetch(
-        `/api/v2/energy-suppliers/${comercializadora.id}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: checked }),
-        }
-      );
-
-      const { success, error } = await response.json();
-      if (!success) {
-        showCustomToast({
-          title: "Error al actualizar estado",
-          message:
-            error || "No se pudo actualizar el estado de la comercializadora.",
-          icon: CloudAlert,
-          iconColor: "var(--danger-color)",
-          iconSize: 24,
-        });
-        setIsActive(previousValue);
-        return;
-      }
-
-      showCustomToast({
-        title: "Estado actualizado",
-        message: `La comercializadora ${comercializadora.name} ha sido ${checked ? "activada" : "desactivada"}.`,
-        icon: checked ? ClipboardList : FileText,
-        iconColor: checked ? "var(--success-color)" : "var(--warning-color)",
-        iconSize: 24,
-      });
-      refetch();
-    } catch (error) {
-      console.error("Error updating status:", error);
-      showCustomToast({
-        title: "Error al actualizar estado",
-        message:
-          "Ocurrió un error al intentar actualizar el estado de la comercializadora.",
-        icon: CloudAlert,
-        iconColor: "var(--danger-color)",
-        iconSize: 24,
-      });
-      setIsActive(previousValue);
-    }
   };
 
   const logoUrl = companyLogoUrl(comercializadora.logo);
@@ -138,7 +83,12 @@ export const ComercializadoraCard = memo(function ComercializadoraCard({
         <div className="flex items-center space-x-2 shrink-0">
           {!isComercial && (
             <div onClick={(e) => e.stopPropagation()}>
-              <Switch checked={isActive} onCheckedChange={handleCheckChange} />
+              <Switch
+                checked={isActive}
+                onCheckedChange={(checked) =>
+                  onToggleActive(comercializadora, checked)
+                }
+              />
             </div>
           )}
           <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />

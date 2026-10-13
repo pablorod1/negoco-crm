@@ -177,9 +177,20 @@ export async function buildContractFilters(
 
   // Dynamic text filter helper
   const addTextFilter = (fields: string[], value: string) => {
-    const likeConditions = fields.map((field) => `${field} LIKE ?`).join(" OR ");
+    // LIKE de SQLite solo ignora mayúsculas en ASCII ("ñ" ≠ "Ñ"), así que se
+    // prueba el término tal cual, en minúsculas y en mayúsculas.
+    const variants = [
+      ...new Set([
+        value,
+        value.toLocaleLowerCase("es"),
+        value.toLocaleUpperCase("es"),
+      ]),
+    ];
+    const likeConditions = fields
+      .flatMap((field) => variants.map(() => `${field} LIKE ?`))
+      .join(" OR ");
     filters.push(`(${likeConditions})`);
-    fields.forEach(() => params.push(`%${value}%`));
+    fields.forEach(() => variants.forEach((v) => params.push(`%${v}%`)));
   };
 
   // Apply text search filter

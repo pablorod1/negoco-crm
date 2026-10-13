@@ -1,4 +1,5 @@
-﻿import { Search } from "lucide-react";
+﻿import type { ReactNode } from "react";
+import { Search } from "lucide-react";
 import { Input } from "@/core/components/ui/input";
 import { ComercializadoraVM } from "@/comercializadoras/types";
 import { User } from "@/core/types";
@@ -10,6 +11,8 @@ interface ComercializadorasFiltersProps {
   onStatusFilterChange: (value: "all" | "active" | "inactive") => void;
   comercializadoras: ComercializadoraVM[];
   userData: User;
+  /** Acciones extra al final de la barra (p. ej. activar/desactivar todas). */
+  actions?: ReactNode;
 }
 
 export function ComercializadorasFilters({
@@ -19,6 +22,7 @@ export function ComercializadorasFilters({
   onStatusFilterChange,
   comercializadoras,
   userData,
+  actions,
 }: ComercializadorasFiltersProps) {
   const activeCount = comercializadoras.filter((c) => c.active).length;
   const inactiveCount = comercializadoras.filter((c) => !c.active).length;
@@ -74,6 +78,8 @@ export function ComercializadorasFilters({
           </button>
         )}
       </div>
+
+      {actions}
     </div>
   );
 }

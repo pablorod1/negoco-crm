@@ -318,6 +318,7 @@ export default function EditClientForm({
         <div className="flex items-stretch gap-4">
           <InputComponent
             name="name"
+            uppercase
             label="Nombre"
             value={formData.name}
             isRequired
@@ -326,6 +327,7 @@ export default function EditClientForm({
           />
           <InputComponent
             name="last_name"
+            uppercase
             label="Apellidos"
             value={formData.last_name}
             isRequired
@@ -352,6 +354,7 @@ export default function EditClientForm({
           />
           <InputComponent
             name="document_number"
+            uppercase
             label="Número de documento"
             value={formData.document_number}
             isRequired
@@ -377,6 +380,7 @@ export default function EditClientForm({
         />
         <InputComponent
           name="address"
+          uppercase
           label="Dirección"
           value={formData.address}
           isRequired
@@ -393,6 +397,7 @@ export default function EditClientForm({
           />
           <InputComponent
             name="province"
+            uppercase
             label="Provincia"
             value={formData.province}
             onChange={handleFieldChange}
@@ -400,6 +405,7 @@ export default function EditClientForm({
           />
           <InputComponent
             name="city"
+            uppercase
             label="Ciudad"
             value={formData.city}
             onChange={handleFieldChange}
@@ -408,6 +414,7 @@ export default function EditClientForm({
         </div>
         <InputComponent
           name="IBAN"
+          uppercase
           label="IBAN"
           value={formData.IBAN}
           isRequired
