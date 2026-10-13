@@ -87,6 +87,28 @@ function meterRentalPerDay(invoice: InvoiceExtraction): number {
   return days && days > 0 ? rental.amount / days : 0;
 }
 
+/**
+ * Meses que dura un descuento según su descripción («durante 3 meses», «6
+ * primeros meses», «1 año»); null si no lo dice.
+ */
+export function discountMonths(description: string): number | null {
+  const text = description.toLowerCase();
+  const months = /(\d{1,2})\s*(?:primeros\s+)?mes(?:es)?\b/.exec(text);
+  if (months) return Number(months[1]);
+  const years = /(\d)\s*años?\b/.exec(text);
+  return years ? Number(years[1]) * 12 : null;
+}
+
+/**
+ * Parte del año que cuenta un descuento: los temporales, en proporción a sus
+ * meses; los demás, todo el año (criterio de Beenergy, 2026-10-13).
+ */
+function shareOfYear(description: string, amount: number): number {
+  if (amount >= 0) return 1;
+  const months = discountMonths(description);
+  return months === null || months <= 0 ? 1 : Math.min(months, 12) / 12;
+}
+
 /** Precio de cada periodo leído de la factura; null si no se puede saber. */
 export function periodPricesFromInvoice(invoice: InvoiceExtraction): PeriodPrices {
   return {
@@ -121,12 +143,15 @@ export function currentTariffFromInvoice(
   );
   const energyDiscountRates =
     energyAmount > 0
-      ? invoice.energyDiscounts.map(({ amount }) => Math.abs(amount) / energyAmount)
+      ? invoice.energyDiscounts.map(
+          ({ description, amount }) =>
+            (Math.abs(amount) / energyAmount) * shareOfYear(description, amount),
+        )
       : [];
 
   const days = invoice.billingPeriod?.days ?? 0;
   const servicesInPeriod = invoice.otherTaxableLines.reduce(
-    (sum, { amount }) => sum + amount,
+    (sum, { description, amount }) => sum + amount * shareOfYear(description, amount),
     0,
   );
   const otherElectricityInPeriod = invoice.otherElectricityLines.reduce(
@@ -152,5 +177,28 @@ export function currentTariffFromInvoice(
     energyDiscountRates,
     // Importe entre días: vale aunque la factura no imprima el €/día.
     meterRentalPerDay: meterRentalPerDay(invoice),
+  };
+}
+
+/**
+ * Tipos del impuesto eléctrico y del IVA (o IGIC, IPSI) que lleva la factura,
+ * para aplicar a las ofertas los mismos que paga el cliente. Solo se usa un
+ * tipo si cuadra con su base y su importe; si no, queda el general.
+ */
+export function invoiceTaxRates(
+  invoice: InvoiceExtraction,
+): { electricityTaxRate?: number; vatRate?: number } {
+  const consistent = (
+    tax: { base: number; ratePercent: number; amount: number } | null,
+    maxPercent: number,
+  ): number | undefined => {
+    if (!tax || tax.base <= 0) return undefined;
+    const rate = tax.ratePercent / 100;
+    if (rate < 0 || rate > maxPercent / 100) return undefined;
+    return Math.abs(tax.base * rate - tax.amount) <= 0.02 ? rate : undefined;
+  };
+  return {
+    electricityTaxRate: consistent(invoice.electricityTax, 6),
+    vatRate: consistent(invoice.vat, 25),
   };
 }

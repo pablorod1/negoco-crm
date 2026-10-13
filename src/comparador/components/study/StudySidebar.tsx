@@ -25,8 +25,8 @@ const POWER: Record<string, { label: string; className: string }> = {
     className: "bg-warning-50 text-warning-700 ring-warning-200",
   },
   exceeded: {
-    label: "Supera la potencia",
-    className: "bg-danger-50 text-danger ring-danger-200",
+    label: "Potencia baja",
+    className: "bg-warning-50 text-warning-700 ring-warning-200",
   },
 };
 
@@ -153,7 +153,7 @@ function SupplyCard({ study }: { study: StudyView }) {
               <div
                 className={cn(
                   "absolute -top-1 h-4 w-1 rounded-full ring-2 ring-white",
-                  power.status === "exceeded" ? "bg-danger" : "bg-gray-900",
+                  power.status === "exceeded" ? "bg-warning-500" : "bg-gray-900",
                 )}
                 style={{ left: `calc(${(peak / scale) * 100}% - 2px)` }}
                 title={`Máxima demanda ${kw(peak)}`}

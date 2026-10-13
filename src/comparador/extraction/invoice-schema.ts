@@ -85,7 +85,9 @@ export const InvoiceExtractionSchema = z.object({
     .describe("Una línea por periodo y tramo de fechas, en €/kWh"),
   energyDiscounts: z
     .array(z.object({ description: z.string(), amount }))
-    .describe("Descuentos sobre la energía, en negativo"),
+    .describe(
+      "Descuentos sobre la energía, en negativo. Si la factura dice cuánto dura, cópialo en la descripción (por ejemplo «durante 3 meses»)",
+    ),
   otherElectricityLines: z
     .array(z.object({ description: z.string(), amount }))
     .describe(
@@ -123,7 +125,7 @@ export const InvoiceExtractionSchema = z.object({
   otherTaxableLines: z
     .array(z.object({ description: z.string(), amount }))
     .describe(
-      "Servicios, packs y sus descuentos: llevan IVA pero no impuesto eléctrico",
+      "Servicios, packs y sus descuentos: llevan IVA pero no impuesto eléctrico. Si un descuento dice cuánto dura, cópialo en la descripción",
     ),
   vatExemptLines: z
     .array(z.object({ description: z.string(), amount }))

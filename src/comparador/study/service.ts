@@ -1,6 +1,6 @@
 import type { Client } from "@libsql/client";
-import { getRegulatedParams } from "@/comparador/engine/regulated";
-import { currentTariffFromInvoice } from "@/comparador/extraction/current-tariff";
+import { getRegulatedParams, type RegulatedParams } from "@/comparador/engine/regulated";
+import { currentTariffFromInvoice, invoiceTaxRates } from "@/comparador/extraction/current-tariff";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
 import { clientFromInvoiceText } from "@/comparador/redaction/invoice-client";
 import { redactInvoiceText } from "@/comparador/redaction/redact";
@@ -163,6 +163,24 @@ async function supplierFromText(client: TenantClient, text: string): Promise<str
 }
 
 /** Ranking de un estudio con sus opciones, o con las que se prueban ahora. */
+/**
+ * Las ofertas llevan el mismo impuesto y tipo que la factura del cliente
+ * (Canarias, Ceuta y Melilla, IVA reducido…), como hace Beenergy.
+ */
+function withInvoiceTaxes(
+  regulated: RegulatedParams,
+  rates: { electricityTaxRate?: number; vatRate?: number },
+): RegulatedParams {
+  // Un tipo impreso con menos decimales (5,112696 %) no cambia el general.
+  const pick = (fromInvoice: number | undefined, general: number) =>
+    fromInvoice !== undefined && Math.abs(fromInvoice - general) > 0.0001 ? fromInvoice : general;
+  return {
+    ...regulated,
+    electricityTaxRate: pick(rates.electricityTaxRate, regulated.electricityTaxRate),
+    vatRate: pick(rates.vatRate, regulated.vatRate),
+  };
+}
+
 export async function rankSavedStudy({
   client,
   study,
@@ -186,7 +204,7 @@ export async function rankSavedStudy({
     current: needsInvoiceReview(study) ? null : currentTariffFromInvoice(study.extraction),
     offers,
     rules,
-    regulated: getRegulatedParams(study.priceDate),
+    regulated: withInvoiceTaxes(getRegulatedParams(study.priceDate), invoiceTaxRates(study.extraction)),
     options: { ...effective, date: study.priceDate },
   });
   return { ranking, options: effective };

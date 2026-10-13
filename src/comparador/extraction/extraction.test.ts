@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { computeCost } from "@/comparador/engine/cost";
 import { getRegulatedParams } from "@/comparador/engine/regulated";
-import { currentTariffFromInvoice } from "./current-tariff";
+import { currentTariffFromInvoice, discountMonths, invoiceTaxRates } from "./current-tariff";
 import { extractInvoice, buildInstructions } from "./extract-invoice";
 import { iberdrolaInvoice, naturgyInvoice } from "./fixtures";
 import { isValidCups, isValidSpanishTaxId } from "./identifiers";
@@ -157,6 +157,51 @@ describe("currentTariffFromInvoice", () => {
     expect(
       currentTariffFromInvoice({ ...naturgyInvoice, powerLines: [] }),
     ).toBeNull();
+  });
+});
+
+describe("temporary discounts", () => {
+  test("reads how long a discount lasts", () => {
+    expect(discountMonths("Descuento 50 % Pack Hogar durante 3 meses")).toBe(3);
+    expect(discountMonths("Dto. 6 primeros meses")).toBe(6);
+    expect(discountMonths("Descuento bienvenida 1 año")).toBe(12);
+    expect(discountMonths("Descuento 10 % sobre consumo")).toBeNull();
+  });
+
+  test("count only their months over the year", () => {
+    const tariff = currentTariffFromInvoice({
+      ...iberdrolaInvoice,
+      energyDiscounts: [
+        { description: "Descuento 10 %", amount: iberdrolaInvoice.energyDiscounts[0].amount },
+        { description: "Promoción durante 3 meses", amount: iberdrolaInvoice.energyDiscounts[1].amount },
+      ],
+      otherTaxableLines: [
+        { description: "Pack Iberdrola Hogar", amount: 8.3 },
+        { description: "Descuento 50 % Pack durante 3 meses", amount: -4.15 },
+      ],
+    })!;
+    const full = currentTariffFromInvoice(iberdrolaInvoice)!;
+    expect(tariff.energyDiscountRates[0]).toBeCloseTo(full.energyDiscountRates[0], 10);
+    expect(tariff.energyDiscountRates[1]).toBeCloseTo(full.energyDiscountRates[1] / 4, 10);
+    const days = iberdrolaInvoice.billingPeriod!.days!;
+    expect(tariff.prices.servicesPerYear).toBeCloseTo(((8.3 - 4.15 / 4) * 365) / days, 6);
+  });
+});
+
+describe("invoiceTaxRates", () => {
+  test("takes the rates the client pays when they match base and amount", () => {
+    const rates = invoiceTaxRates(iberdrolaInvoice);
+    expect(rates.electricityTaxRate).toBeCloseTo(0.0511269632, 10);
+    expect(rates.vatRate).toBeCloseTo(0.21, 10);
+    // Canarias: IGIC del 3 % en lugar del IVA.
+    const igic = { ...naturgyInvoice, vat: { ratePercent: 3, base: 62.68, amount: 1.88 } };
+    expect(invoiceTaxRates(igic).vatRate).toBeCloseTo(0.03, 10);
+  });
+
+  test("ignores a rate that does not match its amount", () => {
+    const misread = { ...naturgyInvoice, vat: { ratePercent: 2.1, base: 62.68, amount: 13.16 } };
+    expect(invoiceTaxRates(misread).vatRate).toBeUndefined();
+    expect(invoiceTaxRates({ ...naturgyInvoice, vat: null }).vatRate).toBeUndefined();
   });
 });
 

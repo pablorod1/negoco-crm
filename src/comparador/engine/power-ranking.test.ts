@@ -4,7 +4,7 @@ import { rankOffers } from "./ranking";
 import type { CostBreakdown } from "./types";
 
 describe("assessPower", () => {
-  test("flags demand above the contracted power (Abarca called it adequate)", () => {
+  test("flags demand more than 0.5 kW above the contracted power", () => {
     expect(assessPower({ P1: 2.2, P2: 2.2 }, [3.26, 1.1])).toEqual({
       status: "exceeded",
       contractedKw: 2.2,
@@ -13,8 +13,11 @@ describe("assessPower", () => {
     });
   });
 
-  test("adequate between 75 % and 100 % of the contracted power", () => {
+  test("adequate between 75 % of the contracted power and 0.5 kW above it", () => {
     expect(assessPower({ P1: 4.6, P2: 4.6 }, [4.0])?.status).toBe("adequate");
+    // Sin excesos en 2.0TD, pasarse un poco solo hace saltar el limitador alguna vez.
+    expect(assessPower({ P1: 3.45, P2: 3.45 }, [3.95])?.status).toBe("adequate");
+    expect(assessPower({ P1: 3.45, P2: 3.45 }, [3.96])?.status).toBe("exceeded");
   });
 
   test("oversized below 75 % of the contracted power", () => {

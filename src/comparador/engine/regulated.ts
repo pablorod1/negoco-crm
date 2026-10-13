@@ -63,7 +63,7 @@ const SOCIAL_BONUS_PER_DAY: readonly ValidityRange<number>[] = [
     from: "2026-01-01",
     until: "2026-07-01",
     value: 0.019121,
-    source: "Facturas de Iberdrola y Repsol de junio de 2026; fecha de inicio por confirmar",
+    source: "Facturas de Iberdrola y Repsol de junio de 2026; desde el 1 de enero según Beenergy",
   },
   {
     // Repsol factura «24.06–30.06» al precio anterior y «01.07–26.07» al nuevo.
