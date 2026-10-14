@@ -14,6 +14,7 @@ import { InvoiceExtractionSchema } from "@/comparador/extraction/invoice-schema"
 import { validateInvoice } from "@/comparador/extraction/validate";
 import { DEFAULT_GOLDEN_DIR, goldenPath, readOption } from "./paths";
 import { REVIEW_PAGE } from "./review-page";
+import { loadOtherReadings } from "./readings";
 import { computeFieldStatuses, type SipsCheck } from "./statuses";
 
 const argv = process.argv.slice(2);
@@ -66,6 +67,7 @@ async function loadCase(id: string) {
           privateCups: privateData?.cups ?? [],
           sips,
           confirmedFields: state.confirmedFields,
+          otherReadings: loadOtherReadings(root, id),
         })
       : null;
 

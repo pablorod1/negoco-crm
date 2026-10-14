@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { InvoiceExtractionSchema } from "@/comparador/extraction/invoice-schema";
 import { DEFAULT_GOLDEN_DIR, goldenPath, readOption } from "./paths";
+import { loadOtherReadings } from "./readings";
 import { computeFieldStatuses } from "./statuses";
 
 const root = readOption(process.argv.slice(2), "--dir") ?? DEFAULT_GOLDEN_DIR;
@@ -27,6 +28,7 @@ for (const file of readdirSync(goldenPath(root, "fichas", ""))) {
     privateCups: read(goldenPath(root, "private", `${id}.json`))?.cups ?? [],
     sips: read(goldenPath(root, "sips", `${id}.json`)),
     confirmedFields: read(goldenPath(root, "review", `${id}.json`))?.confirmedFields ?? [],
+    otherReadings: loadOtherReadings(root, id),
   });
   cases += 1;
   const pending = Object.entries(statuses).filter(([, status]) => status === "unverified" || status === "error");

@@ -68,6 +68,13 @@ const SUPPLIERS: readonly [string, RegExp][] = [
   ["Sinergia", /\bsinergia\b/gi],
   ["Enérgya", /\bener?gya\b/gi],
   ["Eni", /\beni\s+(?:plenitude|espa[ñn]a)/gi],
+  ["Candela Energía", /candela\s+energ[ií]a/gi],
+  ["Natale Energía", /natale\s+energ[ií]a/gi],
+  ["Logos Energía", /logos\s+energ[ií]a|birou\s+gas/gi],
+  ["Papernest", /\bpapernest\b/gi],
+  ["CYE Energía", /\bcye\s+energ[ií]a/gi],
+  ["Integra Energía", /integra\s+energ[ií]a|integraci[oó]n\s+europea\s+de\s+energ[ií]a/gi],
+  ["Ausarta", /\bausarta\b/gi],
 ];
 
 /** La comercializadora que más veces aparece en el texto. */

@@ -23,7 +23,30 @@ export interface StatusInput {
   privateCups: string[];
   sips: SipsCheck | null;
   confirmedFields: readonly string[];
+  /** Lecturas de otro modelo: un campo en el que coinciden queda verificado. */
+  otherReadings?: readonly InvoiceExtraction[];
 }
+
+/** Campos que se copian del texto y en los que dos modelos distintos pueden coincidir. */
+const AGREEMENT_FIELDS: Record<string, (invoice: InvoiceExtraction) => unknown> = {
+  pricing: (invoice) => (invoice.pricing === "unknown" ? undefined : invoice.pricing),
+  // Sin la forma jurídica ni palabras genéricas: «Endesa Energía, S.A.U.» = «ENDESA ENERGIA».
+  supplierName: (invoice) =>
+    invoice.supplierName
+      ? normalize(invoice.supplierName)
+          .split(/[^a-z0-9]+/)
+          .filter((word) => word.length >= 3 && !/^(sau|slu|sl|sa|energia|comercializadora|clientes|espana|iberia)$/.test(word))
+          .join(" ") || undefined
+      : undefined,
+  hasSelfConsumption: (invoice) => invoice.hasSelfConsumption,
+  issueDate: (invoice) => invoice.issueDate ?? undefined,
+  "billingPeriod.dates": (invoice) =>
+    invoice.billingPeriod?.from && invoice.billingPeriod.to ? `${invoice.billingPeriod.from}|${invoice.billingPeriod.to}` : undefined,
+  "billingPeriod.days": (invoice) => invoice.billingPeriod?.days ?? undefined,
+  "consumptionKwh.P1": (invoice) => invoice.consumptionKwh.P1 ?? undefined,
+  "consumptionKwh.P2": (invoice) => invoice.consumptionKwh.P2 ?? undefined,
+  "consumptionKwh.P3": (invoice) => invoice.consumptionKwh.P3 ?? undefined,
+};
 
 /** Fallos en las bases: si las bases no cuadran, ninguna línea está confirmada. */
 const CHAIN_ISSUES = new Set([
@@ -78,6 +101,7 @@ export function computeFieldStatuses({
   privateCups,
   sips,
   confirmedFields,
+  otherReadings = [],
 }: StatusInput): Record<string, FieldStatus> {
   const issues = validateInvoice({ ...ficha, cups: privateCups[0] ?? ficha.cups });
   const issueFields = new Set(issues.map(({ field }) => field));
@@ -210,6 +234,15 @@ export function computeFieldStatuses({
       : "unverified";
   statuses.issueDate = dateInText(ficha.issueDate, redactedText) ? "verified" : "unverified";
   statuses.cups = privateCups.some(isValidCups) ? "verified" : "error";
+
+  // Dos modelos que leen lo mismo del mismo texto: verificado. Una lectura
+  // idéntica a la ficha entera es la misma, no cuenta.
+  const independent = otherReadings.filter((reading) => JSON.stringify(reading) !== JSON.stringify(ficha));
+  for (const [field, valueOf] of Object.entries(AGREEMENT_FIELDS)) {
+    const value = valueOf(ficha);
+    if (statuses[field] !== "unverified" || value === undefined) continue;
+    if (independent.some((reading) => valueOf(reading) === value)) statuses[field] = "verified";
+  }
 
   for (const field of confirmedFields) {
     if (statuses[field] === "unverified") statuses[field] = "confirmed";
