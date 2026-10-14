@@ -140,6 +140,7 @@ export async function extractInvoice({
   const attempts: ExtractionAttempt[] = [];
   let last: { extraction: InvoiceExtraction; issues: InvoiceIssue[] } | null =
     null;
+  let best: { extraction: InvoiceExtraction; issues: InvoiceIssue[] } | null = null;
 
   for (const model of models) {
     const hint: string | null = last
@@ -187,13 +188,17 @@ export async function extractInvoice({
       usedSupplierHint: hint !== null,
     });
     last = { extraction: output, issues };
+    // El modelo siguiente no siempre lee mejor (con fotos, GPT-5 lee peor que
+    // GPT-6 Luna): se queda la lectura con menos incidencias que bloquean.
+    const blocking = (list: readonly InvoiceIssue[]) => list.filter(({ severity }) => severity === "blocking").length;
+    if (!best || blocking(issues) < blocking(best.issues)) best = last;
 
     // Una factura fuera de alcance no mejora con un modelo más caro.
     const outOfScope = issues.some(({ severity }) => severity === "unsupported");
     if (!hasBlockingIssues(issues) || outOfScope) break;
   }
 
-  const final = last!;
+  const final = best!;
   return {
     status: hasBlockingIssues(final.issues) ? "needs_review" : "ok",
     extraction: final.extraction,

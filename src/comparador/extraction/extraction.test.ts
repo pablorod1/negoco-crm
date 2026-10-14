@@ -316,6 +316,21 @@ describe("extractInvoice cascade", () => {
     expect(result.attempts).toHaveLength(2);
   });
 
+  test("keeps the reading with fewer blocking issues when the stronger model reads worse", async () => {
+    const almost = { ...naturgyInvoice, total: 1 };
+    const worse = { ...naturgyInvoice, total: 1, powerLines: [], energyLines: [] };
+    const result = await extractInvoice({
+      file,
+      context,
+      models: ["cheap", "strong"],
+      generate: generator([almost, worse]) as never,
+    });
+
+    expect(result.status).toBe("needs_review");
+    expect(result.extraction.powerLines).toEqual(naturgyInvoice.powerLines);
+    expect(result.attempts).toHaveLength(2);
+  });
+
   test("does not escalate an out-of-scope invoice", async () => {
     const generate = generator([{ ...naturgyInvoice, accessTariff: "3.0TD", total: 1 }]);
     const result = await extractInvoice({

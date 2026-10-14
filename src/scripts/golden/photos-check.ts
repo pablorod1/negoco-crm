@@ -24,6 +24,8 @@ async function main() {
   const maxUsd = Number(readOption(argv, "--max-usd") ?? 0.1);
   const out = readOption(argv, "--out");
   const useImages = argv.includes("--images");
+  // --only a,b: solo esas facturas (por ejemplo, las que fallaron).
+  const only = readOption(argv, "--only")?.split(",").filter(Boolean);
   const originals = useImages ? await readdir(goldenPath(root, "originals", "")) : [];
 
   /** Las fotos de una factura, en orden, como JPEG enderezado de 2048 px como mucho. */
@@ -54,6 +56,7 @@ async function main() {
     .filter((file) => file.endsWith(".txt"))
     .map((file) => file.slice(0, -4))
     .filter((id) => withFichas.size === 0 || withFichas.has(id))
+    .filter((id) => !only || only.includes(id))
     .sort();
 
   let spent = 0;
