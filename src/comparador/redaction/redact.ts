@@ -43,7 +43,7 @@ const PLACEHOLDERS: Record<IdentifierKind, string> = {
 
 /** Conceptos que hacen útil una línea aunque no tenga cifras. */
 const INVOICE_KEYWORDS =
-  /\b(potencia|energ[ií]a|consumo|peajes?|cargos?|bono social|financiaci[oó]n|impuestos?|iva|iee|alquiler|equipos?|contador|total|importe|periodo|per[ií]odo|descuentos?|bonificaci[oó]n|servicios?|base imponible|subtotal|fecha|d[ií]as|punta|llano|valle|tarifa|factura|otros|conceptos|regulados?|excesos?|reactiva|mecanismo|ajuste|compensaci[oó]n|excedentes|autoconsumo|cuota|suplemento|recargo|tasa|margen|gesti[oó]n|mantenimiento|seguro|asistencia|pack|kwh?|€|eur)\b/i;
+  /\b(potencia|energ[ií]a|consumo|peajes?|cargos?|bono social|financiaci[oó]n|impuestos?|iva|iee|alquiler|equipos?|contador|total|importe|periodo|per[ií]odo|descuentos?|bonificaci[oó]n|servicios?|base imponible|subtotal|fecha|d[ií]as|punta|llano|valle|tarifa|factura|otros|conceptos|regulados?|excesos?|reactiva|mecanismo|ajuste|compensaci[oó]n|excedentes|autoconsumo|cuota|suplemento|recargo|tasa|margen|gesti[oó]n|mantenimiento|seguro|asistencia|pack|kwh?|€|eur|power|consumption|tolls?|charges?|tax(?:es)?|invoice|meter|rental|discounts?|contracted|peak|off-peak|price|amount)\b/i;
 
 /** Líneas de dirección: se descartan enteras. */
 const ADDRESS_LINE =
@@ -51,8 +51,9 @@ const ADDRESS_LINE =
 
 /** Código postal seguido de localidad, sin importes: es una dirección. */
 const POSTAL_CODE_LINE = /\b(?:0[1-9]|[1-4]\d|5[0-2])\d{3}[,\s]+\p{Lu}/u;
-// Unidades como palabra completa: una población acabada en «DIA» no es «día».
-const HAS_INVOICE_UNITS = /€|%|\b(eur|kwh?|kvarh|d[ií]as?)\b/i;
+// Unidades sin una letra delante: una población acabada en «DIA» no es «día»,
+// pero «5,750kW» (la cifra pegada a la unidad) sí lleva unidad.
+const HAS_INVOICE_UNITS = /€|%|(?<!\p{L})(eur|kwh?|kvarh|d[ií]as?)\b/iu;
 const HAS_DATE = /\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b|\b\d{1,2} de [a-z]+ de \d{4}\b/i;
 const HAS_PERIOD = /\bP[1-6]\b|\b\d\.\d\s?TD\b/i;
 const ONLY_NUMBERS = /^[\d.,\s()+\-=×x*/R]+$/;

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { naturgyInvoice } from "./fixtures";
 import type { InvoiceExtraction } from "./invoice-schema";
-import { inferPricing, normalizePowerLines, reconcileVat } from "./normalize";
+import { fillBillingDays, inferPricing, normalizePowerLines, reconcileVat, singleEnergyPriceAsAll } from "./normalize";
 import { validateInvoice } from "./validate";
 
 function withPowerLine(line: InvoiceExtraction["powerLines"][number]) {
@@ -142,5 +142,48 @@ describe("inferPricing", () => {
   test("keeps a flat-rate reading", () => {
     const flat = { ...naturgyInvoice, pricing: "flat" as const };
     expect(inferPricing(flat, "precio indexado")).toBe(flat);
+  });
+});
+
+describe("fillBillingDays", () => {
+  const withoutPeriod = { ...naturgyInvoice, billingPeriod: null };
+
+  test("takes the days from what is charged per day when they agree (Jazztel)", () => {
+    const invoice = { ...withoutPeriod, meterRental: { days: 31, pricePerDay: 0.02663, amount: 0.83 } };
+    expect(fillBillingDays({ ...invoice, socialBonusLines: [], powerLines: [] }).billingPeriod).toEqual({
+      from: null,
+      to: null,
+      days: 31,
+    });
+  });
+
+  test("leaves it empty when the daily lines disagree", () => {
+    const invoice = {
+      ...withoutPeriod,
+      powerLines: [],
+      meterRental: { days: 31, pricePerDay: 0.02663, amount: 0.83 },
+      socialBonusLines: [{ days: 30, pricePerDay: 0.024688, amount: 0.74 }],
+    };
+    expect(fillBillingDays(invoice).billingPeriod).toBeNull();
+  });
+});
+
+describe("singleEnergyPriceAsAll", () => {
+  test("one price for all the consumption is ALL, not P1 (Repsol)", () => {
+    const invoice = {
+      ...naturgyInvoice,
+      consumptionKwh: { P1: 79, P2: 71, P3: 144 },
+      energyLines: [{ period: "P1" as const, kwh: 294, pricePerKwh: 0.111681, amount: 32.83 }],
+    };
+    expect(singleEnergyPriceAsAll(invoice).energyLines[0].period).toBe("ALL");
+  });
+
+  test("keeps a P1 line that only covers P1", () => {
+    const invoice = {
+      ...naturgyInvoice,
+      consumptionKwh: { P1: 79, P2: 71, P3: 144 },
+      energyLines: [{ period: "P1" as const, kwh: 79, pricePerKwh: 0.2, amount: 15.8 }],
+    };
+    expect(singleEnergyPriceAsAll(invoice)).toBe(invoice);
   });
 });

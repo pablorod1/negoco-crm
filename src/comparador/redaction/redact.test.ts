@@ -42,6 +42,13 @@ describe("redactInvoiceText", () => {
     }
   });
 
+  test("keeps a figure glued to its unit and English invoice labels (Feníe)", () => {
+    const english = redactInvoiceText("Contracted Power\n5,750kW\nPower Tolls\nGRANADILLA DEL ROSARIO\n4,600kVA");
+    expect(english.text).toContain("5,750kW");
+    expect(english.text).toContain("Power Tolls");
+    expect(english.text).not.toContain("GRANADILLA");
+  });
+
   test("removes names, addresses and every identifier", () => {
     for (const fragment of [
       "MARIA",

@@ -90,3 +90,38 @@ export function inferPricing(invoice: InvoiceExtraction, text: string | null): I
   }
   return invoice;
 }
+
+/**
+ * Sin fechas en la factura (Jazztel: «Alquiler contador 0,026630 €/día × 31»),
+ * los días del periodo salen de lo que se cobra por día: el alquiler del
+ * contador, el bono social o la potencia en €/kW·día. Solo si coinciden.
+ */
+export function fillBillingDays(invoice: InvoiceExtraction): InvoiceExtraction {
+  if (invoice.billingPeriod) return invoice;
+  const daily = [
+    invoice.meterRental?.days,
+    ...invoice.socialBonusLines.map(({ days }) => days),
+    ...invoice.powerLines.filter(({ originalPrice }) => !originalPrice).map(({ days }) => days),
+  ].filter((days): days is number => typeof days === "number" && Number.isInteger(days) && days > 0);
+  const values = new Set(daily);
+  if (values.size !== 1) return invoice;
+  return { ...invoice, billingPeriod: { from: null, to: null, days: [...values][0] } };
+}
+
+/**
+ * Un único precio de energía para todo el consumo (Repsol: «294 kWh x
+ * 0,111681 €/kWh») a veces llega como P1. Si la línea cubre los kWh de los
+ * tres periodos, es un precio para todos: ALL.
+ */
+export function singleEnergyPriceAsAll(invoice: InvoiceExtraction): InvoiceExtraction {
+  const periods = new Set(invoice.energyLines.map(({ period }) => period));
+  if (periods.size !== 1 || periods.has("ALL")) return invoice;
+  const { P1, P2, P3 } = invoice.consumptionKwh;
+  const [period] = periods;
+  const others = (["P1", "P2", "P3"] as const).filter((other) => other !== period);
+  if (!others.some((other) => (invoice.consumptionKwh[other] ?? 0) > 0)) return invoice;
+  const total = (P1 ?? 0) + (P2 ?? 0) + (P3 ?? 0);
+  const covered = invoice.energyLines.every(({ kwh }) => Math.abs(kwh - total) <= 1);
+  if (!covered) return invoice;
+  return { ...invoice, energyLines: invoice.energyLines.map((line) => ({ ...line, period: "ALL" as const })) };
+}

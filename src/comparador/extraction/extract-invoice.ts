@@ -6,7 +6,13 @@ import {
   InvoiceExtractionSchema,
   type InvoiceExtraction,
 } from "./invoice-schema";
-import { inferPricing, normalizePowerLines, reconcileVat } from "./normalize";
+import {
+  fillBillingDays,
+  inferPricing,
+  normalizePowerLines,
+  reconcileVat,
+  singleEnergyPriceAsAll,
+} from "./normalize";
 import { getSupplierHint } from "./supplier-hints";
 import {
   hasBlockingIssues,
@@ -136,7 +142,7 @@ export async function extractInvoice({
     });
 
     const normalized = inferPricing(
-      reconcileVat(normalizePowerLines(result.output)),
+      reconcileVat(singleEnergyPriceAsAll(fillBillingDays(normalizePowerLines(result.output)))),
       "text" in file ? file.text : null,
     );
     const output = knownCups ? { ...normalized, cups: knownCups } : normalized;
