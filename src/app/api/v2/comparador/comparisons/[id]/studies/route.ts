@@ -11,8 +11,8 @@ import { analyzeInvoice, StudyError, type SipsFetcher } from "@/comparador/study
 import { todayInSpain } from "@/comparador/rates/service";
 import { fetchApoloSipsProcedure } from "@/integrations/apolo-sips/server";
 
-// Texto del PDF u OCR de la imagen, dos consultas al SIPS y extracción con la IA (en cascada).
-// Con visión, una foto puede pasar por dos modelos (GPT-6 Luna y GPT-6.1 Sol).
+// Texto del PDF u OCR de la imagen (o la foto entera, con visión), dos consultas
+// al SIPS y extracción con la IA en cascada: una foto puede pasar por dos modelos.
 export const maxDuration = 300;
 
 /** Facturas de más de 15 MB no son facturas de luz. */
