@@ -69,25 +69,43 @@ function Segmented<T extends string>({
 }
 
 /** Fee de energía con botones de ±1 €/MWh; se aplica al salir o con Intro. */
-function FeeInput({ text, onText, onApply }: { text: string; onText: (text: string) => void; onApply: (text: string) => void }) {
+function FeeInput({
+  id,
+  label,
+  hint,
+  unit,
+  max,
+  text,
+  onText,
+  onApply,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  unit: string;
+  max: number;
+  text: string;
+  onText: (text: string) => void;
+  onApply: (text: string) => void;
+}) {
   const step = (delta: number) => {
-    const next = Math.max(0, Math.min(200, (parseFee(text) ?? 0) + delta));
+    const next = Math.max(0, Math.min(max, (parseFee(text) ?? 0) + delta));
     const value = String(Math.round(next * 100) / 100);
     onText(value);
     onApply(value);
   };
   return (
     <div className="space-y-1.5">
-      <label htmlFor="study-fee" className="text-xs font-medium text-gray-700">
-        Fee de energía
-        <span className="ml-1 font-normal text-gray-400">· vacío = el mínimo</span>
+      <label htmlFor={id} className="text-xs font-medium text-gray-700">
+        {label}
+        <span className="ml-1 font-normal text-gray-400">· {hint}</span>
       </label>
       <div className="flex h-[38px] items-center rounded-xl bg-gray-100/80 p-1">
-        <button type="button" onClick={() => step(-1)} className="flex size-[30px] items-center justify-center rounded-lg text-gray-500 hover:bg-white hover:text-gray-900" aria-label="Bajar el fee">
+        <button type="button" onClick={() => step(-1)} className="flex size-[30px] items-center justify-center rounded-lg text-gray-500 hover:bg-white hover:text-gray-900" aria-label={`Bajar el ${label.toLowerCase()}`}>
           <Minus className="size-3.5" />
         </button>
         <input
-          id="study-fee"
+          id={id}
           inputMode="decimal"
           placeholder="Mín."
           value={text}
@@ -96,8 +114,8 @@ function FeeInput({ text, onText, onApply }: { text: string; onText: (text: stri
           onKeyDown={(event) => event.key === "Enter" && onApply(text)}
           className="w-14 bg-transparent text-center text-sm font-medium tabular-nums text-gray-900 outline-none placeholder:text-gray-400"
         />
-        <span className="pr-1 text-xs text-gray-400">€/MWh</span>
-        <button type="button" onClick={() => step(1)} className="flex size-[30px] items-center justify-center rounded-lg text-gray-500 hover:bg-white hover:text-gray-900" aria-label="Subir el fee">
+        <span className="pr-1 text-xs text-gray-400">{unit}</span>
+        <button type="button" onClick={() => step(1)} className="flex size-[30px] items-center justify-center rounded-lg text-gray-500 hover:bg-white hover:text-gray-900" aria-label={`Subir el ${label.toLowerCase()}`}>
           <Plus className="size-3.5" />
         </button>
       </div>
@@ -201,6 +219,8 @@ export function StudyFilters({
   busy,
   feeText,
   onFeeText,
+  powerFeeText,
+  onPowerFeeText,
   onOptions,
   suppliers,
   selected,
@@ -211,6 +231,8 @@ export function StudyFilters({
   busy: boolean;
   feeText: string;
   onFeeText: (text: string) => void;
+  powerFeeText: string;
+  onPowerFeeText: (text: string) => void;
   onOptions: (options: StudyOptionsInput) => void;
   suppliers: SupplierFacet[];
   selected: ReadonlySet<string>;
@@ -222,6 +244,12 @@ export function StudyFilters({
     if (text === appliedFee) return;
     setAppliedFee(text);
     onOptions({ feeEnergyPerMwh: parseFee(text) });
+  };
+  const [appliedPowerFee, setAppliedPowerFee] = useState(powerFeeText);
+  const applyPowerFee = (text: string) => {
+    if (text === appliedPowerFee) return;
+    setAppliedPowerFee(text);
+    onOptions({ feePowerPerKwYear: parseFee(text) });
   };
 
   return (
@@ -263,7 +291,17 @@ export function StudyFilters({
           ]}
           onChange={(value) => onOptions({ channel: value === "any" ? null : value })}
         />
-        <FeeInput text={feeText} onText={onFeeText} onApply={applyFee} />
+        <FeeInput id="study-fee" label="Fee de energía" hint="vacío = el mínimo" unit="€/MWh" max={200} text={feeText} onText={onFeeText} onApply={applyFee} />
+        <FeeInput
+          id="study-power-fee"
+          label="Fee de potencia"
+          hint="solo tarifas con precio base"
+          unit="€/kW·año"
+          max={100}
+          text={powerFeeText}
+          onText={onPowerFeeText}
+          onApply={applyPowerFee}
+        />
         {study.showCommission && (
           <Segmented
             label="Ordenar por"

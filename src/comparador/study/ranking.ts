@@ -54,6 +54,11 @@ export interface StudyOptions {
    * cada tarifa.
    */
   feeEnergyPerMwh: number | null;
+  /**
+   * Fee de potencia en €/kW·año. Solo en las tarifas con precio base que lo
+   * admiten en la potencia; las demás van sin él. null o 0 = sin fee.
+   */
+  feePowerPerKwYear?: number | null;
   order: "savings" | "commission";
   /** Cómo es la tarifa de hoy, según quien hace el estudio; null = lo que leyó la IA. */
   currentPricing?: CurrentPricing | null;
@@ -94,6 +99,8 @@ export interface StudyOffer {
   prices: TariffPrices;
   feeEnergyPerMwh: number;
   feeRange: { min: number; max: number } | null;
+  /** Fee de potencia aplicado (€/kW·año); 0 si la tarifa no lo admite. */
+  feePowerPerKwYear: number;
   cost: CostBreakdown;
   /** Ahorro anual frente a lo que paga hoy; null si no se sabe lo que paga. */
   savings: number | null;
@@ -295,7 +302,8 @@ export function rankStudy({
     const base = toTariffPrices(price, regulated);
     if (!base) continue;
     const { fee, range } = feeFor(price, options.feeEnergyPerMwh);
-    const prices = applyFee(base, { energyPerMwh: fee, powerPerKwYear: 0 });
+    const powerFee = price.feePowerAllowed ? Math.max(0, options.feePowerPerKwYear ?? 0) : 0;
+    const prices = applyFee(base, { energyPerMwh: fee, powerPerKwYear: powerFee });
     const discounts = readDiscounts(price.discounts);
     const { extras, views } = discountInputs(price.id, discounts.parts, excluded);
     const cost = annualCost(supply, prices, regulated, meterRentalPerDay, {
@@ -312,6 +320,8 @@ export function rankStudy({
       annualKwh: eligibility.annualKwh,
       maxContractedKw: eligibility.maxContractedKw,
       feeEnergyPerMwh: fee,
+      feePowerPerKwYear: powerFee,
+      contractedKwTotal: supply.contractedKw.P1 + supply.contractedKw.P2,
       date: options.date,
     });
     priced.push({
@@ -329,6 +339,7 @@ export function rankStudy({
       prices,
       feeEnergyPerMwh: fee,
       feeRange: range,
+      feePowerPerKwYear: powerFee,
       cost,
       savings: currentCost ? roundEuros(currentCost.total - cost.total) : null,
       commission,

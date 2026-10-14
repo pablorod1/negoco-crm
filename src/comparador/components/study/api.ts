@@ -9,6 +9,8 @@ export type StudyOfferView = StudyView["offers"][number];
 export interface StudyOptionsInput {
   channel?: "acquisition" | "renewal" | null;
   feeEnergyPerMwh?: number | null;
+  /** Fee de potencia en €/kW·año; solo en las tarifas que lo admiten. */
+  feePowerPerKwYear?: number | null;
   order?: "savings" | "commission";
   currentPricing?: "fixed" | "indexed" | "flat" | null;
   excludedDiscounts?: string[];

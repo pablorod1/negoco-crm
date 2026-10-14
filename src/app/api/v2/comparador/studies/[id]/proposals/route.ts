@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // tipo de tarifa, los descuentos y los SSAA son los guardados.
     const wanted = Object.fromEntries(
       Object.entries(parsed.data.options ?? {}).filter(
-        ([key, value]) => value !== undefined && ["channel", "feeEnergyPerMwh", "order"].includes(key),
+        ([key, value]) => value !== undefined && ["channel", "feeEnergyPerMwh", "feePowerPerKwYear", "order", "customerType"].includes(key),
       ),
     );
 

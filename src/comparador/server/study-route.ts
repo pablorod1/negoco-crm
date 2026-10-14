@@ -138,6 +138,7 @@ export const AncillarySchema = z.object({
 export const OptionsSchema = z.object({
   channel: z.enum(["acquisition", "renewal"]).nullable().optional(),
   feeEnergyPerMwh: z.number().min(0).max(200).nullable().optional(),
+  feePowerPerKwYear: z.number().min(0).max(100).nullable().optional(),
   order: z.enum(["savings", "commission"]).optional(),
   currentPricing: z.enum(["fixed", "indexed", "flat"]).nullable().optional(),
   excludedDiscounts: z.array(z.string().max(200)).max(200).optional(),

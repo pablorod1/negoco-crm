@@ -48,6 +48,8 @@ export interface ProposalDocument {
     cost: CostBreakdown;
     /** Cobra los SSAA aparte y van simulados en el coste. */
     ancillarySimulated?: boolean;
+    /** Cobra los SSAA aparte y el coste no los lleva (no se aplicaron). */
+    needsAncillary?: boolean;
   };
   savings: number | null;
 }
@@ -131,6 +133,7 @@ export function buildProposalDocument({
       prices: offer.prices,
       cost: offer.cost,
       ancillarySimulated: offer.ancillarySimulated,
+      needsAncillary: offer.needsAncillary,
     },
     savings: offer.savings,
   };

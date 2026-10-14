@@ -26,6 +26,7 @@ function conditions(offer: StudyOfferView) {
     offer.level,
     offer.segment,
     offer.feeRange ? `Fee ${offer.feeEnergyPerMwh} €/MWh` : null,
+    offer.feePowerPerKwYear > 0 ? `Fee potencia ${offer.feePowerPerKwYear} €/kW·año` : null,
     offer.ancillarySimulated ? "SSAA simulados" : null,
     ...offer.discountParts.filter(({ applied }) => applied).map(({ text }) => text),
   ].filter((text): text is string => Boolean(text));

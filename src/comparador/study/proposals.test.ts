@@ -51,6 +51,7 @@ const offer = (overrides: Partial<StudyOffer> = {}): StudyOffer => ({
   informativeDiscounts: [],
   ancillarySimulated: false,
   needsAncillary: false,
+  feePowerPerKwYear: 0,
   versionValidFrom: "2026-10-01",
   ...overrides,
 });

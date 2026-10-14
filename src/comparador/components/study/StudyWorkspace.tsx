@@ -83,6 +83,7 @@ function StudyResult({
 }) {
   const [editing, setEditing] = useState(false);
   const [feeText, setFeeText] = useState(study.options.feeEnergyPerMwh === null ? "" : String(study.options.feeEnergyPerMwh));
+  const [powerFeeText, setPowerFeeText] = useState(study.options.feePowerPerKwYear ? String(study.options.feePowerPerKwYear) : "");
   const [completing, setCompleting] = useState(false);
   const [suppliers, setSuppliers] = useState<ReadonlySet<string>>(new Set());
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -119,6 +120,8 @@ function StudyResult({
             busy={busy}
             feeText={feeText}
             onFeeText={setFeeText}
+            powerFeeText={powerFeeText}
+            onPowerFeeText={setPowerFeeText}
             onOptions={onOptions}
             suppliers={facets}
             selected={suppliers}
@@ -145,7 +148,7 @@ function StudyResult({
             maxSavings,
             selectedKey,
             proposing,
-            onPropose: (offer) => onPropose(offer, { feeEnergyPerMwh: parseFee(feeText) }),
+            onPropose: (offer) => onPropose(offer, { feeEnergyPerMwh: parseFee(feeText), feePowerPerKwYear: parseFee(powerFeeText) }),
             onToggleDiscount: (id, applied) => {
               // La oferta puede cambiar de puesto: queda seleccionada para no perderla de vista.
               setSelectedKey(id.slice(0, id.lastIndexOf(":")));
