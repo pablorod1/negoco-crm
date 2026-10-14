@@ -88,6 +88,11 @@ export interface StudyOffer {
   informativeDiscounts: { text: string; reason: string }[];
   /** La tarifa cobra los SSAA aparte y van simulados en el coste. */
   ancillarySimulated: boolean;
+  /**
+   * La tarifa cobra los SSAA aparte y el estudio no los aplica: se oferta,
+   * pero su coste no los lleva y hay que avisar de que hacen falta.
+   */
+  needsAncillary: boolean;
   versionValidFrom: string | null;
 }
 
@@ -97,7 +102,7 @@ export interface StudyRanking {
   offers: StudyOffer[];
   /** Tarifas vigentes que no encajan con el suministro (territorio, potencia, consumo…). */
   ineligible: number;
-  /** Tarifas que cobran los SSAA aparte y no se ofertan porque no hay SSAA simulados. */
+  /** Tarifas que cobran los SSAA aparte y se ofertan sin ellos (no se han aplicado). */
   withoutAncillary: number;
   noSavings: boolean;
 }
@@ -257,11 +262,10 @@ export function rankStudy({
       ineligible++;
       continue;
     }
-    // Sin SSAA simulados, una tarifa que los cobra aparte saldría más barata de lo que es.
-    if (!price.includesAncillaryServices && ancillaryAmount === null) {
-      withoutAncillary++;
-      continue;
-    }
+    // Sin SSAA aplicados, una tarifa que los cobra aparte sale más barata de lo
+    // que es: se oferta igual, marcada, para que se apliquen.
+    const needsAncillary = !price.includesAncillaryServices && ancillaryAmount === null;
+    if (needsAncillary) withoutAncillary++;
     const base = toTariffPrices(price, regulated);
     if (!base) continue;
     const { fee, range } = feeFor(price, options.feeEnergyPerMwh);
@@ -308,7 +312,8 @@ export function rankStudy({
       ],
       discountParts,
       informativeDiscounts: discounts.informative,
-      ancillarySimulated: !price.includesAncillaryServices,
+      ancillarySimulated: !price.includesAncillaryServices && ancillaryAmount !== null,
+      needsAncillary,
       versionValidFrom: offer.versionValidFrom,
     });
   }

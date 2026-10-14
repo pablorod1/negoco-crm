@@ -128,7 +128,7 @@ function AncillaryControl({ study, onOptions }: { study: StudyView; onOptions: (
         Servicios de ajuste
         {study.withoutAncillary > 0 && !value && (
           <span className="ml-1 font-normal text-gray-400">
-            · {study.withoutAncillary} {study.withoutAncillary === 1 ? "tarifa los cobra" : "tarifas los cobran"} aparte
+            · {study.withoutAncillary} {study.withoutAncillary === 1 ? "tarifa los necesita" : "tarifas los necesitan"}: se ofertan sin ellos
           </span>
         )}
       </p>

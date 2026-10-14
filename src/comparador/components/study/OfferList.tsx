@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ExternalLink, FileText, Loader2, Sparkles } from "lucide-react";
+import { ChevronDown, ExternalLink, FileText, Gauge, Loader2, Sparkles } from "lucide-react";
 import type { CostBreakdown } from "@/comparador/engine/types";
 import { SupplierLogo } from "@/comercializadoras/components/SupplierLogo";
 import { Button } from "@/core/components/ui/button";
@@ -217,6 +217,15 @@ function OfferRow({
                 <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-medium text-success-700 ring-1 ring-success-200">
                   <Sparkles className="size-3" />
                   Mejor ahorro
+                </span>
+              )}
+              {offer.needsAncillary && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-medium text-warning-700 ring-1 ring-warning-200"
+                  title="Esta tarifa cobra los servicios de ajuste aparte. Aplícalos en «Servicios de ajuste» para comparar su precio de verdad."
+                >
+                  <Gauge className="size-3" />
+                  Necesita aplicar SSAA
                 </span>
               )}
             </p>

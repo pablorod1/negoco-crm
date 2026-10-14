@@ -227,14 +227,18 @@ describe("ranking", () => {
     expect(without.cost.total).toBeGreaterThan(first.cost.total);
   });
 
-  test("a rate without ancillary services is offered only with simulated SSAA", () => {
+  test("a rate without ancillary services is offered marked until SSAA are applied", () => {
     const noSsaa = offer("sin-ssaa", { includesAncillaryServices: false });
-    expect(only(noSsaa)).toMatchObject({ offers: [], withoutAncillary: 1 });
+    const unapplied = only(noSsaa);
+    expect(unapplied.withoutAncillary).toBe(1);
+    expect(unapplied.offers[0]).toMatchObject({ needsAncillary: true, ancillarySimulated: false });
+    expect(unapplied.offers[0].cost.ancillary ?? 0).toBe(0);
 
     const average = only(noSsaa, { ancillary: { averagePerMwh: 10, monthlyPerMwh: null } }).offers[0];
     // 3.000 kWh × 10 €/MWh.
     expect(average.cost.ancillary).toBe(30);
     expect(average.ancillarySimulated).toBe(true);
+    expect(average.needsAncillary).toBe(false);
 
     // Por mes: cada lectura con su mes. Enero a 40 y el resto a 0.
     const withReadings: StudySupply = {

@@ -23,7 +23,9 @@ import { StudySteps, studyStep } from "./StudySteps";
 import { Panel } from "./ui";
 
 /** La oferta que más ahorra; sin lo que paga hoy, la más barata. */
-function bestOffer(offers: readonly StudyOfferView[], hasCurrent: boolean): StudyOfferView | null {
+function bestOffer(all: readonly StudyOfferView[], hasCurrent: boolean): StudyOfferView | null {
+  // Una tarifa sin los SSAA que necesita no compite en igualdad: no es «la mejor».
+  const offers = all.filter(({ needsAncillary }) => !needsAncillary);
   if (offers.length === 0) return null;
   if (!hasCurrent) return offers.reduce((best, offer) => (offer.cost.total < best.cost.total ? offer : best));
   return offers.reduce((best, offer) => ((offer.savings ?? -Infinity) > (best.savings ?? -Infinity) ? offer : best));
