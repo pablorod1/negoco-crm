@@ -56,3 +56,32 @@ export function isValidSpanishTaxId(raw: string): boolean {
   const id = normalizeIdentifier(raw);
   return isValidDniOrNie(id) || isValidCif(id);
 }
+
+/**
+ * Un CUPS leído de una imagen con una cifra mal («…8245624XY» por
+ * «…8245524XY»), una de más o una de menos. Las dos letras de control
+ * deciden: si una única corrección de una cifra las hace cuadrar, es ese
+ * CUPS. Si hay varias o ninguna, null.
+ */
+export function repairCups(raw: string): string | null {
+  const cups = normalizeIdentifier(raw);
+  if (isValidCups(cups)) return cups;
+  const match = /^ES(\d{15,17})([A-Z]{2})([0-9][A-Z])?$/.exec(cups);
+  if (!match) return null;
+  const [, digits, letters, frontier = ""] = match;
+
+  const candidates = new Set<string>();
+  const tryDigits = (value: string) => {
+    if (value.length !== 16) return;
+    const candidate = `ES${value}${letters}${frontier}`;
+    if (isValidCups(candidate)) candidates.add(candidate);
+  };
+  for (let index = 0; index <= digits.length; index++) {
+    for (const digit of "0123456789") {
+      if (index < digits.length) tryDigits(digits.slice(0, index) + digit + digits.slice(index + 1));
+      tryDigits(digits.slice(0, index) + digit + digits.slice(index));
+    }
+    if (index < digits.length) tryDigits(digits.slice(0, index) + digits.slice(index + 1));
+  }
+  return candidates.size === 1 ? [...candidates][0] : null;
+}

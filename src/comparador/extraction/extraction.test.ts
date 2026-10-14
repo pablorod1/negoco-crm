@@ -4,7 +4,7 @@ import { getRegulatedParams } from "@/comparador/engine/regulated";
 import { currentTariffFromInvoice, discountMonths, flatTariffFromInvoice, invoiceTaxRates } from "./current-tariff";
 import { extractInvoice, buildInstructions } from "./extract-invoice";
 import { iberdrolaInvoice, naturgyInvoice } from "./fixtures";
-import { isValidCups, isValidSpanishTaxId } from "./identifiers";
+import { isValidCups, isValidSpanishTaxId, repairCups } from "./identifiers";
 import type { InvoiceExtraction } from "./invoice-schema";
 import { getSupplierHint } from "./supplier-hints";
 import { hasBlockingIssues, validateInvoice } from "./validate";
@@ -25,6 +25,15 @@ describe("identifiers", () => {
       expect(isValidCups(cups)).toBe(false);
     },
   );
+
+  test("repairs a CUPS read with one digit too many, wrong or missing, if only one fix fits", () => {
+    // Inventados a partir de uno válido: ES0021000015543129GW.
+    expect(repairCups("ES00210000155431299GW")).toBe("ES0021000015543129GW");
+    expect(repairCups("ES002100001554312GW")).toBe("ES0021000015543129GW");
+    expect(repairCups("ES0021000015543129GW0F")).toBe("ES0021000015543129GW0F");
+    // Las letras no cuadran con ninguna corrección de una cifra: no se adivina.
+    expect(repairCups("ES0021000015543129ZZ")).toBeNull();
+  });
 
   test.each(["12345678Z", "X1234567L", "B26833335", "b-26833335"])(
     "accepts valid tax id %s",

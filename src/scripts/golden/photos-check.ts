@@ -2,15 +2,18 @@
  * Mide las fotos de facturas sin fichas: cuántas cuadran solas (sin
  * incidencias que bloqueen el estudio) y qué incidencias salen.
  *
- *   pnpm golden:photos-check [--dir <carpeta>] [--models a,b] [--max-usd 0.10] [--out informe.json]
+ *   pnpm golden:photos-check [--dir <carpeta>] [--models a,b] [--max-usd 0.10] [--out informe.json] [--images]
  *
- * Solo envía a la IA el texto anonimizado que dejó `golden:photos`. Sin
- * fichas no detecta errores silenciosos: para eso hay que revisar fichas.
+ * Por defecto envía a la IA el texto anonimizado que dejó `golden:photos`.
+ * Con --images envía las fotos enteras, con todos sus datos (decisión del
+ * usuario, 14/10/2026), enderezadas y a 2048 px como mucho. Sin fichas no
+ * detecta errores silenciosos: para eso hay que revisar fichas.
  */
 import { readdir, readFile, writeFile } from "node:fs/promises";
+import sharp from "sharp";
 import { join } from "node:path";
 import { getInvoiceExtractionModels } from "@/comparador/ai/models";
-import { extractInvoice } from "@/comparador/extraction/extract-invoice";
+import { extractInvoice, type InvoiceFile } from "@/comparador/extraction/extract-invoice";
 import { goldenPath, loadLocalEnv, readOption } from "./paths";
 
 async function main() {
@@ -20,6 +23,28 @@ async function main() {
   const models = readOption(argv, "--models")?.split(",").filter(Boolean) ?? [...getInvoiceExtractionModels()];
   const maxUsd = Number(readOption(argv, "--max-usd") ?? 0.1);
   const out = readOption(argv, "--out");
+  const useImages = argv.includes("--images");
+  const originals = useImages ? await readdir(goldenPath(root, "originals", "")) : [];
+
+  /** Las fotos de una factura, en orden, como JPEG enderezado de 2048 px como mucho. */
+  const photosOf = async (id: string): Promise<InvoiceFile> => {
+    const files = originals
+      .filter((name) => name.startsWith(`${id}-`))
+      .sort((left, right) => Number(left.split("-")[1].split(".")[0]) - Number(right.split("-")[1].split(".")[0]));
+    const pages = await Promise.all(
+      files.map(async (name) => ({
+        data: new Uint8Array(
+          await sharp(await readFile(goldenPath(root, "originals", name)), { failOn: "none" })
+            .rotate()
+            .resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 85 })
+            .toBuffer(),
+        ),
+        mediaType: "image/jpeg" as const,
+      })),
+    );
+    return { pages };
+  };
 
   // Con fichas, solo las facturas del banco (sin las excluidas ni descartadas).
   const withFichas = new Set(
@@ -42,11 +67,13 @@ async function main() {
       console.log("Parado por el tope de gasto.");
       break;
     }
-    const text = await readFile(goldenPath(root, "redacted", `${id}.txt`), "utf8");
+    const file: InvoiceFile = useImages
+      ? await photosOf(id)
+      : { text: await readFile(goldenPath(root, "redacted", `${id}.txt`), "utf8") };
     const { cups } = JSON.parse(await readFile(goldenPath(root, "private", `${id}.json`), "utf8")) as { cups: string[] };
     try {
       const result = await extractInvoice({
-        file: { text },
+        file,
         context: { tenantSlug: "eval", jobType: "invoice_extraction", subjectId: `foto-${id}` },
         knownCups: cups[0] ?? null,
         models,

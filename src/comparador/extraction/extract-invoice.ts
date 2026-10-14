@@ -17,6 +17,7 @@ import {
   reconcileChain,
   reconcileVat,
   regulatedSocialBonusPrice,
+  repairedCups,
   singleEnergyPriceAsAll,
   surplusCompensationAsOther,
 } from "./normalize";
@@ -43,16 +44,17 @@ El consumo por periodo (consumptionKwh) es el de punta, llano y valle que indica
 Si el documento trae varias facturas seguidas, extrae solo la más reciente.
 Las fechas, en formato YYYY-MM-DD. Los porcentajes, como número (21, no 0,21).`;
 
+export interface InvoiceDocument {
+  data: Uint8Array;
+  mediaType: "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
+}
+
 /**
- * La factura como archivo (PDF o imagen) o como texto ya extraído y
- * anonimizado en local, que no lleva datos personales.
+ * La factura como archivo (PDF o imagen), como varias fotos de la misma
+ * factura, o como texto ya extraído y anonimizado en local, que no lleva
+ * datos personales.
  */
-export type InvoiceFile =
-  | {
-      data: Uint8Array;
-      mediaType: "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
-    }
-  | { text: string };
+export type InvoiceFile = InvoiceDocument | { pages: InvoiceDocument[] } | { text: string };
 
 export interface ExtractionAttempt {
   model: string;
@@ -92,12 +94,19 @@ function buildMessages(file: InvoiceFile): ModelMessage[] {
     ];
   }
 
+  const pages = "pages" in file ? file.pages : [file];
   return [
     {
       role: "user",
       content: [
-        { type: "file", data: file.data, mediaType: file.mediaType },
-        { type: "text", text: "Extrae los datos de esta factura." },
+        ...pages.map(({ data, mediaType }) => ({ type: "file" as const, data, mediaType })),
+        {
+          type: "text",
+          text:
+            pages.length > 1
+              ? `Extrae los datos de esta factura. Son ${pages.length} fotos de la misma factura, en orden.`
+              : "Extrae los datos de esta factura.",
+        },
       ],
     },
   ];
@@ -167,7 +176,7 @@ export async function extractInvoice({
       ),
       text,
     );
-    const output = knownCups ? { ...normalized, cups: knownCups } : normalized;
+    const output = knownCups ? { ...normalized, cups: knownCups } : repairedCups(normalized);
     const issues = validateInvoice(output);
     attempts.push({
       model,

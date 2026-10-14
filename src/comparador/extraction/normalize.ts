@@ -1,6 +1,7 @@
 import { DAYS_PER_YEAR } from "@/comparador/engine/cost";
 import { roundEuros, sumEuros } from "@/comparador/engine/money";
 import { SOCIAL_BONUS_PRICES_PER_DAY } from "@/comparador/engine/regulated";
+import { isValidCups, repairCups } from "./identifiers";
 import type { InvoiceExtraction } from "./invoice-schema";
 import { expectedTaxableBase, validateInvoice } from "./validate";
 
@@ -368,4 +369,15 @@ export function regulatedSocialBonusPrice(invoice: InvoiceExtraction): InvoiceEx
     return { ...line, pricePerDay: matching[0] };
   });
   return changed ? { ...invoice, socialBonusLines } : invoice;
+}
+
+/**
+ * El CUPS que lee la IA de una imagen puede traer una cifra mal: si una única
+ * corrección hace cuadrar sus letras de control, se usa ese. El SIPS confirma
+ * después que el suministro existe.
+ */
+export function repairedCups(invoice: InvoiceExtraction): InvoiceExtraction {
+  if (!invoice.cups || isValidCups(invoice.cups)) return invoice;
+  const cups = repairCups(invoice.cups);
+  return cups ? { ...invoice, cups } : invoice;
 }
