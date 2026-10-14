@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useTransitionRouter } from "next-view-transitions";
-import { ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Columns3, FileText, Loader2, RotateCcw } from "lucide-react";
 import { showCustomToast } from "@/core/components/CustomToast";
 import { Button } from "@/core/components/ui/button";
 import { Skeleton } from "@/core/components/ui/skeleton";
@@ -77,11 +77,12 @@ function StudyResult({
   proposing: string | null;
   clientName: string | null;
   onOptions: (options: StudyOptionsInput) => void;
-  onPropose: (offer: StudyOfferView, options: StudyOptionsInput) => void;
+  onPropose: (offer: StudyOfferView, options: StudyOptionsInput, alternatives?: StudyOfferView[]) => void;
   onComplete: (proposalId: string, client: StudyClientDataInput | null) => Promise<void>;
   onReviewInvoice: (invoice: InvoiceExtraction, acceptMismatch: boolean) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [compareKeys, setCompareKeys] = useState<string[]>([]);
   const [feeText, setFeeText] = useState(study.options.feeEnergyPerMwh === null ? "" : String(study.options.feeEnergyPerMwh));
   const [powerFeeText, setPowerFeeText] = useState(study.options.feePowerPerKwYear ? String(study.options.feePowerPerKwYear) : "");
   const [completing, setCompleting] = useState(false);
@@ -98,6 +99,9 @@ function StudyResult({
     [study.offers, suppliers],
   );
   const best = bestOffer(study.offers, hasCurrent);
+  const feeOptions = { feeEnergyPerMwh: parseFee(feeText), feePowerPerKwYear: parseFee(powerFeeText) };
+  // Las ofertas a comparar en el orden del ranking: la primera es la principal.
+  const comparing = study.offers.filter(({ key }) => compareKeys.includes(key));
   const proposalKeys = useMemo(() => new Set(study.proposals.map(({ offerKey }) => offerKey)), [study.proposals]);
   const maxSavings = Math.max(0, ...offers.map(({ savings }) => savings ?? 0));
 
@@ -148,7 +152,12 @@ function StudyResult({
             maxSavings,
             selectedKey,
             proposing,
-            onPropose: (offer) => onPropose(offer, { feeEnergyPerMwh: parseFee(feeText), feePowerPerKwYear: parseFee(powerFeeText) }),
+            onPropose: (offer) => onPropose(offer, feeOptions),
+            compareKeys,
+            onToggleCompare: (offer) =>
+              setCompareKeys((keys) =>
+                keys.includes(offer.key) ? keys.filter((key) => key !== offer.key) : keys.length >= 3 ? keys : [...keys, offer.key],
+              ),
             onToggleDiscount: (id, applied) => {
               // La oferta puede cambiar de puesto: queda seleccionada para no perderla de vista.
               setSelectedKey(id.slice(0, id.lastIndexOf(":")));
@@ -159,6 +168,31 @@ function StudyResult({
             },
           }}
         />
+        {!closed && comparing.length > 0 && (
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl bg-gray-900 px-4 py-3 text-sm text-white shadow-lg">
+            <Columns3 className="size-4 shrink-0 text-gray-300" />
+            <p className="min-w-0 flex-1">
+              {comparing.length === 1
+                ? "Marca otra oferta para compararlas en la misma propuesta (hasta tres)."
+                : `${comparing.length} ofertas en una propuesta: la principal es ${comparing[0].comercializadoraName}, la de más ahorro.`}
+            </p>
+            <button type="button" onClick={() => setCompareKeys([])} className="text-xs text-gray-300 hover:text-white">
+              Quitar
+            </button>
+            <Button
+              size="sm"
+              className="rounded-lg"
+              disabled={comparing.length < 2 || proposing !== null}
+              onClick={() => {
+                onPropose(comparing[0], feeOptions, comparing.slice(1));
+                setCompareKeys([]);
+              }}
+            >
+              {proposing === comparing[0]?.key ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
+              Crear propuesta comparativa
+            </Button>
+          </div>
+        )}
       </div>
 
       <StudySidebar study={study} onComplete={() => setCompleting(true)} proposalsRef={proposalsRef}
@@ -268,7 +302,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
    * pestaña se abre en el mismo clic, antes de esperar al servidor: si se
    * abriera después, el navegador la bloquearía como ventana emergente.
    */
-  const propose = async (offer: StudyOfferView, options: StudyOptionsInput) => {
+  const propose = async (offer: StudyOfferView, options: StudyOptionsInput, alternatives: StudyOfferView[] = []) => {
     if (!study) return;
     const tab = window.open("", "_blank");
     try {
@@ -282,7 +316,12 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
     setProposing(offer.key);
     setError(null);
     try {
-      const proposal = await studyApi.propose(study.id, offer.key, { ...study.options, ...options });
+      const proposal = await studyApi.propose(
+        study.id,
+        offer.key,
+        { ...study.options, ...options },
+        alternatives.map(({ key }) => key),
+      );
       if (tab) tab.location.href = proposal.pdfUrl;
       else setError("El navegador ha bloqueado la pestaña nueva: abre el PDF desde «Propuestas».");
       setStudy((current) =>

@@ -137,6 +137,22 @@ describe("proposals", () => {
     expect(second.commission).toBe(45);
   });
 
+  test("a proposal can compare other offers, with their savings and without fee or commission", async () => {
+    const proposal = await createProposal(client, {
+      study,
+      offer: offer(),
+      alternatives: [offer({ key: "price-2", comercializadoraName: "Repsol", productName: "Fijo 12M", savings: 60 })],
+      current: cost(568),
+      currentPrices: null,
+      clientName: "Cliente",
+      createdBy: "user-1",
+    });
+    expect(proposal.document.alternatives).toEqual([
+      expect.objectContaining({ comercializadoraName: "Repsol", productName: "Fijo 12M", savings: 60 }),
+    ]);
+    expect(JSON.stringify(proposal.document)).not.toMatch(/commission|fee/i);
+  });
+
   test("the same offer with the same fee is the same proposal; another fee is a new one", async () => {
     const proposals = [await propose()];
     expect(findSameProposal(proposals, offer())?.id).toBe(proposals[0].id);

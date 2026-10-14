@@ -38,20 +38,42 @@ export interface ProposalDocument {
     marginOverMarket?: number | null;
     marketAverage?: number | null;
   } | null;
-  offer: {
-    comercializadoraName: string;
-    productName: string;
-    termMonths: number | null;
-    powerMode: StudyOffer["powerMode"];
-    discounts: string[];
-    prices: TariffPrices;
-    cost: CostBreakdown;
-    /** Cobra los SSAA aparte y van simulados en el coste. */
-    ancillarySimulated?: boolean;
-    /** Cobra los SSAA aparte y el coste no los lleva (no se aplicaron). */
-    needsAncillary?: boolean;
-  };
+  offer: ProposalOffer;
   savings: number | null;
+  /**
+   * Otras ofertas para comparar en el mismo PDF (hasta dos), con su ahorro.
+   * La principal es `offer`: la que se cierra si el cliente acepta.
+   */
+  alternatives?: (ProposalOffer & { savings: number | null })[];
+}
+
+/** Una oferta tal como la ve el cliente: sin fee ni comisión. */
+export interface ProposalOffer {
+  comercializadoraName: string;
+  productName: string;
+  termMonths: number | null;
+  powerMode: StudyOffer["powerMode"];
+  discounts: string[];
+  prices: TariffPrices;
+  cost: CostBreakdown;
+  /** Cobra los SSAA aparte y van simulados en el coste. */
+  ancillarySimulated?: boolean;
+  /** Cobra los SSAA aparte y el coste no los lleva (no se aplicaron). */
+  needsAncillary?: boolean;
+}
+
+function proposalOffer(offer: StudyOffer): ProposalOffer {
+  return {
+    comercializadoraName: offer.comercializadoraName,
+    productName: offer.productName,
+    termMonths: offer.termMonths,
+    powerMode: offer.powerMode,
+    discounts: offer.discounts,
+    prices: offer.prices,
+    cost: offer.cost,
+    ancillarySimulated: offer.ancillarySimulated,
+    needsAncillary: offer.needsAncillary,
+  };
 }
 
 export interface ProposalRecord {
@@ -83,9 +105,12 @@ export function buildProposalDocument({
   clientName,
   number,
   generatedAt,
+  alternatives = [],
 }: {
   study: StudyRecord;
   offer: StudyOffer;
+  /** Otras ofertas para comparar en el PDF. */
+  alternatives?: readonly StudyOffer[];
   current: CostBreakdown | null;
   currentPrices: TariffPrices | null;
   currentInfo?: CurrentInfo | null;
@@ -124,18 +149,11 @@ export function buildProposalDocument({
           marketAverage: currentInfo?.marketAverage ?? null,
         }
       : null,
-    offer: {
-      comercializadoraName: offer.comercializadoraName,
-      productName: offer.productName,
-      termMonths: offer.termMonths,
-      powerMode: offer.powerMode,
-      discounts: offer.discounts,
-      prices: offer.prices,
-      cost: offer.cost,
-      ancillarySimulated: offer.ancillarySimulated,
-      needsAncillary: offer.needsAncillary,
-    },
+    offer: proposalOffer(offer),
     savings: offer.savings,
+    ...(alternatives.length
+      ? { alternatives: alternatives.map((alternative) => ({ ...proposalOffer(alternative), savings: alternative.savings })) }
+      : {}),
   };
 }
 
@@ -201,6 +219,8 @@ export async function createProposal(
   input: {
     study: StudyRecord;
     offer: StudyOffer;
+    /** Otras ofertas para comparar en el PDF (hasta dos). */
+    alternatives?: readonly StudyOffer[];
     current: CostBreakdown | null;
     currentPrices: TariffPrices | null;
     currentInfo?: CurrentInfo | null;
@@ -236,6 +256,7 @@ async function insertProposal(
     currentPrices: input.currentPrices,
     currentInfo: input.currentInfo,
     clientName: input.clientName,
+    alternatives: input.alternatives ?? [],
     number,
     generatedAt: (input.now ?? new Date()).toISOString(),
   });

@@ -88,11 +88,12 @@ export const studyApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(options),
     }),
-  propose: (studyId: string, offerKey: string, options: StudyOptionsInput) =>
+  /** `alternativeKeys`: otras ofertas (hasta dos) para comparar en el mismo PDF. */
+  propose: (studyId: string, offerKey: string, options: StudyOptionsInput, alternativeKeys: string[] = []) =>
     request<ProposalView>(`/api/v2/comparador/studies/${studyId}/proposals`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ offerKey, options }),
+      body: JSON.stringify({ offerKey, options, alternativeKeys }),
     }),
   /** Guarda los datos de la factura revisados; `acceptMismatch` si las cuentas siguen sin cuadrar. */
   reviewInvoice: (studyId: string, invoice: InvoiceExtraction, acceptMismatch: boolean) =>

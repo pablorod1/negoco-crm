@@ -9,10 +9,13 @@ import {
   studyError,
 } from "@/comparador/server/study-route";
 import { createProposal, findSameProposal, listProposals } from "@/comparador/study/proposals";
+import type { StudyOffer } from "@/comparador/study/ranking";
 import { rankSavedStudy, StudyError } from "@/comparador/study/service";
 
 const ProposalSchema = z.object({
   offerKey: z.string().min(1),
+  /** Otras ofertas para compararlas en el mismo PDF (hasta dos). */
+  alternativeKeys: z.array(z.string().min(1)).max(2).optional(),
   options: OptionsSchema.optional(),
 });
 
@@ -47,13 +50,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const showCommission = canSeeAgencyCommission(user.role);
-    const existing = findSameProposal(await listProposals(client, id), offer);
+    const alternatives = (parsed.data.alternativeKeys ?? [])
+      .filter((key) => key !== offer.key)
+      .map((key) => ranking.offers.find((candidate) => candidate.key === key));
+    if (alternatives.some((alternative) => !alternative)) {
+      throw new StudyError("Alguna de las tarifas a comparar ya no está entre las que encajan con este suministro.", 409);
+    }
+    const existing = alternatives.length ? undefined : findSameProposal(await listProposals(client, id), offer);
     if (existing) {
       return NextResponse.json({ success: true, data: proposalView(existing, showCommission) });
     }
     const proposal = await createProposal(client, {
       study,
       offer,
+      alternatives: alternatives as StudyOffer[],
       current: ranking.current,
       currentPrices: current && current.flatAnnualFee === undefined ? current.prices : null,
       currentInfo,

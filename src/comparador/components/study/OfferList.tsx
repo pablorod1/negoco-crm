@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ExternalLink, FileText, Gauge, Loader2, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Columns3, ExternalLink, FileText, Gauge, Loader2, Sparkles } from "lucide-react";
 import type { CostBreakdown } from "@/comparador/engine/types";
 import { SupplierLogo } from "@/comercializadoras/components/SupplierLogo";
 import { Button } from "@/core/components/ui/button";
@@ -175,6 +175,9 @@ export interface RowContext {
   selectedKey: string | null;
   proposing: string | null;
   onPropose: (offer: StudyOfferView) => void;
+  /** Ofertas marcadas para compararlas en una misma propuesta (hasta tres). */
+  compareKeys: readonly string[];
+  onToggleCompare: (offer: StudyOfferView) => void;
   /** Aplica o quita un descuento condicionado («idPrecio:clave»). */
   onToggleDiscount: (id: string, applied: boolean) => void;
 }
@@ -192,7 +195,8 @@ function OfferRow({
   indent?: boolean;
   context: RowContext;
 }) {
-  const { study, bestKey, maxSavings, selectedKey, proposing, onPropose, onToggleDiscount, withCommission } = context;
+  const { study, bestKey, maxSavings, selectedKey, proposing, onPropose, onToggleDiscount, withCommission, compareKeys, onToggleCompare } = context;
+  const comparing = compareKeys.includes(offer.key);
   const [open, setOpen] = useState(false);
   const proposal = proposalFor(study.proposals, offer);
   const closed = study.status === "closed";
@@ -297,6 +301,23 @@ function OfferRow({
                 Crear propuesta
               </Button>
             )
+          )}
+          {!closed && (
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-pressed={comparing}
+              disabled={!comparing && compareKeys.length >= 3}
+              title={!comparing && compareKeys.length >= 3 ? "Se comparan hasta tres ofertas" : "Añadir a una propuesta que compare varias ofertas"}
+              className={cn(
+                "whitespace-nowrap rounded-lg",
+                comparing ? "bg-primary-50 text-primary-800 ring-1 ring-primary-200 hover:bg-primary-100" : "text-gray-500",
+              )}
+              onClick={() => onToggleCompare(offer)}
+            >
+              {comparing ? <Check className="size-3.5" /> : <Columns3 className="size-3.5" />}
+              Comparar
+            </Button>
           )}
           <Button
             size="icon"
