@@ -24,9 +24,28 @@ export interface AncillarySimulation {
   monthlyPerMwh: (number | null)[] | null;
 }
 
+/** Particular, autónomo o empresa: decide qué tarifas se le ofertan. */
+export type CustomerType = "particular" | "autonomo" | "empresa";
+
+/** Para quién es una tarifa, por su segmento en el anexo o por su nombre; null si vale para todos. */
+export function rateAudience(segment: string | null, productName: string): "hogar" | "negocio" | null {
+  const text = `${segment ?? ""} ${productName}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/\b(pymes?|negocios?|empresas?|profesional(es)?|comercios?|business|autonomos?)\b/.test(text)) return "negocio";
+  if (/\b(hogar|domestic[oa]s?|residencial(es)?|particular(es)?|casa|vivienda)\b/.test(text)) return "hogar";
+  return null;
+}
+
+/** Particular: hogar; empresa: negocio; autónomo: los dos. Las tarifas sin segmento, para todos. */
+function audienceFits(audience: "hogar" | "negocio" | null, customer: CustomerType | null | undefined): boolean {
+  if (!audience || !customer || customer === "autonomo") return true;
+  return customer === "particular" ? audience === "hogar" : audience === "negocio";
+}
+
 export interface StudyOptions {
   /** Fecha del estudio (YYYY-MM-DD): precios, peajes e impuestos de ese día. */
   date: string;
+  /** Tipo de cliente; sin él se ofertan todas las tarifas. */
+  customerType?: CustomerType | null;
   /** Captación o renovación; null si no se sabe (vale cualquiera). */
   channel: RateChannel | null;
   /**
@@ -104,6 +123,8 @@ export interface StudyRanking {
   ineligible: number;
   /** Tarifas que cobran los SSAA aparte y se ofertan sin ellos (no se han aplicado). */
   withoutAncillary: number;
+  /** Tarifas de otro tipo de cliente (hogar para una empresa o al revés). */
+  otherCustomerType: number;
   noSavings: boolean;
 }
 
@@ -255,11 +276,16 @@ export function rankStudy({
 
   let ineligible = 0;
   let withoutAncillary = 0;
+  let otherCustomerType = 0;
   const priced: StudyOffer[] = [];
   for (const offer of offers) {
     const { price } = offer;
     if (!isEligible(price, eligibility)) {
       ineligible++;
+      continue;
+    }
+    if (!audienceFits(rateAudience(price.clientSegment, price.rateName), options.customerType)) {
+      otherCustomerType++;
       continue;
     }
     // Sin SSAA aplicados, una tarifa que los cobra aparte sale más barata de lo
@@ -331,6 +357,7 @@ export function rankStudy({
     offers: priced,
     ineligible,
     withoutAncillary,
+    otherCustomerType,
     noSavings: currentCost !== null && priced.every(({ savings }) => (savings ?? 0) <= 0),
   };
 }

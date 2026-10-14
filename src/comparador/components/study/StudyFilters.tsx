@@ -105,6 +105,14 @@ function FeeInput({ text, onText, onApply }: { text: string; onText: (text: stri
   );
 }
 
+/** Lo que se dedujo del titular de la factura. */
+const CUSTOMER_HINT = {
+  particular: "en la factura, un NIF de persona",
+  empresa: "en la factura, un CIF de empresa",
+  autonomo: undefined,
+  none: "la factura no lo dice: márcalo",
+} as const;
+
 const PRICING_HINT = {
   fixed: "en la factura se lee precio fijo",
   indexed: "en la factura se lee indexada",
@@ -234,7 +242,19 @@ export function StudyFilters({
       </div>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
         <Segmented
-          label="Tipo de cliente"
+          label="Cliente"
+          hint={CUSTOMER_HINT[study.customerType.detected ?? "none"]}
+          value={study.customerType.value ?? "all"}
+          options={[
+            { value: "particular", label: "Particular" },
+            { value: "autonomo", label: "Autónomo" },
+            { value: "empresa", label: "Empresa" },
+            ...(study.customerType.value ? [] : [{ value: "all" as const, label: "Sin saber" }]),
+          ]}
+          onChange={(value) => onOptions({ customerType: value === "all" ? null : value })}
+        />
+        <Segmented
+          label="Canal"
           value={study.options.channel ?? "any"}
           options={[
             { value: "acquisition", label: "Captación" },
@@ -260,6 +280,7 @@ export function StudyFilters({
           <span className="tabular-nums">
             <span className="font-medium text-gray-900">{study.totalOffers}</span> tarifas encajan ·{" "}
             {study.ineligible} descartadas por potencia, consumo o territorio
+            {study.otherCustomerType > 0 && ` · ${study.otherCustomerType} de otro tipo de cliente`}
           </span>
         </p>
       </div>

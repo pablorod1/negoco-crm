@@ -14,6 +14,7 @@ export interface StudyOptionsInput {
   excludedDiscounts?: string[];
   /** null = sin aplicar. */
   ancillary?: AncillarySimulation | null;
+  customerType?: "particular" | "autonomo" | "empresa" | null;
 }
 
 export interface ComparativaStudies {

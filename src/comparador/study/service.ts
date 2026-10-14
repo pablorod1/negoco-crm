@@ -31,7 +31,7 @@ import { needsInvoiceReview } from "./invoice-review";
 import type { StudyClientData } from "./client-data";
 import { invoiceImagesForVision, photoVisionEnabled, readInvoice, zoomedBands } from "./read-invoice";
 import { indexedEnergyPrices, marginOverMarket } from "./indexed";
-import { rankStudy, type AncillarySimulation, type CurrentPricing, type StudyRanking } from "./ranking";
+import { rankStudy, type AncillarySimulation, type CurrentPricing, type CustomerType, type StudyRanking } from "./ranking";
 import {
   createStudy,
   getStudy,
@@ -231,6 +231,13 @@ export async function analyzeInvoice({
   return studyId;
 }
 
+/** Particular o empresa según el titular de la factura; autónomo solo si se marca. */
+export function customerTypeFromClient(client: StudyClientData | null): CustomerType | null {
+  if (client?.kind === "Particular") return "particular";
+  if (client?.kind === "Empresa") return "empresa";
+  return null;
+}
+
 /** La comercializadora de la factura buscada en su texto, entre las del tenant. */
 async function supplierFromText(client: TenantClient, text: string): Promise<string | null> {
   const { rows } = await client.execute("SELECT id, name FROM comercializadoras");
@@ -387,6 +394,8 @@ export async function rankSavedStudy({
   supply: StudySupply;
   /** SSAA con los que se ha calculado (null, sin aplicar) y los que propone el tenant. */
   ancillary: { value: AncillarySimulation | null; suggested: AncillarySimulation | null };
+  /** Tipo de cliente con el que se oferta y el que se dedujo del NIF o CIF de la factura. */
+  customerType: { value: CustomerType | null; detected: CustomerType | null };
 }> {
   if (!study.extraction || !study.supply) {
     throw new StudyError("Este estudio no tiene factura analizada.", 409);
@@ -401,13 +410,24 @@ export async function rankSavedStudy({
   ]);
   // Los SSAA solo cuentan si el estudio los aplica; los del tenant son la propuesta.
   const ancillary = { value: effective.ancillary ?? null, suggested };
+  // El que se marca en el estudio; si no, el de la factura (NIF: particular; CIF: empresa).
+  const detected = customerTypeFromClient(study.clientData);
+  const customerType = { value: effective.customerType ?? detected, detected };
   const ranking = rankStudy({
     supply: current.supply,
     current: current.tariff,
     offers,
     rules,
     regulated: withInvoiceTaxes(getRegulatedParams(study.priceDate), invoiceTaxRates(study.extraction)),
-    options: { ...effective, ancillary: ancillary.value, date: study.priceDate },
+    options: { ...effective, customerType: customerType.value, ancillary: ancillary.value, date: study.priceDate },
   });
-  return { ranking, options: effective, current: current.tariff, currentInfo: current.info, supply: current.supply, ancillary };
+  return {
+    ranking,
+    options: effective,
+    current: current.tariff,
+    currentInfo: current.info,
+    supply: current.supply,
+    ancillary,
+    customerType,
+  };
 }

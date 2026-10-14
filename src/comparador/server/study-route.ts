@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { NegocoStudiesContext } from "@/comparador/server/guard";
 import { getStudyComparativa } from "@/comparador/study/comparativa";
-import type { AncillarySimulation, StudyRanking } from "@/comparador/study/ranking";
+import type { AncillarySimulation, CustomerType, StudyRanking } from "@/comparador/study/ranking";
 import type { CurrentInfo } from "@/comparador/study/service";
 import type { ProposalRecord } from "@/comparador/study/proposals";
 import { getStudy, type StudyRecord } from "@/comparador/study/repository";
@@ -61,6 +61,7 @@ export interface StudyCalculation {
   ranking: StudyRanking;
   currentInfo: CurrentInfo;
   ancillary: { value: AncillarySimulation | null; suggested: AncillarySimulation | null };
+  customerType: { value: CustomerType | null; detected: CustomerType | null };
 }
 
 export function studyView(
@@ -99,6 +100,8 @@ export function studyView(
     currentInfo: calculation?.currentInfo ?? null,
     /** SSAA aplicados (null, sin aplicar) y los que propone el tenant. */
     ancillary: calculation?.ancillary ?? { value: null, suggested: null },
+    /** Tipo de cliente con el que se oferta y el que se dedujo de la factura. */
+    customerType: calculation?.customerType ?? { value: null, detected: null },
     issues: describeInvoiceIssues(study.issues),
     /** Lo leído de la factura, para revisarlo y corregirlo. */
     extraction: facts ? withoutReview(facts as ReviewedExtraction) : null,
@@ -117,6 +120,7 @@ export function studyView(
     totalOffers: ranking?.offers.length ?? 0,
     ineligible: ranking?.ineligible ?? 0,
     withoutAncillary: ranking?.withoutAncillary ?? 0,
+    otherCustomerType: ranking?.otherCustomerType ?? 0,
     noSavings: ranking?.noSavings ?? false,
     proposals: proposals.map((proposal) => proposalView(proposal, showCommission)),
   };
@@ -139,6 +143,7 @@ export const OptionsSchema = z.object({
   excludedDiscounts: z.array(z.string().max(200)).max(200).optional(),
   /** null = sin aplicar. */
   ancillary: AncillarySchema.nullable().optional(),
+  customerType: z.enum(["particular", "autonomo", "empresa"]).nullable().optional(),
 });
 
 /** El estudio y su comparativa, si este usuario puede verla. */

@@ -7,7 +7,7 @@ import type { CommissionRule, StoredRatePrice } from "@/comparador/rates/types";
 import type { ApoloSipsElectricityConsumptionRow } from "@/integrations/apolo-sips/types";
 import { indexedEnergyPrices, marginOverMarket } from "./indexed";
 import { layoutLines } from "./invoice-text";
-import { rankStudy } from "./ranking";
+import { rankStudy, rateAudience } from "./ranking";
 import { detectSupplierInText } from "./supplier";
 import { annualKwhFromSips, territoryFromProvince, type StudySupply } from "./supply";
 
@@ -227,6 +227,25 @@ describe("ranking", () => {
     expect(without.cost.total).toBeGreaterThan(first.cost.total);
   });
 
+  test("each kind of customer sees its rates; those without a segment, everyone", () => {
+    const home = offer("hogar", { rateName: "Tarifa Hogar 24h" });
+    const business = offer("pyme", { clientSegment: "Pyme" });
+    const any = offer("todos");
+    const names = (customerType: "particular" | "autonomo" | "empresa" | null) =>
+      rankStudy({
+        supply,
+        current,
+        offers: [home, business, any],
+        rules: [],
+        regulated: getRegulatedParams("2026-10-07"),
+        options: { date: "2026-10-07", channel: null, feeEnergyPerMwh: null, order: "savings", customerType },
+      }).offers.map(({ key }) => key).sort();
+    expect(names("particular")).toEqual(["hogar", "todos"]);
+    expect(names("empresa")).toEqual(["pyme", "todos"]);
+    expect(names("autonomo")).toEqual(["hogar", "pyme", "todos"]);
+    expect(names(null)).toEqual(["hogar", "pyme", "todos"]);
+  });
+
   test("a rate without ancillary services is offered marked until SSAA are applied", () => {
     const noSsaa = offer("sin-ssaa", { includesAncillaryServices: false });
     const unapplied = only(noSsaa);
@@ -337,5 +356,14 @@ describe("supplier in the invoice text", () => {
   test("does not guess with two suppliers or a short name inside other words", () => {
     expect(detectSupplierInText("Eleia y Naturgy", suppliers)).toBeNull();
     expect(detectSupplierInText("consumo VM 2 kWh", suppliers)).toBeNull();
+  });
+});
+
+describe("rateAudience", () => {
+  test("reads the segment or, without it, the product name", () => {
+    expect(rateAudience("Doméstico", "Fijo 24h")).toBe("hogar");
+    expect(rateAudience(null, "Tarifa Negocios Plus")).toBe("negocio");
+    expect(rateAudience(null, "Plan Estable PYME")).toBe("negocio");
+    expect(rateAudience(null, "FIJO POWER PLUS_v2603")).toBeNull();
   });
 });
