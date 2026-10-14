@@ -28,7 +28,9 @@ export type InvoiceIssueCode =
   | "vat_mismatch"
   | "total_mismatch"
   /** La factura se leyó con OCR (foto o PDF escaneado). */
-  | "read_from_image";
+  | "read_from_image"
+  /** La comprobación automática (Jev) no ve en la factura lo que se leyó. */
+  | "doubtful_reading";
 
 export interface InvoiceIssue {
   code: InvoiceIssueCode;

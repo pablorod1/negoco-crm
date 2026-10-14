@@ -31,6 +31,8 @@ const FIELD_TEXT: Record<string, string> = {
   total: "el total",
   vat: "el IVA",
   electricityTax: "el impuesto eléctrico",
+  supplierName: "la comercializadora",
+  hasSelfConsumption: "el autoconsumo",
 };
 
 /**
@@ -44,7 +46,9 @@ export function issueMessages(issues: readonly InvoiceIssue[]) {
       severity: issue.severity,
       message:
         ISSUE_TEXT[issue.code] ??
-        (issue.code === "missing_field"
+        (issue.code === "doubtful_reading"
+          ? `Comprueba ${FIELD_TEXT[issue.field] ?? issue.field}: la comprobación automática no lo ve claro en la factura.`
+          : issue.code === "missing_field"
           ? `La factura no trae ${FIELD_TEXT[issue.field] ?? issue.field}.`
           : `Revisa ${FIELD_TEXT[issue.field] ?? issue.field}.`),
     }));

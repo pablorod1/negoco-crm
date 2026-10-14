@@ -16,7 +16,7 @@ import {
 
 let gatewayProvider: ReturnType<typeof createGateway> | null = null;
 
-function getGateway() {
+export function getGateway() {
   const apiKey = process.env.VERCEL_AI_GATEWAY_API_KEY;
   if (!apiKey) {
     throw new Error("Missing VERCEL_AI_GATEWAY_API_KEY");

@@ -3,6 +3,7 @@ import { naturgyInvoice } from "./fixtures";
 import type { InvoiceExtraction } from "./invoice-schema";
 import {
   alignEnergyKwh,
+  consumptionFromEnergyLines,
   deriveMissingEnergyPrice,
   ELECTRICITY_TAX_RATE,
   exactElectricityTaxRate,
@@ -403,5 +404,24 @@ describe("regulatedSocialBonusPrice", () => {
   test("a yearly social bonus badly turned into €/day takes the regulated price", () => {
     const invoice = { ...naturgyInvoice, socialBonusLines: [{ days: 31, pricePerDay: 0.026468, amount: 0.77 }] };
     expect(regulatedSocialBonusPrice(invoice).socialBonusLines[0].pricePerDay).toBe(0.024688);
+  });
+});
+
+describe("consumptionFromEnergyLines", () => {
+  const lines = (p1: number, p2: number, p3: number): InvoiceExtraction["energyLines"] => [
+    { period: "P1", kwh: p1, pricePerKwh: 0.165872, amount: 0 },
+    { period: "P2", kwh: p2, pricePerKwh: 0.165872, amount: 0 },
+    { period: "P3", kwh: p3, pricePerKwh: 0.165872, amount: 0 },
+  ];
+
+  test("the same three numbers in another order: the lines, with their period, win", () => {
+    const invoice = { ...naturgyInvoice, consumptionKwh: { P1: 413, P2: 221, P3: 210 }, energyLines: lines(210, 221, 413) };
+    expect(consumptionFromEnergyLines(invoice).consumptionKwh).toEqual({ P1: 210, P2: 221, P3: 413 });
+  });
+
+  test("different numbers or a single price change nothing", () => {
+    const other = { ...naturgyInvoice, consumptionKwh: { P1: 400, P2: 221, P3: 210 }, energyLines: lines(210, 221, 413) };
+    expect(consumptionFromEnergyLines(other)).toBe(other);
+    expect(consumptionFromEnergyLines(naturgyInvoice)).toBe(naturgyInvoice);
   });
 });

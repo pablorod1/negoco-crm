@@ -21,7 +21,7 @@ export type NotAnInvoice =
   | { kind: "contract" | "comparison" | "price_sheet"; message: string }
   | { kind: "other_tariff"; message: string };
 
-const MESSAGES = {
+export const NOT_INVOICE_MESSAGES = {
   contract: "Este documento es un contrato, no una factura. Sube la última factura de luz del cliente.",
   comparison:
     "Este documento es un estudio comparativo de otra comercializadora, no una factura. Sube la última factura de luz del cliente.",
@@ -34,10 +34,10 @@ const MESSAGES = {
  */
 export function notAnInvoice(text: string, { fromImage = false } = {}): NotAnInvoice | null {
   const head = text.slice(0, 3000);
-  if (COMPARISON_STUDY.test(text)) return { kind: "comparison", message: MESSAGES.comparison };
-  if (CONTRACT.test(head)) return { kind: "contract", message: MESSAGES.contract };
+  if (COMPARISON_STUDY.test(text)) return { kind: "comparison", message: NOT_INVOICE_MESSAGES.comparison };
+  if (CONTRACT.test(head)) return { kind: "contract", message: NOT_INVOICE_MESSAGES.contract };
   if (!fromImage && !INVOICE_MARKERS.test(text) && !INVOICE_NUMBER.test(text)) {
-    return { kind: "price_sheet", message: MESSAGES.price_sheet };
+    return { kind: "price_sheet", message: NOT_INVOICE_MESSAGES.price_sheet };
   }
   const tariffs = new Set([...text.matchAll(ACCESS_TARIFF)].map(([, major, minor]) => `${major}.${minor}`));
   if (tariffs.size === 1 && !tariffs.has("2.0")) {

@@ -6,21 +6,7 @@ import {
   InvoiceExtractionSchema,
   type InvoiceExtraction,
 } from "./invoice-schema";
-import {
-  alignEnergyKwh,
-  deriveMissingEnergyPrice,
-  exactElectricityTaxRate,
-  fillBillingDays,
-  inferPricing,
-  meterRentalFromText,
-  normalizePowerLines,
-  reconcileChain,
-  reconcileVat,
-  regulatedSocialBonusPrice,
-  repairedCups,
-  singleEnergyPriceAsAll,
-  surplusCompensationAsOther,
-} from "./normalize";
+import { normalizeReading, repairedCups } from "./normalize";
 import { getSupplierHint } from "./supplier-hints";
 import {
   hasBlockingIssues,
@@ -159,24 +145,7 @@ export async function extractInvoice({
     });
 
     const text = "text" in file ? file.text : null;
-    const normalized = inferPricing(
-      reconcileVat(
-        reconcileChain(
-          singleEnergyPriceAsAll(
-            alignEnergyKwh(
-              surplusCompensationAsOther(
-                deriveMissingEnergyPrice(
-                  exactElectricityTaxRate(
-                    fillBillingDays(regulatedSocialBonusPrice(meterRentalFromText(normalizePowerLines(result.output), text))),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-      text,
-    );
+    const normalized = normalizeReading(result.output, text);
     const output = knownCups ? { ...normalized, cups: knownCups } : repairedCups(normalized);
     const issues = validateInvoice(output);
     attempts.push({

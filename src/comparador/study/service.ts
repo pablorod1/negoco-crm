@@ -8,9 +8,11 @@ import {
 } from "@/comparador/extraction/current-tariff";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { omieAverages, type OmieDayFetcher } from "@/comparador/market/omie";
-import { notAnInvoice } from "@/comparador/extraction/document-kind";
+import { NOT_INVOICE_MESSAGES, notAnInvoice } from "@/comparador/extraction/document-kind";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
 import { isValidCups, normalizeIdentifier } from "@/comparador/extraction/identifiers";
+import type { InvoiceIssue } from "@/comparador/extraction/validate";
+import { verifyReading } from "@/comparador/extraction/verify-reading";
 import { clientFromExtraction } from "@/comparador/redaction/invoice-client";
 import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
 import {
@@ -101,6 +103,7 @@ export async function analyzeInvoice({
   today,
   fetchSips,
   extract = extractInvoice,
+  verify = verifyReading,
 }: {
   client: TenantClient;
   tenantSlug: string;
@@ -111,6 +114,7 @@ export async function analyzeInvoice({
   today: string;
   fetchSips: SipsFetcher;
   extract?: typeof extractInvoice;
+  verify?: typeof verifyReading;
 }): Promise<string> {
   const context = { tenantSlug, jobType: "invoice_extraction" as const, userId, subjectId: comparativaId };
   const images = photoVisionEnabled() ? await invoiceImagesForVision(invoice) : null;
@@ -121,6 +125,8 @@ export async function analyzeInvoice({
   let extraction: Awaited<ReturnType<typeof extractInvoice>>;
   let sips: SipsYear;
   let facts: InvoiceExtraction;
+  // Datos que la comprobación independiente (Jev) no ve en la factura.
+  let doubtful: InvoiceIssue[] = [];
 
   if (images) {
     // Foto o PDF escaneado con visión: la IA ve la imagen entera, con sus
@@ -165,6 +171,13 @@ export async function analyzeInvoice({
     facts = extraction.extraction.supplierName
       ? extraction.extraction
       : { ...extraction.extraction, supplierName: await supplierFromText(client, redacted.redaction.text) };
+    const check = await verify({
+      text: redacted.redaction.text,
+      reading: facts,
+      context: { ...context, jobType: "invoice_verification" },
+    });
+    if (check?.notInvoice) throw new StudyError(NOT_INVOICE_MESSAGES[check.notInvoice]);
+    doubtful = (check?.doubtfulFields ?? []).map((field) => ({ code: "doubtful_reading", severity: "warning", field }));
   }
   const { sipsPoint, sipsConsumption } = sips;
   const aiCostUsd = extraction.attempts.reduce((sum, { costUsd }) => sum + (costUsd ?? 0), 0);
@@ -189,9 +202,11 @@ export async function analyzeInvoice({
     invoiceFileName: invoice.fileName,
     cups,
     extraction: facts,
-    issues: fromImage
-      ? [{ code: "read_from_image", severity: "warning", field: "invoice" }, ...extraction.issues]
-      : extraction.issues,
+    issues: [
+      ...(fromImage ? [{ code: "read_from_image" as const, severity: "warning" as const, field: "invoice" }] : []),
+      ...extraction.issues,
+      ...doubtful,
+    ],
     supply,
     // El tipo de tarifa (fija, indexada, plana) lo confirma quien hace el estudio.
     options: { channel, feeEnergyPerMwh: null, order: "savings" },

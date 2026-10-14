@@ -4,6 +4,7 @@ import { getTursoControlClient } from "@/core/libsql/client";
 
 export type AiJobType =
   | "invoice_extraction"
+  | "invoice_verification"
   | "rate_extraction"
   | "classification";
 

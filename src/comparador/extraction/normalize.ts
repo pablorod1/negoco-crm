@@ -381,3 +381,46 @@ export function repairedCups(invoice: InvoiceExtraction): InvoiceExtraction {
   const cups = repairCups(invoice.cups);
   return cups ? { ...invoice, cups } : invoice;
 }
+
+/**
+ * El consumo por periodo leído de una tabla en otro orden («Consumo (kWh)
+ * 844 413 221 210») cuando las líneas de energía dicen otra cosa («P1 210
+ * kWh», «P2 221», «P3 413»): si son los mismos tres números, mandan las
+ * líneas, que llevan su periodo escrito al lado y cuadran con el importe.
+ */
+export function consumptionFromEnergyLines(invoice: InvoiceExtraction): InvoiceExtraction {
+  const perPeriod = (["P1", "P2", "P3"] as const).map((period) => {
+    const kwh = new Set(invoice.energyLines.filter((line) => line.period === period).map((line) => line.kwh));
+    return kwh.size === 1 ? [...kwh][0] : null;
+  });
+  if (perPeriod.some((kwh) => kwh === null)) return invoice;
+  const read = [invoice.consumptionKwh.P1, invoice.consumptionKwh.P2, invoice.consumptionKwh.P3];
+  if (read.some((kwh) => kwh === null)) return invoice;
+  const sorted = (values: (number | null)[]) => [...values].map((value) => Math.round(value! * 1000)).sort((a, b) => a - b).join(",");
+  const sameNumbers = sorted(read) === sorted(perPeriod);
+  const sameOrder = read.every((kwh, index) => Math.abs(kwh! - perPeriod[index]!) < 0.001);
+  if (!sameNumbers || sameOrder) return invoice;
+  const [P1, P2, P3] = perPeriod as number[];
+  return { ...invoice, consumptionKwh: { P1, P2, P3 } };
+}
+
+/**
+ * Todas las reglas sobre una lectura, en orden: primero las que arreglan un
+ * dato suelto, después las que recolocan líneas con las cifras impresas.
+ * `text` es el de la factura cuando se leyó texto (null con una imagen).
+ */
+export function normalizeReading(read: InvoiceExtraction, text: string | null): InvoiceExtraction {
+  let invoice = normalizePowerLines(read);
+  invoice = meterRentalFromText(invoice, text);
+  invoice = regulatedSocialBonusPrice(invoice);
+  invoice = fillBillingDays(invoice);
+  invoice = exactElectricityTaxRate(invoice);
+  invoice = deriveMissingEnergyPrice(invoice);
+  invoice = surplusCompensationAsOther(invoice);
+  invoice = alignEnergyKwh(invoice);
+  invoice = consumptionFromEnergyLines(invoice);
+  invoice = singleEnergyPriceAsAll(invoice);
+  invoice = reconcileChain(invoice);
+  invoice = reconcileVat(invoice);
+  return inferPricing(invoice, text);
+}
