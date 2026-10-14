@@ -39,6 +39,32 @@ function daysBetween(from: string | null, to: string | null): number | null {
   return Math.round((end - start) / 86_400_000);
 }
 
+/** Una cifra tal como la escriben las facturas: «1.234,5», «73», «0,1099». */
+function appearsInText(value: number | null, text: string): boolean {
+  if (value === null) return false;
+  const [integer, decimals = ""] = Math.abs(value).toString().split(".");
+  const thousands = integer.replace(/\B(?=(\d{3})+(?!\d))/g, "[.]?");
+  const decimal = decimals ? `[,.]${decimals}0*` : "(?:[,.]0+)?";
+  return new RegExp(`(?<![\\d,.])-?${thousands}${decimal}(?![\\d])`).test(text);
+}
+
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** La fecha de la ficha (YYYY-MM-DD) escrita en la factura: «05/10/2026», «5 de octubre de 2026». */
+function dateInText(date: string | null, text: string): boolean {
+  const match = date?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const [, year, month, day] = match;
+  const d = String(Number(day));
+  const m = String(Number(month));
+  return (
+    new RegExp(`(?<!\\d)0?${d}[/.-]0?${m}[/.-](?:${year}|${year.slice(2)})(?!\\d)`).test(text) ||
+    new RegExp(`(?<!\\d)0?${d} de ${MONTHS[Number(month) - 1]}(?: de)? ${year}`, "i").test(text)
+  );
+}
+
+const INDEXED_WORDS = /indexad[oa]|precio\s*diario|\bPVPC\b|pass.?through/i;
+
 const normalize = (value: string | null) =>
   (value ?? "")
     .normalize("NFD")
@@ -111,12 +137,27 @@ export function computeFieldStatuses({
           : "unverified";
   }
 
-  // El reparto por periodos solo lo confirma el SIPS.
+  // El reparto por periodos lo confirma el SIPS o la propia factura: cada
+  // consumo escrito en ella y, entre los tres, los kWh que ya cuadran con el
+  // importe de la energía.
   const consumptionError = issueFields.has("consumptionKwh");
+  const { P1, P2, P3 } = ficha.consumptionKwh;
+  const energyKwh = new Set(
+    ["P1", "P2", "P3", "ALL"].map((period) =>
+      ficha.energyLines.filter((line) => line.period === period).reduce((max, line) => Math.max(max, line.kwh), 0),
+    ),
+  );
+  const billedKwh = ficha.energyLines.some((line) => line.period === "ALL")
+    ? Math.max(...ficha.energyLines.filter((line) => line.period === "ALL").map((line) => line.kwh))
+    : [...energyKwh].reduce((sum, value) => sum + value, 0);
+  const splitInText =
+    !chainBroken &&
+    [P1, P2, P3].every((value) => value === 0 || appearsInText(value, redactedText)) &&
+    Math.abs((P1 ?? 0) + (P2 ?? 0) + (P3 ?? 0) - billedKwh) <= 1;
   for (const period of ["P1", "P2", "P3"] as const) {
     statuses[`consumptionKwh.${period}`] = consumptionError
       ? "error"
-      : sips?.consumption?.[period]
+      : sips?.consumption?.[period] || splitInText
         ? "verified"
         : "unverified";
   }
@@ -124,8 +165,17 @@ export function computeFieldStatuses({
   const days = ficha.billingPeriod?.days ?? null;
   const powerDays = new Set(ficha.powerLines.map((line) => line.days));
   const linesDays = [...powerDays].reduce((sum, value) => sum + value, 0);
+  // Lo que se cobra por día (alquiler, bono social) cuadra con su importe: sus días valen.
+  const dailyDays = [
+    issueFields.has("meterRental") ? null : ficha.meterRental?.days,
+    ...ficha.socialBonusLines.map((line, index) => (issueFields.has(`socialBonusLines[${index}]`) ? null : line.days)),
+  ].filter((value): value is number => typeof value === "number");
   statuses["billingPeriod.days"] =
-    days === null ? "error" : days === linesDays && !chainBroken ? "verified" : "unverified";
+    days === null
+      ? "error"
+      : (days === linesDays || dailyDays.includes(days)) && !chainBroken
+        ? "verified"
+        : "unverified";
   const span = ficha.billingPeriod
     ? daysBetween(ficha.billingPeriod.from, ficha.billingPeriod.to)
     : null;
@@ -135,20 +185,30 @@ export function computeFieldStatuses({
       : "unverified";
 
   statuses.accessTariff = ficha.accessTariff === "2.0TD" ? "verified" : "unverified";
+  const supplierWords = normalize(ficha.supplierName)
+    .split(/[\s,.]+/)
+    .filter((word) => word.length >= 4 && !/^(energia|comercializadora|clientes|s\.?a\.?u?)$/.test(word));
   statuses.supplierName =
-    supplierGuess !== "otra" &&
-    normalize(ficha.supplierName).includes(normalize(supplierGuess).split(" ")[0])
+    (supplierGuess !== "otra" &&
+      normalize(ficha.supplierName).includes(normalize(supplierGuess).split(" ")[0])) ||
+    (supplierWords.length > 0 && supplierWords.every((word) => normalize(redactedText).includes(word)))
       ? "verified"
       : "unverified";
+  // Con las mismas pruebas que producción (`inferPricing`): las palabras o el
+  // valle más caro que el llano.
+  const energyPrice = (period: "P2" | "P3") =>
+    ficha.energyLines.filter((line) => line.period === period).reduce((sum, line) => sum + line.pricePerKwh, 0);
+  const indexedEvidence =
+    INDEXED_WORDS.test(redactedText) || (energyPrice("P2") > 0 && energyPrice("P3") > energyPrice("P2") + 0.001);
   statuses.pricing =
-    ficha.pricing === "fixed" && !/indexad|omie|pass.?through/i.test(redactedText)
+    (ficha.pricing === "fixed" && !indexedEvidence) || (ficha.pricing === "indexed" && indexedEvidence)
       ? "verified"
       : "unverified";
   statuses.hasSelfConsumption =
     !ficha.hasSelfConsumption && !/autoconsumo|excedente/i.test(redactedText)
       ? "verified"
       : "unverified";
-  statuses.issueDate = "unverified";
+  statuses.issueDate = dateInText(ficha.issueDate, redactedText) ? "verified" : "unverified";
   statuses.cups = privateCups.some(isValidCups) ? "verified" : "error";
 
   for (const field of confirmedFields) {

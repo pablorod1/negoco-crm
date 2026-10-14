@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { naturgyInvoice } from "./fixtures";
 import type { InvoiceExtraction } from "./invoice-schema";
-import { fillBillingDays, inferPricing, normalizePowerLines, reconcileVat, singleEnergyPriceAsAll } from "./normalize";
+import { fillBillingDays, inferPricing, normalizePowerLines, reconcileChain, reconcileVat, singleEnergyPriceAsAll } from "./normalize";
 import { validateInvoice } from "./validate";
 
 function withPowerLine(line: InvoiceExtraction["powerLines"][number]) {
@@ -102,7 +102,8 @@ describe("reconcileVat", () => {
     const fixed = reconcileVat(eleia);
     expect(fixed.taxableBase).toBe(57.54);
     expect(fixed.vat).toEqual({ ratePercent: 21, base: 57.54, amount: 12.08 });
-    expect(validateInvoice(fixed).filter(({ severity }) => severity === "blocking")).toEqual([]);
+    const chain = ["electricity_tax_base_mismatch", "electricity_tax_mismatch", "taxable_base_mismatch", "vat_mismatch", "total_mismatch"];
+    expect(validateInvoice(fixed).filter(({ code }) => chain.includes(code))).toEqual([]);
   });
 
   test("leaves the reading alone when the invoice does not show that VAT or the total does not agree", () => {
@@ -185,5 +186,41 @@ describe("singleEnergyPriceAsAll", () => {
       energyLines: [{ period: "P1" as const, kwh: 79, pricePerKwh: 0.2, amount: 15.8 }],
     };
     expect(singleEnergyPriceAsAll(invoice)).toBe(invoice);
+  });
+});
+
+describe("reconcileChain", () => {
+  // Yoigo: un descuento que va después del impuesto eléctrico, un anuncio
+  // leído como línea y una base del impuesto que la factura no imprime.
+  const yoigo: InvoiceExtraction = {
+    ...naturgyInvoice,
+    powerLines: [{ period: "P1", kw: 4, days: 30, pricePerKwDay: 0.5, amount: 21.47, originalPrice: null }],
+    energyLines: [{ period: "ALL", kwh: 490, pricePerKwh: 0.128, amount: 62.71 }],
+    socialBonusLines: [{ days: null, pricePerDay: null, amount: 0.58 }],
+    energyDiscounts: [{ description: "Descuento bienvenida 50€", amount: -8.27 }],
+    otherElectricityLines: [],
+    otherTaxableLines: [{ description: "Protege tu hogar por 3,90€/mes", amount: 3.9 }],
+    vatExemptLines: [],
+    meterRental: { days: 31, pricePerDay: 0.02663, amount: 0.83 },
+    electricityTax: { base: 84.18, ratePercent: 5.1127, amount: 4.33 },
+    vat: { ratePercent: 21, base: 81.65, amount: 17.15 },
+    taxableBase: 81.65,
+    total: 98.8,
+  };
+
+  test("the only placement that matches the printed tax, VAT and total wins", () => {
+    const fixed = reconcileChain(yoigo);
+    expect(fixed.energyDiscounts).toEqual([]);
+    expect(fixed.otherTaxableLines).toEqual([{ description: "Descuento bienvenida 50€", amount: -8.27 }]);
+    expect(fixed.electricityTax?.base).toBe(84.76);
+    const chain = ["electricity_tax_base_mismatch", "electricity_tax_mismatch", "taxable_base_mismatch", "vat_mismatch", "total_mismatch"];
+    expect(validateInvoice(fixed).filter(({ code }) => chain.includes(code))).toEqual([]);
+  });
+
+  test("leaves a reading that already matches, or one nothing can fix", () => {
+    const fixed = reconcileChain(yoigo);
+    expect(reconcileChain(fixed)).toBe(fixed);
+    const hopeless = { ...yoigo, total: 120 };
+    expect(reconcileChain(hopeless)).toBe(hopeless);
   });
 });

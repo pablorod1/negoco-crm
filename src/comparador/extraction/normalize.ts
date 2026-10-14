@@ -125,3 +125,93 @@ export function singleEnergyPriceAsAll(invoice: InvoiceExtraction): InvoiceExtra
   if (!covered) return invoice;
   return { ...invoice, energyLines: invoice.energyLines.map((line) => ({ ...line, period: "ALL" as const })) };
 }
+
+type Placement = "electricity" | "taxable" | "drop";
+interface Movable {
+  description: string;
+  amount: number;
+  /** Dónde lo puso la IA, y dónde más puede ir. */
+  options: Placement[];
+}
+
+/** Hasta aquí se prueban todas las combinaciones (3^6 = 729). */
+const MAX_MOVABLE = 6;
+
+/**
+ * Las cifras que imprime la factura mandan: el impuesto eléctrico, el IVA y
+ * el total. Si la lectura no cuadra con ellas, prueba a recolocar las líneas
+ * dudosas: un descuento que se aplica después del impuesto eléctrico (Yoigo:
+ * «Descuento bienvenida»), un concepto con o sin impuesto eléctrico, o una
+ * línea que no suma (un anuncio: «Protege tu hogar por 3,90€/mes»). Solo
+ * cambia la lectura si una única colocación cuadra con las tres cifras; las
+ * bases que la IA rellenó sin estar impresas salen de las líneas.
+ */
+export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
+  const tax = invoice.electricityTax;
+  const vat = invoice.vat;
+  if (!tax || !vat || invoice.total === null) return invoice;
+
+  const movable: Movable[] = [
+    ...invoice.energyDiscounts.map((line) => ({ ...line, options: ["electricity", "taxable"] as Placement[] })),
+    ...invoice.otherElectricityLines.map((line) => ({ ...line, options: ["electricity", "taxable", "drop"] as Placement[] })),
+    ...invoice.otherTaxableLines.map((line) => ({ ...line, options: ["taxable", "electricity", "drop"] as Placement[] })),
+  ];
+  if (movable.length > MAX_MOVABLE) return invoice;
+
+  const fixed = sumEuros([
+    ...invoice.powerLines.map(({ amount }) => amount),
+    ...invoice.energyLines.map(({ amount }) => amount),
+    ...invoice.socialBonusLines.map(({ amount }) => amount),
+  ]);
+  const exempt = sumEuros(invoice.vatExemptLines.map(({ amount }) => amount));
+  const rental = invoice.meterRental?.amount ?? 0;
+
+  const solve = (placements: Placement[]) => {
+    const on = (where: Placement) => movable.filter((_, index) => placements[index] === where).map(({ amount }) => amount);
+    const electricityBase = sumEuros([fixed, ...on("electricity")]);
+    if (Math.abs((electricityBase * tax.ratePercent) / 100 - tax.amount) > CENT) return null;
+    const taxableBase = sumEuros([electricityBase, tax.amount, rental, ...on("taxable")]);
+    if (Math.abs((taxableBase * vat.ratePercent) / 100 - vat.amount) > CENT) return null;
+    if (Math.abs(sumEuros([taxableBase, vat.amount, exempt]) - invoice.total!) > CENT) return null;
+    return { electricityBase, taxableBase };
+  };
+
+  const current = movable.map(({ options }) => options[0]);
+  const read = solve(current);
+  if (read && Math.abs(read.electricityBase - tax.base) <= CENT && Math.abs(read.taxableBase - vat.base) <= CENT) {
+    return invoice;
+  }
+
+  const solutions = new Map<string, { placements: Placement[]; electricityBase: number; taxableBase: number }>();
+  const visit = (placements: Placement[]) => {
+    if (placements.length === movable.length) {
+      const result = solve(placements);
+      if (!result) return;
+      const dropped = movable.filter((_, index) => placements[index] === "drop").map(({ amount }) => amount).sort();
+      const key = `${result.electricityBase}|${result.taxableBase}|${dropped.join(",")}`;
+      if (!solutions.has(key)) solutions.set(key, { placements, ...result });
+      return;
+    }
+    for (const option of movable[placements.length].options) visit([...placements, option]);
+  };
+  visit([]);
+  if (solutions.size !== 1) return invoice;
+
+  const [{ placements, electricityBase, taxableBase }] = solutions.values();
+  const discountCount = invoice.energyDiscounts.length;
+  const placed = movable.map(({ description, amount }, index) => ({
+    line: { description, amount },
+    where: placements[index],
+    wasDiscount: index < discountCount,
+  }));
+  return {
+    ...invoice,
+    // Un descuento que sigue antes del impuesto eléctrico se queda como descuento.
+    energyDiscounts: placed.filter(({ where, wasDiscount }) => where === "electricity" && wasDiscount).map(({ line }) => line),
+    otherElectricityLines: placed.filter(({ where, wasDiscount }) => where === "electricity" && !wasDiscount).map(({ line }) => line),
+    otherTaxableLines: placed.filter(({ where }) => where === "taxable").map(({ line }) => line),
+    electricityTax: { ...tax, base: electricityBase },
+    vat: { ...vat, base: taxableBase },
+    taxableBase: invoice.taxableBase === null ? null : taxableBase,
+  };
+}

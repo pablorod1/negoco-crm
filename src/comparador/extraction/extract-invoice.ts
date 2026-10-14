@@ -10,6 +10,7 @@ import {
   fillBillingDays,
   inferPricing,
   normalizePowerLines,
+  reconcileChain,
   reconcileVat,
   singleEnergyPriceAsAll,
 } from "./normalize";
@@ -142,7 +143,7 @@ export async function extractInvoice({
     });
 
     const normalized = inferPricing(
-      reconcileVat(singleEnergyPriceAsAll(fillBillingDays(normalizePowerLines(result.output)))),
+      reconcileVat(reconcileChain(singleEnergyPriceAsAll(fillBillingDays(normalizePowerLines(result.output))))),
       "text" in file ? file.text : null,
     );
     const output = knownCups ? { ...normalized, cups: knownCups } : normalized;
