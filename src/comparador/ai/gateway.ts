@@ -83,7 +83,7 @@ const GEMINI_THINKING_BUDGET: Record<ReasoningLevel, number> = {
   medium: 12_288,
 };
 
-/** Opciones propias de cada proveedor. Los GPT-5 y Gemini 2.5 razonan por defecto. */
+/** Opciones propias de cada proveedor. Los GPT-5, Gemini 2.5 y Claude razonan por defecto. */
 export function buildProviderSpecificOptions(
   model: string,
   reasoning: ReasoningLevel = "minimal",
@@ -95,6 +95,13 @@ export function buildProviderSpecificOptions(
   if (model.startsWith("google/gemini-2.5")) {
     const thinking = { thinkingConfig: { thinkingBudget: GEMINI_THINKING_BUDGET[reasoning] } };
     return { google: thinking, vertex: thinking };
+  }
+  // Claude razona de forma adaptativa: el esfuerzo es lo que lo limita. Ojo:
+  // su salida estructurada nativa admite 16 campos con null como mucho y la
+  // ficha de factura tiene 27, así que la Gateway usa una herramienta JSON
+  // que no obliga a cumplir el esquema (Haiku 5.5 falló 5 de 18 el 14/10/2026).
+  if (model.startsWith("anthropic/claude-")) {
+    return { anthropic: { effort: reasoning === "medium" ? "medium" : "low" } };
   }
   return {};
 }
