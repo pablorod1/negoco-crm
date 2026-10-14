@@ -21,9 +21,14 @@ async function main() {
   const maxUsd = Number(readOption(argv, "--max-usd") ?? 0.1);
   const out = readOption(argv, "--out");
 
+  // Con fichas, solo las facturas del banco (sin las excluidas ni descartadas).
+  const withFichas = new Set(
+    (await readdir(goldenPath(root, "fichas", "")).catch(() => [] as string[])).map((file) => file.slice(0, -5)),
+  );
   const ids = (await readdir(goldenPath(root, "redacted", "")))
     .filter((file) => file.endsWith(".txt"))
     .map((file) => file.slice(0, -4))
+    .filter((id) => withFichas.size === 0 || withFichas.has(id))
     .sort();
 
   let spent = 0;
@@ -49,11 +54,20 @@ async function main() {
       spent += result.attempts.reduce((sum, attempt) => sum + (attempt.costUsd ?? 0), 0);
       const last = result.attempts.at(-1)!.model;
       usedModels[last] = (usedModels[last] ?? 0) + 1;
-      if (result.status === "ok") ok += 1;
-      const codes = result.issues.filter(({ severity }) => severity !== "warning").map(({ code }) => code);
+      // CUPS tapado por la comercializadora («CUPS: *»): en producción se pide a
+      // mano; no es un fallo de lectura.
+      const meta = JSON.parse(await readFile(goldenPath(root, "meta", `${id}.json`), "utf8").catch(() => "{}")) as {
+        cupsMasked?: boolean;
+      };
+      const issues = result.issues.filter(
+        (issue) => !(meta.cupsMasked && issue.code === "missing_field" && issue.field === "cups"),
+      );
+      const status = issues.some(({ severity }) => severity === "blocking") ? "needs_review" : "ok";
+      if (status === "ok") ok += 1;
+      const codes = issues.filter(({ severity }) => severity !== "warning").map(({ code }) => code);
       for (const code of new Set(codes)) issueCounts[code] = (issueCounts[code] ?? 0) + 1;
-      results.push({ id, status: result.status, issues: result.issues, attempts: result.attempts, extraction: result.extraction });
-      console.log(`${id} ${result.status} ${codes.join(", ")}`);
+      results.push({ id, status, issues, attempts: result.attempts, extraction: result.extraction });
+      console.log(`${id} ${status} ${codes.join(", ")}`);
     } catch (error) {
       console.error(`${id}: ${(error as Error).message}`);
     }

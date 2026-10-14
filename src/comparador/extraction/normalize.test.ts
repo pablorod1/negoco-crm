@@ -288,3 +288,11 @@ describe("exactElectricityTaxRate", () => {
     expect(exactElectricityTaxRate(invoice)).toBe(invoice);
   });
 });
+
+describe("validateInvoice with a single price", () => {
+  test("the split of consumption by period is a warning when every energy line is ALL (Endesa)", () => {
+    const invoice = { ...naturgyInvoice, consumptionKwh: { P1: 367, P2: null, P3: null } };
+    const missing = validateInvoice(invoice).filter(({ code }) => code === "missing_field");
+    expect(missing.map(({ severity }) => severity)).toEqual(["warning", "warning"]);
+  });
+});

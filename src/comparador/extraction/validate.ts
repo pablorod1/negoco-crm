@@ -122,9 +122,16 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     if (value === null) add({ code: "missing_field", severity: "blocking", field });
   }
   // Una 2.0TD siempre tiene consumo en los tres periodos, aunque sea cero.
+  // Con un precio único (líneas ALL) el cálculo no lo necesita: hay facturas
+  // que solo dan el total (Endesa), y el año sale del SIPS.
+  const singlePriceOnly = invoice.energyLines.length > 0 && invoice.energyLines.every(({ period }) => period === "ALL");
   for (const period of ["P1", "P2", "P3"] as const) {
     if (invoice.consumptionKwh[period] === null) {
-      add({ code: "missing_field", severity: "blocking", field: `consumptionKwh.${period}` });
+      add({
+        code: "missing_field",
+        severity: singlePriceOnly ? "warning" : "blocking",
+        field: `consumptionKwh.${period}`,
+      });
     }
   }
   if (invoice.powerLines.length === 0 && !flat) {

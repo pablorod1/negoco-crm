@@ -18,6 +18,8 @@ describe("notAnInvoice", () => {
   test("another supplier's comparison (Gana)", () => {
     const text = "Tu factura actual\nTu factura con Gana Energía\n*Este estudio comparativo es una estimación sin validez contractual.";
     expect(notAnInvoice(text)?.kind).toBe("comparison");
+    const other = "24.33 €\nUn 6.3% menos en tu factura eléctrica\nTarifa actual TMAE 3\nReducción respecto a tu factura actual 6.3%";
+    expect(notAnInvoice(other)?.kind).toBe("comparison");
   });
 
   test("a price sheet without total or invoice number (Eleia)", () => {

@@ -11,7 +11,8 @@ const INVOICE_MARKERS =
 
 const CONTRACT =
   /contrato\s+de\s+suministro\s+de\s+energ[ií]a[\s\S]{0,400}condiciones\s+(?:particulares|generales)|fecha\s+oferta/i;
-const COMPARISON_STUDY = /sin\s+validez\s+contractual|estudio\s+comparativo/i;
+const COMPARISON_STUDY =
+  /sin\s+validez\s+contractual|estudio\s+comparativo|reducci[oó]n\s+respecto\s+a\s+tu\s+factura\s+actual|menos\s+en\s+tu\s+factura\s+el[eé]ctrica/i;
 /** El número de la factura: lo trae toda factura y ninguna hoja de precios. */
 const INVOICE_NUMBER = /n[ºo°*”]\s*(?:de\s+)?factura|factura\s+n[ºo°*”]|invoice\s+(?:no|number)/i;
 const ACCESS_TARIFF = /(?:tarifa|peaje)\s+de\s+acceso\s*:?\s*(\d)[.,](\d)\s?T\.?D/gi;
