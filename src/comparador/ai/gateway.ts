@@ -83,13 +83,18 @@ const GEMINI_THINKING_BUDGET: Record<ReasoningLevel, number> = {
   medium: 12_288,
 };
 
-/** Opciones propias de cada proveedor. Los GPT-5, Gemini 2.5 y Claude razonan por defecto. */
+/** Opciones propias de cada proveedor. Los GPT-5/6, Gemini 2.5 y Claude razonan por defecto. */
 export function buildProviderSpecificOptions(
   model: string,
   reasoning: ReasoningLevel = "minimal",
 ): Record<string, Record<string, string | Record<string, number>>> {
   if (model.startsWith("openai/gpt-5")) {
     return { openai: { reasoningEffort: reasoning } };
+  }
+  // GPT-6 no tiene «minimal». Con «none», Luna dejó un error silencioso más
+  // en el banco de facturas que con «low» (14/10/2026), y «low» apenas cuesta más.
+  if (model.startsWith("openai/gpt-6")) {
+    return { openai: { reasoningEffort: reasoning === "minimal" ? "low" : reasoning } };
   }
   // Sin tope, Gemini 2.5 puede gastar en razonar todo el tope de salida.
   if (model.startsWith("google/gemini-2.5")) {
