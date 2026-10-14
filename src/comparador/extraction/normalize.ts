@@ -64,3 +64,29 @@ export function reconcileVat(invoice: InvoiceExtraction): InvoiceExtraction {
 
   return { ...invoice, taxableBase: base, vat: { ...vat, base, amount: vatAmount } };
 }
+
+/** Lo que solo dicen las facturas de precio indexado, PVPC incluido. */
+const INDEXED_WORDS = /indexad[oa]|precio\s*diario|\bPVPC\b/i;
+
+/** Energía en €/kWh de un periodo, con sus conceptos (peajes, cargos…) sumados. */
+function energyPrice(invoice: InvoiceExtraction, period: "P2" | "P3"): number {
+  return invoice.energyLines
+    .filter((line) => line.period === period)
+    .reduce((sum, line) => sum + line.pricePerKwh, 0);
+}
+
+/**
+ * Corrige un «fixed» o «unknown» de la IA cuando la factura demuestra que es
+ * indexada: lo dice el texto («producto indexado», «precio diario», PVPC), o
+ * el valle cuesta más que el llano, que ninguna tarifa fija hace. Es lo que
+ * se propone al comercial; él lo confirma en el estudio.
+ */
+export function inferPricing(invoice: InvoiceExtraction, text: string | null): InvoiceExtraction {
+  if (invoice.pricing === "indexed" || invoice.pricing === "flat") return invoice;
+  const llano = energyPrice(invoice, "P2");
+  const valleOverLlano = llano > 0 && energyPrice(invoice, "P3") > llano + 0.001;
+  if (valleOverLlano || (text !== null && INDEXED_WORDS.test(text))) {
+    return { ...invoice, pricing: "indexed" };
+  }
+  return invoice;
+}

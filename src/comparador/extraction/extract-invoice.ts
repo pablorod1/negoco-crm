@@ -6,7 +6,7 @@ import {
   InvoiceExtractionSchema,
   type InvoiceExtraction,
 } from "./invoice-schema";
-import { normalizePowerLines, reconcileVat } from "./normalize";
+import { inferPricing, normalizePowerLines, reconcileVat } from "./normalize";
 import { getSupplierHint } from "./supplier-hints";
 import {
   hasBlockingIssues,
@@ -20,7 +20,7 @@ Si un dato no aparece, devuélvelo como null. No lo deduzcas.
 Las líneas de energía van en €/kWh. Las de potencia, en €/kW·día; si la factura da la potencia en €/kW·mes o €/kW·año, no conviertas nada: copia el precio, la unidad y los meses en originalPrice.
 Si la energía aparece en dos conceptos por periodo (por ejemplo «término de energía» y «peajes y cargos»), extrae una línea por concepto y periodo.
 El periodo de una línea de energía es P1, P2 o P3 solo si la factura lo dice (P1, P2, P3, punta, llano, valle). Los tramos de fechas, las «horas promocionadas» y cualquier otro reparto no son periodos: usa ALL.
-Los márgenes, excesos de potencia y la energía reactiva van en otherElectricityLines.
+Un margen que se cobra por kW y día (como el «margen de comercialización fijo» del PVPC) es potencia: va en powerLines, en P1 si la factura no dice el periodo. Los demás márgenes, los excesos de potencia y la energía reactiva van en otherElectricityLines.
 La financiación del bono social va solo en socialBonusLines, aunque la factura la agrupe en «cargos normativos».
 Si la factura solo da el total de un grupo de líneas (por ejemplo, el término de energía de los tres periodos), pon ese total en la primera línea del grupo y 0 en las demás.
 Si un precio por día (alquiler, bono social) no aparece en la factura, déjalo en null.
@@ -135,7 +135,10 @@ export async function extractInvoice({
       messages: buildMessages(file),
     });
 
-    const normalized = reconcileVat(normalizePowerLines(result.output));
+    const normalized = inferPricing(
+      reconcileVat(normalizePowerLines(result.output)),
+      "text" in file ? file.text : null,
+    );
     const output = knownCups ? { ...normalized, cups: knownCups } : normalized;
     const issues = validateInvoice(output);
     attempts.push({

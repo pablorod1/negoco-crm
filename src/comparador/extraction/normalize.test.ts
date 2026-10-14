@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { naturgyInvoice } from "./fixtures";
 import type { InvoiceExtraction } from "./invoice-schema";
-import { normalizePowerLines, reconcileVat } from "./normalize";
+import { inferPricing, normalizePowerLines, reconcileVat } from "./normalize";
 import { validateInvoice } from "./validate";
 
 function withPowerLine(line: InvoiceExtraction["powerLines"][number]) {
@@ -112,5 +112,35 @@ describe("reconcileVat", () => {
     expect(reconcileVat(otherTotal)).toBe(otherTotal);
     const right = { ...eleia, taxableBase: 57.54, vat: { ratePercent: 21, base: 57.54, amount: 12.08 } };
     expect(reconcileVat(right)).toBe(right);
+  });
+});
+
+describe("inferPricing", () => {
+  const lines = (p1: number, p2: number, p3: number): InvoiceExtraction["energyLines"] => [
+    { period: "P1", kwh: 48, pricePerKwh: p1, amount: 0 },
+    { period: "P2", kwh: 56, pricePerKwh: p2, amount: 0 },
+    { period: "P3", kwh: 90, pricePerKwh: p3, amount: 0 },
+  ];
+
+  test("an off-peak price above mid-peak means indexed (Eni, Feníe)", () => {
+    const invoice = { ...naturgyInvoice, energyLines: lines(0.1866806, 0.1704042, 0.2173215) };
+    expect(inferPricing(invoice, null).pricing).toBe("indexed");
+  });
+
+  test("a fixed tariff falls from P1 to P3 or has one price", () => {
+    const threePeriods = { ...naturgyInvoice, energyLines: lines(0.1777, 0.1039, 0.0695) };
+    expect(inferPricing(threePeriods, null)).toBe(threePeriods);
+    expect(inferPricing(naturgyInvoice, "Precio fijo 12 meses. Consulta el OMIE")).toBe(naturgyInvoice);
+  });
+
+  test("the text names an indexed product, a daily price or PVPC (Repsol, Curenergía)", () => {
+    for (const text of ["tarifa-precioindexado/producto-indexado/", "tu precio diario", "TIPO DE CONTRATO: PVPC"]) {
+      expect(inferPricing({ ...naturgyInvoice, pricing: "unknown" }, text).pricing).toBe("indexed");
+    }
+  });
+
+  test("keeps a flat-rate reading", () => {
+    const flat = { ...naturgyInvoice, pricing: "flat" as const };
+    expect(inferPricing(flat, "precio indexado")).toBe(flat);
   });
 });
