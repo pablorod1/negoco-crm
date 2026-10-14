@@ -8,6 +8,7 @@ import {
 } from "@/comparador/extraction/current-tariff";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { omieAverages, type OmieDayFetcher } from "@/comparador/market/omie";
+import { notAnInvoice } from "@/comparador/extraction/document-kind";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
 import { clientFromInvoiceText } from "@/comparador/redaction/invoice-client";
 import { redactInvoiceText } from "@/comparador/redaction/redact";
@@ -87,6 +88,10 @@ export async function analyzeInvoice({
   extract?: typeof extractInvoice;
 }): Promise<string> {
   const { text, fromImage } = await readInvoice(invoice);
+  // Contratos, estudios de otra comercializadora o facturas de otra tarifa:
+  // se dice qué es antes de anonimizar y de gastar en la IA.
+  const notInvoice = notAnInvoice(text, { fromImage });
+  if (notInvoice) throw new StudyError(notInvoice.message);
   // Datos del titular leídos en local: rellenan el cliente y, además, se
   // tapan en todo el texto aunque no lleven etiqueta.
   const clientData = clientFromInvoiceText(text.replace(/\t/g, "\n"));

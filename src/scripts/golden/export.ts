@@ -16,6 +16,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { notAnInvoice } from "@/comparador/extraction/document-kind";
 import { redactInvoiceText } from "@/comparador/redaction/redact";
 import {
   DEFAULT_GOLDEN_DIR,
@@ -112,6 +113,12 @@ async function main() {
       }
       if (!/2\.0\s?TD/i.test(text)) {
         skip("no es 2.0TD");
+        continue;
+      }
+      // La misma regla que producción: contratos, estudios, hojas de precios…
+      const notInvoice = notAnInvoice(text);
+      if (notInvoice) {
+        skip(`no es una factura 2.0TD (${notInvoice.kind})`);
         continue;
       }
 
