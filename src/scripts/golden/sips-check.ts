@@ -50,7 +50,22 @@ async function main() {
 
   const summary = { match: 0, partial: 0, noData: 0, failed: 0 };
 
-  for (const id of ids) {
+  // APOLO corta con un 429 tras unas 150 llamadas seguidas: una pausa entre
+  // facturas y un reintento si aun así llega el límite.
+  const PAUSE_MS = 4_000;
+  const fetchWithRetry = async (cups: string, procedure: "CONSUMOS" | "PS") => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fetchApoloSipsProcedure({ apiKey, cups, procedure, supplyType: "ELECTRICIDAD" });
+      } catch (error) {
+        if (attempt >= 2 || !/429|m[aá]ximo de peticiones/i.test(String(error))) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 60_000));
+      }
+    }
+  };
+
+  for (const [index, id] of ids.entries()) {
+    if (index > 0) await new Promise((resolve) => setTimeout(resolve, PAUSE_MS));
     try {
       const ficha = InvoiceExtractionSchema.parse(
         JSON.parse(await readFile(goldenPath(root, "fichas", `${id}.json`), "utf8")),
@@ -63,10 +78,8 @@ async function main() {
         continue;
       }
 
-      const [consumption, pointSupply] = await Promise.all([
-        fetchApoloSipsProcedure({ apiKey, cups: cups[0], procedure: "CONSUMOS", supplyType: "ELECTRICIDAD" }),
-        fetchApoloSipsProcedure({ apiKey, cups: cups[0], procedure: "PS", supplyType: "ELECTRICIDAD" }),
-      ]);
+      const consumption = await fetchWithRetry(cups[0], "CONSUMOS");
+      const pointSupply = await fetchWithRetry(cups[0], "PS");
 
       const from = day(ficha.billingPeriod.from);
       const to = day(ficha.billingPeriod.to);
@@ -99,8 +112,10 @@ async function main() {
       if (!check.consumption && check.contractedPower === null) summary.noData += 1;
       else if (all) summary.match += 1;
       else summary.partial += 1;
-    } catch {
+    } catch (error) {
       summary.failed += 1;
+      // Sin el CUPS: el mensaje de error puede llevarlo.
+      console.error(`${id}: ${String(error).replace(/ES\w{16,22}/g, "[CUPS]").slice(0, 200)}`);
     }
   }
 

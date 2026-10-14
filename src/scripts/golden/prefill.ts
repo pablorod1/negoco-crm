@@ -10,6 +10,7 @@
  */
 import { existsSync } from "node:fs";
 import { readdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
 import { DEFAULT_GOLDEN_DIR, goldenPath, loadLocalEnv, readOption } from "./paths";
 
@@ -25,7 +26,18 @@ async function main() {
     .map((file) => file.slice(0, -4))
     .filter((id) => existsSync(goldenPath(root, "originals", `${id}.pdf`)))
     .filter((id) => !existsSync(goldenPath(root, "fichas", `${id}.json`)))
+    // Descartadas a propósito (las F-26 hechas con IA): no vuelven al banco.
+    .filter((id) => !existsSync(join(root, "fichas-descartadas", `${id}.json`)))
     .sort();
+  // Las excluidas en la revisión (no es una factura, fuera de alcance…) tampoco.
+  const excluded = new Set<string>();
+  for (const id of ids) {
+    const review = JSON.parse(await readFile(goldenPath(root, "review", `${id}.json`), "utf8").catch(() => "{}")) as {
+      excluded?: string;
+    };
+    if (review.excluded) excluded.add(id);
+  }
+  ids.splice(0, ids.length, ...ids.filter((id) => !excluded.has(id)));
   console.log(`${ids.length} facturas sin ficha · ${model} · tope ${maxUsd} $`);
 
   let spent = 0;
