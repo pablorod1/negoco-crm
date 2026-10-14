@@ -24,7 +24,7 @@ Un margen que se cobra por kW y día (como el «margen de comercialización fijo
 La financiación del bono social va solo en socialBonusLines, aunque la factura la agrupe en «cargos normativos».
 Si la factura solo da el total de un grupo de líneas (por ejemplo, el término de energía de los tres periodos), pon ese total en la primera línea del grupo y 0 en las demás.
 Si un precio por día (alquiler, bono social) no aparece en la factura, déjalo en null.
-La 2.0TD tiene dos periodos de potencia: el de punta (o punta-llano) es P1 y el de valle es P2, aunque la factura lo llame P3.
+La 2.0TD tiene dos periodos de potencia: el de punta (o punta-llano) es P1 y el de valle es P2, aunque la factura lo llame P3. Esto es solo para la potencia: en el consumo y en la energía hay tres periodos, punta es P1, llano es P2 y valle es P3, en el orden en que los dé la factura.
 Extrae solo las líneas que suman al importe de la factura. Los desgloses informativos («cuantía de peajes y cargos», «destino del importe», «incluido en el importe facturado…») no son líneas: ignóralos.
 El consumo por periodo (consumptionKwh) es el de punta, llano y valle que indica la factura; no lo saques de las líneas de precio.
 Si el documento trae varias facturas seguidas, extrae solo la más reciente.

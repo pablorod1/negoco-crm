@@ -71,6 +71,8 @@ function parseArgs(argv: string[]) {
     cascadeOnly: argv.includes("--cascade-only"),
     estimateOnly: argv.includes("--estimate"),
     limit: Number(readOption(argv, "--limit") ?? Infinity),
+    // --only a,b: solo esas facturas.
+    only: readOption(argv, "--only")?.split(",").filter(Boolean),
     maxUsd: Number(readOption(argv, "--max-usd") ?? 0.25),
     // El plan gratuito admite 5 peticiones por minuto y modelo.
     delayMs: Number(readOption(argv, "--delay-ms") ?? 13_000),
@@ -172,7 +174,9 @@ async function main() {
   loadLocalEnv();
   const options = parseArgs(process.argv.slice(2));
   const golden = existsSync(join(options.folder, "fichas"));
-  const cases = (golden ? await loadGoldenDir(options.folder, options.redacted) : await loadPairs(options.folder)).slice(
+  const cases = (golden ? await loadGoldenDir(options.folder, options.redacted) : await loadPairs(options.folder))
+    .filter(({ name }) => !options.only || options.only.includes(name))
+    .slice(
     0,
     options.limit,
   );
