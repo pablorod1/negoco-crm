@@ -14,8 +14,7 @@ import { createClient } from "@libsql/client";
 import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { clientFromInvoiceText } from "@/comparador/redaction/invoice-client";
-import { redactInvoiceText } from "@/comparador/redaction/redact";
+import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
 import { readInvoice } from "@/comparador/study/read-invoice";
 import { StudyError } from "@/comparador/study/errors";
 import { ensureGoldenDirs, goldenPath, loadLocalEnv, readOption } from "./paths";
@@ -139,13 +138,7 @@ async function main() {
       continue;
     }
 
-    const clientData = clientFromInvoiceText(text.replace(/\t/g, "\n"));
-    const redaction = redactInvoiceText(text, {
-      fromImage: true,
-      knownHolderTokens: [clientData?.name, clientData?.lastName, clientData?.address]
-        .filter((value): value is string => Boolean(value))
-        .flatMap((value) => value.split(/\s+/)),
-    });
+    const { redaction } = redactInvoiceForStudy(text, { fromImage: true });
     if (redaction.leaks.length > 0) {
       skip("anonimizado con restos");
       continue;

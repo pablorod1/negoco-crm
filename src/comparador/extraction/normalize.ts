@@ -215,3 +215,69 @@ export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
     taxableBase: invoice.taxableBase === null ? null : taxableBase,
   };
 }
+
+/**
+ * La compensación de excedentes del autoconsumo («−260 kWh × 0,06 €/kWh»)
+ * llega a veces como una línea de energía más, con los kWh en negativo o en
+ * positivo. No es consumo: es un importe negativo que rebaja la base del
+ * impuesto eléctrico. Va a otherElectricityLines.
+ */
+export function surplusCompensationAsOther(invoice: InvoiceExtraction): InvoiceExtraction {
+  const isCompensation = (line: InvoiceExtraction["energyLines"][number]) =>
+    line.amount < 0 &&
+    (line.kwh < 0 || invoice.hasSelfConsumption) &&
+    Math.abs(Math.abs(line.kwh * line.pricePerKwh) - Math.abs(line.amount)) <= CENT;
+  const compensations = invoice.energyLines.filter(isCompensation);
+  if (compensations.length === 0) return invoice;
+  return {
+    ...invoice,
+    hasSelfConsumption: true,
+    energyLines: invoice.energyLines.filter((line) => !isCompensation(line)),
+    otherElectricityLines: [
+      ...invoice.otherElectricityLines,
+      ...compensations.map((line) => ({
+        description: `Compensación de excedentes (${Math.abs(line.kwh)} kWh × ${line.pricePerKwh} €/kWh)`,
+        amount: line.amount,
+      })),
+    ],
+  };
+}
+
+/**
+ * Una línea de energía con los kWh redondeados («408 kWh» donde la factura
+ * multiplica 408,35): si otra línea del mismo periodo, o su consumo, trae un
+ * valor que hace cuadrar kWh × precio con el importe, se usa ese.
+ */
+export function alignEnergyKwh(invoice: InvoiceExtraction): InvoiceExtraction {
+  let changed = false;
+  const energyLines = invoice.energyLines.map((line) => {
+    if (Math.abs(line.kwh * line.pricePerKwh - line.amount) <= CENT) return line;
+    const candidates = new Set(
+      [
+        ...invoice.energyLines.filter((other) => other.period === line.period).map(({ kwh }) => kwh),
+        line.period === "ALL" ? null : invoice.consumptionKwh[line.period],
+      ].filter((kwh): kwh is number => kwh !== null && kwh !== line.kwh && Math.abs(kwh - line.kwh) < 1),
+    );
+    const matching = [...candidates].filter((kwh) => Math.abs(kwh * line.pricePerKwh - line.amount) <= CENT);
+    if (matching.length !== 1) return line;
+    changed = true;
+    return { ...line, kwh: matching[0] };
+  });
+  return changed ? { ...invoice, energyLines } : invoice;
+}
+
+/** Tipo general del impuesto eléctrico. */
+export const ELECTRICITY_TAX_RATE = 5.11269632;
+
+/**
+ * Muchas facturas imprimen el tipo del impuesto eléctrico redondeado («5,1 %»,
+ * «5,11 %»). Es el general, 5,11269632 %: con el redondeado, base × tipo no
+ * da el importe impreso.
+ */
+export function exactElectricityTaxRate(invoice: InvoiceExtraction): InvoiceExtraction {
+  const tax = invoice.electricityTax;
+  if (!tax || tax.ratePercent === ELECTRICITY_TAX_RATE || Math.abs(tax.ratePercent - ELECTRICITY_TAX_RATE) > 0.02) {
+    return invoice;
+  }
+  return { ...invoice, electricityTax: { ...tax, ratePercent: ELECTRICITY_TAX_RATE } };
+}

@@ -7,12 +7,15 @@ import {
   type InvoiceExtraction,
 } from "./invoice-schema";
 import {
+  alignEnergyKwh,
+  exactElectricityTaxRate,
   fillBillingDays,
   inferPricing,
   normalizePowerLines,
   reconcileChain,
   reconcileVat,
   singleEnergyPriceAsAll,
+  surplusCompensationAsOther,
 } from "./normalize";
 import { getSupplierHint } from "./supplier-hints";
 import {
@@ -143,7 +146,15 @@ export async function extractInvoice({
     });
 
     const normalized = inferPricing(
-      reconcileVat(reconcileChain(singleEnergyPriceAsAll(fillBillingDays(normalizePowerLines(result.output))))),
+      reconcileVat(
+        reconcileChain(
+          singleEnergyPriceAsAll(
+            alignEnergyKwh(
+              surplusCompensationAsOther(exactElectricityTaxRate(fillBillingDays(normalizePowerLines(result.output)))),
+            ),
+          ),
+        ),
+      ),
       "text" in file ? file.text : null,
     );
     const output = knownCups ? { ...normalized, cups: knownCups } : normalized;

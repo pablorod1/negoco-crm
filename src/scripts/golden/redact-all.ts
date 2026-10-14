@@ -6,14 +6,11 @@
  * Todo en local. Conserva las fichas y el estado de revisión, y deja de nuevo
  * pendiente de aprobar el anonimizado de cada factura cuyo texto cambie.
  */
-import { execFile } from "node:child_process";
 import { readdir, readFile, writeFile } from "node:fs/promises";
-import { promisify } from "node:util";
-import { redactInvoiceText } from "@/comparador/redaction/redact";
+import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
+import { invoiceTextFromPdf } from "@/comparador/study/invoice-text";
 import { DEFAULT_GOLDEN_DIR, goldenPath, readOption } from "./paths";
 import { detectSupplier } from "./suppliers";
-
-const run = promisify(execFile);
 
 async function main() {
   const root = readOption(process.argv.slice(2), "--dir") ?? DEFAULT_GOLDEN_DIR;
@@ -22,12 +19,13 @@ async function main() {
     .map((file) => file.slice(0, -4));
 
   for (const id of ids) {
-    const { stdout: text } = await run(
-      "pdftotext",
-      ["-enc", "UTF-8", goldenPath(root, "originals", `${id}.pdf`), "-"],
-      { maxBuffer: 20 * 1024 * 1024 },
-    );
-    const redaction = redactInvoiceText(text);
+    // El mismo texto y el mismo anonimizado que producción.
+    const { text } = await invoiceTextFromPdf(await readFile(goldenPath(root, "originals", `${id}.pdf`)));
+    if (!text) {
+      console.log(`${id} · sin texto (escaneada)`);
+      continue;
+    }
+    const { redaction } = redactInvoiceForStudy(text);
     const redactedPath = goldenPath(root, "redacted", `${id}.txt`);
     const previous = await readFile(redactedPath, "utf8").catch(() => null);
 

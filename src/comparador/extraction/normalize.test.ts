@@ -1,7 +1,18 @@
 import { describe, expect, test } from "vitest";
 import { naturgyInvoice } from "./fixtures";
 import type { InvoiceExtraction } from "./invoice-schema";
-import { fillBillingDays, inferPricing, normalizePowerLines, reconcileChain, reconcileVat, singleEnergyPriceAsAll } from "./normalize";
+import {
+  alignEnergyKwh,
+  ELECTRICITY_TAX_RATE,
+  exactElectricityTaxRate,
+  fillBillingDays,
+  inferPricing,
+  normalizePowerLines,
+  reconcileChain,
+  reconcileVat,
+  singleEnergyPriceAsAll,
+  surplusCompensationAsOther,
+} from "./normalize";
 import { validateInvoice } from "./validate";
 
 function withPowerLine(line: InvoiceExtraction["powerLines"][number]) {
@@ -222,5 +233,58 @@ describe("reconcileChain", () => {
     expect(reconcileChain(fixed)).toBe(fixed);
     const hopeless = { ...yoigo, total: 120 };
     expect(reconcileChain(hopeless)).toBe(hopeless);
+  });
+});
+
+describe("surplusCompensationAsOther", () => {
+  test("the surplus compensation is not consumption (Naturgy)", () => {
+    const invoice = {
+      ...naturgyInvoice,
+      consumptionKwh: { P1: 3, P2: 10, P3: 96 },
+      energyLines: [
+        { period: "ALL" as const, kwh: 109, pricePerKwh: 0.144972, amount: 15.8 },
+        { period: "ALL" as const, kwh: -260, pricePerKwh: 0.06, amount: -15.6 },
+      ],
+    };
+    const fixed = surplusCompensationAsOther(invoice);
+    expect(fixed.energyLines).toHaveLength(1);
+    expect(fixed.otherElectricityLines).toEqual([
+      { description: "Compensación de excedentes (260 kWh × 0.06 €/kWh)", amount: -15.6 },
+    ]);
+    expect(fixed.hasSelfConsumption).toBe(true);
+  });
+
+  test("a negative energy line without self-consumption stays (a regularisation)", () => {
+    const invoice = {
+      ...naturgyInvoice,
+      energyLines: [{ period: "ALL" as const, kwh: 20, pricePerKwh: 0.1, amount: -2 }],
+    };
+    expect(surplusCompensationAsOther(invoice)).toBe(invoice);
+  });
+});
+
+describe("alignEnergyKwh", () => {
+  test("takes the exact kWh another line of the period multiplies (TotalEnergies)", () => {
+    const invoice = {
+      ...naturgyInvoice,
+      consumptionKwh: { P1: 0, P2: 408, P3: 0 },
+      energyLines: [
+        { period: "P2" as const, kwh: 408.35, pricePerKwh: 0.016409, amount: 6.7 },
+        { period: "P2" as const, kwh: 408, pricePerKwh: 0.173554, amount: 70.87 },
+      ],
+    };
+    expect(alignEnergyKwh(invoice).energyLines[1].kwh).toBe(408.35);
+  });
+});
+
+describe("exactElectricityTaxRate", () => {
+  test("a rounded general rate becomes the exact one", () => {
+    const invoice = { ...naturgyInvoice, electricityTax: { base: 388.52, ratePercent: 5.1, amount: 19.86 } };
+    expect(exactElectricityTaxRate(invoice).electricityTax?.ratePercent).toBe(ELECTRICITY_TAX_RATE);
+  });
+
+  test("a reduced rate stays", () => {
+    const invoice = { ...naturgyInvoice, electricityTax: { base: 100, ratePercent: 2.5, amount: 2.5 } };
+    expect(exactElectricityTaxRate(invoice)).toBe(invoice);
   });
 });

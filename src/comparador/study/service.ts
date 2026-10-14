@@ -10,8 +10,7 @@ import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { omieAverages, type OmieDayFetcher } from "@/comparador/market/omie";
 import { notAnInvoice } from "@/comparador/extraction/document-kind";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
-import { clientFromInvoiceText } from "@/comparador/redaction/invoice-client";
-import { redactInvoiceText } from "@/comparador/redaction/redact";
+import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
 import {
   listActiveOfferPrices,
   listCurrentCommissionRules,
@@ -94,13 +93,7 @@ export async function analyzeInvoice({
   if (notInvoice) throw new StudyError(notInvoice.message);
   // Datos del titular leídos en local: rellenan el cliente y, además, se
   // tapan en todo el texto aunque no lleven etiqueta.
-  const clientData = clientFromInvoiceText(text.replace(/\t/g, "\n"));
-  const redaction = redactInvoiceText(text, {
-    fromImage,
-    knownHolderTokens: [clientData?.name, clientData?.lastName, clientData?.address]
-      .filter((value): value is string => Boolean(value))
-      .flatMap((value) => value.split(/\s+/)),
-  });
+  const { clientData, redaction } = redactInvoiceForStudy(text, { fromImage });
   if (redaction.leaks.length > 0) {
     throw new StudyError(
       "No se ha podido tapar todos los datos personales de esta factura, así que no se envía a analizar. Avisa a soporte con la comparativa.",

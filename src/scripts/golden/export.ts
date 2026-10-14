@@ -9,15 +9,14 @@
  * restos. Nunca imprime nombres de fichero: algunos llevan el del cliente.
  */
 import { createClient } from "@libsql/client";
-import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { notAnInvoice } from "@/comparador/extraction/document-kind";
-import { redactInvoiceText } from "@/comparador/redaction/redact";
+import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
+import { invoiceTextFromPdf } from "@/comparador/study/invoice-text";
 import {
   DEFAULT_GOLDEN_DIR,
   ensureGoldenDirs,
@@ -26,15 +25,6 @@ import {
   readOption,
 } from "./paths";
 import { detectSupplier } from "./suppliers";
-
-const run = promisify(execFile);
-
-async function pdfToText(path: string): Promise<string> {
-  const { stdout } = await run("pdftotext", ["-enc", "UTF-8", path, "-"], {
-    maxBuffer: 20 * 1024 * 1024,
-  });
-  return stdout;
-}
 
 async function main() {
   loadLocalEnv();
@@ -106,7 +96,9 @@ async function main() {
       }
       await writeFile(pdfPath, new Uint8Array(await response.arrayBuffer()));
 
-      const text = await pdfToText(pdfPath).catch(() => "");
+      // El mismo texto que lee producción, no el de pdftotext: en las tablas
+      // cambia el orden de las cifras.
+      const text = (await invoiceTextFromPdf(await readFile(pdfPath)).catch(() => ({ text: null }))).text ?? "";
       if (text.replace(/\s/g, "").length < 500) {
         skip("sin texto (escaneada)");
         continue;
@@ -128,7 +120,7 @@ async function main() {
         continue;
       }
 
-      const redaction = redactInvoiceText(text);
+      const { redaction } = redactInvoiceForStudy(text);
       if (redaction.leaks.length > 0) {
         skip("anonimizado con restos");
         continue;
