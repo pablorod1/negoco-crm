@@ -28,7 +28,6 @@ describe("computeFieldStatuses", () => {
       "billingPeriod.dates": "verified",
       accessTariff: "verified",
       supplierName: "verified",
-      pricing: "verified",
       cups: "verified",
     });
   });

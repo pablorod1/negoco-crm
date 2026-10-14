@@ -25,11 +25,12 @@ export interface StatusInput {
   confirmedFields: readonly string[];
   /** Lecturas de otro modelo: un campo en el que coinciden queda verificado. */
   otherReadings?: readonly InvoiceExtraction[];
+  /** Campos que la comprobación independiente (Jev) no ve en la factura. */
+  doubtful?: readonly string[];
 }
 
 /** Campos que se copian del texto y en los que dos modelos distintos pueden coincidir. */
 const AGREEMENT_FIELDS: Record<string, (invoice: InvoiceExtraction) => unknown> = {
-  pricing: (invoice) => (invoice.pricing === "unknown" ? undefined : invoice.pricing),
   // Sin la forma jurídica ni palabras genéricas: «Endesa Energía, S.A.U.» = «ENDESA ENERGIA».
   supplierName: (invoice) =>
     invoice.supplierName
@@ -86,7 +87,6 @@ function dateInText(date: string | null, text: string): boolean {
   );
 }
 
-const INDEXED_WORDS = /indexad[oa]|precio\s*diario|\bPVPC\b|pass.?through/i;
 
 const normalize = (value: string | null) =>
   (value ?? "")
@@ -102,6 +102,7 @@ export function computeFieldStatuses({
   sips,
   confirmedFields,
   otherReadings = [],
+  doubtful = [],
 }: StatusInput): Record<string, FieldStatus> {
   const issues = validateInvoice({ ...ficha, cups: privateCups[0] ?? ficha.cups });
   const issueFields = new Set(issues.map(({ field }) => field));
@@ -218,16 +219,8 @@ export function computeFieldStatuses({
     (supplierWords.length > 0 && supplierWords.every((word) => normalize(redactedText).includes(word)))
       ? "verified"
       : "unverified";
-  // Con las mismas pruebas que producción (`inferPricing`): las palabras o el
-  // valle más caro que el llano.
-  const energyPrice = (period: "P2" | "P3") =>
-    ficha.energyLines.filter((line) => line.period === period).reduce((sum, line) => sum + line.pricePerKwh, 0);
-  const indexedEvidence =
-    INDEXED_WORDS.test(redactedText) || (energyPrice("P2") > 0 && energyPrice("P3") > energyPrice("P2") + 0.001);
-  statuses.pricing =
-    (ficha.pricing === "fixed" && !indexedEvidence) || (ficha.pricing === "indexed" && indexedEvidence)
-      ? "verified"
-      : "unverified";
+  // El tipo de precio no se revisa: no decide qué se oferta (se ofertan fijo e
+  // indexado) y lo confirma quien hace el estudio.
   statuses.hasSelfConsumption =
     !ficha.hasSelfConsumption && !/autoconsumo|excedente/i.test(redactedText)
       ? "verified"
@@ -242,6 +235,11 @@ export function computeFieldStatuses({
     const value = valueOf(ficha);
     if (statuses[field] !== "unverified" || value === undefined) continue;
     if (independent.some((reading) => valueOf(reading) === value)) statuses[field] = "verified";
+  }
+
+  // Lo que Jev no ve en la factura vuelve a revisión, aunque cuadre con otra cosa.
+  for (const field of doubtful) {
+    if (statuses[field] === "verified") statuses[field] = "unverified";
   }
 
   for (const field of confirmedFields) {
