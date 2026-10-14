@@ -16,6 +16,7 @@ import {
   normalizePowerLines,
   reconcileChain,
   reconcileVat,
+  regulatedSocialBonusPrice,
   singleEnergyPriceAsAll,
   surplusCompensationAsOther,
 } from "./normalize";
@@ -155,7 +156,9 @@ export async function extractInvoice({
             alignEnergyKwh(
               surplusCompensationAsOther(
                 deriveMissingEnergyPrice(
-                  exactElectricityTaxRate(fillBillingDays(meterRentalFromText(normalizePowerLines(result.output), text))),
+                  exactElectricityTaxRate(
+                    fillBillingDays(regulatedSocialBonusPrice(meterRentalFromText(normalizePowerLines(result.output), text))),
+                  ),
                 ),
               ),
             ),

@@ -12,6 +12,7 @@ import {
   normalizePowerLines,
   reconcileChain,
   reconcileVat,
+  regulatedSocialBonusPrice,
   singleEnergyPriceAsAll,
   surplusCompensationAsOther,
 } from "./normalize";
@@ -395,5 +396,12 @@ describe("reconcileChain, informative lines without VAT", () => {
       total: 29.39,
     };
     expect(reconcileChain(invoice).vatExemptLines).toEqual([]);
+  });
+});
+
+describe("regulatedSocialBonusPrice", () => {
+  test("a yearly social bonus badly turned into €/day takes the regulated price", () => {
+    const invoice = { ...naturgyInvoice, socialBonusLines: [{ days: 31, pricePerDay: 0.026468, amount: 0.77 }] };
+    expect(regulatedSocialBonusPrice(invoice).socialBonusLines[0].pricePerDay).toBe(0.024688);
   });
 });

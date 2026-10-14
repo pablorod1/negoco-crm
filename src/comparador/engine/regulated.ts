@@ -73,6 +73,9 @@ const SOCIAL_BONUS_PER_DAY: readonly ValidityRange<number>[] = [
   },
 ];
 
+/** Los precios por día del bono social que ha habido: para reconocerlos en una factura. */
+export const SOCIAL_BONUS_PRICES_PER_DAY: readonly number[] = SOCIAL_BONUS_PER_DAY.map(({ value }) => value);
+
 export class RegulatedParamsUnavailableError extends Error {
   constructor(name: string, date: string) {
     super(`No hay valor de ${name} vigente el ${date}`);

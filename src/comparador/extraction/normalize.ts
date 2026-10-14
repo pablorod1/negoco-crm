@@ -1,5 +1,6 @@
 import { DAYS_PER_YEAR } from "@/comparador/engine/cost";
 import { roundEuros, sumEuros } from "@/comparador/engine/money";
+import { SOCIAL_BONUS_PRICES_PER_DAY } from "@/comparador/engine/regulated";
 import type { InvoiceExtraction } from "./invoice-schema";
 import { expectedTaxableBase, validateInvoice } from "./validate";
 
@@ -349,4 +350,22 @@ export function meterRentalFromText(invoice: InvoiceExtraction, text: string | n
     ...invoice,
     meterRental: { days: lines.reduce((sum, line) => sum + line.days, 0), pricePerDay: lines[0].price, amount },
   };
+}
+
+/**
+ * El bono social impreso por año («31 días × 9,011295 €/año = 0,77 €») sale
+ * mal pasado a €/día. Si la línea no cuadra y un único precio regulado por
+ * día, por sus días, da el importe impreso, se usa ese.
+ */
+export function regulatedSocialBonusPrice(invoice: InvoiceExtraction): InvoiceExtraction {
+  let changed = false;
+  const socialBonusLines = invoice.socialBonusLines.map((line) => {
+    if (line.days === null || line.pricePerDay === null) return line;
+    if (Math.abs(line.days * line.pricePerDay - line.amount) <= CENT) return line;
+    const matching = SOCIAL_BONUS_PRICES_PER_DAY.filter((price) => Math.abs(line.days! * price - line.amount) <= CENT);
+    if (matching.length !== 1) return line;
+    changed = true;
+    return { ...line, pricePerDay: matching[0] };
+  });
+  return changed ? { ...invoice, socialBonusLines } : invoice;
 }
