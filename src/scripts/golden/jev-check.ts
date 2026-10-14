@@ -53,7 +53,8 @@ function statementsFor(ficha: InvoiceExtraction, reading: InvoiceExtraction): St
     const read = reading.consumptionKwh[period];
     const truth = ficha.consumptionKwh[period];
     if (read === null || truth === null) continue;
-    const say = (value: number) => `Según la factura, el consumo del periodo de ${periods[period]} es de ${kwh(value)} kWh.`;
+    const say = (value: number) =>
+      `El consumo del periodo de ${periods[period]} en esta factura es de ${kwh(value)} kWh. Puede aparecer en el resumen, en las líneas de energía o en la tabla de lecturas por periodo (lectura anterior, lectura actual y consumo de punta, llano y valle).`;
     ask(`consumo ${period}`, say(read), same(read, truth), true);
     const other = (["P1", "P2", "P3"] as const).map((p) => ficha.consumptionKwh[p]).find((v) => v !== null && !same(v, truth));
     const wrong = other ?? Math.round(truth * 1.12 + 3);

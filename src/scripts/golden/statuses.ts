@@ -27,7 +27,15 @@ export interface StatusInput {
   otherReadings?: readonly InvoiceExtraction[];
   /** Campos que la comprobación independiente (Jev) no ve en la factura. */
   doubtful?: readonly string[];
+  /** La comercializadora imprime el CUPS tapado («CUPS: *»): se pide a mano. */
+  cupsMasked?: boolean;
 }
+
+/**
+ * No entran en el cálculo: si no se pueden verificar solos, no se piden a
+ * mano. (El tipo de precio tampoco: no decide qué se oferta.)
+ */
+const INFORMATIVE_FIELDS = ["supplierName", "issueDate", "billingPeriod.dates"];
 
 /** Campos que se copian del texto y en los que dos modelos distintos pueden coincidir. */
 const AGREEMENT_FIELDS: Record<string, (invoice: InvoiceExtraction) => unknown> = {
@@ -103,6 +111,7 @@ export function computeFieldStatuses({
   confirmedFields,
   otherReadings = [],
   doubtful = [],
+  cupsMasked = false,
 }: StatusInput): Record<string, FieldStatus> {
   const issues = validateInvoice({ ...ficha, cups: privateCups[0] ?? ficha.cups });
   const issueFields = new Set(issues.map(({ field }) => field));
@@ -241,6 +250,11 @@ export function computeFieldStatuses({
   for (const field of doubtful) {
     if (statuses[field] === "verified") statuses[field] = "unverified";
   }
+
+  for (const field of INFORMATIVE_FIELDS) {
+    if (statuses[field] === "unverified") delete statuses[field];
+  }
+  if (cupsMasked) delete statuses.cups;
 
   for (const field of confirmedFields) {
     if (statuses[field] === "unverified") statuses[field] = "confirmed";

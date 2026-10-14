@@ -69,6 +69,7 @@ async function loadCase(id: string) {
           confirmedFields: state.confirmedFields,
           otherReadings: loadOtherReadings(root, id),
           doubtful: loadJevDoubts(root, id),
+          cupsMasked: Boolean((meta as { cupsMasked?: boolean } | null)?.cupsMasked),
         })
       : null;
 

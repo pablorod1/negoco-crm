@@ -1,7 +1,7 @@
 /**
  * Banco de evaluación de la extracción de facturas.
  *
- *   pnpm eval:invoices [carpeta] [--models a,b] [--cascade] [--limit N]
+ *   pnpm eval:invoices [carpeta] [--models a,b] [--cascade | --cascade-only] [--limit N]
  *                      [--max-usd 0.25] [--estimate] [--out informe.json]
  *                      [--redacted redacted-ocr]
  *
@@ -68,6 +68,7 @@ function parseArgs(argv: string[]) {
     folder: positional ?? DEFAULT_GOLDEN_DIR,
     models,
     cascade: argv.includes("--cascade"),
+    cascadeOnly: argv.includes("--cascade-only"),
     estimateOnly: argv.includes("--estimate"),
     limit: Number(readOption(argv, "--limit") ?? Infinity),
     maxUsd: Number(readOption(argv, "--max-usd") ?? 0.25),
@@ -182,8 +183,9 @@ async function main() {
 
   const gateway = createGateway({ apiKey: process.env.VERCEL_AI_GATEWAY_API_KEY });
   const prices = await loadPrices(gateway);
-  const configurations = options.models.map((model) => ({ label: model, models: [model] }));
-  if (options.cascade) configurations.push({ label: "cascada", models: options.models });
+  // --cascade-only: solo la cascada, como en producción (sin cada modelo por separado).
+  const configurations = options.cascadeOnly ? [] : options.models.map((model) => ({ label: model, models: [model] }));
+  if (options.cascade || options.cascadeOnly) configurations.push({ label: "cascada", models: options.models });
 
   // Estimación: la cascada se cuenta como si siempre llegara al último modelo.
   let estimatedTotal = 0;

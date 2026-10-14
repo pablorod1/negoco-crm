@@ -8,9 +8,11 @@ import type { InvoiceExtraction } from "./invoice-schema";
  * de decisión: no lee cifras, contesta preguntas de sí o no sobre el texto
  * con una probabilidad. Medido el 14 de octubre de 2026 con el banco (95
  * facturas, 1.205 afirmaciones): por debajo de 0,5 caen el 98 % de las
- * afirmaciones falsas y el 2,7 % de las que coinciden con la ficha, y esas
- * resultaron ser errores de la ficha y de Luna a la vez (consumos por
- * periodo leídos de una tabla al revés o inventados). ~0,00015 $ por factura.
+ * afirmaciones falsas. Con el consumo, preguntado sin mencionar la tabla de
+ * lecturas, dudaba de consumos bien leídos (Endesa, Naturgy); con la pregunta
+ * de ahora, 1 falsa alarma de 45 en las facturas difíciles y el 89 % de los
+ * valores falsos detectados. Cazó una tabla de consumos leída al revés por
+ * Luna y por GPT-5 a la vez. ~0,00015 $ por factura.
  */
 export const VERIFICATION_MODEL = "typesafe-ai/jev";
 const PRICE_PER_INPUT_TOKEN = 0.042 / 1e6;
@@ -53,7 +55,12 @@ function statements(reading: InvoiceExtraction): [string, string][] {
   for (const period of ["P1", "P2", "P3"] as const) {
     const kwh = reading.consumptionKwh[period];
     if (kwh !== null) {
-      out.push([`consumptionKwh.${period}`, `Según la factura, el consumo del periodo de ${periods[period]} es de ${number(kwh)} kWh.`]);
+      // Sin la tabla de lecturas en la pregunta, Jev dudaba de consumos bien
+      // leídos de ella (Endesa, Naturgy): 14 de 45 falsas alarmas; así, 1.
+      out.push([
+        `consumptionKwh.${period}`,
+        `El consumo del periodo de ${periods[period]} en esta factura es de ${number(kwh)} kWh. Puede aparecer en el resumen, en las líneas de energía o en la tabla de lecturas por periodo (lectura anterior, lectura actual y consumo de punta, llano y valle).`,
+      ]);
     }
   }
   if (reading.billingPeriod) {
