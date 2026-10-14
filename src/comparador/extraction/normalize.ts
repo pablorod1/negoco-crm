@@ -126,7 +126,7 @@ export function singleEnergyPriceAsAll(invoice: InvoiceExtraction): InvoiceExtra
   return { ...invoice, energyLines: invoice.energyLines.map((line) => ({ ...line, period: "ALL" as const })) };
 }
 
-type Placement = "electricity" | "taxable" | "separate" | "drop";
+type Placement = "electricity" | "taxable" | "separate" | "exempt" | "drop";
 interface Movable {
   description: string;
   amount: number;
@@ -174,6 +174,9 @@ export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
       ...line,
       options: ["taxable", "electricity", "separate", "drop"] as Placement[],
     })),
+    // Una línea sin IVA puede ser informativa (Endesa: «Batería Virtual»,
+    // lo que se acumula no se descuenta en esta factura).
+    ...invoice.vatExemptLines.map((line) => ({ ...line, options: ["exempt", "drop"] as Placement[] })),
   ];
   if (movable.length > MAX_MOVABLE) return invoice;
 
@@ -182,7 +185,6 @@ export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
     ...invoice.energyLines.map(({ amount }) => amount),
   ]);
   const bonus = sumEuros(invoice.socialBonusLines.map(({ amount }) => amount));
-  const exempt = sumEuros(invoice.vatExemptLines.map(({ amount }) => amount));
   const rental = invoice.meterRental?.amount ?? 0;
   const withVat = (amount: number) => roundEuros((amount * (100 + vat.ratePercent)) / 100);
 
@@ -193,7 +195,7 @@ export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
     const taxableBase = sumEuros([electricityBase, tax.amount, rental, bonusOutside ? bonus : 0, ...on("taxable")]);
     if (Math.abs((taxableBase * vat.ratePercent) / 100 - vat.amount) > CENT) return null;
     const separate = on("separate").map(withVat);
-    if (Math.abs(sumEuros([taxableBase, vat.amount, exempt, ...separate]) - invoice.total!) > CENT) return null;
+    if (Math.abs(sumEuros([taxableBase, vat.amount, ...on("exempt"), ...separate]) - invoice.total!) > CENT) return null;
     return { electricityBase, taxableBase };
   };
 
@@ -205,7 +207,7 @@ export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
         if (!result) continue;
         const moved = movable
           .map(({ amount }, index) => `${placements[index]}:${amount}`)
-          .filter((entry) => !entry.startsWith("electricity") && !entry.startsWith("taxable"))
+          .filter((entry) => !/^(electricity|taxable|exempt):/.test(entry))
           .sort();
         const key = `${result.electricityBase}|${result.taxableBase}|${moved.join(",")}`;
         if (!solutions.has(key)) solutions.set(key, { placements, ...result });
@@ -231,7 +233,7 @@ export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
     otherElectricityLines: placed.filter(({ where, wasDiscount }) => where === "electricity" && !wasDiscount).map(({ line }) => line),
     otherTaxableLines: placed.filter(({ where }) => where === "taxable").map(({ line }) => line),
     vatExemptLines: [
-      ...invoice.vatExemptLines,
+      ...placed.filter(({ where }) => where === "exempt").map(({ line }) => line),
       ...placed
         .filter(({ where }) => where === "separate")
         .map(({ line }) => ({ description: `${line.description} (con su IVA)`, amount: withVat(line.amount) })),
@@ -320,5 +322,31 @@ export function deriveMissingEnergyPrice(invoice: InvoiceExtraction): InvoiceExt
     energyLines: invoice.energyLines.map((line) =>
       missing(line) ? { ...line, pricePerKwh: Math.round((line.amount / line.kwh) * 1e6) / 1e6 } : line,
     ),
+  };
+}
+
+const RENTAL_LINE =
+  /alquiler[^\n]*?(\d+)\s*d[ií]as?\s*[x×*]\s*(\d+[.,]\d+)\s*(?:€|eur)\s*\/\s*d[ií]a[^\n]*?(\d+[.,]\d{2})\s*€/gi;
+const toNumber = (text: string) => Number(text.replace(/\./g, "").replace(",", "."));
+
+/**
+ * El alquiler del contador partido en tramos de días (Endesa: «26 días x
+ * 0,026630 Eur/día … 0,69 €» y «7 días x … 0,19 €»): la ficha lleva uno solo,
+ * así que se suman días e importes si todos los tramos tienen el mismo precio.
+ */
+export function meterRentalFromText(invoice: InvoiceExtraction, text: string | null): InvoiceExtraction {
+  if (!text) return invoice;
+  const lines = [...text.matchAll(RENTAL_LINE)].map(([, days, price, amount]) => ({
+    days: Number(days),
+    price: toNumber(price),
+    amount: toNumber(amount),
+  }));
+  if (lines.length < 2 || new Set(lines.map(({ price }) => price)).size !== 1) return invoice;
+  if (lines.some(({ days, price, amount }) => Math.abs(days * price - amount) > CENT)) return invoice;
+  const amount = sumEuros(lines.map((line) => line.amount));
+  if (invoice.meterRental && Math.abs(invoice.meterRental.amount - amount) <= CENT) return invoice;
+  return {
+    ...invoice,
+    meterRental: { days: lines.reduce((sum, line) => sum + line.days, 0), pricePerDay: lines[0].price, amount },
   };
 }

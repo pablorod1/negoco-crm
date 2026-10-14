@@ -12,6 +12,7 @@ import {
   exactElectricityTaxRate,
   fillBillingDays,
   inferPricing,
+  meterRentalFromText,
   normalizePowerLines,
   reconcileChain,
   reconcileVat,
@@ -146,19 +147,22 @@ export async function extractInvoice({
       messages: buildMessages(file),
     });
 
+    const text = "text" in file ? file.text : null;
     const normalized = inferPricing(
       reconcileVat(
         reconcileChain(
           singleEnergyPriceAsAll(
             alignEnergyKwh(
               surplusCompensationAsOther(
-                deriveMissingEnergyPrice(exactElectricityTaxRate(fillBillingDays(normalizePowerLines(result.output)))),
+                deriveMissingEnergyPrice(
+                  exactElectricityTaxRate(fillBillingDays(meterRentalFromText(normalizePowerLines(result.output), text))),
+                ),
               ),
             ),
           ),
         ),
       ),
-      "text" in file ? file.text : null,
+      text,
     );
     const output = knownCups ? { ...normalized, cups: knownCups } : normalized;
     const issues = validateInvoice(output);

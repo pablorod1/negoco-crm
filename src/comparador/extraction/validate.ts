@@ -227,7 +227,12 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     (concepts) =>
       Math.abs(linesKwh - concepts * consumptionTotal) <= tolerance * concepts,
   );
-  if (invoice.energyLines.length > 0 && !coversConsumption) {
+  // Sin ningún consumo por periodo y con precio único no hay con qué comparar
+  // (ya se avisa de que falta).
+  const noConsumption = [invoice.consumptionKwh.P1, invoice.consumptionKwh.P2, invoice.consumptionKwh.P3].every(
+    (kwh) => kwh === null,
+  );
+  if (invoice.energyLines.length > 0 && !coversConsumption && !(noConsumption && singlePriceOnly)) {
     add({
       code: "consumption_mismatch",
       severity: "blocking",

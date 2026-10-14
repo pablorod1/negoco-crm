@@ -8,6 +8,7 @@ import {
   exactElectricityTaxRate,
   fillBillingDays,
   inferPricing,
+  meterRentalFromText,
   normalizePowerLines,
   reconcileChain,
   reconcileVat,
@@ -356,5 +357,43 @@ describe("energy lines with rounded kWh", () => {
       energyLines: [{ period: "P1" as const, kwh: 155, pricePerKwh: 0.116994, amount: 18.19 }],
     };
     expect(validateInvoice(invoice).map(({ code }) => code)).not.toContain("energy_line_mismatch");
+  });
+});
+
+describe("meterRentalFromText", () => {
+  const text = [
+    "Alquiler del contador ( 26 días x 0,026630 Eur/día ) ....................0,69 €",
+    "Alquiler del contador ( 7 días x 0,026630 Eur/día ) ......................0,19 € Periodo 05/03/2026",
+  ].join("\n");
+
+  test("adds up a rental split in day ranges (Endesa)", () => {
+    const invoice = { ...naturgyInvoice, meterRental: { days: 26, pricePerDay: 0.02663, amount: 0.69 } };
+    expect(meterRentalFromText(invoice, text).meterRental).toEqual({ days: 33, pricePerDay: 0.02663, amount: 0.88 });
+  });
+
+  test("a single rental line, or no text, changes nothing", () => {
+    expect(meterRentalFromText(naturgyInvoice, text.split("\n")[0])).toBe(naturgyInvoice);
+    expect(meterRentalFromText(naturgyInvoice, null)).toBe(naturgyInvoice);
+  });
+});
+
+describe("reconcileChain, informative lines without VAT", () => {
+  test("a virtual battery line that the total does not include is dropped (Endesa)", () => {
+    const invoice: InvoiceExtraction = {
+      ...naturgyInvoice,
+      powerLines: [{ period: "P1", kw: 3.45, days: 30, pricePerKwDay: 0.1, amount: 10.35 }].map((line) => ({ ...line, originalPrice: null })),
+      energyLines: [{ period: "ALL", kwh: 100, pricePerKwh: 0.12, amount: 12 }],
+      socialBonusLines: [],
+      energyDiscounts: [],
+      otherElectricityLines: [],
+      otherTaxableLines: [],
+      vatExemptLines: [{ description: "Batería Virtual", amount: -4.53 }],
+      meterRental: { days: 30, pricePerDay: null, amount: 0.8 },
+      electricityTax: { base: 22.35, ratePercent: ELECTRICITY_TAX_RATE, amount: 1.14 },
+      vat: { ratePercent: 21, base: 24.29, amount: 5.1 },
+      taxableBase: 24.29,
+      total: 29.39,
+    };
+    expect(reconcileChain(invoice).vatExemptLines).toEqual([]);
   });
 });
