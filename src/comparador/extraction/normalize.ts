@@ -1,7 +1,7 @@
 import { DAYS_PER_YEAR } from "@/comparador/engine/cost";
 import { roundEuros, sumEuros } from "@/comparador/engine/money";
 import type { InvoiceExtraction } from "./invoice-schema";
-import { expectedTaxableBase } from "./validate";
+import { expectedTaxableBase, validateInvoice } from "./validate";
 
 const DAYS_PER_MONTH = DAYS_PER_YEAR / 12;
 
@@ -126,7 +126,7 @@ export function singleEnergyPriceAsAll(invoice: InvoiceExtraction): InvoiceExtra
   return { ...invoice, energyLines: invoice.energyLines.map((line) => ({ ...line, period: "ALL" as const })) };
 }
 
-type Placement = "electricity" | "taxable" | "drop";
+type Placement = "electricity" | "taxable" | "separate" | "drop";
 interface Movable {
   description: string;
   amount: number;
@@ -134,62 +134,82 @@ interface Movable {
   options: Placement[];
 }
 
-/** Hasta aquí se prueban todas las combinaciones (3^6 = 729). */
+/** Hasta aquí se prueban todas las combinaciones (4^6 × 2). */
 const MAX_MOVABLE = 6;
+
+const CHAIN_ISSUES = new Set([
+  "electricity_tax_base_mismatch",
+  "electricity_tax_mismatch",
+  "taxable_base_mismatch",
+  "vat_mismatch",
+  "total_mismatch",
+]);
 
 /**
  * Las cifras que imprime la factura mandan: el impuesto eléctrico, el IVA y
- * el total. Si la lectura no cuadra con ellas, prueba a recolocar las líneas
- * dudosas: un descuento que se aplica después del impuesto eléctrico (Yoigo:
- * «Descuento bienvenida»), un concepto con o sin impuesto eléctrico, o una
- * línea que no suma (un anuncio: «Protege tu hogar por 3,90€/mes»). Solo
- * cambia la lectura si una única colocación cuadra con las tres cifras; las
- * bases que la IA rellenó sin estar impresas salen de las líneas.
+ * el total. Si la lectura no cuadra con ellas, prueba a recolocar lo dudoso:
+ * - un descuento que se aplica después del impuesto eléctrico (Yoigo);
+ * - un concepto con o sin impuesto eléctrico, o una línea que no suma (un
+ *   anuncio: «Protege tu hogar por 3,90€/mes»);
+ * - un servicio con su propio IVA, fuera de la base de la luz (TotalEnergies:
+ *   «Facilita Luz»), que suma al total con su IVA;
+ * - el bono social dentro o fuera de la base del impuesto eléctrico (INER,
+ *   Octopus).
+ * Solo cambia la lectura si una única colocación cuadra con las tres cifras;
+ * las bases que la IA rellenó sin estar impresas salen de las líneas.
  */
 export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
   const tax = invoice.electricityTax;
   const vat = invoice.vat;
   if (!tax || !vat || invoice.total === null) return invoice;
+  if (!validateInvoice(invoice).some(({ code }) => CHAIN_ISSUES.has(code))) return invoice;
 
   const movable: Movable[] = [
     ...invoice.energyDiscounts.map((line) => ({ ...line, options: ["electricity", "taxable"] as Placement[] })),
-    ...invoice.otherElectricityLines.map((line) => ({ ...line, options: ["electricity", "taxable", "drop"] as Placement[] })),
-    ...invoice.otherTaxableLines.map((line) => ({ ...line, options: ["taxable", "electricity", "drop"] as Placement[] })),
+    ...invoice.otherElectricityLines.map((line) => ({
+      ...line,
+      options: ["electricity", "taxable", "separate", "drop"] as Placement[],
+    })),
+    ...invoice.otherTaxableLines.map((line) => ({
+      ...line,
+      options: ["taxable", "electricity", "separate", "drop"] as Placement[],
+    })),
   ];
   if (movable.length > MAX_MOVABLE) return invoice;
 
-  const fixed = sumEuros([
+  const lines = sumEuros([
     ...invoice.powerLines.map(({ amount }) => amount),
     ...invoice.energyLines.map(({ amount }) => amount),
-    ...invoice.socialBonusLines.map(({ amount }) => amount),
   ]);
+  const bonus = sumEuros(invoice.socialBonusLines.map(({ amount }) => amount));
   const exempt = sumEuros(invoice.vatExemptLines.map(({ amount }) => amount));
   const rental = invoice.meterRental?.amount ?? 0;
+  const withVat = (amount: number) => roundEuros((amount * (100 + vat.ratePercent)) / 100);
 
-  const solve = (placements: Placement[]) => {
+  const solve = (placements: Placement[], bonusOutside: boolean) => {
     const on = (where: Placement) => movable.filter((_, index) => placements[index] === where).map(({ amount }) => amount);
-    const electricityBase = sumEuros([fixed, ...on("electricity")]);
+    const electricityBase = sumEuros([lines, bonusOutside ? 0 : bonus, ...on("electricity")]);
     if (Math.abs((electricityBase * tax.ratePercent) / 100 - tax.amount) > CENT) return null;
-    const taxableBase = sumEuros([electricityBase, tax.amount, rental, ...on("taxable")]);
+    const taxableBase = sumEuros([electricityBase, tax.amount, rental, bonusOutside ? bonus : 0, ...on("taxable")]);
     if (Math.abs((taxableBase * vat.ratePercent) / 100 - vat.amount) > CENT) return null;
-    if (Math.abs(sumEuros([taxableBase, vat.amount, exempt]) - invoice.total!) > CENT) return null;
+    const separate = on("separate").map(withVat);
+    if (Math.abs(sumEuros([taxableBase, vat.amount, exempt, ...separate]) - invoice.total!) > CENT) return null;
     return { electricityBase, taxableBase };
   };
-
-  const current = movable.map(({ options }) => options[0]);
-  const read = solve(current);
-  if (read && Math.abs(read.electricityBase - tax.base) <= CENT && Math.abs(read.taxableBase - vat.base) <= CENT) {
-    return invoice;
-  }
 
   const solutions = new Map<string, { placements: Placement[]; electricityBase: number; taxableBase: number }>();
   const visit = (placements: Placement[]) => {
     if (placements.length === movable.length) {
-      const result = solve(placements);
-      if (!result) return;
-      const dropped = movable.filter((_, index) => placements[index] === "drop").map(({ amount }) => amount).sort();
-      const key = `${result.electricityBase}|${result.taxableBase}|${dropped.join(",")}`;
-      if (!solutions.has(key)) solutions.set(key, { placements, ...result });
+      for (const bonusOutside of bonus > 0 ? [false, true] : [false]) {
+        const result = solve(placements, bonusOutside);
+        if (!result) continue;
+        const moved = movable
+          .map(({ amount }, index) => `${placements[index]}:${amount}`)
+          .filter((entry) => !entry.startsWith("electricity") && !entry.startsWith("taxable"))
+          .sort();
+        const key = `${result.electricityBase}|${result.taxableBase}|${moved.join(",")}`;
+        if (!solutions.has(key)) solutions.set(key, { placements, ...result });
+      }
       return;
     }
     for (const option of movable[placements.length].options) visit([...placements, option]);
@@ -210,6 +230,12 @@ export function reconcileChain(invoice: InvoiceExtraction): InvoiceExtraction {
     energyDiscounts: placed.filter(({ where, wasDiscount }) => where === "electricity" && wasDiscount).map(({ line }) => line),
     otherElectricityLines: placed.filter(({ where, wasDiscount }) => where === "electricity" && !wasDiscount).map(({ line }) => line),
     otherTaxableLines: placed.filter(({ where }) => where === "taxable").map(({ line }) => line),
+    vatExemptLines: [
+      ...invoice.vatExemptLines,
+      ...placed
+        .filter(({ where }) => where === "separate")
+        .map(({ line }) => ({ description: `${line.description} (con su IVA)`, amount: withVat(line.amount) })),
+    ],
     electricityTax: { ...tax, base: electricityBase },
     vat: { ...vat, base: taxableBase },
     taxableBase: invoice.taxableBase === null ? null : taxableBase,
@@ -280,4 +306,19 @@ export function exactElectricityTaxRate(invoice: InvoiceExtraction): InvoiceExtr
     return invoice;
   }
   return { ...invoice, electricityTax: { ...tax, ratePercent: ELECTRICITY_TAX_RATE } };
+}
+
+/**
+ * Una línea de energía sin precio impreso (PVPC: «Coste de la energía …
+ * 12,35 €» con sus kWh): el precio efectivo es el importe entre los kWh.
+ */
+export function deriveMissingEnergyPrice(invoice: InvoiceExtraction): InvoiceExtraction {
+  const missing = (line: InvoiceExtraction["energyLines"][number]) => line.pricePerKwh === 0 && line.amount > 0 && line.kwh > 0;
+  if (!invoice.energyLines.some(missing)) return invoice;
+  return {
+    ...invoice,
+    energyLines: invoice.energyLines.map((line) =>
+      missing(line) ? { ...line, pricePerKwh: Math.round((line.amount / line.kwh) * 1e6) / 1e6 } : line,
+    ),
+  };
 }

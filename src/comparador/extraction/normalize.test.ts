@@ -3,6 +3,7 @@ import { naturgyInvoice } from "./fixtures";
 import type { InvoiceExtraction } from "./invoice-schema";
 import {
   alignEnergyKwh,
+  deriveMissingEnergyPrice,
   ELECTRICITY_TAX_RATE,
   exactElectricityTaxRate,
   fillBillingDays,
@@ -294,5 +295,66 @@ describe("validateInvoice with a single price", () => {
     const invoice = { ...naturgyInvoice, consumptionKwh: { P1: 367, P2: null, P3: null } };
     const missing = validateInvoice(invoice).filter(({ code }) => code === "missing_field");
     expect(missing.map(({ severity }) => severity)).toEqual(["warning", "warning"]);
+  });
+});
+
+describe("reconcileChain, more placements", () => {
+  const base: InvoiceExtraction = {
+    ...naturgyInvoice,
+    powerLines: [{ period: "P1", kw: 4.5, days: 32, pricePerKwDay: 0.196, amount: 28.23, originalPrice: null }],
+    energyLines: [{ period: "ALL", kwh: 228, pricePerKwh: 0.098, amount: 22.34 }],
+    socialBonusLines: [{ days: 32, pricePerDay: null, amount: 0.79 }],
+    energyDiscounts: [],
+    otherElectricityLines: [],
+    otherTaxableLines: [],
+    vatExemptLines: [],
+    meterRental: { days: 32, pricePerDay: null, amount: 0.85 },
+  };
+
+  test("the social bonus outside the electricity tax base (Octopus)", () => {
+    const octopus = {
+      ...base,
+      electricityTax: { base: 50.57, ratePercent: ELECTRICITY_TAX_RATE, amount: 2.59 },
+      vat: { ratePercent: 21, base: 54.8, amount: 11.51 },
+      taxableBase: 54.8,
+      total: 66.31,
+    };
+    // Las dos formas valen: el validador lo acepta sin tocar la lectura.
+    expect(validateInvoice(octopus).filter(({ severity }) => severity === "blocking").map(({ code }) => code)).not.toContain(
+      "electricity_tax_base_mismatch",
+    );
+    expect(reconcileChain(octopus)).toBe(octopus);
+  });
+
+  test("a service with its own VAT adds to the total outside the light's base (TotalEnergies)", () => {
+    const total = {
+      ...base,
+      otherTaxableLines: [{ description: "Facilita Luz", amount: 7.62 }],
+      electricityTax: { base: 51.36, ratePercent: ELECTRICITY_TAX_RATE, amount: 2.63 },
+      vat: { ratePercent: 21, base: 54.84, amount: 11.52 },
+      taxableBase: 54.84,
+      total: 75.58,
+    };
+    const fixed = reconcileChain(total);
+    expect(fixed.otherTaxableLines).toEqual([]);
+    expect(fixed.vatExemptLines).toEqual([{ description: "Facilita Luz (con su IVA)", amount: 9.22 }]);
+  });
+});
+
+describe("deriveMissingEnergyPrice", () => {
+  test("PVPC prints the cost of energy without a price: amount ÷ kWh", () => {
+    const invoice = { ...naturgyInvoice, energyLines: [{ period: "ALL" as const, kwh: 99, pricePerKwh: 0, amount: 12.35 }] };
+    expect(deriveMissingEnergyPrice(invoice).energyLines[0].pricePerKwh).toBe(0.124747);
+  });
+});
+
+describe("energy lines with rounded kWh", () => {
+  test("half a kWh of margin when the invoice prints whole kWh", () => {
+    const invoice = {
+      ...naturgyInvoice,
+      consumptionKwh: { P1: 155, P2: 0, P3: 0 },
+      energyLines: [{ period: "P1" as const, kwh: 155, pricePerKwh: 0.116994, amount: 18.19 }],
+    };
+    expect(validateInvoice(invoice).map(({ code }) => code)).not.toContain("energy_line_mismatch");
   });
 });

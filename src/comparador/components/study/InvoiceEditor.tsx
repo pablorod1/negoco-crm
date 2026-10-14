@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, Loader2, Plus, RotateCcw, Trash2 } from "l
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { issueMessages } from "@/comparador/extraction/issue-text";
 import {
-  electricitySubtotalOf,
+  electricityTaxBaseOf,
   expectedTaxableBase,
   hasBlockingIssues,
   validateInvoice,
@@ -328,8 +328,8 @@ function EditorForm({ invoice, setInvoice, issues }: { invoice: Invoice; setInvo
                 onChange={(value) => set("electricityTax", { base: invoice.electricityTax?.base ?? 0, ratePercent: invoice.electricityTax?.ratePercent ?? 5.11269632, amount: invoice.electricityTax?.amount ?? 0, [key]: value ?? 0 })}
               />
               {key === "base" && invoice.electricityTax && (
-                // La base es la suma de potencia, energía, descuentos, otros y bono social.
-                <Expected expected={electricitySubtotalOf(invoice)} amount={invoice.electricityTax.base} />
+                // La base es la suma de potencia, energía, descuentos, otros y bono social (si lo lleva dentro).
+                <Expected expected={electricityTaxBaseOf(invoice)} amount={invoice.electricityTax.base} />
               )}
               {key === "amount" && invoice.electricityTax && (
                 <Expected expected={(invoice.electricityTax.base * invoice.electricityTax.ratePercent) / 100} amount={invoice.electricityTax.amount} />

@@ -8,6 +8,7 @@ import {
 } from "./invoice-schema";
 import {
   alignEnergyKwh,
+  deriveMissingEnergyPrice,
   exactElectricityTaxRate,
   fillBillingDays,
   inferPricing,
@@ -150,7 +151,9 @@ export async function extractInvoice({
         reconcileChain(
           singleEnergyPriceAsAll(
             alignEnergyKwh(
-              surplusCompensationAsOther(exactElectricityTaxRate(fillBillingDays(normalizePowerLines(result.output)))),
+              surplusCompensationAsOther(
+                deriveMissingEnergyPrice(exactElectricityTaxRate(fillBillingDays(normalizePowerLines(result.output)))),
+              ),
             ),
           ),
         ),

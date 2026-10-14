@@ -64,6 +64,27 @@ export function electricitySubtotalOf(invoice: InvoiceExtraction): number {
   ]);
 }
 
+const socialBonusOf = (invoice: InvoiceExtraction) => sumEuros(invoice.socialBonusLines.map(({ amount }) => amount));
+
+/**
+ * Algunas comercializadoras (INER, Octopus) dejan la financiación del bono
+ * social fuera de la base del impuesto eléctrico: la base impresa es la de
+ * las líneas sin él, y el bono va a la base del IVA. Las dos formas valen.
+ */
+export function socialBonusOutsideElectricityTax(invoice: InvoiceExtraction): boolean {
+  const tax = invoice.electricityTax;
+  const bonus = socialBonusOf(invoice);
+  if (!tax || bonus === 0) return false;
+  const subtotal = electricitySubtotalOf(invoice);
+  return Math.abs(subtotal - tax.base) > SUM_TOLERANCE && Math.abs(subtotal - bonus - tax.base) <= SUM_TOLERANCE;
+}
+
+/** La base del impuesto eléctrico que sale de las líneas, con el bono social dentro o fuera. */
+export function electricityTaxBaseOf(invoice: InvoiceExtraction): number {
+  const subtotal = electricitySubtotalOf(invoice);
+  return socialBonusOutsideElectricityTax(invoice) ? sumEuros([subtotal, -socialBonusOf(invoice)]) : subtotal;
+}
+
 /** Base imponible que sale de las líneas: electricidad, impuesto eléctrico, contador y otros conceptos con IVA. */
 export function expectedTaxableBase(invoice: InvoiceExtraction): number {
   const tax = invoice.electricityTax;
@@ -71,6 +92,7 @@ export function expectedTaxableBase(invoice: InvoiceExtraction): number {
     tax?.base ?? electricitySubtotalOf(invoice),
     tax?.amount ?? 0,
     invoice.meterRental?.amount ?? 0,
+    socialBonusOutsideElectricityTax(invoice) ? socialBonusOf(invoice) : 0,
     ...invoice.otherTaxableLines.map(({ amount }) => amount),
   ]);
 }
@@ -154,6 +176,9 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     "energy_line_mismatch",
     "energyLines",
     add,
+    // Hay facturas que imprimen los kWh redondeados y multiplican los exactos
+    // («90 kWh × 0,116994 €/kWh = 10,57 €»): medio kWh de margen.
+    (line) => LINE_TOLERANCE + (Number.isInteger(line.kwh) ? Math.abs(line.pricePerKwh) / 2 : 0),
   );
   // Sin días o sin precio por día (factura que no los imprime, o que cobra
   // el bono al mes) solo cuenta el importe, que se comprueba en las bases.
@@ -243,7 +268,7 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
     }
   }
 
-  const electricitySubtotal = electricitySubtotalOf(invoice);
+  const electricitySubtotal = electricityTaxBaseOf(invoice);
 
   const tax = invoice.electricityTax;
   if (tax) {
@@ -321,10 +346,11 @@ function checkLines<LINE extends { amount: number }>(
   code: InvoiceIssueCode,
   field: string,
   add: (issue: InvoiceIssue) => void,
+  toleranceOf: (line: LINE) => number = () => LINE_TOLERANCE,
 ) {
   const mismatches = lines
     .map((line, index) => ({ line, index, expected: expectedOf(line) }))
-    .filter(({ line, expected }) => differs(expected, line.amount, LINE_TOLERANCE));
+    .filter(({ line, expected }) => differs(expected, line.amount, toleranceOf(line)));
   if (mismatches.length === 0) return;
 
   const expectedTotal = sumEuros(lines.map((line) => roundEuros(expectedOf(line))));
