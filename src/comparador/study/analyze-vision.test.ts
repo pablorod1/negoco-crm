@@ -9,6 +9,7 @@ vi.mock("./read-invoice", () => ({
   // Visión encendida: la foto va entera a la IA, sin OCR.
   photoVisionEnabled: () => true,
   invoiceImagesForVision: vi.fn(async () => [page]),
+  zoomedBands: vi.fn(async () => []),
   readInvoice: vi.fn(async () => {
     throw new Error("con visión no se lee con OCR");
   }),
@@ -45,7 +46,7 @@ describe("photos read with vision", () => {
     const { result, extract, fetchSips } = run({ cups: VALID_CUPS });
     // Sin respuesta del SIPS se para ahí: basta para ver qué se envió y qué CUPS se pidió.
     await expect(result).rejects.toMatchObject({ status: 503 });
-    expect(extract).toHaveBeenCalledWith(expect.objectContaining({ file: { pages: [page] } }));
+    expect(extract).toHaveBeenCalledWith(expect.objectContaining({ file: { pages: [page], zoomed: [] } }));
     expect(fetchSips).toHaveBeenCalledWith(VALID_CUPS, "CONSUMOS");
   });
 

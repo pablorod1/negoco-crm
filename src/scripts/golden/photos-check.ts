@@ -14,6 +14,7 @@ import sharp from "sharp";
 import { join } from "node:path";
 import { getInvoiceExtractionModels } from "@/comparador/ai/models";
 import { extractInvoice, type InvoiceFile } from "@/comparador/extraction/extract-invoice";
+import { zoomedBands } from "@/comparador/study/read-invoice";
 import { goldenPath, loadLocalEnv, readOption } from "./paths";
 
 async function main() {
@@ -24,6 +25,7 @@ async function main() {
   const maxUsd = Number(readOption(argv, "--max-usd") ?? 0.1);
   const out = readOption(argv, "--out");
   const useImages = argv.includes("--images");
+  const zoom = argv.includes("--zoom");
   // --only a,b: solo esas facturas (por ejemplo, las que fallaron).
   const only = readOption(argv, "--only")?.split(",").filter(Boolean);
   const originals = useImages ? await readdir(goldenPath(root, "originals", "")) : [];
@@ -45,7 +47,8 @@ async function main() {
         mediaType: "image/jpeg" as const,
       })),
     );
-    return { pages };
+    // --zoom: además, franjas a su resolución (como producción con COMPARADOR_PHOTO_ZOOM).
+    return zoom ? { pages, zoomed: await zoomedBands(pages) } : { pages };
   };
 
   // Con fichas, solo las facturas del banco (sin las excluidas ni descartadas).

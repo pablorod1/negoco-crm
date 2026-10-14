@@ -29,7 +29,7 @@ import type {
 import { StudyError } from "./errors";
 import { needsInvoiceReview } from "./invoice-review";
 import type { StudyClientData } from "./client-data";
-import { invoiceImagesForVision, photoVisionEnabled, readInvoice } from "./read-invoice";
+import { invoiceImagesForVision, photoVisionEnabled, readInvoice, zoomedBands } from "./read-invoice";
 import { indexedEnergyPrices, marginOverMarket } from "./indexed";
 import { rankStudy, type AncillarySimulation, type CurrentPricing, type StudyRanking } from "./ranking";
 import {
@@ -133,7 +133,13 @@ export async function analyzeInvoice({
     // datos. El CUPS sale de su lectura (o del escrito a mano) y el SIPS se
     // consulta después.
     fromImage = true;
-    extraction = await extract({ file: { pages: images }, context, knownCups: invoice.cups ?? null });
+    // Con franjas a su resolución: OpenAI reduce cada imagen a 768 px de lado
+    // corto y la letra pequeña se perdía (Luna sola: 16 → 22 de 30 fotos).
+    extraction = await extract({
+      file: { pages: images, zoomed: await zoomedBands(images) },
+      context,
+      knownCups: invoice.cups ?? null,
+    });
     const read = extraction.extraction;
     if (read.powerLines.length === 0 && read.energyLines.length === 0) throw new StudyError(NO_DETAIL_IN_PHOTO);
     const readCups = read.cups && isValidCups(read.cups) ? normalizeIdentifier(read.cups) : null;

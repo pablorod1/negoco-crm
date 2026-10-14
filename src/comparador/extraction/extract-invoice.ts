@@ -41,7 +41,14 @@ export interface InvoiceDocument {
  * factura, o como texto ya extraído y anonimizado en local, que no lleva
  * datos personales.
  */
-export type InvoiceFile = InvoiceDocument | { pages: InvoiceDocument[] } | { text: string };
+export type InvoiceFile =
+  | InvoiceDocument
+  | {
+      pages: InvoiceDocument[];
+      /** Trozos de las páginas a su resolución, de arriba abajo, para la letra pequeña. */
+      zoomed?: InvoiceDocument[];
+    }
+  | { text: string };
 
 export interface ExtractionAttempt {
   model: string;
@@ -82,11 +89,22 @@ function buildMessages(file: InvoiceFile): ModelMessage[] {
   }
 
   const pages = "pages" in file ? file.pages : [file];
+  const zoomed = "pages" in file ? (file.zoomed ?? []) : [];
+  const asPart = ({ data, mediaType }: InvoiceDocument) => ({ type: "file" as const, data, mediaType });
   return [
     {
       role: "user",
       content: [
-        ...pages.map(({ data, mediaType }) => ({ type: "file" as const, data, mediaType })),
+        ...pages.map(asPart),
+        ...(zoomed.length
+          ? [
+              {
+                type: "text" as const,
+                text: "Ampliaciones de las mismas páginas, de arriba abajo, para leer la letra pequeña:",
+              },
+              ...zoomed.map(asPart),
+            ]
+          : []),
         {
           type: "text",
           text:

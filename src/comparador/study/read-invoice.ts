@@ -149,3 +149,35 @@ export async function invoiceImagesForVision({
     throw new StudyError(UNREADABLE_IMAGE);
   }
 }
+
+/** Alto de cada franja en proporción al ancho: así no se reduce al leerla. */
+const BAND_RATIO = 0.65;
+const BAND_OVERLAP = 0.12;
+
+/**
+ * Las páginas en franjas horizontales a su resolución, con un poco de solape
+ * para no cortar una línea. OpenAI reduce cada imagen a 768 px de lado corto:
+ * una foto vertical entera pierde la letra pequeña; una franja, no.
+ */
+export async function zoomedBands(pages: readonly InvoiceDocument[]): Promise<InvoiceDocument[]> {
+  const bands: InvoiceDocument[] = [];
+  for (const page of pages) {
+    const { width, height } = await sharp(page.data).metadata();
+    if (!width || !height) continue;
+    const bandHeight = Math.round(width * BAND_RATIO);
+    if (height <= bandHeight * 1.2) continue;
+    const step = Math.round(bandHeight * (1 - BAND_OVERLAP));
+    for (let top = 0; top < height; top += step) {
+      const extractHeight = Math.min(bandHeight, height - top);
+      if (extractHeight < bandHeight * 0.3 && top > 0) break;
+      bands.push({
+        data: new Uint8Array(
+          await sharp(page.data).extract({ left: 0, top, width, height: extractHeight }).jpeg({ quality: 85 }).toBuffer(),
+        ),
+        mediaType: "image/jpeg",
+      });
+      if (top + extractHeight >= height) break;
+    }
+  }
+  return bands;
+}
