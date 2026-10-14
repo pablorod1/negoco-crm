@@ -52,9 +52,12 @@ async function main() {
   const withFichas = new Set(
     (await readdir(goldenPath(root, "fichas", "")).catch(() => [] as string[])).map((file) => file.slice(0, -5)),
   );
-  const ids = (await readdir(goldenPath(root, "redacted", "")))
-    .filter((file) => file.endsWith(".txt"))
-    .map((file) => file.slice(0, -4))
+  // Con imágenes, las facturas son las de originals/ (las ilegibles no tienen texto).
+  const ids = (
+    useImages
+      ? [...new Set(originals.map((name) => name.split("-")[0]))]
+      : (await readdir(goldenPath(root, "redacted", ""))).filter((file) => file.endsWith(".txt")).map((file) => file.slice(0, -4))
+  )
     .filter((id) => withFichas.size === 0 || withFichas.has(id))
     .filter((id) => !only || only.includes(id))
     .sort();

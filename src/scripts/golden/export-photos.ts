@@ -1,7 +1,7 @@
 /**
  * Exporta fotos de facturas de Beenergy para medir el OCR con imágenes reales.
  *
- *   pnpm golden:photos [--out <carpeta>] [--count 30] [--candidates 400]
+ *   pnpm golden:photos [--out <carpeta>] [--count 30] [--candidates 400] [--unreadable]
  *
  * Toma las imágenes de comparativas de luz y, de los trámites, solo las que
  * se llaman «factura» (los trámites guardan también DNI y contratos). Cada
@@ -9,12 +9,18 @@
  * La lee igual que producción (`readInvoice`: OCR local y los mismos topes) y
  * la anonimiza igual. Descarta en local lo que no es una factura de luz 2.0TD
  * sin guardarlo. Nunca imprime nombres de fichero: llevan el del cliente.
+ *
+ * Con --unreadable guarda justo las que el OCR no lee (las que producción
+ * rechazaba) para medirlas con visión: sin texto anonimizado, y solo si lo
+ * poco que lee el OCR parece una factura de luz y no un documento de
+ * identidad, porque esas imágenes irán enteras a la IA.
  */
 import { createClient } from "@libsql/client";
 import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
+import { ocrImages, prepareImage } from "@/comparador/ocr/ocr";
 import { readInvoice } from "@/comparador/study/read-invoice";
 import { StudyError } from "@/comparador/study/errors";
 import { ensureGoldenDirs, goldenPath, loadLocalEnv, readOption } from "./paths";
@@ -31,6 +37,10 @@ const OTHER_ACCESS_TARIFF = /\b[36][.,][01]\s?T\.?D\b/i;
 /** Gas, solo o junto a la de luz en la misma subida: no sirve para medir una factura de luz. */
 const HAS_GAS = /factura de gas|consumo gas|t[ée]rmino energ[íi]a gas|gas natural|\bRL\.?[1-4]\b/i;
 const MAX_PAGES = 4;
+/** Señales de factura de luz en lo poco que lee el OCR de una foto mala. */
+const INVOICE_HINTS = /kwh|potencia|peaje|t[ée]rmino|electricidad|cups/i;
+/** Un documento de identidad no va a la IA, ni para medir. */
+const ID_DOCUMENT = /documento\s+nacional|identidad|idesp|pasaporte|permiso\s+de\s+conduc|residencia|nacionalidad|fecha\s+de\s+nacimiento/i;
 
 interface Row {
   owner: string;
@@ -52,6 +62,7 @@ async function main() {
   const root = readOption(argv, "--out") ?? DEFAULT_PHOTOS_DIR;
   const count = Number(readOption(argv, "--count") ?? 30);
   const candidates = Number(readOption(argv, "--candidates") ?? 400);
+  const unreadableOnly = argv.includes("--unreadable");
 
   const url = process.env.NEXT_TURSO_DB_URL_BEENERGY;
   const authToken = process.env.NEXT_TURSO_DB_AUTH_TOKEN_BEENERGY;
@@ -125,8 +136,28 @@ async function main() {
     } catch (error) {
       // Lo que producción rechaza por ilegible también es un dato: se cuenta.
       skip(error instanceof StudyError ? "ilegible para producción" : "error de OCR");
+      if (unreadableOnly && error instanceof StudyError) {
+        // Lo que el OCR sí ha leído decide si es una factura de luz.
+        const partial = await ocrImages(await Promise.all(images.map((image) => prepareImage(image)))).catch(() => null);
+        const hints = partial?.text ?? "";
+        if (!INVOICE_HINTS.test(hints) || ID_DOCUMENT.test(hints)) {
+          skip("ilegible y sin señales de factura de luz");
+          continue;
+        }
+        for (const [index, page] of pages.entries()) {
+          await writeFile(goldenPath(root, "originals", `${caseId}-${index + 1}.${page.extension}`), images[index]);
+        }
+        await writeFile(goldenPath(root, "private", `${caseId}.json`), JSON.stringify({ source: key.split("|")[0], cups: [] }, null, 2));
+        await writeFile(
+          goldenPath(root, "meta", `${caseId}.json`),
+          JSON.stringify({ supplierGuess: "otra", pages: pages.length, ocrUnreadable: true, ocrConfidence: partial?.confidence ?? null }, null, 2),
+        );
+        selected += 1;
+        console.log(`${selected}/${count} ${caseId} · ilegible para el OCR · ${pages.length} foto(s)`);
+      }
       continue;
     }
+    if (unreadableOnly) continue;
     const ocrMs = Date.now() - started;
 
     if (!LOOKS_LIKE_INVOICE(text)) {

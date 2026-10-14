@@ -8,6 +8,26 @@ import { StudyError } from "./errors";
 const IMAGE = /^image\/(jpe?g|png|webp|tiff|gif|heic|heif)$/i;
 const IMAGE_FILE = /\.(jpe?g|png|webp|tiff?|gif|heic|heif)$/i;
 
+/**
+ * Lado corto mínimo de una foto de factura. Las fotos reales del piloto
+ * tienen 717 px o más; los recortes y capturas que se suben como factura
+ * («958×124»), menos de 520.
+ */
+const MIN_PHOTO_SIDE = 600;
+export const CROPPED_IMAGE =
+  "La imagen es un recorte o una captura pequeña, no la factura entera. Sube la factura completa (todas sus páginas) o el PDF.";
+
+/** Si todas las fotos son recortes, se dice antes de leerlas (y de gastar en la IA). */
+async function assertNotCropped(images: readonly Buffer[]): Promise<void> {
+  const sides = await Promise.all(
+    images.map(async (image) => {
+      const { width, height } = await sharp(image, { failOn: "none" }).metadata().catch(() => ({ width: undefined, height: undefined }));
+      return width && height ? Math.min(width, height) : null;
+    }),
+  );
+  if (sides.every((side) => side !== null && side < MIN_PHOTO_SIDE)) throw new StudyError(CROPPED_IMAGE);
+}
+
 /** Por debajo de esto, Tesseract no ha leído la factura de verdad. */
 const MIN_OCR_CONFIDENCE = 60;
 const MIN_OCR_CHARS = 400;
@@ -46,6 +66,7 @@ export async function readInvoice({
     images = await pdfPagesAsImages(data, pages);
   } else if (isInvoiceImage(mime, fileName)) {
     images = [data, ...morePages].map((page) => Buffer.from(page));
+    await assertNotCropped(images);
   } else {
     throw new StudyError("Sube la factura en PDF o como foto (JPG o PNG).");
   }
@@ -107,6 +128,7 @@ export async function invoiceImagesForVision({
     images = await pdfPagesAsImages(data, pages);
   } else if (isInvoiceImage(mime, fileName)) {
     images = [data, ...morePages].map((page) => Buffer.from(page));
+    await assertNotCropped(images);
   } else {
     throw new StudyError("Sube la factura en PDF o como foto (JPG o PNG).");
   }
