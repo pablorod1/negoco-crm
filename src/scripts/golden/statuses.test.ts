@@ -35,7 +35,8 @@ describe("computeFieldStatuses", () => {
   test("leaves for a person what only the reader saw", () => {
     const statuses = computeFieldStatuses(base);
     expect(statuses["consumptionKwh.P1"]).toBe("unverified");
-    expect(statuses.issueDate).toBe("unverified");
+    // La fecha de emisión no entra en el cálculo: no se pide a mano.
+    expect(statuses.issueDate).toBeUndefined();
   });
 
   test("SIPS confirms consumption per period", () => {
@@ -72,9 +73,9 @@ describe("computeFieldStatuses", () => {
   test("a person's confirmation turns unverified fields into confirmed", () => {
     const statuses = computeFieldStatuses({
       ...base,
-      confirmedFields: ["issueDate", "total"],
+      confirmedFields: ["consumptionKwh.P1", "total"],
     });
-    expect(statuses.issueDate).toBe("confirmed");
+    expect(statuses["consumptionKwh.P1"]).toBe("confirmed");
     expect(statuses.total).toBe("verified");
   });
 });
