@@ -10,6 +10,8 @@ import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { omieAverages, type OmieDayFetcher } from "@/comparador/market/omie";
 import { notAnInvoice } from "@/comparador/extraction/document-kind";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
+import { isValidCups, normalizeIdentifier } from "@/comparador/extraction/identifiers";
+import { clientFromExtraction } from "@/comparador/redaction/invoice-client";
 import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
 import {
   listActiveOfferPrices,
@@ -24,7 +26,8 @@ import type {
 } from "@/integrations/apolo-sips/types";
 import { StudyError } from "./errors";
 import { needsInvoiceReview } from "./invoice-review";
-import { readInvoice } from "./read-invoice";
+import type { StudyClientData } from "./client-data";
+import { invoiceImagesForVision, photoVisionEnabled, readInvoice } from "./read-invoice";
 import { indexedEnergyPrices, marginOverMarket } from "./indexed";
 import { rankStudy, type AncillarySimulation, type CurrentPricing, type StudyRanking } from "./ranking";
 import {
@@ -59,6 +62,29 @@ export interface InvoiceForStudy {
   cups?: string | null;
 }
 
+/** La foto se ha leído, pero sin las líneas de potencia y energía. */
+const NO_DETAIL_IN_PHOTO =
+  "No se ha podido leer el detalle de la factura (potencia y energía) en la foto. Si la factura tiene más páginas, súbelas todas; si no, haz otra foto de frente y con buena luz, o pide el PDF.";
+
+interface SipsYear {
+  sipsPoint: ApoloSipsElectricityPointSupplyRow | null;
+  sipsConsumption: ApoloSipsElectricityConsumptionRow[];
+}
+
+/** El punto de suministro y un año de consumo del SIPS; si no hay año completo, no hay estudio. */
+async function loadSipsYear(fetchSips: SipsFetcher, cups: string): Promise<SipsYear> {
+  const [point, consumption] = await Promise.all([
+    fetchSips(cups, "PS").catch(() => null),
+    fetchSips(cups, "CONSUMOS").catch(() => null),
+  ]);
+  if (!consumption) throw new StudyError(SIPS_MESSAGES.unavailable, 503);
+  const sipsConsumption = consumption.rows as ApoloSipsElectricityConsumptionRow[];
+  const sipsYear = annualKwhFromSips(sipsConsumption);
+  if (!sipsYear) throw new StudyError(SIPS_MESSAGES.noReadings);
+  if ("insufficient" in sipsYear) throw new StudyError(SIPS_MESSAGES.insufficient(sipsYear.months));
+  return { sipsPoint: (point?.rows[0] as ApoloSipsElectricityPointSupplyRow | undefined) ?? null, sipsConsumption };
+}
+
 /**
  * Analiza la factura de una comparativa: texto del PDF, anonimizado en local
  * (a la IA solo llegan los conceptos y cifras), consumo real de 12 meses del
@@ -86,45 +112,61 @@ export async function analyzeInvoice({
   fetchSips: SipsFetcher;
   extract?: typeof extractInvoice;
 }): Promise<string> {
-  const { text, fromImage } = await readInvoice(invoice);
-  // Contratos, estudios de otra comercializadora o facturas de otra tarifa:
-  // se dice qué es antes de anonimizar y de gastar en la IA.
-  const notInvoice = notAnInvoice(text, { fromImage });
-  if (notInvoice) throw new StudyError(notInvoice.message);
-  // Datos del titular leídos en local: rellenan el cliente y, además, se
-  // tapan en todo el texto aunque no lleven etiqueta.
-  const { clientData, redaction } = redactInvoiceForStudy(text, { fromImage });
-  if (redaction.leaks.length > 0) {
-    throw new StudyError(
-      "No se ha podido tapar todos los datos personales de esta factura, así que no se envía a analizar. Avisa a soporte con la comparativa.",
-    );
-  }
-  const cups = redaction.identifiers.cups[0] ?? invoice.cups ?? null;
+  const context = { tenantSlug, jobType: "invoice_extraction" as const, userId, subjectId: comparativaId };
+  const images = photoVisionEnabled() ? await invoiceImagesForVision(invoice) : null;
 
-  // Sin un año real de consumo del SIPS no hay estudio. Se comprueba antes
-  // de llamar a la IA: no se gasta en una factura que no se puede comparar.
-  if (!cups) {
-    throw new StudyError(fromImage ? SIPS_MESSAGES.noCupsInImage : SIPS_MESSAGES.noCups, 422, "cups_missing");
-  }
-  const [point, consumption] = await Promise.all([
-    fetchSips(cups, "PS").catch(() => null),
-    fetchSips(cups, "CONSUMOS").catch(() => null),
-  ]);
-  if (!consumption) throw new StudyError(SIPS_MESSAGES.unavailable, 503);
-  const sipsPoint = (point?.rows[0] as ApoloSipsElectricityPointSupplyRow | undefined) ?? null;
-  const sipsConsumption = consumption.rows as ApoloSipsElectricityConsumptionRow[];
-  const sipsYear = annualKwhFromSips(sipsConsumption);
-  if (!sipsYear) throw new StudyError(SIPS_MESSAGES.noReadings);
-  if ("insufficient" in sipsYear) throw new StudyError(SIPS_MESSAGES.insufficient(sipsYear.months));
+  let cups: string;
+  let fromImage: boolean;
+  let clientData: StudyClientData | null;
+  let extraction: Awaited<ReturnType<typeof extractInvoice>>;
+  let sips: SipsYear;
+  let facts: InvoiceExtraction;
 
-  const extraction = await extract({
-    file: { text: redaction.text },
-    context: { tenantSlug, jobType: "invoice_extraction", userId, subjectId: comparativaId },
-    knownCups: cups,
-  });
-  const facts = extraction.extraction.supplierName
-    ? extraction.extraction
-    : { ...extraction.extraction, supplierName: await supplierFromText(client, redaction.text) };
+  if (images) {
+    // Foto o PDF escaneado con visión: la IA ve la imagen entera, con sus
+    // datos. El CUPS sale de su lectura (o del escrito a mano) y el SIPS se
+    // consulta después.
+    fromImage = true;
+    extraction = await extract({ file: { pages: images }, context, knownCups: invoice.cups ?? null });
+    const read = extraction.extraction;
+    if (read.powerLines.length === 0 && read.energyLines.length === 0) throw new StudyError(NO_DETAIL_IN_PHOTO);
+    const readCups = read.cups && isValidCups(read.cups) ? normalizeIdentifier(read.cups) : null;
+    const found = invoice.cups ?? readCups;
+    if (!found) throw new StudyError(SIPS_MESSAGES.noCupsInImage, 422, "cups_missing");
+    cups = found;
+    clientData = clientFromExtraction(read);
+    sips = await loadSipsYear(fetchSips, cups);
+    facts = read;
+  } else {
+    const reading = await readInvoice(invoice);
+    fromImage = reading.fromImage;
+    // Contratos, estudios de otra comercializadora o facturas de otra tarifa:
+    // se dice qué es antes de anonimizar y de gastar en la IA.
+    const notInvoice = notAnInvoice(reading.text, { fromImage });
+    if (notInvoice) throw new StudyError(notInvoice.message);
+    // Datos del titular leídos en local: rellenan el cliente y, además, se
+    // tapan en todo el texto aunque no lleven etiqueta.
+    const redacted = redactInvoiceForStudy(reading.text, { fromImage });
+    if (redacted.redaction.leaks.length > 0) {
+      throw new StudyError(
+        "No se ha podido tapar todos los datos personales de esta factura, así que no se envía a analizar. Avisa a soporte con la comparativa.",
+      );
+    }
+    clientData = redacted.clientData;
+    const found = redacted.redaction.identifiers.cups[0] ?? invoice.cups ?? null;
+    // Sin un año real de consumo del SIPS no hay estudio. Se comprueba antes
+    // de llamar a la IA: no se gasta en una factura que no se puede comparar.
+    if (!found) {
+      throw new StudyError(fromImage ? SIPS_MESSAGES.noCupsInImage : SIPS_MESSAGES.noCups, 422, "cups_missing");
+    }
+    cups = found;
+    sips = await loadSipsYear(fetchSips, cups);
+    extraction = await extract({ file: { text: redacted.redaction.text }, context, knownCups: cups });
+    facts = extraction.extraction.supplierName
+      ? extraction.extraction
+      : { ...extraction.extraction, supplierName: await supplierFromText(client, redacted.redaction.text) };
+  }
+  const { sipsPoint, sipsConsumption } = sips;
   const aiCostUsd = extraction.attempts.reduce((sum, { costUsd }) => sum + (costUsd ?? 0), 0);
 
   const tariff = (facts.accessTariff ?? "").replace(/\s/g, "").toUpperCase();

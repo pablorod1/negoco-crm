@@ -25,6 +25,9 @@ export interface OcrResult {
   pages: number;
 }
 
+export const UNREADABLE_IMAGE =
+  "No se puede abrir la imagen. Si es una foto HEIC del iPhone, envíala como JPG (por WhatsApp o «Exportar como JPG») o pide la factura en PDF.";
+
 export class UnreadableImageError extends Error {
   constructor(message: string) {
     super(message);
@@ -47,9 +50,7 @@ export async function prepareImage(data: Uint8Array): Promise<Buffer> {
       .png()
       .toBuffer();
   } catch {
-    throw new UnreadableImageError(
-      "No se puede abrir la imagen. Si es una foto HEIC del iPhone, envíala como JPG (por WhatsApp o «Exportar como JPG») o pide la factura en PDF.",
-    );
+    throw new UnreadableImageError(UNREADABLE_IMAGE);
   }
 }
 

@@ -116,6 +116,43 @@ function supplyAddress(lines: readonly string[]) {
   return null;
 }
 
+/** Nombre y apellidos de un titular: en España, nombre (uno o dos) y dos apellidos al final. */
+function splitHolderName(text: string, isCompany: boolean): { name: string | null; lastName: string | null } {
+  const words = titleCase(text).split(/\s+/);
+  if (isCompany || words.length < 2) return { name: text, lastName: null };
+  const surnames = words.length >= 3 ? 2 : 1;
+  return { name: words.slice(0, words.length - surnames).join(" "), lastName: words.slice(-surnames).join(" ") };
+}
+
+/**
+ * Los datos del cliente con lo que lee de la foto el modelo con visión: el
+ * titular, su NIF y la dirección de suministro. El resto lo completa quien
+ * hace el estudio.
+ */
+export function clientFromExtraction(read: {
+  holder: { name: string | null; taxId: string | null };
+  supplyAddress: string | null;
+}): StudyClientData | null {
+  const documentNumber = read.holder.taxId?.replace(/[\s-]/g, "").toUpperCase() ?? null;
+  const validDocument = documentNumber && isValidSpanishTaxId(documentNumber) ? documentNumber : null;
+  const isCompany = validDocument ? !/^[XYZ\d]/.test(validDocument) : read.holder.name ? COMPANY.test(read.holder.name) : false;
+  const { name, lastName } = read.holder.name ? splitHolderName(read.holder.name.trim(), isCompany) : { name: null, lastName: null };
+  const client: StudyClientData = {
+    name,
+    lastName,
+    kind: name || validDocument ? (isCompany ? "Empresa" : "Particular") : null,
+    documentNumber: validDocument,
+    email: null,
+    phone: null,
+    iban: null,
+    address: read.supplyAddress?.trim() || null,
+    postalCode: read.supplyAddress?.match(/\b(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\b/)?.[0] ?? null,
+    city: null,
+    province: null,
+  };
+  return Object.entries(client).some(([key, value]) => key !== "kind" && value !== null) ? client : null;
+}
+
 export function clientFromInvoiceText(raw: string): StudyClientData | null {
   const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const labelled = holderName(lines);
@@ -123,18 +160,7 @@ export function clientFromInvoiceText(raw: string): StudyClientData | null {
   const holder = labelled ?? holderFromPostalBlock(lines, documentNumber);
   const isCompany = documentNumber ? !/^[XYZ\d]/.test(documentNumber) : holder ? COMPANY.test(holder.text) : false;
 
-  let name: string | null = null;
-  let lastName: string | null = null;
-  if (holder) {
-    const words = titleCase(holder.text).split(/\s+/);
-    if (isCompany || words.length < 2) name = holder.text;
-    else {
-      // En España: nombre (uno o dos) y dos apellidos al final.
-      const surnames = words.length >= 3 ? 2 : 1;
-      name = words.slice(0, words.length - surnames).join(" ");
-      lastName = words.slice(-surnames).join(" ");
-    }
-  }
+  const { name, lastName } = holder ? splitHolderName(holder.text, isCompany) : { name: null, lastName: null };
 
   const ibanLine = lines.find((line) => DIRECT_DEBIT.test(line));
   const ibanMatch = ibanLine?.match(/\b[A-Z]{2}\d{2}(?:\s?[\dA-Z]{4}){3,7}(?:\s?[\dA-Z]{1,4})?\b/);

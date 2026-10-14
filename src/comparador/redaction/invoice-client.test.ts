@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { clientFromInvoiceText } from "./invoice-client";
+import { clientFromExtraction, clientFromInvoiceText } from "./invoice-client";
 
 // Textos inventados: DNI, CIF e IBAN con su control correcto, de ejemplo.
 const INVOICE = `Iberdrola Clientes, S.A.U. CIF A95758389
@@ -68,5 +68,37 @@ Atención al cliente 600 111 222
 Domiciliación: ES91 **** **** **** **** 1332
 Total factura 69,62 €`);
     expect(client).toBeNull();
+  });
+});
+
+describe("clientFromExtraction", () => {
+  // Datos inventados.
+  test("splits a person's name and keeps a valid NIF and the supply address", () => {
+    expect(
+      clientFromExtraction({
+        holder: { name: "MARIA PRUEBA INVENTADA", taxId: "12345678-Z" },
+        supplyAddress: "Calle Falsa 123, 46001 Valencia",
+      }),
+    ).toMatchObject({
+      name: "Maria",
+      lastName: "Prueba Inventada",
+      kind: "Particular",
+      documentNumber: "12345678Z",
+      address: "Calle Falsa 123, 46001 Valencia",
+      postalCode: "46001",
+    });
+  });
+
+  test("a company keeps its name whole; an invalid NIF is dropped", () => {
+    expect(clientFromExtraction({ holder: { name: "Talleres Ficticios S.L.", taxId: "B00000001" }, supplyAddress: null })).toMatchObject({
+      name: "Talleres Ficticios S.L.",
+      lastName: null,
+      kind: "Empresa",
+      documentNumber: null,
+    });
+  });
+
+  test("nothing read, no client", () => {
+    expect(clientFromExtraction({ holder: { name: null, taxId: null }, supplyAddress: null })).toBeNull();
   });
 });

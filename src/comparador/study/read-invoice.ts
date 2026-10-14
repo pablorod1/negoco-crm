@@ -1,4 +1,6 @@
-import { OcrTimeoutError, ocrImages, pdfPagesAsImages, prepareImage, UnreadableImageError } from "@/comparador/ocr/ocr";
+import sharp from "sharp";
+import type { InvoiceDocument } from "@/comparador/extraction/extract-invoice";
+import { OcrTimeoutError, ocrImages, pdfPagesAsImages, prepareImage, UNREADABLE_IMAGE, UnreadableImageError } from "@/comparador/ocr/ocr";
 import { invoiceTextFromPdf } from "./invoice-text";
 import { StudyError } from "./errors";
 
@@ -67,5 +69,61 @@ export async function readInvoice({
       );
     }
     throw error;
+  }
+}
+
+/**
+ * Leer las fotos con un modelo que ve la imagen entera, con todos sus datos
+ * (decisión del usuario, 14/10/2026). Se enciende con
+ * COMPARADOR_PHOTO_VISION=1; apagado, las fotos van por OCR local y texto.
+ */
+export function photoVisionEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return /^(1|true)$/i.test(env.COMPARADOR_PHOTO_VISION ?? "");
+}
+
+/** Lado largo máximo: más no lo procesa el modelo. */
+const VISION_MAX_SIDE = 2048;
+
+/**
+ * Las fotos de la factura, o las páginas de un PDF escaneado, listas para un
+ * modelo con visión: enderezadas según la cámara y a 2048 px como mucho.
+ * null si es un PDF con texto (ese va anonimizado, como siempre).
+ */
+export async function invoiceImagesForVision({
+  data,
+  mime,
+  fileName,
+  morePages = [],
+}: {
+  data: Uint8Array;
+  mime: string;
+  fileName: string;
+  morePages?: Uint8Array[];
+}): Promise<InvoiceDocument[] | null> {
+  let images: Buffer[];
+  if (isInvoicePdf(mime, fileName)) {
+    const { text, pages } = await invoiceTextFromPdf(data);
+    if (text) return null;
+    images = await pdfPagesAsImages(data, pages);
+  } else if (isInvoiceImage(mime, fileName)) {
+    images = [data, ...morePages].map((page) => Buffer.from(page));
+  } else {
+    throw new StudyError("Sube la factura en PDF o como foto (JPG o PNG).");
+  }
+  try {
+    return await Promise.all(
+      images.map(async (image) => ({
+        data: new Uint8Array(
+          await sharp(image, { failOn: "none" })
+            .rotate()
+            .resize({ width: VISION_MAX_SIDE, height: VISION_MAX_SIDE, fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 85 })
+            .toBuffer(),
+        ),
+        mediaType: "image/jpeg" as const,
+      })),
+    );
+  } catch {
+    throw new StudyError(UNREADABLE_IMAGE);
   }
 }

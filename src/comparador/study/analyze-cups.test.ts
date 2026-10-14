@@ -2,6 +2,9 @@
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("./read-invoice", () => ({
+  // Sin visión: las fotos van por OCR y texto.
+  photoVisionEnabled: () => false,
+  invoiceImagesForVision: vi.fn(),
   // Una foto en la que el OCR no ha leído el CUPS.
   readInvoice: vi.fn(async () => ({
     text: "DETALLE DE FACTURA\nEnergía consumida\t300 kWh x 0,150000 €/kWh\t45,00 €\nTOTAL IMPORTE FACTURA\t60,00 €",
