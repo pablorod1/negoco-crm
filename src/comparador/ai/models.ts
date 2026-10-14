@@ -1,15 +1,16 @@
 /**
  * Modelos de la cascada de extracción de facturas, del más barato al más
- * fuerte. Elegidos con el banco de evaluación sobre las 15 fichas reales del
- * piloto (14 de octubre de 2026): con texto, GPT-6 Luna (razonamiento «low»)
- * deja 11 sin corrección y 1 error silencioso, a ~0,0008 $ por factura;
- * Gemini 2.5 Flash, 10 y 1 a ~0,0028 $. Con OCR, 5 sin corrección los dos
- * (Luna 1 silencioso, Gemini 2). Haiku 5.5 falla el esquema (27 campos con
- * null; Anthropic admite 16) y razonar «medium» no mejora a Luna.
+ * fuerte. Medido el 14 de octubre de 2026:
+ * - PDF (95 facturas reales, texto de producción y reglas deterministas):
+ *   GPT-6 Luna con razonamiento «low» cuadra sola 91 (96 %), ~0,0006 $.
+ * - Fotos (30 subidas reales, imagen entera): Luna 16; GPT-6.1 Sol rescata
+ *   6 de las 14 restantes (igual que GPT-6 Sol; GPT-5 con imagen, ninguna),
+ *   ~0,017 $ cuando entra.
+ * Haiku 5.5 falla el esquema (27 campos con null; Anthropic admite 16).
  */
 export const INVOICE_EXTRACTION_MODELS = [
   "openai/gpt-6-luna",
-  "openai/gpt-5",
+  "openai/gpt-6.1-sol",
 ] as const;
 
 /**
