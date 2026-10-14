@@ -28,6 +28,7 @@ La 2.0TD tiene dos periodos de potencia: el de punta (o punta-llano) es P1 y el 
 Extrae solo las líneas que suman al importe de la factura. Los desgloses informativos («cuantía de peajes y cargos», «destino del importe», «incluido en el importe facturado…») no son líneas: ignóralos.
 El consumo por periodo (consumptionKwh) es el de punta, llano y valle que indica la factura; no lo saques de las líneas de precio.
 Si el documento trae varias facturas seguidas, extrae solo la más reciente.
+El total es el de la factura antes de descontar saldos acumulados (batería virtual, monedero, bonos de saldo): si hay un «total a pagar» menor por eso, no lo uses como total ni pongas ese saldo como línea.
 Las fechas, en formato YYYY-MM-DD. Los porcentajes, como número (21, no 0,21).`;
 
 export interface InvoiceDocument {

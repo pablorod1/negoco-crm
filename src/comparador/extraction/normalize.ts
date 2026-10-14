@@ -111,6 +111,25 @@ export function fillBillingDays(invoice: InvoiceExtraction): InvoiceExtraction {
 }
 
 /**
+ * Las fechas del periodo («del 25 de julio al 25 de agosto») dan 31 días,
+ * pero la factura cobra 30 en cada línea por día (TotalEnergies: «Potencia
+ * (P1) 30 días»): si todas las líneas por día coinciden, mandan ellas.
+ */
+export function billingDaysFromDailyLines(invoice: InvoiceExtraction): InvoiceExtraction {
+  const period = invoice.billingPeriod;
+  if (!period) return invoice;
+  const daily = [
+    invoice.meterRental?.days,
+    ...invoice.socialBonusLines.map(({ days }) => days),
+    ...invoice.powerLines.filter(({ originalPrice }) => !originalPrice).map(({ days }) => days),
+  ].filter((days): days is number => typeof days === "number" && Number.isInteger(days) && days > 0);
+  const values = new Set(daily);
+  if (values.size !== 1) return invoice;
+  const [days] = values;
+  return days === period.days ? invoice : { ...invoice, billingPeriod: { ...period, days } };
+}
+
+/**
  * Un único precio de energía para todo el consumo (Repsol: «294 kWh x
  * 0,111681 €/kWh») a veces llega como P1. Si la línea cubre los kWh de los
  * tres periodos, es un precio para todos: ALL.
@@ -414,6 +433,7 @@ export function normalizeReading(read: InvoiceExtraction, text: string | null): 
   invoice = meterRentalFromText(invoice, text);
   invoice = regulatedSocialBonusPrice(invoice);
   invoice = fillBillingDays(invoice);
+  invoice = billingDaysFromDailyLines(invoice);
   invoice = exactElectricityTaxRate(invoice);
   invoice = deriveMissingEnergyPrice(invoice);
   invoice = surplusCompensationAsOther(invoice);

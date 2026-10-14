@@ -3,6 +3,7 @@ import { naturgyInvoice } from "./fixtures";
 import type { InvoiceExtraction } from "./invoice-schema";
 import {
   alignEnergyKwh,
+  billingDaysFromDailyLines,
   consumptionFromEnergyLines,
   deriveMissingEnergyPrice,
   ELECTRICITY_TAX_RATE,
@@ -423,5 +424,18 @@ describe("consumptionFromEnergyLines", () => {
     const other = { ...naturgyInvoice, consumptionKwh: { P1: 400, P2: 221, P3: 210 }, energyLines: lines(210, 221, 413) };
     expect(consumptionFromEnergyLines(other)).toBe(other);
     expect(consumptionFromEnergyLines(naturgyInvoice)).toBe(naturgyInvoice);
+  });
+});
+
+describe("billingDaysFromDailyLines", () => {
+  test("the daily lines win over the days between the dates (TotalEnergies)", () => {
+    const invoice = {
+      ...naturgyInvoice,
+      billingPeriod: { from: "2026-07-25", to: "2026-08-25", days: 31 },
+      powerLines: naturgyInvoice.powerLines.map((line) => ({ ...line, days: 30, originalPrice: null })),
+      meterRental: { days: 30, pricePerDay: 0.02663, amount: 0.8 },
+      socialBonusLines: [],
+    };
+    expect(billingDaysFromDailyLines(invoice).billingPeriod?.days).toBe(30);
   });
 });
