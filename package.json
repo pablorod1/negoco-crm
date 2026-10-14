@@ -21,6 +21,7 @@
     "golden:export": "tsx src/scripts/golden/export.ts",
     "golden:redact": "tsx src/scripts/golden/redact-all.ts",
     "golden:photos": "tsx src/scripts/golden/export-photos.ts",
+    "golden:prefill": "tsx src/scripts/golden/prefill.ts",
     "golden:photos-check": "tsx src/scripts/golden/photos-check.ts",
     "golden:review": "tsx src/scripts/golden/review-server.ts",
     "golden:sips": "tsx src/scripts/golden/sips-check.ts",

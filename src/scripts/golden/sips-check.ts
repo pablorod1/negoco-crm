@@ -2,11 +2,12 @@
  * Contrasta las fichas con el SIPS de APOLO: consumo por periodo en las fechas
  * de la factura y potencia contratada.
  *
- *   pnpm golden:sips [--dir <carpeta>] [--yes]
+ *   pnpm golden:sips [--dir <carpeta>] [--yes] [--all]
  *
  * Sin --yes solo dice cuántas consultas haría. El CUPS se lee de la carpeta
  * privada y no se imprime ni se guarda en el resultado.
  */
+import { existsSync } from "node:fs";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { InvoiceExtractionSchema } from "@/comparador/extraction/invoice-schema";
 import { fetchApoloSipsProcedure } from "@/integrations/apolo-sips/server";
@@ -34,9 +35,12 @@ async function main() {
   const execute = argv.includes("--yes");
   const apiKey = process.env.APOLO_SIPS_API_KEY;
 
+  // Solo las fichas sin contraste, salvo con --all: cada ficha son dos consultas.
+  const all = argv.includes("--all");
   const ids = (await readdir(goldenPath(root, "fichas", "")))
     .filter((file) => file.endsWith(".json"))
-    .map((file) => file.slice(0, -5));
+    .map((file) => file.slice(0, -5))
+    .filter((id) => all || !existsSync(goldenPath(root, "sips", `${id}.json`)));
 
   if (!execute) {
     console.log(`Haría ${ids.length * 2} consultas al SIPS (${ids.length} fichas × PS y CONSUMOS). Añade --yes para lanzarlas.`);

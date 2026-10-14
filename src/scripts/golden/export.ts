@@ -1,7 +1,7 @@
 /**
  * Exporta facturas de Beenergy para el conjunto de prueba.
  *
- *   pnpm golden:export [--out <carpeta>] [--count 20] [--candidates 80]
+ *   pnpm golden:export [--out <carpeta>] [--count 20] [--candidates 80] [--per-supplier 5] [--per-unknown 15]
  *
  * Solo lee de la base de Beenergy (una consulta con LIMIT) y descarga los PDF
  * a una carpeta local fuera del repositorio. Descarta las facturas sin texto
@@ -11,6 +11,7 @@
 import { createClient } from "@libsql/client";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,7 +41,9 @@ async function main() {
   const root = readOption(argv, "--out") ?? DEFAULT_GOLDEN_DIR;
   const count = Number(readOption(argv, "--count") ?? 20);
   const candidates = Number(readOption(argv, "--candidates") ?? 80);
-  const perSupplierCap = Math.max(2, Math.ceil(count / 5));
+  const perSupplierCap = Number(readOption(argv, "--per-supplier") ?? Math.max(2, Math.ceil(count / 5)));
+  // Las que no se reconocen son de muchas comercializadoras distintas: más cupo.
+  const perUnknownCap = Number(readOption(argv, "--per-unknown") ?? perSupplierCap);
 
   const url = process.env.NEXT_TURSO_DB_URL_BEENERGY;
   const authToken = process.env.NEXT_TURSO_DB_AUTH_TOKEN_BEENERGY;
@@ -49,15 +52,25 @@ async function main() {
   // Recorre por rowid descendente: la consulta se detiene al llegar al LIMIT.
   const db = createClient({ url, authToken });
   const { rows } = await db.execute({
-    sql: `SELECT f.id, f.download_url
-      FROM comparativa_files f
-      JOIN comparativas c ON c.id = f.comparativa_id
-      WHERE c.service = 'Luz'
-        AND lower(f.extension) = 'pdf'
-        AND f.filename NOT LIKE 'estudio%'
-        AND f.filename NOT LIKE 'Comparativa%'
-        AND f.size < 5000000
-      ORDER BY f.rowid DESC
+    // Las facturas de comparativas convertidas en trámite se mueven a
+    // tramite_files, junto a DNI y contratos: de ahí, solo las «factura».
+    sql: `SELECT id, download_url FROM (
+        SELECT f.id AS id, f.download_url, f.upload_date AS uploaded
+        FROM comparativa_files f
+        JOIN comparativas c ON c.id = f.comparativa_id
+        WHERE c.service = 'Luz'
+          AND lower(f.extension) = 'pdf'
+          AND f.filename NOT LIKE 'estudio%'
+          AND f.filename NOT LIKE 'Comparativa%'
+          AND f.size < 5000000
+        UNION ALL
+        SELECT 't' || f.id, f.download_url, f.upload_date
+        FROM tramite_files f
+        WHERE lower(f.extension) = 'pdf'
+          AND lower(f.filename) LIKE '%factura%'
+          AND f.size < 5000000
+      )
+      ORDER BY uploaded DESC
       LIMIT ?`,
     args: [candidates],
   });
@@ -75,6 +88,14 @@ async function main() {
 
       const fileId = String(row.id);
       const caseId = createHash("sha256").update(fileId).digest("hex").slice(0, 10);
+      // Ya en el banco, o descartada a propósito (las F-26 hechas con IA).
+      if (
+        existsSync(goldenPath(root, "originals", `${caseId}.pdf`)) ||
+        existsSync(join(root, "fichas-descartadas", `${caseId}.json`))
+      ) {
+        skip("ya en el banco o descartada");
+        continue;
+      }
       const pdfPath = join(workDir, `${caseId}.pdf`);
 
       const response = await fetch(String(row.download_url));
@@ -95,7 +116,7 @@ async function main() {
       }
 
       const supplier = detectSupplier(text);
-      if ((bySupplier[supplier] ?? 0) >= perSupplierCap) {
+      if ((bySupplier[supplier] ?? 0) >= (supplier === "otra" ? perUnknownCap : perSupplierCap)) {
         skip("cupo de comercializadora lleno");
         continue;
       }
