@@ -324,24 +324,22 @@ export async function rankSavedStudy({
   current: CurrentTariff | null;
   currentInfo: CurrentInfo;
   supply: StudySupply;
-  /** SSAA con los que se ha calculado: los del estudio o los del tenant. */
-  ancillary: { value: AncillarySimulation | null; source: "study" | "tenant" | "none" };
+  /** SSAA con los que se ha calculado (null, sin aplicar) y los que propone el tenant. */
+  ancillary: { value: AncillarySimulation | null; suggested: AncillarySimulation | null };
 }> {
   if (!study.extraction || !study.supply) {
     throw new StudyError("Este estudio no tiene factura analizada.", 409);
   }
   const effective: SavedStudyOptions = { ...study.options, ...options };
   const pricing = currentPricingOf(study, effective);
-  const [offers, rules, tenantAncillary, current] = await Promise.all([
+  const [offers, rules, suggested, current] = await Promise.all([
     listActiveOfferPrices(client, study.priceDate),
     listCurrentCommissionRules(client, study.priceDate),
-    effective.ancillary === undefined ? getDefaultAncillary(client) : Promise.resolve(null),
+    getDefaultAncillary(client),
     resolveCurrent(client, study, pricing),
   ]);
-  const ancillary =
-    effective.ancillary !== undefined
-      ? { value: effective.ancillary, source: effective.ancillary ? ("study" as const) : ("none" as const) }
-      : { value: tenantAncillary, source: tenantAncillary ? ("tenant" as const) : ("none" as const) };
+  // Los SSAA solo cuentan si el estudio los aplica; los del tenant son la propuesta.
+  const ancillary = { value: effective.ancillary ?? null, suggested };
   const ranking = rankStudy({
     supply: current.supply,
     current: current.tariff,

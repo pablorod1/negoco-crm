@@ -12,8 +12,8 @@ export interface StudyOptionsInput {
   order?: "savings" | "commission";
   currentPricing?: "fixed" | "indexed" | "flat" | null;
   excludedDiscounts?: string[];
-  /** null = sin simular; «default» = los del tenant. */
-  ancillary?: AncillarySimulation | null | "default";
+  /** null = sin aplicar. */
+  ancillary?: AncillarySimulation | null;
 }
 
 export interface ComparativaStudies {

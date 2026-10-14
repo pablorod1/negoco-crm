@@ -72,14 +72,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const study = await loadStudy(access.context, id);
     const parsed = OptionsSchema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Opciones no válidas" }, { status: 400 });
-    const { ancillary, ...rest } = parsed.data;
     const options = {
       ...study.options,
-      ...Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined)),
+      ...Object.fromEntries(Object.entries(parsed.data).filter(([, value]) => value !== undefined)),
     };
-    // «default»: vuelve a los SSAA del tenant (sin el campo en el estudio).
-    if (ancillary === "default") delete options.ancillary;
-    else if (ancillary !== undefined) options.ancillary = ancillary;
     await saveStudyOptions(access.context.client, id, options);
     return NextResponse.json({ success: true, data: { options } });
   } catch (error) {

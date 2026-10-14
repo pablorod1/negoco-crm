@@ -113,21 +113,20 @@ const PRICING_HINT = {
 } as const;
 
 /**
- * «Simular SSAA»: los servicios de ajuste con los que se ofertan las tarifas
- * que los cobran aparte. Sin tocar nada, los del tenant por defecto.
+ * «Aplicar SSAA»: los servicios de ajuste con los que se ofertan las tarifas
+ * que los cobran aparte. Sin marcar por defecto; al aplicarlos se propone el
+ * valor del tenant, que se puede cambiar.
  */
 function AncillaryControl({ study, onOptions }: { study: StudyView; onOptions: (options: StudyOptionsInput) => void }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(() => draftOf(study.ancillary.value));
-  const { source, value } = study.ancillary;
-  const label =
-    source === "study" ? describeAncillary(value) : source === "tenant" ? `${describeAncillary(value)} · por defecto` : "Sin simular";
+  const { value, suggested } = study.ancillary;
+  const [draft, setDraft] = useState(() => draftOf(value ?? suggested));
 
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-medium text-gray-700">
         Servicios de ajuste
-        {study.withoutAncillary > 0 && source === "none" && (
+        {study.withoutAncillary > 0 && !value && (
           <span className="ml-1 font-normal text-gray-400">
             · {study.withoutAncillary} {study.withoutAncillary === 1 ? "tarifa los cobra" : "tarifas los cobran"} aparte
           </span>
@@ -136,53 +135,42 @@ function AncillaryControl({ study, onOptions }: { study: StudyView; onOptions: (
       <button
         type="button"
         onClick={() => {
-          setDraft(draftOf(value));
+          setDraft(draftOf(value ?? suggested));
           setOpen(true);
         }}
         className={cn(
           "flex h-[38px] items-center gap-2 rounded-xl px-3 text-sm ring-1 transition-colors",
-          source === "none" ? "bg-white text-gray-700 ring-gray-200 hover:ring-gray-300" : "bg-primary-50 text-primary-800 ring-primary-200",
+          value ? "bg-primary-50 text-primary-800 ring-primary-200" : "bg-white text-gray-700 ring-gray-200 hover:ring-gray-300",
         )}
       >
         <Gauge className="size-4" />
-        {source === "none" ? "Simular SSAA" : label}
+        {value ? describeAncillary(value) : "Aplicar SSAA"}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Simular servicios de ajuste</DialogTitle>
+            <DialogTitle>Aplicar servicios de ajuste</DialogTitle>
             <DialogDescription>
               Algunas tarifas (precio fijo con los SSAA aparte) solo se pueden comparar con un valor de SSAA. Pon el de cada mes del año o una
-              media{source === "tenant" ? "; ahora se usan los del tenant por defecto" : ""}.
+              media{suggested && !value ? `; se propone el de por defecto (${describeAncillary(suggested)})` : ""}.
             </DialogDescription>
           </DialogHeader>
           <AncillaryEditor draft={draft} onChange={setDraft} />
           <DialogFooter className="gap-2 sm:justify-between">
-            <div className="flex gap-2">
-              {source !== "none" && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    onOptions({ ancillary: null });
-                    setOpen(false);
-                  }}
-                >
-                  No simular
-                </Button>
-              )}
-              {source === "study" && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    onOptions({ ancillary: "default" });
-                    setOpen(false);
-                  }}
-                >
-                  Usar los del tenant
-                </Button>
-              )}
-            </div>
+            {value ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  onOptions({ ancillary: null });
+                  setOpen(false);
+                }}
+              >
+                No aplicar
+              </Button>
+            ) : (
+              <span />
+            )}
             <Button
               disabled={!simulationOf(draft)}
               onClick={() => {

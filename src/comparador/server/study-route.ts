@@ -60,7 +60,7 @@ export type ProposalView = ReturnType<typeof proposalView>;
 export interface StudyCalculation {
   ranking: StudyRanking;
   currentInfo: CurrentInfo;
-  ancillary: { value: AncillarySimulation | null; source: "study" | "tenant" | "none" };
+  ancillary: { value: AncillarySimulation | null; suggested: AncillarySimulation | null };
 }
 
 export function studyView(
@@ -97,8 +97,8 @@ export function studyView(
       : null,
     /** Tipo de la tarifa de hoy y cómo se ha calculado lo que paga. */
     currentInfo: calculation?.currentInfo ?? null,
-    /** SSAA simulados con los que se ha calculado, y de dónde salen. */
-    ancillary: calculation?.ancillary ?? { value: null, source: "none" as const },
+    /** SSAA aplicados (null, sin aplicar) y los que propone el tenant. */
+    ancillary: calculation?.ancillary ?? { value: null, suggested: null },
     issues: describeInvoiceIssues(study.issues),
     /** Lo leído de la factura, para revisarlo y corregirlo. */
     extraction: facts ? withoutReview(facts as ReviewedExtraction) : null,
@@ -137,8 +137,8 @@ export const OptionsSchema = z.object({
   order: z.enum(["savings", "commission"]).optional(),
   currentPricing: z.enum(["fixed", "indexed", "flat"]).nullable().optional(),
   excludedDiscounts: z.array(z.string().max(200)).max(200).optional(),
-  /** null = sin simular; «default» = los del tenant. */
-  ancillary: z.union([AncillarySchema, z.null(), z.literal("default")]).optional(),
+  /** null = sin aplicar. */
+  ancillary: AncillarySchema.nullable().optional(),
 });
 
 /** El estudio y su comparativa, si este usuario puede verla. */

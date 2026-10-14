@@ -41,8 +41,8 @@ export interface StudyOptions {
   /** Descuentos condicionados que no se aplican, como «idPrecio:clave». */
   excludedDiscounts?: string[];
   /**
-   * SSAA simulados. Sin el campo, los del tenant por defecto; null, sin
-   * simular: las tarifas que los cobran aparte no se ofertan.
+   * SSAA aplicados. Sin el campo o null, sin aplicar: las tarifas que los
+   * cobran aparte no se ofertan.
    */
   ancillary?: AncillarySimulation | null;
 }
