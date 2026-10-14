@@ -381,7 +381,7 @@ describe("reconcileChain, informative lines without VAT", () => {
   test("a virtual battery line that the total does not include is dropped (Endesa)", () => {
     const invoice: InvoiceExtraction = {
       ...naturgyInvoice,
-      powerLines: [{ period: "P1", kw: 3.45, days: 30, pricePerKwDay: 0.1, amount: 10.35 }].map((line) => ({ ...line, originalPrice: null })),
+      powerLines: [{ period: "P1", kw: 3.45, days: 30, pricePerKwDay: 0.1, amount: 10.35, originalPrice: null }],
       energyLines: [{ period: "ALL", kwh: 100, pricePerKwh: 0.12, amount: 12 }],
       socialBonusLines: [],
       energyDiscounts: [],
