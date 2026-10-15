@@ -73,7 +73,7 @@ beforeEach(async () => {
     INSERT INTO organization (id) VALUES ('org-1');
     CREATE TABLE comparativas (
       id TEXT PRIMARY KEY, status TEXT, plan TEXT, client TEXT, company_id TEXT,
-      commission_segment TEXT, commission_segment_origin TEXT, comision_fijo REAL);
+      commission_segment TEXT, commission_segment_origin TEXT, comision_fijo REAL, comision_indexado REAL);
     INSERT INTO comparativas (id, status, plan, client) VALUES ('cmp-1', 'pending', '["indexado"]', 'Cliente');
     CREATE TABLE comparativa_files (
       id TEXT PRIMARY KEY, comparativa_id TEXT, filename TEXT, size INTEGER, extension TEXT,
@@ -220,6 +220,19 @@ describe("close study", () => {
     await closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload, clientData });
     expect((await getStudy(client, study.id))?.clientData).toMatchObject({
       name: "Ana", documentNumber: "12345678Z", email: null, postalCode: "28001",
+    });
+  });
+
+  test("an indexed offer closes as an indexed plan, with its commission there", async () => {
+    await client.execute(`UPDATE comparativas SET plan = '["fijo"]'`);
+    const { upload } = uploader();
+    const chosen = await propose({ pricing: "indexed", indexHistory: { from: "2025-05", to: "2026-04" } });
+    expect(chosen.document.offer).toMatchObject({ pricing: "indexed", indexHistory: { from: "2025-05", to: "2026-04" } });
+    await closeStudy({ client, study, proposal: chosen, pdf: new Uint8Array([1]), userId: "user-1", upload });
+    expect((await client.execute("SELECT plan, comision_fijo, comision_indexado FROM comparativas")).rows[0]).toMatchObject({
+      plan: '["fijo","indexado"]',
+      comision_fijo: null,
+      comision_indexado: 45,
     });
   });
 

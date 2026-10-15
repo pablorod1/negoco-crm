@@ -105,6 +105,7 @@ export async function planRatesCopy({
             comercializadoraId: targetId,
             catalogRateId: price.catalogRateId,
             accessTariff: price.accessTariff,
+            pricing: price.pricing,
           }),
         );
       }

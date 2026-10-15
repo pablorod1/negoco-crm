@@ -104,6 +104,9 @@ function compare(before: RatePrices, after: RatePrices): FieldChange[] {
         previous && next !== null ? (next - previous) / previous : null,
     });
   }
+  if (before.pricing !== after.pricing) {
+    changes.push({ field: `pricing:${after.pricing}`, from: null, to: null, relative: null });
+  }
   if (before.powerMode !== after.powerMode) {
     changes.push({ field: `powerMode:${after.powerMode}`, from: null, to: null, relative: null });
   }

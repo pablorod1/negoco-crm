@@ -341,6 +341,7 @@ export async function buildReview({
       rateId,
       product: rule.product,
       accessTariff: rule.accessTariff,
+      pricing: rule.pricing,
       level: rule.level,
       channel: rule.channel,
       minAnnualKwh: rule.minAnnualKwh,
@@ -479,11 +480,12 @@ export async function approveIngest({
   const supplierKey = normalizeName(review.supplier.name);
 
   // 1. Catálogo (base de control): productos nuevos.
-  const newKeys = new Map<string, { productName: string; accessTariffs: Set<string> }>();
+  const newKeys = new Map<string, { productName: string; pricing: string; accessTariffs: Set<string> }>();
   for (const row of versionRows) {
     if (row.catalogRateId || row.rateId) continue;
     const entry = newKeys.get(row.productKey) ?? {
       productName: row.productName,
+      pricing: row.pricing,
       accessTariffs: new Set<string>(),
     };
     entry.accessTariffs.add(row.accessTariff);
@@ -500,6 +502,7 @@ export async function approveIngest({
           productName: entry.productName,
           productKey,
           accessTariffs: [...entry.accessTariffs].join(","),
+          pricing: entry.pricing,
           createdBy: user.id,
         }),
       ),
@@ -534,6 +537,7 @@ export async function approveIngest({
           comercializadoraId: review.supplier.id,
           catalogRateId: row.catalogRateId ?? catalogIds.get(row.productKey) ?? null,
           accessTariff: row.accessTariff,
+          pricing: row.pricing,
         }),
       );
     }

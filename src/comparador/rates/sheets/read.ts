@@ -17,9 +17,8 @@ import { parseNumber, parseTariff } from "./parse";
 import { SheetRecipeSchema, type SheetRecipe } from "./recipe";
 import type { RecipeStore } from "./store";
 
-/** Hojas que no se enseñan a la IA por su nombre: indexadas, gas, simuladores. */
-const SKIPPED_SHEET =
-  /index|omie|pool|din[aá]mica|pass.?through|\bgas\b|\bRL\.?\s?\d|simulador|calculadora|hist[oó]rico/i;
+/** Hojas que no se enseñan a la IA por su nombre: gas, simuladores, históricos. */
+const SKIPPED_SHEET = /\bgas\b|\bRL\.?\s?\d|simulador|calculadora|hist[oó]rico/i;
 
 /** Texto por hoja que se enseña a la IA: la forma, no hace falta cada fila. */
 const MAX_SHEET_CHARS = 25_000;
@@ -27,7 +26,7 @@ const MAX_WORKBOOK_CHARS = 80_000;
 
 export const RECIPE_INSTRUCTIONS = `Escribes plantillas para leer Excel de precios de comercializadoras españolas de electricidad. No copias precios: dices en qué hoja, filas y columnas está cada dato, y nuestro código lee las celdas.
 Cada hoja viene con sus filas numeradas como en Excel («12|») y cada celda con su columna («C=0.169233»).
-Solo interesan las tarifas 2.0TD de precio fijo (también «20TD» o «2.01P», que es 2.0TD de precio único) y las comisiones de la agencia. No hagas tablas de 3.0TD, 6.1TD, gas, productos indexados, simuladores ni calculadoras: menciónalas en skippedSheets si ocupan una hoja entera, o en skippedRanges («AO18:BB72») si son un bloque junto a los fijos.
+Solo interesan las tarifas 2.0TD de precio fijo o indexado (también «20TD» o «2.01P», que es 2.0TD de precio único) y las comisiones de la agencia. De un producto indexado (OMIE, pool, «término A/B», pass-through) haz una tabla como de los fijos, con pricing indexed: lo que importa es su nombre, su potencia y su fee; si trae el término que se suma al mercado, va en energyP1/energyP2/energyP3. No hagas tablas de 3.0TD, 6.1TD, gas, simuladores ni calculadoras: menciónalas en skippedSheets si ocupan una hoja entera, o en skippedRanges («AO18:BB72») si son un bloque junto a los fijos.
 Una comisión es lo que la comercializadora paga a la agencia por cada contrato (remuneración, comisión, «pago al canal»). No son comisiones: el precio de servicios que se venden con la luz (PyS, mantenimiento, urgencias, packs), el fee o margen de un producto indexado, ni los descuentos al cliente. Si dudas, no hagas tabla de comisiones.
 Una tabla es un bloque de filas de datos. kind prices para filas con precios de energía (y potencia si está en la misma fila); kind power para bloques que solo traen potencia y se unen a los de precios por productName, level, territory y bandas, así que ponles los mismos valores (el nivel de un bloque de potencia es el de su columna, no el territorio del título); kind commissions para comisiones.
 Si la potencia de cada bloque de precios está en una celda fija (un apartado «POTENCIAS» con una fila por tarifa), es más sencillo leerla desde la tabla de precios con cell. Con repeat la celda se mueve con cada copia; como en Excel, «C$40» se mueve de columna pero no de fila (la misma potencia para Baleares y Canarias) y «$C$40» no se mueve nunca. Igual con las columnas: «$Q» lee siempre la columna Q aunque la copia esté más a la derecha.
@@ -37,7 +36,7 @@ Si una columna solo tiene valor en la primera fila de cada grupo (subsistema, ta
 Si el mismo bloque se repite a la derecha para otros niveles (N1, N2, N3; Agencia, Estándar…) o hacia abajo para otro producto o territorio, haz una sola tabla con el primer bloque y añade en repeat cada copia con su columnShift y rowShift (columnas y filas de distancia) y los valores que cambian (level, productName, territory…). Así la plantilla es corta: un libro como el de Axpo cabe en pocas tablas.
 sources: una entrada por dato. column si cambia en cada fila; cell si sale de una celda fija (el título del bloque con el nombre del producto o la banda de potencia); value si es una constante.
 Campos: productName (nombre comercial sin nivel ni tarifa; si la hoja es un producto, su título), variant (lo que distingue dos bloques del mismo producto sin campo propio: «con GdO», «verde»; se añade al nombre), level, accessTariff, territory (peninsula, baleares, canarias, ceuta_melilla o el texto de la celda), channel (captación o renovación), segment, powerBand (texto con la banda de potencia, p. ej. «P1 <= 10kW»), consumptionBand (texto con la banda de consumo), minKw/maxKw/minKwh/maxKwh (números), startMonth (texto como «Inicio Enero27» o fecha, si el precio depende del inicio del suministro), contractEnd (fecha hasta la que dura el precio fijo, si hay una columna con ella; la duración la calcula el código), termMonths (duración), energyP1/energyP2/energyP3 (punta, llano, valle; si hay un único precio, solo energyP1 y singlePrice true), powerP1/powerP2 (punta y valle), powerMargin, feeMinMwh/feeMaxMwh (fee que suma el comercial), discountText.
-Constantes con value: energyUnit (eur_kwh, cent_kwh o eur_mwh), powerUnit (eur_kw_day, eur_kw_month o eur_kw_year), singlePrice (true o false), powerMode (fixed, regulated si es la potencia BOE, regulated_plus), pricing (fixed salvo que el bloque sea indexado o por franjas: other), ancillaryIncluded (si el precio incluye los servicios de ajuste, SSAA; no es para GdO ni energía verde), feeOnPower, commissionType (fixed, per_mwh o fee_share), feeBase (energy o power), commissionAmount (columna con el importe).
+Constantes con value: energyUnit (eur_kwh, cent_kwh o eur_mwh), powerUnit (eur_kw_day, eur_kw_month o eur_kw_year), singlePrice (true o false), powerMode (fixed, regulated si es la potencia BOE, regulated_plus), pricing (fixed; indexed si el bloque es indexado; other si va por franjas), ancillaryIncluded (si el precio incluye los servicios de ajuste, SSAA; no es para GdO ni energía verde), feeOnPower, commissionType (fixed, per_mwh o fee_share), feeBase (energy o power), commissionAmount (columna con el importe).
 Mira la cabecera para las unidades: «€/kW año» es eur_kw_year, «€/kW día» eur_kw_day, «€/MWh» eur_mwh, «c€/kWh» cent_kwh.
 validFrom y validTo: la celda con la fecha (o el texto con las dos fechas) de vigencia, si existe.`;
 
@@ -637,7 +636,7 @@ export async function readSpreadsheet({
     return {
       result: {
         status: "out_of_scope",
-        reason: `No trae precios fijos de 2.0TD${extraction.skipped.length ? ` (${extraction.skipped.join(", ")})` : ""}.`,
+        reason: `No trae precios fijos ni indexados de 2.0TD${extraction.skipped.length ? ` (${extraction.skipped.join(", ")})` : ""}.`,
         classification: { supplierName, hasPrices: true, hasCommissions: false, accessTariffs: [], pricing: [] },
         costUsd,
       },

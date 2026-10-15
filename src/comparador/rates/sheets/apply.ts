@@ -300,9 +300,12 @@ function readTable(
 
       // Una fila de precios sin energía no es una tarifa (ADX deja filas
       // con la potencia y «-» en la energía); una de potencia, sin potencia, tampoco.
+      // Una indexada no trae la energía (es la del mercado): basta su potencia.
+      const declared = values.pricing;
+      const indexedTable = /index/i.test(typeof declared === "string" ? declared : (declared?.text ?? ""));
       const priceFields: RecipeField[] =
         table.kind === "prices"
-          ? ["energyP1", "energyP2", "energyP3"]
+          ? ["energyP1", "energyP2", "energyP3", ...(indexedTable ? (["powerP1", "powerP2"] as const) : [])]
           : table.kind === "power"
             ? ["powerP1", "powerP2"]
             : ["commissionAmount"];

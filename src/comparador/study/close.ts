@@ -93,7 +93,7 @@ export async function closeStudy({
   const transaction = await client.transaction("write");
   try {
     const { rows } = await transaction.execute({
-      sql: `SELECT status, plan, company_id, commission_segment, comision_fijo
+      sql: `SELECT status, plan, company_id, commission_segment, comision_fijo, comision_indexado
         FROM comparativas WHERE id = ? LIMIT 1`,
       args: [study.comparativaId],
     });
@@ -122,9 +122,12 @@ export async function closeStudy({
       description: `Documento subido: ${fileName}`,
     });
 
+    // El plan y la comisión van al lado de la oferta elegida: fijo o indexado.
+    const plan = proposal.document.offer.pricing === "indexed" ? "indexado" : "fijo";
+    const commissionField = plan === "indexado" ? "comision_indexado" : "comision_fijo";
     const plans = JSON.parse(String(comparativa.plan ?? "[]")) as string[];
-    if (!plans.includes("fijo")) {
-      const next = JSON.stringify([...plans, "fijo"]);
+    if (!plans.includes(plan)) {
+      const next = JSON.stringify([...plans, plan]);
       await transaction.execute({ sql: "UPDATE comparativas SET plan = ? WHERE id = ?", args: [next, study.comparativaId] });
       await audit(transaction, study.comparativaId, userId, {
         type: "plan_update",
@@ -158,17 +161,17 @@ export async function closeStudy({
 
     // Como con Abarca: una comisión que ya estaba puesta no se pisa; la
     // revisión decide.
-    if (proposal.commission !== null && comparativa.comision_fijo === null) {
+    if (proposal.commission !== null && comparativa[commissionField] === null) {
       await transaction.execute({
-        sql: "UPDATE comparativas SET comision_fijo = ? WHERE id = ?",
+        sql: `UPDATE comparativas SET ${commissionField} = ? WHERE id = ?`,
         args: [proposal.commission, study.comparativaId],
       });
       await audit(transaction, study.comparativaId, userId, {
         type: "commission_update",
-        field: "comision_fijo",
+        field: commissionField,
         oldValue: null,
         newValue: proposal.commission,
-        description: "Comisión de agencia (fijo) del estudio Negoco Cloud",
+        description: `Comisión de agencia (${plan}) del estudio Negoco Cloud`,
       });
     }
 

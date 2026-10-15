@@ -1,5 +1,6 @@
 import type { EnergyByPeriod } from "@/comparador/engine/types";
-import type { StudySupply } from "./supply";
+import { daysBetween } from "@/comparador/market/omie";
+import type { StudySupply, SupplyReading } from "./supply";
 
 const PERIODS = ["P1", "P2", "P3"] as const;
 
@@ -44,4 +45,53 @@ export function marginOverMarket(
     (sum, period) => sum + (invoiceKwh[period] ?? 0) * (invoicePrices[period] - market.invoice[period] / 1000),
     0,
   ) / total;
+}
+
+export type HistoryPrices =
+  | {
+      /** Precio medio de cada periodo en el año del SIPS, €/kWh. */
+      energy: EnergyByPeriod;
+      /** Meses del histórico usados (YYYY-MM), del primero al último. */
+      from: string;
+      to: string;
+    }
+  | { missing: string[] };
+
+/**
+ * Precio de energía de un año con una tarifa indexada de la que se tiene el
+ * histórico: cada lectura del SIPS se cobra al precio de sus meses (repartida
+ * por días si cruza de un mes a otro). Devuelve la media de cada periodo,
+ * ponderada por lo que consumió en cada lectura, o los meses que faltan en el
+ * histórico: sin ellos no se oferta, porque no hay precio real que poner.
+ */
+export function historyEnergyPrices(
+  history: ReadonlyMap<string, EnergyByPeriod>,
+  readings: readonly SupplyReading[],
+): HistoryPrices | null {
+  if (readings.length === 0) return null;
+  const shares = readings.map((reading) => {
+    const days = daysBetween(reading.from, reading.to);
+    const byMonth = new Map<string, number>();
+    for (const day of days) byMonth.set(day.slice(0, 7), (byMonth.get(day.slice(0, 7)) ?? 0) + 1 / days.length);
+    return byMonth;
+  });
+  const months = [...new Set(shares.flatMap((byMonth) => [...byMonth.keys()]))].sort();
+  const missing = months.filter((month) => !history.has(month));
+  if (missing.length > 0) return { missing };
+
+  const energy = { P1: 0, P2: 0, P3: 0 };
+  for (const period of PERIODS) {
+    const kwh = readings.reduce((sum, reading) => sum + reading.kwh[period], 0);
+    if (kwh <= 0) {
+      energy[period] = months.reduce((sum, month) => sum + history.get(month)![period], 0) / months.length;
+      continue;
+    }
+    const cost = readings.reduce(
+      (sum, reading, index) =>
+        sum + reading.kwh[period] * [...shares[index]].reduce((part, [month, share]) => part + share * history.get(month)![period], 0),
+      0,
+    );
+    energy[period] = cost / kwh;
+  }
+  return { energy, from: months[0], to: months.at(-1)! };
 }

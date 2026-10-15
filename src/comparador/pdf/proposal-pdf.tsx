@@ -239,6 +239,7 @@ function costRows(current: CostBreakdown | null, offer: CostBreakdown) {
 
 const offerChips = (offer: ProposalOffer) =>
   [
+    offer.pricing === "indexed" ? "Precio indexado" : null,
     offer.termMonths ? `Contrato de ${offer.termMonths} meses` : null,
     offer.powerMode === "regulated" ? "Potencia a precio regulado (BOE)" : null,
     ...offer.discounts,
@@ -480,6 +481,46 @@ function Notes({ notes }: { notes: { title: string; text: string; tone: string; 
   );
 }
 
+/** «mayo de 2025». */
+const monthName = (month: string) =>
+  new Date(`${month}-15T12:00:00Z`).toLocaleDateString("es-ES", { month: "long", year: "numeric", timeZone: "Europe/Madrid" });
+
+/**
+ * Aviso de las ofertas indexadas: su energía es la que cobró la
+ * comercializadora cada mes del último año, no un precio fijo.
+ */
+function indexedNote(
+  offer: ProposalDocument["offer"],
+  alternatives: readonly ProposalDocument["offer"][],
+  currentIndexed: boolean,
+) {
+  const indexed = [offer, ...alternatives].filter(({ pricing }) => pricing === "indexed");
+  if (indexed.length === 0) return null;
+  const period = indexed[0].indexHistory
+    ? `, de ${monthName(indexed[0].indexHistory.from)} a ${monthName(indexed[0].indexHistory.to)}`
+    : "";
+  const which =
+    offer.pricing === "indexed" && alternatives.length === 0
+      ? "La tarifa que le proponemos es indexada"
+      : indexed.length === 1
+        ? `${indexed[0].comercializadoraName} · ${indexed[0].productName} es una tarifa indexada`
+        : "Algunas de las tarifas que le proponemos son indexadas";
+  if (currentIndexed && offer.pricing === "indexed") {
+    return {
+      title: "Su tarifa de hoy y la que le proponemos son indexadas",
+      text: `Lo de hoy se ha estimado con el mercado eléctrico (OMIE) de sus 12 meses de consumo más lo que su factura cobra por encima; la propuesta, con lo que cobró la comercializadora cada mes${period} (en la tabla, la media). Las dos suben y bajan con el mercado.`,
+      tone: "#eef2ff",
+      edge: "#6366f1",
+    };
+  }
+  return {
+    title: which,
+    text: `Su energía es la que cobró la comercializadora cada mes${period}, con su consumo de esos meses (en la tabla, la media del año). Su precio sube y baja con el mercado: los próximos meses pueden ser distintos.`,
+    tone: "#eef2ff",
+    edge: "#6366f1",
+  };
+}
+
 function Footer({ doc, branding }: { doc: ProposalDocument; branding: ProposalBranding }) {
   return (
     <Text style={styles.footer} fixed>
@@ -514,7 +555,8 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
             edge: GOOD,
           }
         : null,
-    current?.pricing === "indexed"
+    // Si la propuesta también es indexada, va todo en el aviso de la propuesta.
+    current?.pricing === "indexed" && offer.pricing !== "indexed"
       ? {
           title: "Su tarifa de hoy es indexada",
           text: "Lo que paga hoy se ha estimado con el precio del mercado eléctrico (OMIE) de sus últimos 12 meses de consumo, más lo que su factura cobra por encima del mercado. Con una tarifa indexada su precio sube y baja con el mercado.",
@@ -530,6 +572,7 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
           edge: "#f59e0b",
         }
       : null,
+    indexedNote(offer, alternatives, current?.pricing === "indexed"),
     offer.ancillarySimulated && (offer.cost.ancillary ?? 0) > 0
       ? {
           title: "Servicios de ajuste estimados",

@@ -8,6 +8,7 @@ import {
 } from "@/comparador/extraction/current-tariff";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { omieAverages, type OmieDayFetcher } from "@/comparador/market/omie";
+import { listIndexHistory } from "@/comparador/rates/index-history";
 import { NOT_INVOICE_MESSAGES, notAnInvoice } from "@/comparador/extraction/document-kind";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
 import { isValidCups, normalizeIdentifier } from "@/comparador/extraction/identifiers";
@@ -292,7 +293,8 @@ const MARKET_MESSAGES = {
 /**
  * El mercado (OMIE) de las lecturas del SIPS y de la factura, para comparar
  * una tarifa indexada. Se calcula una vez y se guarda en el suministro; se
- * repite si la revisión de la factura cambia su periodo.
+ * repite si la revisión de la factura cambia su periodo, y en los estudios
+ * calculados antes de ponderar por el perfil de REE.
  */
 export async function ensureMarket(
   client: TenantClient,
@@ -305,7 +307,11 @@ export async function ensureMarket(
   if (!period?.from || !period.to) return { supply, error: MARKET_MESSAGES.noPeriod };
   const invoicePeriod = { from: period.from, to: period.to };
   const market = supply.market;
-  if (market && market.invoicePeriod.from === invoicePeriod.from && market.invoicePeriod.to === invoicePeriod.to) {
+  if (
+    market?.weighting === "ree_profile" &&
+    market.invoicePeriod.from === invoicePeriod.from &&
+    market.invoicePeriod.to === invoicePeriod.to
+  ) {
     return { supply, error: null };
   }
   try {
@@ -314,6 +320,7 @@ export async function ensureMarket(
       ...supply,
       market: {
         source: "omie",
+        weighting: "ree_profile",
         readings: averages.slice(0, -1),
         invoice: averages.at(-1)!,
         invoicePeriod,
@@ -402,11 +409,12 @@ export async function rankSavedStudy({
   }
   const effective: SavedStudyOptions = { ...study.options, ...options };
   const pricing = currentPricingOf(study, effective);
-  const [offers, rules, suggested, current] = await Promise.all([
+  const [offers, rules, suggested, current, indexHistory] = await Promise.all([
     listActiveOfferPrices(client, study.priceDate),
     listCurrentCommissionRules(client, study.priceDate),
     getDefaultAncillary(client),
     resolveCurrent(client, study, pricing),
+    listIndexHistory(client),
   ]);
   // Los SSAA solo cuentan si el estudio los aplica; los del tenant son la propuesta.
   const ancillary = { value: effective.ancillary ?? null, suggested };
@@ -420,6 +428,7 @@ export async function rankSavedStudy({
     rules,
     regulated: withInvoiceTaxes(getRegulatedParams(study.priceDate), invoiceTaxRates(study.extraction)),
     options: { ...effective, customerType: customerType.value, ancillary: ancillary.value, date: study.priceDate },
+    indexHistory,
   });
   return {
     ranking,

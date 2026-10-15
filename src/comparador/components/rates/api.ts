@@ -9,10 +9,11 @@ import type {
 } from "@/comparador/rates/types";
 import type { RateIssue } from "@/comparador/rates/validate";
 import type { AncillarySimulation } from "@/comparador/study/ranking";
+import type { IndexHistoryMonth, IndexHistoryRow } from "@/comparador/rates/index-history";
 import type { summarizeIngest } from "@/comparador/rates/views";
 
 export type IngestSummary = ReturnType<typeof summarizeIngest>;
-export type { AncillarySimulation, DiffEntry, IngestReview, RateIssue, RateVersion, StoredRatePrice };
+export type { AncillarySimulation, DiffEntry, IndexHistoryRow, IngestReview, RateIssue, RateVersion, StoredRatePrice };
 
 export interface SupplierRatesResponse {
   supplier: { id: string; name: string; active: boolean };
@@ -29,6 +30,8 @@ export interface SupplierRatesResponse {
   mailbox: string | null;
   /** SSAA por defecto del tenant para las tarifas que los cobran aparte. */
   ancillaryDefault: AncillarySimulation | null;
+  /** Histórico del indexado: de toda la comercializadora (rateId null) o de una tarifa. */
+  indexHistory: IndexHistoryRow[];
   canManage: boolean;
   canManageCatalog: boolean;
 }
@@ -117,6 +120,18 @@ export const ratesApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ancillaryDefault: value }),
+    }),
+  saveIndexHistory: (comercializadoraId: string, rateId: string | null, months: IndexHistoryMonth[]) =>
+    request<{ saved: number }>("/api/v2/comparador/rates/index-history", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comercializadora_id: comercializadoraId, rate_id: rateId, months }),
+    }),
+  deleteIndexHistoryMonth: (comercializadoraId: string, rateId: string | null, month: string) =>
+    request<{ month: string }>("/api/v2/comparador/rates/index-history", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comercializadora_id: comercializadoraId, rate_id: rateId, month }),
     }),
   discardVersion: (versionId: string, comercializadoraId: string) =>
     request<{ id: string }>(

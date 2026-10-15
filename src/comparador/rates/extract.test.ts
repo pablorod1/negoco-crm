@@ -119,7 +119,7 @@ describe("extractRateDocument", () => {
     expect(result.costUsd).toBeCloseTo(0.003, 6);
   });
 
-  test("nothing fixed for 2.0TD is out of scope, without paying the stronger model", async () => {
+  test("a 2.0TD indexed product is kept without energy, with the commissions of 2.0TD", async () => {
     // El preciario de APOLO: 2.0TD solo indexada y la comisión «65 % del fee»
     // de las secciones de 3.0TD, 6.1TD e indexados.
     const generate = fakeGenerate([
@@ -133,7 +133,10 @@ describe("extractRateDocument", () => {
       },
     ]);
     const result = await extractRateDocument({ document, context, generate, models: ["a", "b"] });
-    expect(result.status).toBe("out_of_scope");
-    expect(generate).toHaveBeenCalledTimes(2);
+    if (result.status === "out_of_scope") throw new Error("unexpected");
+    expect(result.proposed).toHaveLength(1);
+    expect(result.proposed[0]).toMatchObject({ pricing: "indexed", energy: null });
+    // Sin precio de energía que comprobar: solo cuenta la comisión, que el texto no trae.
+    expect(result.issues.map(({ code }) => code).sort()).toEqual(["commission_not_in_source", "missing_valid_from"]);
   });
 });

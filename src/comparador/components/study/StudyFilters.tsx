@@ -7,6 +7,7 @@ import { companyLogoUrl, isUnoptimizedLogo } from "@/comercializadoras/lib/logo-
 import { Button } from "@/core/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/core/components/ui/dialog";
 import { cn } from "@/core/utils";
+import { formatMonth } from "@/comparador/rates/index-history-text";
 import { AncillaryEditor, describeAncillary, draftOf, simulationOf } from "./AncillaryEditor";
 import type { StudyOptionsInput, StudyView } from "./api";
 import { Panel } from "./ui";
@@ -137,6 +138,21 @@ const PRICING_HINT = {
   flat: "en la factura se lee tarifa plana",
   unknown: "la factura no lo dice: confírmalo",
 } as const;
+
+/**
+ * Por qué no salen las indexadas: los meses de consumo que faltan en su
+ * histórico, o que el estudio no guarda las lecturas del SIPS.
+ */
+function withoutHistoryDetail(items: StudyView["withoutHistory"]): string {
+  if (items.every(({ missing }) => missing.length === 0)) {
+    return "Este estudio no guarda las lecturas del SIPS mes a mes: vuelve a analizar la factura para ofertar indexadas.";
+  }
+  return items
+    .map(({ comercializadoraName, productName, missing }) =>
+      `${comercializadoraName} · ${productName}: ${missing.length ? `falta ${missing.slice(0, 3).map(formatMonth).join(", ")}${missing.length > 3 ? ` y ${missing.length - 3} más` : ""}` : "sin lecturas"}`,
+    )
+    .join("\n");
+}
 
 /**
  * «Aplicar SSAA»: los servicios de ajuste con los que se ofertan las tarifas
@@ -319,6 +335,11 @@ export function StudyFilters({
             <span className="font-medium text-gray-900">{study.totalOffers}</span> tarifas encajan ·{" "}
             {study.ineligible} descartadas por potencia, consumo o territorio
             {study.otherCustomerType > 0 && ` · ${study.otherCustomerType} de otro tipo de cliente`}
+            {study.withoutHistory.length > 0 && (
+              <span title={withoutHistoryDetail(study.withoutHistory)}>
+                {` · ${study.withoutHistory.length} ${study.withoutHistory.length === 1 ? "indexada" : "indexadas"} sin histórico de sus meses`}
+              </span>
+            )}
           </span>
         </p>
       </div>

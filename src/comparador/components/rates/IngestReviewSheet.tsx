@@ -58,6 +58,8 @@ function energyCell(entry: DiffEntry) {
         : `${formatPrice(value.P1)} / ${formatPrice(value.P2)} / ${formatPrice(value.P3)}`
       : "—";
   if (!entry.proposed) return show(previous);
+  // La energía de una indexada sale de su histórico mensual, no del anexo.
+  if (entry.proposed.pricing === "indexed") return <span className="text-muted-foreground">Indexada · histórico</span>;
   return (
     <div>
       <div className="font-medium">{show(next)}</div>
@@ -530,7 +532,7 @@ export function IngestReviewSheet({
 
               {(review.outOfScope.length > 0 || review.skipped.length > 0) && (
                 <p className="text-xs text-muted-foreground">
-                  No se guardan (fuera de la v1):{" "}
+                  No se guardan (fuera del comparador):{" "}
                   {[
                     ...review.skipped,
                     ...review.outOfScope.map(({ productName, pricing }) => `${productName} (${pricing})`),

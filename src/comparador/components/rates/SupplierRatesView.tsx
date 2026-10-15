@@ -30,6 +30,7 @@ import {
   type SupplierRatesResponse,
 } from "./api";
 import { commissionAmount, commissionScope } from "./commission-text";
+import { historyMonthsFor, describeCoverage, IndexHistoryPanel } from "./IndexHistoryPanel";
 import { IngestReviewSheet } from "./IngestReviewSheet";
 import { RateUploadDialog } from "./RateUploadDialog";
 
@@ -49,15 +50,21 @@ const sinceDays = (days: number | null) => (!days ? "hoy" : days === 1 ? "ayer" 
 
 /**
  * Por qué una fila no sale en los estudios; null si se oferta. Es la misma
- * regla que `listActiveOfferPrices` y el ranking: 2.0TD, precio fijo, tarifa
- * activada y comercializadora activa. Las que cobran los SSAA aparte se
- * ofertan solo en los estudios que los apliquen (lo dice cada fila).
+ * regla que `listActiveOfferPrices` y el ranking: 2.0TD, precio fijo o
+ * indexado, tarifa activada y comercializadora activa. Las que cobran los SSAA
+ * aparte se ofertan solo en los estudios que los apliquen, y las indexadas
+ * solo si su histórico cubre el consumo del cliente (lo dice cada fila).
  */
-function offerBlocker(row: StoredRatePrice, product: Product, supplierActive: boolean): string | null {
-  if (!supplierActive) return "La comercializadora está desactivada en el CRM.";
+function offerBlocker(row: StoredRatePrice, product: Product, data: SupplierRatesResponse): string | null {
+  if (!data.supplier.active) return "La comercializadora está desactivada en el CRM.";
   if (!product.enabled) return "Desactivada: no se ofrece en los estudios.";
   if (row.accessTariff !== "2.0TD") return `Es de ${row.accessTariff}; el comparador compara 2.0TD.`;
-  if (row.pricing !== "fixed") return "Precio indexado: el comparador oferta precio fijo.";
+  if (row.pricing === "indexed") {
+    return historyMonthsFor(data.indexHistory, product.rateId).length > 0
+      ? null
+      : "Indexada sin histórico: no se oferta hasta cargar lo que cobró cada mes.";
+  }
+  if (row.pricing !== "fixed") return "Tarifa por franjas o plana: el comparador no sabe calcularla.";
   return null;
 }
 
@@ -119,7 +126,10 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
       {attention.length > 0 && <AttentionPanel ingests={attention} onOpen={setReviewing} />}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <ProductsPanel data={data} onToggle={toggleRate} />
+        <div className="min-w-0 space-y-6">
+          <ProductsPanel data={data} onToggle={toggleRate} />
+          <IndexHistoryPanel data={data} onSaved={load} />
+        </div>
         <div className="space-y-6">
           <AncillaryDefaultPanel data={data} onSaved={load} />
           <CommissionsPanel data={data} />
@@ -153,10 +163,10 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
 function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload: () => void }) {
   const rows = data.rates.flatMap((product) => product.rows.map((row) => ({ row, product })));
   const offered = data.rates.filter((product) =>
-    product.rows.some((row) => !offerBlocker(row, product, data.supplier.active)),
+    product.rows.some((row) => !offerBlocker(row, product, data)),
   );
   const cheapest = rows
-    .filter(({ row, product }) => row.energy && !offerBlocker(row, product, data.supplier.active))
+    .filter(({ row, product }) => row.energy && !offerBlocker(row, product, data))
     .map(({ row }) => Math.min(row.energy!.P1, row.energy!.P2, row.energy!.P3));
   const lastUpdate = data.ingests.find(({ status }) => status === "approved");
 
@@ -310,8 +320,7 @@ function ProductsPanel({
               key={product.rateId}
               product={product}
               scale={scale}
-              supplierActive={data.supplier.active}
-              canManage={data.canManage}
+              data={data}
               onToggle={onToggle}
             />
           ))}
@@ -324,17 +333,17 @@ function ProductsPanel({
 function ProductCard({
   product,
   scale,
-  supplierActive,
-  canManage,
+  data,
   onToggle,
 }: {
   product: Product;
   scale: number;
-  supplierActive: boolean;
-  canManage: boolean;
+  data: SupplierRatesResponse;
   onToggle: (rateId: string, enabled: boolean) => void;
 }) {
-  const blockers = product.rows.map((row) => offerBlocker(row, product, supplierActive));
+  const canManage = data.canManage;
+  const blockers = product.rows.map((row) => offerBlocker(row, product, data));
+  const coverage = describeCoverage(historyMonthsFor(data.indexHistory, product.rateId));
   const offeredRows = blockers.filter((blocker) => blocker === null).length;
   const status =
     offeredRows === product.rows.length
@@ -376,6 +385,7 @@ function ProductCard({
             scale={scale}
             blocker={blockers[index]}
             first={index === 0}
+            coverage={coverage}
           />
         ))}
       </div>
@@ -388,11 +398,14 @@ function RowPrices({
   scale,
   blocker,
   first,
+  coverage,
 }: {
   row: StoredRatePrice;
   scale: number;
   blocker: string | null;
   first: boolean;
+  /** Indexada: los meses de histórico que tiene. */
+  coverage: string | null;
 }) {
   const chips = conditionChips(row);
   const single = row.energy && row.energy.P1 === row.energy.P2 && row.energy.P2 === row.energy.P3;
@@ -426,6 +439,16 @@ function RowPrices({
               <span className="text-right font-medium tabular-nums text-gray-900">{euros(row.energy![key])}</span>
             </div>
           ))}
+        </div>
+      ) : row.pricing === "indexed" ? (
+        <div className="space-y-1 text-xs">
+          <p className="text-gray-700">
+            <span className="mr-1.5 rounded-md bg-info-50 px-1.5 py-0.5 text-[11px] font-medium text-info-700">Indexada</span>
+            Energía de cada mes según su histórico
+            {row.feeEnergyMinPerMwh !== null &&
+              ` · fee ${row.feeEnergyMinPerMwh}${row.feeEnergyMaxPerMwh !== null && row.feeEnergyMaxPerMwh !== row.feeEnergyMinPerMwh ? `–${row.feeEnergyMaxPerMwh}` : ""} €/MWh`}
+          </p>
+          {coverage && <p className="text-[11px] text-gray-500">Histórico {coverage}.</p>}
         </div>
       ) : (
         <p className="text-xs text-gray-500">Sin precio de energía.</p>

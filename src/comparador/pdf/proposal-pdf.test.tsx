@@ -74,6 +74,26 @@ describe("proposal pdf", () => {
     expect(pdf.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
 
+  test("an indexed offer for an indexed customer still fits on one page, with both notes", async () => {
+    const pdf = await renderProposalPdf(
+      {
+        ...document,
+        current: {
+          supplierName: "Repsol",
+          prices: { power: { P1: 0.108192, P2: 0.046548 }, energy: { P1: 0.2149, P2: 0.1612, P3: 0.1189 } },
+          cost: cost(620),
+          pricing: "indexed",
+          marginOverMarket: 0.09,
+          marketAverage: 82.5,
+        },
+        offer: { ...document.offer, termMonths: 12, pricing: "indexed", indexHistory: { from: "2025-05", to: "2026-04" } },
+        savings: 140,
+      },
+      { displayName: "Negoco Cloud", logo: null, color: "#2563eb" },
+    );
+    expect(pdf.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
+  });
+
   test("compares up to three offers on a first page and details the recommended one on a second", async () => {
     const withToday = {
       ...document,

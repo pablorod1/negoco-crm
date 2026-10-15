@@ -64,14 +64,15 @@ export function insertTenantRateStatement(rate: {
   comercializadoraId: string;
   catalogRateId: string | null;
   accessTariff: string;
+  pricing?: string;
 }): InStatement {
   // Solo columnas que tienen todos los tenants con el comparador: `provider`
   // y `descripcion` son de la integración de Imagina y Beenergy no las tiene.
   return {
     sql: `INSERT INTO comercializadora_rates
       (id, name, comercializadora_id, type, catalog_rate_id, enabled, created_at, updated_at)
-      VALUES (?, ?, ?, 'fijo', ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-    args: [rate.id, rate.name, rate.comercializadoraId, rate.catalogRateId],
+      VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    args: [rate.id, rate.name, rate.comercializadoraId, rate.pricing === "indexed" ? "indexado" : "fijo", rate.catalogRateId],
   };
 }
 
@@ -549,6 +550,7 @@ export async function listCommissionRules(
  */
 interface CommissionConditions {
   feeBase?: "power";
+  pricing?: "fixed" | "indexed";
   product?: string;
   minKw?: number;
   maxKw?: number;
@@ -559,6 +561,7 @@ function commissionConditionsJson(rule: CommissionRuleInput): string | null {
   const conditions: CommissionConditions = {};
   if (rule.ruleType === "fee_share" && rule.feeBase === "power") conditions.feeBase = "power";
   if (rule.product) conditions.product = rule.product;
+  if (rule.pricing) conditions.pricing = rule.pricing;
   if (rule.minKw !== null) conditions.minKw = rule.minKw;
   if (rule.maxKw !== null) conditions.maxKw = rule.maxKw;
   if (rule.minAmount !== null) conditions.minAmount = rule.minAmount;
@@ -574,6 +577,7 @@ function toCommissionRule(row: Row): CommissionRule {
     rateId: str(row.rate_id),
     product: typeof conditions.product === "string" && conditions.product ? conditions.product : null,
     accessTariff: str(row.access_tariff),
+    pricing: conditions.pricing === "fixed" || conditions.pricing === "indexed" ? conditions.pricing : null,
     level: str(row.level),
     channel: str(row.channel) as CommissionRule["channel"],
     minAnnualKwh: num(row.min_annual_kwh),
@@ -613,8 +617,9 @@ export interface ActiveOfferPrice {
 }
 
 /**
- * Precios 2.0TD fijos vigentes de las comercializadoras activas del tenant,
- * de las tarifas activas. Antes activa las versiones programadas que ya han
+ * Precios 2.0TD fijos e indexados vigentes de las comercializadoras activas
+ * del tenant, de las tarifas activas. Las indexadas no traen la energía: sale
+ * del histórico del indexado de cada comercializadora. Antes activa las versiones programadas que ya han
  * empezado (como al abrir la ficha de cada una). Las que cobran los servicios
  * de ajuste aparte (INER «Serv. Ajuste NO INCLUIDOS», Quimera «sin SS.AA.»)
  * van también: el ranking solo las oferta con SSAA simulados.
@@ -646,7 +651,7 @@ export async function listActiveOfferPrices(
         AND c.active = 1
         AND COALESCE(r.enabled, 1) = 1
         AND p.access_tariff = '2.0TD'
-        AND p.pricing = 'fixed'`,
+        AND p.pricing IN ('fixed', 'indexed')`,
     args: [],
   });
   return rows.map((row) => ({
@@ -755,13 +760,14 @@ export function insertCatalogRateStatement(rate: {
   productName: string;
   productKey: string;
   accessTariffs: string;
+  pricing?: string;
   createdBy: string;
 }): InStatement {
   return {
     sql: `INSERT INTO rate_catalog
       (id, supplier_key, supplier_name, product_name, product_key, energy, pricing,
        access_tariffs, created_by)
-      VALUES (?, ?, ?, ?, ?, 'electricity', 'fixed', ?, ?)
+      VALUES (?, ?, ?, ?, ?, 'electricity', ?, ?, ?)
       ON CONFLICT (supplier_key, product_key) DO NOTHING`,
     args: [
       rate.id,
@@ -769,6 +775,7 @@ export function insertCatalogRateStatement(rate: {
       rate.supplierName,
       rate.productName,
       rate.productKey,
+      rate.pricing === "indexed" ? "indexed" : "fixed",
       rate.accessTariffs,
       rate.createdBy,
     ],

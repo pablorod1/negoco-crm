@@ -121,6 +121,8 @@ export function studyView(
     ineligible: ranking?.ineligible ?? 0,
     withoutAncillary: ranking?.withoutAncillary ?? 0,
     otherCustomerType: ranking?.otherCustomerType ?? 0,
+    /** Indexadas que no se ofertan por falta de histórico de sus meses de consumo. */
+    withoutHistory: ranking?.withoutHistory ?? [],
     noSavings: ranking?.noSavings ?? false,
     proposals: proposals.map((proposal) => proposalView(proposal, showCommission)),
   };

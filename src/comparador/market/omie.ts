@@ -1,4 +1,6 @@
 import type { EnergyByPeriod } from "@/comparador/engine/types";
+import { dayType, periodOf } from "./calendar";
+import { REE_PROFILE } from "./ree-profile";
 
 /**
  * Precio del mercado diario (OMIE) por periodo de la 2.0TD. Sirve para
@@ -39,19 +41,12 @@ export const fetchOmieDay: OmieDayFetcher = async (date) => {
   return parseOmieDay(await response.text());
 };
 
-/**
- * Festivos nacionales de fecha fija, en P3 todo el día. La CNMC (Circular
- * 3/2020) deja fuera los sustituibles y los de fecha variable (Viernes Santo).
- */
-const HOLIDAYS = new Set(["01-01", "01-06", "05-01", "08-15", "10-12", "11-01", "12-06", "12-08", "12-25"]);
+export { periodOf } from "./calendar";
 
-/** Periodo de la 2.0TD de una hora local (0–23) de un día (YYYY-MM-DD), en península. */
-export function periodOf(date: string, hour: number): keyof EnergyByPeriod {
-  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-  if (weekday === 0 || weekday === 6 || HOLIDAYS.has(date.slice(5))) return "P3";
-  if (hour < 8) return "P3";
-  if ((hour >= 10 && hour < 14) || (hour >= 18 && hour < 22)) return "P1";
-  return "P2";
+/** Peso de una hora local (0–23) de un día en el perfil de consumo de la 2.0TD de REE. */
+export function profileWeight(date: string, hour: number): number {
+  const type = ["laborable", "sabado", "festivo"].indexOf(dayType(date));
+  return REE_PROFILE[Number(date.slice(5, 7)) - 1]?.[type]?.[hour] ?? 1;
 }
 
 /**
@@ -70,17 +65,29 @@ function localHours(count: number): number[] {
 }
 
 export interface PeriodSums {
+  /** Suma de cada precio por su peso en el perfil de consumo. */
   sum: EnergyByPeriod;
+  /** Suma de los pesos. */
+  weight: EnergyByPeriod;
   count: EnergyByPeriod;
 }
 
-/** Suma y número de precios de un día por periodo. */
+const zero = (): EnergyByPeriod => ({ P1: 0, P2: 0, P3: 0 });
+
+/**
+ * Suma y número de precios de un día por periodo. Cada precio pesa lo que
+ * consume a esa hora un cliente 2.0TD según el perfil de REE: así la media es
+ * la que paga un indexado, no la del mercado, que pesa igual la madrugada que
+ * las nueve de la noche.
+ */
 export function daySums(date: string, prices: OmieDay): PeriodSums {
-  const sums: PeriodSums = { sum: { P1: 0, P2: 0, P3: 0 }, count: { P1: 0, P2: 0, P3: 0 } };
+  const sums: PeriodSums = { sum: zero(), weight: zero(), count: zero() };
   const hours = localHours(prices.length);
   prices.forEach((price, index) => {
     const period = periodOf(date, hours[index]);
-    sums.sum[period] += price;
+    const weight = profileWeight(date, hours[index]);
+    sums.sum[period] += price * weight;
+    sums.weight[period] += weight;
     sums.count[period] += 1;
   });
   return sums;
@@ -103,7 +110,8 @@ export class MarketDataUnavailableError extends Error {
 }
 
 /**
- * Media de OMIE por periodo (€/MWh) de varios tramos de fechas. Descarga cada
+ * Media de OMIE por periodo (€/MWh) de varios tramos de fechas, ponderada por
+ * el perfil de consumo de la 2.0TD de REE. Descarga cada
  * día una sola vez, de 24 en 24. Admite que falte algún día suelto (un
  * fichero que no carga), pero no más de un 3 % de los días.
  */
@@ -125,19 +133,20 @@ export async function omieAverages(
   if (missing.length > Math.max(1, wanted.length * 0.03)) throw new MarketDataUnavailableError(missing);
 
   return ranges.map(({ from, to }) => {
-    const total: PeriodSums = { sum: { P1: 0, P2: 0, P3: 0 }, count: { P1: 0, P2: 0, P3: 0 } };
+    const total: PeriodSums = { sum: zero(), weight: zero(), count: zero() };
     for (const date of daysBetween(from, to)) {
       const day = days.get(date);
       if (!day) continue;
       for (const period of ["P1", "P2", "P3"] as const) {
         total.sum[period] += day.sum[period];
+        total.weight[period] += day.weight[period];
         total.count[period] += day.count[period];
       }
     }
     // Un tramo sin horas de un periodo (solo fin de semana) toma la media del tramo.
-    const all = (total.sum.P1 + total.sum.P2 + total.sum.P3) / Math.max(1, total.count.P1 + total.count.P2 + total.count.P3);
+    const all = (total.sum.P1 + total.sum.P2 + total.sum.P3) / Math.max(1e-9, total.weight.P1 + total.weight.P2 + total.weight.P3);
     const average = (period: keyof EnergyByPeriod) =>
-      Math.round((total.count[period] > 0 ? total.sum[period] / total.count[period] : all) * 100) / 100;
+      Math.round((total.weight[period] > 0 ? total.sum[period] / total.weight[period] : all) * 100) / 100;
     return { P1: average("P1"), P2: average("P2"), P3: average("P3") };
   });
 }

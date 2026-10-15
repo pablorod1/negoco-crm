@@ -6,8 +6,10 @@ import type { CostBreakdown, TariffPrices } from "@/comparador/engine/types";
 import type { CurrentTariff } from "@/comparador/extraction/current-tariff";
 import { readDiscounts, shareOfYear, type DiscountPart } from "@/comparador/rates/discounts";
 import { isEligible, toTariffPrices } from "@/comparador/rates/engine-prices";
+import { historyForRate, type IndexHistoryRow } from "@/comparador/rates/index-history";
 import type { ActiveOfferPrice } from "@/comparador/rates/repository";
 import type { CommissionRule, RateChannel } from "@/comparador/rates/types";
+import { historyEnergyPrices } from "./indexed";
 import type { StudySupply } from "./supply";
 
 /** Cómo es la tarifa que paga hoy el cliente. */
@@ -95,7 +97,17 @@ export interface StudyOffer {
   channel: RateChannel | null;
   termMonths: number | null;
   powerMode: ActiveOfferPrice["price"]["powerMode"];
-  /** Precios al cliente con el fee incluido (€/kW·día, €/kWh). */
+  /**
+   * Precio fijo o indexado. Falta en propuestas anteriores al 2026-10-15, que
+   * eran todas de precio fijo.
+   */
+  pricing?: "fixed" | "indexed";
+  /**
+   * Indexada: los meses del histórico con los que se ha calculado la energía
+   * (YYYY-MM), los de los 12 meses de consumo del SIPS.
+   */
+  indexHistory?: { from: string; to: string } | null;
+  /** Precios al cliente con el fee incluido (€/kW·día, €/kWh). Indexada: la media del año. */
   prices: TariffPrices;
   feeEnergyPerMwh: number;
   feeRange: { min: number; max: number } | null;
@@ -132,6 +144,11 @@ export interface StudyRanking {
   withoutAncillary: number;
   /** Tarifas de otro tipo de cliente (hogar para una empresa o al revés). */
   otherCustomerType: number;
+  /**
+   * Indexadas que no se ofertan porque su histórico no cubre los 12 meses de
+   * consumo (o el estudio no guarda las lecturas del SIPS: hay que reanalizarlo).
+   */
+  withoutHistory: { comercializadoraName: string; productName: string; missing: string[] }[];
   noSavings: boolean;
 }
 
@@ -252,6 +269,7 @@ export function rankStudy({
   rules,
   regulated,
   options,
+  indexHistory = [],
 }: {
   supply: StudySupply;
   current: CurrentTariff | null;
@@ -259,6 +277,8 @@ export function rankStudy({
   rules: readonly CommissionRule[];
   regulated: RegulatedParams;
   options: StudyOptions;
+  /** Histórico del indexado de las comercializadoras, para las tarifas indexadas. */
+  indexHistory?: readonly IndexHistoryRow[];
 }): StudyRanking {
   const meterRentalPerDay = current?.meterRentalPerDay ?? 0;
   const currentCost = !current
@@ -284,6 +304,7 @@ export function rankStudy({
   let ineligible = 0;
   let withoutAncillary = 0;
   let otherCustomerType = 0;
+  const withoutHistory: StudyRanking["withoutHistory"] = [];
   const priced: StudyOffer[] = [];
   for (const offer of offers) {
     const { price } = offer;
@@ -297,9 +318,29 @@ export function rankStudy({
     }
     // Sin SSAA aplicados, una tarifa que los cobra aparte sale más barata de lo
     // que es: se oferta igual, marcada, para que se apliquen.
+    // Indexada: la energía es la del histórico en los meses de su consumo. Sin
+    // histórico de todos esos meses no hay precio real y no se oferta.
+    let indexed: { from: string; to: string } | null = null;
+    let energy = price.energy;
+    if (price.pricing === "indexed") {
+      const fromHistory = historyEnergyPrices(
+        historyForRate(indexHistory, offer.comercializadoraId, price.rateId),
+        supply.readings ?? [],
+      );
+      if (!fromHistory || "missing" in fromHistory) {
+        withoutHistory.push({
+          comercializadoraName: offer.comercializadoraName,
+          productName: price.rateName,
+          missing: fromHistory ? fromHistory.missing : [],
+        });
+        continue;
+      }
+      energy = fromHistory.energy;
+      indexed = { from: fromHistory.from, to: fromHistory.to };
+    }
     const needsAncillary = !price.includesAncillaryServices && ancillaryAmount === null;
     if (needsAncillary) withoutAncillary++;
-    const base = toTariffPrices(price, regulated);
+    const base = toTariffPrices({ ...price, energy }, regulated);
     if (!base) continue;
     const { fee, range } = feeFor(price, options.feeEnergyPerMwh);
     const powerFee = price.feePowerAllowed ? Math.max(0, options.feePowerPerKwYear ?? 0) : 0;
@@ -315,6 +356,7 @@ export function rankStudy({
       rateId: price.rateId,
       productName: price.rateName,
       accessTariff: "2.0TD",
+      pricing: price.pricing === "indexed" ? "indexed" : "fixed",
       level: price.level,
       channel: options.channel,
       annualKwh: eligibility.annualKwh,
@@ -336,6 +378,8 @@ export function rankStudy({
       channel: price.channel,
       termMonths: price.termMonths,
       powerMode: price.powerMode,
+      pricing: price.pricing === "indexed" ? "indexed" : "fixed",
+      indexHistory: indexed,
       prices,
       feeEnergyPerMwh: fee,
       feeRange: range,
@@ -369,6 +413,7 @@ export function rankStudy({
     ineligible,
     withoutAncillary,
     otherCustomerType,
+    withoutHistory,
     noSavings: currentCost !== null && priced.every(({ savings }) => (savings ?? 0) <= 0),
   };
 }

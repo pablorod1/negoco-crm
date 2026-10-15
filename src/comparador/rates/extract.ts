@@ -35,7 +35,7 @@ Potencia: copia powerP1 (punta) y powerP2 (valle) con su unidad. Si el documento
 Si aparece un precio anterior y uno nuevo, extrae el nuevo. Si aparece un precio con descuento y otro sin descuento, extrae el precio sin descuento y añade el descuento en discounts. Si solo aparece el precio con el descuento ya aplicado, extrae ese precio y no añadas el descuento.
 Cada descuento es una entrada de discounts con su porcentaje en value (15 para un 15 %): energy_percent si es sobre la energía («s/Te»), power_percent si es sobre la potencia («s/Tp»); si es sobre las dos, dos entradas. fixed_amount si es un importe en euros. months: los meses que dura, si lo dice. Cada extra que depende de contratar servicios, de una franja elegida u otra condición («+5% PyS Tier 1», «+5% si ACP») es otra entrada con conditional true. Un descuento que solo vale a partir del segundo año, o que no dice sobre qué se aplica, va como other.
 Si el precio es una base a la que el comercial suma un fee, indica sus límites en feeMinMwh y feeMaxMwh (€/MWh).
-pricing: fixed para precio fijo por periodos P1/P2/P3 o precio único; indexed si la energía depende del mercado (OMIE, pool, indexado, pass-through); flat para tarifas planas o cuotas fijas mensuales; other si la energía va por franjas propias que no son los periodos P1/P2/P3 (horas promocionadas, «8 horas», noche, fin de semana, vehículo eléctrico).
+pricing: fixed para precio fijo por periodos P1/P2/P3 o precio único; indexed si la energía depende del mercado (OMIE, pool, indexado, pass-through). De un producto indexado extrae su fila igual que de uno fijo: la potencia, el fee (feeMinMwh y feeMaxMwh), los descuentos y, si los da, el término que se suma al mercado en energyP1, energyP2 y energyP3; flat para tarifas planas o cuotas fijas mensuales; other si la energía va por franjas propias que no son los periodos P1/P2/P3 (horas promocionadas, «8 horas», noche, fin de semana, vehículo eléctrico).
 Si un producto ofrece modalidades en las que un precio o un descuento solo vale en unas horas o días (día, noche, laborables, fin de semana, «horas Open») y fuera de ellas se paga otro precio, cada una de esas modalidades es pricing other, aunque el documento le dé un único precio. Solo la modalidad que vale las 24 horas todos los días es fixed.
 Que los servicios de ajuste vayan incluidos o aparte se indica solo en ancillaryIncluded, nunca en level.
 Si el consumo máximo depende del fee que elija el comercial (por ejemplo, «sin fee hasta 8.000 kWh, fee 10 hasta 15.000 kWh»), haz una fila por fee, con ese fee en feeMinMwh y feeMaxMwh, su consumo máximo y sin consumo mínimo.
@@ -293,7 +293,7 @@ export async function extractRateDocument({
     // La extracción no encuentra nada que guardar: indexadas, por franjas…
     return {
       status: "out_of_scope",
-      reason: `No trae precios fijos de 2.0TD${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`,
+      reason: `No trae precios fijos ni indexados de 2.0TD${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`,
       classification,
       costUsd,
     };

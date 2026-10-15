@@ -60,6 +60,10 @@ export interface ProposalOffer {
   ancillarySimulated?: boolean;
   /** Cobra los SSAA aparte y el coste no los lleva (no se aplicaron). */
   needsAncillary?: boolean;
+  /** Fija o indexada. Falta en propuestas anteriores al 2026-10-15 (fija). */
+  pricing?: "fixed" | "indexed";
+  /** Indexada: meses del histórico con los que se ha calculado (YYYY-MM). */
+  indexHistory?: { from: string; to: string } | null;
 }
 
 function proposalOffer(offer: StudyOffer): ProposalOffer {
@@ -73,6 +77,7 @@ function proposalOffer(offer: StudyOffer): ProposalOffer {
     cost: offer.cost,
     ancillarySimulated: offer.ancillarySimulated,
     needsAncillary: offer.needsAncillary,
+    ...(offer.pricing === "indexed" ? { pricing: "indexed" as const, indexHistory: offer.indexHistory ?? null } : {}),
   };
 }
 

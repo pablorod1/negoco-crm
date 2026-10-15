@@ -8,6 +8,8 @@ export interface CommissionRuleForEngine {
    */
   product?: string | null;
   accessTariff: string | null;
+  /** De la sección de precio fijo o de indexados; null = de las dos. */
+  pricing?: "fixed" | "indexed" | null;
   level: string | null;
   channel: "acquisition" | "renewal" | null;
   minAnnualKwh: number | null;
@@ -31,6 +33,8 @@ export interface CommissionContext {
   /** Nombre de la tarifa («Helsinki II», «PRECIO FIJO PRESENCIALES SBC 12M L4»). */
   productName?: string;
   accessTariff: string;
+  /** Precio fijo o indexado de la tarifa; sin él, vale cualquier regla. */
+  pricing?: "fixed" | "indexed";
   level: string | null;
   channel: "acquisition" | "renewal" | null;
   annualKwh: number;
@@ -94,6 +98,7 @@ function matches(rule: CommissionRuleForEngine, context: CommissionContext) {
     return false;
   }
   if (rule.accessTariff && rule.accessTariff !== context.accessTariff) return false;
+  if (rule.pricing && context.pricing && rule.pricing !== context.pricing) return false;
   if (rule.level && !levelMatches(rule.level, context)) return false;
   if (rule.channel && context.channel && rule.channel !== context.channel) return false;
   // Tramos de consumo como en los anexos: incluyen el mínimo y excluyen el
@@ -122,6 +127,7 @@ function specificity(rule: CommissionRuleForEngine): number[] {
     rule.level ? 1 : 0,
     rule.minKw != null || rule.maxKw != null ? 1 : 0,
     rule.channel ? 1 : 0,
+    rule.pricing ? 1 : 0,
     rule.accessTariff ? 1 : 0,
   ];
 }

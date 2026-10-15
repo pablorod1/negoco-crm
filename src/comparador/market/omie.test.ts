@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { daySums, MarketDataUnavailableError, omieAverages, parseOmieDay, periodOf } from "./omie";
+import { daySums, MarketDataUnavailableError, omieAverages, parseOmieDay, periodOf, profileWeight } from "./omie";
 
 const file = (date: string, prices: number[]) => {
   const [year, month, day] = date.split("-");
@@ -47,6 +47,16 @@ describe("OMIE", () => {
     expect(wednesday).toEqual({ P1: 100, P2: 100, P3: 40 });
     expect(week.P1).toBe(100);
     expect(week.P3).toBeGreaterThan(40);
+  });
+
+  test("each hour weighs what a 2.0TD household consumes then (REE profile)", async () => {
+    // Un hogar consume más a las 21 h que a las 4 h.
+    expect(profileWeight("2026-01-14", 21)).toBeGreaterThan(profileWeight("2026-01-14", 4) * 1.5);
+    // Valle de un miércoles: de 0 a 8 h a 40 €/MWh salvo de 0 a 1 h, a 100. Las 0 h
+    // pesan más que la madrugada, así que la media sube por encima de la simple (47,5).
+    const prices = Array.from({ length: 24 }, (_, hour) => (hour === 0 ? 100 : 40));
+    const [average] = await omieAverages([{ from: "2026-01-14", to: "2026-01-14" }], async () => prices);
+    expect(average.P3).toBeGreaterThan(47.5);
   });
 
   test("fails when too many days are missing", async () => {

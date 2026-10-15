@@ -47,6 +47,11 @@ export interface SupplyReading {
 
 export interface SupplyMarket {
   source: "omie";
+  /**
+   * Cómo se pondera cada hora: por el perfil de consumo de REE. Sin el campo,
+   * la media simple de las horas (estudios anteriores al 2026-10-15): se recalcula.
+   */
+  weighting?: "ree_profile";
   /** Media de OMIE por periodo en €/MWh de cada lectura, en el orden de `readings`. */
   readings: EnergyByPeriod[];
   /** Media de OMIE por periodo en el periodo de la factura. */

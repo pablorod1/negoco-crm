@@ -44,11 +44,15 @@ export function rowKey(row: ProposedRate): string {
   return `${row.productKey}|${conditionsKey(row)}`;
 }
 
-/** La fila entra en la v1: 2.0TD de precio fijo. */
+/**
+ * La fila entra en el comparador: 2.0TD de precio fijo o indexado. De las
+ * indexadas se guarda la potencia, el fee y los descuentos; la energía sale
+ * del histórico del indexado de cada mes.
+ */
 export function isInScope(row: Pick<ProposedRate, "accessTariff" | "pricing">) {
   return (
     (SUPPORTED_ACCESS_TARIFFS as readonly string[]).includes(row.accessTariff) &&
-    row.pricing === "fixed"
+    (row.pricing === "fixed" || row.pricing === "indexed")
   );
 }
 
@@ -88,7 +92,7 @@ export function validateProposedRates(
     issues.push({
       severity: "blocking",
       code: "no_rates",
-      message: "El documento no trae precios fijos de 2.0TD.",
+      message: "El documento no trae precios fijos ni indexados de 2.0TD.",
     });
   }
 
@@ -126,7 +130,7 @@ export function validateProposedRates(
       issues.push({
         severity: "info",
         code: "out_of_scope_row",
-        message: `${row.productName} (${row.accessTariff}, ${row.pricing}) no entra en la v1 y no se guarda.`,
+        message: `${row.productName} (${row.accessTariff}, ${row.pricing}) no entra en el comparador y no se guarda.`,
         row: index,
         rowKey: rowKey(row),
       });
@@ -146,7 +150,10 @@ export function validateProposedRates(
     }
     seen.set(key, index);
 
-    if (!row.energy) {
+    // La energía de una indexada no está en el anexo: sale del histórico.
+    if (row.pricing === "indexed") {
+      // Nada que comprobar de la energía.
+    } else if (!row.energy) {
       issues.push({
         severity: "blocking",
         code: "missing_energy",

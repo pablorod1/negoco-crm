@@ -30,7 +30,7 @@ export function CurrentTariffNote({ study }: { study: StudyView }) {
           iconClass: "text-primary-600",
           title: "Tarifa indexada: comparada con el mercado",
           text: [
-            "Lo que paga hoy se calcula con el precio del mercado (OMIE) de sus 12 meses de consumo",
+            "Lo que paga hoy se calcula con el precio del mercado (OMIE) de sus 12 meses de consumo, ponderado por el perfil de consumo de REE",
             info.marketAverage !== null ? `, de media ${perMwh(info.marketAverage)} €/MWh,` : "",
             " más lo que su factura cobra por encima del mercado",
             info.marginOverMarket !== null ? ` (${perKwh(info.marginOverMarket)} €/kWh de media: peajes, cargos y el margen de su comercializadora)` : "",

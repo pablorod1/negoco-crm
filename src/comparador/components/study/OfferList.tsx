@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, Columns3, ExternalLink, FileText, Gauge, Loader2, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Columns3, ExternalLink, FileText, Gauge, LineChart, Loader2, Sparkles } from "lucide-react";
+import { formatMonth } from "@/comparador/rates/index-history-text";
 import type { CostBreakdown } from "@/comparador/engine/types";
 import { SupplierLogo } from "@/comercializadoras/components/SupplierLogo";
 import { Button } from "@/core/components/ui/button";
@@ -222,6 +223,19 @@ function OfferRow({
                 <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-medium text-success-700 ring-1 ring-success-200">
                   <Sparkles className="size-3" />
                   Mejor ahorro
+                </span>
+              )}
+              {offer.pricing === "indexed" && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-info-50 px-2 py-0.5 text-[11px] font-medium text-info-700 ring-1 ring-info-200"
+                  title={
+                    offer.indexHistory
+                      ? `Precio indexado: la energía es la que cobró cada mes, de ${formatMonth(offer.indexHistory.from)} a ${formatMonth(offer.indexHistory.to)}, con el consumo de esos meses. Sube y baja con el mercado.`
+                      : "Precio indexado: sube y baja con el mercado."
+                  }
+                >
+                  <LineChart className="size-3" />
+                  Indexada
                 </span>
               )}
               {offer.needsAncillary && (

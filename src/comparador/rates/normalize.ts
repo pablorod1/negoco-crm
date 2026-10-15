@@ -159,13 +159,14 @@ export function toProposedRates(
   return extraction.rates.map((rate) => {
     const power = normalizePower(rate);
     const productName = productNameOf(rate.productName);
+    // La IA a veces deja como fijo un producto que por su nombre es indexado.
+    const pricing = rate.pricing === "fixed" && looksIndexed(productName) ? "indexed" : rate.pricing;
 
     return {
       productName,
       productKey: productKeyOf(productName),
       accessTariff: rate.accessTariff.replace(/\s+/g, "").toUpperCase(),
-      // La IA a veces deja como fijo un producto que por su nombre es indexado.
-      pricing: rate.pricing === "fixed" && looksIndexed(productName) ? "indexed" : rate.pricing,
+      pricing,
       level: rate.level ? cleanName(rate.level) : null,
       territory: rate.territory ?? "peninsula",
       channel: rate.channel === "both" ? null : rate.channel,
@@ -178,7 +179,9 @@ export function toProposedRates(
       supplyStartTo: rate.startTo,
       termMonths: rate.months,
       ...power,
-      energy: normalizeEnergy(rate),
+      // La energía de una indexada es la del mercado de cada mes (el histórico):
+      // lo que traiga el anexo (un término B, un margen) queda en sourceValues.
+      energy: pricing === "indexed" ? null : normalizeEnergy(rate),
       includesAncillaryServices: ancillaryIncluded(rate, sourceText),
       feeEnergyMinPerMwh: rate.feeMinMwh,
       feeEnergyMaxPerMwh: rate.feeMaxMwh,
@@ -200,10 +203,11 @@ export function toProposedRates(
 }
 
 /**
- * Reglas de comisión que pueden aplicarse a 2.0TD de precio fijo; el producto
- * se casa después con la tarifa. Una comisión sin tarifa de acceso solo vale
- * si el documento trae filas 2.0TD fijas: en el preciario de APOLO, el «65 %
- * del fee» era de 3.0TD, 6.1TD e indexados.
+ * Reglas de comisión que pueden aplicarse a 2.0TD de precio fijo o indexado;
+ * el producto se casa después con la tarifa. Una comisión sin tarifa de
+ * acceso solo vale si el documento trae filas 2.0TD: en el preciario de APOLO,
+ * el «65 % del fee» era de 3.0TD, 6.1TD e indexados. Las de la sección de
+ * indexados solo se aplican a las indexadas, y al revés.
  */
 export function toProposedCommissions(
   extraction: Pick<RateDocumentExtraction, "commissions" | "rates">,
@@ -211,21 +215,21 @@ export function toProposedCommissions(
   productName: string | null;
   productKey: string | null;
 })[] {
-  const hasFixed20 = extraction.rates.some(
-    (rate) => rate.pricing === "fixed" && /^2[.,]?0\s?TD$/i.test(rate.accessTariff.trim()),
+  const has20 = extraction.rates.some(
+    (rate) => (rate.pricing === "fixed" || rate.pricing === "indexed") && /^2[.,]?0\s?TD$/i.test(rate.accessTariff.trim()),
   );
   return extraction.commissions
-    .filter((rule) => rule.pricing !== "indexed")
     .filter((rule) =>
       rule.accessTariff
         ? /^2[.,]?0\s?TD$/i.test(rule.accessTariff.trim())
-        : hasFixed20,
+        : has20,
     )
     .map((rule) => ({
     productName: rule.productName ? productNameOf(rule.productName) : null,
     productKey: rule.productName ? productKeyOf(productNameOf(rule.productName)) : null,
     product: rule.productName ? productNameOf(rule.productName) : null,
     accessTariff: rule.accessTariff?.replace(/\s+/g, "").toUpperCase() ?? null,
+    pricing: rule.pricing ?? null,
     level: rule.level ? cleanName(rule.level) : null,
     channel: rule.channel === "both" ? null : rule.channel,
     minAnnualKwh: rule.minKwh,

@@ -240,13 +240,22 @@ describe("validateProposedRates", () => {
     ).toBe(false);
   });
 
-  test("indexed and non-2.0TD rows are informational, not stored", () => {
+  test("non-2.0TD and time-band rows are informational, not stored", () => {
     const rates = toProposedRates({
-      rates: [extracted({ pricing: "indexed" }), extracted({ accessTariff: "3.0TD" })],
+      rates: [extracted({ pricing: "other" }), extracted({ accessTariff: "3.0TD" })],
     });
     const issues = validateProposedRates(rates, options);
     expect(issues.filter(({ code }) => code === "out_of_scope_row")).toHaveLength(2);
     expect(issues).toContainEqual(expect.objectContaining({ code: "no_rates" }));
+  });
+
+  test("indexed rows are stored without energy: it comes from the monthly history", () => {
+    const rates = toProposedRates({ rates: [extracted({ pricing: "indexed", energyP1: 0.012, energyP2: 0.012, energyP3: 0.012 })] });
+    expect(rates[0]).toMatchObject({ pricing: "indexed", energy: null });
+    expect(rates[0].sourceValues.energyP1).toBe(0.012);
+    const issues = validateProposedRates(rates, options);
+    expect(issues.map(({ code }) => code)).not.toContain("energy_out_of_range");
+    expect(issues.map(({ code }) => code)).not.toContain("no_rates");
   });
 
   test("images cannot be verified and say so", () => {
