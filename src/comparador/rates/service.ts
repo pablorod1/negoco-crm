@@ -341,6 +341,7 @@ export async function buildReview({
       rateId,
       product: rule.product,
       accessTariff: rule.accessTariff,
+      energy: rule.energy,
       pricing: rule.pricing,
       level: rule.level,
       channel: rule.channel,

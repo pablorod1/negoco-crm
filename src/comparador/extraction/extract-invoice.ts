@@ -73,7 +73,7 @@ export function buildInstructions(supplierHint: string | null): string {
     : BASE_INSTRUCTIONS;
 }
 
-function buildMessages(file: InvoiceFile): ModelMessage[] {
+export function buildMessages(file: InvoiceFile): ModelMessage[] {
   if ("text" in file) {
     return [
       {

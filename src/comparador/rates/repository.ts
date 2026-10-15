@@ -1,5 +1,6 @@
 import type { Client, InStatement, Row } from "@libsql/client";
 import { randomUUID } from "node:crypto";
+import { GAS_ACCESS_TARIFFS } from "@/comparador/gas/regulated";
 import type { CatalogAlias, CatalogRate, TenantRate } from "./match";
 import type {
   CommissionRule,
@@ -550,6 +551,7 @@ export async function listCommissionRules(
  */
 interface CommissionConditions {
   feeBase?: "power";
+  energy?: "gas";
   pricing?: "fixed" | "indexed";
   product?: string;
   minKw?: number;
@@ -561,6 +563,7 @@ function commissionConditionsJson(rule: CommissionRuleInput): string | null {
   const conditions: CommissionConditions = {};
   if (rule.ruleType === "fee_share" && rule.feeBase === "power") conditions.feeBase = "power";
   if (rule.product) conditions.product = rule.product;
+  if (rule.energy === "gas") conditions.energy = "gas";
   if (rule.pricing) conditions.pricing = rule.pricing;
   if (rule.minKw !== null) conditions.minKw = rule.minKw;
   if (rule.maxKw !== null) conditions.maxKw = rule.maxKw;
@@ -577,6 +580,7 @@ function toCommissionRule(row: Row): CommissionRule {
     rateId: str(row.rate_id),
     product: typeof conditions.product === "string" && conditions.product ? conditions.product : null,
     accessTariff: str(row.access_tariff),
+    energy: conditions.energy === "gas" ? "gas" : "electricity",
     pricing: conditions.pricing === "fixed" || conditions.pricing === "indexed" ? conditions.pricing : null,
     level: str(row.level),
     channel: str(row.channel) as CommissionRule["channel"],
@@ -617,7 +621,7 @@ export interface ActiveOfferPrice {
 }
 
 /**
- * Precios 2.0TD fijos e indexados vigentes de las comercializadoras activas
+ * Precios 2.0TD (o de gas, RL.1 a RL.4) fijos e indexados vigentes de las comercializadoras activas
  * del tenant, de las tarifas activas. Las indexadas no traen la energía: sale
  * del histórico del indexado de cada comercializadora. Antes activa las versiones programadas que ya han
  * empezado (como al abrir la ficha de cada una). Las que cobran los servicios
@@ -627,6 +631,7 @@ export interface ActiveOfferPrice {
 export async function listActiveOfferPrices(
   client: QueryClient,
   today: string,
+  energy: "electricity" | "gas" = "electricity",
 ): Promise<ActiveOfferPrice[]> {
   const due = await client.execute({
     sql: `SELECT DISTINCT comercializadora_id FROM comercializadora_rate_versions
@@ -650,9 +655,9 @@ export async function listActiveOfferPrices(
         -- la lista), como en el resto del CRM.
         AND c.active = 1
         AND COALESCE(r.enabled, 1) = 1
-        AND p.access_tariff = '2.0TD'
+        AND ${energy === "gas" ? `p.access_tariff IN (${GAS_ACCESS_TARIFFS.map(() => "?").join(", ")})` : "p.access_tariff = '2.0TD'"}
         AND p.pricing IN ('fixed', 'indexed')`,
-    args: [],
+    args: energy === "gas" ? [...GAS_ACCESS_TARIFFS] : [],
   });
   return rows.map((row) => ({
     comercializadoraId: String(row.supplier_id),
@@ -666,7 +671,8 @@ export async function listActiveOfferPrices(
 
 /**
  * Las reglas nuevas sustituyen a las vigentes de la misma comercializadora
- * desde su fecha: las anteriores se cierran el día antes.
+ * desde su fecha: las anteriores se cierran el día antes. Solo las del mismo
+ * suministro: un marco de gas no cierra las comisiones de luz, ni al revés.
  */
 export function replaceCommissionRulesStatements({
   comercializadoraId,
@@ -682,16 +688,20 @@ export function replaceCommissionRulesStatements({
   userId: string;
 }): InStatement[] {
   if (rules.length === 0) return [];
+  const energies = new Set(rules.map((rule) => rule.energy ?? "electricity"));
+  // Las de gas llevan «energy» en conditions; las demás son de luz.
+  const isGas = "COALESCE(json_extract(conditions, '$.energy'), '') = 'gas'";
+  const sameEnergy = energies.size === 2 ? "" : ` AND ${energies.has("gas") ? isGas : `NOT (${isGas})`}`;
   return [
     {
       sql: `UPDATE rate_commission_rules SET valid_to = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE comercializadora_id = ? AND valid_to IS NULL AND valid_from < ?`,
+        WHERE comercializadora_id = ? AND valid_to IS NULL AND valid_from < ?${sameEnergy}`,
       args: [dayBefore(validFrom), comercializadoraId, validFrom],
     },
     // Las que empiezan el mismo día son una lectura anterior del mismo anexo:
     // se sustituyen. Si no, las dos valdrían a la vez.
     {
-      sql: "DELETE FROM rate_commission_rules WHERE comercializadora_id = ? AND valid_from = ?",
+      sql: `DELETE FROM rate_commission_rules WHERE comercializadora_id = ? AND valid_from = ?${sameEnergy}`,
       args: [comercializadoraId, validFrom],
     },
     ...rules.map((rule) => ({
@@ -767,7 +777,7 @@ export function insertCatalogRateStatement(rate: {
     sql: `INSERT INTO rate_catalog
       (id, supplier_key, supplier_name, product_name, product_key, energy, pricing,
        access_tariffs, created_by)
-      VALUES (?, ?, ?, ?, ?, 'electricity', ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (supplier_key, product_key) DO NOTHING`,
     args: [
       rate.id,
@@ -775,6 +785,8 @@ export function insertCatalogRateStatement(rate: {
       rate.supplierName,
       rate.productName,
       rate.productKey,
+      // Un producto solo de gas es de gas; con luz (o luz y gas), de luz.
+      rate.accessTariffs.split(",").every((tariff) => GAS_ACCESS_TARIFFS.includes(tariff as never)) ? "gas" : "electricity",
       rate.pricing === "indexed" ? "indexed" : "fixed",
       rate.accessTariffs,
       rate.createdBy,

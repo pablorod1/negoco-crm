@@ -36,3 +36,25 @@ describe("notAnInvoice", () => {
     });
   });
 });
+
+describe("luz y gas", () => {
+  const gasInvoice = `Factura de gas Nº factura G-1 Total factura 194,43 €
+Peaje de acceso RL.2 Consumo 112 m3 x 11,018 kWh/m3 = 1.234 kWh
+Impuesto especial sobre hidrocarburos 1.234 kWh x 0,00234 €/kWh`;
+  const lightInvoice = `Nº factura F-1 Total factura 44,07 € Peaje de acceso: 2.0TD Potencia contratada 3,45 kW
+Origen: ciclo combinado de gas natural 17,9 %`;
+
+  test("una factura de gas en una comparativa de luz, y al revés", () => {
+    expect(notAnInvoice(gasInvoice)?.kind).toBe("other_energy");
+    expect(notAnInvoice(lightInvoice, { energy: "gas" })?.kind).toBe("other_energy");
+  });
+
+  test("cada una en su comparativa pasa; «gas natural» del origen de la luz no la hace de gas", () => {
+    expect(notAnInvoice(gasInvoice, { energy: "gas" })).toBeNull();
+    expect(notAnInvoice(lightInvoice)).toBeNull();
+  });
+
+  test("los mensajes de una comparativa de gas piden la factura de gas", () => {
+    expect(notAnInvoice("Estudio comparativo sin validez contractual", { energy: "gas" })?.message).toMatch(/factura de gas/);
+  });
+});

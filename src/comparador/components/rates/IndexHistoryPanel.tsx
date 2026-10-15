@@ -55,7 +55,8 @@ export function IndexHistoryPanel({ data, onSaved }: { data: SupplierRatesRespon
   const [scope, setScope] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
-  const [unit, setUnit] = useState<HistoryUnit>("eur_kwh");
+  // Las comercializadoras lo dan en €/MWh (Eleia, octubre de 2026).
+  const [unit, setUnit] = useState<HistoryUnit>("eur_mwh");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,7 +95,7 @@ export function IndexHistoryPanel({ data, onSaved }: { data: SupplierRatesRespon
     <Panel>
       <PanelHeader
         title="Histórico del indexado"
-        description="Lo que cobraron sus tarifas indexadas cada mes por la energía, en €/kWh con peajes y cargos. Una indexada solo se oferta si su histórico cubre los 12 meses de consumo del cliente."
+        description="El precio base de la energía de cada mes, con ATR, peajes y cargos. El fee de cada tarifa se suma encima y los SSAA van aparte. Llega con un mes de retraso: el mes que aún falta se cobra como el mismo mes del año anterior."
         action={
           data.canManage && !editing ? (
             <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setEditing(true)}>
@@ -161,7 +162,7 @@ export function IndexHistoryPanel({ data, onSaved }: { data: SupplierRatesRespon
               onChange={(event) => setText(event.target.value)}
               rows={6}
               className="rounded-xl bg-white font-mono text-xs"
-              placeholder={"may-2025\t0,1421\t0,1187\t0,0953\njun-2025\t0,1502\t0,1240\t0,0988"}
+              placeholder={"Sep-25\t176,01\t119,39\t106,99\nOct-25\t215,25\t160,36\t127,57"}
             />
             {text.trim() && (
               <p className="text-xs text-gray-600">

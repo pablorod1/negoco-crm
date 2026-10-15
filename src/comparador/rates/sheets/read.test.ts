@@ -37,6 +37,7 @@ const simplexRecipe: SheetRecipe = {
   validFrom: null,
   validTo: null,
   skippedSheets: [],
+  skippedRanges: [],
   tables: [
     {
       sheet: "SIMPLEX",
@@ -266,7 +267,7 @@ describe("readSpreadsheet", () => {
     });
     const second = (generate.mock.calls[1] as unknown as [{ messages: { content: { text: string }[] }[] }])[0];
     expect(second.messages[0].content.map(({ text }) => text).join("\n")).toContain(
-      "la fila 17 tiene precios de 2.0TD que la plantilla no lee",
+      "la fila 17 tiene precios de 2.0TD o de gas que la plantilla no lee",
     );
     expect(result.result.status).toBe("ok");
   });
@@ -307,7 +308,7 @@ describe("readSpreadsheet", () => {
     const recipe = { ...simplexRecipe, tables: simplexRecipe.tables.map((table) => ({ ...table, anchorRow: null })) };
     const unread = checkRecipe([sheet], recipe);
     expect(unread.healthy).toBe(false);
-    expect(unread.report.join("\n")).toContain("la fila 14 tiene precios de 2.0TD que la plantilla no lee");
+    expect(unread.report.join("\n")).toContain("la fila 14 tiene precios de 2.0TD o de gas que la plantilla no lee");
 
     const skipped = checkRecipe([sheet], {
       ...recipe,

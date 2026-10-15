@@ -1,3 +1,4 @@
+import { energyOfTariff } from "@/comparador/gas/regulated";
 import { conditionsKey } from "./keys";
 import type { RateMatch } from "./match";
 import { productKeyOf } from "./names";
@@ -131,7 +132,8 @@ function withActivePower(row: ResolvedRow, active: StoredRatePrice | null): Rate
 /**
  * Compara las filas propuestas con la versión activa. En una actualización
  * parcial, las filas activas que el documento no menciona se conservan; en una
- * completa, se marcan como retiradas.
+ * completa, se marcan como retiradas. Un anexo de luz no retira las tarifas
+ * de gas ni al revés: las del otro suministro siempre se conservan.
  */
 export function buildDiff(
   rows: readonly ResolvedRow[],
@@ -140,6 +142,7 @@ export function buildDiff(
 ): { entries: DiffEntry[]; versionRows: VersionRow[]; issues: RateIssue[] } {
   const activeByKey = new Map(active.map((row) => [activeKey(row), row]));
   const used = new Set<string>();
+  const energies = new Set(rows.map((row) => energyOfTariff(row.accessTariff)));
   const entries: DiffEntry[] = [];
   const versionRows: VersionRow[] = [];
   const issues: RateIssue[] = [];
@@ -197,8 +200,9 @@ export function buildDiff(
   for (const row of active) {
     const key = activeKey(row);
     if (used.has(key)) continue;
+    const carried = partialUpdate || !energies.has(energyOfTariff(row.accessTariff));
     entries.push({
-      kind: partialUpdate ? "carried" : "removed",
+      kind: carried ? "carried" : "removed",
       key,
       rowKey: null,
       productName: row.rateName,
@@ -207,7 +211,7 @@ export function buildDiff(
       active: row,
       changes: [],
     });
-    if (!partialUpdate) {
+    if (!carried) {
       issues.push({
         severity: "warning",
         code: "missing_rate",

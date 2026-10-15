@@ -29,6 +29,7 @@ import {
   type StoredRatePrice,
   type SupplierRatesResponse,
 } from "./api";
+import { energyOfTariff, GAS_ACCESS_TARIFFS } from "@/comparador/gas/regulated";
 import { commissionAmount, commissionScope } from "./commission-text";
 import { historyMonthsFor, describeCoverage, IndexHistoryPanel } from "./IndexHistoryPanel";
 import { IngestReviewSheet } from "./IngestReviewSheet";
@@ -50,7 +51,7 @@ const sinceDays = (days: number | null) => (!days ? "hoy" : days === 1 ? "ayer" 
 
 /**
  * Por qué una fila no sale en los estudios; null si se oferta. Es la misma
- * regla que `listActiveOfferPrices` y el ranking: 2.0TD, precio fijo o
+ * regla que `listActiveOfferPrices` y el ranking: 2.0TD o gas (RL.1 a RL.4), precio fijo o
  * indexado, tarifa activada y comercializadora activa. Las que cobran los SSAA
  * aparte se ofertan solo en los estudios que los apliquen, y las indexadas
  * solo si su histórico cubre el consumo del cliente (lo dice cada fila).
@@ -58,7 +59,12 @@ const sinceDays = (days: number | null) => (!days ? "hoy" : days === 1 ? "ayer" 
 function offerBlocker(row: StoredRatePrice, product: Product, data: SupplierRatesResponse): string | null {
   if (!data.supplier.active) return "La comercializadora está desactivada en el CRM.";
   if (!product.enabled) return "Desactivada: no se ofrece en los estudios.";
-  if (row.accessTariff !== "2.0TD") return `Es de ${row.accessTariff}; el comparador compara 2.0TD.`;
+  if (row.accessTariff !== "2.0TD" && !(GAS_ACCESS_TARIFFS as readonly string[]).includes(row.accessTariff)) {
+    return `Es de ${row.accessTariff}; el comparador compara 2.0TD y gas de RL.1 a RL.4.`;
+  }
+  if (row.pricing === "indexed" && energyOfTariff(row.accessTariff) === "gas") {
+    return "Gas indexado: de momento solo se oferta gas a precio fijo.";
+  }
   if (row.pricing === "indexed") {
     return historyMonthsFor(data.indexHistory, product.rateId).length > 0
       ? null
@@ -166,7 +172,7 @@ function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload
     product.rows.some((row) => !offerBlocker(row, product, data)),
   );
   const cheapest = rows
-    .filter(({ row, product }) => row.energy && !offerBlocker(row, product, data))
+    .filter(({ row, product }) => row.energy && energyOfTariff(row.accessTariff) === "electricity" && !offerBlocker(row, product, data))
     .map(({ row }) => Math.min(row.energy!.P1, row.energy!.P2, row.energy!.P3));
   const lastUpdate = data.ingests.find(({ status }) => status === "approved");
 
@@ -204,7 +210,7 @@ function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload
           <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
             <Figure label="Tarifas" value={String(data.rates.length)} />
             <Figure label="Se ofertan" value={String(offered.length)} />
-            <Figure label="Energía desde" value={cheapest.length ? euros(Math.min(...cheapest)) : "—"} unit={cheapest.length ? "€/kWh" : undefined} />
+            <Figure label="Luz desde" value={cheapest.length ? euros(Math.min(...cheapest)) : "—"} unit={cheapest.length ? "€/kWh" : undefined} />
           </dl>
         </div>
 
@@ -407,7 +413,8 @@ function RowPrices({
   /** Indexada: los meses de histórico que tiene. */
   coverage: string | null;
 }) {
-  const chips = conditionChips(row);
+  const gas = energyOfTariff(row.accessTariff) === "gas";
+  const chips = [...(gas ? [`Gas ${row.accessTariff}`] : []), ...conditionChips(row)];
   const single = row.energy && row.energy.P1 === row.energy.P2 && row.energy.P2 === row.energy.P3;
 
   return (
@@ -425,9 +432,9 @@ function RowPrices({
       {row.energy ? (
         <div className="space-y-1.5">
           <p className="text-[10px] text-gray-500">
-            <span className="font-medium uppercase tracking-[0.08em]">Energía</span> · €/kWh
+            <span className="font-medium uppercase tracking-[0.08em]">{gas ? "Término variable" : "Energía"}</span> · €/kWh
           </p>
-          {(single ? [{ key: "P1" as const, label: "24 h" }] : PERIODS).map(({ key, label }) => (
+          {(single || gas ? [{ key: "P1" as const, label: gas ? "Gas" : "24 h" }] : PERIODS).map(({ key, label }) => (
             <div key={key} className="grid grid-cols-[44px_minmax(0,1fr)_76px] items-center gap-2 text-xs">
               <span className="text-gray-500">{label}</span>
               <span className="h-1.5 overflow-hidden rounded-full bg-gray-100">
@@ -455,10 +462,10 @@ function RowPrices({
       )}
 
       <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-500">Potencia</span>
+        <span className="text-gray-500">{gas ? "Término fijo" : "Potencia"}</span>
         <span className="font-medium tabular-nums text-gray-900">
-          {describePower(row)}
-          {row.powerMode === "fixed" && row.power && <span className="ml-1 font-normal text-gray-400">€/kW·día</span>}
+          {gas ? describePower(row).replace(/^Fijo:?\s*/, "") : describePower(row)}
+          {!gas && row.powerMode === "fixed" && row.power && <span className="ml-1 font-normal text-gray-400">€/kW·día</span>}
         </span>
       </div>
 
@@ -468,7 +475,14 @@ function RowPrices({
         </p>
       )}
 
-      {!row.includesAncillaryServices && !blocker && (
+      {gas && !row.includesAncillaryServices && !blocker && (
+        <p className="flex gap-1.5 rounded-lg bg-info-50 px-2.5 py-1.5 text-[11px] text-info-700">
+          <Gauge className="mt-px size-3 shrink-0" />
+          Variable sin peajes: en los estudios se le suman los peajes y cargos del BOE de su RL.
+        </p>
+      )}
+
+      {!gas && !row.includesAncillaryServices && !blocker && (
         <p className="flex gap-1.5 rounded-lg bg-info-50 px-2.5 py-1.5 text-[11px] text-info-700">
           <Gauge className="mt-px size-3 shrink-0" />
           SSAA aparte: solo se oferta en los estudios con «Aplicar SSAA».

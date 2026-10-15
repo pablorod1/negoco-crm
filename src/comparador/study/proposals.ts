@@ -20,9 +20,14 @@ export interface ProposalDocument {
   priceDate: string;
   client: { name: string | null; cups: string | null };
   supply: {
+    /** Gas: sin potencia, consumo entero en P1 y el peaje en `gas`. Sin el campo, luz. */
+    energy?: "gas";
+    gas?: StudySupply["gas"];
     contractedKw: PowerByPeriod;
     annualKwh: EnergyByPeriod;
     consumptionSource: StudySupply["consumptionSource"];
+    /** Consumo estimado con la factura: por qué y con cuántos días. */
+    estimate?: StudySupply["estimate"];
     sipsMonths: number | null;
     territory: StudySupply["territory"];
     power: { status: "adequate" | "oversized" | "exceeded"; maxDemandKw: number; suggestedKw: number } | null;
@@ -141,9 +146,11 @@ export function buildProposalDocument({
     priceDate: study.priceDate,
     client: { name: clientName, cups: study.cups },
     supply: {
+      ...(supply.energy === "gas" ? { energy: "gas" as const, gas: supply.gas } : {}),
       contractedKw: supply.contractedKw,
       annualKwh: supply.annualKwh,
       consumptionSource: supply.consumptionSource,
+      ...(supply.estimate ? { estimate: supply.estimate } : {}),
       sipsMonths: supply.sipsMonths,
       territory: supply.territory,
       power: supply.power

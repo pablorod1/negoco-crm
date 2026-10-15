@@ -37,8 +37,91 @@ const shortDate = (iso: string) =>
     year: "numeric",
   });
 
+/** El consumo es una estimación con la factura: por qué, y con qué consumo va la comisión. */
+function EstimateNote({ supply }: { supply: NonNullable<StudyView["supply"]> }) {
+  return (
+    <div className="mt-3 rounded-lg bg-warning-50 px-3 py-2 text-[11px] text-warning-800 ring-1 ring-warning-200">
+      <p className="font-medium">Consumo estimado</p>
+      <p>
+        {supply.estimate?.reason === "chosen" ? "Estudio sin SIPS: " : "El SIPS no tiene 12 meses: "}
+        el consumo de la factura{supply.estimate ? ` (${supply.estimate.invoiceDays} días)` : ""} llevado a un año.
+      </p>
+      {supply.referenceAnnualKwh ? <p className="mt-1">Comisión con el consumo real del SIPS: {kwh(supply.referenceAnnualKwh)}.</p> : null}
+    </div>
+  );
+}
+
+const MONTH_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** Gas: consumo de 12 meses lectura a lectura (el invierno pesa), peaje y dónde está el suministro. */
+function GasSupplyCard({ study }: { study: StudyView }) {
+  const supply = study.supply!;
+  const gas = supply.gas!;
+  const annual = supply.annualKwh.P1;
+  const readings = supply.readings ?? [];
+  // kWh por día de cada lectura: las de gas suelen ser de dos meses.
+  const bars = readings.map((reading) => {
+    const days = Math.max(1, Math.round((Date.parse(reading.to) - Date.parse(reading.from)) / 86_400_000));
+    const middle = new Date((Date.parse(reading.from) + Date.parse(reading.to)) / 2);
+    return { label: MONTH_SHORT[middle.getUTCMonth()], kwh: reading.kwh.P1, perDay: reading.kwh.P1 / days, days };
+  });
+  const top = Math.max(...bars.map(({ perDay }) => perDay), 1);
+  const location = supply.location;
+
+  return (
+    <Panel className="p-5">
+      <div className="flex items-start justify-between gap-3">
+        <Eyebrow>Suministro de gas</Eyebrow>
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+          {supply.consumptionSource === "sips" ? `SIPS · ${supply.sipsMonths} lecturas` : "Estimado"}
+        </span>
+      </div>
+      {study.cups && <p className="mt-2 break-all font-mono text-xs text-gray-600">{study.cups}</p>}
+      <p className="mt-1 text-xs text-gray-500">{[gas.accessTariff, supply.distributor].filter(Boolean).join(" · ")}</p>
+
+      <div className="mt-5">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-medium text-gray-700">Consumo anual</p>
+          <p className="text-lg font-semibold tabular-nums tracking-tight text-gray-900">{kwh(annual)}</p>
+        </div>
+        {bars.length > 0 && (
+          <div className="mt-3 flex h-20 items-end gap-1" aria-label="Consumo de cada lectura, por día">
+            {bars.map((bar, index) => (
+              <div key={index} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={`${kwh(bar.kwh)} en ${bar.days} días`}>
+                <div className="w-full rounded-t bg-primary-500" style={{ height: `${Math.max(4, (bar.perDay / top) * 64)}px` }} />
+                <span className="text-[10px] text-gray-400">{bar.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {bars.length > 0 && <p className="mt-2 text-[11px] text-gray-400">Cada barra es una lectura del SIPS, en kWh por día.</p>}
+        {supply.consumptionSource !== "sips" && <EstimateNote supply={supply} />}
+      </div>
+
+      <div className="mt-5 space-y-1.5 border-t border-gray-100 pt-4 text-xs text-gray-600">
+        <p>
+          Peaje <span className="font-medium text-gray-900">{gas.accessTariff}</span>
+          {gas.tariffSource === "consumption" ? " (por su consumo: ni el SIPS ni la factura lo dicen)" : gas.tariffSource === "invoice" ? " (de la factura)" : ""}.
+        </p>
+        {gas.consumptionTariff && (
+          <p className="text-warning-700">
+            Por su consumo le corresponde {gas.consumptionTariff}: la distribuidora puede cambiarle el peaje en la próxima revisión anual.
+          </p>
+        )}
+      </div>
+
+      {location && (
+        <p className="mt-4 border-t border-gray-100 pt-4 text-xs text-gray-500">
+          {[location.postalCode, location.municipality, location.province].filter(Boolean).join(" · ")}
+        </p>
+      )}
+    </Panel>
+  );
+}
+
 /** Consumo de 12 meses, potencia frente a máxima demanda y dónde está el suministro. */
 function SupplyCard({ study }: { study: StudyView }) {
+  if (study.supply?.energy === "gas") return <GasSupplyCard study={study} />;
   const supply = study.supply!;
   const annual =
     supply.annualKwh.P1 + supply.annualKwh.P2 + supply.annualKwh.P3;
@@ -76,7 +159,7 @@ function SupplyCard({ study }: { study: StudyView }) {
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
           {supply.consumptionSource === "sips"
             ? `SIPS · ${supply.sipsMonths} meses`
-            : "Factura"}
+            : "Estimado"}
         </span>
       </div>
       {study.cups && (
@@ -127,11 +210,7 @@ function SupplyCard({ study }: { study: StudyView }) {
             </div>
           ))}
         </dl>
-        {supply.consumptionSource !== "sips" && (
-          <p className="mt-2 text-[11px] text-gray-400">
-            Sin SIPS: el consumo de la factura llevado a un año.
-          </p>
-        )}
+        {supply.consumptionSource !== "sips" && <EstimateNote supply={supply} />}
       </div>
 
       <div className="mt-5 border-t border-gray-100 pt-4">

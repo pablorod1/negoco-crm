@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { issueMessages } from "@/comparador/extraction/issue-text";
 import {
@@ -13,146 +13,14 @@ import {
 } from "@/comparador/extraction/validate";
 import { Button } from "@/core/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/core/components/ui/dialog";
-import { cn } from "@/core/utils";
-import { euros, type ComparativaStudies } from "./api";
+import { gasReadingOf, toStudyExtraction, validateGasInvoice } from "@/comparador/gas/invoice";
+import type { GasInvoiceExtraction } from "@/comparador/gas/invoice-schema";
+import { type ComparativaStudies } from "./api";
+import { GasInvoiceForm } from "./GasInvoiceForm";
+import { AddButton, AmountLines, Expected, flaggedBy, Num, RemoveButton, Section } from "./editor-fields";
 
 type Invoice = InvoiceExtraction;
 type InvoiceFile = ComparativaStudies["invoices"][number];
-
-const parse = (text: string) => {
-  const value = Number(text.replace(/\s/g, "").replace(",", "."));
-  return text.trim() !== "" && Number.isFinite(value) ? value : null;
-};
-const format = (value: number | null | undefined) =>
-  value === null || value === undefined ? "" : String(value).replace(".", ",");
-
-/**
- * Un número con coma decimal. Se guarda en cuanto lo escrito es un número.
- * Guarda su propio texto: las filas llevan una clave que cambia al añadir o
- * quitar líneas, para que ningún campo se quede con el texto de otra.
- */
-function Num({
-  value,
-  onChange,
-  invalid,
-  className,
-  label,
-}: {
-  value: number | null | undefined;
-  onChange: (value: number | null) => void;
-  invalid?: boolean;
-  className?: string;
-  label: string;
-}) {
-  const [text, setText] = useState(format(value));
-  return (
-    <input
-      aria-label={label}
-      inputMode="decimal"
-      value={text}
-      onChange={(event) => {
-        setText(event.target.value);
-        const parsed = parse(event.target.value);
-        if (parsed !== null || event.target.value.trim() === "") onChange(parsed);
-      }}
-      onBlur={() => setText(format(parse(text)))}
-      className={cn(
-        "h-8 w-full rounded-lg bg-white px-2 text-right text-sm tabular-nums ring-1 outline-none focus:ring-2 focus:ring-primary-500",
-        invalid ? "ring-danger-300 bg-danger-50/40" : "ring-gray-200",
-        className,
-      )}
-    />
-  );
-}
-
-function Text({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
-  return (
-    <input
-      aria-label={label}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-8 w-full rounded-lg bg-white px-2 text-sm ring-1 ring-gray-200 outline-none focus:ring-2 focus:ring-primary-500"
-    />
-  );
-}
-
-function Section({ title, hint, action, flagged, children }: { title: string; hint?: string; action?: ReactNode; flagged?: boolean; children: ReactNode }) {
-  return (
-    <section className={cn("rounded-2xl p-4 ring-1", flagged ? "bg-danger-50/30 ring-danger-200" : "bg-white ring-gray-950/[0.06]")}>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-            {flagged && <AlertTriangle className="size-3.5 text-danger" />}
-            {title}
-          </h3>
-          {hint && <p className="text-xs text-gray-500">{hint}</p>}
-        </div>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function AddButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-50">
-      <Plus className="size-3.5" />
-      {children}
-    </button>
-  );
-}
-
-function RemoveButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-danger" aria-label="Quitar la línea">
-      <Trash2 className="size-3.5" />
-    </button>
-  );
-}
-
-/** Lo que debería ser el importe (cantidad × precio), solo si no coincide con el escrito. */
-function Expected({ expected, amount }: { expected: number | null; amount: number }) {
-  if (expected === null || Math.abs(Math.round(expected * 100) / 100 - amount) <= 0.011) return null;
-  return <p className="mt-0.5 text-right text-[11px] tabular-nums text-danger">calc. {euros(expected)}</p>;
-}
-
-/** El campo o la línea tienen algún aviso de las cuentas. */
-const flaggedBy = (issues: readonly InvoiceIssue[], field: string) =>
-  issues.some(({ field: issueField, severity }) => severity === "blocking" && (issueField === field || issueField.startsWith(`${field}.`) || issueField.startsWith(`${field}[`)));
-
-/** Importe y descripción: descuentos, otros conceptos, servicios… */
-function AmountLines({
-  lines,
-  onChange,
-  field,
-  issues,
-  placeholder,
-}: {
-  lines: { description: string; amount: number }[];
-  onChange: (lines: { description: string; amount: number }[]) => void;
-  field: string;
-  issues: readonly InvoiceIssue[];
-  placeholder: string;
-}) {
-  if (lines.length === 0) return <p className="text-xs text-gray-400">{placeholder}</p>;
-  return (
-    <div className="space-y-2">
-      {lines.map((line, index) => (
-        <div key={`${index}/${lines.length}`} className="grid grid-cols-[1fr_7rem_2rem] items-center gap-2">
-          <Text label="Concepto" value={line.description} onChange={(description) => onChange(lines.map((item, at) => (at === index ? { ...item, description } : item)))} />
-          <Num
-            label="Importe"
-            value={line.amount}
-            invalid={flaggedBy(issues, `${field}[${index}]`)}
-            onChange={(amount) => onChange(lines.map((item, at) => (at === index ? { ...item, amount: amount ?? 0 } : item)))}
-          />
-          <RemoveButton onClick={() => onChange(lines.filter((_, at) => at !== index))} />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /** Los datos de la factura, editables y validados mientras se escriben. */
 function EditorForm({ invoice, setInvoice, issues }: { invoice: Invoice; setInvoice: (update: (invoice: Invoice) => Invoice) => void; issues: InvoiceIssue[] }) {
@@ -424,13 +292,16 @@ export function InvoiceEditor({
   onSave: (invoice: Invoice, acceptMismatch: boolean) => Promise<void>;
 }) {
   const [invoice, setInvoiceState] = useState(initial);
+  // Gas: se edita la lectura de gas; la forma común se rehace al guardar.
+  const initialGas = gasReadingOf(initial);
+  const [gas, setGasState] = useState<GasInvoiceExtraction | null>(initialGas);
   const [version, setVersion] = useState(0);
   const [accept, setAccept] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const issues = useMemo(
-    () => validateInvoice(invoice).filter(({ field }) => !/^(holder|cups|supplyAddress)/.test(field)),
-    [invoice],
+    () => (gas ? validateGasInvoice(gas) : validateInvoice(invoice)).filter(({ field }) => !/^(holder|cups|supplyAddress)/.test(field)),
+    [invoice, gas],
   );
   const blocking = hasBlockingIssues(issues);
   const messages = issueMessages(issues).filter(({ severity }) => severity === "blocking");
@@ -439,12 +310,16 @@ export function InvoiceEditor({
     setInvoiceState(update);
     setAccept(false);
   };
+  const setGas = (update: (current: GasInvoiceExtraction) => GasInvoiceExtraction) => {
+    setGasState((current) => (current ? update(current) : current));
+    setAccept(false);
+  };
 
   const save = async () => {
     setSaving(true);
     setError(null);
     try {
-      await onSave(invoice, blocking && accept);
+      await onSave(gas ? toStudyExtraction(gas) : invoice, blocking && accept);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se han podido guardar los datos");
     } finally {
@@ -469,7 +344,11 @@ export function InvoiceEditor({
             <InvoiceViewer file={file} />
           </div>
           <div className="min-h-0 overflow-y-auto bg-gray-50/70 p-4 sm:p-6">
-            <EditorForm key={version} invoice={invoice} setInvoice={setInvoice} issues={issues} />
+            {gas ? (
+              <GasInvoiceForm key={version} gas={gas} setGas={setGas} issues={issues} />
+            ) : (
+              <EditorForm key={version} invoice={invoice} setInvoice={setInvoice} issues={issues} />
+            )}
           </div>
         </div>
 
@@ -501,6 +380,7 @@ export function InvoiceEditor({
               disabled={saving}
               onClick={() => {
                 setInvoiceState(initial);
+                setGasState(initialGas);
                 setVersion((value) => value + 1);
                 setAccept(false);
               }}

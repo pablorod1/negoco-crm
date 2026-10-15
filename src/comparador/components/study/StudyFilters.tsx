@@ -261,6 +261,7 @@ export function StudyFilters({
     setAppliedFee(text);
     onOptions({ feeEnergyPerMwh: parseFee(text) });
   };
+  const gas = study.supply?.energy === "gas";
   const [appliedPowerFee, setAppliedPowerFee] = useState(powerFeeText);
   const applyPowerFee = (text: string) => {
     if (text === appliedPowerFee) return;
@@ -282,7 +283,8 @@ export function StudyFilters({
           ]}
           onChange={(currentPricing) => onOptions({ currentPricing })}
         />
-        <AncillaryControl study={study} onOptions={onOptions} />
+        {/* Los servicios de ajuste son de la luz. */}
+        {!gas && <AncillaryControl study={study} onOptions={onOptions} />}
       </div>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
         <Segmented
@@ -308,16 +310,18 @@ export function StudyFilters({
           onChange={(value) => onOptions({ channel: value === "any" ? null : value })}
         />
         <FeeInput id="study-fee" label="Fee de energía" hint="vacío = el mínimo" unit="€/MWh" max={200} text={feeText} onText={onFeeText} onApply={applyFee} />
-        <FeeInput
-          id="study-power-fee"
-          label="Fee de potencia"
-          hint="solo tarifas con precio base"
-          unit="€/kW·año"
-          max={100}
-          text={powerFeeText}
-          onText={onPowerFeeText}
-          onApply={applyPowerFee}
-        />
+        {!gas && (
+          <FeeInput
+            id="study-power-fee"
+            label="Fee de potencia"
+            hint="solo tarifas con precio base"
+            unit="€/kW·año"
+            max={100}
+            text={powerFeeText}
+            onText={onPowerFeeText}
+            onApply={applyPowerFee}
+          />
+        )}
         {study.showCommission && (
           <Segmented
             label="Ordenar por"
@@ -333,7 +337,7 @@ export function StudyFilters({
           {busy && <Loader2 className="size-3.5 animate-spin text-primary-600" />}
           <span className="tabular-nums">
             <span className="font-medium text-gray-900">{study.totalOffers}</span> tarifas encajan ·{" "}
-            {study.ineligible} descartadas por potencia, consumo o territorio
+            {study.ineligible} descartadas por {gas ? "consumo o territorio" : "potencia, consumo o territorio"}
             {study.otherCustomerType > 0 && ` · ${study.otherCustomerType} de otro tipo de cliente`}
             {study.withoutHistory.length > 0 && (
               <span title={withoutHistoryDetail(study.withoutHistory)}>

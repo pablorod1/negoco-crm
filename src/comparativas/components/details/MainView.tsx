@@ -147,9 +147,9 @@ export default function MainView({
     (isComercial
       ? userData.has_abarca_user_id
       : hasAiStudiesCapability(userData.organization.abarca_user_id));
-  // De momento el comparador propio solo cubre luz 2.0TD.
+  // El comparador propio cubre luz 2.0TD y gas (RL.1 a RL.4).
   const canUseNegocoComparator =
-    comparativa.service === "Luz" &&
+    (comparativa.service === "Luz" || comparativa.service === "Gas") &&
     canUseNegocoStudies({
       modules: userData.organization.modules,
       role: userData.role,
@@ -165,12 +165,14 @@ export default function MainView({
   // datos del cliente confirmados al completarlo.
   const negocoEstudio = abarcaEstudio ? undefined : comparativa.negoco_estudio;
   const negocoClient = negocoEstudio?.client ?? null;
+  // Gas: sin potencia ni periodos; el consumo va entero en P1.
+  const negocoGas = negocoEstudio?.energy === "gas";
   const contractedPowers = abarcaEstudio
     ? PERIODS.map((period, index) => ({
         period,
         value: abarcaEstudio[ABARCA_POWER_FIELDS[index]],
       }))
-    : negocoEstudio
+    : negocoEstudio && !negocoGas
       ? (["P1", "P2"] as const).map((period) => ({
           period,
           value: negocoEstudio.contractedKw[period],
@@ -181,7 +183,9 @@ export default function MainView({
         period,
         value: abarcaEstudio[ABARCA_CONSUMPTION_FIELDS[index]],
       }))
-    : negocoEstudio?.annualKwhByPeriod
+    : negocoGas && negocoEstudio
+      ? [{ period: "Gas", value: negocoEstudio.annualKwh }]
+      : negocoEstudio?.annualKwhByPeriod
       ? (["P1", "P2", "P3"] as const).map((period) => ({
           period,
           value: negocoEstudio.annualKwhByPeriod[period],
@@ -845,7 +849,11 @@ export default function MainView({
           >
             {canUseNegocoComparator && comparativa.negoco_estudio?.chosen ? (
               <div className="xl:col-span-2">
-                <ChosenProposalCard comparativaId={comparativa.id} chosen={comparativa.negoco_estudio.chosen} />
+                <ChosenProposalCard
+                  comparativaId={comparativa.id}
+                  chosen={comparativa.negoco_estudio.chosen}
+                  tariff={comparativa.negoco_estudio.accessTariff}
+                />
               </div>
             ) : null}
 

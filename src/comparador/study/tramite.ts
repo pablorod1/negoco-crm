@@ -11,7 +11,10 @@ import type { StudySupply, SupplyLocation } from "./supply";
  */
 export interface NegocoStudyForTramite {
   cups: string | null;
-  accessTariff: "2.0TD";
+  /** «2.0TD», o el peaje de gas («RL.2»). */
+  accessTariff: string;
+  /** Luz o gas. */
+  energy: "electricity" | "gas";
   contractedKw: PowerByPeriod;
   annualKwh: number;
   annualKwhByPeriod: EnergyByPeriod;
@@ -52,7 +55,8 @@ export async function getNegocoStudyForTramite(
     const chosen = study.chosenOffer;
     return {
       cups: study.cups,
-      accessTariff: "2.0TD",
+      accessTariff: study.supply.energy === "gas" ? (study.supply.gas?.accessTariff ?? "RL") : "2.0TD",
+      energy: study.supply.energy === "gas" ? "gas" : "electricity",
       contractedKw,
       annualKwh: Math.round(annualKwh.P1 + annualKwh.P2 + annualKwh.P3),
       annualKwhByPeriod: annualKwh,

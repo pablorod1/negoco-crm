@@ -38,6 +38,18 @@ export function parseNumber(cell: SheetCell | null): Parsed<number | null> {
 
 /** Tarifa de acceso: «2.0TD», «20TD», «2.0 TD», «2.0TD_2…», «2.01P» (precio único). */
 export function parseTariff(text: string): { tariff: string; singlePrice: boolean } | null {
+  // Gas: «RL01», «RL.2», «RL 3». Los de planta satélite («RL01-satélite»,
+  // RLPS) y RL.5 en adelante se devuelven con su nombre para descartarlos.
+  const gas = /\bRL\s?(PS)?[\s._-]?0?(\d{1,2})\b/i.exec(text);
+  if (gas) {
+    const satellite = Boolean(gas[1]) || /sat[eé]lite/i.test(text);
+    const number = Number(gas[2]);
+    return { tariff: satellite ? `RLPS.${number}` : `RL.${number}`, singlePrice: true };
+  }
+  // Los Excel de gas ponen al lado el peaje anterior a 2021 como equivalente
+  // («RL.1 | 3.1», Eleia): en una celda sola, «3.1» a «3.4» son RL.1 a RL.4.
+  const legacy = /^\s*3[.,]([1-4])\s*$/.exec(text);
+  if (legacy) return { tariff: `RL.${legacy[1]}`, singlePrice: true };
   const match = /(\d)\s?[.,]?\s?(\d)\s?(TD|1P)/i.exec(text);
   if (!match) return null;
   return {
@@ -197,10 +209,14 @@ export function parseEnergyUnit(text: string): "eur_kwh" | "cent_kwh" | "eur_mwh
   return null;
 }
 
-export function parsePowerUnit(text: string): "eur_kw_day" | "eur_kw_month" | "eur_kw_year" | null {
+export function parsePowerUnit(
+  text: string,
+): "eur_kw_day" | "eur_kw_month" | "eur_kw_year" | "eur_day" | "eur_month" | "eur_year" | null {
   const lower = text.toLowerCase().replace(/\s/g, "");
-  if (/day|d[ií]a/.test(lower)) return "eur_kw_day";
-  if (/month|mes/.test(lower)) return "eur_kw_month";
-  if (/year|a[ñn]o/.test(lower)) return "eur_kw_year";
+  // Gas: el término fijo es por cliente, no por kW («€/mes», «eur_month»).
+  const perKw = /kw/.test(lower);
+  if (/day|d[ií]a/.test(lower)) return perKw ? "eur_kw_day" : "eur_day";
+  if (/month|mes/.test(lower)) return perKw ? "eur_kw_month" : "eur_month";
+  if (/year|a[ñn]o/.test(lower)) return perKw ? "eur_kw_year" : "eur_year";
   return null;
 }

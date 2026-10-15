@@ -148,6 +148,64 @@ describe("proposal pdf", () => {
     expect(pages(pdf)).toBe(3);
   });
 
+  test("a gas proposal: fixed and variable terms and the RL toll, on three pages", async () => {
+    const gasCost = (total: number): CostBreakdown => ({
+      kind: "gas",
+      days: 365,
+      power: { P1: 102.2, P2: 0, total: 102.2 },
+      energy: { P1: 540, P2: 0, P3: 0, total: 540 },
+      energyDiscounts: [],
+      otherElectricity: 0,
+      socialBonus: 0,
+      electricitySubtotal: 642.2,
+      electricityTax: 21.06,
+      meterRental: 7.3,
+      services: 0,
+      taxableBase: 670.56,
+      vat: 140.82,
+      vatExempt: 0,
+      total,
+    });
+    const bimonthly = [1500, 3500, 2500, 900, 300, 300].map((kwh, index) => {
+      const from = new Date(Date.UTC(2025, 9 + index * 2, 1)).toISOString().slice(0, 10);
+      const to = new Date(Date.UTC(2025, 11 + index * 2, 0)).toISOString().slice(0, 10);
+      return { from, to, kwh: { P1: kwh, P2: 0, P3: 0 } };
+    });
+    const pdf = await renderProposalPdf(
+      {
+        ...document,
+        supply: {
+          energy: "gas",
+          gas: { accessTariff: "RL.2", tariffSource: "sips", consumptionTariff: null, turEligible: true },
+          contractedKw: { P1: 0, P2: 0 },
+          annualKwh: { P1: 9000, P2: 0, P3: 0 },
+          consumptionSource: "sips",
+          sipsMonths: 6,
+          territory: "peninsula",
+          power: null,
+          readings: bimonthly,
+        },
+        current: {
+          supplierName: "Naturgy",
+          prices: { power: { P1: 0.32, P2: 0 }, energy: { P1: 0.075, P2: 0.075, P3: 0.075 } },
+          cost: gasCost(950),
+          pricing: "fixed",
+        },
+        offer: {
+          ...document.offer,
+          comercializadoraName: "Gana Energía",
+          productName: "Gas Estable",
+          powerMode: "fixed",
+          prices: { power: { P1: 0.28, P2: 0 }, energy: { P1: 0.06, P2: 0.06, P3: 0.06 } },
+          cost: gasCost(811.38),
+        },
+        savings: 138.62,
+      },
+      { displayName: "Negoco Cloud", logo: null, color: "#2563eb" },
+    );
+    expect(pages(pdf)).toBe(3);
+  });
+
   test("a light brand color gets dark text on it and a darker shade for text on white", () => {
     expect(brandPalette("#f5c400")).toMatchObject({ brand: "#f5c400", on: "#0f172a" });
     expect(brandPalette("#f5c400").ink).not.toBe("#f5c400");

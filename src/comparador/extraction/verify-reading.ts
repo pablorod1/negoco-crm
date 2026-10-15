@@ -48,8 +48,24 @@ export interface ReadingCheck {
 
 const number = (value: number) => value.toLocaleString("es-ES", { maximumFractionDigits: 3 });
 
+/** Gas: el consumo, los días y la comercializadora. */
+function gasStatements(reading: InvoiceExtraction): [string, string][] {
+  const out: [string, string][] = [];
+  const kwh = reading.consumptionKwh.P1;
+  if (kwh !== null) {
+    out.push([
+      "consumptionKwh",
+      `El consumo de gas facturado en esta factura es de ${number(kwh)} kWh. Puede aparecer en el resumen, en el término variable o en la tabla de lecturas (m³ por el factor de conversión).`,
+    ]);
+  }
+  if (reading.billingPeriod) out.push(["billingPeriod.days", `El periodo facturado es de ${reading.billingPeriod.days} días.`]);
+  if (reading.supplierName) out.push(["supplierName", `La comercializadora que emite la factura es ${reading.supplierName}.`]);
+  return out;
+}
+
 /** Las afirmaciones que se comprueban, con el campo de la lectura al que se refieren. */
 function statements(reading: InvoiceExtraction): [string, string][] {
+  if ("gas" in reading) return gasStatements(reading);
   const out: [string, string][] = [];
   const periods = { P1: "punta (P1)", P2: "llano (P2)", P3: "valle (P3)" } as const;
   for (const period of ["P1", "P2", "P3"] as const) {
@@ -103,15 +119,17 @@ export async function verifyReading({
   recordUsage?: RecordAiUsage;
 }): Promise<ReadingCheck | null> {
   const checks = statements(reading);
+  const gas = "gas" in reading;
+  const kinds = gas ? { ...DOCUMENT_KINDS, factura: "Factura de gas natural" } : DOCUMENT_KINDS;
   const questions: Record<string, Experimental_DecisionQuestion> = {
-    tipo: { type: "choice", instructions: "¿Qué es este documento?", criteria: DOCUMENT_KINDS },
+    tipo: { type: "choice", instructions: "¿Qué es este documento?", criteria: kinds },
   };
   checks.forEach(([, statement], index) => (questions[`q${index}`] = { type: "boolean", instructions: statement }));
 
   try {
     const result = await decideFn({
       model: getGateway().decisionModel(VERIFICATION_MODEL),
-      state: `Texto de un documento subido como factura de luz. Los datos personales están tapados entre corchetes.\n\n${text}`,
+      state: `Texto de un documento subido como factura de ${gas ? "gas" : "luz"}. Los datos personales están tapados entre corchetes.\n\n${text}`,
       questions,
       providerOptions: { gateway: buildGatewayOptions(context) },
     });

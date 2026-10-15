@@ -13,21 +13,23 @@ import {
 } from "../validate";
 import { applyRecipe, locateAnchor, type AppliedRecipe, type StoredRecipe } from "./apply";
 import { columnIndex, columnLetter, findSheet, renderGrid, workbookSignature, type SheetGrid } from "./grid";
+import { normalizeGasTariff } from "@/comparador/gas/regulated";
 import { parseNumber, parseTariff } from "./parse";
 import { SheetRecipeSchema, type SheetRecipe } from "./recipe";
 import type { RecipeStore } from "./store";
 
-/** Hojas que no se enseñan a la IA por su nombre: gas, simuladores, históricos. */
-const SKIPPED_SHEET = /\bgas\b|\bRL\.?\s?\d|simulador|calculadora|hist[oó]rico/i;
+/** Hojas que no se enseñan a la IA por su nombre: simuladores, históricos. */
+const SKIPPED_SHEET = /simulador|calculadora|hist[oó]rico/i;
 
 /** Texto por hoja que se enseña a la IA: la forma, no hace falta cada fila. */
 const MAX_SHEET_CHARS = 25_000;
 const MAX_WORKBOOK_CHARS = 80_000;
 
-export const RECIPE_INSTRUCTIONS = `Escribes plantillas para leer Excel de precios de comercializadoras españolas de electricidad. No copias precios: dices en qué hoja, filas y columnas está cada dato, y nuestro código lee las celdas.
+export const RECIPE_INSTRUCTIONS = `Escribes plantillas para leer Excel de precios de comercializadoras españolas de electricidad y gas. No copias precios: dices en qué hoja, filas y columnas está cada dato, y nuestro código lee las celdas.
 Cada hoja viene con sus filas numeradas como en Excel («12|») y cada celda con su columna («C=0.169233»).
-Solo interesan las tarifas 2.0TD de precio fijo o indexado (también «20TD» o «2.01P», que es 2.0TD de precio único) y las comisiones de la agencia. De un producto indexado (OMIE, pool, «término A/B», pass-through) haz una tabla como de los fijos, con pricing indexed: lo que importa es su nombre, su potencia y su fee; si trae el término que se suma al mercado, va en energyP1/energyP2/energyP3. No hagas tablas de 3.0TD, 6.1TD, gas, simuladores ni calculadoras: menciónalas en skippedSheets si ocupan una hoja entera, o en skippedRanges («AO18:BB72») si son un bloque junto a los fijos.
-Una comisión es lo que la comercializadora paga a la agencia por cada contrato (remuneración, comisión, «pago al canal»). No son comisiones: el precio de servicios que se venden con la luz (PyS, mantenimiento, urgencias, packs), el fee o margen de un producto indexado, ni los descuentos al cliente. Si dudas, no hagas tabla de comisiones.
+Solo interesan las tarifas 2.0TD de precio fijo o indexado (también «20TD» o «2.01P», que es 2.0TD de precio único), las de gas de los peajes RL.1 a RL.4 (también «RL01», «RL 2») y las comisiones de la agencia. De un producto indexado (OMIE, pool, MIBGAS, «término A/B», «bi», pass-through) haz una tabla como de los fijos, con pricing indexed: lo que importa es su nombre, su potencia o término fijo y su fee; si trae el término que se suma al mercado, va en energyP1/energyP2/energyP3. No hagas tablas de 3.0TD, 6.1TD, RL.5 en adelante, planta satélite, simuladores ni calculadoras: menciónalas en skippedSheets si ocupan una hoja entera, o en skippedRanges («AO18:BB72») si son un bloque junto a los que sí se leen; con rowFilter puedes dejar fuera las filas RL05, RL06 y satélite.
+Gas: accessTariff es la columna del peaje (o su valor si el bloque es de un solo peaje). El término fijo va en powerP1 (sin powerP2) con powerUnit eur_day, eur_month o eur_year (por cliente, no por kW), y el término variable en energyP1 con singlePrice true. Los bloques de clientes con telemedida («telemedido», «Corporate») no se leen: van en skippedRanges. Si el bloque da el precio sin peajes y con peajes, lee el precio con peajes y sin telemedida, y pon en skippedRanges las columnas que no lees (el precio sin peajes, el telemedido): toda columna con precios que no esté ni en una tabla ni en skippedRanges se da por olvidada. En gas, cada nivel (TDE 0…3, N1…N3), territorio y mes de inicio es una copia con repeat: lee todas. Si solo da el precio sin peajes («a estos precios hay que añadirles los cargos y peajes»), tollsIncluded false y powerMode regulated_plus (el término fijo sin peajes en powerP1). Si un precio depende del mes de inicio («Inicio Octubre26»), cada columna es una copia con su startMonth.
+Una comisión es lo que la comercializadora paga a la agencia por cada contrato (remuneración, comisión, «pago al canal»). No son comisiones: el precio de servicios que se venden con la luz (PyS, mantenimiento, urgencias, packs), el fee o margen de un producto indexado, ni los descuentos al cliente. Si dudas, no hagas tabla de comisiones. Una tabla de euros por contrato según el consumo anual (tramos «desde/hasta» y una columna por nivel: N1/N2/N3, S/E/X, TDE0…TDE3) sí es de comisiones, de luz o de gas: no la descartes. Cada columna de nivel es una copia con repeat (columnShift 1, o la distancia entre columnas) y su level; accessTariff, la columna del peaje (o su valor si el bloque es de un solo peaje). Si los tramos van en MWh/año, consumptionUnit mwh.
 Una tabla es un bloque de filas de datos. kind prices para filas con precios de energía (y potencia si está en la misma fila); kind power para bloques que solo traen potencia y se unen a los de precios por productName, level, territory y bandas, así que ponles los mismos valores (el nivel de un bloque de potencia es el de su columna, no el territorio del título); kind commissions para comisiones.
 Si la potencia de cada bloque de precios está en una celda fija (un apartado «POTENCIAS» con una fila por tarifa), es más sencillo leerla desde la tabla de precios con cell. Con repeat la celda se mueve con cada copia; como en Excel, «C$40» se mueve de columna pero no de fila (la misma potencia para Baleares y Canarias) y «$C$40» no se mueve nunca. Igual con las columnas: «$Q» lee siempre la columna Q aunque la copia esté más a la derecha.
 firstRow y lastRow son las filas de datos (sin la cabecera). startText es un texto fijo del título o cabecera que hay justo encima de los datos (por ejemplo «SUPER (N1)» o «2.0TD _ 2 P1 <= 10kW»), para encontrarlos si se mueven filas. expect son dos o tres celdas de título o cabecera con su texto exacto (nunca precios ni fechas).
@@ -36,7 +38,7 @@ Si una columna solo tiene valor en la primera fila de cada grupo (subsistema, ta
 Si el mismo bloque se repite a la derecha para otros niveles (N1, N2, N3; Agencia, Estándar…) o hacia abajo para otro producto o territorio, haz una sola tabla con el primer bloque y añade en repeat cada copia con su columnShift y rowShift (columnas y filas de distancia) y los valores que cambian (level, productName, territory…). Así la plantilla es corta: un libro como el de Axpo cabe en pocas tablas.
 sources: una entrada por dato. column si cambia en cada fila; cell si sale de una celda fija (el título del bloque con el nombre del producto o la banda de potencia); value si es una constante.
 Campos: productName (nombre comercial sin nivel ni tarifa; si la hoja es un producto, su título), variant (lo que distingue dos bloques del mismo producto sin campo propio: «con GdO», «verde»; se añade al nombre), level, accessTariff, territory (peninsula, baleares, canarias, ceuta_melilla o el texto de la celda), channel (captación o renovación), segment, powerBand (texto con la banda de potencia, p. ej. «P1 <= 10kW»), consumptionBand (texto con la banda de consumo), minKw/maxKw/minKwh/maxKwh (números), startMonth (texto como «Inicio Enero27» o fecha, si el precio depende del inicio del suministro), contractEnd (fecha hasta la que dura el precio fijo, si hay una columna con ella; la duración la calcula el código), termMonths (duración), energyP1/energyP2/energyP3 (punta, llano, valle; si hay un único precio, solo energyP1 y singlePrice true), powerP1/powerP2 (punta y valle), powerMargin, feeMinMwh/feeMaxMwh (fee que suma el comercial), discountText.
-Constantes con value: energyUnit (eur_kwh, cent_kwh o eur_mwh), powerUnit (eur_kw_day, eur_kw_month o eur_kw_year), singlePrice (true o false), powerMode (fixed, regulated si es la potencia BOE, regulated_plus), pricing (fixed; indexed si el bloque es indexado; other si va por franjas), ancillaryIncluded (si el precio incluye los servicios de ajuste, SSAA; no es para GdO ni energía verde), feeOnPower, commissionType (fixed, per_mwh o fee_share), feeBase (energy o power), commissionAmount (columna con el importe).
+Constantes con value: energyUnit (eur_kwh, cent_kwh o eur_mwh), powerUnit (eur_kw_day, eur_kw_month o eur_kw_year; en gas eur_day, eur_month o eur_year), singlePrice (true o false), powerMode (fixed, regulated si es la potencia BOE, regulated_plus), pricing (fixed; indexed si el bloque es indexado; other si va por franjas), ancillaryIncluded (si el precio incluye los servicios de ajuste, SSAA; no es para GdO ni energía verde), feeOnPower, commissionType (fixed, per_mwh o fee_share), feeBase (energy o power), commissionAmount (columna con el importe).
 Mira la cabecera para las unidades: «€/kW año» es eur_kw_year, «€/kW día» eur_kw_day, «€/MWh» eur_mwh, «c€/kWh» cent_kwh.
 validFrom y validTo: la celda con la fecha (o el texto con las dos fechas) de vigencia, si existe.`;
 
@@ -156,6 +158,8 @@ function headerAbove(grid: SheetGrid, row: number, column: number): string {
 
 /** Precio de energía en €/kWh plausible: lo que sigue a una etiqueta 2.0TD en una fila de precios. */
 const ENERGY_LIKE = (value: number) => value >= 0.03 && value <= 0.6;
+/** Término variable del gas plausible: por encima del «bi» de un indexado (Eleia: 0,005–0,031). */
+const GAS_ENERGY_LIKE = (value: number) => value >= 0.04 && value <= 0.3;
 
 /**
  * Filas del libro con una etiqueta 2.0TD seguida de un precio de energía que
@@ -198,8 +202,12 @@ function unreadRows(
         column <= range.right,
     );
   const read = new Map<string, number>();
+  // Solo cuentan las filas con precio de energía: un indexado del mismo
+  // bloque (Eleia: el «bi» al lado del fijo) no tapa un nivel sin leer.
   const origins = [
-    ...applied.sheets.map((sheet, index) => ({ sheet, row: applied.rows[index] })),
+    ...applied.sheets
+      .map((sheet, index) => ({ sheet, row: applied.rows[index], priced: applied.extraction.rates[index]?.energyP1 != null }))
+      .filter(({ priced }) => priced),
     ...applied.repeated,
   ];
   for (const { sheet, row } of origins) {
@@ -214,7 +222,23 @@ function unreadRows(
       let blocks = 0;
       for (let column = 0; column < cells.length; column++) {
         const label = cells[column]?.text ?? "";
-        if (parseTariff(label)?.tariff !== "2.0TD") continue;
+        const tariff = parseTariff(label)?.tariff;
+        // Gas: cada término variable que sigue a la etiqueta del peaje, hasta
+        // la siguiente etiqueta, es una tarifa (un nivel, un territorio, un
+        // mes de inicio). El término fijo (€/mes) y el «bi» del indexado no.
+        if (tariff && normalizeGasTariff(tariff)) {
+          if (skippedCell(grid.name, index + 1, column)) continue;
+          for (let next = column + 1; next < cells.length; next++) {
+            const cell = cells[next];
+            if (!cell) continue;
+            if (parseTariff(cell.text ?? "")) break;
+            const parsed = parseNumber(cell);
+            if (!parsed.ok || parsed.value === null) continue;
+            if (GAS_ENERGY_LIKE(parsed.value) && !skippedCell(grid.name, index + 1, next)) blocks++;
+          }
+          continue;
+        }
+        if (tariff !== "2.0TD") continue;
         if (skippedCell(grid.name, index + 1, column)) continue;
         // Las cifras que siguen a la etiqueta, hasta el primer texto: una
         // cabecera («P1») o la etiqueta del bloque de al lado.
@@ -254,7 +278,7 @@ function assess(grids: readonly SheetGrid[], recipe: StoredRecipe): Assessment {
   for (const { sheet, rows } of unreadRows(grids, recipe, applied)) {
     applied.problems.push({
       sheet,
-      message: `Hoja «${sheet}»: ${rows.length === 1 ? "la fila" : "las filas"} ${rows.slice(0, 8).join(", ")}${rows.length > 8 ? "…" : ""} ${rows.length === 1 ? "tiene" : "tienen"} precios de 2.0TD que la plantilla no lee (o lee menos bloques de los que hay).`,
+      message: `Hoja «${sheet}»: ${rows.length === 1 ? "la fila" : "las filas"} ${rows.slice(0, 8).join(", ")}${rows.length > 8 ? "…" : ""} ${rows.length === 1 ? "tiene" : "tienen"} precios de 2.0TD o de gas que la plantilla no lee (o lee menos bloques de los que hay: niveles, territorios o meses de inicio).`,
     });
   }
   const proposed = toProposedRates(applied.extraction, null);
@@ -529,7 +553,7 @@ export async function readSpreadsheet({
           ...(retryNote ? [{ type: "text" as const, text: retryNote }] : []),
           {
             type: "text",
-            text: "Escribe la plantilla para leer las tarifas 2.0TD de precio fijo y las comisiones de este libro.",
+            text: "Escribe la plantilla para leer las tarifas 2.0TD y de gas (RL.1 a RL.4), de precio fijo o indexado, y las comisiones de este libro.",
           },
         );
       }

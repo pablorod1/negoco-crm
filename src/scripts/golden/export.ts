@@ -1,7 +1,11 @@
 /**
  * Exporta facturas de Beenergy para el conjunto de prueba.
  *
- *   pnpm golden:export [--out <carpeta>] [--count 20] [--candidates 80] [--per-supplier 5] [--per-unknown 15]
+ *   pnpm golden:export [--out <carpeta>] [--count 20] [--candidates 80] [--per-supplier 5] [--per-unknown 15] [--energy gas]
+ *
+ * Con `--energy gas`, las de las comparativas de gas (peajes RL.1 a RL.4),
+ * en ~/negoco-golden/gas. Con `--from-dir <carpeta>`, los PDF de esa carpeta
+ * (por ejemplo, los que manda Beenergy por correo) en vez de los de la base.
  *
  * Solo lee de la base de Beenergy (una consulta con LIMIT) y descarga los PDF
  * a una carpeta local fuera del repositorio. Descarta las facturas sin texto
@@ -11,11 +15,13 @@
 import { createClient } from "@libsql/client";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { notAnInvoice } from "@/comparador/extraction/document-kind";
 import { redactInvoiceForStudy } from "@/comparador/redaction/study-redaction";
+import { normalizeGasTariff } from "@/comparador/gas/regulated";
 import { invoiceTextFromPdf } from "@/comparador/study/invoice-text";
 import {
   DEFAULT_GOLDEN_DIR,
@@ -29,42 +35,16 @@ import { detectSupplier } from "./suppliers";
 async function main() {
   loadLocalEnv();
   const argv = process.argv.slice(2);
-  const root = readOption(argv, "--out") ?? DEFAULT_GOLDEN_DIR;
+  const gas = readOption(argv, "--energy") === "gas";
+  const root = readOption(argv, "--out") ?? (gas ? join(homedir(), "negoco-golden", "gas") : DEFAULT_GOLDEN_DIR);
   const count = Number(readOption(argv, "--count") ?? 20);
   const candidates = Number(readOption(argv, "--candidates") ?? 80);
   const perSupplierCap = Number(readOption(argv, "--per-supplier") ?? Math.max(2, Math.ceil(count / 5)));
   // Las que no se reconocen son de muchas comercializadoras distintas: más cupo.
   const perUnknownCap = Number(readOption(argv, "--per-unknown") ?? perSupplierCap);
 
-  const url = process.env.NEXT_TURSO_DB_URL_BEENERGY;
-  const authToken = process.env.NEXT_TURSO_DB_AUTH_TOKEN_BEENERGY;
-  if (!url || !authToken) throw new Error("Faltan las credenciales de Beenergy");
-
-  // Recorre por rowid descendente: la consulta se detiene al llegar al LIMIT.
-  const db = createClient({ url, authToken });
-  const { rows } = await db.execute({
-    // Las facturas de comparativas convertidas en trámite se mueven a
-    // tramite_files, junto a DNI y contratos: de ahí, solo las «factura».
-    sql: `SELECT id, download_url FROM (
-        SELECT f.id AS id, f.download_url, f.upload_date AS uploaded
-        FROM comparativa_files f
-        JOIN comparativas c ON c.id = f.comparativa_id
-        WHERE c.service = 'Luz'
-          AND lower(f.extension) = 'pdf'
-          AND f.filename NOT LIKE 'estudio%'
-          AND f.filename NOT LIKE 'Comparativa%'
-          AND f.size < 5000000
-        UNION ALL
-        SELECT 't' || f.id, f.download_url, f.upload_date
-        FROM tramite_files f
-        WHERE lower(f.extension) = 'pdf'
-          AND lower(f.filename) LIKE '%factura%'
-          AND f.size < 5000000
-      )
-      ORDER BY uploaded DESC
-      LIMIT ?`,
-    args: [candidates],
-  });
+  const fromDir = readOption(argv, "--from-dir");
+  const rows = fromDir ? await localCandidates(fromDir) : await databaseCandidates(gas, candidates);
 
   await ensureGoldenDirs(root);
   const workDir = await mkdtemp(join(tmpdir(), "golden-export-"));
@@ -77,7 +57,7 @@ async function main() {
     for (const row of rows) {
       if (selected >= count) break;
 
-      const fileId = String(row.id);
+      const fileId = row.id;
       const caseId = createHash("sha256").update(fileId).digest("hex").slice(0, 10);
       // Ya en el banco, o descartada a propósito (las F-26 hechas con IA).
       if (
@@ -89,12 +69,16 @@ async function main() {
       }
       const pdfPath = join(workDir, `${caseId}.pdf`);
 
-      const response = await fetch(String(row.download_url));
-      if (!response.ok) {
-        skip("descarga fallida");
-        continue;
+      if (row.path) {
+        await writeFile(pdfPath, await readFile(row.path));
+      } else {
+        const response = await fetch(String(row.download_url));
+        if (!response.ok) {
+          skip("descarga fallida");
+          continue;
+        }
+        await writeFile(pdfPath, new Uint8Array(await response.arrayBuffer()));
       }
-      await writeFile(pdfPath, new Uint8Array(await response.arrayBuffer()));
 
       // El mismo texto que lee producción, no el de pdftotext: en las tablas
       // cambia el orden de las cifras.
@@ -103,14 +87,21 @@ async function main() {
         skip("sin texto (escaneada)");
         continue;
       }
-      if (!/2\.0\s?TD/i.test(text)) {
+      if (gas) {
+        // El peaje que diga la factura: RL.1 a RL.4 (o su TUR).
+        const tariffs = [...text.matchAll(/\b(?:RL|TUR)[\s.\-_]?0?\d\b/gi)].map(([match]) => normalizeGasTariff(match));
+        if (!tariffs.some(Boolean)) {
+          skip(tariffs.length ? "peaje de gas fuera de RL.1–RL.4" : "sin peaje RL (no es gas o no lo dice)");
+          continue;
+        }
+      } else if (!/2\.0\s?TD/i.test(text)) {
         skip("no es 2.0TD");
         continue;
       }
       // La misma regla que producción: contratos, estudios, hojas de precios…
-      const notInvoice = notAnInvoice(text);
+      const notInvoice = notAnInvoice(text, { energy: gas ? "gas" : "electricity" });
       if (notInvoice) {
-        skip(`no es una factura 2.0TD (${notInvoice.kind})`);
+        skip(`no es una factura ${gas ? "de gas" : "2.0TD"} (${notInvoice.kind})`);
         continue;
       }
 
@@ -170,6 +161,48 @@ async function main() {
   console.log(`Seleccionadas ${selected} de ${rows.length} candidatas en ${root}`);
   console.log("Por comercializadora:", bySupplier);
   console.log("Descartadas:", skipped);
+}
+
+
+/** PDF de una carpeta local: su ruta hace de identificador (nunca se imprime). */
+async function localCandidates(dir: string) {
+  const files = (await readdir(dir)).filter((file) => file.toLowerCase().endsWith(".pdf")).sort();
+  return files.map((file) => ({ id: `local:${file}`, download_url: null as string | null, path: join(dir, file) }));
+}
+
+/** Facturas de las comparativas de Beenergy, de la más reciente a la más antigua. */
+async function databaseCandidates(gas: boolean, candidates: number) {
+  const url = process.env.NEXT_TURSO_DB_URL_BEENERGY;
+  const authToken = process.env.NEXT_TURSO_DB_AUTH_TOKEN_BEENERGY;
+  if (!url || !authToken) throw new Error("Faltan las credenciales de Beenergy");
+
+  // Recorre por rowid descendente: la consulta se detiene al llegar al LIMIT.
+  const db = createClient({ url, authToken });
+  const { rows } = await db.execute({
+    // Las facturas de comparativas convertidas en trámite se mueven a
+    // tramite_files, junto a DNI y contratos: de ahí, solo las «factura».
+    sql: `SELECT id, download_url FROM (
+        SELECT f.id AS id, f.download_url, f.upload_date AS uploaded
+        FROM comparativa_files f
+        JOIN comparativas c ON c.id = f.comparativa_id
+        WHERE c.service = ?
+          AND lower(f.extension) = 'pdf'
+          AND f.filename NOT LIKE 'estudio%'
+          AND f.filename NOT LIKE 'Comparativa%'
+          AND f.size < 5000000
+        UNION ALL
+        SELECT 't' || f.id, f.download_url, f.upload_date
+        FROM tramite_files f
+        WHERE lower(f.extension) = 'pdf'
+          AND lower(f.filename) LIKE '%factura%'
+          AND f.size < 5000000
+      )
+      ORDER BY uploaded DESC
+      LIMIT ?`,
+    args: [gas ? "Gas" : "Luz", candidates],
+  });
+
+  return rows.map((row) => ({ id: String(row.id), download_url: String(row.download_url) as string | null, path: null as string | null }));
 }
 
 main().catch((error) => {

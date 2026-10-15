@@ -10,10 +10,12 @@ export const HISTORY_UNITS: Record<HistoryUnit, { label: string; toEurKwh: numbe
 };
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+/** Los Excel en inglés («Jan-26», «Aug-26», Eleia): los que no empiezan igual que en español. */
+const ENGLISH_MONTHS: Record<string, number> = { jan: 0, apr: 3, aug: 7, dec: 11 };
 
 const plain = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-/** «2025-05», «05/2025», «5-2025», «may-25», «Mayo 2025» → «2025-05»; null si no es un mes. */
+/** «2025-05», «05/2025», «5-2025», «may-25», «Mayo 2025», «Aug-26» → «2025-05»; null si no es un mes. */
 export function parseMonth(raw: string): string | null {
   const text = plain(raw.trim());
   const pad = (month: number) => String(month).padStart(2, "0");
@@ -24,7 +26,8 @@ export function parseMonth(raw: string): string | null {
   if (match && Number(match[1]) >= 1 && Number(match[1]) <= 12) return `${year(match[2])}-${pad(Number(match[1]))}`;
   match = text.match(/^([a-z]{3,10})\.?[\s\-/.]*(?:de\s+)?(\d{4}|\d{2})$/);
   if (match) {
-    const index = MONTHS.findIndex((name) => match![1].startsWith(name) || (name === "sep" && match![1].startsWith("set")));
+    const spanish = MONTHS.findIndex((name) => match![1].startsWith(name) || (name === "sep" && match![1].startsWith("set")));
+    const index = spanish >= 0 ? spanish : (ENGLISH_MONTHS[match[1].slice(0, 3)] ?? -1);
     if (index >= 0) return `${year(match[2])}-${pad(index + 1)}`;
   }
   return null;

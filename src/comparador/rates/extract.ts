@@ -9,6 +9,7 @@ import {
 } from "@/comparador/ai/models";
 import type { AiJobContext } from "@/comparador/ai/usage";
 import type { PreparedDocument } from "./document";
+import { normalizeGasTariff } from "@/comparador/gas/regulated";
 import { dateInText, toProposedCommissions, toProposedRates } from "./normalize";
 import {
   RateDocumentClassificationSchema,
@@ -25,8 +26,9 @@ import {
   type RateIssue,
 } from "./validate";
 
-export const RATE_INSTRUCTIONS = `Extraes precios de anexos de comercializadoras españolas de electricidad para un comparador de tarifas.
-Extrae SOLO las tarifas 2.0TD (potencia contratada hasta 15 kW). De lo demás (3.0TD, 6.1TD, gas, servicios) no extraigas filas: resúmelo en skipped.
+export const RATE_INSTRUCTIONS = `Extraes precios de anexos de comercializadoras españolas de electricidad y gas natural para un comparador de tarifas.
+Extrae SOLO las tarifas de luz 2.0TD (potencia contratada hasta 15 kW) y las de gas natural de los peajes RL.1, RL.2, RL.3 y RL.4 (hasta 300.000 kWh al año). De lo demás (3.0TD, 6.1TD, RL.5 en adelante, servicios) no extraigas filas: resúmelo en skipped.
+Gas: accessTariff es el peaje («RL.1», «RL.2»…; «TUR.1» es RL.1, y así). Los peajes de planta satélite (RLPS) y los anteriores a 2021 (3.1, 3.2…) no son RL: déjalos en skipped. El término fijo va en powerP1 con su unidad (eur_day, eur_month o eur_year, por cliente, no por kW), powerP2 null y powerMode fixed. El término variable va en energyP1 con singlePrice true. Si el término fijo o el variable dependen del consumo anual y no del peaje, pon la banda en minKwh y maxKwh. Si el documento dice que a los precios hay que añadirles los peajes y cargos: gasTollsIncluded false, y el término fijo sin peajes en powerP1 con powerMode regulated_plus (o powerMode regulated si el término fijo son los peajes y cargos a coste, sin margen). Si da el precio con peajes y sin ellos, extrae el que lleva peajes (sin telemedida).
 Copia las cifras exactamente como aparecen, con todos sus decimales, y su unidad. No conviertas ni redondees ningún precio.
 Una fila por cada combinación distinta de producto, nivel, territorio, canal (captación o renovación), banda de potencia o de consumo, mes de inicio y duración. Si el documento da varios niveles o columnas del mismo producto (N1/N2/N3, Agencia/Estándar/Cliente, Alto/Medio/Bajo, T0…T4, I…IV, Nivel 1…3), cada uno es una fila con su level.
 productName es el nombre comercial sin el nivel, la tarifa de acceso ni la banda: «Plan Estable», no «2.0TD_2 Plan Estable».
@@ -95,8 +97,8 @@ export function outOfScopeReason(
   const tariffs = classification.accessTariffs.map((tariff) =>
     tariff.replace(/\s+/g, "").toUpperCase(),
   );
-  if (tariffs.length > 0 && !tariffs.some((tariff) => /^2[.,]?0TD$/.test(tariff))) {
-    return `Solo trae ${tariffs.join(", ")}; la v1 compara 2.0TD.`;
+  if (tariffs.length > 0 && !tariffs.some((tariff) => /^2[.,]?0TD$/.test(tariff) || normalizeGasTariff(tariff))) {
+    return `Solo trae ${tariffs.join(", ")}; el comparador compara 2.0TD y gas de RL.1 a RL.4.`;
   }
   // Si los precios son fijos o indexados lo decide la extracción: el modelo
   // barato confunde, por ejemplo, la revisión por IPC con un indexado.
@@ -236,7 +238,7 @@ export async function extractRateDocument({
             role: "user",
             content: [
               ...document.parts,
-              { type: "text", text: "Extrae los precios 2.0TD y las comisiones de este documento." },
+              { type: "text", text: "Extrae los precios 2.0TD y de gas y las comisiones de este documento." },
             ],
           },
         ],
@@ -293,7 +295,7 @@ export async function extractRateDocument({
     // La extracción no encuentra nada que guardar: indexadas, por franjas…
     return {
       status: "out_of_scope",
-      reason: `No trae precios fijos ni indexados de 2.0TD${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`,
+      reason: `No trae precios fijos ni indexados de 2.0TD ni de gas${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`,
       classification,
       costUsd,
     };

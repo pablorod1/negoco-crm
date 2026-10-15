@@ -1,4 +1,5 @@
 import { DAYS_PER_YEAR } from "@/comparador/engine/cost";
+import { energyOfTariff, normalizeGasTariff } from "@/comparador/gas/regulated";
 import { cleanName, looksIndexed, productKeyOf, productNameOf } from "./names";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
 import type { CommissionRuleInput, ProposedRate, RateDiscount } from "./types";
@@ -6,11 +7,16 @@ import type { CommissionRuleInput, ProposedRate, RateDiscount } from "./types";
 type PowerUnit = NonNullable<ExtractedRate["powerUnit"]>;
 type EnergyUnit = NonNullable<ExtractedRate["energyUnit"]>;
 
-/** Potencia a €/kW·día, la unidad del motor. */
+/** Potencia a €/kW·día (gas: término fijo a €/día), la unidad del motor. */
 export function powerToPerDay(value: number, unit: PowerUnit): number {
-  if (unit === "eur_kw_month") return (value * 12) / DAYS_PER_YEAR;
-  if (unit === "eur_kw_year") return value / DAYS_PER_YEAR;
+  if (unit === "eur_kw_month" || unit === "eur_month") return (value * 12) / DAYS_PER_YEAR;
+  if (unit === "eur_kw_year" || unit === "eur_year") return value / DAYS_PER_YEAR;
   return value;
+}
+
+/** «2.0 TD» → «2.0TD»; los peajes de gas, «RL.n». */
+function accessTariffOf(raw: string): string {
+  return normalizeGasTariff(raw) ?? raw.replace(/\s+/g, "").toUpperCase();
 }
 
 /** Energía a €/kWh, la unidad del motor. */
@@ -25,7 +31,7 @@ function round9(value: number): number {
   return Math.round(value * 1e9) / 1e9;
 }
 
-function normalizeEnergy(rate: ExtractedRate): ProposedRate["energy"] {
+function normalizeEnergy(rate: ExtractedRate, gas = false): ProposedRate["energy"] {
   const unit = rate.energyUnit ?? "eur_kwh";
   const convert = (value: number | null) =>
     value === null ? null : round9(energyToPerKwh(value, unit));
@@ -34,7 +40,7 @@ function normalizeEnergy(rate: ExtractedRate): ProposedRate["energy"] {
 
   // Un precio único vale para todas las horas: los anexos lo escriben solo en
   // P1 y dejan P2 y P3 vacíos o a cero (Repsol), y un cero sería luz gratis.
-  if (rate.singlePrice) return { P1: p1, P2: p1, P3: p1 };
+  if (rate.singlePrice || gas) return { P1: p1, P2: p1, P3: p1 };
 
   const p2 = convert(rate.energyP2);
   const p3 = convert(rate.energyP3);
@@ -42,7 +48,27 @@ function normalizeEnergy(rate: ExtractedRate): ProposedRate["energy"] {
   return { P1: p1, P2: p2, P3: p3 };
 }
 
-function normalizePower(rate: ExtractedRate) {
+function normalizePower(rate: ExtractedRate, gas = false) {
+  // Gas: un solo término fijo por cliente, en power.P1 (€/día); o los peajes
+  // y cargos a coste (regulated), más un margen al año (regulated_plus).
+  if (gas && (rate.powerMode === "regulated" || rate.powerMode === "regulated_plus")) {
+    const margin = rate.powerMode === "regulated_plus" ? (rate.powerMargin ?? rate.powerP1) : null;
+    return {
+      powerMode: rate.powerMode,
+      powerMarginPerKwYear: margin === null ? null : round9(powerToPerDay(margin, rate.powerUnit ?? "eur_year") * DAYS_PER_YEAR),
+      power: null,
+      powerStated: true,
+    } as const;
+  }
+  if (gas) {
+    const stated = rate.powerP1 !== null;
+    return {
+      powerMode: "fixed",
+      powerMarginPerKwYear: null,
+      power: stated ? { P1: round9(powerToPerDay(rate.powerP1!, rate.powerUnit ?? "eur_day")), P2: 0 } : null,
+      powerStated: stated,
+    } as const;
+  }
   if (rate.powerMode === "regulated" || rate.powerMode === "regulated_plus") {
     return {
       powerMode: rate.powerMode,
@@ -149,6 +175,27 @@ export function ancillaryIncluded(
   return rate.ancillaryIncluded ?? true;
 }
 
+const GAS_TOLLS = String.raw`(?:peajes|atr)`;
+/** «A estos precios hay que añadirle los cargos y peajes», «sin peajes», «peajes no incluidos». */
+const GAS_TOLLS_EXCLUDED = new RegExp(
+  `(?:anadir|anadirle|anadirles|sumar|sumarle|sumarles)[^.\n]{0,40}${GAS_TOLLS}|\bsin\s+(?:los\s+)?${GAS_TOLLS}\b|${GAS_TOLLS}[^.\n]{0,20}\bno\s+(?:estan\s+)?incluid|\bno\s+incluye[^.\n]{0,15}${GAS_TOLLS}`,
+);
+/** «Se incluye ATR», «peajes incluidos», «con peajes». */
+const GAS_TOLLS_INCLUDED = new RegExp(`\b(?:incluyen?|incluido|incluidos|con)\s+(?:los\s+)?${GAS_TOLLS}\b|${GAS_TOLLS}\s+incluid`);
+
+/**
+ * Si el precio de gas lleva los peajes. Lo que lea la IA solo vale si el
+ * documento lo dice: tomó por «sin peajes» el anexo de Endesa, que no dice
+ * nada, y el de ODF, que dice «Se incluye ATR». Sin texto (un Excel o una
+ * imagen), lo que diga la lectura.
+ */
+export function gasTollsIncluded(rate: Pick<ExtractedRate, "gasTollsIncluded">, text: string | null): boolean {
+  if (!text) return rate.gasTollsIncluded !== false;
+  const plain = plainText(text);
+  if (GAS_TOLLS_INCLUDED.test(plain)) return true;
+  return !(GAS_TOLLS_EXCLUDED.test(plain) && rate.gasTollsIncluded === false);
+}
+
 /** Convierte las filas extraídas a filas propuestas, en las unidades del motor. */
 export function toProposedRates(
   extraction: Pick<RateDocumentExtraction, "rates">,
@@ -157,15 +204,29 @@ export function toProposedRates(
   const lines = indexLines(sourceText);
 
   return extraction.rates.map((rate) => {
-    const power = normalizePower(rate);
+    const accessTariff = accessTariffOf(rate.accessTariff);
+    const gas = energyOfTariff(accessTariff) === "gas";
+    const tollsIncluded = gas && gasTollsIncluded(rate, sourceText);
+    // Gas con los peajes incluidos: el término fijo del documento es el
+    // suyo, no un margen sobre los peajes.
+    const power = normalizePower(
+      gas && tollsIncluded && rate.powerMode === "regulated_plus" && rate.powerP1 !== null ? { ...rate, powerMode: "fixed" } : rate,
+      gas,
+    );
     const productName = productNameOf(rate.productName);
     // La IA a veces deja como fijo un producto que por su nombre es indexado.
-    const pricing = rate.pricing === "fixed" && looksIndexed(productName) ? "indexed" : rate.pricing;
+    const indexedPricing = rate.pricing === "fixed" && looksIndexed(productName) ? "indexed" : rate.pricing;
+    // Gas con telemedida (ADX «Corporate Estable (telemedido)»): otros peajes,
+    // para grandes consumos; el comparador compara puntos sin telemedida.
+    const telemetered =
+      energyOfTariff(accessTariffOf(rate.accessTariff)) === "gas" &&
+      /(?<!no\s)telemedid/i.test(`${rate.productName} ${rate.segment ?? ""} ${rate.level ?? ""}`);
+    const pricing = telemetered ? "other" : indexedPricing;
 
     return {
       productName,
       productKey: productKeyOf(productName),
-      accessTariff: rate.accessTariff.replace(/\s+/g, "").toUpperCase(),
+      accessTariff,
       pricing,
       level: rate.level ? cleanName(rate.level) : null,
       territory: rate.territory ?? "peninsula",
@@ -181,8 +242,10 @@ export function toProposedRates(
       ...power,
       // La energía de una indexada es la del mercado de cada mes (el histórico):
       // lo que traiga el anexo (un término B, un margen) queda en sourceValues.
-      energy: pricing === "indexed" ? null : normalizeEnergy(rate),
-      includesAncillaryServices: ancillaryIncluded(rate, sourceText),
+      energy: pricing === "indexed" ? null : normalizeEnergy(rate, gas),
+      // Los servicios de ajuste son de la luz. En gas el campo dice si el
+      // variable lleva los peajes (si no, se suman los del BOE).
+      includesAncillaryServices: gas ? tollsIncluded : ancillaryIncluded(rate, sourceText),
       feeEnergyMinPerMwh: rate.feeMinMwh,
       feeEnergyMaxPerMwh: rate.feeMaxMwh,
       feePowerAllowed: rate.feeOnPower,
@@ -203,11 +266,13 @@ export function toProposedRates(
 }
 
 /**
- * Reglas de comisión que pueden aplicarse a 2.0TD de precio fijo o indexado;
- * el producto se casa después con la tarifa. Una comisión sin tarifa de
- * acceso solo vale si el documento trae filas 2.0TD: en el preciario de APOLO,
- * el «65 % del fee» era de 3.0TD, 6.1TD e indexados. Las de la sección de
- * indexados solo se aplican a las indexadas, y al revés.
+ * Reglas de comisión que pueden aplicarse a 2.0TD o a gas (RL.1 a RL.4), de
+ * precio fijo o indexado; el producto se casa después con la tarifa. Una
+ * comisión sin tarifa de acceso solo vale si el documento trae filas de lo
+ * que se compara: en el preciario de APOLO, el «65 % del fee» era de 3.0TD,
+ * 6.1TD e indexados. Las de la sección de indexados solo se aplican a las
+ * indexadas, y al revés. Cada regla es de luz o de gas: la de una no se
+ * aplica a la otra.
  */
 export function toProposedCommissions(
   extraction: Pick<RateDocumentExtraction, "commissions" | "rates">,
@@ -215,20 +280,25 @@ export function toProposedCommissions(
   productName: string | null;
   productKey: string | null;
 })[] {
-  const has20 = extraction.rates.some(
-    (rate) => (rate.pricing === "fixed" || rate.pricing === "indexed") && /^2[.,]?0\s?TD$/i.test(rate.accessTariff.trim()),
+  const compared = (tariff: string) => /^2[.,]?0\s?TD$/i.test(tariff.trim()) || normalizeGasTariff(tariff) !== null;
+  const priced = extraction.rates.filter(
+    (rate) => (rate.pricing === "fixed" || rate.pricing === "indexed") && compared(rate.accessTariff),
   );
+  const energies = new Set(priced.map((rate) => energyOfTariff(rate.accessTariff)));
+  /** Luz o gas: lo que dice la tarifa; si no, lo que dice la IA; si no, lo único que trae el documento. */
+  const energyOf = (rule: (typeof extraction.commissions)[number]): "electricity" | "gas" => {
+    if (rule.accessTariff && compared(rule.accessTariff)) return energyOfTariff(rule.accessTariff);
+    if (rule.energy) return rule.energy;
+    return energies.size === 1 ? [...energies][0] : "electricity";
+  };
   return extraction.commissions
-    .filter((rule) =>
-      rule.accessTariff
-        ? /^2[.,]?0\s?TD$/i.test(rule.accessTariff.trim())
-        : has20,
-    )
+    .filter((rule) => (rule.accessTariff ? compared(rule.accessTariff) : priced.length > 0))
     .map((rule) => ({
+    energy: energyOf(rule),
     productName: rule.productName ? productNameOf(rule.productName) : null,
     productKey: rule.productName ? productKeyOf(productNameOf(rule.productName)) : null,
     product: rule.productName ? productNameOf(rule.productName) : null,
-    accessTariff: rule.accessTariff?.replace(/\s+/g, "").toUpperCase() ?? null,
+    accessTariff: rule.accessTariff ? accessTariffOf(rule.accessTariff) : null,
     pricing: rule.pricing ?? null,
     level: rule.level ? cleanName(rule.level) : null,
     channel: rule.channel === "both" ? null : rule.channel,

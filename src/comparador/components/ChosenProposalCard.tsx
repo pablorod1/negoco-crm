@@ -13,9 +13,12 @@ import { euros, percentOf } from "./study/api";
 export function ChosenProposalCard({
   comparativaId,
   chosen,
+  tariff = "2.0TD",
 }: {
   comparativaId: string;
   chosen: NonNullable<NegocoStudyForTramite["chosen"]>;
+  /** «2.0TD» o el peaje de gas («RL.2»). */
+  tariff?: string;
 }) {
   const today = chosen.currentTotal;
   const saves = chosen.savings !== null && chosen.savings > 0;
@@ -49,7 +52,7 @@ export function ChosenProposalCard({
           <p className="truncate text-sm text-gray-600" title={chosen.productName}>
             {chosen.productName}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Propuesta {chosen.number} · luz 2.0TD</p>
+          <p className="mt-1 text-xs text-muted-foreground">Propuesta {chosen.number} · {tariff === "2.0TD" ? "luz 2.0TD" : `gas ${tariff}`}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Pagaría</p>

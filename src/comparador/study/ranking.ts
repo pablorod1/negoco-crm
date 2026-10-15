@@ -4,6 +4,9 @@ import { roundEuros } from "@/comparador/engine/money";
 import type { RegulatedParams } from "@/comparador/engine/regulated";
 import type { CostBreakdown, TariffPrices } from "@/comparador/engine/types";
 import type { CurrentTariff } from "@/comparador/extraction/current-tariff";
+import { computeGasCost, gasOfferPrices } from "@/comparador/gas/cost";
+import type { GasCurrentTariff } from "@/comparador/gas/invoice";
+import { gasTollsOn, type GasRegulatedParams } from "@/comparador/gas/regulated";
 import { readDiscounts, shareOfYear, type DiscountPart } from "@/comparador/rates/discounts";
 import { isEligible, toTariffPrices } from "@/comparador/rates/engine-prices";
 import { historyForRate, type IndexHistoryRow } from "@/comparador/rates/index-history";
@@ -270,6 +273,7 @@ export function rankStudy({
   regulated,
   options,
   indexHistory = [],
+  gasRegulated,
 }: {
   supply: StudySupply;
   current: CurrentTariff | null;
@@ -279,19 +283,46 @@ export function rankStudy({
   options: StudyOptions;
   /** Histórico del indexado de las comercializadoras, para las tarifas indexadas. */
   indexHistory?: readonly IndexHistoryRow[];
+  /** Gas: impuesto de hidrocarburos e IVA. Hace falta si el suministro es de gas. */
+  gasRegulated?: GasRegulatedParams;
 }): StudyRanking {
+  const gas = supply.energy === "gas" ? supply.gas! : null;
+  if (gas && !gasRegulated) throw new Error("rankStudy: gas supply without gas regulated params");
+  /** Coste de un año: con el desglose de una factura de gas o de una de luz. */
+  const yearCost = (prices: TariffPrices, meterRentalPerDay: number, extras: AnnualExtras = {}): CostBreakdown =>
+    gas
+      ? computeGasCost({
+          days: DAYS_PER_YEAR,
+          kwh: totalKwh(supply),
+          prices,
+          regulated: gasRegulated!,
+          energyDiscountRates: extras.energyDiscountRates,
+          fixedTermDiscountRates: extras.powerDiscountRates,
+          fixedDiscounts: extras.fixedDiscounts,
+          meterRental: { perDay: meterRentalPerDay },
+        })
+      : annualCost(supply, prices, regulated, meterRentalPerDay, extras);
+
   const meterRentalPerDay = current?.meterRentalPerDay ?? 0;
+  const gasCurrent = current as Partial<GasCurrentTariff> | null;
   const currentCost = !current
     ? null
     : current.flatAnnualFee !== undefined
-      ? computeFlatCost(current.flatAnnualFee, regulated, current.prices.vatExemptPerYear ?? 0)
-      : annualCost(supply, current.prices, regulated, meterRentalPerDay, { energyDiscountRates: current.energyDiscountRates });
-  const ancillaryAmount = options.ancillary ? annualAncillaryAmount(supply, options.ancillary) : null;
+      ? computeFlatCost(current.flatAnnualFee, gasRegulated ?? regulated, current.prices.vatExemptPerYear ?? 0)
+      : yearCost(current.prices, meterRentalPerDay, {
+          energyDiscountRates: current.energyDiscountRates,
+          powerDiscountRates: gasCurrent?.fixedTermDiscountRates,
+          fixedDiscounts: gasCurrent?.fixedDiscountsPerYear,
+        });
+  // Los servicios de ajuste son de la luz.
+  const ancillaryAmount = options.ancillary && !gas ? annualAncillaryAmount(supply, options.ancillary) : null;
   const excluded = new Set(options.excludedDiscounts ?? []);
 
   const eligibility = {
     maxContractedKw: Math.max(supply.contractedKw.P1, supply.contractedKw.P2),
-    annualKwh: totalKwh(supply),
+    // Con el consumo estimado, el real del SIPS (si lo hay) decide la
+    // comisión y las tarifas por tramo de consumo.
+    annualKwh: supply.referenceAnnualKwh ?? totalKwh(supply),
     territory: supply.territory,
     supplyStart: options.date,
     channel: options.channel,
@@ -308,7 +339,9 @@ export function rankStudy({
   const priced: StudyOffer[] = [];
   for (const offer of offers) {
     const { price } = offer;
-    if (!isEligible(price, eligibility)) {
+    // Gas: solo las tarifas fijas de su peaje. Beenergy solo vende gas fijo
+    // (el indexado, más adelante).
+    if (!isEligible(price, eligibility) || (gas && (price.accessTariff !== gas.accessTariff || price.pricing === "indexed"))) {
       ineligible++;
       continue;
     }
@@ -338,24 +371,32 @@ export function rankStudy({
       energy = fromHistory.energy;
       indexed = { from: fromHistory.from, to: fromHistory.to };
     }
-    const needsAncillary = !price.includesAncillaryServices && ancillaryAmount === null;
+    // Una indexada de luz cobra los SSAA aparte, sobre el histórico (Beenergy,
+    // 15-10-2026), diga lo que diga su anexo.
+    const ancillaryIncluded = gas !== null || (price.includesAncillaryServices && price.pricing !== "indexed");
+    const needsAncillary = !ancillaryIncluded && ancillaryAmount === null;
     if (needsAncillary) withoutAncillary++;
-    const base = toTariffPrices({ ...price, energy }, regulated);
+    // Gas: con los peajes y cargos que la tarifa no lleva.
+    const base = gas
+      ? gasOfferPrices({ ...price, energy }, gasTollsOn(options.date, gas.accessTariff))
+      : toTariffPrices({ ...price, energy }, regulated);
     if (!base) continue;
     const { fee, range } = feeFor(price, options.feeEnergyPerMwh);
-    const powerFee = price.feePowerAllowed ? Math.max(0, options.feePowerPerKwYear ?? 0) : 0;
+    // Gas: el término fijo es por cliente, no por kW; no lleva fee.
+    const powerFee = price.feePowerAllowed && !gas ? Math.max(0, options.feePowerPerKwYear ?? 0) : 0;
     const prices = applyFee(base, { energyPerMwh: fee, powerPerKwYear: powerFee });
     const discounts = readDiscounts(price.discounts);
     const { extras, views } = discountInputs(price.id, discounts.parts, excluded);
-    const cost = annualCost(supply, prices, regulated, meterRentalPerDay, {
+    const cost = yearCost(prices, meterRentalPerDay, {
       ...extras,
-      ancillaryAmount: price.includesAncillaryServices ? 0 : (ancillaryAmount ?? 0),
+      ancillaryAmount: ancillaryIncluded ? 0 : (ancillaryAmount ?? 0),
     });
     const discountParts = views(cost);
     const commission = computeCommission(rulesBySupplier.get(offer.comercializadoraId) ?? [], {
       rateId: price.rateId,
       productName: price.rateName,
-      accessTariff: "2.0TD",
+      accessTariff: gas ? price.accessTariff : "2.0TD",
+      energy: gas ? "gas" : "electricity",
       pricing: price.pricing === "indexed" ? "indexed" : "fixed",
       level: price.level,
       channel: options.channel,
@@ -393,7 +434,7 @@ export function rankStudy({
       ],
       discountParts,
       informativeDiscounts: discounts.informative,
-      ancillarySimulated: !price.includesAncillaryServices && ancillaryAmount !== null,
+      ancillarySimulated: !ancillaryIncluded && ancillaryAmount !== null,
       needsAncillary,
       versionValidFrom: offer.versionValidFrom,
     });

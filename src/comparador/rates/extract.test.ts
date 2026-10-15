@@ -43,6 +43,7 @@ const unicornio: ExtractedRate = {
   energyP3: 0.15329,
   singlePrice: false,
   ancillaryIncluded: true,
+  gasTollsIncluded: null,
   feeMinMwh: null,
   feeMaxMwh: null,
   feeOnPower: false,

@@ -39,6 +39,6 @@ describe("CUPS that the invoice does not show", () => {
     const fetchSips = vi.fn<SipsFetcher>(async () => null);
     // Sin respuesta del SIPS el análisis se para ahí: basta para ver qué CUPS se pidió.
     await expect(run(fetchSips, "ES0021000000000001RK")).rejects.toMatchObject({ status: 503 });
-    expect(fetchSips).toHaveBeenCalledWith("ES0021000000000001RK", "CONSUMOS");
+    expect(fetchSips).toHaveBeenCalledWith("ES0021000000000001RK", "CONSUMOS", "ELECTRICIDAD");
   });
 });

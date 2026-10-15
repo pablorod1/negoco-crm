@@ -130,7 +130,13 @@ export function SavingsHero({ study, best, onReview }: { study: StudyView; best:
               max={max}
               strong
             />
-            <p className="text-xs text-white/60">Coste de un año con impuestos, con su consumo real y su potencia.</p>
+            <p className="text-xs text-white/60">
+              {study.supply?.estimate
+                ? "Coste de un año con impuestos, con el consumo estimado con su factura."
+                : study.supply?.energy === "gas"
+                  ? "Coste de un año con impuestos, con su consumo real de gas."
+                  : "Coste de un año con impuestos, con su consumo real y su potencia."}
+            </p>
           </div>
         )}
       </div>

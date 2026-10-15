@@ -76,22 +76,38 @@ export function historyEnergyPrices(
     return byMonth;
   });
   const months = [...new Set(shares.flatMap((byMonth) => [...byMonth.keys()]))].sort();
-  const missing = months.filter((month) => !history.has(month));
+  // El histórico llega con un mes de retraso: el mes que aún no está se
+  // cobra como el mismo mes del año anterior (lo que hace Beenergy: en
+  // octubre, el indexado de octubre del año pasado). Un mes anterior al
+  // principio del histórico, como el mismo mes del año siguiente.
+  const used = new Map<string, string>();
+  for (const month of months) {
+    const candidate = [month, shiftYear(month, -1), shiftYear(month, 1)].find((option) => history.has(option));
+    if (candidate) used.set(month, candidate);
+  }
+  const missing = months.filter((month) => !used.has(month));
   if (missing.length > 0) return { missing };
+  const priceOf = (month: string) => history.get(used.get(month)!)!;
 
   const energy = { P1: 0, P2: 0, P3: 0 };
   for (const period of PERIODS) {
     const kwh = readings.reduce((sum, reading) => sum + reading.kwh[period], 0);
     if (kwh <= 0) {
-      energy[period] = months.reduce((sum, month) => sum + history.get(month)![period], 0) / months.length;
+      energy[period] = months.reduce((sum, month) => sum + priceOf(month)[period], 0) / months.length;
       continue;
     }
     const cost = readings.reduce(
       (sum, reading, index) =>
-        sum + reading.kwh[period] * [...shares[index]].reduce((part, [month, share]) => part + share * history.get(month)![period], 0),
+        sum + reading.kwh[period] * [...shares[index]].reduce((part, [month, share]) => part + share * priceOf(month)[period], 0),
       0,
     );
     energy[period] = cost / kwh;
   }
-  return { energy, from: months[0], to: months.at(-1)! };
+  const sources = [...used.values()].sort();
+  return { energy, from: sources[0], to: sources.at(-1)! };
+}
+
+/** «2026-10» y -1 → «2025-10». */
+function shiftYear(month: string, years: number): string {
+  return `${Number(month.slice(0, 4)) + years}${month.slice(4)}`;
 }

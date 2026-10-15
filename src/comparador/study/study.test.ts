@@ -9,7 +9,7 @@ import { indexedEnergyPrices, marginOverMarket } from "./indexed";
 import { layoutLines } from "./invoice-text";
 import { rankStudy, rateAudience } from "./ranking";
 import { detectSupplierInText } from "./supplier";
-import { annualKwhFromSips, territoryFromProvince, type StudySupply } from "./supply";
+import { annualKwhFromSips, estimatedAnnualKwh, territoryFromProvince, type StudySupply } from "./supply";
 
 describe("invoice text", () => {
   test("pieces at the same height make one line, with a space where there is a gap", () => {
@@ -365,5 +365,26 @@ describe("rateAudience", () => {
     expect(rateAudience(null, "Tarifa Negocios Plus")).toBe("negocio");
     expect(rateAudience(null, "Plan Estable PYME")).toBe("negocio");
     expect(rateAudience(null, "FIJO POWER PLUS_v2603")).toBeNull();
+  });
+});
+
+describe("estimatedAnnualKwh", () => {
+  const base = { billingPeriod: { from: "2026-08-01", to: "2026-08-31", days: 31 }, energyLines: [] };
+  test("el consumo por periodo de la factura llevado a 365 días", () => {
+    expect(estimatedAnnualKwh({ ...base, consumptionKwh: { P1: 62, P2: 62, P3: 124 } })).toEqual({ P1: 730, P2: 730, P3: 1460 });
+  });
+  test("con solo el total (precio único), repartido como una 2.0TD doméstica", () => {
+    const annual = estimatedAnnualKwh({
+      ...base,
+      consumptionKwh: { P1: null, P2: null, P3: null },
+      energyLines: [
+        { period: "ALL", kwh: 310, pricePerKwh: 0.1, amount: 31 },
+        { period: "ALL", kwh: 310, pricePerKwh: 0.03, amount: 9.3 },
+      ],
+    })!;
+    expect(annual.P1 + annual.P2 + annual.P3).toBe(3650);
+  });
+  test("sin días ni consumo, no hay estimación", () => {
+    expect(estimatedAnnualKwh({ billingPeriod: null, consumptionKwh: { P1: 10, P2: 0, P3: 0 }, energyLines: [] })).toBeNull();
   });
 });

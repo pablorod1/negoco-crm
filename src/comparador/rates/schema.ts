@@ -12,7 +12,7 @@ const ExtractedRateSchema = z.object({
   productName: z
     .string()
     .describe("Nombre comercial del producto, sin el nivel ni la tarifa de acceso"),
-  accessTariff: z.string().describe("2.0TD"),
+  accessTariff: z.string().describe("2.0TD, o el peaje de gas: RL.1, RL.2, RL.3, RL.4"),
   pricing: z.enum(["fixed", "indexed", "flat", "other"]),
   level: z
     .string()
@@ -32,7 +32,10 @@ const ExtractedRateSchema = z.object({
   startTo: z.string().nullable(),
   months: z.number().int().nullable().describe("Duración o permanencia en meses"),
   powerMode: z.enum(["fixed", "regulated", "regulated_plus", "not_stated"]),
-  powerUnit: z.enum(["eur_kw_day", "eur_kw_month", "eur_kw_year"]).nullable(),
+  powerUnit: z
+    .enum(["eur_kw_day", "eur_kw_month", "eur_kw_year", "eur_day", "eur_month", "eur_year"])
+    .nullable()
+    .describe("Luz: €/kW·día, mes o año. Gas: el término fijo en €/día, €/mes o €/año"),
   powerP1: price,
   powerP2: price,
   powerMargin: price.describe("Margen sobre la potencia regulada, €/kW·año"),
@@ -47,6 +50,10 @@ const ExtractedRateSchema = z.object({
     .boolean()
     .nullable()
     .describe("false si los servicios de ajuste se cobran aparte («sin SS.AA.»)"),
+  gasTollsIncluded: z
+    .boolean()
+    .nullable()
+    .describe("Gas: false si el término variable no incluye los peajes («a estos precios hay que añadirles peajes y cargos»)"),
   feeMinMwh: price.describe("Fee mínimo que suma el comercial, €/MWh"),
   feeMaxMwh: price,
   feeOnPower: z.boolean().describe("El fee también se puede poner en la potencia"),
@@ -94,6 +101,10 @@ export const RateDocumentSchema = z.object({
         .string()
         .nullable()
         .describe("Tarifa de acceso de la sección donde aparece la comisión"),
+      energy: z
+        .enum(["electricity", "gas"])
+        .nullable()
+        .describe("Si la comisión es de luz o de gas; null solo si vale para los dos"),
       pricing: z
         .enum(["fixed", "indexed"])
         .nullable()

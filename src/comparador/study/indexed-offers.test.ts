@@ -5,7 +5,7 @@ import { historyForRate, type IndexHistoryRow } from "@/comparador/rates/index-h
 import type { ActiveOfferPrice } from "@/comparador/rates/repository";
 import type { CommissionRule, StoredRatePrice } from "@/comparador/rates/types";
 import { historyEnergyPrices } from "./indexed";
-import { rankStudy } from "./ranking";
+import { rankStudy, type StudyOptions } from "./ranking";
 import type { StudySupply } from "./supply";
 
 const supply: StudySupply = {
@@ -103,14 +103,14 @@ const feeShare = (pricing: CommissionRule["pricing"], amount: number): Commissio
   validTo: null,
 });
 
-const rank = (rows: IndexHistoryRow[], rules: CommissionRule[] = [], studySupply = supply) =>
+const rank = (rows: IndexHistoryRow[], rules: CommissionRule[] = [], studySupply = supply, extra: Partial<StudyOptions> = {}) =>
   rankStudy({
     supply: studySupply,
     current: null,
     offers: [offer("fija", { feeEnergyMinPerMwh: 10, feeEnergyMaxPerMwh: 20 }), indexed],
     rules,
     regulated: getRegulatedParams("2026-10-15"),
-    options: { date: "2026-10-15", channel: null, feeEnergyPerMwh: null, order: "savings" },
+    options: { date: "2026-10-15", channel: null, feeEnergyPerMwh: null, order: "savings", ...extra },
     indexHistory: rows,
   });
 
@@ -146,6 +146,19 @@ describe("indexed offers", () => {
     expect(omie.prices.energy.P1).toBeCloseTo(0.185, 10);
     expect(ranking.offers.find(({ key }) => key === "fija")!.pricing).toBe("fixed");
     expect(ranking.withoutHistory).toEqual([]);
+    // Los SSAA van aparte en una indexada: sin aplicarlos, se avisa.
+    expect(omie.needsAncillary).toBe(true);
+    const withAncillary = rank(history(), [], supply, { ancillary: { averagePerMwh: 15.7, monthlyPerMwh: null } }).offers.find(({ key }) => key === "omie")!;
+    expect(withAncillary.ancillarySimulated).toBe(true);
+    expect(withAncillary.cost.ancillary).toBeGreaterThan(0);
+  });
+
+  test("the history comes a month late: a missing recent month takes the same month a year earlier", () => {
+    // Histórico de octubre de 2025 a septiembre de 2026; el consumo llega a octubre de 2026.
+    const lagged = ["2025-10", ...MONTHS.slice(0, -1)];
+    const prices = historyEnergyPrices(historyForRate(history(null, lagged), "COM-1", "rate-omie"), supply.readings!);
+    if (!prices || "missing" in prices) throw new Error("expected prices");
+    expect(prices).toMatchObject({ from: "2025-10", to: "2026-09" });
   });
 
   test("its own history wins over the supplier's for the same month", () => {

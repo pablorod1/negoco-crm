@@ -195,3 +195,29 @@ describe("repairOcrCups", () => {
     expect(repairOcrCups("CUPS: ESOO21OOOOOOOOOOO1RC")).toBe("CUPS: ESOO21OOOOOOOOOOO1RC");
   });
 });
+
+describe("lecturas estimadas y gas", () => {
+  test("«(Estimada)» en una línea de consumo no es un saludo; «Estimada María» al empezar, sí", () => {
+    const { text } = redactInvoiceText(
+      "Estimada María, le enviamos su factura\nEnergía Facturada (Estimada) 151,23 kWh x 0,10411556 €/kWh 15,74 €\nLloguer de comptador 62 dies 1,16\nConsum en m3 13 m3",
+    );
+    expect(text).not.toMatch(/María/);
+    expect(text).toMatch(/Energía Facturada \(Estimada\) 151,23 kWh/);
+    expect(text).toMatch(/Lloguer de comptador/);
+    expect(text).toMatch(/13 m3/);
+  });
+
+  test("teléfonos tras puntos de relleno se tapan; los decimales largos, no", () => {
+    const { text, leaks } = redactInvoiceText("Teléfono Móvil ………….612345678 Teléfono fijo ……...912345678\nIEE 5,11269632 % 3,01 €");
+    expect(text).not.toMatch(/612345678|912345678/);
+    expect(text).toMatch(/5,11269632 %/);
+    expect(leaks).toEqual([]);
+  });
+
+  test("una línea que empieza por «Palabra,» con precio unitario no es un saludo", () => {
+    const { text } = redactInvoiceText("CONCHA, tienes 5 € de saldo\nGas natural, uso general 23/07/2026 - 31/08/2026 1.398 kWh 0,002016 €/kWh 2,82 €");
+    expect(text).not.toMatch(/CONCHA/);
+    expect(text).toMatch(/0,002016 €\/kWh 2,82 €/);
+    expect(redactInvoiceText("Tasas, Cuotas e Impuestos Tasa CNMC 02/07/2026 102,14 € 0,140 % 0,14 €").text).toMatch(/Tasa CNMC/);
+  });
+});

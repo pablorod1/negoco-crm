@@ -21,11 +21,12 @@ const PATTERNS = {
   taxId:
     /\b(?:[XYZ]-?\d{7}-?[A-Z]|\d{8}-?[A-Z]|[ABCDEFGHJNPQRSUVW]-?\d{7}-?[0-9A-J])\b/gi,
   email: /\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b/g,
-  // Ni teléfonos ni números largos tras una coma o un punto: son decimales
-  // (por ejemplo el tipo del IEE, 5,11269632 %).
+  // Ni teléfonos ni números largos tras una cifra y una coma o un punto: son
+  // decimales (por ejemplo el tipo del IEE, 5,11269632 %). Tras puntos de
+  // relleno («Teléfono fijo ……….986572496») sí son teléfonos.
   phone:
-    /(?<![,.\d])(?:\+34\s?)?\b[6789]\d{2}(?:\s?\d{3}\s?\d{3}|\s\d{2}\s\d{2}\s\d{2})\b/g,
-  longNumber: /(?<![,.\d])\b\d{8,}\b/g,
+    /(?<!\d[,.])(?<!\d)(?:\+34\s?)?\b[6789]\d{2}(?:\s?\d{3}\s?\d{3}|\s\d{2}\s\d{2}\s\d{2})\b/g,
+  longNumber: /(?<!\d[,.])(?<!\d)\b\d{8,}\b/g,
 } as const;
 
 export type IdentifierKind = keyof typeof PATTERNS;
@@ -43,7 +44,7 @@ const PLACEHOLDERS: Record<IdentifierKind, string> = {
 
 /** Conceptos que hacen útil una línea aunque no tenga cifras. */
 const INVOICE_KEYWORDS =
-  /\b(potencia|energ[ií]a|consumo|peajes?|cargos?|bono social|financiaci[oó]n|impuestos?|iva|iee|alquiler|equipos?|contador|total|importe|periodo|per[ií]odo|descuentos?|bonificaci[oó]n|servicios?|base imponible|subtotal|fecha|d[ií]as|punta|llano|valle|tarifa|factura|otros|conceptos|regulados?|excesos?|reactiva|mecanismo|ajuste|compensaci[oó]n|excedentes|autoconsumo|cuota|suplemento|recargo|tasa|margen|gesti[oó]n|mantenimiento|seguro|asistencia|pack|kwh?|€|eur|power|consumption|tolls?|charges?|tax(?:es)?|invoice|meter|rental|discounts?|contracted|peak|off-peak|price|amount)\b/i;
+  /\b(potencia|energ[ií]a|consumo|peajes?|cargos?|bono social|financiaci[oó]n|impuestos?|iva|iee|alquiler|equipos?|contador|total|importe|periodo|per[ií]odo|descuentos?|bonificaci[oó]n|servicios?|base imponible|subtotal|fecha|d[ií]as|punta|llano|valle|tarifa|factura|otros|conceptos|regulados?|excesos?|reactiva|mecanismo|ajuste|compensaci[oó]n|excedentes|autoconsumo|cuota|suplemento|recargo|tasa|margen|gesti[oó]n|mantenimiento|seguro|asistencia|pack|kwh?|€|eur|power|consumption|tolls?|charges?|tax(?:es)?|invoice|meter|rental|discounts?|contracted|peak|off-peak|price|amount|t[ée]rmino|fijo|variable|hidrocarbur(?:os|s)|conversi[oó]n|lecturas?|terme|fix|energia|lloguer|comptador|impost|consum|quota|dies)\b/i;
 
 /** Líneas de dirección: se descartan enteras. */
 const ADDRESS_LINE =
@@ -53,17 +54,18 @@ const ADDRESS_LINE =
 const POSTAL_CODE_LINE = /\b(?:0[1-9]|[1-4]\d|5[0-2])\d{3}[,\s]+\p{Lu}/u;
 // Unidades sin una letra delante: una población acabada en «DIA» no es «día»,
 // pero «5,750kW» (la cifra pegada a la unidad) sí lleva unidad.
-const HAS_INVOICE_UNITS = /€|%|(?<!\p{L})(eur|kwh?|kvarh|d[ií]as?)\b/iu;
+const HAS_INVOICE_UNITS = /€|%|(?<!\p{L})(eur|kwh?|kvarh|d[ií]as?|dies)\b|(?<!\p{L})m(?:3|³)(?!\p{L})/iu;
 const HAS_DATE = /\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b|\b\d{1,2} de [a-z]+ de \d{4}\b/i;
 const HAS_PERIOD = /\bP[1-6]\b|\b\d\.\d\s?TD\b/i;
 const ONLY_NUMBERS = /^[\d.,\s()+\-=×x*/R]+$/;
 
 /**
  * Saludos con el nombre del cliente: «CONCHA, tienes 5 €», «Hola Juan»,
- * «Estimada María». Se descartan enteros.
+ * «Estimada María». Se descartan enteros. «Estimada» solo al empezar la
+ * línea: «Energía facturada (Estimada) 151 kWh…» es una lectura estimada.
  */
 const GREETING_LINE =
-  /^\s*\p{Lu}[\p{L}'-]{2,}(?:\s+\p{Lu}[\p{L}'-]{2,})?\s*,|\b(hola|estimad[oa]|querid[oa])\b/iu;
+  /^\s*\p{Lu}[\p{L}'-]{2,}(?:\s+\p{Lu}[\p{L}'-]{2,})?\s*,|\bhola\b|^\s*(estimad[oa]|querid[oa])\b/iu;
 
 /** Etiquetas tras las que suele venir el nombre del titular. */
 const HOLDER_LABEL =
@@ -190,7 +192,14 @@ function redactSegment(segment: string, holderPattern: RegExp | null, fromImage:
   const isAddress =
     ADDRESS_LINE.test(trimmed) ||
     (POSTAL_CODE_LINE.test(trimmed) && !HAS_INVOICE_UNITS.test(trimmed));
-  if (!useful || isAddress || HOLDER_LABEL.test(trimmed) || GREETING_LINE.test(trimmed)) return null;
+  // Un saludo («CONCHA, tienes 5 €») nunca lleva un precio unitario: «Gas
+  // natural, … 1.398 kWh 0,002016 €/kWh 2,82 €» es una línea de la factura.
+  // Tampoco empieza por un concepto («Tasas, Cuotas e Impuestos Tasa CNMC…»).
+  const unitPrice = /€\s*\/\s*(kwh|d[ií]a|kw|mes)\b/i.test(trimmed);
+  const firstWord = /^\s*([\p{L}]+)/u.exec(trimmed)?.[1] ?? "";
+  const concept = INVOICE_KEYWORDS.test(firstWord) || INVOICE_KEYWORDS.test(firstWord.replace(/s$/i, ""));
+  const greeting = GREETING_LINE.test(trimmed) && !unitPrice && !(concept && !/\bhola\b|^\s*(estimad|querid)/i.test(trimmed));
+  if (!useful || isAddress || HOLDER_LABEL.test(trimmed) || greeting) return null;
 
   // El orden importa: primero los patrones más específicos.
   let redacted = trimmed;

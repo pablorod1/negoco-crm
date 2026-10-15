@@ -3,9 +3,9 @@ import { isValidCups, isValidSpanishTaxId } from "./identifiers";
 import type { InvoiceExtraction } from "./invoice-schema";
 
 /** Diferencia admitida por línea: un céntimo y algo de holgura. */
-const LINE_TOLERANCE = 0.011;
+export const LINE_TOLERANCE = 0.011;
 /** Diferencia admitida en sumas de varias líneas redondeadas. */
-const SUM_TOLERANCE = 0.021;
+export const SUM_TOLERANCE = 0.021;
 /** Redondeo del consumo por periodo que admiten las distribuidoras. */
 const KWH_ROUNDING_PER_PERIOD = 1;
 
@@ -27,6 +27,16 @@ export type InvoiceIssueCode =
   | "taxable_base_mismatch"
   | "vat_mismatch"
   | "total_mismatch"
+  /** Gas: un término fijo no cuadra (días × €/día). */
+  | "fixed_term_mismatch"
+  /** Gas: el impuesto de hidrocarburos no cuadra (kWh × €/kWh). */
+  | "hydrocarbon_tax_mismatch"
+  /** Gas: los m³ por el factor de conversión no dan los kWh. */
+  | "gas_conversion_mismatch"
+  /** Gas: un peaje que el comparador no compara (RL.5 en adelante). */
+  | "unsupported_gas_tariff"
+  /** El consumo de un año es una estimación con la factura (sin SIPS de 12 meses). */
+  | "estimated_consumption"
   /** La factura se leyó con OCR (foto o PDF escaneado). */
   | "read_from_image"
   /** La comprobación automática (Jev) no ve en la factura lo que se leyó. */
@@ -45,7 +55,7 @@ export interface InvoiceIssue {
   actual?: number | string | null;
 }
 
-function differs(expected: number, actual: number, tolerance: number) {
+export function differs(expected: number, actual: number, tolerance: number) {
   return Math.abs(roundEuros(expected) - actual) > tolerance;
 }
 
@@ -347,7 +357,7 @@ export function validateInvoice(invoice: InvoiceExtraction): InvoiceIssue[] {
  * del grupo sí, la factura solo imprime el total del grupo (energía, peajes,
  * potencia) y el importe se ha repartido como se ha podido: se da por bueno.
  */
-function checkLines<LINE extends { amount: number }>(
+export function checkLines<LINE extends { amount: number }>(
   lines: readonly LINE[],
   expectedOf: (line: LINE) => number,
   code: InvoiceIssueCode,

@@ -8,6 +8,8 @@ export interface CommissionRuleForEngine {
    */
   product?: string | null;
   accessTariff: string | null;
+  /** Luz o gas; sin el campo, luz. */
+  energy?: "electricity" | "gas";
   /** De la sección de precio fijo o de indexados; null = de las dos. */
   pricing?: "fixed" | "indexed" | null;
   level: string | null;
@@ -33,6 +35,8 @@ export interface CommissionContext {
   /** Nombre de la tarifa («Helsinki II», «PRECIO FIJO PRESENCIALES SBC 12M L4»). */
   productName?: string;
   accessTariff: string;
+  /** Luz o gas; sin el campo, luz. Una regla de luz nunca paga una oferta de gas. */
+  energy?: "electricity" | "gas";
   /** Precio fijo o indexado de la tarifa; sin él, vale cualquier regla. */
   pricing?: "fixed" | "indexed";
   level: string | null;
@@ -97,6 +101,7 @@ function matches(rule: CommissionRuleForEngine, context: CommissionContext) {
   if (!rule.rateId && rule.product && !containsPhrase(nameTokens(context.productName), nameTokens(rule.product))) {
     return false;
   }
+  if ((rule.energy ?? "electricity") !== (context.energy ?? "electricity")) return false;
   if (rule.accessTariff && rule.accessTariff !== context.accessTariff) return false;
   if (rule.pricing && context.pricing && rule.pricing !== context.pricing) return false;
   if (rule.level && !levelMatches(rule.level, context)) return false;

@@ -15,6 +15,11 @@ export const ISSUE_TEXT: Partial<Record<InvoiceIssueCode, string>> = {
   taxable_base_mismatch: "La base imponible no cuadra.",
   vat_mismatch: "El IVA no cuadra.",
   total_mismatch: "El total de la factura no cuadra con sus líneas.",
+  fixed_term_mismatch: "El término fijo no cuadra (días × precio).",
+  hydrocarbon_tax_mismatch: "El impuesto de hidrocarburos no cuadra (kWh × precio).",
+  gas_conversion_mismatch: "Los m³ por el factor de conversión no dan los kWh facturados.",
+  unsupported_gas_tariff: "La factura es de un peaje de gas que el comparador no compara (RL.5 en adelante).",
+  estimated_consumption: "Consumo estimado: el de esta factura llevado a un año, sin los 12 meses del SIPS. El ahorro es una estimación.",
   read_from_image: "Factura leída de una imagen: comprueba lo que paga hoy contra el original.",
 };
 
@@ -33,6 +38,9 @@ const FIELD_TEXT: Record<string, string> = {
   electricityTax: "el impuesto eléctrico",
   supplierName: "la comercializadora",
   hasSelfConsumption: "el autoconsumo",
+  consumptionKwh: "el consumo",
+  fixedTermLines: "el término fijo",
+  hydrocarbonTax: "el impuesto de hidrocarburos",
 };
 
 /**

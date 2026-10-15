@@ -33,6 +33,17 @@ function conditions(offer: StudyOfferView) {
   ].filter((text): text is string => Boolean(text));
 }
 
+/** Gas: término fijo y variable, e impuesto de hidrocarburos; sin potencia, SSAA ni bono social. */
+const GAS_COST_LINES: { label: string; pick: (cost: CostBreakdown) => number }[] = [
+  { label: "Término fijo", pick: (cost) => cost.power.total },
+  { label: "Término variable", pick: (cost) => cost.energy.total },
+  { label: "Cuota tarifa plana", pick: (cost) => cost.flatFee ?? 0 },
+  { label: "Descuentos", pick: (cost) => cost.energyDiscounts.reduce((total, value) => total + value, 0) },
+  { label: "Impuesto de hidrocarburos", pick: (cost) => cost.electricityTax },
+  { label: "Contador y servicios", pick: (cost) => cost.meterRental + cost.services },
+  { label: "IVA y otros", pick: (cost) => cost.vat + cost.vatExempt },
+];
+
 const COST_LINES: { label: string; pick: (cost: CostBreakdown) => number }[] = [
   { label: "Potencia", pick: (cost) => cost.power.total },
   { label: "Energía", pick: (cost) => cost.energy.total },
@@ -106,14 +117,20 @@ function OfferDetail({
   closed: boolean;
   onToggleDiscount: (id: string, applied: boolean) => void;
 }) {
-  const prices = [
-    ["Potencia P1", offer.prices.power.P1, "€/kW día"],
-    ["Potencia P2", offer.prices.power.P2, "€/kW día"],
-    ["Energía P1", offer.prices.energy.P1, "€/kWh"],
-    ["Energía P2", offer.prices.energy.P2, "€/kWh"],
-    ["Energía P3", offer.prices.energy.P3, "€/kWh"],
-  ] as const;
-  const lines = COST_LINES.filter(({ pick }) => pick(offer.cost) !== 0 || (current && pick(current) !== 0));
+  const gas = offer.cost.kind === "gas";
+  const prices = gas
+    ? ([
+        ["Término fijo", offer.prices.power.P1, "€/día"],
+        ["Término variable", offer.prices.energy.P1, "€/kWh"],
+      ] as const)
+    : ([
+        ["Potencia P1", offer.prices.power.P1, "€/kW día"],
+        ["Potencia P2", offer.prices.power.P2, "€/kW día"],
+        ["Energía P1", offer.prices.energy.P1, "€/kWh"],
+        ["Energía P2", offer.prices.energy.P2, "€/kWh"],
+        ["Energía P3", offer.prices.energy.P3, "€/kWh"],
+      ] as const);
+  const lines = (gas ? GAS_COST_LINES : COST_LINES).filter(({ pick }) => pick(offer.cost) !== 0 || (current && pick(current) !== 0));
 
   return (
     <div className="grid gap-6 border-t border-gray-100 bg-gray-50/60 px-5 py-4 text-xs sm:grid-cols-[1fr_1.3fr]">

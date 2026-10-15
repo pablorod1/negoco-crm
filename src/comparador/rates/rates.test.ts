@@ -5,7 +5,8 @@ import { buildDiff, type ResolvedRow } from "./diff";
 import { isEligible, toTariffPrices } from "./engine-prices";
 import { matchProducts } from "./match";
 import { normalizeName, productKeyOf, productNameOf } from "./names";
-import { withDocumentDates } from "./extract";
+import { outOfScopeReason, withDocumentDates } from "./extract";
+import { replaceCommissionRulesStatements } from "./repository";
 import {
   ancillaryIncluded,
   appearsInText,
@@ -13,6 +14,7 @@ import {
   energyToPerKwh,
   numbersInText,
   powerToPerDay,
+  toProposedCommissions,
   toProposedRates,
 } from "./normalize";
 import type { ExtractedRate } from "./schema";
@@ -47,6 +49,7 @@ function extracted(overrides: Partial<ExtractedRate> = {}): ExtractedRate {
     energyP3: 0.15329,
     singlePrice: false,
     ancillaryIncluded: true,
+    gasTollsIncluded: null,
     feeMinMwh: null,
     feeMaxMwh: null,
     feeOnPower: false,
@@ -594,4 +597,108 @@ describe("staleness", () => {
       ]),
     ).toBe(13);
   });
+});
+
+describe("gas en los anexos", () => {
+  const gasRow = (overrides: Partial<ExtractedRate> = {}) =>
+    extracted({
+      productName: "Gas Estable",
+      accessTariff: "RL 2",
+      powerUnit: "eur_month",
+      powerP1: 8.5,
+      powerP2: null,
+      energyP1: 0.0712,
+      energyP2: null,
+      energyP3: null,
+      singlePrice: false,
+      ...overrides,
+    });
+
+  test("una fila de gas: peaje RL.n, término fijo al mes en €/día y un solo precio variable", () => {
+    const [row] = toProposedRates({ rates: [gasRow()] }, "Gas Estable RL.2 8,5 €/mes 0,0712 €/kWh sin SS.AA.");
+    expect(row.accessTariff).toBe("RL.2");
+    expect(row.power).toEqual({ P1: Math.round(((8.5 * 12) / 365) * 1e9) / 1e9, P2: 0 });
+    expect(row.energy).toEqual({ P1: 0.0712, P2: 0.0712, P3: 0.0712 });
+    // «sin SS.AA.» en el texto es de la luz: el gas no tiene servicios de ajuste.
+    expect(row.includesAncillaryServices).toBe(true);
+    expect(validateProposedRates([row], { sourceText: "Gas Estable RL.2 8,5 €/mes 0,0712 €/kWh", partialUpdate: false, validFrom: "2026-10-01" })).toEqual([]);
+  });
+
+  test("un precio de gas sin peajes: margen del término fijo al año y variable marcado sin peajes", () => {
+    const [row] = toProposedRates({ rates: [gasRow({ powerMode: "regulated_plus", powerUnit: "eur_month", powerP1: 2.231, gasTollsIncluded: false })] });
+    expect(row.powerMode).toBe("regulated_plus");
+    expect(row.powerMarginPerKwYear).toBeCloseTo(26.772, 6);
+    expect(row.power).toBeNull();
+    expect(row.includesAncillaryServices).toBe(false);
+  });
+
+  test("el gas tiene sus propios rangos: un variable de luz en un peaje de gas se para", () => {
+    const [row] = toProposedRates({ rates: [gasRow({ energyP1: 7.12 })] });
+    const codes = validateProposedRates([row], { sourceText: null, partialUpdate: false, validFrom: "2026-10-01" }).map(({ code }) => code);
+    expect(codes).toContain("energy_out_of_range");
+  });
+
+  test("un anexo completo de gas no retira las tarifas de luz, ni uno de luz las de gas", () => {
+    const gas = stored({ id: "g1", rateId: "r9", rateName: "Gas Estable", accessTariff: "RL.2", power: { P1: 0.28, P2: 0 }, energy: { P1: 0.07, P2: 0.07, P3: 0.07 } });
+    const light = buildDiff([resolved()], [stored(), gas], { partialUpdate: false });
+    expect(light.entries.map(({ kind }) => kind)).toEqual(["changed", "carried"]);
+    expect(light.versionRows.map(({ accessTariff }) => accessTariff)).toEqual(["2.0TD", "RL.2"]);
+    expect(light.issues.some(({ code }) => code === "missing_rate")).toBe(false);
+  });
+
+  test("las comisiones de gas son de gas; una sin tarifa en un anexo solo de gas, también", () => {
+    const rules = toProposedCommissions({
+      rates: [gasRow()],
+      commissions: [
+        { productName: null, accessTariff: "RL.2", energy: null, pricing: null, level: null, channel: null, minKwh: null, maxKwh: null, minKw: null, maxKw: null, ruleType: "fixed", feeBase: null, amount: 30, minAmount: null },
+        { productName: null, accessTariff: null, energy: null, pricing: null, level: null, channel: null, minKwh: null, maxKwh: null, minKw: null, maxKw: null, ruleType: "fixed", feeBase: null, amount: 20, minAmount: null },
+        { productName: null, accessTariff: "3.0TD", energy: null, pricing: null, level: null, channel: null, minKwh: null, maxKwh: null, minKw: null, maxKw: null, ruleType: "fixed", feeBase: null, amount: 90, minAmount: null },
+      ],
+    });
+    expect(rules.map(({ energy, accessTariff, amount }) => ({ energy, accessTariff, amount }))).toEqual([
+      { energy: "gas", accessTariff: "RL.2", amount: 30 },
+      { energy: "gas", accessTariff: null, amount: 20 },
+    ]);
+  });
+
+  test("una regla de luz no paga una oferta de gas, ni al revés", () => {
+    const base = { rateId: null, accessTariff: null, level: null, channel: null, minAnnualKwh: null, maxAnnualKwh: null, ruleType: "fixed" as const, validFrom: "2026-01-01", validTo: null };
+    const rules: CommissionRuleForEngine[] = [
+      { ...base, amount: 100 },
+      { ...base, amount: 40, energy: "gas" },
+    ];
+    const context = { rateId: "r", accessTariff: "RL.2", level: null, channel: null, annualKwh: 9000, feeEnergyPerMwh: 0, date: "2026-10-15" };
+    expect(computeCommission(rules, { ...context, energy: "gas" })).toBe(40);
+    expect(computeCommission(rules, { ...context, accessTariff: "2.0TD" })).toBe(100);
+  });
+
+  test("un marco de comisiones de gas solo cierra las comisiones de gas", () => {
+    const [close, remove] = replaceCommissionRulesStatements({
+      comercializadoraId: "COM-1",
+      rules: [{ rateId: null, product: null, accessTariff: "RL.2", energy: "gas", level: null, channel: null, minAnnualKwh: null, maxAnnualKwh: null, minKw: null, maxKw: null, ruleType: "fixed", feeBase: "energy", amount: 30, minAmount: null }],
+      validFrom: "2026-10-01",
+      ingestId: null,
+      userId: "u",
+    });
+    expect(typeof close === "string" ? close : close.sql).toContain("= 'gas'");
+    expect(typeof remove === "string" ? remove : remove.sql).not.toContain("NOT (");
+    const [closeLight] = replaceCommissionRulesStatements({
+      comercializadoraId: "COM-1",
+      rules: [{ rateId: null, product: null, accessTariff: "2.0TD", level: null, channel: null, minAnnualKwh: null, maxAnnualKwh: null, minKw: null, maxKw: null, ruleType: "fixed", feeBase: "energy", amount: 30, minAmount: null }],
+      validFrom: "2026-10-01",
+      ingestId: null,
+      userId: "u",
+    });
+    expect(typeof closeLight === "string" ? closeLight : closeLight.sql).toContain("NOT (");
+  });
+
+  test("un anexo solo de gas no queda fuera de alcance", () => {
+    expect(outOfScopeReason({ supplierName: null, hasPrices: true, hasCommissions: false, accessTariffs: ["RL.1", "RL.2"], pricing: ["fixed"] })).toBeNull();
+    expect(outOfScopeReason({ supplierName: null, hasPrices: true, hasCommissions: false, accessTariffs: ["RL.6"], pricing: ["fixed"] })).toMatch(/RL.6/);
+  });
+});
+
+test("el código de la semana del anexo no es parte del producto", () => {
+  expect(productNameOf("PRODUCTO TU DECIDES S4126 Fijo")).toBe("TU DECIDES Fijo");
+  expect(productNameOf("Precios Eleia TU ELIGES V20261007")).toBe("Precios Eleia TU ELIGES");
 });

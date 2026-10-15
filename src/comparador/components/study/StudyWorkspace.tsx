@@ -20,7 +20,6 @@ import { SavingsHero } from "./SavingsHero";
 import { StudyFilters, parseFee, type SupplierFacet } from "./StudyFilters";
 import { StudySidebar } from "./StudySidebar";
 import { StudySteps, studyStep } from "./StudySteps";
-import { Panel } from "./ui";
 
 /** La oferta que más ahorra; sin lo que paga hoy, la más barata. */
 function bestOffer(all: readonly StudyOfferView[], hasCurrent: boolean): StudyOfferView | null {
@@ -265,12 +264,12 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
     void load();
   }, [load]);
 
-  const analyze = async (invoice: { fileId: string } | { files: File[] }, cups?: string) => {
+  const analyze = async (invoice: { fileId: string } | { files: File[] }, cups?: string, withoutSips = false) => {
     setBusy(true);
     setError(null);
     setCupsPrompt(null);
     try {
-      const { id } = await studyApi.analyze(comparativaId, invoice, cups);
+      const { id } = await studyApi.analyze(comparativaId, invoice, cups, withoutSips);
       setStudy(await studyApi.view(id));
       setPicking(false);
     } catch (cause) {
@@ -367,7 +366,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
   };
 
   const showPicker = picking || !study;
-  const notLight = list !== null && list.service !== "Luz";
+  const isGas = list?.service === "Gas";
 
   return (
     <div className="w-full px-4 py-8 sm:px-6">
@@ -379,7 +378,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
             </Link>
           </Button>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Estudio Negoco Cloud · luz 2.0TD</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Estudio Negoco Cloud · {isGas ? "gas natural" : "luz 2.0TD"}</p>
             {loading ? (
               <Skeleton className="mt-1 h-6 w-48" />
             ) : (
@@ -388,7 +387,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {!loading && !notLight && (
+          {!loading && (
             <StudySteps active={studyStep({ picking: showPicker, proposals: study?.proposals.length ?? 0, closed: study?.status === "closed" })} />
           )}
           {study && !showPicker && study.status !== "closed" && (
@@ -408,10 +407,6 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
 
       {loading ? (
         <ResultSkeleton />
-      ) : notLight ? (
-        <Panel className="mx-auto max-w-lg p-8 text-center text-sm text-gray-600">
-          El comparador propio compara luz 2.0TD; esta comparativa es de gas.
-        </Panel>
       ) : showPicker ? (
         list && (
           <InvoicePicker
@@ -420,6 +415,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
             cupsPrompt={cupsPrompt}
             onAnalyze={analyze}
             onCancel={study ? () => setPicking(false) : undefined}
+            gas={isGas}
           />
         )
       ) : (

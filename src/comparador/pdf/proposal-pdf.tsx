@@ -235,6 +235,10 @@ function periodInfo(territory: string) {
 }
 
 const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0);
+/** Propuesta de gas: término fijo y variable, peaje RL, sin potencia ni periodos. */
+const isGas = (doc: ProposalDocument) => doc.supply.energy === "gas";
+/** «luz» o «gas», para los textos. */
+const energyWord = (doc: ProposalDocument) => (isGas(doc) ? "gas" : "luz");
 const totalKwh = (energy: EnergyByPeriod) => energy.P1 + energy.P2 + energy.P3;
 
 /** Coste que no depende de los kWh: se reparte por días. */
@@ -292,9 +296,10 @@ function savingDrivers(doc: ProposalDocument) {
   const today = current.cost;
   const offer = doc.offer.cost;
   const annual = totalKwh(doc.supply.annualKwh);
+  const gas = isGas(doc);
   const groups: { label: string; pick: (cost: CostBreakdown) => number; why: (diff: number) => string }[] = [
     {
-      label: "Energía",
+      label: gas ? "Gas consumido" : "Energía",
       pick: variablePart,
       why: () =>
         annual > 0
@@ -302,28 +307,33 @@ function savingDrivers(doc: ProposalDocument) {
           : "Precio del kWh",
     },
     {
-      label: "Potencia",
+      label: gas ? "Término fijo" : "Potencia",
       pick: (cost) => cost.power.total,
       why: () =>
         current.prices
-          ? `${change(current.prices.power.P1, doc.offer.prices.power.P1).replace("=", "Mismo precio")} en el precio del kW de punta`
-          : "Término fijo por los kW contratados",
+          ? `${change(current.prices.power.P1, doc.offer.prices.power.P1).replace("=", "Mismo precio")} en el precio ${gas ? "del término fijo" : "del kW de punta"}`
+          : gas
+            ? "Lo que se paga cada día por tener el gas"
+            : "Término fijo por los kW contratados",
     },
     {
       label: "Servicios adicionales",
       pick: (cost) => cost.services,
-      why: (diff) => (offer.services === 0 && diff < 0 ? "La propuesta no le cobra servicios aparte" : "Servicios que se cobran con la luz"),
+      why: (diff) => (offer.services === 0 && diff < 0 ? "La propuesta no le cobra servicios aparte" : `Servicios que se cobran con ${gas ? "el gas" : "la luz"}`),
     },
     { label: "Alquiler del contador", pick: (cost) => cost.meterRental, why: () => "Lo fija la distribuidora" },
     {
-      label: "Bono social y otros",
+      label: gas ? "Otros" : "Bono social y otros",
       pick: (cost) => cost.socialBonus + cost.otherElectricity + cost.vatExempt,
       why: () => "Cargos que cobran todas las comercializadoras",
     },
     {
       label: "Impuestos",
       pick: (cost) => cost.electricityTax + cost.vat,
-      why: (diff) => (diff < 0 ? "Impuesto eléctrico e IVA bajan con la factura" : "Impuesto eléctrico e IVA"),
+      why: (diff) => {
+        const taxes = gas ? "Impuesto de hidrocarburos e IVA" : "Impuesto eléctrico e IVA";
+        return diff < 0 ? `${taxes} bajan con la factura` : taxes;
+      },
     },
   ];
   return groups
@@ -361,7 +371,7 @@ function Header({ branding, palette, generatedAt, kicker }: { branding: Proposal
 }
 
 function Footer({ doc, branding }: { doc: ProposalDocument; branding: ProposalBranding }) {
-  const who = doc.client.name ? `Estudio para ${doc.client.name}` : "Estudio de su factura de luz";
+  const who = doc.client.name ? `Estudio para ${doc.client.name}` : `Estudio de su factura de ${energyWord(doc)}`;
   return (
     <View style={styles.footer} fixed>
       <Text>
@@ -419,7 +429,7 @@ function Hero({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
       {freeMonths >= 1 && (
         <View style={styles.calendar}>
           <Text style={{ color: "#ffffff", fontWeight: 600 }}>
-            Como no pagar la luz {freeMonths.toLocaleString("es-ES")} {freeMonths === 1 ? "mes" : "meses"} al año
+            Como no pagar {isGas(doc) ? "el gas" : "la luz"} {freeMonths.toLocaleString("es-ES")} {freeMonths === 1 ? "mes" : "meses"} al año
           </Text>
           <View style={styles.calendarGrid}>
             {["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"].map((letter, index) => {
@@ -663,7 +673,18 @@ function Tile({ label, value, note, color }: { label: string; value: string; not
 }
 
 /** El consumo de cada lectura del SIPS, apilado por periodos. */
-function MonthlyConsumption({ months, colors, territory }: { months: MonthPoint[]; colors: Record<"P1" | "P2" | "P3", string>; territory: string }) {
+function MonthlyConsumption({
+  months,
+  colors,
+  territory,
+  gas = false,
+}: {
+  months: MonthPoint[];
+  colors: Record<"P1" | "P2" | "P3", string>;
+  territory: string;
+  /** Gas: un solo periodo, sin punta, llano ni valle. */
+  gas?: boolean;
+}) {
   const height = 78;
   const max = Math.max(...months.map((point) => totalKwh(point.kwh))) || 1;
   return (
@@ -686,12 +707,10 @@ function MonthlyConsumption({ months, colors, territory }: { months: MonthPoint[
       </View>
       <MonthAxis months={months} />
       <View style={styles.legend}>
-        {periodInfo(territory).map((period) => (
+        {(gas ? [{ key: "P1" as const, name: "Gas", hours: "" }] : periodInfo(territory)).map((period) => (
           <View key={period.key} style={styles.legendItem}>
             <View style={[styles.legendSwatch, { backgroundColor: colors[period.key] }]} />
-            <Text style={styles.small}>
-              {period.name} ({period.key})
-            </Text>
+            <Text style={styles.small}>{gas ? period.name : `${period.name} (${period.key})`}</Text>
           </View>
         ))}
         <Text style={[styles.small, styles.muted]}>· kWh de cada lectura</Text>
@@ -874,7 +893,12 @@ function PriceTable({ doc, palette, all = false }: { doc: ProposalDocument; pale
   const options = all ? [doc.offer, ...(doc.alternatives ?? [])] : [doc.offer];
   const today = doc.current?.prices ?? null;
   const single = options.length === 1;
-  const rows: { label: string; pick: (prices: TariffPrices) => number }[] = [
+  const rows: { label: string; pick: (prices: TariffPrices) => number }[] = isGas(doc)
+    ? [
+        { label: "Término fijo · €/día", pick: (prices) => prices.power.P1 },
+        { label: "Término variable · €/kWh", pick: (prices) => prices.energy.P1 },
+      ]
+    : [
     { label: "Potencia P1 punta · €/kW día", pick: (prices) => prices.power.P1 },
     { label: "Potencia P2 valle · €/kW día", pick: (prices) => prices.power.P2 },
     { label: "Energía P1 punta · €/kWh", pick: (prices) => prices.energy.P1 },
@@ -884,7 +908,10 @@ function PriceTable({ doc, palette, all = false }: { doc: ProposalDocument; pale
   const indexed = options.some(({ pricing }) => pricing === "indexed");
   return (
     <View style={styles.section} wrap={false}>
-      <SectionTitle title={all ? "Precios de cada oferta" : "Precios"} lead={indexed ? "En las tarifas indexadas, la energía es la media del último año" : "Sin impuestos, tal como figuran en la tarifa"} />
+      <SectionTitle
+        title={all ? "Precios de cada oferta" : "Precios"}
+        lead={indexed ? `En las tarifas indexadas, ${isGas(doc) ? "el término variable" : "la energía"} es la media del último año` : "Sin impuestos, tal como figuran en la tarifa"}
+      />
       <HeadRow
         withToday={today !== null}
         offers={single ? ["Propuesta"] : options.map(({ comercializadoraName }) => comercializadoraName)}
@@ -912,7 +939,20 @@ function PriceTable({ doc, palette, all = false }: { doc: ProposalDocument; pale
 }
 
 function costRows(current: CostBreakdown | null, offer: CostBreakdown) {
-  const lines: { label: string; pick: (cost: CostBreakdown) => number }[] = [
+  const gas = offer.kind === "gas";
+  const lines: { label: string; pick: (cost: CostBreakdown) => number }[] = gas
+    ? [
+        { label: "Cuota de la tarifa plana", pick: (cost) => cost.flatFee ?? 0 },
+        { label: "Término fijo", pick: (cost) => cost.power.total },
+        { label: "Término variable", pick: (cost) => cost.energy.total },
+        { label: "Descuentos", pick: (cost) => sum(cost.energyDiscounts) },
+        { label: "Impuesto de hidrocarburos", pick: (cost) => cost.electricityTax },
+        { label: "Alquiler del contador", pick: (cost) => cost.meterRental },
+        { label: "Servicios", pick: (cost) => cost.services },
+        { label: "IVA", pick: (cost) => cost.vat },
+        { label: "Conceptos sin IVA", pick: (cost) => cost.vatExempt },
+      ]
+    : [
     { label: "Cuota de la tarifa plana", pick: (cost) => cost.flatFee ?? 0 },
     { label: "Término de potencia", pick: (cost) => cost.power.total },
     { label: "Término de energía", pick: (cost) => cost.energy.total },
@@ -1031,7 +1071,14 @@ function proposalNotes(doc: ProposalDocument): Note[] {
   const alternatives = doc.alternatives ?? [];
   return [
     // Si la propuesta también es indexada, va todo en el aviso de la propuesta.
-    current?.pricing === "indexed" && offer.pricing !== "indexed"
+    current?.pricing === "indexed" && isGas(doc)
+      ? {
+          title: "Su tarifa de gas de hoy es indexada",
+          text: "Lo que paga hoy se ha calculado con el precio de su última factura en los 12 meses. Con una tarifa indexada el precio del gas sube y baja cada mes con el mercado.",
+          tone: INFO_SOFT,
+          edge: INFO,
+        }
+      : current?.pricing === "indexed" && offer.pricing !== "indexed"
       ? {
           title: "Su tarifa de hoy es indexada",
           text: "Lo que paga hoy se ha estimado con el precio del mercado eléctrico (OMIE) de sus últimos 12 meses de consumo, más lo que su factura cobra por encima del mercado. Con una tarifa indexada su precio sube y baja con el mercado.",
@@ -1047,7 +1094,15 @@ function proposalNotes(doc: ProposalDocument): Note[] {
           edge: WARN,
         }
       : null,
-    indexedNote(offer, alternatives, current?.pricing === "indexed"),
+    doc.supply.consumptionSource !== "sips"
+      ? {
+          title: "Estudio con el consumo estimado",
+          text: `No tenemos los 12 meses de consumo de su contador: el de un año sale de su factura${doc.supply.estimate ? ` de ${doc.supply.estimate.invoiceDays} días` : ""}. El ahorro es una estimación y lo que pague dependerá de su consumo real${isGas(doc) ? ", que en el gas cambia mucho entre invierno y verano" : ""}.`,
+          tone: WARN_SOFT,
+          edge: WARN,
+        }
+      : null,
+    indexedNote(offer, alternatives, current?.pricing === "indexed" && !isGas(doc)),
     offer.ancillarySimulated && (offer.cost.ancillary ?? 0) > 0
       ? {
           title: "Servicios de ajuste estimados",
@@ -1072,13 +1127,23 @@ function Method({ doc }: { doc: ProposalDocument }) {
   const sips = doc.supply.consumptionSource === "sips";
   const items = [
     {
-      title: "Su consumo real",
+      title: sips ? "Su consumo real" : "Su consumo, estimado",
       text: sips
         ? `${doc.supply.sipsMonths ?? 12} meses de lecturas de su contador en la distribuidora${doc.supply.distributor ? ` (${doc.supply.distributor})` : ""}. Nada estimado.`
-        : "El consumo de su factura llevado a un año.",
+        : `El consumo de su factura${doc.supply.estimate ? ` (${doc.supply.estimate.invoiceDays} días)` : ""} llevado a un año: es una estimación.`,
     },
-    { title: "Precios del día", text: `Las tarifas de cada comercializadora a ${longDate(doc.priceDate)}, con los peajes y cargos del BOE vigentes.` },
-    { title: "Todo incluido", text: "Impuesto eléctrico, IVA, alquiler del contador, bono social y servicios: lo mismo que verá en su factura." },
+    {
+      title: "Precios del día",
+      text: isGas(doc)
+        ? `Las tarifas de gas de cada comercializadora para su peaje (${doc.supply.gas?.accessTariff ?? "RL"}) a ${longDate(doc.priceDate)}.`
+        : `Las tarifas de cada comercializadora a ${longDate(doc.priceDate)}, con los peajes y cargos del BOE vigentes.`,
+    },
+    {
+      title: "Todo incluido",
+      text: isGas(doc)
+        ? "Impuesto de hidrocarburos, IVA, alquiler del contador y servicios: lo mismo que verá en su factura."
+        : "Impuesto eléctrico, IVA, alquiler del contador, bono social y servicios: lo mismo que verá en su factura.",
+    },
   ];
   return (
     <View style={styles.section} wrap={false}>
@@ -1103,7 +1168,7 @@ function NextSteps({ doc, branding, palette }: { doc: ProposalDocument; branding
   const steps = [
     { title: "Nos dice que sí.", text: "Revisamos con usted la propuesta y resolvemos cualquier duda." },
     { title: "Firma el contrato.", text: "Solo hace falta su DNI o CIF y su cuenta bancaria." },
-    { title: "Nosotros hacemos el resto.", text: "Sin cortes de luz, sin obras y con el mismo contador." },
+    { title: "Nosotros hacemos el resto.", text: `Sin cortes de ${energyWord(doc)}, sin obras y con el mismo contador.` },
   ];
   const advisor = doc.advisor && (doc.advisor.name || doc.advisor.email) ? doc.advisor : null;
   return (
@@ -1156,11 +1221,13 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
   const annual = totalKwh(supply.annualKwh);
   const months = supply.readings?.length ? monthsFromReadings(supply.readings) : [];
   const place = supply.location ? [supply.location.municipality, supply.location.province].filter(Boolean).join(", ") : "";
+  const gas = isGas(doc);
+  const word = energyWord(doc);
   const meta = [
     doc.client.cups ? `CUPS ${doc.client.cups}` : null,
-    "Tarifa 2.0TD",
+    gas ? `Gas natural · peaje ${supply.gas?.accessTariff ?? "RL"}` : "Tarifa 2.0TD",
     place || (TERRITORY[supply.territory] ?? supply.territory),
-    `${kw(supply.contractedKw.P1)} contratados`,
+    gas ? null : `${kw(supply.contractedKw.P1)} contratados`,
   ].filter((text): text is string => Boolean(text));
   const page = (kicker: string, children: ReactNode) => (
     <Page size="A4" style={styles.page}>
@@ -1174,9 +1241,9 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
   return (
     <Document title={`Estudio de ahorro - ${offer.comercializadoraName}`} author={branding.displayName} language="es">
       {page(
-        alternatives.length ? "Comparativa de ofertas de luz" : "Estudio de ahorro en luz",
+        alternatives.length ? `Comparativa de ofertas de ${word}` : `Estudio de ahorro en ${word}`,
         <>
-          <Text style={styles.pageTitle}>{doc.client.name ? `Preparado para ${doc.client.name}` : "Estudio de su factura de luz"}</Text>
+          <Text style={styles.pageTitle}>{doc.client.name ? `Preparado para ${doc.client.name}` : `Estudio de su factura de ${word}`}</Text>
           <View style={styles.meta}>
             {meta.map((text) => (
               <Text key={text} style={styles.metaItem}>
@@ -1203,10 +1270,17 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
       {page(
         "Su consumo",
         <>
-          <PageHead title="Su consumo, al detalle" lead="Lo que dice su contador del último año: cuánto, cuándo y con qué potencia." />
+          <PageHead
+            title="Su consumo, al detalle"
+            lead={gas ? "Lo que dice su contador del último año: cuánto gas y en qué meses." : "Lo que dice su contador del último año: cuánto, cuándo y con qué potencia."}
+          />
           <View style={styles.tiles}>
-            <Tile label="Consumo anual" value={kwh(annual)} note={supply.consumptionSource === "sips" ? `${supply.sipsMonths ?? 12} meses reales (SIPS)` : "De su factura, llevado a un año"} />
-            <Tile label="Potencia contratada" value={kw(supply.contractedKw.P1)} note={supply.contractedKw.P1 === supply.contractedKw.P2 ? "Punta y valle" : `Valle ${kw(supply.contractedKw.P2)}`} />
+            <Tile label="Consumo anual" value={kwh(annual)} note={supply.consumptionSource === "sips" ? `${supply.sipsMonths ?? 12} meses reales (SIPS)` : "Estimado con su factura"} />
+            {gas ? (
+              <Tile label="Peaje de acceso" value={supply.gas?.accessTariff ?? "—"} note="Según su consumo anual" />
+            ) : (
+              <Tile label="Potencia contratada" value={kw(supply.contractedKw.P1)} note={supply.contractedKw.P1 === supply.contractedKw.P2 ? "Punta y valle" : `Valle ${kw(supply.contractedKw.P2)}`} />
+            )}
             {supply.power && <Tile label="Máxima demanda" value={kw(supply.power.maxDemandKw)} note="La más alta del año" />}
             {current ? (
               <Tile
@@ -1221,12 +1295,12 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
           </View>
           {months.length >= 3 && (
             <>
-              <MonthlyConsumption months={months} colors={colors} territory={supply.territory} />
+              <MonthlyConsumption months={months} colors={colors} territory={supply.territory} gas={gas} />
               <MonthlyBills months={months} doc={doc} palette={palette} />
             </>
           )}
-          <Periods doc={doc} palette={palette} colors={colors} />
-          <PowerCheck doc={doc} palette={palette} />
+          {!gas && <Periods doc={doc} palette={palette} colors={colors} />}
+          {!gas && <PowerCheck doc={doc} palette={palette} />}
         </>,
       )}
       {page(

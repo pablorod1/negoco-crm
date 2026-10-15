@@ -47,7 +47,7 @@ describe("photos read with vision", () => {
     // Sin respuesta del SIPS se para ahí: basta para ver qué se envió y qué CUPS se pidió.
     await expect(result).rejects.toMatchObject({ status: 503 });
     expect(extract).toHaveBeenCalledWith(expect.objectContaining({ file: { pages: [page], zoomed: [] } }));
-    expect(fetchSips).toHaveBeenCalledWith(VALID_CUPS, "CONSUMOS");
+    expect(fetchSips).toHaveBeenCalledWith(VALID_CUPS, "CONSUMOS", "ELECTRICIDAD");
   });
 
   test("without a valid CUPS it asks for it on the same screen", async () => {
@@ -60,7 +60,7 @@ describe("photos read with vision", () => {
     const typed = "ES0021000000000001RK";
     const { result, fetchSips } = run({ cups: VALID_CUPS }, typed);
     await expect(result).rejects.toMatchObject({ status: 503 });
-    expect(fetchSips).toHaveBeenCalledWith(typed, "CONSUMOS");
+    expect(fetchSips).toHaveBeenCalledWith(typed, "CONSUMOS", "ELECTRICIDAD");
   });
 
   test("a photo without the detail lines says so", async () => {

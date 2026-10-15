@@ -38,6 +38,12 @@ export interface SupplyProfile {
 }
 
 export interface CostBreakdown {
+  /**
+   * Gas: el término fijo va en `power` (P1), el variable en `energy` (P1), el
+   * impuesto de hidrocarburos en `electricityTax` y su base en
+   * `electricitySubtotal`. Sin el campo, luz.
+   */
+  kind?: "gas";
   days: number;
   power: PowerByPeriod & { total: number };
   energy: EnergyByPeriod & { total: number };

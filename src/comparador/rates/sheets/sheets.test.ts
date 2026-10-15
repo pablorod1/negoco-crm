@@ -6,6 +6,7 @@ import {
   parseDates,
   parseMonth,
   parseNumber,
+  parsePowerUnit,
   parseTariff,
   parseTerm,
 } from "./parse";
@@ -733,4 +734,94 @@ describe("applyRecipe", () => {
     const mixed = applyRecipe([sheet], recipe([sameColumn]));
     expect(mixed.problems.some(({ message }) => message.includes("la potencia sale de las mismas celdas"))).toBe(true);
   });
+});
+
+describe("gas en los Excel", () => {
+  test("peajes de gas: RL.1 a RL.4 se leen; planta satélite y RL.5 en adelante se nombran para descartarlos", () => {
+    expect(parseTariff("RL01")).toEqual({ tariff: "RL.1", singlePrice: true });
+    expect(parseTariff("RL.3")).toEqual({ tariff: "RL.3", singlePrice: true });
+    expect(parseTariff("RL01-satélite")?.tariff).toBe("RLPS.1");
+    expect(parseTariff("RL05")?.tariff).toBe("RL.5");
+    expect(parseTariff("2.0TD")).toEqual({ tariff: "2.0TD", singlePrice: false });
+    // Eleia pone el peaje antiguo al lado del RL: en una celda sola, es el mismo.
+    expect(parseTariff("3.2")).toEqual({ tariff: "RL.2", singlePrice: true });
+    expect(parseTariff("3.0TD")?.tariff).toBe("3.0TD");
+  });
+
+  test("el término fijo del gas es por cliente: €/mes no es €/kW·mes", () => {
+    expect(parsePowerUnit("TÉRMINO FIJO (€/mes)")).toBe("eur_month");
+    expect(parsePowerUnit("Término Fijo €/Año")).toBe("eur_year");
+    expect(parsePowerUnit("€/kW año")).toBe("eur_kw_year");
+  });
+});
+
+test("gas: niveles en paralelo con el peaje antiguo en la copia (Eleia «Tu Decides»)", () => {
+  const sheet = grid("TU DECIDES", {
+    1: { A: "TDE 3", E: "TDE 2" },
+    2: { A: "RL.1", B: 4.231, C: 0.086731, E: "3.1", F: 5.731, G: 0.092731 },
+    3: { A: "RL.2", B: 8.009, C: 0.081731, E: "3.2", F: 9.009, G: 0.087731 },
+  });
+  const applied = applyRecipe(
+    [sheet],
+    recipe([
+      table({
+        sheet: "TU DECIDES",
+        firstRow: 2,
+        lastRow: 3,
+        rowFilter: { column: "A", pattern: "^RL\\.[1-4]$" },
+        repeat: [{ columnShift: 4, rowShift: 0, values: [{ field: "level", value: "TDE 2" }] }],
+        sources: [
+          { field: "productName", column: null, cell: null, value: "TU DECIDES" },
+          { field: "level", column: null, cell: "A1", value: null },
+          { field: "accessTariff", column: "A", cell: null, value: null },
+          { field: "powerP1", column: "B", cell: null, value: null },
+          { field: "powerUnit", column: null, cell: null, value: "eur_month" },
+          { field: "energyP1", column: "C", cell: null, value: null },
+          { field: "singlePrice", column: null, cell: null, value: "true" },
+        ],
+      }),
+    ]),
+  );
+  expect(applied.extraction.rates.map(({ accessTariff, level, powerP1, energyP1, powerUnit }) => [accessTariff, level, powerP1, energyP1, powerUnit])).toEqual([
+    ["RL.1", "TDE 3", 4.231, 0.086731, "eur_month"],
+    ["RL.2", "TDE 3", 8.009, 0.081731, "eur_month"],
+    ["RL.1", "TDE 2", 5.731, 0.092731, "eur_month"],
+    ["RL.2", "TDE 2", 9.009, 0.087731, "eur_month"],
+  ]);
+});
+
+test("comisiones de gas: peaje de cada fila, tramos en MWh y un nivel por columna (Axpo «MR GAS»)", () => {
+  const sheet = grid("MR GAS", {
+    1: { A: "MWh/año", B: "MWh/año", C: "N1", D: "N2" },
+    2: { E: "RL.1", A: 1, B: 2.5, C: 31.5, D: 24.5 },
+    3: { E: "RL.2", A: 5, B: 10, C: 135, D: 105 },
+    4: { E: "RL.5", A: 300, B: 450, C: 1500, D: 1312.5 },
+  });
+  const applied = applyRecipe(
+    [sheet],
+    recipe([
+      table({
+        sheet: "MR GAS",
+        kind: "commissions",
+        firstRow: 2,
+        lastRow: 4,
+        repeat: [{ columnShift: 1, rowShift: 0, values: [{ field: "level", value: "N2" }] }],
+        sources: [
+          { field: "accessTariff", column: "$E", cell: null, value: null },
+          { field: "minKwh", column: "$A", cell: null, value: null },
+          { field: "maxKwh", column: "$B", cell: null, value: null },
+          { field: "consumptionUnit", column: null, cell: null, value: "mwh" },
+          { field: "level", column: null, cell: null, value: "N1" },
+          { field: "commissionAmount", column: "C", cell: null, value: null },
+          { field: "commissionType", column: null, cell: null, value: "fixed" },
+        ],
+      }),
+    ]),
+  );
+  expect(applied.extraction.commissions.map(({ accessTariff, energy, level, minKwh, maxKwh, amount }) => [accessTariff, energy, level, minKwh, maxKwh, amount])).toEqual([
+    ["RL.1", "gas", "N1", 1000, 2500, 31.5],
+    ["RL.2", "gas", "N1", 5000, 10000, 135],
+    ["RL.1", "gas", "N2", 1000, 2500, 24.5],
+    ["RL.2", "gas", "N2", 5000, 10000, 105],
+  ]);
 });

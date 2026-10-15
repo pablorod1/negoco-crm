@@ -129,6 +129,8 @@ export interface CommissionRuleInput {
    */
   product: string | null;
   accessTariff: string | null;
+  /** Luz o gas; sin el campo, luz (las reglas anteriores al gas). */
+  energy?: "electricity" | "gas";
   /** Sección de precio fijo o de indexados del anexo; null o sin el campo = las dos. */
   pricing?: "fixed" | "indexed" | null;
   level: string | null;

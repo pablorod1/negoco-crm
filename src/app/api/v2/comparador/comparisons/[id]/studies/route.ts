@@ -15,15 +15,15 @@ import { fetchApoloSipsProcedure } from "@/integrations/apolo-sips/server";
 // al SIPS y extracción con la IA en cascada: una foto puede pasar por dos modelos.
 export const maxDuration = 300;
 
-/** Facturas de más de 15 MB no son facturas de luz. */
+/** Facturas de más de 15 MB no son facturas de luz ni de gas. */
 const MAX_INVOICE_BYTES = 15 * 1024 * 1024;
 /** Fotos de una factura: una por página. */
 const MAX_PHOTOS = 6;
 
-const fetchSips: SipsFetcher = async (cups, procedure) => {
+const fetchSips: SipsFetcher = async (cups, procedure, supplyType = "ELECTRICIDAD") => {
   const apiKey = process.env.APOLO_SIPS_API_KEY;
   if (!apiKey) return null;
-  return fetchApoloSipsProcedure({ apiKey, cups, procedure, supplyType: "ELECTRICIDAD" });
+  return fetchApoloSipsProcedure({ apiKey, cups, procedure, supplyType });
 };
 
 /** Estudios de la comparativa y las facturas (PDF o foto) que tiene adjuntas para analizar. */
@@ -72,9 +72,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { client, user, tenantSlug } = access.context;
     const comparativa = await getStudyComparativa(client, id, user);
     if (!comparativa) return NextResponse.json({ error: "Comparativa no encontrada" }, { status: 404 });
-    if (comparativa.service !== "Luz") {
-      throw new StudyError("El comparador propio compara luz 2.0TD; esta comparativa es de gas.");
-    }
 
     const form = await request.formData();
     const fileId = form.get("fileId");
@@ -124,6 +121,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       channel: comparativa.hasRenovacion ? "renewal" : "acquisition",
       today: todayInSpain(),
       fetchSips,
+      energy: comparativa.service === "Gas" ? "gas" : "electricity",
+      // «Estudio sin SIPS»: consumo estimado con la factura.
+      useSips: form.get("withoutSips") !== "1",
     });
     // Lo subido pasa a los documentos (cada foto, una página); si falla, el estudio vale igual.
     for (const [index, upload] of uploads.entries()) {

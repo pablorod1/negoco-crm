@@ -27,6 +27,8 @@ export const RECIPE_FIELDS = [
   "maxKw",
   "minKwh",
   "maxKwh",
+  // Unidad de minKwh/maxKwh si no es kWh («mwh»: tramos de 1 a 2,5 MWh/año).
+  "consumptionUnit",
   "startMonth",
   // Fecha de fin del precio fijo; con la de inicio da la duración.
   "contractEnd",
@@ -48,6 +50,8 @@ export const RECIPE_FIELDS = [
   "powerMode",
   "pricing",
   "ancillaryIncluded",
+  // Gas: si el precio lleva los peajes.
+  "tollsIncluded",
   "feeOnPower",
   // Comisiones.
   "commissionAmount",
@@ -133,7 +137,9 @@ export const SheetRecipeSchema = z.object({
     .describe("Hojas que no se leen y por qué (indexado, gas, simulador, 3.0TD…)"),
   skippedRanges: z
     .array(z.object({ sheet: z.string(), range: z.string(), reason: z.string() }))
-    .optional()
+    // Sin .optional(): OpenAI exige todos los campos en «required» (GPT-5 mini
+    // fallaba con «Missing 'skippedRanges'»). Las plantillas guardadas antes
+    // pueden no tenerlo: se lee con «?? []».
     .describe(
       "Bloques de una hoja con 2.0TD que no se leen a propósito (un indexado al lado de los fijos): rango «AO18:BB72» y por qué",
     ),

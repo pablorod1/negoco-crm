@@ -1,6 +1,8 @@
 import type { Client } from "@libsql/client";
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { hasBlockingIssues, validateInvoice, type InvoiceIssue } from "@/comparador/extraction/validate";
+import { gasReadingOf, toStudyExtraction, validateGasInvoice } from "@/comparador/gas/invoice";
+import { estimatedAnnualKwh } from "./supply";
 import { StudyError } from "./errors";
 import type { StudyRecord } from "./repository";
 
@@ -22,7 +24,7 @@ export interface InvoiceReview {
 export type ReviewedExtraction = InvoiceExtraction & { review?: InvoiceReview };
 
 /** Los avisos que no son de las cuentas (por ejemplo, «leída de una imagen») se conservan. */
-const KEPT_CODES = new Set<InvoiceIssue["code"]>(["read_from_image"]);
+const KEPT_CODES = new Set<InvoiceIssue["code"]>(["read_from_image", "estimated_consumption"]);
 
 /**
  * Un estudio abierto cuya lectura no cuadra y que nadie ha revisado: no se
@@ -64,13 +66,20 @@ export async function saveInvoiceReview({
   if (!study.extraction) throw new StudyError("Este estudio no tiene factura analizada.", 409);
 
   const previous = study.extraction as ReviewedExtraction;
-  const issues = [...study.issues.filter(({ code }) => KEPT_CODES.has(code)), ...validateInvoice(invoice)];
+  // Gas: manda la lectura de gas; la forma común se rehace con ella.
+  const gas = study.supply?.energy === "gas" ? gasReadingOf(invoice) : null;
+  if (study.supply?.energy === "gas" && !gas) throw new StudyError("Faltan los datos de la factura de gas.", 400);
+  const read = gas ? toStudyExtraction(gas) : invoice;
+  const issues = [
+    ...study.issues.filter(({ code }) => KEPT_CODES.has(code)),
+    ...(gas ? validateGasInvoice(gas) : validateInvoice(read)),
+  ];
   if (hasBlockingIssues(issues) && !acceptMismatch) {
     throw new StudyError("Las cuentas siguen sin cuadrar. Corrígelas o confirma que los datos son los de la factura.", 422);
   }
 
   const reviewed: ReviewedExtraction = {
-    ...invoice,
+    ...read,
     review: {
       reviewedBy: user.id,
       reviewedByEmail: user.email,
@@ -79,9 +88,25 @@ export async function saveInvoiceReview({
       original: previous.review?.original ?? withoutReview(previous),
     },
   };
+  // Un consumo estimado sale de la factura: se rehace con la revisada.
+  const supply = study.supply;
+  let nextSupply = supply;
+  if (supply?.estimate) {
+    const days = read.billingPeriod?.days ?? 0;
+    const annual =
+      supply.energy === "gas"
+        ? days > 0 && (read.consumptionKwh.P1 ?? 0) > 0
+          ? { P1: Math.round(((read.consumptionKwh.P1 ?? 0) * 365) / days), P2: 0, P3: 0 }
+          : null
+        : estimatedAnnualKwh(read);
+    if (annual) nextSupply = { ...supply, annualKwh: annual, estimate: { ...supply.estimate, invoiceDays: days } };
+  }
   await client.execute({
     sql: "UPDATE comparison_studies SET extraction = ?, issues = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     args: [JSON.stringify(reviewed), JSON.stringify(issues), study.id],
   });
+  if (nextSupply !== supply) {
+    await client.execute({ sql: "UPDATE comparison_studies SET supply = ? WHERE id = ?", args: [JSON.stringify(nextSupply), study.id] });
+  }
   return { issues };
 }

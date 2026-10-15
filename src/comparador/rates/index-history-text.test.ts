@@ -38,3 +38,15 @@ describe("index history text", () => {
     expect(monthsBetween("2025-11", "2026-02")).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
   });
 });
+
+test("el histórico de Eleia: meses en inglés y €/MWh con punto decimal", () => {
+  expect(parseMonth("Aug-26")).toBe("2026-08");
+  expect(parseMonth("Jan-26")).toBe("2026-01");
+  expect(parseMonth("Dec-25")).toBe("2025-12");
+  const parsed = parseHistoryText("Fecha\tP1\tP2\tP3\nSep-25\t176.01\t119.39\t106.99\nDec-25\t215.15\t162.75\t118.66", "eur_mwh");
+  expect(parsed.problems).toEqual([]);
+  expect(parsed.months).toEqual([
+    { month: "2025-09", energy: { P1: 0.17601, P2: 0.11939, P3: 0.10699 } },
+    { month: "2025-12", energy: { P1: 0.21515, P2: 0.16275, P3: 0.11866 } },
+  ]);
+});

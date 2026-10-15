@@ -1,5 +1,9 @@
 import type { Client } from "@libsql/client";
 import { getRegulatedParams, type RegulatedParams } from "@/comparador/engine/regulated";
+import { extractGasInvoice } from "@/comparador/gas/extract";
+import { gasCurrentTariff, gasInvoiceTaxRates, gasReadingOf, type GasStudyExtraction } from "@/comparador/gas/invoice";
+import { getGasRegulatedParams, type GasRegulatedParams } from "@/comparador/gas/regulated";
+import { buildEstimatedGasSupply, buildGasSupply, gasReadingsFromSips } from "@/comparador/gas/supply";
 import {
   currentTariffFromInvoice,
   flatTariffFromInvoice,
@@ -23,9 +27,12 @@ import {
 import type {
   ApoloSipsElectricityConsumptionRow,
   ApoloSipsElectricityPointSupplyRow,
+  ApoloSipsGasConsumptionRow,
+  ApoloSipsGasPointSupplyRow,
   ApoloSipsProcedure,
   ApoloSipsProcedureResult,
   ApoloSipsProcedureRow,
+  ApoloSipsSupplyType,
 } from "@/integrations/apolo-sips/types";
 import { StudyError } from "./errors";
 import { needsInvoiceReview } from "./invoice-review";
@@ -42,17 +49,29 @@ import {
 } from "./repository";
 import { getDefaultAncillary } from "./settings";
 import { detectSupplierInText } from "./supplier";
-import { annualKwhFromSips, buildSupply, SIPS_MESSAGES, SupplyUnavailableError, type StudySupply } from "./supply";
+import {
+  annualKwhFromSips,
+  buildEstimatedSupply,
+  buildSupply,
+  SIPS_MESSAGES,
+  SupplyUnavailableError,
+  type SipsYear as SipsConsumptionYear,
+  type StudySupply,
+} from "./supply";
 
 type TenantClient = Pick<Client, "execute" | "batch">;
 
 export { StudyError };
 
-/** Consulta al SIPS; null si no se puede (sin clave, caído, CUPS desconocido). */
+/** Consulta al SIPS de luz o de gas; null si no se puede (sin clave, caído, CUPS desconocido). */
 export type SipsFetcher = (
   cups: string,
   procedure: ApoloSipsProcedure,
+  supplyType?: ApoloSipsSupplyType,
 ) => Promise<ApoloSipsProcedureResult<ApoloSipsProcedureRow> | null>;
+
+/** Luz o gas: lo que compara la comparativa. */
+export type StudyEnergy = "electricity" | "gas";
 
 export interface InvoiceForStudy {
   data: Uint8Array;
@@ -69,24 +88,46 @@ export interface InvoiceForStudy {
 const NO_DETAIL_IN_PHOTO =
   "No se ha podido leer el detalle de la factura (potencia y energía) en la foto. Si la factura tiene más páginas, súbelas todas; si no, haz otra foto de frente y con buena luz, o pide el PDF.";
 
-interface SipsYear {
-  sipsPoint: ApoloSipsElectricityPointSupplyRow | null;
-  sipsConsumption: ApoloSipsElectricityConsumptionRow[];
+interface SipsData {
+  sipsPoint: ApoloSipsElectricityPointSupplyRow | ApoloSipsGasPointSupplyRow | null;
+  sipsConsumption: ApoloSipsElectricityConsumptionRow[] | ApoloSipsGasConsumptionRow[];
+  /** El año de consumo del SIPS, completo o no; null sin lecturas. */
+  year: SipsConsumptionYear | null;
 }
 
-/** El punto de suministro y un año de consumo del SIPS; si no hay año completo, no hay estudio. */
-async function loadSipsYear(fetchSips: SipsFetcher, cups: string): Promise<SipsYear> {
+const NO_SIPS: SipsData = { sipsPoint: null, sipsConsumption: [], year: null };
+
+/**
+ * El punto de suministro y el consumo del SIPS. Si no responde y el estudio
+ * lo necesita, se para (es pasajero); sin un año de lecturas el estudio
+ * estima con la factura. En un «Estudio sin SIPS» se consulta igual, para las
+ * comisiones, pero sin parar si falla.
+ */
+async function loadSips(fetchSips: SipsFetcher, cups: string | null, energy: StudyEnergy, required: boolean): Promise<SipsData> {
+  if (!cups) return NO_SIPS;
+  const supplyType = energy === "gas" ? "GAS" : "ELECTRICIDAD";
   const [point, consumption] = await Promise.all([
-    fetchSips(cups, "PS").catch(() => null),
-    fetchSips(cups, "CONSUMOS").catch(() => null),
+    fetchSips(cups, "PS", supplyType).catch(() => null),
+    fetchSips(cups, "CONSUMOS", supplyType).catch(() => null),
   ]);
-  if (!consumption) throw new StudyError(SIPS_MESSAGES.unavailable, 503);
-  const sipsConsumption = consumption.rows as ApoloSipsElectricityConsumptionRow[];
-  const sipsYear = annualKwhFromSips(sipsConsumption);
-  if (!sipsYear) throw new StudyError(SIPS_MESSAGES.noReadings);
-  if ("insufficient" in sipsYear) throw new StudyError(SIPS_MESSAGES.insufficient(sipsYear.months));
-  return { sipsPoint: (point?.rows[0] as ApoloSipsElectricityPointSupplyRow | undefined) ?? null, sipsConsumption };
+  if (!consumption) {
+    if (required) throw new StudyError(SIPS_MESSAGES.unavailable, 503);
+    return NO_SIPS;
+  }
+  const readings =
+    energy === "gas"
+      ? gasReadingsFromSips(consumption.rows as ApoloSipsGasConsumptionRow[])
+      : (consumption.rows as ApoloSipsElectricityConsumptionRow[]);
+  return {
+    sipsPoint: (point?.rows[0] as ApoloSipsElectricityPointSupplyRow | ApoloSipsGasPointSupplyRow | undefined) ?? null,
+    sipsConsumption: consumption.rows as ApoloSipsElectricityConsumptionRow[] | ApoloSipsGasConsumptionRow[],
+    year: annualKwhFromSips(readings),
+  };
 }
+
+/** La foto de gas se ha leído, pero sin el término fijo ni el variable. */
+const NO_GAS_DETAIL_IN_PHOTO =
+  "No se ha podido leer el detalle de la factura de gas (término fijo y variable) en la foto. Si tiene más páginas, súbelas todas; si no, haz otra foto de frente y con buena luz, o pide el PDF.";
 
 /**
  * Analiza la factura de una comparativa: texto del PDF, anonimizado en local
@@ -103,7 +144,10 @@ export async function analyzeInvoice({
   channel,
   today,
   fetchSips,
+  energy = "electricity",
+  useSips = true,
   extract = extractInvoice,
+  extractGas = extractGasInvoice,
   verify = verifyReading,
 }: {
   client: TenantClient;
@@ -114,17 +158,29 @@ export async function analyzeInvoice({
   channel: SavedStudyOptions["channel"];
   today: string;
   fetchSips: SipsFetcher;
+  /** Luz (por defecto) o gas, según la comparativa. */
+  energy?: StudyEnergy;
+  /**
+   * false: «Estudio sin SIPS». El consumo sale de la factura llevada a un año
+   * (una estimación) y el SIPS solo se consulta, si hay CUPS, para las comisiones.
+   */
+  useSips?: boolean;
   extract?: typeof extractInvoice;
+  extractGas?: typeof extractGasInvoice;
   verify?: typeof verifyReading;
 }): Promise<string> {
   const context = { tenantSlug, jobType: "invoice_extraction" as const, userId, subjectId: comparativaId };
   const images = photoVisionEnabled() ? await invoiceImagesForVision(invoice) : null;
 
-  let cups: string;
+  let cups: string | null;
   let fromImage: boolean;
   let clientData: StudyClientData | null;
-  let extraction: Awaited<ReturnType<typeof extractInvoice>>;
-  let sips: SipsYear;
+  let extraction: { extraction: InvoiceExtraction; issues: InvoiceIssue[]; attempts: { costUsd: number | null }[] };
+  const gas = energy === "gas";
+  /** Lee la factura con el extractor de luz o el de gas. */
+  const read = (file: Parameters<typeof extractInvoice>[0]["file"], knownCups: string | null) =>
+    gas ? extractGas({ file, context, knownCups }) : extract({ file, context, knownCups });
+  let sips: SipsData;
   let facts: InvoiceExtraction;
   // Datos que la comprobación independiente (Jev) no ve en la factura.
   let doubtful: InvoiceIssue[] = [];
@@ -136,26 +192,27 @@ export async function analyzeInvoice({
     fromImage = true;
     // Con franjas a su resolución: OpenAI reduce cada imagen a 768 px de lado
     // corto y la letra pequeña se perdía (Luna sola: 16 → 22 de 30 fotos).
-    extraction = await extract({
-      file: { pages: images, zoomed: await zoomedBands(images) },
-      context,
-      knownCups: invoice.cups ?? null,
-    });
-    const read = extraction.extraction;
-    if (read.powerLines.length === 0 && read.energyLines.length === 0) throw new StudyError(NO_DETAIL_IN_PHOTO);
-    const readCups = read.cups && isValidCups(read.cups) ? normalizeIdentifier(read.cups) : null;
+    extraction = await read({ pages: images, zoomed: await zoomedBands(images) }, invoice.cups ?? null);
+    const reading = extraction.extraction;
+    const gasReading = gasReadingOf(reading);
+    if (gasReading) {
+      if (gasReading.fixedTermLines.length === 0 && gasReading.energyLines.length === 0 && gasReading.pricing !== "flat") {
+        throw new StudyError(NO_GAS_DETAIL_IN_PHOTO);
+      }
+    } else if (reading.powerLines.length === 0 && reading.energyLines.length === 0) throw new StudyError(NO_DETAIL_IN_PHOTO);
+    const readCups = reading.cups && isValidCups(reading.cups) ? normalizeIdentifier(reading.cups) : null;
     const found = invoice.cups ?? readCups;
-    if (!found) throw new StudyError(SIPS_MESSAGES.noCupsInImage, 422, "cups_missing");
+    if (!found && useSips) throw new StudyError(SIPS_MESSAGES.noCupsInImage, 422, "cups_missing");
     cups = found;
-    clientData = clientFromExtraction(read);
-    sips = await loadSipsYear(fetchSips, cups);
-    facts = read;
+    clientData = clientFromExtraction(reading);
+    sips = await loadSips(fetchSips, cups, energy, useSips);
+    facts = reading;
   } else {
     const reading = await readInvoice(invoice);
     fromImage = reading.fromImage;
     // Contratos, estudios de otra comercializadora o facturas de otra tarifa:
     // se dice qué es antes de anonimizar y de gastar en la IA.
-    const notInvoice = notAnInvoice(reading.text, { fromImage });
+    const notInvoice = notAnInvoice(reading.text, { fromImage, energy });
     if (notInvoice) throw new StudyError(notInvoice.message);
     // Datos del titular leídos en local: rellenan el cliente y, además, se
     // tapan en todo el texto aunque no lleven etiqueta.
@@ -167,14 +224,14 @@ export async function analyzeInvoice({
     }
     clientData = redacted.clientData;
     const found = redacted.redaction.identifiers.cups[0] ?? invoice.cups ?? null;
-    // Sin un año real de consumo del SIPS no hay estudio. Se comprueba antes
-    // de llamar a la IA: no se gasta en una factura que no se puede comparar.
-    if (!found) {
+    // Sin CUPS no hay SIPS: se pide antes de llamar a la IA, salvo en un
+    // «Estudio sin SIPS», que puede seguir sin él.
+    if (!found && useSips) {
       throw new StudyError(fromImage ? SIPS_MESSAGES.noCupsInImage : SIPS_MESSAGES.noCups, 422, "cups_missing");
     }
     cups = found;
-    sips = await loadSipsYear(fetchSips, cups);
-    extraction = await extract({ file: { text: redacted.redaction.text }, context, knownCups: cups });
+    sips = await loadSips(fetchSips, cups, energy, useSips);
+    extraction = await read({ text: redacted.redaction.text }, cups);
     facts = extraction.extraction.supplierName
       ? extraction.extraction
       : { ...extraction.extraction, supplierName: await supplierFromText(client, redacted.redaction.text) };
@@ -190,13 +247,47 @@ export async function analyzeInvoice({
   const aiCostUsd = extraction.attempts.reduce((sum, { costUsd }) => sum + (costUsd ?? 0), 0);
 
   const tariff = (facts.accessTariff ?? "").replace(/\s/g, "").toUpperCase();
-  if (tariff && !tariff.startsWith("2.0")) {
+  if (!gas && tariff && !tariff.startsWith("2.0")) {
     throw new StudyError(`El comparador propio compara 2.0TD; esta factura es ${facts.accessTariff}.`);
   }
+  if (gas && extraction.issues.some(({ code }) => code === "unsupported_gas_tariff")) {
+    throw new StudyError(`El comparador compara gas de RL.1 a RL.4; esta factura es ${facts.accessTariff}.`);
+  }
 
+  // Con un año de SIPS, el consumo real. Si no hay año (alta nueva, pocas
+  // lecturas) o se ha pedido «Estudio sin SIPS», la factura llevada a un año,
+  // avisando de que es una estimación (Beenergy, 15-10-2026). El consumo real
+  // del SIPS, si lo hay, sigue mandando en las comisiones.
+  const fullYear = sips.year && !("insufficient" in sips.year) ? sips.year : null;
+  const estimated = !useSips || !fullYear;
+  const referenceAnnualKwh = fullYear ? fullYear.annualKwh.P1 + fullYear.annualKwh.P2 + fullYear.annualKwh.P3 : null;
   let supply;
   try {
-    supply = buildSupply({ invoice: facts, sipsPoint, sipsConsumption });
+    supply = estimated
+      ? gas
+        ? buildEstimatedGasSupply({
+            invoice: facts,
+            sipsPoint: sipsPoint as ApoloSipsGasPointSupplyRow | null,
+            reason: useSips ? "no_sips" : "chosen",
+            referenceAnnualKwh,
+          })
+        : buildEstimatedSupply({
+            invoice: facts,
+            sipsPoint: sipsPoint as ApoloSipsElectricityPointSupplyRow | null,
+            reason: useSips ? "no_sips" : "chosen",
+            referenceAnnualKwh,
+          })
+      : gas
+      ? buildGasSupply({
+          invoice: facts,
+          sipsPoint: sipsPoint as ApoloSipsGasPointSupplyRow | null,
+          sipsConsumption: sipsConsumption as ApoloSipsGasConsumptionRow[],
+        })
+      : buildSupply({
+          invoice: facts,
+          sipsPoint: sipsPoint as ApoloSipsElectricityPointSupplyRow | null,
+          sipsConsumption: sipsConsumption as ApoloSipsElectricityConsumptionRow[],
+        });
   } catch (error) {
     if (error instanceof SupplyUnavailableError) throw new StudyError(error.message);
     throw error;
@@ -213,6 +304,7 @@ export async function analyzeInvoice({
       ...(fromImage ? [{ code: "read_from_image" as const, severity: "warning" as const, field: "invoice" }] : []),
       ...extraction.issues,
       ...doubtful,
+      ...(estimated ? [{ code: "estimated_consumption" as const, severity: "warning" as const, field: "consumptionKwh" }] : []),
     ],
     supply,
     // El tipo de tarifa (fija, indexada, plana) lo confirma quien hace el estudio.
@@ -225,7 +317,7 @@ export async function analyzeInvoice({
     createdBy: userId,
   });
   // Indexada: el mercado (OMIE) se descarga ya, para que el estudio se abra sin esperar.
-  if (facts.pricing === "indexed") {
+  if (facts.pricing === "indexed" && !gas) {
     const study = await getStudy(client, studyId);
     if (study) await ensureMarket(client, study);
   }
@@ -264,6 +356,17 @@ function withInvoiceTaxes(
   };
 }
 
+/** Gas: el impuesto de hidrocarburos y el IVA de la factura, si cuadran. */
+function withGasInvoiceTaxes(
+  regulated: GasRegulatedParams,
+  rates: { hydrocarbonTaxPerKwh?: number; vatRate?: number },
+): GasRegulatedParams {
+  return {
+    hydrocarbonTaxPerKwh: rates.hydrocarbonTaxPerKwh ?? regulated.hydrocarbonTaxPerKwh,
+    vatRate: rates.vatRate ?? regulated.vatRate,
+  };
+}
+
 /** Cómo es la tarifa de hoy: la que marca quien hace el estudio o, si no, la que leyó la IA. */
 export function currentPricingOf(study: Pick<StudyRecord, "extraction">, options: Pick<SavedStudyOptions, "currentPricing">): CurrentPricing {
   if (options.currentPricing) return options.currentPricing;
@@ -282,10 +385,14 @@ export interface CurrentInfo {
   marketAverage: number | null;
   /** Por qué no se sabe lo que paga hoy, si no se sabe. */
   unavailable: string | null;
+  /** Gas indexado: lo que paga hoy se ha calculado con el precio de esta factura todo el año. */
+  gasIndexedFromInvoice?: boolean;
 }
 
 const MARKET_MESSAGES = {
   noReadings: "Este estudio se analizó antes de guardar las lecturas del SIPS: vuelve a analizar la factura para compararla con el mercado.",
+  estimated:
+    "Con el consumo estimado (sin las lecturas del SIPS) no se puede comparar una tarifa indexada con el mercado de cada mes: márcala como fija para usar el precio de esta factura.",
   noPeriod: "La factura no tiene periodo de facturación: hace falta para compararla con el mercado.",
   unavailable: "No se han podido descargar los precios de OMIE. Vuelve a intentarlo en unos minutos.",
 };
@@ -303,7 +410,7 @@ export async function ensureMarket(
 ): Promise<{ supply: StudySupply; error: string | null }> {
   const supply = study.supply!;
   const period = study.extraction?.billingPeriod;
-  if (!supply.readings?.length) return { supply, error: MARKET_MESSAGES.noReadings };
+  if (!supply.readings?.length) return { supply, error: supply.estimate ? MARKET_MESSAGES.estimated : MARKET_MESSAGES.noReadings };
   if (!period?.from || !period.to) return { supply, error: MARKET_MESSAGES.noPeriod };
   const invoicePeriod = { from: period.from, to: period.to };
   const market = supply.market;
@@ -352,6 +459,25 @@ async function resolveCurrent(
   let supply = study.supply!;
   // Sin lo que paga hoy hasta que alguien revise una lectura que no cuadra.
   if (needsInvoiceReview(study)) return { tariff: null, supply, info };
+
+  // Gas: los precios de su factura. Una indexada se toma con el precio de
+  // esta factura todo el año (el mercado del gas, MIBGAS, aún no se descarga).
+  if (supply.energy === "gas") {
+    const gasExtraction = gasReadingOf(extraction) ? (extraction as GasStudyExtraction) : null;
+    const tariff = gasExtraction ? gasCurrentTariff(gasExtraction) : null;
+    const reading = gasExtraction?.gas;
+    if (!tariff) {
+      info.unavailable =
+        reading && (reading.consumptionKwh ?? 0) === 0 && reading.energyLines.length === 0
+          ? "Esta factura de gas no tiene consumo y no dice a cuánto cobra el kWh: analiza otra factura del cliente con consumo."
+          : "La factura de gas no da todos sus precios (término fijo y variable): revísala.";
+    }
+    if (tariff && pricing === "indexed") {
+      info.unavailable = null;
+      info.gasIndexedFromInvoice = true;
+    }
+    return { tariff, supply, info };
+  }
 
   if (pricing === "flat") {
     const tariff = flatTariffFromInvoice(extraction);
@@ -409,8 +535,9 @@ export async function rankSavedStudy({
   }
   const effective: SavedStudyOptions = { ...study.options, ...options };
   const pricing = currentPricingOf(study, effective);
+  const gas = study.supply.energy === "gas";
   const [offers, rules, suggested, current, indexHistory] = await Promise.all([
-    listActiveOfferPrices(client, study.priceDate),
+    listActiveOfferPrices(client, study.priceDate, gas ? "gas" : "electricity"),
     listCurrentCommissionRules(client, study.priceDate),
     getDefaultAncillary(client),
     resolveCurrent(client, study, pricing),
@@ -421,13 +548,15 @@ export async function rankSavedStudy({
   // El que se marca en el estudio; si no, el de la factura (NIF: particular; CIF: empresa).
   const detected = customerTypeFromClient(study.clientData);
   const customerType = { value: effective.customerType ?? detected, detected };
+  const gasReading = gas ? gasReadingOf(study.extraction) : null;
   const ranking = rankStudy({
     supply: current.supply,
     current: current.tariff,
     offers,
     rules,
     regulated: withInvoiceTaxes(getRegulatedParams(study.priceDate), invoiceTaxRates(study.extraction)),
-    options: { ...effective, customerType: customerType.value, ancillary: ancillary.value, date: study.priceDate },
+    gasRegulated: gas ? withGasInvoiceTaxes(getGasRegulatedParams(study.priceDate), gasReading ? gasInvoiceTaxRates(gasReading) : {}) : undefined,
+    options: { ...effective, customerType: customerType.value, ancillary: gas ? null : ancillary.value, date: study.priceDate },
     indexHistory,
   });
   return {

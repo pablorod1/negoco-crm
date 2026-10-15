@@ -154,8 +154,8 @@ export async function closeStudy({
 
     if (comparativa.commission_segment === null) {
       await transaction.execute({
-        sql: "UPDATE comparativas SET commission_segment = 'luz_20td', commission_segment_origin = 'tariff' WHERE id = ?",
-        args: [study.comparativaId],
+        sql: "UPDATE comparativas SET commission_segment = ?, commission_segment_origin = 'tariff' WHERE id = ?",
+        args: [study.supply?.energy === "gas" ? "gas" : "luz_20td", study.comparativaId],
       });
     }
 

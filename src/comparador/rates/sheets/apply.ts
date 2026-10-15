@@ -5,6 +5,7 @@ import type {
   RateDocumentExtraction,
 } from "../schema";
 import { cellAt, cellIn, columnIndex, columnLetter, findSheet, type SheetCell, type SheetGrid } from "./grid";
+import { energyOfTariff, normalizeGasTariff } from "@/comparador/gas/regulated";
 import {
   parseBand,
   parseBoolean,
@@ -22,7 +23,11 @@ import type { RecipeField, RecipeTable, SheetRecipe } from "./recipe";
 
 /** Tabla de una plantilla con la fila de su texto ancla, que pone el código. */
 export type StoredRecipeTable = RecipeTable & { anchorRow?: number | null };
-export type StoredRecipe = Omit<SheetRecipe, "tables"> & { tables: StoredRecipeTable[] };
+/** Las plantillas guardadas antes del 2026-10-15 pueden no tener `skippedRanges`. */
+export type StoredRecipe = Omit<SheetRecipe, "tables" | "skippedRanges"> & {
+  tables: StoredRecipeTable[];
+  skippedRanges?: SheetRecipe["skippedRanges"];
+};
 
 /** Algo de la plantilla que no encaja con el libro, y en qué hoja. */
 export interface RecipeProblem {
@@ -273,7 +278,16 @@ function readTable(
           fail(`el filtro «${table.rowFilter.pattern}» no es válido.`);
           return [];
         }
-        if (!cell || !pattern.test(cell.text)) continue;
+        // En una copia, la columna del filtro puede caer en el peaje antiguo
+        // equivalente (Eleia: «RL.1» en C y «3.1» en K): vale si es el mismo
+        // peaje que el de la columna sin desplazar.
+        const sameTariff = () => {
+          if (!cell || copy.columnShift === 0) return false;
+          const original = cellIn(grid, row, table.rowFilter!.column.replace(/\$/g, ""));
+          const here = parseTariff(cell.text)?.tariff;
+          return Boolean(original && here && pattern.test(original.text) && parseTariff(original.text)?.tariff === here);
+        };
+        if (!cell || !(pattern.test(cell.text) || sameTariff())) continue;
       }
 
       const values: RowRecord["values"] = {};
@@ -418,9 +432,14 @@ function typeRow(record: RowRecord, problems: RecipeProblem[]): TypedRow | "labe
   const tariffText = text(values.accessTariff);
   const tariff = tariffText ? parseTariff(tariffText) : null;
   if (tariffText && !tariff) return null;
-  if (tariff && tariff.tariff !== "2.0TD") return null;
+  // 2.0TD o gas de RL.1 a RL.4; lo demás (3.0TD, RL.5, planta satélite) no se lee.
+  if (tariff && tariff.tariff !== "2.0TD" && !normalizeGasTariff(tariff.tariff)) return null;
 
   const powerBand = text(values.powerBand) ? parseBand(text(values.powerBand)!, "kw") : null;
+  // Tramos de consumo en MWh (Axpo: «MWh/año» de 1 a 2,5): a kWh.
+  const perMwh = /mwh/i.test(text(values.consumptionUnit) ?? "");
+  const inKwh = (value: number | null | undefined) =>
+    value === null || value === undefined ? null : perMwh ? Math.round(value * 1000) : value;
   const consumptionBand = text(values.consumptionBand)
     ? parseBand(text(values.consumptionBand)!, "kwh")
     : null;
@@ -480,15 +499,15 @@ function typeRow(record: RowRecord, problems: RecipeProblem[]): TypedRow | "labe
     territories,
     productName,
     level: text(values.level),
-    accessTariff: "2.0TD",
+    accessTariff: tariff?.tariff ?? "2.0TD",
     tariffSinglePrice: tariff?.singlePrice ?? false,
     territory: declaredTerritory ?? record.headerTerritory ?? "peninsula",
     channel: channelText ? parseChannel(channelText) : null,
     segment: text(values.segment),
     minKw: numbers.minKw ?? powerBand?.min ?? null,
     maxKw: numbers.maxKw ?? powerBand?.max ?? null,
-    minKwh: numbers.minKwh ?? consumptionBand?.min ?? null,
-    maxKwh: numbers.maxKwh ?? consumptionBand?.max ?? null,
+    minKwh: inKwh(numbers.minKwh) ?? consumptionBand?.min ?? null,
+    maxKwh: inKwh(numbers.maxKwh) ?? consumptionBand?.max ?? null,
     startFrom: month?.from ?? null,
     startTo: month?.to ?? null,
     months: termCell
@@ -522,6 +541,9 @@ function powerUnit(row: TypedRow): ExtractedRate["powerUnit"] {
   const parsed = declared ? parsePowerUnit(declared) : null;
   if (parsed) return parsed;
   const sample = row.numbers.powerP1 ?? 0;
+  // Gas: término fijo por cliente. Al día va de 0,1 a 3,5 €; al mes, de 2 a
+  // 60; al año, de 25 en adelante. Mejor que la plantilla lo diga.
+  if (normalizeGasTariff(row.accessTariff)) return sample > 60 ? "eur_year" : sample > 4 ? "eur_month" : "eur_day";
   return sample > 6 ? "eur_kw_year" : sample > 0.5 ? "eur_kw_month" : "eur_kw_day";
 }
 
@@ -609,7 +631,7 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
     };
     if (
       sourceOf("powerP1") &&
-      (sourceOf("powerP1") === sourceOf("energyP1") || sourceOf("powerP2") === sourceOf("energyP2"))
+      (sourceOf("powerP1") === sourceOf("energyP1") || (sourceOf("powerP2") !== null && sourceOf("powerP2") === sourceOf("energyP2")))
     ) {
       problems.push({
         sheet: table.sheet,
@@ -672,8 +694,14 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
     // Mandan las cifras: si el libro trae la potencia, es esa aunque la
     // plantilla diga «BOE» (Axpo cobra BOE + 12 €/kW·año y lo escribe).
     const declaredMode = text(row.raw.powerMode)?.toLowerCase() ?? "";
-    const powerMode: ExtractedRate["powerMode"] =
-      power.p1 !== null && power.p2 !== null
+    // Gas: un solo término fijo, sin P2.
+    const gasRow = normalizeGasTariff(row.accessTariff) !== null;
+    // Gas con «peajes + margen» o «peajes a coste»: lo que diga la plantilla,
+    // con el término fijo del libro como margen.
+    const gasMode = gasRow && /plus|margen/.test(declaredMode) ? "regulated_plus" : gasRow && /regul|boe/.test(declaredMode) ? "regulated" : null;
+    const powerMode: ExtractedRate["powerMode"] = gasMode
+      ? gasMode
+      : power.p1 !== null && (power.p2 !== null || gasRow)
         ? "fixed"
         : /plus|margen/.test(declaredMode)
           ? "regulated_plus"
@@ -728,8 +756,8 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
       startTo: row.startTo,
       months: row.months,
       powerMode,
-      powerUnit: powerMode === "fixed" ? power.unit : null,
-      powerP1: powerMode === "fixed" ? power.p1 : null,
+      powerUnit: powerMode === "fixed" || gasMode === "regulated_plus" ? power.unit : null,
+      powerP1: powerMode === "fixed" || gasMode === "regulated_plus" ? power.p1 : null,
       powerP2: powerMode === "fixed" ? power.p2 : null,
       powerMargin: row.numbers.powerMargin ?? null,
       energyUnit: energyUnit(row),
@@ -738,6 +766,7 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
       energyP3: single ? null : energy.p3,
       singlePrice: single,
       ancillaryIncluded: bool(row.raw.ancillaryIncluded, true),
+      gasTollsIncluded: gasRow ? bool(row.raw.tollsIncluded, true) : null,
       feeMinMwh: row.numbers.feeMinMwh ?? null,
       feeMaxMwh: row.numbers.feeMaxMwh ?? row.numbers.feeMinMwh ?? null,
       feeOnPower: bool(row.raw.feeOnPower, false),
@@ -817,7 +846,9 @@ export function applyRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe): 
       const type = text(row.raw.commissionType)?.toLowerCase() ?? "fixed";
       return {
         productName: row.productName,
-        accessTariff: "2.0TD",
+        // El peaje de la fila: las comisiones de gas van por RL (Axpo «MR GAS»).
+        accessTariff: row.accessTariff,
+        energy: energyOfTariff(row.accessTariff),
         pricing: "fixed" as const,
         level: row.level,
         channel: row.channel ?? "both",

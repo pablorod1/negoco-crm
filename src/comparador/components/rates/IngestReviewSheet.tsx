@@ -340,8 +340,8 @@ export function IngestReviewSheet({
 
               {entries.length === 0 && (
                 <p className="text-sm">
-                  Este documento no trae precios fijos de 2.0TD
-                  {review.commissions.length > 0 ? "; solo comisiones." : "."} La v1 del comparador solo
+                  Este documento no trae precios fijos ni indexados de 2.0TD ni de gas
+                  {review.commissions.length > 0 ? "; solo comisiones." : "."} El comparador solo
                   guarda esas tarifas.
                 </p>
               )}
@@ -432,8 +432,8 @@ export function IngestReviewSheet({
                     <TableHead className="w-8" />
                     <TableHead>Tarifa</TableHead>
                     <TableHead>Condiciones</TableHead>
-                    <TableHead>Energía €/kWh (P1/P2/P3)</TableHead>
-                    <TableHead>Potencia €/kW·día</TableHead>
+                    <TableHead>Energía €/kWh (P1/P2/P3 · gas: variable)</TableHead>
+                    <TableHead>Potencia €/kW·día (gas: fijo)</TableHead>
                     <TableHead>En el documento</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -462,6 +462,7 @@ export function IngestReviewSheet({
                           <Badge variant={KIND_LABEL[entry.kind].variant}>{KIND_LABEL[entry.kind].label}</Badge>
                         </TableCell>
                         <TableCell className="text-sm">
+                          {entry.conditions.accessTariff !== "2.0TD" && <span className="font-medium">{entry.conditions.accessTariff} · </span>}
                           {describeConditions({ ...entry.conditions, ...row })}
                         </TableCell>
                         <TableCell className="text-sm">{energyCell(entry)}</TableCell>
@@ -479,7 +480,7 @@ export function IngestReviewSheet({
                               Usar la regulada (BOE)
                             </label>
                           ) : (
-                            describePower(row)
+                            describePower({ ...row, accessTariff: entry.conditions.accessTariff })
                           )}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-[320px]">

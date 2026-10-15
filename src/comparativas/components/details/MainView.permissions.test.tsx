@@ -1025,7 +1025,7 @@ describe("Estudio Negoco Cloud button", () => {
     expect(negocoButton()).toBeNull();
   });
 
-  test("is not offered for gas comparisons", () => {
+  test("is offered for gas comparisons too", () => {
     renderMainView({
       role: "1",
       status: "pending",
@@ -1034,7 +1034,7 @@ describe("Estudio Negoco Cloud button", () => {
       negocoModule: true,
       service: "Gas",
     });
-    expect(negocoButton()).toBeNull();
+    expect(negocoButton()).not.toBeNull();
   });
 
   test("disappears once the study is completed", () => {

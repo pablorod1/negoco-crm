@@ -27,7 +27,13 @@ export function cleanName(raw: string): string {
  */
 export function productNameOf(raw: string): string {
   const clean = cleanName(raw);
-  const stripped = clean.replace(/^(?:2[.,]?0\s?TD|2[.,]?01P)(?:\s?_\s?\d+)?\s*[-_:·]?\s*/i, "").trim();
+  const stripped = clean
+    .replace(/^(?:2[.,]?0\s?TD|2[.,]?01P)(?:\s?_\s?\d+)?\s*[-_:·]?\s*/i, "")
+    // El código de la semana o de la versión del anexo no es del producto:
+    // Eleia titula «PRODUCTO TU DECIDES S4126» y la semana siguiente «S4226».
+    .replace(/\s+(?:S\d{4}|V\d{6,8})(?=\s|$)/gi, "")
+    .replace(/^PRODUCTO\s+/i, "")
+    .trim();
   return stripped || clean;
 }
 

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { InvoiceExtractionSchema } from "@/comparador/extraction/invoice-schema";
+import { GasInvoiceExtractionSchema } from "@/comparador/gas/invoice-schema";
 import { requireNegocoStudiesAccess } from "@/comparador/server/guard";
 import { loadStudy, studyError } from "@/comparador/server/study-route";
 import { saveInvoiceReview } from "@/comparador/study/invoice-review";
 
 const ReviewSchema = z.object({
-  invoice: InvoiceExtractionSchema,
+  /** Gas: la lectura de gas va en `gas` y es la que manda. */
+  invoice: InvoiceExtractionSchema.extend({ gas: GasInvoiceExtractionSchema.optional() }),
   /** Las cuentas no cuadran y quien revisa confirma que es lo que dice la factura. */
   acceptMismatch: z.boolean().optional(),
 });

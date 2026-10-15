@@ -88,7 +88,7 @@ export function RateUploadDialog({
           <DialogTitle>Subir anexo de precios · {supplierName}</DialogTitle>
           <DialogDescription>
             PDF, Excel, CSV o imagen, o el texto del correo. Se leen los precios 2.0TD
-            de precio fijo y las comisiones; nada cambia hasta que apruebes la revisión.
+            y de gas (RL.1 a RL.4), fijos o indexados, y las comisiones; nada cambia hasta que apruebes la revisión.
           </DialogDescription>
         </DialogHeader>
 

@@ -86,12 +86,15 @@ export function InvoicePicker({
   cupsPrompt,
   onAnalyze,
   onCancel,
+  gas = false,
 }: {
   invoices: ComparativaStudies["invoices"];
+  /** Comparativa de gas: se pide la factura de gas. */
+  gas?: boolean;
   busy: boolean;
   /** La factura no trae un CUPS legible: el motivo, y se pide aquí mismo. */
   cupsPrompt?: string | null;
-  onAnalyze: (invoice: { fileId: string } | { files: File[] }, cups?: string) => void;
+  onAnalyze: (invoice: { fileId: string } | { files: File[] }, cups?: string, withoutSips?: boolean) => void;
   /** Volver al estudio que ya había, sin analizar otra factura. */
   onCancel?: () => void;
 }) {
@@ -103,6 +106,8 @@ export function InvoicePicker({
   const [dragging, setDragging] = useState(false);
   const [previewing, setPreviewing] = useState<ComparativaStudies["invoices"][number] | null>(null);
   const [cups, setCups] = useState("");
+  // «Estudio sin SIPS»: el consumo de la factura llevado a un año (clientes de Abarca que trabajan así).
+  const [withoutSips, setWithoutSips] = useState(false);
   const cupsValid = isValidCups(cups);
 
   if (busy) return <Analyzing />;
@@ -125,7 +130,9 @@ export function InvoicePicker({
       <div className="text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-gray-900">¿Qué factura analizamos?</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">
-          Con la última factura de luz calculamos lo que paga hoy y lo que pagaría con cada tarifa. El CUPS trae del SIPS 12 meses de consumo y la potencia.
+          {gas
+            ? "Con la última factura de gas calculamos lo que paga hoy y lo que pagaría con cada tarifa de su peaje. El CUPS trae del SIPS 12 meses de consumo."
+            : "Con la última factura de luz calculamos lo que paga hoy y lo que pagaría con cada tarifa. El CUPS trae del SIPS 12 meses de consumo y la potencia."}
         </p>
       </div>
 
@@ -295,7 +302,22 @@ export function InvoicePicker({
           </div>
         )}
 
-        <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <label className="mt-6 flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm ring-1 ring-gray-950/[0.04]">
+          <input
+            type="checkbox"
+            className="mt-0.5 accent-primary"
+            checked={withoutSips}
+            onChange={(event) => setWithoutSips(event.target.checked)}
+          />
+          <span>
+            <span className="font-medium text-gray-900">Estudio sin SIPS</span>
+            <span className="block text-xs text-gray-500">
+              El consumo de un año se estima con el de esta factura, y el estudio y la propuesta lo dicen. Si hay CUPS, el SIPS se consulta igual para calcular bien la comisión.
+            </span>
+          </span>
+        </label>
+
+        <div className="mt-4 flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2 text-xs text-gray-500">
             <ShieldCheck className="size-4 shrink-0 text-success-600" />
             Los datos personales se leen en el CRM y se tapan antes de analizarla.
@@ -310,7 +332,7 @@ export function InvoicePicker({
               className="rounded-xl"
               size="lg"
               disabled={(!file && !fileId) || (Boolean(cups.trim()) && !cupsValid)}
-              onClick={() => onAnalyze(files.length > 0 ? { files } : { fileId }, cupsValid ? cups : undefined)}
+              onClick={() => onAnalyze(files.length > 0 ? { files } : { fileId }, cupsValid ? cups : undefined, withoutSips)}
             >
               Analizar factura
             </Button>

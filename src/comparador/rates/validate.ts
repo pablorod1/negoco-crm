@@ -1,3 +1,4 @@
+import { GAS_ACCESS_TARIFFS, energyOfTariff } from "@/comparador/gas/regulated";
 import { conditionsKey } from "./keys";
 import { appearsInText, numbersInText } from "./normalize";
 import type { ProposedRate } from "./types";
@@ -31,13 +32,17 @@ export interface RateIssue {
   rowKey?: string;
 }
 
-/** Tarifas que compara la v1. */
-export const SUPPORTED_ACCESS_TARIFFS = ["2.0TD"] as const;
+/** Tarifas que compara el comparador: luz 2.0TD y gas de RL.1 a RL.4. */
+export const SUPPORTED_ACCESS_TARIFFS = ["2.0TD", ...GAS_ACCESS_TARIFFS] as const;
 
 // Rangos plausibles en las unidades del motor. La potencia de valle de la
 // 2.0TD regulada ronda 0,002 €/kW·día; la de punta más cara, 0,2.
 const ENERGY_RANGE = { min: 0.02, max: 0.6 };
 const POWER_RANGE = { min: 0.0005, max: 0.5 };
+// Gas: el variable ronda 0,05–0,12 €/kWh; el término fijo, de 0,1 €/día
+// (RL.1) a 2 €/día (RL.4, TUR de 54,82 €/mes).
+const GAS_ENERGY_RANGE = { min: 0.015, max: 0.3 };
+const GAS_FIXED_RANGE = { min: 0.01, max: 6 };
 
 /** Clave de una fila propuesta: producto, tarifa y todas sus condiciones. */
 export function rowKey(row: ProposedRate): string {
@@ -45,7 +50,7 @@ export function rowKey(row: ProposedRate): string {
 }
 
 /**
- * La fila entra en el comparador: 2.0TD de precio fijo o indexado. De las
+ * La fila entra en el comparador: 2.0TD o gas (RL.1 a RL.4) de precio fijo o indexado. De las
  * indexadas se guarda la potencia, el fee y los descuentos; la energía sale
  * del histórico del indexado de cada mes.
  */
@@ -92,7 +97,7 @@ export function validateProposedRates(
     issues.push({
       severity: "blocking",
       code: "no_rates",
-      message: "El documento no trae precios fijos ni indexados de 2.0TD.",
+      message: "El documento no trae precios fijos ni indexados de 2.0TD ni de gas.",
     });
   }
 
@@ -161,6 +166,16 @@ export function validateProposedRates(
         row: index,
         rowKey: rowKey(row),
       });
+    } else if (energyOfTariff(row.accessTariff) === "gas") {
+      if (!inRange(row.energy.P1, GAS_ENERGY_RANGE)) {
+        issues.push({
+          severity: "blocking",
+          code: "energy_out_of_range",
+          message: `${row.productName}: término variable del gas fuera de rango (${row.energy.P1} €/kWh). ¿Unidad equivocada?`,
+          row: index,
+          rowKey: rowKey(row),
+        });
+      }
     } else {
       const values = [row.energy.P1, row.energy.P2, row.energy.P3];
       if (!values.every((value) => inRange(value, ENERGY_RANGE))) {
@@ -189,7 +204,20 @@ export function validateProposedRates(
           issues.push({
             severity: "blocking",
             code: "missing_power",
-            message: `${row.productName}: el documento no da la potencia. Indica si es la regulada («BOE»).`,
+            message:
+              energyOfTariff(row.accessTariff) === "gas"
+                ? `${row.productName}: el documento no da el término fijo del gas.`
+                : `${row.productName}: el documento no da la potencia. Indica si es la regulada («BOE»).`,
+            row: index,
+            rowKey: rowKey(row),
+          });
+        }
+      } else if (energyOfTariff(row.accessTariff) === "gas") {
+        if (!inRange(row.power.P1, GAS_FIXED_RANGE)) {
+          issues.push({
+            severity: "blocking",
+            code: "power_out_of_range",
+            message: `${row.productName}: término fijo del gas fuera de rango (${row.power.P1} €/día). ¿Unidad equivocada?`,
             row: index,
             rowKey: rowKey(row),
           });

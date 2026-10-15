@@ -18,6 +18,7 @@
     "comparador:preflight": "tsx src/scripts/comparador/preflight.ts",
     "eval:invoices": "tsx src/scripts/eval-invoices.ts",
     "eval:rates": "tsx src/scripts/eval-rates.ts",
+    "eval:gas": "tsx src/scripts/eval-gas-invoices.ts",
     "golden:export": "tsx src/scripts/golden/export.ts",
     "golden:redact": "tsx src/scripts/golden/redact-all.ts",
     "golden:photos": "tsx src/scripts/golden/export-photos.ts",

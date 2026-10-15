@@ -1,3 +1,4 @@
+import { energyOfTariff } from "@/comparador/gas/regulated";
 import type { DiffEntry } from "@/comparador/rates/diff";
 import type { IngestReview } from "@/comparador/rates/service";
 import type {
@@ -150,7 +151,8 @@ const kwh = (value: number) => `${(value / 1000).toLocaleString("es-ES")} MWh`;
 
 /** Condiciones de una fila en una línea: «Agencia · > 10 kW · hasta 8 MWh · 12 meses». */
 export function describeConditions(
-  row: RateConditions & Partial<Pick<RatePrices, "includesAncillaryServices" | "feeEnergyMinPerMwh" | "feeEnergyMaxPerMwh">>,
+  row: RateConditions &
+    Partial<Pick<RatePrices, "includesAncillaryServices" | "feeEnergyMinPerMwh" | "feeEnergyMaxPerMwh">> & { accessTariff?: string },
 ): string {
   const parts: string[] = [];
   if (row.level) parts.push(row.level);
@@ -177,7 +179,8 @@ export function describeConditions(
   }
   if (row.supplyStartFrom) parts.push(`inicio desde ${row.supplyStartFrom}`);
   if (row.termMonths) parts.push(`${row.termMonths} meses`);
-  if (row.includesAncillaryServices === false) parts.push("sin SS.AA.");
+  // En gas el campo dice si el variable lleva los peajes.
+  if (row.includesAncillaryServices === false) parts.push(row.accessTariff && energyOfTariff(row.accessTariff) === "gas" ? "variable sin peajes" : "sin SS.AA.");
   if (row.feeEnergyMinPerMwh !== null && row.feeEnergyMinPerMwh !== undefined) {
     parts.push(
       row.feeEnergyMaxPerMwh !== null && row.feeEnergyMaxPerMwh !== row.feeEnergyMinPerMwh
@@ -212,7 +215,13 @@ export const formatMoment = (stamp: string | null | undefined) => {
 export const formatPrice = (value: number | null | undefined) =>
   value === null || value === undefined ? "—" : value.toLocaleString("es-ES", { maximumFractionDigits: 6 });
 
-export function describePower(row: Pick<RatePrices, "powerMode" | "power" | "powerMarginPerKwYear">) {
+export function describePower(row: Pick<RatePrices, "powerMode" | "power" | "powerMarginPerKwYear"> & { accessTariff?: string }) {
+  // Gas: un término fijo por cliente y día, no por kW.
+  if (row.accessTariff && energyOfTariff(row.accessTariff) === "gas") {
+    if (row.powerMode === "regulated") return "Fijo: peajes y cargos (BOE)";
+    if (row.powerMode === "regulated_plus") return `Fijo: peajes y cargos + ${formatPrice(row.powerMarginPerKwYear)} €/año`;
+    return row.power ? `Fijo ${formatPrice(row.power.P1)} €/día` : "—";
+  }
   if (row.powerMode === "regulated") return "Regulada (BOE)";
   if (row.powerMode === "regulated_plus") {
     return `BOE + ${formatPrice(row.powerMarginPerKwYear)} €/kW·año`;

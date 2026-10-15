@@ -70,11 +70,12 @@ export const studyApi = {
    * Una factura adjunta, o la subida: un PDF o las fotos de sus páginas, en
    * orden. `cups`, escrito a mano si la factura no lo trae legible.
    */
-  analyze: (comparativaId: string, invoice: { fileId: string } | { files: File[] }, cups?: string) => {
+  analyze: (comparativaId: string, invoice: { fileId: string } | { files: File[] }, cups?: string, withoutSips = false) => {
     const form = new FormData();
     if ("fileId" in invoice) form.set("fileId", invoice.fileId);
     else for (const file of invoice.files) form.append("file", file);
     if (cups) form.set("cups", cups);
+    if (withoutSips) form.set("withoutSips", "1");
     return request<{ id: string }>(`/api/v2/comparador/comparisons/${comparativaId}/studies`, {
       method: "POST",
       body: form,
