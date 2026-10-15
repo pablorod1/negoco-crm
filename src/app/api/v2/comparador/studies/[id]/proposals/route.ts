@@ -60,6 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (existing) {
       return NextResponse.json({ success: true, data: proposalView(existing, showCommission) });
     }
+    const advisor = await client.execute({ sql: "SELECT name, email FROM user WHERE id = ? LIMIT 1", args: [user.id] });
     const proposal = await createProposal(client, {
       study,
       offer,
@@ -68,6 +69,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       currentPrices: current && current.flatAnnualFee === undefined ? current.prices : null,
       currentInfo,
       clientName: comparativa.clientName,
+      advisor: {
+        name: advisor.rows[0]?.name ? String(advisor.rows[0].name) : null,
+        email: advisor.rows[0]?.email ? String(advisor.rows[0].email) : user.email,
+      },
       createdBy: user.id,
     });
     return NextResponse.json({ success: true, data: proposalView(proposal, showCommission) });

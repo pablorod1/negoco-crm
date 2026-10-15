@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import type { CostBreakdown } from "@/comparador/engine/types";
 import type { ProposalDocument } from "@/comparador/study/proposals";
 import { brandColor } from "./branding";
-import { renderProposalPdf } from "./proposal-pdf";
+import { brandPalette, renderProposalPdf } from "./proposal-pdf";
 
 const cost = (total: number): CostBreakdown => ({
   days: 365,
@@ -56,7 +56,41 @@ describe("proposal pdf", () => {
     expect(pdf.toString("latin1")).toMatch(/Inter-Regular/);
   });
 
-  test("fits on one page with today's costs, a power tip and discounts", async () => {
+  const pages = (pdf: Buffer) => pdf.toString("latin1").match(/\/Type \/Page\b/g)?.length;
+  const readings = Array.from({ length: 12 }, (_, index) => {
+    const month = new Date(Date.UTC(2025, 9 + index, 1)).toISOString().slice(0, 7);
+    return { from: `${month}-01`, to: `${month}-28`, kwh: { P1: 75 + index, P2: 75, P3: 100 } };
+  });
+
+  test("summary, consumption and detail fit on three pages, with monthly readings and an advisor", async () => {
+    const pdf = await renderProposalPdf(
+      {
+        ...document,
+        client: { name: "María López García", cups: "ES0021000012345678AB0F" },
+        supply: {
+          ...document.supply,
+          consumptionSource: "sips",
+          sipsMonths: 12,
+          readings,
+          maxDemandKwByPeriod: { P1: 2.1, P2: 1.8, P3: 1.2 },
+          location: { postalCode: "28005", municipality: "Madrid", province: "Madrid" },
+          distributor: "i-DE Redes",
+        },
+        advisor: { name: "Jorge Martín", email: "jorge@example.com" },
+        current: {
+          supplierName: "Iberdrola Clientes",
+          prices: { power: { P1: 0.108192, P2: 0.046548 }, energy: { P1: 0.2149, P2: 0.1612, P3: 0.1189 } },
+          cost: { ...cost(620), services: 35.88, otherElectricity: 4.2, vatExempt: 2.1 },
+        },
+        offer: { ...document.offer, termMonths: 12, ancillarySimulated: true, cost: { ...cost(480), ancillary: 20 } },
+        savings: 140,
+      },
+      { displayName: "Negoco Cloud", logo: null, color: "#f5c400" },
+    );
+    expect(pages(pdf)).toBe(3);
+  });
+
+  test("fits on three pages with today's costs, a power tip and discounts", async () => {
     const pdf = await renderProposalPdf(
       {
         ...document,
@@ -71,10 +105,10 @@ describe("proposal pdf", () => {
       },
       { displayName: "Negoco Cloud", logo: null, color: "#2563eb" },
     );
-    expect(pdf.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
+    expect(pages(pdf)).toBe(3);
   });
 
-  test("an indexed offer for an indexed customer still fits on one page, with both notes", async () => {
+  test("an indexed offer for an indexed customer still fits on three pages, with both notes", async () => {
     const pdf = await renderProposalPdf(
       {
         ...document,
@@ -91,10 +125,10 @@ describe("proposal pdf", () => {
       },
       { displayName: "Negoco Cloud", logo: null, color: "#2563eb" },
     );
-    expect(pdf.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
+    expect(pages(pdf)).toBe(3);
   });
 
-  test("compares up to three offers on a first page and details the recommended one on a second", async () => {
+  test("compares up to three offers on the first page, also with the monthly readings", async () => {
     const withToday = {
       ...document,
       number: 7,
@@ -103,6 +137,7 @@ describe("proposal pdf", () => {
         prices: { power: { P1: 0.108192, P2: 0.046548 }, energy: { P1: 0.2149, P2: 0.1612, P3: 0.1189 } },
         cost: cost(620),
       },
+      supply: { ...document.supply, consumptionSource: "sips" as const, sipsMonths: 12, readings },
       savings: 140,
       alternatives: [
         { ...document.offer, comercializadoraName: "Gana Energía", cost: cost(500), savings: 120 },
@@ -110,7 +145,14 @@ describe("proposal pdf", () => {
       ],
     };
     const pdf = await renderProposalPdf(withToday, { displayName: "Negoco Cloud", logo: null, color: "#2563eb" });
-    expect(pdf.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(2);
+    expect(pages(pdf)).toBe(3);
+  });
+
+  test("a light brand color gets dark text on it and a darker shade for text on white", () => {
+    expect(brandPalette("#f5c400")).toMatchObject({ brand: "#f5c400", on: "#0f172a" });
+    expect(brandPalette("#f5c400").ink).not.toBe("#f5c400");
+    expect(brandPalette("#2563eb")).toMatchObject({ ink: "#2563eb", on: "#ffffff" });
+    expect(brandPalette("rgb(15, 118, 110)").brand).toBe("#0f766e");
   });
 
   test("brand colors the PDF cannot read fall back to blue", () => {

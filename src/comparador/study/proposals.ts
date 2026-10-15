@@ -4,7 +4,7 @@ import type { CostBreakdown, EnergyByPeriod, PowerByPeriod, TariffPrices } from 
 import type { CurrentPricing, StudyOffer } from "./ranking";
 import type { CurrentInfo } from "./service";
 import type { StudyRecord } from "./repository";
-import type { StudySupply } from "./supply";
+import type { StudySupply, SupplyLocation, SupplyReading } from "./supply";
 
 type QueryClient = Pick<Client, "execute">;
 
@@ -26,7 +26,15 @@ export interface ProposalDocument {
     sipsMonths: number | null;
     territory: StudySupply["territory"];
     power: { status: "adequate" | "oversized" | "exceeded"; maxDemandKw: number; suggestedKw: number } | null;
+    /** Lecturas del SIPS que forman el año, para el consumo mes a mes. Faltan en propuestas anteriores al 2026-10-15. */
+    readings?: SupplyReading[];
+    /** Máxima demanda de los últimos 12 meses por periodo, en kW. */
+    maxDemandKwByPeriod?: EnergyByPeriod | null;
+    location?: SupplyLocation | null;
+    distributor?: string | null;
   };
+  /** Quien prepara la propuesta, para que el cliente sepa a quién llamar. */
+  advisor?: { name: string | null; email: string | null } | null;
   /** Lo que paga hoy en un año; null si la factura no da todos sus precios. */
   current: {
     supplierName: string | null;
@@ -108,6 +116,7 @@ export function buildProposalDocument({
   currentPrices,
   currentInfo,
   clientName,
+  advisor = null,
   number,
   generatedAt,
   alternatives = [],
@@ -120,6 +129,7 @@ export function buildProposalDocument({
   currentPrices: TariffPrices | null;
   currentInfo?: CurrentInfo | null;
   clientName: string | null;
+  advisor?: ProposalDocument["advisor"];
   number: number;
   generatedAt: string;
 }): ProposalDocument {
@@ -143,7 +153,12 @@ export function buildProposalDocument({
             suggestedKw: supply.power.suggestedKw,
           }
         : null,
+      ...(supply.readings?.length ? { readings: supply.readings } : {}),
+      maxDemandKwByPeriod: supply.maxDemandKwByPeriod ?? null,
+      location: supply.location ?? null,
+      distributor: supply.distributor ?? null,
     },
+    advisor,
     current: current
       ? {
           supplierName: study.extraction?.supplierName ?? null,
@@ -230,6 +245,7 @@ export async function createProposal(
     currentPrices: TariffPrices | null;
     currentInfo?: CurrentInfo | null;
     clientName: string | null;
+    advisor?: ProposalDocument["advisor"];
     createdBy: string;
     now?: Date;
   },
@@ -261,6 +277,7 @@ async function insertProposal(
     currentPrices: input.currentPrices,
     currentInfo: input.currentInfo,
     clientName: input.clientName,
+    advisor: input.advisor ?? null,
     alternatives: input.alternatives ?? [],
     number,
     generatedAt: (input.now ?? new Date()).toISOString(),
