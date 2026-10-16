@@ -41,7 +41,7 @@ export class UnsupportedDocumentError extends Error {
   }
 }
 
-function htmlToText(html: string): string {
+export function htmlToText(html: string): string {
   return html
     .replace(/<(style|script)[\s\S]*?<\/\1>/gi, " ")
     .replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, "\n")

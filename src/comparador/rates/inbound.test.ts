@@ -2,6 +2,7 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import {
+  emailNote,
   inboundIngestId,
   isTenantUser,
   isTrustedSender,
@@ -105,5 +106,18 @@ describe("inbound routing", () => {
     expect(inboundIngestId("email-1", "att-1")).toBe(inboundIngestId("email-1", "att-1"));
     expect(inboundIngestId("email-1", "att-1")).not.toBe(inboundIngestId("email-1", null));
     expect(inboundIngestId("email-1", "att-1")).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  });
+});
+
+describe("emailNote", () => {
+  test("keeps the plain text, or the HTML as text, short", () => {
+    expect(emailNote({ text: "  Es de Gana.\n\n\n\nVale desde el 1/11.  " })).toBe("Es de Gana.\n\nVale desde el 1/11.");
+    expect(emailNote({ text: "", html: "<p>Es de <b>Gana</b></p><p>Vale desde el 1/11</p>" })).toBe("Es de Gana\nVale desde el 1/11");
+    expect(emailNote({ text: "x".repeat(10_000) })).toHaveLength(4_000);
+  });
+
+  test("an empty body gives nothing", () => {
+    expect(emailNote({ text: "   ", html: null })).toBeNull();
+    expect(emailNote({})).toBeNull();
   });
 });

@@ -116,6 +116,8 @@ export async function processIngest({
         subjectId: ingest.id,
       },
       supplierName: supplier?.name ?? null,
+      // Un anexo que llegó por correo trae el cuerpo del mensaje como contexto.
+      emailNote: file ? ingest.bodyText : null,
     });
 
     let comercializadoraId = ingest.comercializadoraId;

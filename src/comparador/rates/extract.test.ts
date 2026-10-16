@@ -140,4 +140,27 @@ describe("extractRateDocument", () => {
     // Sin precio de energía que comprobar: solo cuenta la comisión, que el texto no trae.
     expect(result.issues.map(({ code }) => code).sort()).toEqual(["commission_not_in_source", "missing_valid_from"]);
   });
+
+  test("the email body guides the reading and can give the start date", async () => {
+    const note = "Os paso el anexo de Quimera. Precios válidos desde el 1 de noviembre de 2026.";
+    const output = { ...extraction([unicornio]), validFrom: "2026-11-01" };
+
+    const generate = fakeGenerate([classification(), output]);
+    const result = await extractRateDocument({ document, context, generate, models: ["a"], emailNote: note });
+    if (result.status === "out_of_scope") throw new Error("unexpected");
+    expect(result.extraction.validFrom).toBe("2026-11-01");
+    const call = generate.mock.calls[1] as unknown as [Parameters<typeof generateStructured>[0]];
+    expect(call[0].instructions).toContain("mensaje del correo");
+    expect(JSON.stringify(call[0].messages)).toContain("válidos desde el 1 de noviembre");
+
+    // Sin el correo, una fecha que el documento no trae no vale.
+    const alone = await extractRateDocument({
+      document,
+      context,
+      generate: fakeGenerate([classification(), { ...output }]),
+      models: ["a"],
+    });
+    if (alone.status === "out_of_scope") throw new Error("unexpected");
+    expect(alone.extraction.validFrom).toBeNull();
+  });
 });

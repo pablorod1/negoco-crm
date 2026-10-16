@@ -46,6 +46,14 @@ Si el documento trae comisiones de la agencia (marco o modelo retributivo, comis
 validFrom es la fecha desde la que valen los precios («entrada en vigor», «válidos desde»); si el documento solo da su fecha de publicación o de última actualización, úsala como validFrom. validTo, solo si el documento dice hasta cuándo valen.
 Los textos de los descuentos, breves. Las fechas, en formato YYYY-MM-DD.`;
 
+/**
+ * El cuerpo del correo orienta, pero no es el anexo: las cifras que no estén
+ * en el documento no superarían la comprobación contra su texto.
+ */
+const EMAIL_NOTE_INSTRUCTIONS = `
+
+Junto al documento va el mensaje del correo con el que llegó. Úsalo como contexto: puede decir de qué comercializadora es (supplierName) o desde cuándo valen los precios (validFrom, validTo) cuando el documento no lo dice; si el documento lo dice, manda el documento. La fecha en que se envió o reenvió el correo no es la de vigencia. Los precios, descuentos y comisiones se sacan solo del documento, nunca del mensaje.`;
+
 const CLASSIFICATION_INSTRUCTIONS = `Clasificas documentos que llegan a una agencia de energía española. Indica si traen precios de tarifas de luz o gas, comisiones de la agencia, qué tarifas de acceso aparecen (2.0TD, 3.0TD, 6.1TD, RL1…) y si los precios son fijos, indexados o tarifas planas. Responde solo con lo que se ve en el texto.`;
 
 /**
@@ -158,6 +166,7 @@ export async function extractRateDocument({
   document,
   context,
   supplierName = null,
+  emailNote = null,
   models = getRateExtractionModels(),
   generate = generateStructured,
   recipes = controlRecipeStore(),
@@ -167,6 +176,8 @@ export async function extractRateDocument({
   context: AiJobContext;
   /** Comercializadora que indica quien sube el documento, si la indica. */
   supplierName?: string | null;
+  /** Cuerpo del correo con el que llegó el documento, si llegó por correo. */
+  emailNote?: string | null;
   models?: readonly string[];
   generate?: typeof generateStructured;
   /** Plantillas de lectura de Excel; `null` para no guardarlas ni buscarlas. */
@@ -221,7 +232,10 @@ export async function extractRateDocument({
 
   const instructions =
     RATE_INSTRUCTIONS +
-    (supplierName ? `\n\nEl documento es de la comercializadora ${supplierName}.` : "");
+    (supplierName ? `\n\nEl documento es de la comercializadora ${supplierName}.` : "") +
+    (emailNote ? EMAIL_NOTE_INSTRUCTIONS : "");
+  // Una fecha de vigencia vale si está en el documento o en el correo.
+  const datesText = document.text && emailNote ? `${document.text}\n${emailNote}` : document.text;
   const attempts: RateExtractionAttempt[] = [];
   let extraction: RateDocumentExtraction | null = null;
 
@@ -238,6 +252,9 @@ export async function extractRateDocument({
             role: "user",
             content: [
               ...document.parts,
+              ...(emailNote
+                ? [{ type: "text" as const, text: `Mensaje del correo con el que llegó el documento:\n${emailNote}` }]
+                : []),
               { type: "text", text: "Extrae los precios 2.0TD y de gas y las comisiones de este documento." },
             ],
           },
@@ -256,7 +273,7 @@ export async function extractRateDocument({
       throw error;
     }
     costUsd = addCost(costUsd, result.costUsd);
-    extraction = withDocumentDates(result.output, document.text);
+    extraction = withDocumentDates(result.output, datesText);
 
     const proposed = toProposedRates(extraction, document.text);
     const issues = validateProposedRates(proposed, {

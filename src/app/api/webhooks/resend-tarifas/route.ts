@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getTursoClientByTenant } from "@/core/libsql/client";
 import { getTenantModules } from "@/core/modules/server";
 import {
+  emailNote,
   inboundDomain,
   inboundIngestId,
   isTrustedSender,
@@ -42,7 +43,8 @@ async function resend<T>(path: string): Promise<T> {
 
 /**
  * Webhook `email.received` de Resend. Cada adjunto que pueda ser un anexo
- * crea una ingesta; un correo sin adjuntos útiles crea una con su texto. Solo
+ * crea una ingesta, con el cuerpo del correo como contexto; un correo sin
+ * adjuntos útiles crea una con su texto. Solo
  * se procesan solas las de remitentes de confianza: el resto espera a que
  * alguien pulse «Procesar», para no gastar crédito con correo basura.
  */
@@ -124,7 +126,8 @@ export async function POST(request: NextRequest) {
         channel: "email",
         comercializadoraId: null,
         files,
-        bodyText: attachment ? null : text.slice(0, 200_000),
+        // Con anexo, el cuerpo queda como contexto para leerlo (service.ts).
+        bodyText: attachment ? emailNote(email) : text.slice(0, 200_000),
         emailFrom: from,
         emailSubject: subject ?? null,
         createdBy: null,

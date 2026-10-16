@@ -1,5 +1,6 @@
 import type { Client } from "@libsql/client";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { htmlToText } from "./document";
 
 /**
  * Buzón de anexos con Resend. Cada tenant tiene una dirección
@@ -103,6 +104,26 @@ export function selectAttachments(
     if (isImage && inline && (attachment.size ?? 0) < MIN_INLINE_IMAGE_BYTES) return false;
     return true;
   });
+}
+
+/** Lo que se guarda del cuerpo de un correo con anexos: es contexto, no el anexo. */
+const MAX_EMAIL_NOTE_CHARS = 4_000;
+
+/**
+ * El cuerpo de un correo que trae anexos, para que la IA lo lea junto a cada
+ * uno («es de Gana», «entra en vigor el 1 de noviembre»). Texto plano y corto:
+ * el reenvío de un hilo largo no debe pesar más que el anexo. Lo citado se
+ * conserva, porque en un reenvío es lo que escribió la comercializadora.
+ */
+export function emailNote(email: { text?: string | null; html?: string | null }): string | null {
+  const raw = email.text?.trim() ? email.text : email.html ? htmlToText(email.html) : "";
+  const text = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text ? text.slice(0, MAX_EMAIL_NOTE_CHARS) : null;
 }
 
 /** Dirección de un remitente: «Ana <ana@x.es>» da «ana@x.es». */
