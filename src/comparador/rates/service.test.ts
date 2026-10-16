@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import type { RateExtractionResult } from "./extract";
 import { toProposedRates } from "./normalize";
 import {
+  claimIngest,
   createIngest,
   getActiveVersion,
   getIngest,
@@ -167,7 +168,17 @@ describe("rate ingest service", () => {
     control = await controlDb();
   });
 
-  test("detects the supplier, and only Negoco can add new products to the catalog", async () => {
+  test("a reading cut off by the function's time limit can be claimed again after 15 minutes", async () => {
+    await createIngest(client, { id: "ing-1", channel: "email", comercializadoraId: null, files: [], bodyText: "x", createdBy: null });
+    expect(await claimIngest(client, "ing-1")).toBe(true);
+    // Recién reclamada: nadie más la lee a la vez.
+    expect(await claimIngest(client, "ing-1")).toBe(false);
+
+    await client.execute("UPDATE rate_ingests SET processed_at = datetime('now', '-20 minutes') WHERE id = 'ing-1'");
+    expect(await claimIngest(client, "ing-1")).toBe(true);
+  });
+
+  test("detects the supplier and adds new products to the catalog on approval", async () => {
     const ingest = await ingestWith(
       client,
       extractionResult([rate({}), rate({ productName: "Fénix", energyP1: 0.23011, energyP2: 0.1612, energyP3: 0.13554, powerMode: "regulated", powerUnit: null, powerP1: null, powerP2: null })]),

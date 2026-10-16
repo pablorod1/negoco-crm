@@ -14,9 +14,9 @@ import {
   type InboundAttachment,
 } from "@/comparador/rates/inbound";
 import { createIngest, getIngest } from "@/comparador/rates/repository";
-import { autoApproveIngest, processIngest, todayInSpain } from "@/comparador/rates/service";
-import { getTursoControlClient } from "@/core/libsql/client";
+import { todayInSpain } from "@/comparador/rates/service";
 import { MAX_RATE_FILE_BYTES, storeIngestFile } from "@/comparador/rates/storage";
+import { INBOUND_QUEUE_PATH, runInboundQueue } from "@/comparador/server/inbound-queue";
 
 export const maxDuration = 300;
 
@@ -142,36 +142,14 @@ export async function POST(request: NextRequest) {
       created.length > 0 &&
       (senderId !== null || isTrustedSender(from, process.env.COMPARADOR_INBOUND_TRUSTED_SENDERS));
     if (trusted) {
-      const approvedBy = senderId ?? `email:${senderAddress(from)}`;
-      const receivedOn = todayInSpain();
-      after(async () => {
-        // Uno detrás de otro: los anexos de una misma comercializadora
-        // encadenan versiones y no pueden aprobarse a la vez.
-        for (const id of created) {
-          try {
-            const ingest = await getIngest(client, id);
-            if (!ingest) continue;
-            await processIngest({ client, ingest, tenantSlug, userId: null });
-            const read = await getIngest(client, id);
-            if (!read) continue;
-            const result = await autoApproveIngest({
-              client,
-              control: getTursoControlClient(),
-              ingest: read,
-              approvedBy,
-              receivedOn,
-              today: todayInSpain(),
-            });
-            if (result.approved) {
-              console.info("[comparador] anexo aprobado solo", { tenantSlug, id, versionId: result.versionId });
-            } else {
-              console.warn("[comparador] anexo sin aprobar", { tenantSlug, id, reason: result.reason });
-            }
-          } catch (error) {
-            console.error("[comparador] inbound processing failed", id, error);
-          }
-        }
-      });
+      // Cada anexo se lee en su propia llamada (ver inbound-queue.ts).
+      const queue = {
+        tenantSlug,
+        ids: created,
+        approvedBy: senderId ?? `email:${senderAddress(from)}`,
+        receivedOn: todayInSpain(),
+      };
+      after(() => runInboundQueue(queue, new URL(INBOUND_QUEUE_PATH, request.url).toString(), secret));
     }
 
     return NextResponse.json({ created: created.length });

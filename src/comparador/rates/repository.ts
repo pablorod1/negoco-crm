@@ -478,8 +478,11 @@ export async function listIngests(
 /** Pasa la ingesta a `processing` solo si nadie la está procesando ya. */
 export async function claimIngest(client: QueryClient, id: string): Promise<boolean> {
   const result = await client.execute({
-    sql: `UPDATE rate_ingests SET status = 'processing', error = NULL
-      WHERE id = ? AND status IN ('received', 'failed', 'needs_review', 'ready', 'out_of_scope')`,
+    // Una lectura que se cortó (la función pasó de su tiempo) se queda en
+    // «processing»: pasados 15 minutos se puede volver a reclamar.
+    sql: `UPDATE rate_ingests SET status = 'processing', error = NULL, processed_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND (status IN ('received', 'failed', 'needs_review', 'ready', 'out_of_scope')
+        OR (status = 'processing' AND (processed_at IS NULL OR processed_at < datetime('now', '-15 minutes'))))`,
     args: [id],
   });
   return result.rowsAffected === 1;
