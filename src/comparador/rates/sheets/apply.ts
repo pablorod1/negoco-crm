@@ -233,10 +233,20 @@ function readTable(
     // Un valor vacío en una copia («commissionAmount: null») no borra el
     // campo: es la manera en que la plantilla dice que se lee de la columna
     // desplazada, como en el bloque original. El Excel de Axpo perdía así los
-    // niveles E y X.
+    // niveles E y X. Tampoco lo borra la posición desplazada escrita como
+    // valor («level: K5» para «C5», «powerP1: M» para «E»): la IA lo hizo así
+    // con los niveles TDE de Eleia y cada copia leía el texto «K5».
+    const readsShifted = (field: RecipeField, value: string | null) =>
+      value === null ||
+      table.sources.some(
+        (source) =>
+          source.field === field &&
+          ((source.column && key(value) === key(shiftColumn(source.column, copy.columnShift))) ||
+            (source.cell && key(value) === key(shiftCellRef(source.cell, copy.columnShift, copy.rowShift)))),
+      );
     const overrides = new Map(
       copy.values
-        .filter(({ field, value }) => value !== null || !table.sources.some((source) => source.field === field && (source.column || source.cell)))
+        .filter(({ field, value }) => !readsShifted(field, value) || !table.sources.some((source) => source.field === field && (source.column || source.cell)))
         .map(({ field, value }) => [field, value]),
     );
     const headerTerritory = sourceColumns.length

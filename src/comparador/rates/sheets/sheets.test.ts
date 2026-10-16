@@ -893,3 +893,51 @@ test("un tramo abierto «>100000» en la columna «desde» es «más de 100 MWh�
     [100000, null, 3848],
   ]);
 });
+
+describe("copies that name the shifted position", () => {
+  test("«level: E1» and «energyP1: G» read the shifted cells, as an empty value would", () => {
+    // Eleia: la IA escribió en cada copia la celda o columna desplazada en
+    // vez de dejarla vacía, y cada nivel salía como «K5».
+    const eleia = grid("TU DECIDES", {
+      1: { A: "TDE 3", E: "TDE 2" },
+      3: { A: "RL.1", B: 4.231, C: 0.086731, E: "RL.1", F: 5.731, G: 0.092731 },
+    });
+    const { extraction, problems } = applyRecipe(
+      [eleia],
+      recipe([
+        table({
+          sheet: "TU DECIDES",
+          firstRow: 3,
+          lastRow: 3,
+          rowFilter: { column: "A", pattern: "^RL" },
+          repeat: [
+            {
+              columnShift: 4,
+              rowShift: 0,
+              values: [
+                { field: "level", value: "E1" },
+                { field: "powerP1", value: "F" },
+                { field: "energyP1", value: "G" },
+              ],
+            },
+          ],
+          sources: [
+            { field: "productName", column: null, cell: null, value: "TU DECIDES" },
+            { field: "level", column: null, cell: "A1", value: null },
+            { field: "accessTariff", column: "A", cell: null, value: null },
+            { field: "powerP1", column: "B", cell: null, value: null },
+            { field: "powerUnit", column: null, cell: null, value: "eur_month" },
+            { field: "energyP1", column: "C", cell: null, value: null },
+            { field: "energyUnit", column: null, cell: null, value: "eur_kwh" },
+            { field: "singlePrice", column: null, cell: null, value: "true" },
+          ],
+        }),
+      ]),
+    );
+    expect(problems).toEqual([]);
+    expect(extraction.rates.map(({ level, powerP1, energyP1 }) => [level, powerP1, energyP1])).toEqual([
+      ["TDE 3", 4.231, 0.086731],
+      ["TDE 2", 5.731, 0.092731],
+    ]);
+  });
+});
