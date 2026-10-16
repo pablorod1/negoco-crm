@@ -109,6 +109,137 @@ function IssueList({ issues }: { issues: RateIssue[] }) {
  * fragmento del documento junto a cada fila. Las filas se pueden excluir y
  * las que no traen potencia pueden llevar la regulada; nada se teclea a mano.
  */
+/** Los niveles ya resueltos (deducidos o recordados) de una revisión. */
+function levelMapOf(review: IngestReview | null): Record<string, string | null> {
+  return Object.fromEntries((review?.commissionLevels ?? []).map(({ level, mappedTo }) => [level, mappedTo]));
+}
+
+function commissionEnergies(commissions: IngestReview["commissions"]): string {
+  const energies = new Set(commissions.map(({ energy }) => energy ?? "electricity"));
+  return energies.size === 2 ? "luz y gas" : energies.has("gas") ? "gas" : "luz";
+}
+
+type Commission = IngestReview["commissions"][number];
+type LevelChoice = IngestReview["commissionLevels"][number];
+
+const fmtEuros = (value: number) => value.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+
+/**
+ * Niveles del anexo de comisiones que no se llaman como los de las tarifas
+ * (Axpo: «S», «E», «X» frente a «SUPER (N1)», «N2», «N3»): quien revisa dice
+ * a cuál equivale cada uno y se recuerda para el siguiente anexo.
+ */
+function LevelMapping({
+  choices,
+  supplierName,
+  disabled,
+  onChange,
+}: {
+  choices: LevelChoice[];
+  supplierName: string;
+  disabled: boolean;
+  onChange: (level: string, mappedTo: string | null) => void;
+}) {
+  const pending = choices.filter(({ mappedTo }) => !mappedTo).length;
+  return (
+    <div className={`rounded-md border p-3 space-y-2 text-sm ${pending ? "border-warning-200 bg-warning-50/40" : ""}`}>
+      <p>
+        Los niveles de este anexo no se llaman como los de las tarifas de {supplierName}. Indica a cuál equivale cada
+        uno{pending ? ` (${pending === 1 ? "falta uno" : `faltan ${pending}`}: sin él, esas comisiones no se aplican)` : ""}:
+      </p>
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        {choices.map((choice) => (
+          <label key={`${choice.energy}-${choice.level}`} className="flex items-center gap-2">
+            <span className="font-medium">
+              «{choice.level}»{choices.some(({ energy }) => energy !== choice.energy) ? (choice.energy === "gas" ? " (gas)" : " (luz)") : ""}
+            </span>
+            <span className="text-muted-foreground">=</span>
+            <select
+              className="rounded-md border px-2 py-1"
+              value={choice.mappedTo ?? ""}
+              disabled={disabled}
+              onChange={(event) => onChange(choice.level, event.target.value || null)}
+            >
+              <option value="">Elige el nivel</option>
+              {choice.options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            {choice.source === "suggested" && <span className="text-xs text-muted-foreground">deducido</span>}
+            {choice.source === "remembered" && <span className="text-xs text-muted-foreground">del anexo anterior</span>}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Las comisiones agrupadas por producto, tarifa y nivel: un anexo como el de
+ * Axpo trae cientos de tramos de consumo, y lo que se revisa es a qué tarifas
+ * se aplica cada grupo. Los tramos se despliegan.
+ */
+function CommissionGroups({ commissions }: { commissions: Commission[] }) {
+  const groups = new Map<string, Commission[]>();
+  for (const rule of commissions) {
+    const key = [commissionScope(rule, { withConsumption: false }), rule.documentLevel, rule.energy, rule.pricing].join("|");
+    groups.set(key, [...(groups.get(key) ?? []), rule]);
+  }
+  return (
+    <ul className="divide-y rounded-md border text-sm">
+      {[...groups].map(([key, rules]) => {
+        const [first] = rules;
+        const amounts = rules.map(({ amount }) => amount);
+        const banded = rules.length > 1;
+        return (
+          <li key={key} className="px-3 py-2">
+            <details>
+              <summary className={`flex cursor-pointer list-none items-start gap-3 ${banded ? "" : "pointer-events-none"}`}>
+                <span className="min-w-0 flex-1">
+                  <span className="font-medium">
+                    {commissionScope(first, { withConsumption: !banded })}
+                    {first.documentLevel && (
+                      <span className="font-normal text-muted-foreground"> · «{first.documentLevel}» en el anexo</span>
+                    )}
+                  </span>
+                  <span className={`block text-xs ${first.covers.length === 0 ? "text-warning-600" : "text-muted-foreground"}`}>
+                    {first.covers.length === 0
+                      ? first.uncovered
+                      : `Se aplica a: ${first.covers.slice(0, 6).join(", ")}${first.covers.length > 6 ? ` y ${first.covers.length - 6} más` : ""}`}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right tabular-nums">
+                  {banded && first.ruleType === "fixed"
+                    ? `${fmtEuros(Math.min(...amounts))}–${fmtEuros(Math.max(...amounts))} €`
+                    : commissionAmount(first)}
+                  {banded && <span className="block text-xs text-muted-foreground">{rules.length} tramos ▾</span>}
+                </span>
+              </summary>
+              {banded && (
+                <ul className="mt-2 grid gap-x-6 gap-y-0.5 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
+                  {rules.map((rule, index) => (
+                    <li key={index} className="flex justify-between gap-3">
+                      <span>{consumptionBand(rule)}</span>
+                      <span className="tabular-nums text-foreground">{commissionAmount(rule)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </details>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+const consumptionBand = (rule: Commission) =>
+  rule.minAnnualKwh === null && rule.maxAnnualKwh === null
+    ? "Cualquier consumo"
+    : `${fmtEuros((rule.minAnnualKwh ?? 0) / 1000)}–${rule.maxAnnualKwh === null ? "∞" : fmtEuros(rule.maxAnnualKwh / 1000)} MWh`;
+
 /** «29,93» o «29.93» como número; NaN si no lo es. */
 const parseDecimal = (text: string) => (text.trim() ? Number(text.replace(",", ".")) : Number.NaN);
 
@@ -132,6 +263,8 @@ export function IngestReviewSheet({
   const [powerDraft, setPowerDraft] = useState({ p1: "", p2: "" });
   const [validFrom, setValidFrom] = useState(today());
   const [includeCommissions, setIncludeCommissions] = useState(true);
+  // Nivel de las tarifas que corresponde a cada nivel del anexo de comisiones.
+  const [levelMap, setLevelMap] = useState<Record<string, string | null>>({});
   const [busy, setBusy] = useState<null | "preview" | "approve" | "reject" | "process">(null);
   const [error, setError] = useState<string | null>(null);
   const [supplierId, setSupplierId] = useState("");
@@ -155,6 +288,7 @@ export function IngestReviewSheet({
         setManualPower({});
         setPowerDraft({ p1: "", p2: "" });
         setValidFrom(data.review?.validFrom ?? today());
+        setLevelMap(levelMapOf(data.review));
         setError(null);
       })
       .catch((cause) => {
@@ -172,6 +306,7 @@ export function IngestReviewSheet({
     nextRegulated: Set<string>,
     nextPartial: boolean = partial,
     nextManual: Record<string, { p1: number; p2: number }> = manualPower,
+    nextLevelMap: Record<string, string | null> = levelMap,
   ) => {
     if (!ingestId) return;
     const requestId = ++previewRequest.current;
@@ -182,6 +317,7 @@ export function IngestReviewSheet({
         regulatedPowerRowKeys: [...nextRegulated],
         manualPower: nextManual,
         partialUpdate: nextPartial,
+        levelMap: nextLevelMap,
       });
       if (requestId === previewRequest.current) setReview(data.review);
     } catch (cause) {
@@ -222,6 +358,9 @@ export function IngestReviewSheet({
       severity === "blocking" && !(code === "commission_not_in_source" && !includeCommissions),
   );
   const canDecide = detail?.canManage && ["ready", "needs_review"].includes(detail.ingest.status);
+  // Un anexo solo de comisiones no toca los precios: la tabla solo repetiría los vigentes.
+  const bringsPrices = Boolean(review?.entries.some(({ kind }) => kind !== "carried"));
+  const savesCommissions = Boolean(review?.commissions.length) && includeCommissions;
   const newProductsBlocked = Boolean(review?.newProducts.length) && !detail?.canManageCatalog;
 
   const run = async (action: "approve" | "reject" | "process") => {
@@ -237,6 +376,7 @@ export function IngestReviewSheet({
           manualPower,
           partialUpdate: partial,
           includeCommissions,
+          levelMap,
         });
       } else if (action === "reject") {
         await ratesApi.reject(ingestId);
@@ -262,25 +402,44 @@ export function IngestReviewSheet({
         className="!w-full sm:!w-[90vw] lg:!w-[80vw] !p-0 flex flex-col gap-0 overflow-hidden"
       >
         <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle>Revisar precios{review ? ` · ${review.supplier.name}` : ""}</SheetTitle>
+          <SheetTitle>
+            {review && !bringsPrices && review.commissions.length > 0 ? "Revisar comisiones" : "Revisar precios"}
+            {review ? ` · ${review.supplier.name}` : ""}
+          </SheetTitle>
           <SheetDescription>
             {ingest ? (ingest.fileName ?? ingest.emailSubject ?? "Texto pegado") : ""}
-            {review?.activeVersion
+            {!bringsPrices
+              ? ""
+              : review?.activeVersion
               ? ` · frente a la versión vigente desde ${formatDay(review.activeVersion.validFrom)}`
               : review
                 ? " · primera versión de esta comercializadora"
                 : ""}
           </SheetDescription>
-          {detail?.originalUrl && (
-            <a
-              href={detail.originalUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-primary underline w-fit"
-            >
-              Ver el original
-            </a>
-          )}
+          <div className="flex flex-wrap items-center gap-4">
+            {detail?.originalUrl && (
+              <a
+                href={detail.originalUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-primary underline w-fit"
+              >
+                Ver el original
+              </a>
+            )}
+            {/* Una lectura pendiente se puede repetir: tras corregir el lector, o si la IA falló. */}
+            {review && canDecide && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+                disabled={busy !== null}
+                onClick={() => run("process")}
+              >
+                {busy === "process" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                Volver a leer
+              </button>
+            )}
+          </div>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
@@ -338,15 +497,15 @@ export function IngestReviewSheet({
                 </p>
               )}
 
-              {entries.length === 0 && (
+              {!bringsPrices && (
                 <p className="text-sm">
-                  Este documento no trae precios fijos ni indexados de 2.0TD ni de gas
-                  {review.commissions.length > 0 ? "; solo comisiones." : "."} El comparador solo
-                  guarda esas tarifas.
+                  {review.commissions.length > 0
+                    ? `Este anexo solo trae comisiones: los precios de ${review.supplier.name} no cambian.`
+                    : "Este documento no trae precios fijos ni indexados de 2.0TD ni de gas. El comparador solo guarda esas tarifas."}
                 </p>
               )}
 
-              {canDecide && review.activeVersion && review.entries.some(({ kind }) => kind === "removed" || kind === "carried") && (
+              {canDecide && bringsPrices && review.activeVersion && review.entries.some(({ kind }) => kind === "removed" || kind === "carried") && (
                 <label className="flex items-start gap-2 text-sm">
                   <Checkbox
                     checked={partial}
@@ -425,7 +584,7 @@ export function IngestReviewSheet({
                 </div>
               )}
 
-              {entries.length > 0 && (
+              {bringsPrices && (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -503,7 +662,7 @@ export function IngestReviewSheet({
               )}
 
               {review.commissions.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <Checkbox
                       checked={includeCommissions}
@@ -512,22 +671,19 @@ export function IngestReviewSheet({
                     />
                     Guardar las comisiones ({review.commissions.length} reglas)
                   </label>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    {review.commissions.map((rule, index) => (
-                      <li key={index}>
-                        {commissionScope(rule)}
-                        {" → "}
-                        {commissionAmount(rule)}
-                        <span
-                          className={`block text-xs ${rule.covers.length === 0 ? "text-warning-600" : ""}`}
-                        >
-                          {rule.covers.length === 0
-                            ? "No se aplica a ninguna tarifa de la comercializadora: revisa el producto y el nivel."
-                            : `Se aplica a: ${rule.covers.slice(0, 6).join(", ")}${rule.covers.length > 6 ? ` y ${rule.covers.length - 6} más` : ""}`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  {review.commissionLevels.length > 0 && (
+                    <LevelMapping
+                      choices={review.commissionLevels}
+                      supplierName={review.supplier.name}
+                      disabled={!canDecide || busy !== null}
+                      onChange={(level, mappedTo) => {
+                        const next = { ...levelMap, [level]: mappedTo };
+                        setLevelMap(next);
+                        void preview(excluded, regulated, partial, manualPower, next);
+                      }}
+                    />
+                  )}
+                  <CommissionGroups commissions={review.commissions} />
                 </div>
               )}
 
@@ -547,7 +703,7 @@ export function IngestReviewSheet({
         {review && canDecide && (
           <div className="border-t px-6 py-4 flex flex-wrap items-end gap-4">
             <div className="space-y-1">
-              <Label htmlFor="valid-from">Entra en vigor</Label>
+              <Label htmlFor="valid-from">{bringsPrices ? "Entra en vigor" : "Las comisiones valen desde"}</Label>
               <Input
                 id="valid-from"
                 type="date"
@@ -557,11 +713,17 @@ export function IngestReviewSheet({
               />
             </div>
             <p className="text-xs text-muted-foreground flex-1">
-              {validFrom > today()
-                ? "Quedará programada y entrará en vigor ese día."
-                : review.activeVersion
-                  ? "Sustituirá desde hoy a la versión vigente."
-                  : "Será la versión vigente desde hoy."}
+              {bringsPrices
+                ? validFrom > today()
+                  ? "Los precios quedarán programados y entrarán en vigor ese día."
+                  : review.activeVersion
+                    ? "Los precios sustituirán desde ese día a los vigentes."
+                    : "Serán los precios vigentes desde ese día."
+                : ""}
+              {savesCommissions &&
+                `${bringsPrices ? " " : ""}Las comisiones de ${commissionEnergies(review.commissions)} que hay ahora dejan de valer el día anterior.`}
+              {bringsPrices && review.entries.some(({ conditions }) => conditions.supplyStartFrom) &&
+                " El mes de inicio de cada tarifa («si empieza en noviembre») es otra cosa: la fecha en que empieza el suministro del cliente."}
             </p>
             <Button variant="outline" disabled={busy !== null} onClick={() => run("reject")}>
               Descartar
@@ -571,7 +733,7 @@ export function IngestReviewSheet({
               onClick={() => run("approve")}
             >
               {busy === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Aprobar precios
+              {bringsPrices ? "Aprobar precios" : "Aprobar comisiones"}
             </Button>
           </div>
         )}

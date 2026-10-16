@@ -73,8 +73,11 @@ export function studyView(
   const ranking = calculation?.ranking ?? null;
   const facts = study.extraction;
   const review = (facts as ReviewedExtraction | null)?.review ?? null;
+  // Sin permiso no viaja ni la comisión ni de qué regla sale.
   const hide = <T extends { commission: number | null }>(item: T): T =>
-    showCommission ? item : { ...item, commission: null };
+    showCommission
+      ? item
+      : { ...item, commission: null, ...("commissionRule" in item ? { commissionRule: null, commissionMissing: null } : {}) };
   return {
     id: study.id,
     status: study.status,

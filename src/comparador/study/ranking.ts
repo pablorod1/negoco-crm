@@ -1,4 +1,4 @@
-import { computeCommission } from "@/comparador/engine/commission";
+import { explainCommission, type CommissionMissing, type CommissionRuleForEngine } from "@/comparador/engine/commission";
 import { applyFee, computeCost, computeFlatCost, DAYS_PER_YEAR } from "@/comparador/engine/cost";
 import { roundEuros } from "@/comparador/engine/money";
 import type { RegulatedParams } from "@/comparador/engine/regulated";
@@ -121,6 +121,10 @@ export interface StudyOffer {
   savings: number | null;
   /** Comisión de agencia en €; null si la tarifa no tiene regla. */
   commission: number | null;
+  /** La regla de la que sale la comisión, para enseñarla en el estudio. */
+  commissionRule: CommissionRuleSummary | null;
+  /** Sin comisión: por qué (sin reglas, ninguna encaja o varias con importes distintos). */
+  commissionMissing: CommissionMissing | null;
   /** Textos de los descuentos que se aplican o se enseñan, para la propuesta. */
   discounts: string[];
   /** Cada parte de descuento que el comparador sabe aplicar, con su importe. */
@@ -392,7 +396,7 @@ export function rankStudy({
       ancillaryAmount: ancillaryIncluded ? 0 : (ancillaryAmount ?? 0),
     });
     const discountParts = views(cost);
-    const commission = computeCommission(rulesBySupplier.get(offer.comercializadoraId) ?? [], {
+    const explained = explainCommission(rulesBySupplier.get(offer.comercializadoraId) ?? [], {
       rateId: price.rateId,
       productName: price.rateName,
       accessTariff: gas ? price.accessTariff : "2.0TD",
@@ -427,7 +431,9 @@ export function rankStudy({
       feePowerPerKwYear: powerFee,
       cost,
       savings: currentCost ? roundEuros(currentCost.total - cost.total) : null,
-      commission,
+      commission: explained.amount,
+      commissionRule: explained.rule ? commissionRuleSummary(explained.rule) : null,
+      commissionMissing: explained.missing,
       discounts: [
         ...discountParts.filter(({ applied }) => applied).map(({ text }) => text),
         ...discounts.informative.map(({ text }) => text),
@@ -456,5 +462,37 @@ export function rankStudy({
     otherCustomerType,
     withoutHistory,
     noSavings: currentCost !== null && priced.every(({ savings }) => (savings ?? 0) <= 0),
+  };
+}
+
+/** Lo que se enseña de una regla de comisión: a qué se aplica y cuánto paga. */
+export type CommissionRuleSummary = Pick<
+  CommissionRuleForEngine,
+  "accessTariff" | "level" | "channel" | "minAnnualKwh" | "maxAnnualKwh" | "ruleType" | "amount" | "validFrom"
+> & {
+  product: string | null;
+  energy: "electricity" | "gas";
+  pricing: "fixed" | "indexed" | null;
+  minKw: number | null;
+  maxKw: number | null;
+  minAmount: number | null;
+};
+
+function commissionRuleSummary(rule: CommissionRuleForEngine): CommissionRuleSummary {
+  return {
+    product: rule.product ?? null,
+    accessTariff: rule.accessTariff,
+    energy: rule.energy ?? "electricity",
+    pricing: rule.pricing ?? null,
+    level: rule.level,
+    channel: rule.channel,
+    minAnnualKwh: rule.minAnnualKwh,
+    maxAnnualKwh: rule.maxAnnualKwh,
+    minKw: rule.minKw ?? null,
+    maxKw: rule.maxKw ?? null,
+    ruleType: rule.ruleType,
+    amount: rule.amount,
+    minAmount: rule.minAmount ?? null,
+    validFrom: rule.validFrom,
   };
 }

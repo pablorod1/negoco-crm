@@ -14,6 +14,7 @@ const ApprovalSchema = z.object({
     .record(z.string(), z.object({ p1: z.number().positive().max(500), p2: z.number().nonnegative().max(500) }))
     .default({}),
   partialUpdate: z.boolean().optional(),
+  levelMap: z.record(z.string(), z.string().nullable()).optional(),
   includeCommissions: z.boolean().default(true),
   notes: z.string().max(1000).nullable().optional(),
 });

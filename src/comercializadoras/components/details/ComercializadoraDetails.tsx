@@ -113,8 +113,8 @@ export default function ComercializadoraDetails() {
           </div>
         )}
 
-        {currentView === "tarifas" && showRates && (
-          <SupplierRatesView comercializadoraId={comercializadora.id} />
+        {(currentView === "tarifas" || currentView === "comisiones") && showRates && (
+          <SupplierRatesView key={currentView} comercializadoraId={comercializadora.id} section={currentView} />
         )}
 
         {currentView === "documentos" && (

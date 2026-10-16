@@ -17,7 +17,12 @@ type TenantClient = Pick<Client, "execute" | "batch">;
 
 /** Ingesta resumida para listas: sin la extracción completa. */
 export function summarizeIngest(ingest: IngestRecord) {
-  const extraction = ingest.extraction as { status?: string; reason?: string } | null;
+  const extraction = ingest.extraction as {
+    status?: string;
+    reason?: string;
+    extraction?: { rates?: unknown[]; commissions?: unknown[] };
+  } | null;
+  const read = extraction?.extraction;
   return {
     id: ingest.id,
     channel: ingest.channel,
@@ -27,6 +32,10 @@ export function summarizeIngest(ingest: IngestRecord) {
     emailFrom: ingest.emailFrom,
     emailSubject: ingest.emailSubject,
     reason: extraction?.status === "out_of_scope" ? (extraction.reason ?? null) : null,
+    /** Qué trae el anexo, si ya se ha leído: cada vista (tarifas, comisiones) enseña lo suyo. */
+    contents: read
+      ? { prices: (read.rates?.length ?? 0) > 0, commissions: (read.commissions?.length ?? 0) > 0 }
+      : null,
     // El coste de la IA no se enseña al cliente: queda en la base y en ai_usage_events.
     error: ingest.error,
     receivedAt: ingest.receivedAt,

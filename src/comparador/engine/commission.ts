@@ -88,10 +88,25 @@ export function containsPhrase(haystack: readonly string[], needle: readonly str
   return false;
 }
 
-/** El nivel de la regla puede estar en el nivel del precio o en el nombre de la tarifa («Helsinki II»). */
-function levelMatches(level: string, context: CommissionContext): boolean {
+/**
+ * El nivel de la regla puede estar en el nivel del precio o en el nombre de la
+ * tarifa («Helsinki II», «TU MEDIO AMBIENTE S3826 TMAE 0» para «TMAE0»).
+ * Si el anexo lo abrevia («TPoolE0» para «TRADERPOOL S3826 TRADERPOOL 0»,
+ * «BOE 0» para «Balance Of Energy 0»), vale el número final de la tarifa,
+ * siempre que la regla diga el producto y la abreviatura empiece por su inicial.
+ */
+function levelMatches(level: string, context: Pick<CommissionContext, "level" | "productName">, product?: string | null): boolean {
   const wanted = nameTokens(level);
-  return containsPhrase(nameTokens(context.level), wanted) || containsPhrase(nameTokens(context.productName), wanted);
+  if (containsPhrase(nameTokens(context.level), wanted) || containsPhrase(nameTokens(context.productName), wanted)) return true;
+  const abbreviated = /^(\p{L}[\p{L}.]*)\s*(\d+)$/u.exec(level.trim());
+  const productTokens = nameTokens(product);
+  if (!abbreviated || context.level || productTokens.length === 0) return false;
+  const name = nameTokens(context.productName);
+  return (
+    name.at(-1) === String(Number(abbreviated[2])) &&
+    abbreviated[1].toLowerCase().startsWith(productTokens[0][0]) &&
+    containsPhrase(name, productTokens)
+  );
 }
 
 function matches(rule: CommissionRuleForEngine, context: CommissionContext) {
@@ -104,7 +119,7 @@ function matches(rule: CommissionRuleForEngine, context: CommissionContext) {
   if ((rule.energy ?? "electricity") !== (context.energy ?? "electricity")) return false;
   if (rule.accessTariff && rule.accessTariff !== context.accessTariff) return false;
   if (rule.pricing && context.pricing && rule.pricing !== context.pricing) return false;
-  if (rule.level && !levelMatches(rule.level, context)) return false;
+  if (rule.level && !levelMatches(rule.level, context, rule.rateId ? null : rule.product)) return false;
   if (rule.channel && context.channel && rule.channel !== context.channel) return false;
   // Tramos de consumo como en los anexos: incluyen el mínimo y excluyen el
   // máximo («0 – 10 MWh», «10 – 15 MWh»).
@@ -165,7 +180,7 @@ export function ruleCoversRate(
   if (rule.rateId ? rule.rateId !== rate.rateId : rule.product && !containsPhrase(nameTokens(rate.productName), nameTokens(rule.product))) {
     return false;
   }
-  return !rule.level || levelMatches(rule.level, context);
+  return !rule.level || levelMatches(rule.level, context, rule.rateId ? null : rule.product);
 }
 
 /**
@@ -179,6 +194,25 @@ export function computeCommission(
   rules: readonly CommissionRuleForEngine[],
   context: CommissionContext,
 ): number | null {
+  return explainCommission(rules, context).amount;
+}
+
+/**
+ * Por qué una oferta no tiene comisión: la comercializadora no tiene reglas
+ * (de esa energía), ninguna encaja con la tarifa, el nivel o el consumo, o
+ * varias encajan con importes distintos.
+ */
+export type CommissionMissing = "no_rules" | "no_match" | "ambiguous";
+
+/** La comisión y la regla de la que sale, o por qué no la hay: para enseñarlo en el estudio. */
+export function explainCommission(
+  rules: readonly CommissionRuleForEngine[],
+  context: CommissionContext,
+): { amount: number | null; rule: CommissionRuleForEngine | null; missing: CommissionMissing | null } {
+  const energy = context.energy ?? "electricity";
+  if (!rules.some((rule) => (rule.energy ?? "electricity") === energy)) {
+    return { amount: null, rule: null, missing: "no_rules" };
+  }
   const candidates = rules
     .filter((candidate) => matches(candidate, context))
     .map((rule) => ({ rule, rank: specificity(rule) }))
@@ -187,10 +221,12 @@ export function computeCommission(
         compareSpecificity(right.rank, left.rank) || right.rule.validFrom.localeCompare(left.rule.validFrom),
     );
   const best = candidates[0];
-  if (!best) return null;
+  if (!best) return { amount: null, rule: null, missing: "no_match" };
   const tied = candidates.filter(
     ({ rule, rank }) => compareSpecificity(rank, best.rank) === 0 && rule.validFrom === best.rule.validFrom,
   );
   const amounts = new Set(tied.map(({ rule }) => amountOf(rule, context)));
-  return amounts.size === 1 ? [...amounts][0] : null;
+  return amounts.size === 1
+    ? { amount: [...amounts][0], rule: best.rule, missing: null }
+    : { amount: null, rule: null, missing: "ambiguous" };
 }

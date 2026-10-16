@@ -825,3 +825,71 @@ test("comisiones de gas: peaje de cada fila, tramos en MWh y un nivel por column
     ["RL.2", "gas", "N2", 5000, 10000, 105],
   ]);
 });
+
+test("una copia con el importe a null lo lee de su columna, no lo borra (Axpo «MR AXPO», niveles S/E/X)", () => {
+  const sheet = grid("MR AXPO", {
+    1: { A: "desde", B: "hasta", C: "S(uper)", D: "E(stándar)", E: "X(tra)" },
+    2: { A: 1, B: 2, C: 18.78, D: 12.6, E: 5.82 },
+  });
+  const applied = applyRecipe(
+    [sheet],
+    recipe([
+      table({
+        sheet: "MR AXPO",
+        kind: "commissions",
+        firstRow: 2,
+        lastRow: 2,
+        repeat: [
+          { columnShift: 1, rowShift: 0, values: [{ field: "level", value: "E" }, { field: "commissionAmount", value: null }] },
+          { columnShift: 2, rowShift: 0, values: [{ field: "level", value: "X" }, { field: "minKwh", value: null }, { field: "commissionAmount", value: null }] },
+        ],
+        sources: [
+          { field: "productName", column: null, cell: null, value: "TARIFA ESTABLE" },
+          { field: "accessTariff", column: null, cell: null, value: "2.0TD" },
+          { field: "minKwh", column: "$A", cell: null, value: null },
+          { field: "maxKwh", column: "$B", cell: null, value: null },
+          { field: "consumptionUnit", column: null, cell: null, value: "mwh" },
+          { field: "level", column: null, cell: null, value: "S" },
+          { field: "commissionAmount", column: "C", cell: null, value: null },
+          { field: "commissionType", column: null, cell: null, value: "fixed" },
+        ],
+      }),
+    ]),
+  );
+  expect(applied.extraction.commissions.map(({ level, minKwh, maxKwh, amount }) => [level, minKwh, maxKwh, amount])).toEqual([
+    ["S", 1000, 2000, 18.78],
+    ["E", 1000, 2000, 12.6],
+    ["X", 1000, 2000, 5.82],
+  ]);
+});
+
+test("un tramo abierto «>100000» en la columna «desde» es «más de 100 MWh», no cualquier consumo (Eleia)", () => {
+  const sheet = grid("Electricidad", {
+    1: { D: 75000, E: 100000, F: 2489 },
+    2: { D: ">100000", F: 3848 },
+  });
+  const applied = applyRecipe(
+    [sheet],
+    recipe([
+      table({
+        sheet: "Electricidad",
+        kind: "commissions",
+        firstRow: 1,
+        lastRow: 2,
+        sources: [
+          { field: "productName", column: null, cell: null, value: "TRADERPOOL" },
+          { field: "accessTariff", column: null, cell: null, value: "2.0TD" },
+          { field: "minKwh", column: "D", cell: null, value: null },
+          { field: "maxKwh", column: "E", cell: null, value: null },
+          { field: "level", column: null, cell: null, value: "TPoolE0" },
+          { field: "commissionAmount", column: "F", cell: null, value: null },
+          { field: "commissionType", column: null, cell: null, value: "fixed" },
+        ],
+      }),
+    ]),
+  );
+  expect(applied.extraction.commissions.map(({ minKwh, maxKwh, amount }) => [minKwh, maxKwh, amount])).toEqual([
+    [75000, 100000, 2489],
+    [100000, null, 3848],
+  ]);
+});

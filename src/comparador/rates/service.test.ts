@@ -448,6 +448,132 @@ describe("rate ingest service", () => {
     expect(rules.find(({ amount }) => amount === 4)).toMatchObject({ rateId: null, product: "Helsinki" });
   });
 
+  test("commission levels named unlike the price levels are mapped once and remembered (Axpo S/E/X)", async () => {
+    const prices = await ingestWith(
+      client,
+      extractionResult([rate({ productName: "Estable", level: "SUPER (N1)" }), rate({ productName: "Estable", level: "N2" })]),
+      "COM-040",
+    );
+    await approveIngest({
+      client, control, ingest: prices, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+
+    const band = { energy: null, accessTariff: "2.0TD", pricing: "fixed" as const, channel: null, minKwh: 1000, maxKwh: 2000, ruleType: "fixed" as const, feeBase: null, minKw: null, maxKw: null, minAmount: null };
+    const commissions: RateDocumentExtraction["commissions"] = [
+      { ...band, productName: "TARIFA ESTABLE*", level: "S", amount: 18.78 },
+      { ...band, productName: "TARIFA ESTABLE*", level: "E", amount: 12.6 },
+      { ...band, productName: "1.   Tipo de Producto Campaña:", energy: "gas", accessTariff: "RL.1", level: "N1", amount: 31.5 },
+    ];
+    const first = await ingestWith(client, extractionResult([], { commissions }), "COM-040");
+    const review = (await buildReview({ client, control, ingest: first, today: "2026-10-07" }))!.review;
+    // «S» se deduce de «SUPER (N1)»; «E» lo tiene que decir quien revisa.
+    expect(review.commissionLevels.map(({ level, mappedTo, source }) => [level, mappedTo, source])).toEqual([
+      ["S", "SUPER (N1)", "suggested"],
+      ["E", null, null],
+    ]);
+    expect(review.commissions.map(({ product, level, covers, uncovered }) => [product, level, covers, uncovered])).toEqual([
+      ["ESTABLE", "SUPER (N1)", ["Estable (SUPER (N1))"], null],
+      ["ESTABLE", "E", [], expect.stringContaining("nivel «E»")],
+      // Sin tarifas de gas no se pregunta por sus niveles: se aplicará cuando las haya.
+      ["Campaña", "N1", [], expect.stringContaining("Aún no hay tarifas de gas RL.1")],
+    ]);
+
+    await approveIngest({
+      client, control, ingest: first, input: { validFrom: "2026-10-01", levelMap: { E: "N2" } },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    const rules = await listCurrentCommissionRules(client, "2026-10-07");
+    expect(rules.map(({ product, level }) => [product, level]).sort()).toEqual([
+      ["Campaña", "N1"],
+      ["ESTABLE", "N2"],
+      ["ESTABLE", "SUPER (N1)"],
+    ]);
+
+    // El anexo siguiente ya sabe a qué equivale cada nivel.
+    const next = await ingestWith(client, extractionResult([], { commissions }), "COM-040");
+    const remembered = (await buildReview({ client, control, ingest: next, today: "2026-10-07" }))!.review;
+    expect(remembered.commissionLevels.map(({ level, mappedTo, source }) => [level, mappedTo, source])).toEqual([
+      ["S", "SUPER (N1)", "remembered"],
+      ["E", "N2", "remembered"],
+    ]);
+  });
+
+  test("commissions name the product with its price type and the supplier, and the level inside the rate name (Eleia)", async () => {
+    await client.execute("UPDATE comercializadoras SET name = 'Eleia' WHERE id = 'COM-040'");
+    const names = [
+      "PRODUCTO TU MEDIO AMBIENTE S3826 TMAE 0",
+      "PRODUCTO TU MEDIO AMBIENTE S3826 TMAE 1",
+      "TRADERPOOL S3826 TRADERPOOL 0",
+      "PRODUCTO BALANCE OF ENERGY S3826 Balance Of Energy 0",
+      "PRODUCTO BALANCE OF ENERGY S3826 Balance Of Energy 1",
+    ];
+    const prices = await ingestWith(client, extractionResult(names.map((productName) => rate({ productName }))), "COM-040");
+    await approveIngest({
+      client, control, ingest: prices, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+
+    const band = { energy: null, accessTariff: "2.0TD", pricing: "fixed" as const, channel: null, minKwh: 0, maxKwh: 5000, ruleType: "fixed" as const, feeBase: null, minKw: null, maxKw: null, minAmount: null };
+    const commissions: RateDocumentExtraction["commissions"] = [
+      { ...band, productName: "TU MEDIO AMBIENTE FIJO", level: "TMAE1", amount: 40 },
+      { ...band, productName: "TRADERPOOL INDEXADO", level: "TPoolE0", amount: 30 },
+      { ...band, productName: "Balance Of Energy", level: "BOE 1", amount: 20 },
+      { ...band, productName: "TU DECIDES ELEIA FIJO", level: "TDE0", amount: 10 },
+    ];
+    const ingest = await ingestWith(client, extractionResult([], { commissions }), "COM-040");
+    const review = (await buildReview({ client, control, ingest, today: "2026-10-07" }))!.review;
+    expect(review.commissions.map(({ product, pricing, covers }) => [product, pricing, covers])).toEqual([
+      ["TU MEDIO AMBIENTE", "fixed", ["TU MEDIO AMBIENTE TMAE 1"]],
+      ["TRADERPOOL", "indexed", ["TRADERPOOL TRADERPOOL 0"]],
+      ["Balance Of Energy", "fixed", ["BALANCE OF ENERGY Balance Of Energy 1"]],
+      ["TU DECIDES", "fixed", []],
+    ]);
+    // «TDE0» no casa porque no hay tarifas «Tu Decides»: no es cosa del nivel.
+    expect(review.commissionLevels).toEqual([]);
+  });
+
+  test("a level with no equivalent offers the rates of its product when they have no levels", async () => {
+    const names = ["PRODUCTO SOL S1 Sol 0", "PRODUCTO SOL S1 Sol 1", "PRODUCTO LUNA S1"];
+    const prices = await ingestWith(client, extractionResult(names.map((productName) => rate({ productName }))), "COM-040");
+    await approveIngest({
+      client, control, ingest: prices, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+    });
+    const commissions: RateDocumentExtraction["commissions"] = [
+      { productName: "SOL", energy: null, accessTariff: "2.0TD", pricing: "fixed", level: "Oro", channel: null, minKwh: null, maxKwh: null, ruleType: "fixed", feeBase: null, amount: 50, minKw: null, maxKw: null, minAmount: null },
+    ];
+    const ingest = await ingestWith(client, extractionResult([], { commissions }), "COM-040");
+    const review = (await buildReview({ client, control, ingest, today: "2026-10-07" }))!.review;
+    expect(review.commissionLevels.map(({ level, options }) => [level, options])).toEqual([
+      ["Oro", ["SOL S1 Sol 0", "SOL S1 Sol 1"]],
+    ]);
+    const chosen = (await buildReview({
+      client, control, ingest, today: "2026-10-07", decisions: { levelMap: { Oro: "SOL S1 Sol 1" } },
+    }))!.review;
+    expect(chosen.commissions[0].covers).toEqual(["SOL S1 Sol 1"]);
+  });
+
+  test("reading the same file again replaces the pending reading", async () => {
+    const files = [{ path: "comparador/test/tarifas/x/anexo.txt", name: "anexo.txt", mime: "text/plain", size: 10 }];
+    const read = async (ingestId: string) => {
+      await processIngest({
+        client,
+        ingest: (await getIngest(client, ingestId))!,
+        tenantSlug: "test",
+        userId: "user-1",
+        readFile: async () => new TextEncoder().encode(QUIMERA_TEXT),
+        extract: async () => extractionResult([rate({})]),
+      });
+    };
+    const first = await createIngest(client, { channel: "upload", comercializadoraId: "COM-040", files, createdBy: "user-1" });
+    await read(first);
+    const second = await createIngest(client, { channel: "upload", comercializadoraId: "COM-040", files, createdBy: "user-1" });
+    await read(second);
+    expect((await getIngest(client, first))?.status).toBe("rejected");
+    expect((await getIngest(client, second))?.status).toBe("ready");
+  });
+
   test("a new version cannot start before the active one", async () => {
     const first = await ingestWith(client, extractionResult([rate({})]), "COM-040");
     await approveIngest({

@@ -15,7 +15,7 @@ import { InvoiceEditor } from "./InvoiceEditor";
 import { InvoicePicker } from "./InvoicePicker";
 import { OfferList } from "./OfferList";
 import { OfferInsights } from "./OfferInsights";
-import { ProposalDock } from "./ProposalDock";
+import { FloatingBar, ProposalDock } from "./ProposalDock";
 import { SavingsHero } from "./SavingsHero";
 import { StudyFilters, parseFee, type SupplierFacet } from "./StudyFilters";
 import { StudySidebar } from "./StudySidebar";
@@ -146,7 +146,8 @@ function StudyResult({
           offers={offers}
           context={{
             study,
-            withCommission: study.showCommission && offers.some(({ commission }) => commission !== null),
+            // Quien puede ver comisiones las ve siempre: «—» y el motivo si falta.
+            withCommission: study.showCommission,
             bestKey: best && (!hasCurrent || (best.savings ?? 0) > 0) ? best.key : null,
             maxSavings,
             selectedKey,
@@ -167,15 +168,18 @@ function StudyResult({
             },
           }}
         />
+        {comparing.length === 0 && (
+          <ProposalDock study={study} anchor={proposalsRef} onComplete={() => setCompleting(true)} />
+        )}
         {!closed && comparing.length > 0 && (
-          <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl bg-gray-900 px-4 py-3 text-sm text-white shadow-lg">
+          <FloatingBar>
             <Columns3 className="size-4 shrink-0 text-gray-300" />
-            <p className="min-w-0 flex-1">
+            <p className="min-w-0 flex-1 basis-60">
               {comparing.length === 1
                 ? "Marca otra oferta para compararlas en la misma propuesta (hasta tres)."
                 : `${comparing.length} ofertas en una propuesta: la principal es ${comparing[0].comercializadoraName}, la de más ahorro.`}
             </p>
-            <button type="button" onClick={() => setCompareKeys([])} className="text-xs text-gray-300 hover:text-white">
+            <button type="button" onClick={() => setCompareKeys([])} className="ml-auto text-xs text-gray-300 hover:text-white">
               Quitar
             </button>
             <Button
@@ -190,7 +194,7 @@ function StudyResult({
               {proposing === comparing[0]?.key ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
               Crear propuesta comparativa
             </Button>
-          </div>
+          </FloatingBar>
         )}
       </div>
 
@@ -211,7 +215,6 @@ function StudyResult({
           }}
         />
       )}
-      <ProposalDock study={study} anchor={proposalsRef} onComplete={() => setCompleting(true)} />
 
       {completing && (
         <CompleteDialog

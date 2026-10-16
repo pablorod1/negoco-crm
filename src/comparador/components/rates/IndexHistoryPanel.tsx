@@ -201,25 +201,25 @@ export function IndexHistoryPanel({ data, onSaved }: { data: SupplierRatesRespon
           <>
             {coverage && <p className="text-xs text-gray-500">Cubre {coverage}.</p>}
             <div className="max-h-80 overflow-y-auto rounded-xl ring-1 ring-gray-950/[0.06]">
-              <table className="w-full text-xs">
+              <table className="w-full text-[11px]">
                 <thead className="sticky top-0 bg-gray-50 text-[10px] uppercase tracking-[0.08em] text-gray-500">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium">Mes</th>
-                    <th className="px-3 py-2 text-right font-medium">Punta</th>
-                    <th className="px-3 py-2 text-right font-medium">Llano</th>
-                    <th className="px-3 py-2 text-right font-medium">Valle</th>
-                    {data.canManage && <th className="w-8" aria-label="Quitar" />}
+                    <th className="px-2 py-2 text-left font-medium">Mes</th>
+                    <th className="px-2 py-2 text-right font-medium">Punta</th>
+                    <th className="px-2 py-2 text-right font-medium">Llano</th>
+                    <th className="px-2 py-2 text-right font-medium">Valle</th>
+                    {data.canManage && <th className="w-6" aria-label="Quitar" />}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {rows.map((row) => (
                     <tr key={row.id}>
-                      <td className="px-3 py-1.5 text-gray-700">{formatMonth(row.month)}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-gray-900">{price(row.energy.P1)}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-gray-900">{price(row.energy.P2)}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-gray-900">{price(row.energy.P3)}</td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-gray-700">{formatMonth(row.month)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums text-gray-900">{price(row.energy.P1)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums text-gray-900">{price(row.energy.P2)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums text-gray-900">{price(row.energy.P3)}</td>
                       {data.canManage && (
-                        <td className="pr-2 text-right">
+                        <td className="pr-1 text-right">
                           <button
                             type="button"
                             aria-label={`Quitar ${formatMonth(row.month)}`}

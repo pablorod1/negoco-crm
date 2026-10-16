@@ -109,7 +109,15 @@ export const RecipeTableSchema = z.object({
       z.object({
         columnShift: z.number().int().describe("Columnas a la derecha (0 si no se mueve)"),
         rowShift: z.number().int().describe("Filas hacia abajo (0 si no se mueve)"),
-        values: z.array(z.object({ field: z.enum(RECIPE_FIELDS), value: z.string().nullable() })),
+        values: z.array(
+          z.object({
+            field: z.enum(RECIPE_FIELDS),
+            value: z
+              .string()
+              .nullable()
+              .describe("Valor de la copia; null si se lee de la columna o celda desplazada, como en el bloque original"),
+          }),
+        ),
       }),
     )
     .describe(

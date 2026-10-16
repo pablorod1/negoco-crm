@@ -230,7 +230,15 @@ function readTable(
   );
   for (const copy of copies) {
     const filled = new Map<string, SheetCell>();
-    const overrides = new Map(copy.values.map(({ field, value }) => [field, value]));
+    // Un valor vacío en una copia («commissionAmount: null») no borra el
+    // campo: es la manera en que la plantilla dice que se lee de la columna
+    // desplazada, como en el bloque original. El Excel de Axpo perdía así los
+    // niveles E y X.
+    const overrides = new Map(
+      copy.values
+        .filter(({ field, value }) => value !== null || !table.sources.some((source) => source.field === field && (source.column || source.cell)))
+        .map(({ field, value }) => [field, value]),
+    );
     const headerTerritory = sourceColumns.length
       ? blockTerritory(
           grid,
@@ -399,6 +407,12 @@ interface TypedRow {
   headerIndexed: boolean;
 }
 
+/** Columnas «desde/hasta» de un tramo, que pueden traer «>100000». */
+const BAND_PAIRS = [
+  { min: "minKwh", max: "maxKwh", kind: "kwh" },
+  { min: "minKw", max: "maxKw", kind: "kw" },
+] as const satisfies readonly { min: RecipeField; max: RecipeField; kind: "kw" | "kwh" }[];
+
 /** Cifras que hacen de una fila una tarifa: sin ellas la fila es una etiqueta. */
 const PRICE_FIELDS = new Set<RecipeField>(["energyP1", "energyP2", "energyP3", "powerP1", "powerP2", "commissionAmount"]);
 
@@ -411,9 +425,22 @@ const PRICE_FIELDS = new Set<RecipeField>(["energyP1", "energyP2", "energyP3", "
 function typeRow(record: RowRecord, problems: RecipeProblem[]): TypedRow | "label" | null {
   const { values } = record;
   const numbers: TypedRow["numbers"] = {};
+  // «>100000» en la columna «desde» (Eleia, el último tramo): es un tramo
+  // abierto, no un número que falte. Se completa al final.
+  const bandHints: { min: RecipeField; max: RecipeField; band: { min: number | null; max: number | null } }[] = [];
   for (const field of NUMERIC_FIELDS) {
     if (!(field in values)) continue;
     const parsed = parseNumber(asCell(values[field]));
+    const pair = BAND_PAIRS.find(({ min, max }) => field === min || field === max);
+    const cellText = text(values[field]);
+    if (!parsed.ok && pair && cellText && /[<>≤≥]|m[aá]s de|menos de/i.test(cellText)) {
+      const band = parseBand(cellText, pair.kind);
+      if (band) {
+        bandHints.push({ min: pair.min, max: pair.max, band });
+        numbers[field] = null;
+        continue;
+      }
+    }
     if (!parsed.ok) {
       if (parsed.reason.startsWith("celda con error")) {
         problems.push({
@@ -427,6 +454,10 @@ function typeRow(record: RowRecord, problems: RecipeProblem[]): TypedRow | "labe
       continue;
     }
     numbers[field] = parsed.value === null ? null : round6(parsed.value);
+  }
+  for (const { min, max, band } of bandHints) {
+    if (band.min !== null && (numbers[min] ?? null) === null) numbers[min] = round6(band.min);
+    if (band.max !== null && (numbers[max] ?? null) === null) numbers[max] = round6(band.max);
   }
 
   const tariffText = text(values.accessTariff);

@@ -46,6 +46,8 @@ const offer = (overrides: Partial<StudyOffer> = {}): StudyOffer => ({
   cost: cost(480),
   savings: 88,
   commission: 45,
+  commissionRule: null,
+  commissionMissing: null,
   discounts: [],
   discountParts: [],
   informativeDiscounts: [],

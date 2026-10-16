@@ -81,6 +81,7 @@ export const ratesApi = {
       regulatedPowerRowKeys: string[];
       manualPower: Record<string, { p1: number; p2: number }>;
       partialUpdate: boolean;
+      levelMap: Record<string, string | null>;
     },
   ) =>
     request<{ review: IngestReview | null }>(
@@ -96,6 +97,7 @@ export const ratesApi = {
       manualPower: Record<string, { p1: number; p2: number }>;
       partialUpdate: boolean;
       includeCommissions: boolean;
+      levelMap: Record<string, string | null>;
     },
   ) =>
     request<{ versionId: string | null; status: string | null }>(
@@ -149,6 +151,23 @@ const TERRITORY: Record<string, string> = {
 
 const kwh = (value: number) => `${(value / 1000).toLocaleString("es-ES")} MWh`;
 
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/**
+ * Precio que depende del mes en que empieza el suministro (Axpo da uno por
+ * mes de inicio): «si empieza en noviembre de 2026». No es la fecha en que
+ * entran en vigor los precios.
+ */
+export function describeSupplyStart(from: string | null, to: string | null): string | null {
+  if (!from) return null;
+  const [year, month, day] = from.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (day === 1 && to === `${from.slice(0, 8)}${String(lastDay).padStart(2, "0")}`) {
+    return `si empieza en ${MONTHS[month - 1]} de ${year}`;
+  }
+  return to ? `si empieza del ${formatDay(from)} al ${formatDay(to)}` : `si empieza desde el ${formatDay(from)}`;
+}
+
 /** Condiciones de una fila en una línea: «Agencia · > 10 kW · hasta 8 MWh · 12 meses». */
 export function describeConditions(
   row: RateConditions &
@@ -177,7 +196,8 @@ export function describeConditions(
           : `hasta ${kwh(row.maxAnnualKwh!)}`,
     );
   }
-  if (row.supplyStartFrom) parts.push(`inicio desde ${row.supplyStartFrom}`);
+  const start = describeSupplyStart(row.supplyStartFrom, row.supplyStartTo);
+  if (start) parts.push(start);
   if (row.termMonths) parts.push(`${row.termMonths} meses`);
   // En gas el campo dice si el variable lleva los peajes.
   if (row.includesAncillaryServices === false) parts.push(row.accessTariff && energyOfTariff(row.accessTariff) === "gas" ? "variable sin peajes" : "sin SS.AA.");

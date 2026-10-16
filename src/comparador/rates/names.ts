@@ -38,6 +38,52 @@ export function productNameOf(raw: string): string {
 }
 
 /**
+ * Productos a los que se aplica una tabla de comisiones, como los titula el
+ * anexo: «TARIFA ESTABLE*» es «ESTABLE»; «ESTABLE PLUS / "1P PLUS < 100MWh/año
+ * (2.0TD-3.0TD)"», dos productos («ESTABLE PLUS» y «1P PLUS»: el límite de
+ * consumo ya va en los tramos), y «1. Tipo de Producto Campaña:», «Campaña».
+ */
+export function commissionProductsOf(raw: string): string[] {
+  const names = cleanName(raw)
+    .split(/\s+\/\s+/)
+    .map((part) =>
+      part
+        // «TU DECIDES ELEIA (GAS) PRECIO FIJO»: la energía y el tipo de
+        // precio van en sus campos (ver `pricingInName`); en el nombre de la
+        // tarifa no están.
+        .replace(/\((?:gas|luz|electricidad)\)/gi, "")
+        .replace(/\s+(?:precio\s+)?(?:fijo|indexado)\s*$/i, "")
+        .replace(/["“”«»*]/g, "")
+        .replace(/\([^)]*\)/g, "")
+        .replace(/\s*[<>≤≥].*$/, "")
+        .replace(/^\d+\s*[.)-]\s*/, "")
+        .replace(/^tipo\s+de\s+producto\s*/i, "")
+        .replace(/^tarifas?\s+/i, "")
+        .replace(/[:.\s]+$/, ""),
+    )
+    .map((part) => productNameOf(part))
+    .filter(Boolean);
+  return names.length ? [...new Set(names)] : [productNameOf(raw)];
+}
+
+/** «… PRECIO INDEXADO» o «… FIJO» al final del nombre de una tabla de comisiones. */
+export function pricingInName(raw: string): "fixed" | "indexed" | null {
+  const match = /(?:^|\s)(?:precio\s+)?(fijo|indexado)\s*$/i.exec(cleanName(raw).replace(/["“”«»*:]/g, "").trim());
+  return match ? (match[1].toLowerCase() === "fijo" ? "fixed" : "indexed") : null;
+}
+
+/**
+ * El producto sin el nombre de la comercializadora: Eleia titula «TU DECIDES
+ * ELEIA» lo que en sus tarifas es «PRODUCTO TU DECIDES S3826 TDE 0».
+ */
+export function withoutSupplierName(product: string, supplierName: string): string {
+  const supplier = normalizeName(supplierName);
+  if (!supplier) return product;
+  const kept = product.split(/\s+/).filter((word) => normalizeName(word) !== supplier);
+  return kept.length ? kept.join(" ") : product;
+}
+
+/**
  * Clave de comparación: sin acentos, sin signos, sin espacios y en minúsculas.
  * `"Gana Energía"`, `"gana energia"` y `"GANA-ENERGIA"` dan todos `ganaenergia`.
  */

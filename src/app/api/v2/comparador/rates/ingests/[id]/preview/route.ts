@@ -12,6 +12,7 @@ const DecisionsSchema = z.object({
     .record(z.string(), z.object({ p1: z.number().positive().max(500), p2: z.number().nonnegative().max(500) }))
     .default({}),
   partialUpdate: z.boolean().optional(),
+  levelMap: z.record(z.string(), z.string().nullable()).optional(),
 });
 
 /** Revisión recalculada con las filas que el revisor excluye o completa. */

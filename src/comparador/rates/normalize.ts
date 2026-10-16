@@ -1,6 +1,6 @@
 import { DAYS_PER_YEAR } from "@/comparador/engine/cost";
 import { energyOfTariff, normalizeGasTariff } from "@/comparador/gas/regulated";
-import { cleanName, looksIndexed, productKeyOf, productNameOf } from "./names";
+import { cleanName, commissionProductsOf, looksIndexed, pricingInName, productKeyOf, productNameOf } from "./names";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
 import type { CommissionRuleInput, ProposedRate, RateDiscount } from "./types";
 
@@ -279,6 +279,7 @@ export function toProposedCommissions(
 ): (Omit<CommissionRuleInput, "rateId"> & {
   productName: string | null;
   productKey: string | null;
+  pricingStated: boolean;
 })[] {
   const compared = (tariff: string) => /^2[.,]?0\s?TD$/i.test(tariff.trim()) || normalizeGasTariff(tariff) !== null;
   const priced = extraction.rates.filter(
@@ -293,13 +294,18 @@ export function toProposedCommissions(
   };
   return extraction.commissions
     .filter((rule) => (rule.accessTariff ? compared(rule.accessTariff) : priced.length > 0))
-    .map((rule) => ({
+    // «ESTABLE PLUS / DINÁMICA PLUS»: la misma comisión para cada uno.
+    .flatMap((rule) => (rule.productName ? commissionProductsOf(rule.productName) : [null]).map((product) => ({ rule, product })))
+    .map(({ rule, product }) => ({
     energy: energyOf(rule),
-    productName: rule.productName ? productNameOf(rule.productName) : null,
-    productKey: rule.productName ? productKeyOf(productNameOf(rule.productName)) : null,
-    product: rule.productName ? productNameOf(rule.productName) : null,
+    productName: product,
+    productKey: product ? productKeyOf(product) : null,
+    product,
     accessTariff: rule.accessTariff ? accessTariffOf(rule.accessTariff) : null,
-    pricing: rule.pricing ?? null,
+    // «TU DECIDES ELEIA INDEXADO»: el nombre manda sobre lo que dedujo la lectura.
+    pricing: (rule.productName ? pricingInName(rule.productName) : null) ?? rule.pricing ?? null,
+    /** El tipo de precio lo dice el nombre de la tabla; si no, lo dedujo la lectura y la revisión lo corrige. */
+    pricingStated: Boolean(rule.productName && pricingInName(rule.productName)),
     level: rule.level ? cleanName(rule.level) : null,
     channel: rule.channel === "both" ? null : rule.channel,
     minAnnualKwh: rule.minKwh,
@@ -310,7 +316,9 @@ export function toProposedCommissions(
     feeBase: rule.feeBase ?? "energy",
     amount: rule.amount,
     minAmount: rule.ruleType === "per_mwh" ? (rule.minAmount ?? null) : null,
-  }));
+  }))
+    // La misma regla leída dos veces (Eleia: el bloque de TRADERPOOL) es una.
+    .filter((rule, index, all) => all.findIndex((other) => JSON.stringify(other) === JSON.stringify(rule)) === index);
 }
 
 /**

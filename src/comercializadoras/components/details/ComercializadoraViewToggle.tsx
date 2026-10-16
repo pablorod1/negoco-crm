@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FileText, Folder, Zap } from "lucide-react";
+import { Coins, FileText, Folder, Zap } from "lucide-react";
 import GenericViewToggle, { ViewOption } from "@/core/components/ViewToggle";
 import type { ComercializadoraView } from "@/comercializadoras/hooks/useComercializadoraViewNavigation";
 
@@ -13,7 +13,7 @@ interface ComercializadoraViewToggleProps {
   className?: string;
   numTramites?: number;
   numFiles?: number;
-  /** Muestra la vista «Tarifas» del comparador propio. */
+  /** Muestra las vistas «Tarifas» y «Comisiones» del comparador propio. */
   showRates?: boolean;
 }
 
@@ -41,7 +41,10 @@ export const ComercializadoraViewToggle = ({
       badge: numFiles,
     },
     ...(showRates
-      ? [{ value: "tarifas" as const, label: "Tarifas", shortLabel: "Tarifas", icon: Zap }]
+      ? [
+          { value: "tarifas" as const, label: "Tarifas", shortLabel: "Tarifas", icon: Zap },
+          { value: "comisiones" as const, label: "Comisiones", shortLabel: "Comisiones", icon: Coins },
+        ]
       : []),
   ];
 

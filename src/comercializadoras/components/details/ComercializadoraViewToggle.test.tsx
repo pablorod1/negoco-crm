@@ -13,15 +13,16 @@ describe("ComercializadoraViewToggle", () => {
       .toEqual(["Trámites", "Documentos"]);
   });
 
-  test("adds the rates view only for the own comparator", () => {
+  test("adds the rates and commissions views only for the own comparator", () => {
     const onViewChange = vi.fn();
     render(
       <ComercializadoraViewToggle currentView="tramites" onViewChange={onViewChange} showRates />
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Tarifas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Comisiones" }));
 
-    expect(onViewChange).toHaveBeenCalledWith("tarifas");
+    expect(onViewChange.mock.calls).toEqual([["tarifas"], ["comisiones"]]);
   });
 
   test("shows the counters as badges and selects the documents view", () => {

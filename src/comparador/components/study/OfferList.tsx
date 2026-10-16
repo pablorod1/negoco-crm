@@ -8,6 +8,7 @@ import { SupplierLogo } from "@/comercializadoras/components/SupplierLogo";
 import { Button } from "@/core/components/ui/button";
 import { Switch } from "@/core/components/ui/switch";
 import { cn } from "@/core/utils";
+import { commissionAmount, commissionScope } from "@/comparador/components/rates/commission-text";
 import { euros, percentOf, unitPrice, type ProposalView, type StudyOfferView, type StudyView } from "./api";
 import { Panel } from "./ui";
 
@@ -106,15 +107,53 @@ function OfferDiscounts({
 }
 
 /** Precios y coste de una oferta frente a lo que paga hoy. */
+/** Por qué una oferta no tiene comisión, en palabras. */
+export function commissionMissingText(offer: StudyOfferView, priceDate?: string): string | null {
+  if (offer.commission !== null) return null;
+  switch (offer.commissionMissing) {
+    case "no_rules":
+      // El estudio usa las comisiones vigentes en su fecha de precios, como los precios.
+      return `${offer.comercializadoraName} no tiene comisiones de ${offer.cost.kind === "gas" ? "gas" : "luz"} vigentes${priceDate ? ` el ${new Date(`${priceDate}T12:00:00Z`).toLocaleDateString("es-ES")}, la fecha de precios del estudio` : ""}. Se cargan en Comercializadoras > ${offer.comercializadoraName} > Comisiones.`;
+    case "no_match":
+      return `Ninguna comisión de ${offer.comercializadoraName} encaja con esta tarifa, su nivel y el consumo del cliente.`;
+    case "ambiguous":
+      return `Varias comisiones de ${offer.comercializadoraName} encajan con importes distintos: revisa su marco de comisiones.`;
+    default:
+      return null;
+  }
+}
+
+/** La comisión de la oferta y la regla de la que sale, o por qué no la hay. */
+function CommissionNote({ offer, priceDate }: { offer: StudyOfferView; priceDate: string }) {
+  const rule = offer.commissionRule;
+  return (
+    <div className="mt-4 rounded-xl bg-white px-3 py-2.5 ring-1 ring-gray-950/[0.06]">
+      <p className="flex items-baseline justify-between gap-3">
+        <span className="font-medium text-gray-700">Comisión</span>
+        <span className="font-semibold tabular-nums text-gray-900">{offer.commission === null ? "—" : euros(offer.commission)}</span>
+      </p>
+      <p className="mt-1 text-gray-500">
+        {rule
+          ? `${commissionScope(rule)} → ${commissionAmount(rule)}, desde el ${new Date(`${rule.validFrom}T12:00:00Z`).toLocaleDateString("es-ES")}.`
+          : commissionMissingText(offer, priceDate)}
+      </p>
+    </div>
+  );
+}
+
 function OfferDetail({
   offer,
   current,
   closed,
+  showCommission,
+  priceDate,
   onToggleDiscount,
 }: {
   offer: StudyOfferView;
   current: CostBreakdown | null;
   closed: boolean;
+  showCommission: boolean;
+  priceDate: string;
   onToggleDiscount: (id: string, applied: boolean) => void;
 }) {
   const gas = offer.cost.kind === "gas";
@@ -151,6 +190,7 @@ function OfferDetail({
             Precios vigentes desde el {new Date(`${offer.versionValidFrom}T12:00:00Z`).toLocaleDateString("es-ES")}
           </p>
         )}
+        {showCommission && <CommissionNote offer={offer} priceDate={priceDate} />}
       </div>
       <div>
         <p className="mb-2 font-medium text-gray-700">Coste de un año</p>
@@ -226,7 +266,7 @@ function OfferRow({
 
   return (
     <li id={`offer-${offer.key}`} className={cn("scroll-mt-24 transition-colors", selected && "bg-primary-50/60", proposal && !selected && "bg-primary-50/30")}>
-      <div className="grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-3 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_7rem_9rem_6rem_11rem]">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-3 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_7rem_9rem_6rem_17.5rem]">
         <div className="flex min-w-0 items-center gap-3">
           {withLogo && <SupplierLogo supplier={{ name: offer.comercializadoraName, logo: offer.comercializadoraLogo }} size={40} className="rounded-xl" />}
           {indent && <span className="w-10 shrink-0" aria-hidden />}
@@ -305,8 +345,10 @@ function OfferRow({
         <div className="hidden text-right lg:block">
           {withCommission && (
             <>
-              <p className="text-sm tabular-nums text-gray-700">{offer.commission === null ? "—" : euros(offer.commission)}</p>
-              <p className="text-[11px] text-gray-400">comisión</p>
+              <p className="text-sm tabular-nums text-gray-700" title={commissionMissingText(offer, study.priceDate) ?? undefined}>
+                {offer.commission === null ? "—" : euros(offer.commission)}
+              </p>
+              <p className="text-[11px] text-gray-400">{offer.commission === null ? "sin comisión" : "comisión"}</p>
             </>
           )}
         </div>
@@ -369,7 +411,16 @@ function OfferRow({
           {withCommission && offer.commission !== null && <span>comisión {euros(offer.commission)}</span>}
         </div>
       </div>
-      {open && <OfferDetail offer={offer} current={current} closed={closed} onToggleDiscount={onToggleDiscount} />}
+      {open && (
+        <OfferDetail
+          offer={offer}
+          current={current}
+          closed={closed}
+          showCommission={withCommission}
+          priceDate={study.priceDate}
+          onToggleDiscount={onToggleDiscount}
+        />
+      )}
     </li>
   );
 }

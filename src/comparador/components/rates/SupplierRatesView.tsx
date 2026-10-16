@@ -6,6 +6,7 @@ import {
   CalendarClock,
   Check,
   CheckCircle2,
+  ChevronDown,
   Copy,
   FileUp,
   Gauge,
@@ -31,7 +32,7 @@ import {
 } from "./api";
 import { energyOfTariff, GAS_ACCESS_TARIFFS } from "@/comparador/gas/regulated";
 import { commissionAmount, commissionScope } from "./commission-text";
-import { historyMonthsFor, describeCoverage, IndexHistoryPanel } from "./IndexHistoryPanel";
+import { historyMonthsFor, describeCoverage, IndexHistoryPanel, indexedProducts } from "./IndexHistoryPanel";
 import { IngestReviewSheet } from "./IngestReviewSheet";
 import { RateUploadDialog } from "./RateUploadDialog";
 
@@ -76,19 +77,39 @@ function offerBlocker(row: StoredRatePrice, product: Product, data: SupplierRate
 
 /** Condiciones de una fila como etiquetas, sin lo que ya se explica aparte. */
 function conditionChips(row: StoredRatePrice): string[] {
-  return describeConditions({ ...row, includesAncillaryServices: true })
+  const parts = describeConditions({ ...row, includesAncillaryServices: true })
     .split(" · ")
-    .filter((part) => part && part !== "General")
-    // El nivel suelto («I», «N2») no se entiende fuera de la tabla del anexo.
-    .map((part) => (row.level && part === row.level ? `Nivel ${part}` : part));
+    .filter((part) => part && part !== "General");
+  // El nivel va el primero. Suelto («I», «N2») no se entiende fuera de la
+  // tabla del anexo; si repite el territorio (Axpo: nivel «Baleares»), sobra.
+  const [first, ...rest] = row.level ? parts : ["", ...parts];
+  const level = row.level && !rest.includes(first) ? [`Nivel ${first}`] : [];
+  return [...new Set([...level, ...rest])];
 }
 
+/** Filas que se ven de cada tarifa antes de «Ver todas»: Axpo trae 40 por producto. */
+const VISIBLE_ROWS = 3;
+
+export type RatesSection = "tarifas" | "comisiones";
+
+/** Si un anexo toca la sección: sin leer todavía (o fallido), toca a las dos. */
+const concerns = (ingest: IngestSummary, section: RatesSection) =>
+  !ingest.contents || (section === "tarifas" ? ingest.contents.prices : ingest.contents.commissions);
+
 /**
- * Vista «Tarifas» de una comercializadora (dirección y backoffice): cómo están
- * sus precios, cómo se actualizan (un correo al buzón), qué tarifas se ofertan
- * y por qué no las que no, sus comisiones y lo que ha ido llegando.
+ * Vistas «Tarifas» y «Comisiones» de una comercializadora (dirección y
+ * backoffice). Tarifas: cómo están sus precios, cómo se actualizan (un correo
+ * al buzón), qué tarifas se ofertan y por qué no las que no, y el histórico
+ * del indexado. Comisiones: lo que paga por contrato. Cada una con los anexos
+ * que le tocan.
  */
-export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: string }) {
+export function SupplierRatesView({
+  comercializadoraId,
+  section = "tarifas",
+}: {
+  comercializadoraId: string;
+  section?: RatesSection;
+}) {
   const [data, setData] = useState<SupplierRatesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -116,8 +137,22 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
   if (error) return <p className="text-sm text-danger">{error}</p>;
   if (!data) return <RatesSkeleton />;
 
-  const attention = data.ingests.filter(({ status }) =>
+  const ingests = data.ingests.filter((ingest) => concerns(ingest, section));
+  const attention = ingests.filter(({ status }) =>
     ["received", "processing", "ready", "needs_review", "failed"].includes(status),
+  );
+  const hasIndexed = indexedProducts(data).length > 0 || data.indexHistory.length > 0;
+  const activity = (
+    <ActivityPanel
+      data={data}
+      ingests={ingests}
+      section={section}
+      onOpen={setReviewing}
+      onDiscard={async (versionId) => {
+        await ratesApi.discardVersion(versionId, comercializadoraId);
+        load();
+      }}
+    />
   );
 
   const toggleRate = async (rateId: string, enabled: boolean) => {
@@ -127,26 +162,30 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
 
   return (
     <div className="space-y-6">
-      <RatesHeader data={data} onUpload={() => setUploadOpen(true)} />
+      <RatesHeader data={data} section={section} onUpload={() => setUploadOpen(true)} />
 
       {attention.length > 0 && <AttentionPanel ingests={attention} onOpen={setReviewing} />}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      {/* La columna lateral va arriba: el histórico se ve sin bajar por todas las tarifas. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <div className="min-w-0 space-y-6">
-          <ProductsPanel data={data} onToggle={toggleRate} />
-          <IndexHistoryPanel data={data} onSaved={load} />
+          {section === "tarifas" ? (
+            <ProductsPanel data={data} onToggle={toggleRate} />
+          ) : (
+            <CommissionsPanel data={data} />
+          )}
         </div>
-        <div className="space-y-6">
-          <AncillaryDefaultPanel data={data} onSaved={load} />
-          <CommissionsPanel data={data} />
-          <ActivityPanel
-            data={data}
-            onOpen={setReviewing}
-            onDiscard={async (versionId) => {
-              await ratesApi.discardVersion(versionId, comercializadoraId);
-              load();
-            }}
-          />
+        <div className="min-w-0 space-y-6">
+          {section === "tarifas" ? (
+            <>
+              {hasIndexed && <IndexHistoryPanel data={data} onSaved={load} />}
+              <AncillaryDefaultPanel data={data} onSaved={load} />
+              {activity}
+              {!hasIndexed && <IndexHistoryPanel data={data} onSaved={load} />}
+            </>
+          ) : (
+            activity
+          )}
         </div>
       </div>
 
@@ -165,8 +204,16 @@ export function SupplierRatesView({ comercializadoraId }: { comercializadoraId: 
   );
 }
 
-/** Estado de los precios, tres cifras y cómo se actualizan. */
-function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload: () => void }) {
+/** Estado de los precios (o de las comisiones), tres cifras y cómo se actualizan. */
+function RatesHeader({
+  data,
+  section,
+  onUpload,
+}: {
+  data: SupplierRatesResponse;
+  section: RatesSection;
+  onUpload: () => void;
+}) {
   const rows = data.rates.flatMap((product) => product.rows.map((row) => ({ row, product })));
   const offered = data.rates.filter((product) =>
     product.rows.some((row) => !offerBlocker(row, product, data)),
@@ -176,8 +223,15 @@ function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload
     .map(({ row }) => Math.min(row.energy!.P1, row.energy!.P2, row.energy!.P3));
   const lastUpdate = data.ingests.find(({ status }) => status === "approved");
 
+  const current = currentRules(data);
+  const latestRules = current.reduce<string | null>((latest, { validFrom }) => (!latest || validFrom > latest ? validFrom : latest), null);
+
   const state =
-    data.freshness.status === "never"
+    section === "comisiones"
+      ? current.length === 0
+        ? { tone: "bg-gray-300", title: "Sin comisiones todavía", text: `Envía el marco de comisiones de ${data.supplier.name} al buzón y se aplicará al revisarlo.` }
+        : { tone: "bg-success-500", title: "Comisiones cargadas", text: `Vigentes desde el ${formatDay(latestRules)}` }
+      : data.freshness.status === "never"
       ? { tone: "bg-gray-300", title: "Sin precios todavía", text: `Envía el anexo de ${data.supplier.name} al buzón y se aplicará solo.` }
       : data.freshness.status === "stale"
         ? { tone: "bg-warning-500", title: `Sin actualizar desde hace ${data.freshness.days} días`, text: "Comprueba que no hay un anexo más reciente." }
@@ -197,7 +251,7 @@ function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload
               <h2 className="text-lg font-semibold tracking-tight text-gray-900">{state.title}</h2>
               <p className="text-sm text-gray-500">
                 {state.text}
-                {data.activeVersion?.validFrom && ` · vigentes desde el ${formatDay(data.activeVersion.validFrom)}`}
+                {section === "tarifas" && data.activeVersion?.validFrom && ` · vigentes desde el ${formatDay(data.activeVersion.validFrom)}`}
               </p>
             </div>
           </div>
@@ -207,11 +261,19 @@ function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload
               {data.supplier.name} está desactivada en el CRM: sus tarifas no salen en los estudios.
             </p>
           )}
-          <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
-            <Figure label="Tarifas" value={String(data.rates.length)} />
-            <Figure label="Se ofertan" value={String(offered.length)} />
-            <Figure label="Luz desde" value={cheapest.length ? euros(Math.min(...cheapest)) : "—"} unit={cheapest.length ? "€/kWh" : undefined} />
-          </dl>
+          {section === "tarifas" ? (
+            <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
+              <Figure label="Tarifas" value={String(data.rates.length)} />
+              <Figure label="Se ofertan" value={String(offered.length)} />
+              <Figure label="Luz desde" value={cheapest.length ? euros(Math.min(...cheapest)) : "—"} unit={cheapest.length ? "€/kWh" : undefined} />
+            </dl>
+          ) : (
+            <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
+              <Figure label="Reglas" value={String(current.length)} />
+              <Figure label="Luz" value={String(current.filter(({ energy }) => energy !== "gas").length)} />
+              <Figure label="Gas" value={String(current.filter(({ energy }) => energy === "gas").length)} />
+            </dl>
+          )}
         </div>
 
         <div className="space-y-3 rounded-2xl bg-gray-50 p-4 ring-1 ring-gray-950/[0.04] lg:w-[360px]">
@@ -221,7 +283,9 @@ function RatesHeader({ data, onUpload }: { data: SupplierRatesResponse; onUpload
             </span>
             <div>
               <p className="text-sm font-medium text-gray-900">Actualiza por correo</p>
-              <p className="text-xs text-gray-500">Reenvía los anexos y se aplican solos.</p>
+              <p className="text-xs text-gray-500">
+                {section === "tarifas" ? "Reenvía los anexos y se aplican solos." : "Reenvía el marco de comisiones al mismo buzón."}
+              </p>
             </div>
           </div>
           {data.mailbox ? <MailboxAddress address={data.mailbox} /> : <p className="text-xs text-gray-500">El buzón no está configurado.</p>}
@@ -320,7 +384,8 @@ function ProductsPanel({
           Todavía no hay precios de {data.supplier.name}. En cuanto llegue su anexo al buzón, aparecerán aquí.
         </div>
       ) : (
-        <div className="grid gap-4 p-5 md:grid-cols-2">
+        <div className="@container p-5">
+          <div className="grid gap-4 @2xl:grid-cols-2">
           {data.rates.map((product) => (
             <ProductCard
               key={product.rateId}
@@ -330,6 +395,7 @@ function ProductsPanel({
               onToggle={onToggle}
             />
           ))}
+          </div>
         </div>
       )}
     </Panel>
@@ -348,7 +414,9 @@ function ProductCard({
   onToggle: (rateId: string, enabled: boolean) => void;
 }) {
   const canManage = data.canManage;
+  const [expanded, setExpanded] = useState(false);
   const blockers = product.rows.map((row) => offerBlocker(row, product, data));
+  const hidden = expanded ? 0 : Math.max(0, product.rows.length - VISIBLE_ROWS);
   const coverage = describeCoverage(historyMonthsFor(data.indexHistory, product.rateId));
   const offeredRows = blockers.filter((blocker) => blocker === null).length;
   const status =
@@ -384,7 +452,7 @@ function ProductCard({
       </header>
 
       <div className="mt-3 space-y-3 divide-y divide-gray-100">
-        {product.rows.map((row, index) => (
+        {product.rows.slice(0, product.rows.length - hidden).map((row, index) => (
           <RowPrices
             key={row.id}
             row={row}
@@ -395,6 +463,16 @@ function ProductCard({
           />
         ))}
       </div>
+      {product.rows.length > VISIBLE_ROWS && (
+        <button
+          type="button"
+          className="mt-3 inline-flex items-center gap-1 self-start text-xs font-medium text-primary-600 hover:text-primary-700"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "Ver menos" : `Ver las ${product.rows.length} condiciones (${hidden} más)`}
+          <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+        </button>
+      )}
     </article>
   );
 }
@@ -585,31 +663,119 @@ function AncillaryDefaultPanel({ data, onSaved }: { data: SupplierRatesResponse;
   );
 }
 
+type Rule = SupplierRatesResponse["commissionRules"][number];
+
+/** Las reglas que valen hoy (o desde una fecha futura): las cerradas son historia. */
+function currentRules(data: SupplierRatesResponse): Rule[] {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  return data.commissionRules.filter(({ validTo }) => !validTo || validTo >= today);
+}
+
+const money = (value: number) => value.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+
+const band = (rule: Rule) =>
+  rule.minAnnualKwh === null && rule.maxAnnualKwh === null
+    ? "Cualquier consumo"
+    : `${money((rule.minAnnualKwh ?? 0) / 1000)}–${rule.maxAnnualKwh === null ? "∞" : money(rule.maxAnnualKwh / 1000)} MWh`;
+
+/**
+ * Comisiones vigentes, una línea por producto, tarifa y nivel: los tramos de
+ * consumo (Axpo trae decenas por nivel) se despliegan. Luz y gas por separado.
+ */
 function CommissionsPanel({ data }: { data: SupplierRatesResponse }) {
+  const current = currentRules(data);
+  const closed = data.commissionRules.length - current.length;
+  const sections = (["electricity", "gas"] as const)
+    .map((energy) => ({ energy, rules: current.filter((rule) => (rule.energy ?? "electricity") === energy) }))
+    .filter(({ rules }) => rules.length > 0);
+
   return (
     <Panel>
-      <PanelHeader title="Comisiones" description="Lo que paga la comercializadora por cada contrato." />
-      {data.commissionRules.length === 0 ? (
+      <PanelHeader
+        title="Comisiones vigentes"
+        description={`Lo que paga ${data.supplier.name} por cada contrato. En los estudios se aplica la regla más concreta que encaje con la tarifa, el nivel y el consumo del cliente.`}
+      />
+      {current.length === 0 ? (
         <p className="px-5 pb-5 pt-3 text-sm text-gray-500">
-          Sin comisiones. Envía el marco de comisiones al mismo buzón y se aplicará solo.
+          Sin comisiones. Envía el marco de comisiones al mismo buzón: se aplicará al revisarlo.
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100 px-5 pb-3 pt-2">
-          {data.commissionRules.map((rule) => (
-            <li key={rule.id} className="flex items-start gap-3 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-900">{commissionScope(rule, { withConsumption: true })}</p>
-                <p className="text-[11px] text-gray-500">
-                  Desde el {formatDay(rule.validFrom)}
-                  {rule.validTo ? ` hasta el ${formatDay(rule.validTo)}` : ""}
-                </p>
-              </div>
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">{commissionAmount(rule)}</span>
+        <div className="space-y-5 px-5 pb-5 pt-3">
+          {sections.map(({ energy, rules }) => (
+            <section key={energy} className="space-y-2">
+              {sections.length > 1 && <Eyebrow>{energy === "gas" ? "Gas" : "Luz"}</Eyebrow>}
+              <ul className="divide-y divide-gray-100 rounded-xl ring-1 ring-gray-950/[0.06]">
+                {groupRules(rules).map((group) => (
+                  <RuleGroup key={group.key} rules={group.rules} />
+                ))}
+              </ul>
+            </section>
+          ))}
+          {closed > 0 && (
+            <p className="text-xs text-gray-500">
+              {closed === 1 ? "Hay 1 regla anterior que ya no vale" : `Hay ${closed} reglas anteriores que ya no valen`}: las sustituyó un marco más reciente.
+            </p>
+          )}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function groupRules(rules: Rule[]): { key: string; rules: Rule[] }[] {
+  const groups = new Map<string, Rule[]>();
+  for (const rule of rules) {
+    const key = [commissionScope(rule, { withConsumption: false }), rule.pricing, rule.validFrom, rule.validTo].join("|");
+    groups.set(key, [...(groups.get(key) ?? []), rule]);
+  }
+  return [...groups].map(([key, grouped]) => ({
+    key,
+    rules: grouped.sort((left, right) => (left.minAnnualKwh ?? 0) - (right.minAnnualKwh ?? 0)),
+  }));
+}
+
+function RuleGroup({ rules }: { rules: Rule[] }) {
+  const [open, setOpen] = useState(false);
+  const [first] = rules;
+  const banded = rules.length > 1;
+  const amounts = rules.map(({ amount }) => amount);
+  const summary =
+    banded && first.ruleType === "fixed"
+      ? `${money(Math.min(...amounts))}–${money(Math.max(...amounts))} €`
+      : commissionAmount(first);
+  return (
+    <li className="px-3 py-2.5">
+      <button
+        type="button"
+        className="flex w-full items-start gap-3 text-left disabled:cursor-default"
+        disabled={!banded}
+        aria-expanded={banded ? open : undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm text-gray-900">{commissionScope(first, { withConsumption: !banded })}</span>
+          <span className="block text-[11px] text-gray-500">
+            Desde el {formatDay(first.validFrom)}
+            {first.validTo ? ` hasta el ${formatDay(first.validTo)}` : ""}
+            {banded ? ` · ${rules.length} tramos de consumo` : ""}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-sm font-semibold tabular-nums text-gray-900">
+          {summary}
+          {banded && <ChevronDown className={cn("size-3.5 text-gray-400 transition-transform", open && "rotate-180")} />}
+        </span>
+      </button>
+      {banded && open && (
+        <ul className="mt-2 grid gap-x-6 gap-y-0.5 text-xs text-gray-500 sm:grid-cols-2 xl:grid-cols-3">
+          {rules.map((rule) => (
+            <li key={rule.id} className="flex justify-between gap-3">
+              <span>{band(rule)}</span>
+              <span className="tabular-nums text-gray-900">{commissionAmount(rule)}</span>
             </li>
           ))}
         </ul>
       )}
-    </Panel>
+    </li>
   );
 }
 
@@ -639,20 +805,27 @@ function statusText(ingest: IngestSummary): { label: string; className: string }
 /** Lo que ha ido llegando, lo más reciente arriba, y los precios programados. */
 function ActivityPanel({
   data,
+  ingests,
+  section,
   onOpen,
   onDiscard,
 }: {
   data: SupplierRatesResponse;
+  /** Los anexos que tocan a esta vista. */
+  ingests: IngestSummary[];
+  section: RatesSection;
   onOpen: (id: string) => void;
   onDiscard: (versionId: string) => void;
 }) {
-  const scheduled = data.versions.filter(({ status }) => status === "scheduled");
+  const scheduled = section === "tarifas" ? data.versions.filter(({ status }) => status === "scheduled") : [];
 
   return (
     <Panel>
       <PanelHeader title="Actividad" description="Anexos recibidos y qué se hizo con cada uno." />
-      {scheduled.length === 0 && data.ingests.length === 0 ? (
-        <p className="px-5 pb-5 pt-3 text-sm text-gray-500">Todavía no ha llegado ningún anexo.</p>
+      {scheduled.length === 0 && ingests.length === 0 ? (
+        <p className="px-5 pb-5 pt-3 text-sm text-gray-500">
+          {section === "tarifas" ? "Todavía no ha llegado ningún anexo de precios." : "Todavía no ha llegado ningún marco de comisiones."}
+        </p>
       ) : (
         <ol className="relative space-y-1 px-5 pb-4 pt-3">
           {scheduled.map((version) => (
@@ -671,7 +844,7 @@ function ActivityPanel({
               )}
             </li>
           ))}
-          {data.ingests.map((ingest) => {
+          {ingests.map((ingest) => {
             const status = statusText(ingest);
             const note = ingest.status === "rejected" || ingest.status === "failed" ? ingest.error : ingest.status === "out_of_scope" ? ingest.reason : null;
             return (
@@ -715,7 +888,7 @@ function RatesSkeleton() {
   return (
     <div className="space-y-6">
       <Skeleton className="h-44 rounded-2xl" />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Skeleton className="h-96 rounded-2xl" />
         <Skeleton className="h-96 rounded-2xl" />
       </div>

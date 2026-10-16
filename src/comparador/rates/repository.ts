@@ -519,6 +519,26 @@ export async function saveIngestResult(
   });
 }
 
+/**
+ * Las lecturas pendientes anteriores del mismo fichero de la misma
+ * comercializadora se dan por sustituidas: volver a subir (o leer) un anexo
+ * no debe dejar tres revisiones iguales pendientes.
+ */
+export async function supersedeEarlierIngests(
+  client: QueryClient,
+  ingest: { id: string; comercializadoraId: string; fileName: string },
+) {
+  await client.execute({
+    sql: `UPDATE rate_ingests SET status = 'rejected', decided_at = CURRENT_TIMESTAMP,
+        decided_by = 'comparador:ingest', error = 'Sustituida por una lectura posterior del mismo anexo.'
+      WHERE comercializadora_id = ? AND id <> ?
+        AND status IN ('received', 'ready', 'needs_review', 'failed')
+        AND json_extract(files, '$[0].name') = ?
+        AND received_at <= (SELECT received_at FROM rate_ingests WHERE id = ?)`,
+    args: [ingest.comercializadoraId, ingest.id, ingest.fileName, ingest.id],
+  });
+}
+
 export function decideIngestStatement(
   id: string,
   decision: { status: "approved" | "rejected"; userId: string; versionId: string | null },

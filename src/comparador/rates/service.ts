@@ -4,8 +4,9 @@ import { buildDiff, type DiffEntry, type ResolvedRow } from "./diff";
 import { prepareDocument, type RateSource } from "./document";
 import { extractRateDocument, type RateExtractionResult } from "./extract";
 import { matchProducts, type RateMatch } from "./match";
-import { normalizeName } from "./names";
-import { ruleCoversRate } from "@/comparador/engine/commission";
+import { normalizeName, productKeyOf, withoutSupplierName } from "./names";
+import { nameTokens, ruleCoversRate } from "@/comparador/engine/commission";
+import { energyOfTariff } from "@/comparador/gas/regulated";
 import { powerToPerDay, toProposedCommissions } from "./normalize";
 import {
   claimIngest,
@@ -21,6 +22,7 @@ import {
   listTenantRates,
   replaceCommissionRulesStatements,
   saveIngestResult,
+  supersedeEarlierIngests,
   type IngestRecord,
 } from "./repository";
 import { readIngestFile } from "./storage";
@@ -147,6 +149,9 @@ export async function processIngest({
       models: result.status === "out_of_scope" ? [] : result.attempts.map(({ model }) => model),
       costUsd: result.costUsd,
     });
+    if (status !== "out_of_scope" && comercializadoraId && file) {
+      await supersedeEarlierIngests(client, { id: ingest.id, comercializadoraId, fileName: file.name });
+    }
     return status;
   } catch (error) {
     // Los errores propios ya explican qué hacer; uno de la IA o de la red
@@ -188,12 +193,30 @@ function ratesCoveredBy(
 
 export interface ProposedCommission extends CommissionRuleInput {
   productName: string | null;
+  /** El nivel como lo trae el anexo («S»), si se ha traducido al de las tarifas («SUPER (N1)»). */
+  documentLevel: string | null;
   /**
    * Tarifas de la comercializadora a las que se aplicaría (vigentes o de este
    * documento), para ver en la revisión si casa bien. Vacío: no se aplica a
-   * ninguna.
+   * ninguna, y `uncovered` dice por qué.
    */
   covers: string[];
+  uncovered: string | null;
+}
+
+/**
+ * Un nivel del anexo de comisiones que no se llama como los de las tarifas:
+ * Axpo paga por «S», «E» y «X» y sus precios dicen «SUPER (N1)», «N2» y «N3».
+ */
+export interface CommissionLevelChoice {
+  level: string;
+  energy: "electricity" | "gas";
+  /** Nivel de las tarifas al que equivale; null si nadie lo ha dicho. */
+  mappedTo: string | null;
+  /** Lo eligió quien revisa, se recuerda de otro anexo o se deduce («S» → «SUPER (N1)»). */
+  source: "reviewer" | "remembered" | "suggested" | null;
+  /** Niveles de las tarifas de esa energía. */
+  options: string[];
 }
 
 export interface IngestReview {
@@ -208,6 +231,8 @@ export interface IngestReview {
   /** Productos que no están en el catálogo: solo Negoco puede darlos de alta. */
   newProducts: string[];
   commissions: ProposedCommission[];
+  /** Niveles de comisión que hay que traducir a los de las tarifas. */
+  commissionLevels: CommissionLevelChoice[];
   /** Filas que el documento trae pero no entran en la v1 (indexadas, 3.0TD…). */
   outOfScope: { productName: string; accessTariff: string; pricing: string }[];
 }
@@ -251,6 +276,39 @@ export interface ReviewDecisions {
    * indica, vale lo que haya deducido la lectura.
    */
   partialUpdate?: boolean;
+  /**
+   * Nivel de las tarifas que corresponde a cada nivel del anexo de
+   * comisiones («S» → «SUPER (N1)»); null: no equivale a ninguno.
+   */
+  levelMap?: Readonly<Record<string, string | null>>;
+}
+
+/**
+ * Nivel de las tarifas que se deduce de uno de comisiones sin preguntar: la
+ * inicial o la abreviatura de una sola palabra («S», «S(uper)») frente a
+ * «SUPER (N1)». Solo si hay uno; si no, lo elige quien revisa.
+ */
+export function suggestLevel(level: string, options: readonly string[]): string | null {
+  const expanded = level.replace(/^(\p{L}+)\((\p{L}+)\)$/u, "$1$2");
+  const [wanted, ...rest] = nameTokens(expanded);
+  if (!wanted || rest.length > 0) return null;
+  const found = options.filter((option) => nameTokens(option).some((token) => token !== wanted && token.startsWith(wanted)));
+  return found.length === 1 ? found[0] : null;
+}
+
+/** Los niveles que se eligieron en el último anexo aprobado de la comercializadora. */
+async function rememberedLevelMap(client: TenantClient, comercializadoraId: string): Promise<Record<string, string | null>> {
+  const { rows } = await client.execute({
+    sql: `SELECT json_extract(extraction, '$.levelMap') AS level_map FROM rate_ingests
+      WHERE comercializadora_id = ? AND status = 'approved' AND json_extract(extraction, '$.levelMap') IS NOT NULL
+      ORDER BY decided_at DESC LIMIT 1`,
+    args: [comercializadoraId],
+  });
+  try {
+    return rows[0]?.level_map ? (JSON.parse(String(rows[0].level_map)) as Record<string, string | null>) : {};
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -322,30 +380,124 @@ export async function buildReview({
     inScope.length === 0 || (decisions.partialUpdate ?? extracted.extraction.partialUpdate);
   const diff = buildDiff(resolved, activePrices, { partialUpdate });
 
+  const proposedRules = toProposedCommissions(extracted.extraction).map((rule) => {
+    if (!rule.product) return rule;
+    const product = withoutSupplierName(rule.product, supplier.name);
+    return { ...rule, product, productName: product, productKey: productKeyOf(product) };
+  });
   const commissionMatches = matchProducts(
-    toProposedCommissions(extracted.extraction)
+    proposedRules
       .filter((rule) => rule.productKey)
       .map((rule) => ({ productKey: rule.productKey!, productName: rule.productName! })),
     { tenantRates, catalog, aliases },
   );
   const coverable = [
-    ...activePrices.map((price) => ({ rateId: price.rateId, productName: price.rateName, level: price.level })),
+    ...activePrices.map((price) => ({
+      rateId: price.rateId,
+      productName: price.rateName,
+      level: price.level,
+      accessTariff: price.accessTariff,
+      pricing: price.pricing,
+    })),
     ...resolved.map((row) => ({
       rateId: row.match.rateId ?? `new:${row.productKey}`,
       productName: row.productName,
       level: row.level,
+      accessTariff: row.accessTariff,
+      pricing: row.pricing,
     })),
   ];
-  const commissions = toProposedCommissions(extracted.extraction).map((rule) => {
+  // Una regla de gas solo puede cubrir tarifas de gas, y la de un peaje, las de ese peaje.
+  const ratesFor = (rule: Pick<ProposedCommission, "energy" | "accessTariff">) =>
+    coverable.filter(
+      (rate) =>
+        energyOfTariff(rate.accessTariff) === (rule.energy ?? "electricity") &&
+        (!rule.accessTariff || rule.accessTariff === rate.accessTariff),
+    );
+
+  // Niveles del anexo que no aparecen en ninguna tarifa de su energía.
+  const remembered = decisions.levelMap ? {} : await rememberedLevelMap(client, supplier.id);
+  const commissionLevels: CommissionLevelChoice[] = [];
+  for (const rule of proposedRules) {
+    const energy = rule.energy ?? "electricity";
+    if (!rule.level || commissionLevels.some((choice) => choice.level === rule.level && choice.energy === energy)) continue;
+    const rates = ratesFor({ energy, accessTariff: null });
+    if (rates.length === 0) continue;
+    // Casa si alguna tarifa lo tiene de nivel (o en el nombre), o si alguna
+    // regla con ese nivel cubre una tarifa de su producto («TPoolE0» en
+    // «TRADERPOOL S3826 TRADERPOOL 0»).
+    const sameLevel = proposedRules.filter((other) => other.level === rule.level && (other.energy ?? "electricity") === energy);
+    if (
+      rates.some(
+        (rate) =>
+          ruleCoversRate({ rateId: null, product: null, level: rule.level }, rate) ||
+          sameLevel.some((other) => ruleCoversRate({ rateId: null, product: other.product, level: rule.level }, rate)),
+      )
+    ) {
+      continue;
+    }
+    // Se elige entre los niveles de las tarifas; si no tienen (Eleia lleva el
+    // nivel en el nombre), entre las tarifas de los productos de esas reglas.
+    const levels = [...new Set(rates.flatMap(({ level }) => (level ? [level] : [])))];
+    const ofProducts = rates.filter((rate) =>
+      sameLevel.some((other) => ruleCoversRate({ rateId: null, product: other.product, level: null }, rate)),
+    );
+    // Si ninguna tarifa se llama como sus productos, el problema no es el
+    // nivel: cada regla ya lo avisa («Ninguna tarifa se llama…»).
+    if (ofProducts.length === 0 && sameLevel.every((other) => other.product)) continue;
+    const options = (levels.length ? levels : [...new Set((ofProducts.length ? ofProducts : rates).map(({ productName }) => productName))]).sort(
+      (a, b) => a.localeCompare(b, "es"),
+    );
+    const chosen = decisions.levelMap && rule.level in decisions.levelMap ? decisions.levelMap[rule.level] : undefined;
+    const kept = rule.level in remembered ? remembered[rule.level] : undefined;
+    const suggested = suggestLevel(rule.level, options);
+    const mappedTo = chosen !== undefined ? chosen : kept !== undefined ? kept : suggested;
+    commissionLevels.push({
+      level: rule.level,
+      energy,
+      mappedTo: mappedTo && options.includes(mappedTo) ? mappedTo : null,
+      source: chosen !== undefined ? "reviewer" : kept !== undefined ? "remembered" : suggested ? "suggested" : null,
+      options,
+    });
+  }
+  const levelOf = (level: string | null, energy: "electricity" | "gas") =>
+    commissionLevels.find((choice) => choice.level === level && choice.energy === energy)?.mappedTo ?? level;
+
+  const commissions = proposedRules.map((rule): ProposedCommission => {
     const rateId = rule.productKey ? (commissionMatches.get(rule.productKey)?.rateId ?? null) : null;
+    const energy = rule.energy ?? "electricity";
+    const level = levelOf(rule.level, energy);
+    const rates = ratesFor(rule);
+    const covers = ratesCoveredBy({ rateId, product: rule.product, level }, rates);
+    const named = rates.filter((rate) => ruleCoversRate({ rateId, product: rule.product, level: null }, rate));
+    // Si el nombre no dice fijo o indexado, mandan las tarifas que nombra; sin
+    // tarifas, vale para las dos. La lectura de Axpo dio «fijo» a Dinámica,
+    // que es su indexada, y nunca se habría aplicado.
+    const namedPricing = new Set(named.map(({ pricing }) => (pricing === "indexed" ? "indexed" : "fixed")));
+    const pricing = rule.pricingStated
+      ? rule.pricing
+      : rule.product && namedPricing.size === 1
+        ? [...namedPricing][0]
+        : rule.product
+          ? null
+          : rule.pricing;
+    const uncovered =
+      covers.length > 0
+        ? null
+        : rates.length === 0
+          ? `Aún no hay tarifas de ${energy === "gas" ? `gas${rule.accessTariff ? ` ${rule.accessTariff}` : ""}` : (rule.accessTariff ?? "luz")} de ${supplier.name}: se aplicará cuando las haya.`
+          : named.length === 0
+            ? `Ninguna tarifa de ${supplier.name} se llama «${rule.product}»: se aplicará cuando haya una.`
+            : `Ninguna tarifa «${rule.product}» tiene el nivel «${rule.level}»: indica arriba a qué nivel equivale.`;
     return {
       productName: rule.productName,
       rateId,
       product: rule.product,
       accessTariff: rule.accessTariff,
       energy: rule.energy,
-      pricing: rule.pricing,
-      level: rule.level,
+      pricing,
+      level,
+      documentLevel: level !== rule.level ? rule.level : null,
       channel: rule.channel,
       minAnnualKwh: rule.minAnnualKwh,
       maxAnnualKwh: rule.maxAnnualKwh,
@@ -355,7 +507,8 @@ export async function buildReview({
       feeBase: rule.feeBase,
       amount: rule.amount,
       minAmount: rule.minAmount,
-      covers: ratesCoveredBy({ rateId, product: rule.product, level: rule.level }, coverable),
+      covers,
+      uncovered,
     };
   });
 
@@ -395,7 +548,12 @@ export async function buildReview({
       // lectura ya ha marcado: un aviso por fila basta.
       issues: [
         ...(oldDocument ? [oldDocument] : []),
-        ...extractionIssues,
+        // Un anexo solo de comisiones: la fecha que falta es la de las comisiones.
+        ...extractionIssues.map((issue) =>
+          issue.code === "missing_valid_from" && inScope.length === 0 && commissions.length > 0
+            ? { ...issue, message: "El documento no indica desde cuándo valen las comisiones: revisa la fecha de abajo." }
+            : issue,
+        ),
         ...diff.issues.filter(
           (issue) =>
             !(
@@ -407,6 +565,7 @@ export async function buildReview({
       entries: diff.entries,
       newProducts,
       commissions,
+      commissionLevels,
       outOfScope: extracted.proposed
         .filter((row) => !isInScope(row))
         .map(({ productName, accessTariff, pricing }) => ({ productName, accessTariff, pricing })),
@@ -603,6 +762,14 @@ export async function approveIngest({
   statements.push(
     decideIngestStatement(ingest.id, { status: "approved", userId: user.id, versionId }),
   );
+  // Los niveles elegidos se recuerdan para el próximo anexo de comisiones.
+  const levelMap = Object.fromEntries(review.commissionLevels.map(({ level, mappedTo }) => [level, mappedTo]));
+  if (includeCommissions && Object.keys(levelMap).length > 0) {
+    statements.push({
+      sql: `UPDATE rate_ingests SET extraction = json_set(extraction, '$.levelMap', json(?)) WHERE id = ?`,
+      args: [JSON.stringify(levelMap), ingest.id],
+    });
+  }
   await client.batch(statements, "write");
   return { versionId, status };
 }
@@ -648,6 +815,11 @@ export async function autoApproveIngest({
   const blocking = review.issues.filter(({ severity }) => severity === "blocking");
   if (blocking.length > 0) {
     return { approved: false, reason: blocking.map(({ message }) => message).join(" · ") };
+  }
+  // Una comisión con un nivel que no casa con ninguna tarifa no pagaría nunca.
+  const unmapped = review.commissionLevels.filter(({ mappedTo }) => !mappedTo).map(({ level }) => `«${level}»`);
+  if (unmapped.length > 0) {
+    return { approved: false, reason: `hay que indicar a qué nivel de las tarifas equivalen los niveles de comisión ${unmapped.join(", ")}` };
   }
 
   const validFrom = review.validFrom ?? receivedOn;
