@@ -228,7 +228,7 @@ export interface IngestReview {
   skipped: string[];
   issues: RateIssue[];
   entries: DiffEntry[];
-  /** Productos que no están en el catálogo: solo Negoco puede darlos de alta. */
+  /** Productos que no están en el catálogo: se dan de alta al aprobar. */
   newProducts: string[];
   commissions: ProposedCommission[];
   /** Niveles de comisión que hay que traducir a los de las tarifas. */
@@ -595,7 +595,6 @@ export async function approveIngest({
   ingest,
   input,
   user,
-  isCatalogAdmin,
   today,
 }: {
   client: TenantClient;
@@ -603,7 +602,6 @@ export async function approveIngest({
   ingest: IngestRecord;
   input: ApprovalInput;
   user: { id: string };
-  isCatalogAdmin: boolean;
   today: string;
 }): Promise<{ versionId: string | null; status: RateVersion["status"] | null }> {
   if (!["ready", "needs_review"].includes(ingest.status)) {
@@ -625,12 +623,6 @@ export async function approveIngest({
   if (blocking.length > 0) {
     throw new RateIngestError(
       `Quedan incidencias por resolver: ${blocking.map(({ message }) => message).join(" · ")}`,
-    );
-  }
-  if (review.newProducts.length > 0 && !isCatalogAdmin) {
-    throw new RateIngestError(
-      `Estos productos no están en el catálogo y solo Negoco puede darlos de alta: ${review.newProducts.join(", ")}. Exclúyelos o pide el alta.`,
-      403,
     );
   }
 
@@ -842,7 +834,6 @@ export async function autoApproveIngest({
     ingest,
     input: { validFrom, partialUpdate: true, notes: "Aprobada sola: llegó al buzón de anexos" },
     user: { id: approvedBy },
-    isCatalogAdmin: true,
     today,
   });
   return { approved: true, versionId };

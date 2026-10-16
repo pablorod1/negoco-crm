@@ -179,25 +179,12 @@ describe("rate ingest service", () => {
     expect(built?.review.newProducts).toEqual(["Unicornio", "Fénix"]);
     expect(built?.review.entries.map(({ kind }) => kind)).toEqual(["added", "added"]);
 
-    await expect(
-      approveIngest({
-        client,
-        control,
-        ingest,
-        input: { validFrom: "2026-10-01" },
-        user: { id: "user-1" },
-        isCatalogAdmin: false,
-        today: "2026-10-07",
-      }),
-    ).rejects.toMatchObject({ status: 403 });
-
     const approved = await approveIngest({
       client,
       control,
       ingest,
       input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" },
-      isCatalogAdmin: true,
+      user: { id: "backoffice-1" },
       today: "2026-10-07",
     });
     expect(approved.status).toBe("active");
@@ -265,7 +252,7 @@ describe("rate ingest service", () => {
     );
     await approveIngest({
       client, control, ingest: first, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
 
     // Un aviso que solo cambia la energía de Unicornio.
@@ -282,10 +269,10 @@ describe("rate ingest service", () => {
     expect(built?.review.entries.map(({ kind }) => kind)).toEqual(["changed", "carried"]);
     expect(built?.review.newProducts).toEqual([]);
 
-    // Un backoffice (sin ser de Negoco) puede aprobarla: no hay productos nuevos.
+    // Un backoffice (sin ser de Negoco) también la aprueba.
     const scheduled = await approveIngest({
       client, control, ingest: partial, input: { validFrom: "2026-10-15" },
-      user: { id: "backoffice-1" }, isCatalogAdmin: false, today: "2026-10-07",
+      user: { id: "backoffice-1" }, today: "2026-10-07",
     });
     expect(scheduled.status).toBe("scheduled");
     expect((await getActiveVersion(client, "COM-040", "2026-10-07"))?.validFrom).toBe("2026-10-01");
@@ -312,7 +299,7 @@ describe("rate ingest service", () => {
 
     const attempt = approveIngest({
       client, control, ingest, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     await expect(attempt).rejects.toBeInstanceOf(RateIngestError);
     await expect(attempt).rejects.toThrow(/no aparece en el documento/);
@@ -322,7 +309,7 @@ describe("rate ingest service", () => {
       approveIngest({
         client, control, ingest,
         input: { validFrom: "2026-10-01", excludedRowKeys: [rowKey(proposed)] },
-        user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+        user: { id: "negoco-1" }, today: "2026-10-07",
       }),
     ).rejects.toThrow(/No hay ninguna fila que guardar/);
   });
@@ -351,7 +338,7 @@ describe("rate ingest service", () => {
     const approved = await approveIngest({
       client, control, ingest,
       input: { validFrom: "2026-10-05", regulatedPowerRowKeys: [key] },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const [price] = await getVersionPrices(client, approved.versionId!);
     expect(price).toMatchObject({ powerMode: "regulated", energy: { P1: 0.139, P2: 0.139, P3: 0.139 } });
@@ -377,7 +364,7 @@ describe("rate ingest service", () => {
     const approved = await approveIngest({
       client, control, ingest,
       input: { validFrom: "2026-10-05", manualPower },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const [price] = await getVersionPrices(client, approved.versionId!);
     expect(price.powerMode).toBe("fixed");
@@ -391,7 +378,7 @@ describe("rate ingest service", () => {
     const first = await ingestWith(client, extractionResult([rate({})], { commissions }), "COM-040");
     await approveIngest({
       client, control, ingest: first, input: { validFrom: "2026-01-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const second = await ingestWith(
       client,
@@ -400,7 +387,7 @@ describe("rate ingest service", () => {
     );
     await approveIngest({
       client, control, ingest: second, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const { rows } = await client.execute(
       "SELECT amount, valid_from, valid_to FROM rate_commission_rules ORDER BY valid_from",
@@ -418,7 +405,7 @@ describe("rate ingest service", () => {
     );
     await approveIngest({
       client, control, ingest: reread, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const after = await client.execute("SELECT amount, valid_from, valid_to FROM rate_commission_rules ORDER BY valid_from");
     expect(after.rows.map((row) => [row.amount, row.valid_from, row.valid_to])).toEqual([
@@ -438,7 +425,7 @@ describe("rate ingest service", () => {
 
     await approveIngest({
       client, control, ingest, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const rules = await listCurrentCommissionRules(client, "2026-10-07");
     expect(rules.find(({ amount }) => amount === 15)).toMatchObject({
@@ -456,7 +443,7 @@ describe("rate ingest service", () => {
     );
     await approveIngest({
       client, control, ingest: prices, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
 
     const band = { energy: null, accessTariff: "2.0TD", pricing: "fixed" as const, channel: null, minKwh: 1000, maxKwh: 2000, ruleType: "fixed" as const, feeBase: null, minKw: null, maxKw: null, minAmount: null };
@@ -481,7 +468,7 @@ describe("rate ingest service", () => {
 
     await approveIngest({
       client, control, ingest: first, input: { validFrom: "2026-10-01", levelMap: { E: "N2" } },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const rules = await listCurrentCommissionRules(client, "2026-10-07");
     expect(rules.map(({ product, level }) => [product, level]).sort()).toEqual([
@@ -511,7 +498,7 @@ describe("rate ingest service", () => {
     const prices = await ingestWith(client, extractionResult(names.map((productName) => rate({ productName }))), "COM-040");
     await approveIngest({
       client, control, ingest: prices, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
 
     const band = { energy: null, accessTariff: "2.0TD", pricing: "fixed" as const, channel: null, minKwh: 0, maxKwh: 5000, ruleType: "fixed" as const, feeBase: null, minKw: null, maxKw: null, minAmount: null };
@@ -538,7 +525,7 @@ describe("rate ingest service", () => {
     const prices = await ingestWith(client, extractionResult(names.map((productName) => rate({ productName }))), "COM-040");
     await approveIngest({
       client, control, ingest: prices, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const commissions: RateDocumentExtraction["commissions"] = [
       { productName: "SOL", energy: null, accessTariff: "2.0TD", pricing: "fixed", level: "Oro", channel: null, minKwh: null, maxKwh: null, ruleType: "fixed", feeBase: null, amount: 50, minKw: null, maxKw: null, minAmount: null },
@@ -578,13 +565,13 @@ describe("rate ingest service", () => {
     const first = await ingestWith(client, extractionResult([rate({})]), "COM-040");
     await approveIngest({
       client, control, ingest: first, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     const older = await ingestWith(client, extractionResult([rate({ energyP1: 0.2 })]), "COM-040");
     await expect(
       approveIngest({
         client, control, ingest: older, input: { validFrom: "2026-01-01" },
-        user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+        user: { id: "negoco-1" }, today: "2026-10-07",
       }),
     ).rejects.toThrow("no puede ser anterior");
   });
@@ -593,7 +580,7 @@ describe("rate ingest service", () => {
     const ingest = await ingestWith(client, extractionResult([rate({})]), "COM-040");
     await approveIngest({
       client, control, ingest, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     expect((await listActiveOfferPrices(client, "2026-10-07")).map(({ comercializadoraId }) => comercializadoraId)).toEqual(["COM-040"]);
     await client.execute("UPDATE comercializadoras SET active = 0 WHERE id = 'COM-040'");
@@ -614,7 +601,7 @@ describe("rate ingest service", () => {
     const first = await ingestWith(client, extractionResult([rate({})]), "COM-040");
     await approveIngest({
       client, control, ingest: first, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
 
     // Nordy: un PDF de comisiones, sin precios.
@@ -628,7 +615,7 @@ describe("rate ingest service", () => {
     const before = await getActiveVersion(client, "COM-040", "2026-10-07");
     const approved = await approveIngest({
       client, control, ingest: onlyCommissions, input: { validFrom: "2026-09-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
     expect(approved.versionId).toBeNull();
     expect((await getActiveVersion(client, "COM-040", "2026-10-07"))?.id).toBe(before?.id);
@@ -652,7 +639,7 @@ describe("rate ingest service", () => {
     const ingest = await ingestWith(client, extractionResult([rate({})]), "COM-040");
     await approveIngest({
       client, control, ingest, input: { validFrom: "2026-10-01" },
-      user: { id: "negoco-1" }, isCatalogAdmin: true, today: "2026-10-07",
+      user: { id: "negoco-1" }, today: "2026-10-07",
     });
 
     // En el tenant de demo Quimera tiene otro COM-xxx.

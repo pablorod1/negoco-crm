@@ -361,7 +361,6 @@ export function IngestReviewSheet({
   // Un anexo solo de comisiones no toca los precios: la tabla solo repetiría los vigentes.
   const bringsPrices = Boolean(review?.entries.some(({ kind }) => kind !== "carried"));
   const savesCommissions = Boolean(review?.commissions.length) && includeCommissions;
-  const newProductsBlocked = Boolean(review?.newProducts.length) && !detail?.canManageCatalog;
 
   const run = async (action: "approve" | "reject" | "process") => {
     if (!ingestId) return;
@@ -490,10 +489,8 @@ export function IngestReviewSheet({
               <IssueList issues={review.issues} />
 
               {review.newProducts.length > 0 && (
-                <p className={`text-sm ${newProductsBlocked ? "text-danger" : "text-info-600"}`}>
-                  {newProductsBlocked
-                    ? `No están en el catálogo y solo Negoco puede darlos de alta: ${review.newProducts.join(", ")}. Exclúyelos para aprobar el resto.`
-                    : `Se darán de alta en el catálogo: ${review.newProducts.join(", ")}.`}
+                <p className="text-sm text-info-600">
+                  Se darán de alta en el catálogo: {review.newProducts.join(", ")}.
                 </p>
               )}
 
@@ -729,7 +726,7 @@ export function IngestReviewSheet({
               Descartar
             </Button>
             <Button
-              disabled={busy !== null || blocking.length > 0 || newProductsBlocked || !validFrom}
+              disabled={busy !== null || blocking.length > 0 || !validFrom}
               onClick={() => run("approve")}
             >
               {busy === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}

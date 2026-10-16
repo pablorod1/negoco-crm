@@ -21,7 +21,8 @@ const ApprovalSchema = z.object({
 
 /**
  * Aprueba una ingesta: guarda la versión de precios (activa o programada) y
- * las comisiones. Los productos nuevos en el catálogo solo los da de alta Negoco.
+ * las comisiones, y da de alta en el catálogo los productos nuevos, como el
+ * buzón cuando aprueba solo.
  */
 export async function POST(
   request: NextRequest,
@@ -36,7 +37,7 @@ export async function POST(
       throw new RateIngestError("Indica la fecha de entrada en vigor (AAAA-MM-DD).");
     }
 
-    const { client, user, canManageCatalog } = access.context;
+    const { client, user } = access.context;
     const ingest = await getIngest(client, id);
     if (!ingest) throw new RateIngestError("Ingesta no encontrada", 404);
 
@@ -46,7 +47,6 @@ export async function POST(
       ingest,
       input: parsed.data,
       user,
-      isCatalogAdmin: canManageCatalog,
       today: todayInSpain(),
     });
     return ok(result);
