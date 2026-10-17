@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireNegocoStudiesAccess } from "@/comparador/server/guard";
 import {
-  canSeeAgencyCommission,
   loadStudy,
   OptionsSchema,
   studyError,
   studyView,
 } from "@/comparador/server/study-route";
 import { listProposals } from "@/comparador/study/proposals";
+import { commissionAudience } from "@/comparador/study/sales-commission";
 import { saveStudyOptions } from "@/comparador/study/repository";
 import { rankSavedStudy } from "@/comparador/study/service";
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const study = await loadStudy(access.context, id);
     const parsed = optionsFromQuery(request);
-    const [calculation, proposals] = await Promise.all([
+    const [calculation, proposals, audience] = await Promise.all([
       rankSavedStudy({
         client: access.context.client,
         study,
@@ -42,6 +42,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ),
       }),
       listProposals(access.context.client, id),
+      commissionAudience(access.context.client, access.context.user),
     ]);
     return NextResponse.json(
       {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         data: studyView(
           { ...study, options: calculation.options, supply: calculation.supply },
           calculation,
-          canSeeAgencyCommission(access.context.user.role),
+          audience,
           proposals,
         ),
       },

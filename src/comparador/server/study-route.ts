@@ -10,6 +10,7 @@ import type { InvoiceIssue } from "@/comparador/extraction/validate";
 import { issueMessages } from "@/comparador/extraction/issue-text";
 import { StudyError } from "@/comparador/study/service";
 import { needsInvoiceReview, withoutReview, type ReviewedExtraction } from "@/comparador/study/invoice-review";
+import { salesCommission, type CommissionAudience } from "@/comparador/study/sales-commission";
 
 /** Cuántas ofertas se enseñan: el resto no cambia la decisión. */
 export const SHOWN_OFFERS = 150;
@@ -36,8 +37,21 @@ export function canSeeAgencyCommission(role: string): boolean {
  */
 export const describeInvoiceIssues = (issues: readonly InvoiceIssue[]) => issueMessages(issues);
 
+/**
+ * La comisión que ve quien mira: la de agencia (dirección y backoffice) o la
+ * del comercial con su configuración del CRM; sin configuración, ninguna.
+ */
+function visibleCommission(
+  audience: CommissionAudience,
+  offer: { comercializadoraId: string; commission: number | null },
+  energy: "electricity" | "gas",
+): number | null {
+  if (audience.kind === "agency") return offer.commission;
+  return salesCommission(audience.rules, { comercializadoraId: offer.comercializadoraId, energy, agencyCommission: offer.commission });
+}
+
 /** Una propuesta generada, con el enlace a su PDF. */
-export function proposalView(proposal: ProposalRecord, showCommission: boolean) {
+export function proposalView(proposal: ProposalRecord, audience: CommissionAudience, energy: "electricity" | "gas") {
   return {
     id: proposal.id,
     number: proposal.number,
@@ -47,7 +61,7 @@ export function proposalView(proposal: ProposalRecord, showCommission: boolean) 
     feeEnergyPerMwh: proposal.feeEnergyPerMwh,
     annualTotal: proposal.annualTotal,
     savings: proposal.savings,
-    commission: showCommission ? proposal.commission : null,
+    commission: visibleCommission(audience, proposal, energy),
     createdAt: proposal.createdAt,
     chosen: proposal.chosenAt !== null,
     pdfUrl: `/api/v2/comparador/proposals/${proposal.id}/pdf`,
@@ -67,17 +81,28 @@ export interface StudyCalculation {
 export function studyView(
   study: StudyRecord,
   calculation: StudyCalculation | null,
-  showCommission: boolean,
+  audience: CommissionAudience,
   proposals: readonly ProposalRecord[] = [],
 ) {
   const ranking = calculation?.ranking ?? null;
   const facts = study.extraction;
   const review = (facts as ReviewedExtraction | null)?.review ?? null;
-  // Sin permiso no viaja ni la comisión ni de qué regla sale.
-  const hide = <T extends { commission: number | null }>(item: T): T =>
-    showCommission
+  const energy = study.supply?.energy === "gas" ? "gas" : "electricity";
+  // Un comercial ve su comisión y nunca la de agencia ni de qué regla sale.
+  const showCommission = audience.kind === "agency" || audience.rules.size > 0;
+  const shown = <T extends { comercializadoraId: string; commission: number | null }>(item: T): T =>
+    audience.kind === "agency"
       ? item
-      : { ...item, commission: null, ...("commissionRule" in item ? { commissionRule: null, commissionMissing: null } : {}) };
+      : {
+          ...item,
+          commission: visibleCommission(audience, item, energy),
+          ...("commissionRule" in item ? { commissionRule: null, commissionMissing: null } : {}),
+        };
+  // Ordenadas por comisión, por la que ve: el orden por la de agencia la delataría.
+  const offers = (ranking?.offers ?? []).map(shown);
+  if (audience.kind === "sales" && study.options.order === "commission") {
+    offers.sort((left, right) => (right.commission ?? -Infinity) - (left.commission ?? -Infinity));
+  }
   return {
     id: study.id,
     status: study.status,
@@ -118,8 +143,10 @@ export function studyView(
     supply: study.supply,
     options: study.options,
     showCommission,
+    /** De quién es la comisión que se enseña: la de la agencia o la del comercial. */
+    commissionOwner: audience.kind === "agency" ? ("agency" as const) : ("salesperson" as const),
     current: ranking?.current ?? null,
-    offers: ranking ? ranking.offers.slice(0, SHOWN_OFFERS).map(hide) : [],
+    offers: offers.slice(0, SHOWN_OFFERS),
     totalOffers: ranking?.offers.length ?? 0,
     ineligible: ranking?.ineligible ?? 0,
     withoutAncillary: ranking?.withoutAncillary ?? 0,
@@ -127,7 +154,7 @@ export function studyView(
     /** Indexadas que no se ofertan por falta de histórico de sus meses de consumo. */
     withoutHistory: ranking?.withoutHistory ?? [],
     noSavings: ranking?.noSavings ?? false,
-    proposals: proposals.map((proposal) => proposalView(proposal, showCommission)),
+    proposals: proposals.map((proposal) => proposalView(proposal, audience, energy)),
   };
 }
 

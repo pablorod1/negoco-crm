@@ -348,7 +348,9 @@ function OfferRow({
               <p className="text-sm tabular-nums text-gray-700" title={commissionMissingText(offer, study.priceDate) ?? undefined}>
                 {offer.commission === null ? "—" : euros(offer.commission)}
               </p>
-              <p className="text-[11px] text-gray-400">{offer.commission === null ? "sin comisión" : "comisión"}</p>
+              <p className="text-[11px] text-gray-400">
+                {offer.commission === null ? "sin comisión" : study.commissionOwner === "salesperson" ? "tu comisión" : "comisión"}
+              </p>
             </>
           )}
         </div>
