@@ -182,6 +182,21 @@ describe("currentTariffFromInvoice", () => {
     expect(cost.total).toBe(iberdrolaInvoice.total);
   });
 
+  test("takes the printed €/kWh of an invoice without consumption", () => {
+    // Feníe, CMP-614e: 14 días a 0 kWh; solo paga potencia, alquiler e impuestos.
+    const tariff = currentTariffFromInvoice({
+      ...naturgyInvoice,
+      consumptionKwh: { P1: 0, P2: 0, P3: 0 },
+      energyLines: [
+        { period: "P1", kwh: 0, pricePerKwh: 0.264073, amount: 0 },
+        { period: "P2", kwh: 0, pricePerKwh: 0.188445, amount: 0 },
+        { period: "P3", kwh: 0, pricePerKwh: 0.143469, amount: 0 },
+      ],
+      energyDiscounts: [],
+    })!;
+    expect(tariff.prices.energy).toEqual({ P1: 0.264073, P2: 0.188445, P3: 0.143469 });
+  });
+
   test("returns null when a price is missing", () => {
     expect(
       currentTariffFromInvoice({ ...naturgyInvoice, powerLines: [] }),

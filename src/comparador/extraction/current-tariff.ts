@@ -79,7 +79,8 @@ function powerPrice(
  * o tramos de fechas que lo reparten (se promedian). El número de conceptos
  * sale de comparar los kWh de las líneas con el consumo, redondeado, para que
  * un consumo por periodo redondeado no desvíe el precio. Las líneas de precio
- * único (ALL) se suman a todos los periodos.
+ * único (ALL) se suman a todos los periodos. Una factura sin consumo (0 kWh)
+ * imprime igual el €/kWh: se toma ese, sumando sus conceptos.
  */
 function energyPrices(invoice: InvoiceExtraction): PeriodPrices["energy"] {
   const consumption = invoice.consumptionKwh;
@@ -94,7 +95,11 @@ function energyPrices(invoice: InvoiceExtraction): PeriodPrices["energy"] {
   ): number | null => {
     const lines = invoice.energyLines.filter((line) => line.period === period);
     const kwh = lines.reduce((sum, line) => sum + line.kwh, 0);
-    if (kwh <= 0) return null;
+    if (kwh <= 0) {
+      // Sin kWh no hay importes que pesar: los mismos (cero) kWh en todas, como conceptos.
+      const printed = lines.filter((line) => line.pricePerKwh > 0);
+      return printed.length > 0 ? printed.reduce((sum, line) => sum + line.pricePerKwh, 0) : null;
+    }
     const value = lines.reduce((sum, line) => sum + line.kwh * line.pricePerKwh, 0);
     const concepts =
       consumed && consumed > 0 ? Math.max(1, Math.round(kwh / consumed)) : 1;
