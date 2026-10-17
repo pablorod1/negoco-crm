@@ -42,13 +42,16 @@ export const RATE_EXTRACTION_MODELS = [
 
 /**
  * Cascada para escribir plantillas de Excel: Gemini, otra vez Gemini con la
- * lista de lo que no encajó y, en último lugar, GPT-5 mini. GPT-5 corrigiendo
- * una plantilla de ADX costó 0,10 $; una plantilla no necesita tanto.
+ * lista de lo que no encajó, GPT-5 mini y, si nada encaja, GPT-6.1 Sol, que
+ * escribió las de Axpo y Eleia cuando las demás fallaban (0,06–0,12 $). Solo
+ * se paga una vez por formato: después la plantilla se reutiliza gratis, y un
+ * anexo que no se lee se queda en revisión.
  */
 export const SHEET_RECIPE_MODELS = [
   "google/gemini-2.5-flash",
   "google/gemini-2.5-flash",
   "openai/gpt-5-mini",
+  "openai/gpt-6.1-sol",
 ] as const;
 
 export function getSheetRecipeModels(

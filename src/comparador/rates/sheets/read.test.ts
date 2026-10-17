@@ -138,6 +138,22 @@ describe("readSpreadsheet", () => {
     expect(await store.findBySignature("simplex")).toBeNull();
   });
 
+  test("no more recipe attempts once the reading is close to its time limit", async () => {
+    let clock = 0;
+    const broken: SheetRecipe = { ...simplexRecipe, tables: simplexRecipe.tables.map((table) => ({ ...table, firstRow: 40, lastRow: 40 })) };
+    const generate = fakeGenerate([broken, simplexRecipe]);
+    const slow = (async (request: Parameters<typeof generateStructured>[0]) => {
+      clock += 210_000;
+      return generate(request);
+    }) as unknown as typeof generateStructured;
+    const result = await readSpreadsheet({
+      grids: [eleia()], supplierName: "Eleia", context, store: memoryRecipeStore(), models: ["a", "b"],
+      generate: slow, now: () => clock,
+    });
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(result.result.status).not.toBe("ok");
+  });
+
   test("a format change asks for a new recipe and says what broke", async () => {
     const store = memoryRecipeStore();
     await store.save({ supplierKey: "eleia", signature: "simplex", recipe: { ...simplexRecipe, tables: simplexRecipe.tables.map((t) => ({ ...t, anchorRow: 13 })) }, model: "a" });

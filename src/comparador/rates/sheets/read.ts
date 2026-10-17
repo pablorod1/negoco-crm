@@ -468,6 +468,9 @@ export function checkRecipe(grids: readonly SheetGrid[], recipe: StoredRecipe) {
   return { healthy, report, applied };
 }
 
+/** Las lecturas tienen 300 s (maxDuration); cada intento de plantilla tarda hasta ~90 s. */
+const RECIPE_TIME_BUDGET_MS = 200_000;
+
 /**
  * Lee un Excel de precios con una plantilla: la guardada para esa
  * comercializadora si encaja; si falla en algunas hojas, la IA rehace solo
@@ -481,6 +484,8 @@ export async function readSpreadsheet({
   store,
   models,
   generate = generateStructured,
+  timeBudgetMs = RECIPE_TIME_BUDGET_MS,
+  now = Date.now,
 }: {
   grids: readonly SheetGrid[];
   supplierName: string | null;
@@ -488,7 +493,11 @@ export async function readSpreadsheet({
   store: RecipeStore | null;
   models: readonly string[];
   generate?: typeof generateStructured;
+  /** Tiempo tras el que no se pide otra plantilla (la lectura tiene 300 s). */
+  timeBudgetMs?: number;
+  now?: () => number;
 }): Promise<SheetReadResult> {
+  const startedAt = now();
   const signature = workbookSignature(grids);
   let supplierKey = supplierName ? normalizeName(supplierName) : null;
   const attempts: RateExtractionAttempt[] = [];
@@ -540,6 +549,12 @@ export async function readSpreadsheet({
   const workbook = renderWorkbook(grids);
   if (!healthy) {
     for (const model of models) {
+      // Un intento más podría pasar de los 300 s de la función y dejar la
+      // ingesta colgada: mejor quedarse con lo que hay y que vaya a revisión.
+      if (attempts.length > 0 && now() - startedAt > timeBudgetMs) {
+        console.warn("[comparador] plantilla de Excel sin tiempo para más intentos", { tried: attempts.length });
+        break;
+      }
       const scope = base ? repairScope(grids, base.recipe, base.assessment, base.newSheets) : null;
       const content: { type: "text"; text: string }[] = [];
       if (scope && base) {
