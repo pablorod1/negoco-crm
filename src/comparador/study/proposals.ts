@@ -50,6 +50,8 @@ export interface ProposalDocument {
     /** Indexada: lo que cobra por encima del OMIE, €/kWh, y la media de OMIE del año, €/MWh. */
     marginOverMarket?: number | null;
     marketAverage?: number | null;
+    /** Indexada: la energía de cada lectura del SIPS, €/kWh, con el mercado de esos meses. */
+    monthlyEnergy?: EnergyByPeriod[] | null;
   } | null;
   offer: ProposalOffer;
   savings: number | null;
@@ -77,6 +79,33 @@ export interface ProposalOffer {
   pricing?: "fixed" | "indexed";
   /** Indexada: meses del histórico con los que se ha calculado (YYYY-MM). */
   indexHistory?: { from: string; to: string } | null;
+  /** Indexada: la energía de cada lectura del SIPS, €/kWh. Falta en propuestas anteriores al 2026-10-17. */
+  monthlyEnergy?: EnergyByPeriod[] | null;
+}
+
+const PERIODS = ["P1", "P2", "P3"] as const;
+
+/**
+ * La energía de hoy en cada lectura, si es indexada: el precio medio del
+ * estudio movido lo que se movió el mercado (OMIE) ese mes respecto a la
+ * media del año, ponderada por su consumo como la del estudio.
+ */
+function currentMonthlyEnergy(supply: StudySupply, prices: TariffPrices | null): EnergyByPeriod[] | null {
+  const { market, readings } = supply;
+  if (!prices || !market || !readings?.length || market.readings.length !== readings.length) return null;
+  const average = { P1: 0, P2: 0, P3: 0 };
+  for (const period of PERIODS) {
+    const kwh = readings.reduce((sum, reading) => sum + reading.kwh[period], 0);
+    average[period] =
+      kwh > 0
+        ? readings.reduce((sum, reading, index) => sum + reading.kwh[period] * market.readings[index][period], 0) / kwh
+        : market.readings.reduce((sum, month) => sum + month[period], 0) / market.readings.length;
+  }
+  return market.readings.map((month) => ({
+    P1: prices.energy.P1 + (month.P1 - average.P1) / 1000,
+    P2: prices.energy.P2 + (month.P2 - average.P2) / 1000,
+    P3: prices.energy.P3 + (month.P3 - average.P3) / 1000,
+  }));
 }
 
 function proposalOffer(offer: StudyOffer): ProposalOffer {
@@ -90,7 +119,9 @@ function proposalOffer(offer: StudyOffer): ProposalOffer {
     cost: offer.cost,
     ancillarySimulated: offer.ancillarySimulated,
     needsAncillary: offer.needsAncillary,
-    ...(offer.pricing === "indexed" ? { pricing: "indexed" as const, indexHistory: offer.indexHistory ?? null } : {}),
+    ...(offer.pricing === "indexed"
+      ? { pricing: "indexed" as const, indexHistory: offer.indexHistory ?? null, monthlyEnergy: offer.monthlyEnergy ?? null }
+      : {}),
   };
 }
 
@@ -174,6 +205,9 @@ export function buildProposalDocument({
           pricing: currentInfo?.pricing ?? "fixed",
           marginOverMarket: currentInfo?.marginOverMarket ?? null,
           marketAverage: currentInfo?.marketAverage ?? null,
+          ...(currentInfo?.pricing === "indexed" && supply.energy !== "gas"
+            ? { monthlyEnergy: currentMonthlyEnergy(supply, currentPrices) }
+            : {}),
         }
       : null,
     offer: proposalOffer(offer),
@@ -225,12 +259,23 @@ export async function getProposal(client: QueryClient, id: string): Promise<Prop
 }
 
 /** Dos propuestas son la misma si la oferta, el fee y el coste coinciden. */
-export function findSameProposal(proposals: readonly ProposalRecord[], offer: StudyOffer) {
+/**
+ * Una propuesta ya generada para la misma oferta, con el mismo asesor. Las
+ * indexadas de antes del 2026-10-17 no traen el precio de cada mes: se rehacen.
+ */
+export function findSameProposal(
+  proposals: readonly ProposalRecord[],
+  offer: StudyOffer,
+  advisor: ProposalDocument["advisor"] = null,
+) {
   return proposals.find(
     (proposal) =>
       proposal.offerKey === offer.key &&
       proposal.feeEnergyPerMwh === offer.feeEnergyPerMwh &&
-      proposal.annualTotal === offer.cost.total,
+      proposal.annualTotal === offer.cost.total &&
+      (proposal.document.advisor?.name ?? null) === (advisor?.name ?? null) &&
+      (proposal.document.advisor?.email ?? null) === (advisor?.email ?? null) &&
+      (offer.pricing !== "indexed" || Boolean(proposal.document.offer.monthlyEnergy)),
   );
 }
 

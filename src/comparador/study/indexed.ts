@@ -54,6 +54,8 @@ export type HistoryPrices =
       /** Meses del histórico usados (YYYY-MM), del primero al último. */
       from: string;
       to: string;
+      /** El precio de cada lectura, €/kWh, en el orden de las lecturas: cómo se mueve mes a mes. */
+      byReading: EnergyByPeriod[];
     }
   | { missing: string[] };
 
@@ -89,6 +91,12 @@ export function historyEnergyPrices(
   if (missing.length > 0) return { missing };
   const priceOf = (month: string) => history.get(used.get(month)!)!;
 
+  // Cada lectura, al precio de sus meses repartido por días.
+  const byReading = shares.map((byMonth) => {
+    const prices = { P1: 0, P2: 0, P3: 0 };
+    for (const period of PERIODS) prices[period] = [...byMonth].reduce((part, [month, share]) => part + share * priceOf(month)[period], 0);
+    return prices;
+  });
   const energy = { P1: 0, P2: 0, P3: 0 };
   for (const period of PERIODS) {
     const kwh = readings.reduce((sum, reading) => sum + reading.kwh[period], 0);
@@ -96,15 +104,10 @@ export function historyEnergyPrices(
       energy[period] = months.reduce((sum, month) => sum + priceOf(month)[period], 0) / months.length;
       continue;
     }
-    const cost = readings.reduce(
-      (sum, reading, index) =>
-        sum + reading.kwh[period] * [...shares[index]].reduce((part, [month, share]) => part + share * priceOf(month)[period], 0),
-      0,
-    );
-    energy[period] = cost / kwh;
+    energy[period] = readings.reduce((sum, reading, index) => sum + reading.kwh[period] * byReading[index][period], 0) / kwh;
   }
   const sources = [...used.values()].sort();
-  return { energy, from: sources[0], to: sources.at(-1)! };
+  return { energy, from: sources[0], to: sources.at(-1)!, byReading };
 }
 
 /** «2026-10» y -1 → «2025-10». */

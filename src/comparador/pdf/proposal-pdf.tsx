@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ReactNode } from "react";
-import { Document, Font, Image, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Circle, Document, Font, Image, Page, Polyline, renderToBuffer, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { CostBreakdown, EnergyByPeriod, TariffPrices } from "@/comparador/engine/types";
 import type { ProposalDocument, ProposalOffer } from "@/comparador/study/proposals";
 import type { SupplyReading } from "@/comparador/study/supply";
@@ -24,6 +24,8 @@ const euros = (value: number, decimals = 2) =>
 /** Diferencia con signo: «−66,44 €» ahorra, «+3,10 €» cuesta más. */
 const delta = (value: number) =>
   Math.abs(value) < 0.005 ? "=" : `${value < 0 ? "−" : "+"}${euros(Math.abs(value))}`;
+/** Precio del kWh redondeado, para leerlo de un vistazo: «0,270». */
+const price3 = (value: number) => value.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 /** Precio unitario con 4 a 6 decimales: 0,2149 en vez de 0,214900. */
 const price = (value: number) =>
   value.toLocaleString("es-ES", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
@@ -59,10 +61,19 @@ const WARN = "#f59e0b";
 const WARN_SOFT = "#fffbeb";
 const INFO = "#6366f1";
 const INFO_SOFT = "#eef2ff";
-/** «Hoy»: siempre gris pizarra. «Propuesta»: siempre el color de la marca. */
-const TODAY = "#64748b";
-const TODAY_BAR = "#94a3b8";
-const TODAY_SOFT = "#f1f5f9";
+/**
+ * «Hoy»: siempre rojo claro, para que se vea lo que paga de más con su
+ * comercializadora (Beenergy, 17-10-2026). «Propuesta»: el color de la marca.
+ */
+const TODAY = "#b91c1c";
+/** Bandas, barras y el total de hoy, con `TODAY_ON` encima. */
+const TODAY_FILL = "#fca5a5";
+const TODAY_ON = "#7f1d1d";
+const TODAY_SOFT = "#fef2f2";
+/** Lo que no es ni hoy ni la propuesta: la potencia contratada, avisos sin tono. */
+const NEUTRAL = "#64748b";
+const NEUTRAL_BAR = "#94a3b8";
+const NEUTRAL_SOFT = "#f1f5f9";
 
 /** El color de la marca mezclado con blanco (amount 1 = el color, 0 = blanco). */
 function tint(hex: string, amount: number): string {
@@ -157,6 +168,7 @@ const styles = StyleSheet.create({
   ribbonLabel: { width: 92 },
   ribbonTrack: { flex: 1, height: 22, flexDirection: "row" },
   ribbonBar: { height: 22, borderRadius: 4, justifyContent: "center", paddingHorizontal: 7 },
+  ribbonAside: { width: 84, paddingLeft: 8, fontWeight: 600 },
 
   cards: { flexDirection: "row", gap: 10, marginTop: 12 },
   card: { flex: 1, borderRadius: 8, borderWidth: 1, overflow: "hidden" },
@@ -191,11 +203,12 @@ const styles = StyleSheet.create({
   periodHead: { paddingVertical: 6, paddingHorizontal: 9 },
   periodBody: { paddingVertical: 7, paddingHorizontal: 9 },
 
-  meter: { height: 12, borderRadius: 6, backgroundColor: TODAY_SOFT, marginTop: 4, overflow: "hidden" },
+  meter: { height: 12, borderRadius: 6, backgroundColor: NEUTRAL_SOFT, marginTop: 4, overflow: "hidden" },
 
   headRow: { flexDirection: "row" },
   headCell: { fontSize: 7.5, fontWeight: 600, paddingVertical: 4 },
   row: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: LINE },
+  groupHead: { fontSize: 7, fontWeight: 600, color: MUTED, letterSpacing: 0.6, textTransform: "uppercase", paddingLeft: 5, paddingBottom: 2 },
   cellLabel: { flex: 2.1, paddingLeft: 5, paddingVertical: 2.6 },
   cell: { flex: 1, textAlign: "right", paddingRight: 6, paddingVertical: 2.6 },
   totalRow: { flexDirection: "row", marginTop: 3, borderRadius: 5, overflow: "hidden" },
@@ -393,10 +406,32 @@ function SectionTitle({ title, lead }: { title: string; lead?: string }) {
 
 /**
  * El ahorro en grande y, al lado, los meses de luz que equivale: doce
- * casillas, las que paga el ahorro en verde.
+ * casillas, las que paga el ahorro en verde. Si la propuesta sale más cara,
+ * en rojo y con lo que pagaría de más: un estudio que no ahorra se ve.
  */
 function Hero({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
   const { savings, current, offer } = doc;
+  const percentOf = (amount: number) => (current && current.cost.total > 0 ? Math.round((amount / current.cost.total) * 100) : null);
+  if (savings !== null && savings <= -0.5 && current !== null) {
+    const extra = -savings;
+    const percent = percentOf(extra);
+    return (
+      <View style={[styles.hero, { backgroundColor: BAD }]} wrap={false}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: "#ffffff", opacity: 0.9 }}>Con esta propuesta pagaría más cada año</Text>
+          <Text style={[styles.heroValue, { color: "#ffffff" }]}>+{euros(extra)}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+            {percent !== null && (
+              <Text style={{ backgroundColor: "#ffffff", color: BAD, fontWeight: 600, borderRadius: 8, paddingVertical: 2, paddingHorizontal: 7, marginRight: 7 }}>
+                +{percent} %
+              </Text>
+            )}
+            <Text style={{ color: "#ffffff" }}>{euros(extra / 12)} más al mes, impuestos incluidos</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
   const saves = savings !== null && savings > 0 && current !== null;
   if (!saves) {
     return (
@@ -411,11 +446,12 @@ function Hero({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
   }
   const monthlyToday = current.cost.total / 12;
   const freeMonths = monthlyToday > 0 ? Math.min(12, Math.round((savings / monthlyToday) * 2) / 2) : 0;
-  const percent = current.cost.total > 0 ? Math.round((savings / current.cost.total) * 100) : null;
+  const percent = percentOf(savings);
+  const monthsText = freeMonths === 0.5 ? "medio mes" : `${freeMonths.toLocaleString("es-ES")} ${freeMonths === 1 ? "mes" : "meses"}`;
   return (
     <View style={[styles.hero, { backgroundColor: GOOD }]} wrap={false}>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: "#ffffff", opacity: 0.9 }}>Con esta propuesta ahorra cada año</Text>
+        <Text style={{ color: "#ffffff", opacity: 0.9 }}>Le ahorramos cada año</Text>
         <Text style={[styles.heroValue, { color: "#ffffff" }]}>{euros(savings)}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
           {percent !== null && (
@@ -426,10 +462,10 @@ function Hero({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
           <Text style={{ color: "#ffffff" }}>{euros(savings / 12)} menos al mes, impuestos incluidos</Text>
         </View>
       </View>
-      {freeMonths >= 1 && (
+      {freeMonths >= 0.5 && (
         <View style={styles.calendar}>
           <Text style={{ color: "#ffffff", fontWeight: 600 }}>
-            Como no pagar {isGas(doc) ? "el gas" : "la luz"} {freeMonths.toLocaleString("es-ES")} {freeMonths === 1 ? "mes" : "meses"} al año
+            Como no pagar {isGas(doc) ? "el gas" : "la luz"} {monthsText} al año
           </Text>
           <View style={styles.calendarGrid}>
             {["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"].map((letter, index) => {
@@ -449,7 +485,7 @@ function Hero({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
           </View>
         </View>
       )}
-      {freeMonths < 1 && percent !== null && (
+      {freeMonths < 0.5 && percent !== null && (
         <View style={{ borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: "#ffffff" }}>
           <Text style={{ fontSize: 16, fontWeight: 600, color: GOOD }}>−{percent} %</Text>
           <Text style={[styles.small, { color: GOOD, textAlign: "center" }]}>que hoy</Text>
@@ -459,7 +495,11 @@ function Hero({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
   );
 }
 
-/** Hoy y la propuesta en barras a escala: lo que deja de pagar queda a la vista. */
+/**
+ * Hoy y la propuesta en barras a escala: lo que deja de pagar queda a la
+ * vista. La diferencia va escrita al lado, fuera de la barra: dentro no cabía
+ * cuando era pequeña («−30…»).
+ */
 function Ribbon({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
   const current = doc.current;
   if (!current) return null;
@@ -473,10 +513,11 @@ function Ribbon({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
       <View style={styles.ribbonRow}>
         <Text style={[styles.ribbonLabel, styles.muted]}>Hoy</Text>
         <View style={styles.ribbonTrack}>
-          <View style={[styles.ribbonBar, { width: `${(today / max) * 100}%`, backgroundColor: TODAY_BAR }]}>
-            <Text style={{ color: "#ffffff", fontWeight: 600 }}>{euros(today)}</Text>
+          <View style={[styles.ribbonBar, { width: `${(today / max) * 100}%`, backgroundColor: TODAY_FILL }]}>
+            <Text style={{ color: TODAY_ON, fontWeight: 600 }}>{euros(today)}</Text>
           </View>
         </View>
+        <View style={styles.ribbonAside} />
       </View>
       <View style={styles.ribbonRow}>
         <Text style={[styles.ribbonLabel, styles.bold]}>Con la propuesta</Text>
@@ -488,21 +529,18 @@ function Ribbon({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
             <View
               style={[
                 styles.ribbonBar,
-                {
-                  width: `${(saving / max) * 100}%`,
-                  marginLeft: 2,
-                  backgroundColor: GOOD_SOFT,
-                  borderWidth: 1,
-                  borderStyle: "dashed",
-                  borderColor: GOOD,
-                  alignItems: "center",
-                },
+                { width: `${(saving / max) * 100}%`, marginLeft: 2, backgroundColor: GOOD_SOFT, borderWidth: 1, borderStyle: "dashed", borderColor: GOOD },
               ]}
-            >
-              <Text style={{ color: GOOD, fontWeight: 600 }}>{saving / max > 0.16 ? `Ahorra ${euros(saving)}` : `−${euros(saving, 0)}`}</Text>
-            </View>
+            />
           )}
         </View>
+        {Math.abs(saving) >= 0.5 ? (
+          <Text style={[styles.ribbonAside, { color: saving > 0 ? GOOD : BAD }]}>
+            {saving > 0 ? `Ahorra ${euros(saving)}` : `+${euros(-saving)} más`}
+          </Text>
+        ) : (
+          <View style={styles.ribbonAside} />
+        )}
       </View>
     </View>
   );
@@ -523,8 +561,8 @@ function Versus({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
     <View style={styles.cards} wrap={false}>
       {current && (
         <View style={[styles.card, { borderColor: LINE }]}>
-          <View style={[styles.cardBand, { backgroundColor: TODAY }]}>
-            <Text style={[styles.cardBandText, { color: "#ffffff" }]}>Su tarifa hoy</Text>
+          <View style={[styles.cardBand, { backgroundColor: TODAY_FILL }]}>
+            <Text style={[styles.cardBandText, { color: TODAY_ON }]}>Su tarifa hoy</Text>
           </View>
           <View style={[styles.cardBody, { backgroundColor: TODAY_SOFT, flexGrow: 1 }]}>
             <Text style={styles.cardName}>{current.supplierName ?? "Su comercializadora"}</Text>
@@ -560,7 +598,7 @@ function Versus({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
             line(
               "Cada kWh, todo incluido",
               `${euros(offer.cost.total / annual, 3)}${current ? `  ${change(current.cost.total, offer.cost.total)}` : ""}`,
-              current && offer.cost.total < current.cost.total ? GOOD : undefined,
+              current ? (offer.cost.total < current.cost.total ? GOOD : offer.cost.total > current.cost.total ? BAD : undefined) : undefined,
             )}
         </View>
       </View>
@@ -616,14 +654,14 @@ function Options({ doc, palette }: { doc: ProposalDocument; palette: Palette }) 
       <View style={[styles.options, { marginTop: 0 }]}>
         {current && (
           <View style={[styles.card, { borderColor: LINE }]}>
-            <View style={[styles.cardBand, { backgroundColor: TODAY }]}>
-              <Text style={[styles.cardBandText, { color: "#ffffff" }]}>Hoy</Text>
+            <View style={[styles.cardBand, { backgroundColor: TODAY_FILL }]}>
+              <Text style={[styles.cardBandText, { color: TODAY_ON }]}>Hoy</Text>
             </View>
             <View style={[styles.cardBody, { backgroundColor: TODAY_SOFT, flexGrow: 1 }]}>
               <Text style={styles.cardName}>{current.supplierName ?? "Su tarifa actual"}</Text>
               <Text style={[styles.cardAmount, { color: TODAY }]}>{euros(current.cost.total)}</Text>
               <Text style={[styles.small, styles.muted]}>al año</Text>
-              {bar(current.cost.total, TODAY_BAR)}
+              {bar(current.cost.total, TODAY_FILL)}
               {line("Al mes", euros(current.cost.total / 12))}
             </View>
           </View>
@@ -746,7 +784,7 @@ function MonthlyBills({ months, doc, palette }: { months: MonthPoint[]; doc: Pro
       <View style={[styles.chart, { height }]}>
         {months.map((_, index) => (
           <View key={index} style={[styles.chartColumn, { flexDirection: "row", alignItems: "flex-end" }]}>
-            <View style={{ width: 9, height: (today[index] / max) * height, backgroundColor: TODAY_BAR, borderTopLeftRadius: 2, borderTopRightRadius: 2, marginRight: 1.5 }} />
+            <View style={{ width: 9, height: (today[index] / max) * height, backgroundColor: TODAY_FILL, borderTopLeftRadius: 2, borderTopRightRadius: 2, marginRight: 1.5 }} />
             <View style={{ width: 9, height: (offer[index] / max) * height, backgroundColor: palette.brand, borderTopLeftRadius: 2, borderTopRightRadius: 2 }} />
           </View>
         ))}
@@ -765,7 +803,7 @@ function MonthlyBills({ months, doc, palette }: { months: MonthPoint[]; doc: Pro
       </View>
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendSwatch, { backgroundColor: TODAY_BAR }]} />
+          <View style={[styles.legendSwatch, { backgroundColor: TODAY_FILL }]} />
           <Text style={styles.small}>Hoy</Text>
         </View>
         <View style={styles.legendItem}>
@@ -812,12 +850,12 @@ function Periods({ doc, palette, colors }: { doc: ProposalDocument; palette: Pal
                 </View>
                 <View style={[styles.cardLine, { marginTop: 5 }]}>
                   <Text style={styles.muted}>kWh hoy</Text>
-                  <Text style={{ color: TODAY }}>{todayPrice === undefined ? "—" : `${price(todayPrice)} €`}</Text>
+                  <Text style={{ color: TODAY }}>{todayPrice === undefined ? "—" : `${price3(todayPrice)} €`}</Text>
                 </View>
                 <View style={styles.cardLine}>
                   <Text style={styles.muted}>kWh propuesta</Text>
-                  <Text style={[styles.bold, { color: palette.ink }]}>
-                    {price(offerPrice)} €
+                  <Text style={[styles.bold, { color: palette.ink, marginLeft: 6 }]}>
+                    {price3(offerPrice)} €
                     {todayPrice !== undefined && <Text style={{ color: offerPrice <= todayPrice ? GOOD : BAD }}>  {change(todayPrice, offerPrice)}</Text>}
                   </Text>
                 </View>
@@ -841,9 +879,9 @@ function PowerCheck({ doc, palette }: { doc: ProposalDocument; palette: Palette 
       ? { title: "Le recomendamos subir la potencia", text: `Ha llegado a pedir ${kw(power.maxDemandKw)}, más de lo contratado. Con ${kw(power.suggestedKw)} evitará que salte el limitador.`, tone: WARN_SOFT, edge: WARN }
       : power.status === "oversized"
         ? { title: `Podría bajar la potencia a ${kw(power.suggestedKw)}`, text: `En el último año nunca ha pasado de ${kw(power.maxDemandKw)}. Pagaría menos de término fijo sin que salte el limitador.`, tone: GOOD_SOFT, edge: GOOD }
-        : { title: "Su potencia está bien ajustada", text: `Su máxima demanda del último año fue de ${kw(power.maxDemandKw)}: no hace falta cambiarla.`, tone: SOFT, edge: TODAY };
+        : { title: "Su potencia está bien ajustada", text: `Su máxima demanda del último año fue de ${kw(power.maxDemandKw)}: no hace falta cambiarla.`, tone: SOFT, edge: NEUTRAL };
   const marks = [
-    { label: "Contratada", value: contracted, color: TODAY_BAR },
+    { label: "Contratada", value: contracted, color: NEUTRAL_BAR },
     { label: "Lo máximo que ha usado", value: power.maxDemandKw, color: palette.brand },
   ];
   return (
@@ -893,18 +931,35 @@ function PriceTable({ doc, palette, all = false }: { doc: ProposalDocument; pale
   const options = all ? [doc.offer, ...(doc.alternatives ?? [])] : [doc.offer];
   const today = doc.current?.prices ?? null;
   const single = options.length === 1;
-  const rows: { label: string; pick: (prices: TariffPrices) => number }[] = isGas(doc)
+  // Luz: la potencia y la energía en dos bloques separados, que se distingan
+  // a simple vista (Beenergy, 17-10-2026).
+  const groups: { title: string | null; rows: { label: string; pick: (prices: TariffPrices) => number }[] }[] = isGas(doc)
     ? [
-        { label: "Término fijo · €/día", pick: (prices) => prices.power.P1 },
-        { label: "Término variable · €/kWh", pick: (prices) => prices.energy.P1 },
+        {
+          title: null,
+          rows: [
+            { label: "Término fijo · €/día", pick: (prices) => prices.power.P1 },
+            { label: "Término variable · €/kWh", pick: (prices) => prices.energy.P1 },
+          ],
+        },
       ]
     : [
-    { label: "Potencia P1 punta · €/kW día", pick: (prices) => prices.power.P1 },
-    { label: "Potencia P2 valle · €/kW día", pick: (prices) => prices.power.P2 },
-    { label: "Energía P1 punta · €/kWh", pick: (prices) => prices.energy.P1 },
-    { label: "Energía P2 llano · €/kWh", pick: (prices) => prices.energy.P2 },
-    { label: "Energía P3 valle · €/kWh", pick: (prices) => prices.energy.P3 },
-  ];
+        {
+          title: "Término de potencia · €/kW día",
+          rows: [
+            { label: "P1 punta", pick: (prices) => prices.power.P1 },
+            { label: "P2 valle", pick: (prices) => prices.power.P2 },
+          ],
+        },
+        {
+          title: "Término de energía · €/kWh",
+          rows: [
+            { label: "P1 punta", pick: (prices) => prices.energy.P1 },
+            { label: "P2 llano", pick: (prices) => prices.energy.P2 },
+            { label: "P3 valle", pick: (prices) => prices.energy.P3 },
+          ],
+        },
+      ];
   const indexed = options.some(({ pricing }) => pricing === "indexed");
   return (
     <View style={styles.section} wrap={false}>
@@ -918,20 +973,25 @@ function PriceTable({ doc, palette, all = false }: { doc: ProposalDocument; pale
         palette={palette}
         extra={single && today ? "Variación" : undefined}
       />
-      {rows.map((row) => (
-        <View key={row.label} style={styles.row}>
-          <Text style={styles.cellLabel}>{row.label}</Text>
-          {today && <Text style={[styles.cell, { color: TODAY, backgroundColor: TODAY_SOFT }]}>{price(row.pick(today))}</Text>}
-          {options.map((option, index) => (
-            <Text key={`${option.comercializadoraName}-${index}`} style={[styles.cell, styles.bold, { backgroundColor: index === 0 ? palette.soft : undefined }]}>
-              {price(row.pick(option.prices))}
-            </Text>
+      {groups.map((group, groupIndex) => (
+        <View key={group.title ?? groupIndex} style={{ marginTop: group.title ? (groupIndex === 0 ? 3 : 8) : 0 }}>
+          {group.title && <Text style={styles.groupHead}>{group.title}</Text>}
+          {group.rows.map((row) => (
+            <View key={row.label} style={[styles.row, group.title ? { borderTopWidth: row === group.rows[0] ? 1 : 0, borderTopColor: LINE } : {}]}>
+              <Text style={styles.cellLabel}>{row.label}</Text>
+              {today && <Text style={[styles.cell, { color: TODAY, backgroundColor: TODAY_SOFT }]}>{price(row.pick(today))}</Text>}
+              {options.map((option, index) => (
+                <Text key={`${option.comercializadoraName}-${index}`} style={[styles.cell, styles.bold, { backgroundColor: index === 0 ? palette.soft : undefined }]}>
+                  {price(row.pick(option.prices))}
+                </Text>
+              ))}
+              {single && today && (
+                <Text style={[styles.cell, { fontWeight: 600, color: row.pick(doc.offer.prices) <= row.pick(today) ? GOOD : BAD }]}>
+                  {change(row.pick(today), row.pick(doc.offer.prices))}
+                </Text>
+              )}
+            </View>
           ))}
-          {single && today && (
-            <Text style={[styles.cell, { fontWeight: 600, color: row.pick(doc.offer.prices) <= row.pick(today) ? GOOD : BAD }]}>
-              {change(row.pick(today), row.pick(doc.offer.prices))}
-            </Text>
-          )}
         </View>
       ))}
     </View>
@@ -996,7 +1056,7 @@ function CostTable({ doc, palette }: { doc: ProposalDocument; palette: Palette }
       })}
       <View style={styles.totalRow} wrap={false}>
         <Text style={[styles.cellLabel, styles.bold, { backgroundColor: SOFT, paddingVertical: 5 }]}>Total al año, impuestos incluidos</Text>
-        {withToday && <Text style={[styles.cell, { fontWeight: 600, color: "#ffffff", backgroundColor: TODAY, paddingVertical: 5 }]}>{euros(current.total)}</Text>}
+        {withToday && <Text style={[styles.cell, { fontWeight: 600, color: TODAY_ON, backgroundColor: TODAY_FILL, paddingVertical: 5 }]}>{euros(current.total)}</Text>}
         <Text style={[styles.cell, { fontWeight: 600, color: palette.on, backgroundColor: palette.brand, paddingVertical: 5 }]}>{euros(offer.total)}</Text>
         {difference !== null && (
           <Text
@@ -1008,6 +1068,111 @@ function CostTable({ doc, palette }: { doc: ProposalDocument; palette: Palette }
             {delta(difference)}
           </Text>
         )}
+      </View>
+    </View>
+  );
+}
+
+/** Precio medio del kWh de energía de una lectura, ponderado por lo que consumió en cada periodo. */
+function monthPrice(prices: EnergyByPeriod, point: MonthPoint): number {
+  const total = totalKwh(point.kwh);
+  if (total <= 0) return (prices.P1 + prices.P2 + prices.P3) / 3;
+  return (prices.P1 * point.kwh.P1 + prices.P2 * point.kwh.P2 + prices.P3 * point.kwh.P3) / total;
+}
+
+/** Ancho útil de la página A4 (595 pt menos los márgenes). */
+const CONTENT_WIDTH = 523;
+
+/** El precio de cada lectura de lo que sea indexado (hoy, la propuesta o los dos); null si no hay nada que enseñar. */
+function indexedMonthly(doc: ProposalDocument, months: readonly MonthPoint[]) {
+  const fits = (series: EnergyByPeriod[] | null | undefined) => (series && series.length === months.length ? series : null);
+  const offerMonthly = doc.offer.pricing === "indexed" ? fits(doc.offer.monthlyEnergy) : null;
+  const currentMonthly = doc.current?.pricing === "indexed" ? fits(doc.current.monthlyEnergy) : null;
+  if (isGas(doc) || months.length < 3 || (!offerMonthly && !currentMonthly)) return null;
+  return { offerMonthly, currentMonthly };
+}
+
+/**
+ * Indexadas: el precio de la energía mes a mes, para ver los meses caros y
+ * los baratos. La tarifa fija sale casi plana, y esa es la comparación
+ * (Beenergy, 17-10-2026).
+ */
+function IndexedPrices({ doc, months, palette }: { doc: ProposalDocument; months: MonthPoint[]; palette: Palette }) {
+  const monthly = indexedMonthly(doc, months);
+  if (!monthly) return null;
+  const { offerMonthly, currentMonthly } = monthly;
+  const current = doc.current;
+
+  const offerLine = months.map((point, index) => monthPrice(offerMonthly ? offerMonthly[index] : doc.offer.prices.energy, point));
+  const todayPrices = current?.prices ?? null;
+  const todayLine = currentMonthly
+    ? months.map((point, index) => monthPrice(currentMonthly[index], point))
+    : todayPrices
+      ? months.map((point) => monthPrice(todayPrices.energy, point))
+      : null;
+  const series = [
+    ...(todayLine ? [{ key: "today", values: todayLine, color: TODAY, indexed: Boolean(currentMonthly) }] : []),
+    { key: "offer", values: offerLine, color: palette.brand, indexed: Boolean(offerMonthly) },
+  ];
+  const all = series.flatMap(({ values }) => values);
+  const low = Math.min(...all);
+  const high = Math.max(...all);
+  const pad = (high - low) * 0.15 || high * 0.1 || 0.01;
+  const [min, max] = [Math.max(0, low - pad), high + pad];
+  const height = 50;
+  const step = CONTENT_WIDTH / months.length;
+  const x = (index: number) => step * (index + 0.5);
+  const y = (value: number) => height - ((value - min) / (max - min)) * height;
+  // Los meses más caro y más barato de la indexada (la propuesta, si lo es).
+  const moving = series.find(({ key, indexed }) => indexed && key === "offer") ?? series.find(({ indexed }) => indexed)!;
+  const priciest = moving.values.indexOf(Math.max(...moving.values));
+  const cheapest = moving.values.indexOf(Math.min(...moving.values));
+  const fullMonth = (index: number) => `${months[index].label} ${months[index].year}`;
+  return (
+    <View style={styles.section} wrap={false}>
+      <SectionTitle
+        title="Cómo se mueve el precio cada mes"
+        lead="Precio medio del kWh de energía de cada mes, sin impuestos. Una tarifa indexada sube y baja con el mercado."
+      />
+      <Svg width={CONTENT_WIDTH} height={height} style={{ borderBottomWidth: 1, borderBottomColor: LINE }}>
+        {series.map(({ key, values, color }) => (
+          <Polyline
+            key={key}
+            points={values.map((value, index) => `${x(index)},${y(value)}`).join(" ")}
+            stroke={color}
+            strokeWidth={2}
+            fill="none"
+          />
+        ))}
+        {series.flatMap(({ key, values, color }) =>
+          values.map((value, index) => <Circle key={`${key}-${index}`} cx={x(index)} cy={y(value)} r={2.2} fill={color} />),
+        )}
+        <Circle cx={x(priciest)} cy={y(moving.values[priciest])} r={4.5} fill="none" stroke={BAD} strokeWidth={1.5} />
+        <Circle cx={x(cheapest)} cy={y(moving.values[cheapest])} r={4.5} fill="none" stroke={GOOD} strokeWidth={1.5} />
+      </Svg>
+      <MonthAxis months={months} />
+      {series.map(({ key, values }) => (
+        <View key={key} style={[styles.chartAxis, { marginTop: 2 }]}>
+          {values.map((value, index) => (
+            <Text key={index} style={[styles.tiny, { flex: 1, textAlign: "center", fontWeight: 600, color: key === "today" ? TODAY : palette.ink }]}>
+              {price3(value)}
+            </Text>
+          ))}
+        </View>
+      ))}
+      <View style={styles.legend}>
+        {series.map(({ key, color, indexed }) => (
+          <View key={key} style={styles.legendItem}>
+            <View style={[styles.legendSwatch, { backgroundColor: color }]} />
+            <Text style={styles.small}>
+              {key === "today" ? "Hoy" : "Con la propuesta"} · {indexed ? "indexada" : "precio fijo"}
+            </Text>
+          </View>
+        ))}
+        <Text style={[styles.small, styles.muted]}>
+          · €/kWh · Más caro: <Text style={{ color: BAD, fontWeight: 600 }}>{fullMonth(priciest)}</Text> · más barato:{" "}
+          <Text style={{ color: GOOD, fontWeight: 600 }}>{fullMonth(cheapest)}</Text>
+        </Text>
       </View>
     </View>
   );
@@ -1108,7 +1273,7 @@ function proposalNotes(doc: ProposalDocument): Note[] {
           title: "Servicios de ajuste estimados",
           text: `Esta tarifa cobra aparte los servicios de ajuste del sistema, que varían cada mes. El coste incluye una estimación de ${euros(offer.cost.ancillary ?? 0)} al año${annual > 0 ? ` (${(Math.round(((offer.cost.ancillary ?? 0) / annual) * 1000 * 100) / 100).toLocaleString("es-ES")} €/MWh)` : ""}.`,
           tone: SOFT,
-          edge: TODAY,
+          edge: NEUTRAL,
         }
       : null,
     offer.needsAncillary
@@ -1164,7 +1329,7 @@ function Method({ doc }: { doc: ProposalDocument }) {
 }
 
 /** Qué pasa si dice que sí, y a quién llamar. */
-function NextSteps({ doc, branding, palette }: { doc: ProposalDocument; branding: ProposalBranding; palette: Palette }) {
+function NextSteps({ doc, palette }: { doc: ProposalDocument; palette: Palette }) {
   const steps = [
     { title: "Nos dice que sí.", text: "Revisamos con usted la propuesta y resolvemos cualquier duda." },
     { title: "Firma el contrato.", text: "Solo hace falta su DNI o CIF y su cuenta bancaria." },
@@ -1193,7 +1358,7 @@ function NextSteps({ doc, branding, palette }: { doc: ProposalDocument; branding
               <Text style={{ fontWeight: 600, color: palette.on }}>{(advisor.name ?? advisor.email ?? "?").trim().charAt(0).toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.small, styles.muted]}>Su asesor en {branding.displayName}</Text>
+              <Text style={[styles.small, styles.muted]}>Su asesor</Text>
               <Text style={styles.bold}>{advisor.name ?? advisor.email}</Text>
             </View>
           </View>
@@ -1214,7 +1379,7 @@ function PageHead({ title, lead }: { title: string; lead: string }) {
 }
 
 export function ProposalPdf({ document: doc, branding }: { document: ProposalDocument; branding: ProposalBranding }) {
-  const { supply, offer, current } = doc;
+  const { supply, offer } = doc;
   const palette = brandPalette(branding.color);
   const colors = { P1: mix(palette.brand, "#000000", 0.6), P2: palette.brand, P3: tint(palette.brand, 0.4) };
   const alternatives = doc.alternatives ?? [];
@@ -1236,7 +1401,6 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
       <Footer doc={doc} branding={branding} />
     </Page>
   );
-  const effective = (total: number) => (annual > 0 ? `${euros(total / annual, 3)}` : "—");
 
   return (
     <Document title={`Estudio de ahorro - ${offer.comercializadoraName}`} author={branding.displayName} language="es">
@@ -1282,21 +1446,16 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
               <Tile label="Potencia contratada" value={kw(supply.contractedKw.P1)} note={supply.contractedKw.P1 === supply.contractedKw.P2 ? "Punta y valle" : `Valle ${kw(supply.contractedKw.P2)}`} />
             )}
             {supply.power && <Tile label="Máxima demanda" value={kw(supply.power.maxDemandKw)} note="La más alta del año" />}
-            {current ? (
-              <Tile
-                label="Cada kWh, todo incluido"
-                value={effective(offer.cost.total)}
-                note={`Con la propuesta · hoy ${effective(current.cost.total)}`}
-                color={palette.ink}
-              />
-            ) : (
-              <Tile label="Cada kWh, todo incluido" value={effective(offer.cost.total)} note="Con la propuesta" color={palette.ink} />
-            )}
           </View>
           {months.length >= 3 && (
             <>
               <MonthlyConsumption months={months} colors={colors} territory={supply.territory} gas={gas} />
-              <MonthlyBills months={months} doc={doc} palette={palette} />
+              {/* Con una indexada, cómo se mueve su precio: el coste de cada mes a precio medio no lo enseñaba. */}
+              {indexedMonthly(doc, months) ? (
+                <IndexedPrices doc={doc} months={months} palette={palette} />
+              ) : (
+                <MonthlyBills months={months} doc={doc} palette={palette} />
+              )}
             </>
           )}
           {!gas && <Periods doc={doc} palette={palette} colors={colors} />}
@@ -1313,7 +1472,7 @@ export function ProposalPdf({ document: doc, branding }: { document: ProposalDoc
           <PriceTable doc={doc} palette={palette} />
           <CostTable doc={doc} palette={palette} />
           <Notes notes={proposalNotes(doc)} />
-          <NextSteps doc={doc} branding={branding} palette={palette} />
+          <NextSteps doc={doc} palette={palette} />
         </>,
       )}
     </Document>

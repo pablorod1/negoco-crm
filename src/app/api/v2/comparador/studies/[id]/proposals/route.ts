@@ -57,11 +57,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (alternatives.some((alternative) => !alternative)) {
       throw new StudyError("Alguna de las tarifas a comparar ya no está entre las que encajan con este suministro.", 409);
     }
-    const existing = alternatives.length ? undefined : findSameProposal(await listProposals(client, id), offer);
+    // El asesor es el comercial asignado a la comparativa, no quien genera el
+    // PDF (backoffice las prepara para otros). Sin asignado, quien la genera.
+    const assigned = await client.execute({
+      sql: `SELECT u.name, u.email FROM comparativas c JOIN user u ON u.id = c.user_id WHERE c.id = ? LIMIT 1`,
+      args: [study.comparativaId],
+    });
+    const advisorRow =
+      assigned.rows[0] ?? (await client.execute({ sql: "SELECT name, email FROM user WHERE id = ? LIMIT 1", args: [user.id] })).rows[0];
+    const advisor = {
+      name: advisorRow?.name ? String(advisorRow.name) : null,
+      email: advisorRow?.email ? String(advisorRow.email) : assigned.rows[0] ? null : user.email,
+    };
+    const existing = alternatives.length ? undefined : findSameProposal(await listProposals(client, id), offer, advisor);
     if (existing) {
       return NextResponse.json({ success: true, data: proposalView(existing, audience, energy) });
     }
-    const advisor = await client.execute({ sql: "SELECT name, email FROM user WHERE id = ? LIMIT 1", args: [user.id] });
     const proposal = await createProposal(client, {
       study,
       offer,
@@ -70,10 +81,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       currentPrices: current && current.flatAnnualFee === undefined ? current.prices : null,
       currentInfo,
       clientName: comparativa.clientName,
-      advisor: {
-        name: advisor.rows[0]?.name ? String(advisor.rows[0].name) : null,
-        email: advisor.rows[0]?.email ? String(advisor.rows[0].email) : user.email,
-      },
+      advisor,
       createdBy: user.id,
     });
     return NextResponse.json({ success: true, data: proposalView(proposal, audience, energy) });

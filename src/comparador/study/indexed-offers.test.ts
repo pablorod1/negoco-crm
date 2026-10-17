@@ -135,6 +135,9 @@ describe("indexed offers", () => {
     const prices = historyEnergyPrices(months, [{ from: "2026-01-22", to: "2026-02-10", kwh: { P1: 10, P2: 10, P3: 10 } }]);
     if (!prices || "missing" in prices) throw new Error("expected prices");
     expect(prices.energy.P1).toBeCloseTo(0.15, 10);
+    // El precio de esa lectura, para el gráfico mes a mes.
+    expect(prices.byReading).toHaveLength(1);
+    expect(prices.byReading[0].P1).toBeCloseTo(0.15, 10);
   });
 
   test("an indexed offer is ranked with the history energy and the fee on top", () => {
@@ -144,6 +147,12 @@ describe("indexed offers", () => {
     expect(omie.indexHistory).toEqual({ from: "2025-11", to: "2026-10" });
     // 0,175 €/kWh del histórico + 10 €/MWh de fee.
     expect(omie.prices.energy.P1).toBeCloseTo(0.185, 10);
+    // Cada lectura con el mismo fee encima: su media ponderada es la del año.
+    expect(omie.monthlyEnergy).toHaveLength(supply.readings!.length);
+    const kwh = supply.readings!.reduce((total, reading) => total + reading.kwh.P1, 0);
+    const weighted = supply.readings!.reduce((total, reading, index) => total + reading.kwh.P1 * omie.monthlyEnergy![index].P1, 0) / kwh;
+    expect(weighted).toBeCloseTo(omie.prices.energy.P1, 10);
+    expect(ranking.offers.find(({ key }) => key === "fija")!.monthlyEnergy).toBeNull();
     expect(ranking.offers.find(({ key }) => key === "fija")!.pricing).toBe("fixed");
     expect(ranking.withoutHistory).toEqual([]);
     // Los SSAA van aparte en una indexada: sin aplicarlos, se avisa.

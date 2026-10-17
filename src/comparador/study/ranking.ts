@@ -2,7 +2,7 @@ import { explainCommission, type CommissionMissing, type CommissionRuleForEngine
 import { applyFee, computeCost, computeFlatCost, DAYS_PER_YEAR } from "@/comparador/engine/cost";
 import { roundEuros } from "@/comparador/engine/money";
 import type { RegulatedParams } from "@/comparador/engine/regulated";
-import type { CostBreakdown, TariffPrices } from "@/comparador/engine/types";
+import type { CostBreakdown, EnergyByPeriod, TariffPrices } from "@/comparador/engine/types";
 import type { CurrentTariff } from "@/comparador/extraction/current-tariff";
 import { computeGasCost, gasOfferPrices } from "@/comparador/gas/cost";
 import type { GasCurrentTariff } from "@/comparador/gas/invoice";
@@ -111,6 +111,8 @@ export interface StudyOffer {
    * (YYYY-MM), los de los 12 meses de consumo del SIPS.
    */
   indexHistory?: { from: string; to: string } | null;
+  /** Indexada: la energía de cada lectura del SIPS con el fee, €/kWh, para ver cómo se mueve. */
+  monthlyEnergy?: EnergyByPeriod[] | null;
   /** Precios al cliente con el fee incluido (€/kW·día, €/kWh). Indexada: la media del año. */
   prices: TariffPrices;
   feeEnergyPerMwh: number;
@@ -370,7 +372,7 @@ export function rankStudy({
     // que es: se oferta igual, marcada, para que se apliquen.
     // Indexada: la energía es la del histórico en los meses de su consumo. Sin
     // histórico de todos esos meses no hay precio real y no se oferta.
-    let indexed: { from: string; to: string } | null = null;
+    let indexed: { from: string; to: string; average: EnergyByPeriod; byReading: EnergyByPeriod[] } | null = null;
     let energy = price.energy;
     if (price.pricing === "indexed") {
       const fromHistory = historyEnergyPrices(
@@ -386,7 +388,7 @@ export function rankStudy({
         continue;
       }
       energy = fromHistory.energy;
-      indexed = { from: fromHistory.from, to: fromHistory.to };
+      indexed = { from: fromHistory.from, to: fromHistory.to, average: fromHistory.energy, byReading: fromHistory.byReading };
     }
     // Una indexada de luz cobra los SSAA aparte, sobre el histórico (Beenergy,
     // 15-10-2026), diga lo que diga su anexo.
@@ -437,7 +439,15 @@ export function rankStudy({
       termMonths: price.termMonths,
       powerMode: price.powerMode,
       pricing: price.pricing === "indexed" ? "indexed" : "fixed",
-      indexHistory: indexed,
+      indexHistory: indexed ? { from: indexed.from, to: indexed.to } : null,
+      // Lo que el fee y lo demás suman a la media, sumado a cada lectura.
+      monthlyEnergy: indexed
+        ? indexed.byReading.map((reading) => ({
+            P1: reading.P1 + prices.energy.P1 - indexed.average.P1,
+            P2: reading.P2 + prices.energy.P2 - indexed.average.P2,
+            P3: reading.P3 + prices.energy.P3 - indexed.average.P3,
+          }))
+        : null,
       prices,
       feeEnergyPerMwh: fee,
       feeRange: range,

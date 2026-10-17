@@ -49,7 +49,8 @@ const document: ProposalDocument = {
   savings: null,
 };
 
-describe("proposal pdf", () => {
+// Cada PDF tarda en dibujarse; con toda la suite en paralelo pasaba de los 5 s.
+describe("proposal pdf", { timeout: 30_000 }, () => {
   test("renders a PDF with the font embedded, also without today's costs", async () => {
     const pdf = await renderProposalPdf(document, { displayName: "Negoco Cloud", logo: null, color: "#2563eb" });
     expect(pdf.subarray(0, 5).toString("latin1")).toBe("%PDF-");
@@ -124,6 +125,34 @@ describe("proposal pdf", () => {
         savings: 140,
       },
       { displayName: "Negoco Cloud", logo: null, color: "#2563eb" },
+    );
+    expect(pages(pdf)).toBe(3);
+  });
+
+  test("a dearer offer and an indexed tariff with its monthly prices still fit on three pages", async () => {
+    const monthly = readings.map((_, index) => ({ P1: 0.2 + index / 100, P2: 0.15 + index / 100, P3: 0.1 + index / 100 }));
+    const pdf = await renderProposalPdf(
+      {
+        ...document,
+        supply: { ...document.supply, consumptionSource: "sips", sipsMonths: 12, readings },
+        advisor: { name: "Ana Comercial", email: "ana@example.com" },
+        current: {
+          supplierName: "Repsol",
+          prices: { power: { P1: 0.108192, P2: 0.046548 }, energy: { P1: 0.2149, P2: 0.1612, P3: 0.1189 } },
+          cost: cost(420),
+          pricing: "indexed",
+          monthlyEnergy: monthly,
+        },
+        offer: {
+          ...document.offer,
+          pricing: "indexed",
+          indexHistory: { from: "2025-10", to: "2026-09" },
+          monthlyEnergy: monthly,
+          needsAncillary: true,
+        },
+        savings: -60,
+      },
+      { displayName: "Beenergy", logo: null, color: "#d4880c" },
     );
     expect(pages(pdf)).toBe(3);
   });

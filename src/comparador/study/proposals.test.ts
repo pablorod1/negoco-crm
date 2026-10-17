@@ -161,6 +161,12 @@ describe("proposals", () => {
     expect(findSameProposal(proposals, offer({ feeEnergyPerMwh: 10, cost: cost(490) }))).toBeUndefined();
   });
 
+  test("another advisor, or an indexed offer without its monthly prices, is a new proposal", async () => {
+    const proposals = [await propose()];
+    expect(findSameProposal(proposals, offer(), { name: "Ana", email: "ana@example.com" })).toBeUndefined();
+    expect(findSameProposal(proposals, offer({ pricing: "indexed" }))).toBeUndefined();
+  });
+
   test("file names keep accents and drop what a file system dislikes", () => {
     expect(
       proposalFileName({ number: 3, comercializadoraName: "Energía / Ñ", productName: 'Tarifa "Única" 2.0TD' }),
