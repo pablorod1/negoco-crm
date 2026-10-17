@@ -24,7 +24,8 @@ export interface RateIssue {
     | "missing_rate"
     | "old_document"
     | "partial_read"
-    | "commission_not_in_source";
+    | "commission_not_in_source"
+    | "assumed_power";
   message: string;
   /** Fila de `proposed` a la que se refiere, si es de una fila. */
   row?: number;
@@ -131,6 +132,15 @@ export function validateProposedRates(
   let copiedCount = 0;
   let foundCount = 0;
   proposed.forEach((row, index) => {
+    if (row.sourceValues?.powerRule === "base_regulated") {
+      issues.push({
+        severity: "warning",
+        code: "assumed_power",
+        message: `${row.productName}: el anexo no da la potencia; al ser precio base, se usa la regulada (BOE).`,
+        row: index,
+        rowKey: rowKey(row),
+      });
+    }
     if (!isInScope(row)) {
       issues.push({
         severity: "info",

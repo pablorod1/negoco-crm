@@ -48,6 +48,11 @@ function normalizeEnergy(rate: ExtractedRate, gas = false): ProposedRate["energy
   return { P1: p1, P2: p2, P3: p3 };
 }
 
+/** Precio base sobre el que el comercial suma un fee: lo dice el nombre o el anexo da el fee. */
+export function isBasePrice(rate: Pick<ExtractedRate, "productName" | "feeMinMwh" | "feeMaxMwh">): boolean {
+  return /\bbase\b/i.test(rate.productName) || rate.feeMinMwh !== null || rate.feeMaxMwh !== null;
+}
+
 function normalizePower(rate: ExtractedRate, gas = false) {
   // Gas: un solo término fijo por cliente, en power.P1 (€/día); o los peajes
   // y cargos a coste (regulated), más un margen al año (regulated_plus).
@@ -82,6 +87,12 @@ function normalizePower(rate: ExtractedRate, gas = false) {
   const unit = rate.powerUnit ?? "eur_kw_day";
   const stated =
     rate.powerMode === "fixed" && rate.powerP1 !== null && rate.powerP2 !== null;
+  // Un producto de precio base («Tarifa Fija Base + Fee» de Visalia) que no
+  // da la potencia lleva la regulada: «el precio base de la potencia parte de
+  // la potencia BOE» (Jorge, Beenergy, 17/10/2026).
+  if (!stated && isBasePrice(rate)) {
+    return { powerMode: "regulated", powerMarginPerKwYear: null, power: null, powerStated: true, powerFromBase: true } as const;
+  }
   return {
     powerMode: "fixed",
     powerMarginPerKwYear: null,
@@ -239,7 +250,10 @@ export function toProposedRates(
       supplyStartFrom: rate.startFrom,
       supplyStartTo: rate.startTo,
       termMonths: rate.months,
-      ...power,
+      powerMode: power.powerMode,
+      powerMarginPerKwYear: power.powerMarginPerKwYear,
+      power: power.power,
+      powerStated: power.powerStated,
       // La energía de una indexada es la del mercado de cada mes (el histórico):
       // lo que traiga el anexo (un término B, un margen) queda en sourceValues.
       energy: pricing === "indexed" ? null : normalizeEnergy(rate, gas),
@@ -252,6 +266,8 @@ export function toProposedRates(
       discounts: normalizeDiscounts(rate),
       sourceExcerpt: findExcerpt(lines, copiedValues(rate)),
       sourceValues: {
+        // La potencia no venía: se ha puesto la regulada por ser precio base.
+        ...("powerFromBase" in power ? { powerRule: "base_regulated" } : {}),
         powerUnit: rate.powerUnit,
         powerP1: rate.powerP1,
         powerP2: rate.powerP2,

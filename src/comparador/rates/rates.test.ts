@@ -20,7 +20,7 @@ import {
 import type { ExtractedRate } from "./schema";
 import { freshness, medianDecisionHours } from "./staleness";
 import type { StoredRatePrice } from "./types";
-import { validateProposedRates } from "./validate";
+import { rowKey, validateProposedRates } from "./validate";
 
 function extracted(overrides: Partial<ExtractedRate> = {}): ExtractedRate {
   return {
@@ -701,4 +701,26 @@ describe("gas en los anexos", () => {
 test("el código de la semana del anexo no es parte del producto", () => {
   expect(productNameOf("PRODUCTO TU DECIDES S4126 Fijo")).toBe("TU DECIDES Fijo");
   expect(productNameOf("Precios Eleia TU ELIGES V20261007")).toBe("Precios Eleia TU ELIGES");
+});
+
+describe("base prices without power", () => {
+  test("a base-price product that does not give the power uses the regulated one, and says so", () => {
+    const noPower = { powerMode: "not_stated" as const, powerUnit: null, powerP1: null, powerP2: null };
+    const [base, plain] = toProposedRates({
+      rates: [extracted({ productName: "Tarifa Fija Base + Fee", ...noPower }), extracted({ productName: "Visalia Low", ...noPower })],
+    });
+    expect(base).toMatchObject({ powerMode: "regulated", power: null, powerStated: true });
+    expect(plain).toMatchObject({ powerMode: "fixed", power: null, powerStated: false });
+
+    const issues = validateProposedRates([base, plain], { sourceText: null, partialUpdate: false, validFrom: "2026-10-17", readFromCells: true });
+    expect(issues.find(({ code }) => code === "assumed_power")).toMatchObject({ severity: "warning", rowKey: rowKey(base) });
+    expect(issues.filter(({ code }) => code === "missing_power").map(({ rowKey: key }) => key)).toEqual([rowKey(plain)]);
+  });
+
+  test("a fee also marks a base price, but a stated power always wins", () => {
+    const [withFee] = toProposedRates({ rates: [extracted({ powerMode: "not_stated", powerUnit: null, powerP1: null, powerP2: null, feeMinMwh: 1, feeMaxMwh: 20 })] });
+    expect(withFee.powerMode).toBe("regulated");
+    const [stated] = toProposedRates({ rates: [extracted({ productName: "Base Plus" })] });
+    expect(stated).toMatchObject({ powerMode: "fixed", power: { P1: 0.0896, P2: 0.07048 } });
+  });
 });
