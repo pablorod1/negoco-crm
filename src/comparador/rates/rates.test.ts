@@ -661,6 +661,15 @@ describe("gas en los anexos", () => {
     ]);
   });
 
+  test("un marco de solo comisiones sin tarifa de acceso se guarda; en un anexo solo de 3.0TD, no", () => {
+    // «NET PARTNER 2026»: tablas por producto, potencia y consumo, sin decir 2.0TD.
+    const commission = { productName: "NET POWER", accessTariff: null, energy: null, pricing: null, level: null, channel: null, minKwh: null, maxKwh: null, minKw: 3, maxKw: 15, ruleType: "fixed" as const, feeBase: null, amount: 135, minAmount: null };
+    expect(toProposedCommissions({ rates: [], commissions: [commission] }).map(({ product, energy, amount }) => ({ product, energy, amount }))).toEqual([
+      { product: "NET POWER", energy: "electricity", amount: 135 },
+    ]);
+    expect(toProposedCommissions({ rates: [gasRow({ accessTariff: "3.0TD" })], commissions: [commission] })).toEqual([]);
+  });
+
   test("una regla de luz no paga una oferta de gas, ni al revés", () => {
     const base = { rateId: null, accessTariff: null, level: null, channel: null, minAnnualKwh: null, maxAnnualKwh: null, ruleType: "fixed" as const, validFrom: "2026-01-01", validTo: null };
     const rules: CommissionRuleForEngine[] = [

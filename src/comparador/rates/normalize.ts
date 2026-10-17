@@ -309,8 +309,12 @@ export function toProposedCommissions(
     if (rule.energy) return rule.energy;
     return energies.size === 1 ? [...energies][0] : "electricity";
   };
+  // Una comisión sin tarifa de acceso es de lo que trae el documento: si solo
+  // trae precios de 3.0TD, de eso; si no trae precios (un marco retributivo,
+  // «NET PARTNER 2026»), vale para lo que comparamos.
+  const onlyCommissions = extraction.rates.length === 0;
   return extraction.commissions
-    .filter((rule) => (rule.accessTariff ? compared(rule.accessTariff) : priced.length > 0))
+    .filter((rule) => (rule.accessTariff ? compared(rule.accessTariff) : priced.length > 0 || onlyCommissions))
     // «ESTABLE PLUS / DINÁMICA PLUS»: la misma comisión para cada uno.
     .flatMap((rule) => (rule.productName ? commissionProductsOf(rule.productName) : [null]).map((product) => ({ rule, product })))
     .map(({ rule, product }) => ({
