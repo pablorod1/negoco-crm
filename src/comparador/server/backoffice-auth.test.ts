@@ -6,15 +6,29 @@ const SECRET = "secreto-compartido";
 const NOW = Date.parse("2026-10-17T10:00:00Z");
 const URL_ = "https://api.comparador.negococloud.es/api/internal/comparador/beenergy/ingests/abc";
 
+interface Signed {
+  body?: string;
+  reviewer?: string;
+  timestamp?: string;
+  method?: string;
+  url?: string;
+  /** Lo que se firma, si no es lo que se envía. */
+  signWith?: { body: string; reviewer: string; method: string; path: string };
+}
+
 function signed({
   body = '{"action":"reject"}',
   reviewer = "pablo@negococloud.es",
   timestamp = String(NOW / 1000),
   method = "POST",
   url = URL_,
-  signWith = { body, reviewer, method, path: new URL(url).pathname },
-} = {}) {
-  const signature = signBackofficeRequest({ secret: SECRET, timestamp, ...signWith });
+  signWith,
+}: Signed = {}) {
+  const signature = signBackofficeRequest({
+    secret: SECRET,
+    timestamp,
+    ...(signWith ?? { body, reviewer, method, path: new URL(url).pathname }),
+  });
   return {
     request: new Request(url, {
       method,

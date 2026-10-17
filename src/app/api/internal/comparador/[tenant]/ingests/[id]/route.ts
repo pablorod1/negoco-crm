@@ -16,6 +16,7 @@ import {
   rejectIngestById,
 } from "@/comparador/server/ingest-review";
 import { ok, ratesError } from "@/comparador/server/rates-route";
+import { presentReview } from "@/comparador/server/review-presentation";
 
 /** Volver a leer un Excel largo tarda hasta un par de minutos. */
 export const maxDuration = 300;
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       getIngestDetail(context.client, context.id),
       listActiveSuppliers(context.client),
     ]);
-    return ok({ ...detail, suppliers });
+    return ok({ ...detail, review: presentReview(detail.review), suppliers });
   } catch (error) {
     return ratesError("backoffice get ingest", error);
   }
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     const userId = reviewerUserId(context.reviewer);
     switch (parsed.data.action) {
       case "preview":
-        return ok(await previewIngest(client, id, parsed.data.decisions));
+        return ok({ review: presentReview((await previewIngest(client, id, parsed.data.decisions)).review) });
       case "approve":
         return ok(await approveIngestById({ client, id, input: parsed.data.approval, userId, tenantSlug: tenant, request }));
       case "reject":
