@@ -5,7 +5,8 @@ import { SupplierLogo } from "@/comercializadoras/components/SupplierLogo";
 import { euros, eurosRound, type StudyOfferView } from "./api";
 
 const HEIGHT = 280;
-const PAD = { top: 16, right: 20, bottom: 36, left: 52 };
+// Arriba, sitio para «Comisión ↑» por encima de la primera marca.
+const PAD = { top: 28, right: 20, bottom: 36, left: 52 };
 const HIT_RADIUS = 24;
 
 function useWidth<T extends HTMLElement>() {
@@ -23,8 +24,11 @@ function useWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
-/** Cuatro o cinco marcas redondas entre min y max. */
-function ticks(min: number, max: number) {
+/**
+ * Cuatro o cinco marcas redondas que abarcan de min a max: la última, la
+ * primera redonda que llega a max (si no, lo que pasa de ella queda fuera del gráfico).
+ */
+export function ticks(min: number, max: number) {
   const span = max - min || 1;
   const raw = span / 4;
   const power = 10 ** Math.floor(Math.log10(raw));
@@ -34,8 +38,10 @@ function ticks(min: number, max: number) {
       .find((candidate) => candidate >= raw) ?? raw;
   const start = Math.floor(min / step) * step;
   const values: number[] = [];
-  for (let value = start; value <= max + step * 0.001; value += step)
+  for (let value = start; ; value += step) {
     values.push(Math.round(value * 100) / 100);
+    if (value >= max - step * 0.001) break;
+  }
   return values;
 }
 
@@ -232,8 +238,9 @@ export function OfferScatter({
                   strokeDasharray="3 3"
                 />
                 <text
-                  x={chart.sx(0) + 4}
+                  x={chart.sx(0) + (chart.sx(0) > width - 140 ? -4 : 4)}
                   y={PAD.top + 10}
+                  textAnchor={chart.sx(0) > width - 140 ? "end" : "start"}
                   className="fill-gray-400 text-[10px]"
                 >
                   Paga lo mismo que hoy
