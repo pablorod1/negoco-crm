@@ -170,6 +170,7 @@ export async function processIngest({
             : null,
           // Un anexo que llegó por correo trae el cuerpo del mensaje como contexto.
           emailNote: file ? ingest.bodyText : null,
+          fileName: file?.name ?? null,
         });
     if (sha256 && file && readings && !shared && worthSharing(result)) {
       await readings.save({ sha256, fileName: file.name, result, tenantSlug });

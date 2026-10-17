@@ -54,6 +54,10 @@ const EMAIL_NOTE_INSTRUCTIONS = `
 
 Junto al documento va el mensaje del correo con el que llegó. Úsalo como contexto: puede decir de qué comercializadora es (supplierName) o desde cuándo valen los precios (validFrom, validTo) cuando el documento no lo dice; si el documento lo dice, manda el documento. La fecha en que se envió o reenvió el correo no es la de vigencia. Los precios, descuentos y comisiones se sacan solo del documento, nunca del mensaje.`;
 
+const FILE_NAME_INSTRUCTIONS = `
+
+El nombre del fichero puede decir la fecha del anexo («captacion-5-octubre-2026.png»): úsala como validFrom si el documento no da ninguna. No pongas una fecha que no esté en el documento, el correo ni el nombre del fichero.`;
+
 const CLASSIFICATION_INSTRUCTIONS = `Clasificas documentos que llegan a una agencia de energía española. Indica si traen precios de tarifas de luz o gas, comisiones de la agencia, qué tarifas de acceso aparecen (2.0TD, 3.0TD, 6.1TD, RL1…) y si los precios son fijos, indexados o tarifas planas. Responde solo con lo que se ve en el texto.`;
 
 /**
@@ -167,6 +171,7 @@ export async function extractRateDocument({
   context,
   supplierName = null,
   emailNote = null,
+  fileName = null,
   models = getRateExtractionModels(),
   generate = generateStructured,
   recipes = controlRecipeStore(),
@@ -178,6 +183,8 @@ export async function extractRateDocument({
   supplierName?: string | null;
   /** Cuerpo del correo con el que llegó el documento, si llegó por correo. */
   emailNote?: string | null;
+  /** Nombre del fichero: a veces es lo único que dice la fecha («captacion-5-octubre-2026.png»). */
+  fileName?: string | null;
   models?: readonly string[];
   generate?: typeof generateStructured;
   /** Plantillas de lectura de Excel; `null` para no guardarlas ni buscarlas. */
@@ -233,9 +240,14 @@ export async function extractRateDocument({
   const instructions =
     RATE_INSTRUCTIONS +
     (supplierName ? `\n\nEl documento es de la comercializadora ${supplierName}.` : "") +
-    (emailNote ? EMAIL_NOTE_INSTRUCTIONS : "");
+    (emailNote ? EMAIL_NOTE_INSTRUCTIONS : "") +
+    (fileName ? FILE_NAME_INSTRUCTIONS : "");
   // Una fecha de vigencia vale si está en el documento o en el correo.
-  const datesText = document.text && emailNote ? `${document.text}\n${emailNote}` : document.text;
+  // Una fecha de vigencia vale si está en el documento, en el correo o en el
+  // nombre del fichero. Una imagen no tiene texto con el que comprobarla: la
+  // IA se inventó el 01/01/2023 en un aviso de Gana del 5 de octubre de 2026,
+  // y el buzón lo habría descartado por anterior a los precios vigentes.
+  const datesText = [document.text, emailNote, fileName].filter(Boolean).join("\n") || null;
   const attempts: RateExtractionAttempt[] = [];
   let extraction: RateDocumentExtraction | null = null;
 
@@ -252,6 +264,7 @@ export async function extractRateDocument({
             role: "user",
             content: [
               ...document.parts,
+              ...(fileName ? [{ type: "text" as const, text: `Nombre del fichero: ${fileName}` }] : []),
               ...(emailNote
                 ? [{ type: "text" as const, text: `Mensaje del correo con el que llegó el documento:\n${emailNote}` }]
                 : []),

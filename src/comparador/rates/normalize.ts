@@ -410,6 +410,8 @@ export function dateInText(iso: string, text: string): boolean {
     `(?<!\\d)${days}[/.-]${months}[/.-]${years}(?!\\d)`,
     `(?<!\\d)${year}[/.-]${months}[/.-]${days}(?!\\d)`,
     `(?<!\\d)${days}\\s+de\\s+${monthName}(?![a-z])`,
+    // En un nombre de fichero: «captacion-5-octubre-2026», «5_octubre_2026».
+    `(?<!\\d)${days}[\\s_-]+(?:de[\\s_-]+)?${monthName}[\\s_-]+(?:de[\\s_-]+)?${years}(?!\\d)`,
     ...(d === "1"
       ? [`${monthName}\\s*(?:de\\s+|-|/)?\\s*${years}(?!\\d)`, `(?<!\\d)${months}[/.-]${year}(?!\\d)`]
       : []),

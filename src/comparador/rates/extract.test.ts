@@ -179,4 +179,22 @@ describe("extractRateDocument", () => {
     });
     expect(unread.status).toBe("needs_review");
   });
+
+  test("in an image, a date that is not in the file name or the email is dropped", async () => {
+    const image: PreparedDocument = { format: "image", text: null, parts: [], sentChars: 0, pages: null };
+    const read = (validFrom: string) => extractRateDocument({
+      document: image,
+      context,
+      generate: fakeGenerate([{ ...extraction([unicornio]), validFrom }]),
+      models: ["a"],
+      fileName: "captacion-5-octubre-2026 (1).png",
+    });
+    // La IA se inventó el 01/01/2023 en el aviso de Gana del 5 de octubre de 2026.
+    const invented = await read("2023-01-01");
+    if (invented.status === "out_of_scope") throw new Error("unexpected");
+    expect(invented.extraction.validFrom).toBeNull();
+    const fromName = await read("2026-10-05");
+    if (fromName.status === "out_of_scope") throw new Error("unexpected");
+    expect(fromName.extraction.validFrom).toBe("2026-10-05");
+  });
 });
