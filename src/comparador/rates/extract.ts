@@ -304,16 +304,28 @@ export async function extractRateDocument({
   }
   issues = [...issues, ...validateProposedCommissions(toProposedCommissions(final), document.text)];
 
+  // Una imagen no pasa por la clasificación: si la lectura dice que no es un
+  // anexo y no trae nada (la firma del correo de Beenergy, 225 KB), también se
+  // descarta sola. Una imagen de precios que no se lee bien sigue a revisión.
+  const notAnAnnex = !classification && final.documentKind === "other";
   if (
     proposed.filter(isInScope).length === 0 &&
     toProposedCommissions(final).length === 0 &&
-    classification
+    (classification || notAnAnnex)
   ) {
     // La extracción no encuentra nada que guardar: indexadas, por franjas…
     return {
       status: "out_of_scope",
-      reason: `No trae precios fijos ni indexados de 2.0TD ni de gas${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`,
-      classification,
+      reason: notAnAnnex
+        ? `No es un anexo de precios ni de comisiones${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`
+        : `No trae precios fijos ni indexados de 2.0TD ni de gas${final.skipped.length ? ` (${final.skipped.join(", ")})` : ""}.`,
+      classification: classification ?? {
+        supplierName: final.supplierName,
+        hasPrices: false,
+        hasCommissions: false,
+        accessTariffs: [],
+        pricing: [],
+      },
       costUsd,
     };
   }

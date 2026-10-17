@@ -490,7 +490,7 @@ export async function readSpreadsheet({
   generate?: typeof generateStructured;
 }): Promise<SheetReadResult> {
   const signature = workbookSignature(grids);
-  const supplierKey = supplierName ? normalizeName(supplierName) : null;
+  let supplierKey = supplierName ? normalizeName(supplierName) : null;
   const attempts: RateExtractionAttempt[] = [];
   let costUsd: number | null = null;
   let source: SheetReadResult["recipe"]["source"] = "none";
@@ -506,7 +506,18 @@ export async function readSpreadsheet({
   /** Aviso tras una respuesta cortada o ilegible, para el siguiente modelo. */
   let retryNote: string | null = null;
 
-  const cached = supplierKey && store ? await store.find(supplierKey, signature) : null;
+  let cached = supplierKey && store ? await store.find(supplierKey, signature) : null;
+  // Un correo que no nombra la comercializadora: la forma del libro la delata
+  // si solo una tiene plantilla para ella y la plantilla encaja (los Excel de
+  // Eleia llegaron sin comercializadora y la IA escribió una plantilla nueva
+  // que no encajaba, por 0,13 $).
+  if (!cached && !supplierKey && store) {
+    const known = await store.findBySignature(signature);
+    if (known && assess(grids, alignToWorkbook(grids, known.recipe)).healthy) {
+      supplierKey = known.supplierKey;
+      cached = known;
+    }
+  }
   if (cached) {
     cached.recipe = alignToWorkbook(grids, cached.recipe);
     const assessment = assess(grids, cached.recipe);

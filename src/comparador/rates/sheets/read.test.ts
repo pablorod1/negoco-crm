@@ -121,6 +121,23 @@ describe("readSpreadsheet", () => {
     expect(second.result.proposed[0].energy?.P1).toBe(0.261);
   });
 
+  test("a workbook without supplier uses the only recipe for its shape, and the supplier comes from it", async () => {
+    const store = memoryRecipeStore();
+    const generate = fakeGenerate([simplexRecipe]);
+    await readSpreadsheet({ grids: [eleia()], supplierName: "Eleia", context, store, models: ["a"], generate });
+
+    // Llega por correo sin comercializadora: misma forma de libro.
+    const unnamed = await readSpreadsheet({ grids: [eleia(0.261)], supplierName: null, context, store, models: ["a"], generate });
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(unnamed.recipe.source).toBe("cache");
+    if (unnamed.result.status === "out_of_scope") throw new Error("unexpected");
+    expect(unnamed.result.extraction.supplierName).toBe("Eleia");
+
+    // Si dos comercializadoras tienen esa forma, no se adivina.
+    await store.save({ supplierKey: "otra", signature: "simplex", recipe: simplexRecipe, model: "a" });
+    expect(await store.findBySignature("simplex")).toBeNull();
+  });
+
   test("a format change asks for a new recipe and says what broke", async () => {
     const store = memoryRecipeStore();
     await store.save({ supplierKey: "eleia", signature: "simplex", recipe: { ...simplexRecipe, tables: simplexRecipe.tables.map((t) => ({ ...t, anchorRow: 13 })) }, model: "a" });

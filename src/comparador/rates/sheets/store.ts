@@ -18,6 +18,13 @@ export interface RecipeStore {
     supplierKey: string,
     signature: string,
   ): Promise<{ id: string; recipe: StoredRecipe; exact: boolean } | null>;
+  /**
+   * La plantilla de esa forma de libro si solo una comercializadora la tiene:
+   * para un Excel que llega sin comercializadora.
+   */
+  findBySignature(
+    signature: string,
+  ): Promise<{ id: string; recipe: StoredRecipe; exact: true; supplierKey: string } | null>;
   save(input: {
     supplierKey: string;
     signature: string;
@@ -56,6 +63,25 @@ export function controlRecipeStore(getClient: () => ControlClient = getTursoCont
           console.warn("[comparador] rate_sheet_recipes no existe: aplica la migración 025");
           return null;
         }
+        throw error;
+      }
+    },
+
+    async findBySignature(signature) {
+      try {
+        const { rows } = await getClient().execute({
+          sql: `SELECT id, recipe, supplier_key FROM rate_sheet_recipes WHERE signature = ? LIMIT 2`,
+          args: [signature],
+        });
+        if (rows.length !== 1) return null;
+        return {
+          id: String(rows[0].id),
+          recipe: JSON.parse(String(rows[0].recipe)) as StoredRecipe,
+          exact: true,
+          supplierKey: String(rows[0].supplier_key),
+        };
+      } catch (error) {
+        if (missingTable(error)) return null;
         throw error;
       }
     },
@@ -107,6 +133,12 @@ export function memoryRecipeStore(): RecipeStore & {
         .map(([, value]) => value)
         .at(-1);
       return latest ? { id: latest.id, recipe: latest.recipe, exact: false } : null;
+    },
+    async findBySignature(signature) {
+      const found = [...entries].filter(([key]) => key.endsWith(`|${signature}`));
+      if (found.length !== 1) return null;
+      const [[key, entry]] = found;
+      return { id: entry.id, recipe: entry.recipe, exact: true, supplierKey: key.slice(0, -signature.length - 1) };
     },
     async save({ supplierKey, signature, recipe }) {
       const existing = entries.get(`${supplierKey}|${signature}`);

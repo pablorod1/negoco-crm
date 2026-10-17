@@ -163,4 +163,20 @@ describe("extractRateDocument", () => {
     if (alone.status === "out_of_scope") throw new Error("unexpected");
     expect(alone.extraction.validFrom).toBeNull();
   });
+
+  test("an image that is not an annex (an email signature) is discarded without review", async () => {
+    const image: PreparedDocument = { format: "image", text: null, parts: [], sentChars: 0, pages: null };
+    const signature = { ...extraction([]), supplierName: "Beenergy", documentKind: "other" as const, validFrom: null, skipped: ["document is a business card"] };
+    const result = await extractRateDocument({ document: image, context, generate: fakeGenerate([signature]), models: ["a"] });
+    expect(result).toMatchObject({ status: "out_of_scope", reason: expect.stringContaining("No es un anexo") });
+
+    // Una imagen de precios que no se ha podido leer sigue yendo a revisión.
+    const unread = await extractRateDocument({
+      document: image,
+      context,
+      generate: fakeGenerate([{ ...extraction([]), documentKind: "prices" as const }]),
+      models: ["a"],
+    });
+    expect(unread.status).toBe("needs_review");
+  });
 });

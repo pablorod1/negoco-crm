@@ -488,7 +488,10 @@ export async function buildReview({
           ? `Aún no hay tarifas de ${energy === "gas" ? `gas${rule.accessTariff ? ` ${rule.accessTariff}` : ""}` : (rule.accessTariff ?? "luz")} de ${supplier.name}: se aplicará cuando las haya.`
           : named.length === 0
             ? `Ninguna tarifa de ${supplier.name} se llama «${rule.product}»: se aplicará cuando haya una.`
-            : `Ninguna tarifa «${rule.product}» tiene el nivel «${rule.level}»: indica arriba a qué nivel equivale.`;
+            : // El gas indexado de Eleia: su nivel no importa si no hay tarifas de ese tipo de precio.
+              pricing && !named.some((rate) => (rate.pricing === "indexed" ? "indexed" : "fixed") === pricing)
+              ? `Aún no hay tarifas «${rule.product}» de precio ${pricing === "indexed" ? "indexado" : "fijo"}: se aplicará cuando las haya.`
+              : `Ninguna tarifa «${rule.product}» tiene el nivel «${rule.level}»: indica arriba a qué nivel equivale.`;
     return {
       productName: rule.productName,
       rateId,
