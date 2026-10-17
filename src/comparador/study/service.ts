@@ -1,12 +1,13 @@
 import type { Client } from "@libsql/client";
 import { getRegulatedParams, type RegulatedParams } from "@/comparador/engine/regulated";
 import { extractGasInvoice } from "@/comparador/gas/extract";
-import { gasCurrentTariff, gasInvoiceTaxRates, gasReadingOf, type GasStudyExtraction } from "@/comparador/gas/invoice";
+import { gasCurrentTariff, gasInvoiceTaxRates, gasMeterRentalPerDay, gasReadingOf, type GasStudyExtraction } from "@/comparador/gas/invoice";
 import { getGasRegulatedParams, type GasRegulatedParams } from "@/comparador/gas/regulated";
 import { buildEstimatedGasSupply, buildGasSupply, gasReadingsFromSips } from "@/comparador/gas/supply";
 import {
   currentTariffFromInvoice,
   flatTariffFromInvoice,
+  meterRentalPerDay,
   invoiceTaxRates,
   type CurrentTariff,
 } from "@/comparador/extraction/current-tariff";
@@ -566,6 +567,7 @@ export async function rankSavedStudy({
     options: { ...effective, customerType: customerType.value, ancillary: gas ? null : ancillary.value, date: study.priceDate },
     indexHistory,
     feePolicies,
+    meterRentalPerDay: gas ? (gasReading ? gasMeterRentalPerDay(gasReading) : undefined) : meterRentalPerDay(study.extraction),
   });
   return {
     ranking,

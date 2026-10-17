@@ -296,7 +296,11 @@ function fixedPerDayOf(reading: GasInvoiceExtraction): number | null {
 /** Término variable en €/kWh: conceptos que cubren todo el consumo se suman; tramos, se promedian. */
 function energyPerKwhOf(reading: GasInvoiceExtraction): number | null {
   const kwh = reading.energyLines.reduce((total, line) => total + line.kwh, 0);
-  if (kwh <= 0) return null;
+  if (kwh <= 0) {
+    // Una factura sin consumo imprime igual el €/kWh: los mismos (cero) kWh en todas, como conceptos.
+    const printed = reading.energyLines.filter((line) => line.pricePerKwh > 0);
+    return printed.length > 0 ? printed.reduce((total, line) => total + line.pricePerKwh, 0) : null;
+  }
   const value = reading.energyLines.reduce((total, line) => total + line.kwh * line.pricePerKwh, 0);
   const consumed = reading.consumptionKwh;
   const concepts = consumed && consumed > 0 ? Math.max(1, Math.round(kwh / consumed)) : 1;
@@ -339,11 +343,6 @@ export function gasCurrentTariff(extraction: GasStudyExtraction): GasCurrentTari
     (total, { description, amount }) => total + amount * shareOfYear(description, amount),
     0,
   );
-  // El contador y los cargos regulados (canon IRC, GTS) se pagan con cualquier
-  // comercializadora: van por día, también en las ofertas.
-  const rental = reading.meterRental;
-  const rentalDays = rental?.days ?? days;
-  const regulatedPerDay = sum(reading.regulatedLines) / days;
   return {
     prices: gasTariffPrices(fixedPerDay, energyPerKwh, {
       servicesPerYear: (servicesInPeriod * DAYS_PER_YEAR) / days,
@@ -352,8 +351,20 @@ export function gasCurrentTariff(extraction: GasStudyExtraction): GasCurrentTari
     energyDiscountRates,
     fixedTermDiscountRates,
     fixedDiscountsPerYear,
-    meterRentalPerDay: (rental && rentalDays > 0 ? rental.amount / rentalDays : 0) + regulatedPerDay,
+    meterRentalPerDay: gasMeterRentalPerDay(reading),
   };
+}
+
+/**
+ * El contador y los cargos regulados (canon IRC, GTS), por día: se pagan con
+ * cualquier comercializadora, así que van también en las ofertas.
+ */
+export function gasMeterRentalPerDay(reading: GasInvoiceExtraction): number {
+  const days = reading.billingPeriod?.days ?? 0;
+  if (days <= 0) return 0;
+  const rental = reading.meterRental;
+  const rentalDays = rental?.days ?? days;
+  return (rental && rentalDays > 0 ? rental.amount / rentalDays : 0) + sum(reading.regulatedLines) / days;
 }
 
 /**

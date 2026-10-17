@@ -116,8 +116,11 @@ function energyPrices(invoice: InvoiceExtraction): PeriodPrices["energy"] {
   return { P1: priceOf("P1"), P2: priceOf("P2"), P3: priceOf("P3") };
 }
 
-/** Alquiler por día: importe entre sus días, o entre los del periodo. */
-function meterRentalPerDay(invoice: InvoiceExtraction): number {
+/**
+ * Alquiler por día: importe entre sus días, o entre los del periodo. Se paga
+ * con cualquier comercializadora: también va en las ofertas.
+ */
+export function meterRentalPerDay(invoice: InvoiceExtraction): number {
   const rental = invoice.meterRental;
   if (!rental) return 0;
   const days = rental.days ?? invoice.billingPeriod?.days ?? null;

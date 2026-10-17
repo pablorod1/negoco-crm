@@ -206,6 +206,9 @@ describe("la factura de gas", () => {
     expect(gasCurrentTariff(toStudyExtraction(empty))).toBeNull();
     const bogus = { ...empty, energyLines: [{ kwh: 1, pricePerKwh: 0.67, amount: 0.67 }] };
     expect(validateGasInvoice(bogus).map(({ code }) => code)).toContain("consumption_mismatch");
+    // Si imprime el €/kWh aunque sea a 0 kWh, se sabe lo que paga hoy.
+    const printed = { ...empty, energyLines: [{ kwh: 0, pricePerKwh: 0.075, amount: 0 }] };
+    expect(gasCurrentTariff(toStudyExtraction(printed))?.prices.energy.P1).toBeCloseTo(0.075, 9);
   });
 
   test("una factura de la TUR es de precio fijo aunque la IA diga indexada", () => {

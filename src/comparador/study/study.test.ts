@@ -295,6 +295,21 @@ describe("ranking", () => {
     expect(ranking.current).toMatchObject({ flatFee: 348, vat: 73.08, total: 421.08 });
     expect(ranking.offers[0].savings).toBeCloseTo(421.08 - ranking.offers[0].cost.total, 2);
   });
+
+  test("offers carry the invoice's meter rental even without today's price", () => {
+    const rank = (meterRentalPerDay?: number) =>
+      rankStudy({
+        supply,
+        current: null,
+        offers: [offer("base")],
+        rules: [],
+        regulated: getRegulatedParams("2026-10-07"),
+        options: { date: "2026-10-07", channel: null, feeEnergyPerMwh: null, order: "savings" },
+        meterRentalPerDay,
+      }).offers[0].cost;
+    expect(rank().meterRental).toBe(0);
+    expect(rank(0.37 / 14).meterRental).toBeCloseTo((0.37 / 14) * 365, 2);
+  });
 });
 
 describe("indexed tariff", () => {

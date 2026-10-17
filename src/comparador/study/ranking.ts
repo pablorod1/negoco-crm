@@ -291,6 +291,7 @@ export function rankStudy({
   indexHistory = [],
   gasRegulated,
   feePolicies,
+  meterRentalPerDay: invoiceMeterRentalPerDay,
 }: {
   supply: StudySupply;
   current: CurrentTariff | null;
@@ -304,6 +305,11 @@ export function rankStudy({
   gasRegulated?: GasRegulatedParams;
   /** El fee habitual y máximo de la agencia para los precios base. */
   feePolicies?: FeePolicies;
+  /**
+   * Alquiler del contador por día que trae la factura. Va en las ofertas
+   * aunque no se sepa lo que paga hoy o sea una tarifa plana (lo lleva en la cuota).
+   */
+  meterRentalPerDay?: number;
 }): StudyRanking {
   const gas = supply.energy === "gas" ? supply.gas! : null;
   if (gas && !gasRegulated) throw new Error("rankStudy: gas supply without gas regulated params");
@@ -323,6 +329,7 @@ export function rankStudy({
       : annualCost(supply, prices, regulated, meterRentalPerDay, extras);
 
   const meterRentalPerDay = current?.meterRentalPerDay ?? 0;
+  const offerRentalPerDay = invoiceMeterRentalPerDay ?? meterRentalPerDay;
   const gasCurrent = current as Partial<GasCurrentTariff> | null;
   const currentCost = !current
     ? null
@@ -406,7 +413,7 @@ export function rankStudy({
     const prices = applyFee(base, { energyPerMwh: fee, powerPerKwYear: powerFee });
     const discounts = readDiscounts(price.discounts);
     const { extras, views } = discountInputs(price.id, discounts.parts, excluded);
-    const cost = yearCost(prices, meterRentalPerDay, {
+    const cost = yearCost(prices, offerRentalPerDay, {
       ...extras,
       ancillaryAmount: ancillaryIncluded ? 0 : (ancillaryAmount ?? 0),
     });
