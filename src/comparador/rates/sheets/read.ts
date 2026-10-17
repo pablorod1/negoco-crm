@@ -674,9 +674,11 @@ export async function readSpreadsheet({
     ...assessed.filter(
       ({ code }) => !(code === "no_rates" && toProposedCommissions(extraction).length > 0),
     ),
+    // Una tabla de comisiones que no ha dado ninguna regla: no tumba los
+    // precios, pero las comisiones de ese anexo las revisa Negoco.
     ...applied.notes.map((message) => ({
       severity: "warning" as const,
-      code: "partial_read" as const,
+      code: "commission_unread" as const,
       message,
     })),
   ];

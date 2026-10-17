@@ -54,6 +54,20 @@ export function presentReview(review: IngestReview | null) {
       amountText: commissionAmount(rule),
       covers: rule.covers,
       uncovered: rule.uncovered,
+      manual: rule.manual ?? false,
+      // La regla tal cual, para poder quitarla o cambiarla en la revisión.
+      extra: rule.manual
+        ? {
+            product: rule.product,
+            energy: rule.energy ?? "electricity",
+            accessTariff: rule.accessTariff,
+            level: rule.documentLevel ?? rule.level,
+            ruleType: rule.ruleType,
+            amount: rule.amount,
+            minAnnualKwh: rule.minAnnualKwh,
+            maxAnnualKwh: rule.maxAnnualKwh,
+          }
+        : null,
     })),
     commissionLevels: review.commissionLevels,
     notSaved: [...review.skipped, ...review.outOfScope.map(({ productName, pricing }) => `${productName} (${pricing})`)],

@@ -543,6 +543,36 @@ describe("rate ingest service", () => {
     expect((await getVersionPrices(client, closed.versionId!))[0].feeEnergyMinPerMwh).toBeNull();
   });
 
+  test("an unread commission section sends the commissions to Negoco, who adds the rule once and it is remembered", async () => {
+    const band = { energy: null, accessTariff: "2.0TD", pricing: "fixed" as const, channel: null, minKwh: null, maxKwh: null, ruleType: "fixed" as const, feeBase: null, minKw: null, maxKw: null, minAmount: null };
+    const framework = () => {
+      const read = extractionResult([], { commissions: [{ ...band, productName: "Unicornio", level: null, amount: 50 }], text: null });
+      if (read.status !== "out_of_scope") read.issues.push({ severity: "warning", code: "commission_unread", message: "Hoja «Electricidad», SIMPLEX: no se ha leído ninguna comisión." });
+      return read;
+    };
+    await ingestWith(client, extractionResult([rate({})], { text: null }), "COM-040").then((prices) =>
+      approveIngest({ client, control, ingest: prices, input: { validFrom: "2026-10-01" }, user: { id: "u1" }, today: "2026-10-07" }),
+    );
+
+    const first = await ingestWith(client, framework(), "COM-040");
+    const auto = await autoApproveIngest({ client, control, ingest: first, approvedBy: "email:jorge", receivedOn: "2026-10-08", today: "2026-10-08" });
+    expect(auto).toMatchObject({ approved: false, reason: expect.stringContaining("no se ha leído ninguna comisión") });
+
+    // Negoco lo revisa y añade lo que dice la frase: el 70 % del fee.
+    const seventy = { product: "Unicornio", energy: "electricity" as const, accessTariff: null, level: null, ruleType: "fee_share" as const, amount: 70 };
+    await approveIngest({
+      client, control, ingest: (await getIngest(client, first.id))!, input: { validFrom: "2026-10-08", extraCommissions: [seventy] },
+      user: { id: "negoco:pablo" }, today: "2026-10-08",
+    });
+    const rules = await listCurrentCommissionRules(client, "2026-10-08");
+    expect(rules.map(({ ruleType, amount }) => [ruleType, amount]).sort()).toEqual([["fee_share", 70], ["fixed", 50]]);
+
+    // El siguiente marco la trae ya, sin que nadie la escriba otra vez.
+    const next = await ingestWith(client, framework(), "COM-040");
+    const review = (await buildReview({ client, control, ingest: next, today: "2026-10-09" }))!.review;
+    expect(review.commissions.filter(({ manual }) => manual).map(({ ruleType, amount }) => [ruleType, amount])).toEqual([["fee_share", 70]]);
+  });
+
   test("the reviewer can type the power a supplier sends in another document", async () => {
     // Holaluz: los precios en un PDF y la potencia (29,93 €/kW·año) en otro.
     const text = "Clásico 1 precio 0,139 €/kWh";

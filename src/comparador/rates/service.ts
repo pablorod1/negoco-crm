@@ -256,6 +256,8 @@ export interface ProposedCommission extends CommissionRuleInput {
    */
   covers: string[];
   uncovered: string | null;
+  /** La añadió quien revisa (o se recuerda de un anexo anterior), no la lectura. */
+  manual?: boolean;
 }
 
 /**
@@ -341,6 +343,24 @@ export interface ReviewDecisions {
    * siguientes.
    */
   feeOverrides?: Readonly<Record<string, boolean>>;
+  /**
+   * Reglas de comisión que añade quien revisa porque el anexo las dice con una
+   * frase que la lectura no convierte («del COE te llevas el 70%»). Se
+   * recuerdan para el próximo anexo de comisiones de la comercializadora.
+   */
+  extraCommissions?: readonly ExtraCommission[];
+}
+
+/** Una regla de comisión escrita a mano en la revisión. */
+export interface ExtraCommission {
+  product: string | null;
+  energy: "electricity" | "gas";
+  accessTariff: string | null;
+  level: string | null;
+  ruleType: "fixed" | "per_mwh" | "fee_share";
+  amount: number;
+  minAnnualKwh?: number | null;
+  maxAnnualKwh?: number | null;
 }
 
 /**
@@ -357,6 +377,21 @@ export function suggestLevel(level: string, options: readonly string[]): string 
 }
 
 /** Los niveles que se eligieron en el último anexo aprobado de la comercializadora. */
+/** Las reglas que se añadieron a mano en el último anexo aprobado de la comercializadora. */
+async function rememberedExtraCommissions(client: TenantClient, comercializadoraId: string): Promise<ExtraCommission[]> {
+  const { rows } = await client.execute({
+    sql: `SELECT json_extract(extraction, '$.extraCommissions') AS extra FROM rate_ingests
+      WHERE comercializadora_id = ? AND status = 'approved' AND json_extract(extraction, '$.extraCommissions') IS NOT NULL
+      ORDER BY decided_at DESC LIMIT 1`,
+    args: [comercializadoraId],
+  });
+  try {
+    return rows[0]?.extra ? (JSON.parse(String(rows[0].extra)) as ExtraCommission[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 async function rememberedLevelMap(client: TenantClient, comercializadoraId: string): Promise<Record<string, string | null>> {
   const { rows } = await client.execute({
     sql: `SELECT json_extract(extraction, '$.levelMap') AS level_map FROM rate_ingests
@@ -448,7 +483,34 @@ export async function buildReview({
     inScope.length === 0 || (decisions.partialUpdate ?? extracted.extraction.partialUpdate);
   const diff = buildDiff(resolved, activePrices, { partialUpdate });
 
-  const proposedRules = toProposedCommissions(extracted.extraction).map((rule) => {
+  // Las añadidas a mano: las de esta revisión o, si no se han tocado, las del
+  // anexo anterior (solo si este trae comisiones: uno de precios no las toca).
+  const readRules = toProposedCommissions(extracted.extraction);
+  const extra =
+    decisions.extraCommissions ?? (readRules.length > 0 ? await rememberedExtraCommissions(client, supplier.id) : []);
+  const proposedRules = [
+    ...readRules.map((rule) => ({ ...rule, manual: false })),
+    ...extra.map((rule) => ({
+      energy: rule.energy,
+      productName: rule.product,
+      productKey: rule.product ? productKeyOf(rule.product) : null,
+      product: rule.product,
+      accessTariff: rule.accessTariff,
+      pricing: null,
+      pricingStated: false,
+      level: rule.level,
+      channel: null,
+      minAnnualKwh: rule.minAnnualKwh ?? null,
+      maxAnnualKwh: rule.maxAnnualKwh ?? null,
+      minKw: null,
+      maxKw: null,
+      ruleType: rule.ruleType,
+      feeBase: "energy" as const,
+      amount: rule.amount,
+      minAmount: null,
+      manual: true,
+    })),
+  ].map((rule) => {
     if (!rule.product) return rule;
     const product = withoutSupplierName(rule.product, supplier.name);
     return { ...rule, product, productName: product, productKey: productKeyOf(product) };
@@ -584,6 +646,7 @@ export async function buildReview({
       minAmount: rule.minAmount,
       covers,
       uncovered,
+      manual: rule.manual,
     };
   });
 
@@ -849,6 +912,13 @@ export async function approveIngest({
         args: [JSON.stringify(levelMap), ingest.id],
       });
     }
+    // Y las reglas añadidas a mano, también.
+    if (includeCommissions && input.extraCommissions) {
+      statements.push({
+        sql: `UPDATE rate_ingests SET extraction = json_set(extraction, '$.extraCommissions', json(?)) WHERE id = ?`,
+        args: [JSON.stringify(input.extraCommissions), ingest.id],
+      });
+    }
     await client.batch(statements, "write");
     written = true;
     return { versionId, status };
@@ -932,6 +1002,8 @@ async function tryAutoApprove({
   const unmapped = built.review.commissionLevels.filter(({ mappedTo }) => !mappedTo).map(({ level }) => `«${level}»`);
   const commissionDoubts = [
     ...blocking.filter(({ code }) => isCommission(code)).map(({ message }) => message),
+    // Una sección de comisiones que no se ha podido leer: sin ella, esa comisión no se pagaría.
+    ...built.review.issues.filter(({ code }) => code === "commission_unread").map(({ message }) => message),
     ...(unmapped.length > 0 ? [`los niveles de comisión ${unmapped.join(", ")} no casan con ninguna tarifa`] : []),
   ];
   const decisions: ReviewDecisions = {

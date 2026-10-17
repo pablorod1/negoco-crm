@@ -26,7 +26,8 @@ export interface RateIssue {
     | "partial_read"
     | "commission_not_in_source"
     | "assumed_power"
-    | "base_price";
+    | "base_price"
+    | "commission_unread";
   message: string;
   /** Fila de `proposed` a la que se refiere, si es de una fila. */
   row?: number;
