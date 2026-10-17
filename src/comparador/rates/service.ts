@@ -1,7 +1,8 @@
 import type { Client, InStatement } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import { buildDiff, type DiffEntry, type ResolvedRow } from "./diff";
-import { prepareDocument, type RateSource } from "./document";
+import { prepareDocument } from "./document";
+import { controlReadingCache, fileHash, worthSharing, type ReadingCache } from "./reading-cache";
 import { extractRateDocument, type RateExtractionResult } from "./extract";
 import { matchProducts, type RateMatch } from "./match";
 import { normalizeName, productKeyOf, withoutSupplierName } from "./names";
@@ -11,6 +12,7 @@ import { powerToPerDay, toProposedCommissions } from "./normalize";
 import {
   claimIngest,
   decideIngestStatement,
+  findApprovedIngestByHash,
   getActiveVersion,
   getComercializadora,
   getVersionPrices,
@@ -20,8 +22,11 @@ import {
   insertVersionStatements,
   listCatalog,
   listTenantRates,
+  releaseIngest,
   replaceCommissionRulesStatements,
+  reserveIngestForApproval,
   saveIngestResult,
+  setIngestFileHash,
   supersedeEarlierIngests,
   type IngestRecord,
 } from "./repository";
@@ -87,6 +92,7 @@ export async function processIngest({
   userId,
   extract = extractRateDocument,
   readFile = readIngestFile,
+  readings = controlReadingCache(),
 }: {
   client: TenantClient;
   ingest: IngestRecord;
@@ -94,6 +100,8 @@ export async function processIngest({
   userId: string | null;
   extract?: typeof extractRateDocument;
   readFile?: typeof readIngestFile;
+  /** Lecturas compartidas entre tenants; `null` para leer siempre. */
+  readings?: ReadingCache | null;
 }): Promise<IngestRecord["status"]> {
   if (!(await claimIngest(client, ingest.id))) {
     throw new RateIngestError("La ingesta ya se está procesando o ya está decidida.", 409);
@@ -101,26 +109,57 @@ export async function processIngest({
 
   try {
     const file = ingest.files[0];
-    const source: RateSource = file
-      ? { kind: "file", name: file.name, mime: file.mime, data: await readFile(file) }
-      : { kind: "text", text: ingest.bodyText ?? "", html: /<\w+[^>]*>/.test(ingest.bodyText ?? "") };
-    const document = await prepareDocument(source);
-    const supplier = ingest.comercializadoraId
-      ? await getComercializadora(client, ingest.comercializadoraId)
-      : null;
+    const data = file ? await readFile(file) : null;
+    const sha256 = data ? fileHash(data) : null;
+    if (sha256) {
+      await setIngestFileHash(client, ingest.id, sha256);
+      // El mismo fichero reenviado (dos personas, dos veces): ya está aprobado.
+      const approved = await findApprovedIngestByHash(client, sha256, ingest.id);
+      if (approved) {
+        await client.batch(
+          [
+            decideIngestStatement(ingest.id, { status: "rejected", userId: "comparador:ingest", versionId: null }),
+            {
+              sql: "UPDATE rate_ingests SET error = ? WHERE id = ?",
+              args: [
+                `Este anexo ya se aprobó${approved.decidedAt ? ` el ${approved.decidedAt.slice(0, 10)}` : ""}: es el mismo fichero.`,
+                ingest.id,
+              ],
+            },
+          ],
+          "write",
+        );
+        return "rejected";
+      }
+    }
 
-    const result = await extract({
-      document,
-      context: {
-        tenantSlug,
-        jobType: "rate_extraction",
-        userId: userId ?? undefined,
-        subjectId: ingest.id,
-      },
-      supplierName: supplier?.name ?? null,
-      // Un anexo que llegó por correo trae el cuerpo del mensaje como contexto.
-      emailNote: file ? ingest.bodyText : null,
-    });
+    // La primera lectura de un fichero que otro tenant ya leyó bien es
+    // gratis. «Volver a leer» desde la revisión llama siempre a la IA.
+    const shared = sha256 && readings && ingest.status === "received" ? await readings.find(sha256) : null;
+    if (shared) console.info("[comparador] lectura reutilizada", { tenantSlug, id: ingest.id, from: shared.tenantSlug });
+    const result = shared
+      ? { ...shared.result, costUsd: null }
+      : await extract({
+          document: await prepareDocument(
+            file && data
+              ? { kind: "file", name: file.name, mime: file.mime, data }
+              : { kind: "text", text: ingest.bodyText ?? "", html: /<\w+[^>]*>/.test(ingest.bodyText ?? "") },
+          ),
+          context: {
+            tenantSlug,
+            jobType: "rate_extraction",
+            userId: userId ?? undefined,
+            subjectId: ingest.id,
+          },
+          supplierName: ingest.comercializadoraId
+            ? ((await getComercializadora(client, ingest.comercializadoraId))?.name ?? null)
+            : null,
+          // Un anexo que llegó por correo trae el cuerpo del mensaje como contexto.
+          emailNote: file ? ingest.bodyText : null,
+        });
+    if (sha256 && file && readings && !shared && worthSharing(result)) {
+      await readings.save({ sha256, fileName: file.name, result, tenantSlug });
+    }
 
     let comercializadoraId = ingest.comercializadoraId;
     if (!comercializadoraId) {
@@ -638,139 +677,150 @@ export async function approveIngest({
     throw new RateIngestError("No hay ninguna fila que guardar.");
   }
 
-  const supplierKey = normalizeName(review.supplier.name);
-
-  // 1. Catálogo (base de control): productos nuevos.
-  const newKeys = new Map<string, { productName: string; pricing: string; accessTariffs: Set<string> }>();
-  for (const row of versionRows) {
-    if (row.catalogRateId || row.rateId) continue;
-    const entry = newKeys.get(row.productKey) ?? {
-      productName: row.productName,
-      pricing: row.pricing,
-      accessTariffs: new Set<string>(),
-    };
-    entry.accessTariffs.add(row.accessTariff);
-    newKeys.set(row.productKey, entry);
+  // Reserva: si el buzón y una persona (o dos personas) aprueban a la vez,
+  // solo escribe uno; el otro saldría con otra versión y productos repetidos.
+  if (!(await reserveIngestForApproval(client, ingest.id))) {
+    throw new RateIngestError("Esta ingesta ya se está aprobando o ya está decidida.", 409);
   }
-  let catalogIds = new Map<string, string>();
-  if (newKeys.size > 0) {
-    await control.batch(
-      [...newKeys].map(([productKey, entry]) =>
-        insertCatalogRateStatement({
-          id: randomUUID(),
-          supplierKey,
-          supplierName: review.supplier.name,
-          productName: entry.productName,
-          productKey,
-          accessTariffs: [...entry.accessTariffs].join(","),
-          pricing: entry.pricing,
-          createdBy: user.id,
-        }),
-      ),
-      "write",
-    );
-    const { catalog } = await listCatalog(control, supplierKey);
-    catalogIds = new Map(catalog.map((rate) => [rate.productKey, rate.id]));
-  }
+  let written = false;
+  try {
+    const supplierKey = normalizeName(review.supplier.name);
 
-  // 2. Tenant: tarifas que faltan, enlaces al catálogo, versión, precios y comisiones.
-  const statements: InStatement[] = [];
-  const createdRates = new Map<string, string>();
-  const rows = versionRows.map((row) => {
-    if (row.rateId) {
-      if (row.catalogRateId) {
-        statements.push({
-          sql: `UPDATE comercializadora_rates SET catalog_rate_id = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND catalog_rate_id IS NULL`,
-          args: [row.catalogRateId, row.rateId],
-        });
+    // 1. Catálogo (base de control): productos nuevos.
+    const newKeys = new Map<string, { productName: string; pricing: string; accessTariffs: Set<string> }>();
+    for (const row of versionRows) {
+      if (row.catalogRateId || row.rateId) continue;
+      const entry = newKeys.get(row.productKey) ?? {
+        productName: row.productName,
+        pricing: row.pricing,
+        accessTariffs: new Set<string>(),
+      };
+      entry.accessTariffs.add(row.accessTariff);
+      newKeys.set(row.productKey, entry);
+    }
+    let catalogIds = new Map<string, string>();
+    if (newKeys.size > 0) {
+      await control.batch(
+        [...newKeys].map(([productKey, entry]) =>
+          insertCatalogRateStatement({
+            id: randomUUID(),
+            supplierKey,
+            supplierName: review.supplier.name,
+            productName: entry.productName,
+            productKey,
+            accessTariffs: [...entry.accessTariffs].join(","),
+            pricing: entry.pricing,
+            createdBy: user.id,
+          }),
+        ),
+        "write",
+      );
+      const { catalog } = await listCatalog(control, supplierKey);
+      catalogIds = new Map(catalog.map((rate) => [rate.productKey, rate.id]));
+    }
+
+    // 2. Tenant: tarifas que faltan, enlaces al catálogo, versión, precios y comisiones.
+    const statements: InStatement[] = [];
+    const createdRates = new Map<string, string>();
+    const rows = versionRows.map((row) => {
+      if (row.rateId) {
+        if (row.catalogRateId) {
+          statements.push({
+            sql: `UPDATE comercializadora_rates SET catalog_rate_id = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ? AND catalog_rate_id IS NULL`,
+            args: [row.catalogRateId, row.rateId],
+          });
+        }
+        return { ...row, rateId: row.rateId };
       }
-      return { ...row, rateId: row.rateId };
+      let rateId = createdRates.get(row.productKey);
+      if (!rateId) {
+        rateId = randomUUID();
+        createdRates.set(row.productKey, rateId);
+        statements.push(
+          insertTenantRateStatement({
+            id: rateId,
+            name: row.productName,
+            comercializadoraId: review.supplier.id,
+            catalogRateId: row.catalogRateId ?? catalogIds.get(row.productKey) ?? null,
+            accessTariff: row.accessTariff,
+            pricing: row.pricing,
+          }),
+        );
+      }
+      return { ...row, rateId };
+    });
+
+    let versionId: string | null = null;
+    let status: RateVersion["status"] | null = null;
+    // Una versión que empieza antes que la vigente la cerraría antes de su
+    // inicio y dejaría las fechas del revés.
+    const active = review.activeVersion;
+    if (rows.length > 0 && active?.validFrom && input.validFrom < active.validFrom) {
+      throw new RateIngestError(
+        `La versión vigente empieza el ${active.validFrom}: la fecha de entrada en vigor no puede ser anterior.`,
+      );
     }
-    let rateId = createdRates.get(row.productKey);
-    if (!rateId) {
-      rateId = randomUUID();
-      createdRates.set(row.productKey, rateId);
-      statements.push(
-        insertTenantRateStatement({
-          id: rateId,
-          name: row.productName,
+    if (rows.length > 0) {
+      versionId = randomUUID();
+      const version = insertVersionStatements({
+        version: {
+          id: versionId,
           comercializadoraId: review.supplier.id,
-          catalogRateId: row.catalogRateId ?? catalogIds.get(row.productKey) ?? null,
-          accessTariff: row.accessTariff,
-          pricing: row.pricing,
-        }),
-      );
+          validFrom: input.validFrom,
+          validTo: input.validTo ?? review.validTo ?? null,
+          source: "document",
+          ingestId: ingest.id,
+          basedOnVersionId: review.partialUpdate ? (review.activeVersion?.id ?? null) : null,
+          notes: input.notes ?? null,
+          userId: user.id,
+        },
+        today,
+      });
+      status = version.status;
+      statements.push(...version.statements);
+      const location = ingest.files[0]?.name ?? (ingest.emailSubject || "texto pegado");
+      for (const row of rows) {
+        statements.push(
+          insertPriceStatement(versionId, {
+            ...row,
+            sourceLocation: location,
+            sourceExcerpt: row.sourceExcerpt,
+            sourceValues: row.sourceValues,
+          }),
+        );
+      }
     }
-    return { ...row, rateId };
-  });
 
-  let versionId: string | null = null;
-  let status: RateVersion["status"] | null = null;
-  // Una versión que empieza antes que la vigente la cerraría antes de su
-  // inicio y dejaría las fechas del revés.
-  const active = review.activeVersion;
-  if (rows.length > 0 && active?.validFrom && input.validFrom < active.validFrom) {
-    throw new RateIngestError(
-      `La versión vigente empieza el ${active.validFrom}: la fecha de entrada en vigor no puede ser anterior.`,
-    );
-  }
-  if (rows.length > 0) {
-    versionId = randomUUID();
-    const version = insertVersionStatements({
-      version: {
-        id: versionId,
-        comercializadoraId: review.supplier.id,
-        validFrom: input.validFrom,
-        validTo: input.validTo ?? review.validTo ?? null,
-        source: "document",
-        ingestId: ingest.id,
-        basedOnVersionId: review.partialUpdate ? (review.activeVersion?.id ?? null) : null,
-        notes: input.notes ?? null,
-        userId: user.id,
-      },
-      today,
-    });
-    status = version.status;
-    statements.push(...version.statements);
-    const location = ingest.files[0]?.name ?? (ingest.emailSubject || "texto pegado");
-    for (const row of rows) {
+    if (includeCommissions && review.commissions.length > 0) {
       statements.push(
-        insertPriceStatement(versionId, {
-          ...row,
-          sourceLocation: location,
-          sourceExcerpt: row.sourceExcerpt,
-          sourceValues: row.sourceValues,
+        ...replaceCommissionRulesStatements({
+          comercializadoraId: review.supplier.id,
+          rules: review.commissions,
+          validFrom: input.validFrom,
+          ingestId: ingest.id,
+          userId: user.id,
         }),
       );
     }
-  }
 
-  if (includeCommissions && review.commissions.length > 0) {
     statements.push(
-      ...replaceCommissionRulesStatements({
-        comercializadoraId: review.supplier.id,
-        rules: review.commissions,
-        validFrom: input.validFrom,
-        ingestId: ingest.id,
-        userId: user.id,
-      }),
+      decideIngestStatement(ingest.id, { status: "approved", userId: user.id, versionId }),
     );
+    // Los niveles elegidos se recuerdan para el próximo anexo de comisiones.
+    const levelMap = Object.fromEntries(review.commissionLevels.map(({ level, mappedTo }) => [level, mappedTo]));
+    if (includeCommissions && Object.keys(levelMap).length > 0) {
+      statements.push({
+        sql: `UPDATE rate_ingests SET extraction = json_set(extraction, '$.levelMap', json(?)) WHERE id = ?`,
+        args: [JSON.stringify(levelMap), ingest.id],
+      });
+    }
+    await client.batch(statements, "write");
+    written = true;
+    return { versionId, status };
+  } finally {
+    if (!written) await releaseIngest(client, ingest.id, ingest.status);
   }
-
-  statements.push(
-    decideIngestStatement(ingest.id, { status: "approved", userId: user.id, versionId }),
-  );
-  // Los niveles elegidos se recuerdan para el próximo anexo de comisiones.
-  const levelMap = Object.fromEntries(review.commissionLevels.map(({ level, mappedTo }) => [level, mappedTo]));
-  if (includeCommissions && Object.keys(levelMap).length > 0) {
-    statements.push({
-      sql: `UPDATE rate_ingests SET extraction = json_set(extraction, '$.levelMap', json(?)) WHERE id = ?`,
-      args: [JSON.stringify(levelMap), ingest.id],
-    });
-  }
-  await client.batch(statements, "write");
-  return { versionId, status };
 }
 
 /** Por qué un anexo del buzón no se ha aprobado solo. */

@@ -17,6 +17,7 @@ import {
   listTenantRates,
 } from "./repository";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
+import { memoryReadingCache } from "./reading-cache";
 import { approveIngest, autoApproveIngest, buildReview, processIngest, RateIngestError } from "./service";
 import { rowKey, validateProposedCommissions, validateProposedRates } from "./validate";
 
@@ -176,6 +177,29 @@ describe("rate ingest service", () => {
 
     await client.execute("UPDATE rate_ingests SET processed_at = datetime('now', '-20 minutes') WHERE id = 'ing-1'");
     expect(await claimIngest(client, "ing-1")).toBe(true);
+  });
+
+  test("two approvals at the same time (the mailbox and a person) save one version", async () => {
+    const ingest = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    const approve = (userId: string) =>
+      approveIngest({ client, control, ingest, input: { validFrom: "2026-10-01" }, user: { id: userId }, today: "2026-10-07" });
+    const results = await Promise.allSettled([approve("email:buzon"), approve("backoffice-1")]);
+    expect(results.map(({ status }) => status).sort()).toEqual(["fulfilled", "rejected"]);
+    expect(results.find((result) => result.status === "rejected")).toMatchObject({ reason: { status: 409 } });
+
+    const { rows } = await client.execute("SELECT COUNT(*) AS n FROM comercializadora_rate_versions");
+    expect(Number(rows[0].n)).toBe(1);
+    expect((await listTenantRates(client, "COM-040")).filter(({ name }) => name === "Unicornio")).toHaveLength(1);
+    expect((await getIngest(client, ingest.id))?.status).toBe("approved");
+  });
+
+  test("an approval that fails gives the ingest back for review", async () => {
+    const ingest = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    const failing = { execute: control.execute.bind(control), batch: async () => Promise.reject(new Error("control caído")) };
+    await expect(
+      approveIngest({ client, control: failing, ingest, input: { validFrom: "2026-10-01" }, user: { id: "u1" }, today: "2026-10-07" }),
+    ).rejects.toThrow("control caído");
+    expect((await getIngest(client, ingest.id))?.status).toBe(ingest.status);
   });
 
   test("detects the supplier and adds new products to the catalog on approval", async () => {
@@ -582,6 +606,54 @@ describe("rate ingest service", () => {
     expect(chosen.commissions[0].covers).toEqual(["SOL S1 Sol 1"]);
   });
 
+  test("the same annex in another tenant reuses the reading; the same file approved again is a duplicate", async () => {
+    const readings = memoryReadingCache();
+    const files = [{ path: "comparador/x/tarifas/1/anexo.txt", name: "anexo.txt", mime: "text/plain", size: 10 }];
+    let calls = 0;
+    const read = async (tenant: Client, ingestId: string) =>
+      processIngest({
+        client: tenant,
+        ingest: (await getIngest(tenant, ingestId))!,
+        tenantSlug: "t",
+        userId: null,
+        readFile: async () => new TextEncoder().encode(QUIMERA_TEXT),
+        extract: async () => {
+          calls++;
+          return extractionResult([rate({})]);
+        },
+        readings,
+      });
+
+    const first = await createIngest(client, { channel: "email", comercializadoraId: "COM-040", files, createdBy: null });
+    expect(await read(client, first)).toBe("ready");
+    const other = await tenantDb();
+    const shared = await createIngest(other, { channel: "email", comercializadoraId: "COM-040", files, createdBy: null });
+    expect(await read(other, shared)).toBe("ready");
+    expect(calls).toBe(1);
+    expect((await getIngest(other, shared))?.costUsd).toBeNull();
+
+    // En el primer tenant se aprueba; si alguien lo reenvía, no se lee ni se aprueba otra vez.
+    await approveIngest({ client, control, ingest: (await getIngest(client, first))!, input: { validFrom: "2026-10-01" }, user: { id: "u1" }, today: "2026-10-07" });
+    const again = await createIngest(client, { channel: "email", comercializadoraId: "COM-040", files, createdBy: null });
+    expect(await read(client, again)).toBe("rejected");
+    expect((await getIngest(client, again))?.error).toContain("ya se aprobó");
+    expect(calls).toBe(1);
+  });
+
+  test("a doubtful reading is not shared with other tenants", async () => {
+    const readings = memoryReadingCache();
+    const files = [{ path: "comparador/x/tarifas/1/anexo.txt", name: "anexo.txt", mime: "text/plain", size: 10 }];
+    const id = await createIngest(client, { channel: "email", comercializadoraId: "COM-040", files, createdBy: null });
+    await processIngest({
+      client, ingest: (await getIngest(client, id))!, tenantSlug: "t", userId: null,
+      readFile: async () => new TextEncoder().encode(QUIMERA_TEXT),
+      extract: async () => extractionResult([rate({ energyP1: 0.99 })]),
+      readings,
+    });
+    expect((await getIngest(client, id))?.status).toBe("needs_review");
+    expect(readings.entries.size).toBe(0);
+  });
+
   test("reading the same file again replaces the pending reading", async () => {
     const files = [{ path: "comparador/test/tarifas/x/anexo.txt", name: "anexo.txt", mime: "text/plain", size: 10 }];
     const read = async (ingestId: string) => {
@@ -592,6 +664,7 @@ describe("rate ingest service", () => {
         userId: "user-1",
         readFile: async () => new TextEncoder().encode(QUIMERA_TEXT),
         extract: async () => extractionResult([rate({})]),
+        readings: null,
       });
     };
     const first = await createIngest(client, { channel: "upload", comercializadoraId: "COM-040", files, createdBy: "user-1" });

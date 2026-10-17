@@ -488,6 +488,52 @@ export async function claimIngest(client: QueryClient, id: string): Promise<bool
   return result.rowsAffected === 1;
 }
 
+/** Guarda la huella del fichero de una ingesta (las anteriores no la tienen). */
+export async function setIngestFileHash(client: QueryClient, id: string, sha256: string) {
+  await client.execute({
+    sql: "UPDATE rate_ingests SET files = json_set(files, '$[0].sha256', ?) WHERE id = ?",
+    args: [sha256, id],
+  });
+}
+
+/** Otra ingesta del tenant con el mismo fichero que ya se aprobó. */
+export async function findApprovedIngestByHash(
+  client: QueryClient,
+  sha256: string,
+  exceptId: string,
+): Promise<{ id: string; decidedAt: string | null } | null> {
+  const { rows } = await client.execute({
+    sql: `SELECT id, decided_at FROM rate_ingests
+      WHERE status = 'approved' AND id <> ? AND json_extract(files, '$[0].sha256') = ?
+      ORDER BY decided_at DESC LIMIT 1`,
+    args: [exceptId, sha256],
+  });
+  return rows[0] ? { id: String(rows[0].id), decidedAt: rows[0].decided_at ? String(rows[0].decided_at) : null } : null;
+}
+
+/**
+ * Reserva una ingesta para aprobarla: dos aprobaciones a la vez (el buzón y
+ * una persona) leerían las dos «ready» y guardarían dos versiones. Usa
+ * «processing», así que una aprobación cortada se rescata como una lectura
+ * cortada (claimIngest, a los 15 minutos).
+ */
+export async function reserveIngestForApproval(client: QueryClient, id: string): Promise<boolean> {
+  const result = await client.execute({
+    sql: `UPDATE rate_ingests SET status = 'processing', processed_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status IN ('ready', 'needs_review')`,
+    args: [id],
+  });
+  return result.rowsAffected === 1;
+}
+
+/** Deshace la reserva si la aprobación no ha llegado a guardarse. */
+export async function releaseIngest(client: QueryClient, id: string, status: IngestStatus) {
+  await client.execute({
+    sql: "UPDATE rate_ingests SET status = ? WHERE id = ? AND status = 'processing'",
+    args: [status, id],
+  });
+}
+
 export async function saveIngestResult(
   client: QueryClient,
   id: string,

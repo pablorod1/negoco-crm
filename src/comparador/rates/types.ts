@@ -118,6 +118,8 @@ export interface IngestFile {
   name: string;
   mime: string;
   size: number;
+  /** Huella del contenido, para no leer ni aprobar dos veces el mismo anexo. */
+  sha256?: string;
 }
 
 export interface CommissionRuleInput {
