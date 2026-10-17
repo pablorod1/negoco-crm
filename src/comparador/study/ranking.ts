@@ -14,6 +14,7 @@ import type { ActiveOfferPrice } from "@/comparador/rates/repository";
 import type { CommissionRule, RateChannel } from "@/comparador/rates/types";
 import { historyEnergyPrices } from "./indexed";
 import type { StudySupply } from "./supply";
+import { feePolicyFor, type FeePolicies, type FeePolicy } from "./settings";
 
 /** Cómo es la tarifa que paga hoy el cliente. */
 export type CurrentPricing = "fixed" | "indexed" | "flat";
@@ -113,7 +114,8 @@ export interface StudyOffer {
   /** Precios al cliente con el fee incluido (€/kW·día, €/kWh). Indexada: la media del año. */
   prices: TariffPrices;
   feeEnergyPerMwh: number;
-  feeRange: { min: number; max: number } | null;
+  /** Horquilla del fee: el mínimo del anexo y el máximo de la agencia (null: sin tope). */
+  feeRange: { min: number; max: number | null } | null;
   /** Fee de potencia aplicado (€/kW·año); 0 si la tarifa no lo admite. */
   feePowerPerKwYear: number;
   cost: CostBreakdown;
@@ -255,12 +257,20 @@ function discountInputs(priceId: string, parts: readonly DiscountPart[], exclude
   return { extras: { energyDiscountRates: energy, powerDiscountRates: power, fixedDiscounts: fixed }, views };
 }
 
-/** Fee de una tarifa: el elegido dentro de su horquilla, o el mínimo. */
-function feeFor(price: ActiveOfferPrice["price"], wanted: number | null) {
+/**
+ * Fee de una tarifa de precio base: el que pone el comercial o, si no, el
+ * habitual de la agencia para esa comercializadora; nunca por debajo del
+ * mínimo del anexo ni por encima del máximo (el del anexo o, si no lo da, el
+ * de la agencia; sin ninguno, sin tope). Sin habitual ni fee escrito, el
+ * mínimo.
+ */
+export function feeFor(price: Pick<ActiveOfferPrice["price"], "feeEnergyMinPerMwh" | "feeEnergyMaxPerMwh">, wanted: number | null, policy: FeePolicy = { habitual: null, max: null }) {
   const min = price.feeEnergyMinPerMwh;
   if (min === null) return { fee: 0, range: null };
-  const max = Math.max(price.feeEnergyMaxPerMwh ?? min, min);
-  const fee = wanted === null ? min : Math.min(Math.max(wanted, min), max);
+  const ceiling = price.feeEnergyMaxPerMwh ?? policy.max;
+  const max = ceiling === null ? null : Math.max(ceiling, min);
+  const chosen = wanted ?? policy.habitual ?? min;
+  const fee = Math.max(min, max === null ? chosen : Math.min(chosen, max));
   return { fee, range: { min, max } };
 }
 
@@ -278,6 +288,7 @@ export function rankStudy({
   options,
   indexHistory = [],
   gasRegulated,
+  feePolicies,
 }: {
   supply: StudySupply;
   current: CurrentTariff | null;
@@ -289,6 +300,8 @@ export function rankStudy({
   indexHistory?: readonly IndexHistoryRow[];
   /** Gas: impuesto de hidrocarburos e IVA. Hace falta si el suministro es de gas. */
   gasRegulated?: GasRegulatedParams;
+  /** El fee habitual y máximo de la agencia para los precios base. */
+  feePolicies?: FeePolicies;
 }): StudyRanking {
   const gas = supply.energy === "gas" ? supply.gas! : null;
   if (gas && !gasRegulated) throw new Error("rankStudy: gas supply without gas regulated params");
@@ -385,7 +398,7 @@ export function rankStudy({
       ? gasOfferPrices({ ...price, energy }, gasTollsOn(options.date, gas.accessTariff))
       : toTariffPrices({ ...price, energy }, regulated);
     if (!base) continue;
-    const { fee, range } = feeFor(price, options.feeEnergyPerMwh);
+    const { fee, range } = feeFor(price, options.feeEnergyPerMwh, feePolicyFor(feePolicies, offer.comercializadoraId));
     // Gas: el término fijo es por cliente, no por kW; no lleva fee.
     const powerFee = price.feePowerAllowed && !gas ? Math.max(0, options.feePowerPerKwYear ?? 0) : 0;
     const prices = applyFee(base, { energyPerMwh: fee, powerPerKwYear: powerFee });

@@ -4,7 +4,7 @@ import { inboundDomain } from "@/comparador/rates/inbound";
 import { listIndexHistory } from "@/comparador/rates/index-history";
 import { getSupplierRatesView } from "@/comparador/rates/views";
 import { ok, ratesError, requireRatesAccess } from "@/comparador/server/rates-route";
-import { getDefaultAncillary } from "@/comparador/study/settings";
+import { feePolicyFor, getDefaultAncillary, getFeePolicies } from "@/comparador/study/settings";
 
 /** Vista «Tarifas» de una comercializadora: catálogo, versión activa, historial e ingestas. */
 export async function GET(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const comercializadoraId = request.nextUrl.searchParams.get("comercializadora_id");
     if (!comercializadoraId) throw new RateIngestError("Falta comercializadora_id");
 
-    const [view, ancillaryDefault, indexHistory] = await Promise.all([
+    const [view, ancillaryDefault, indexHistory, feePolicies] = await Promise.all([
       getSupplierRatesView({
         client: access.context.client,
         comercializadoraId,
@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       }),
       getDefaultAncillary(access.context.client),
       listIndexHistory(access.context.client, comercializadoraId),
+      getFeePolicies(access.context.client),
     ]);
     // El buzón de anexos de este tenant: enviar un correo es la forma de actualizar precios.
     const domain = inboundDomain(process.env.COMPARADOR_INBOUND_DOMAIN);
@@ -33,6 +34,12 @@ export async function GET(request: NextRequest) {
       ancillaryDefault,
       // Lo que cobraron sus indexadas cada mes: con ello se ofertan.
       indexHistory,
+      // Fee que la agencia suma a sus precios base: el suyo y el general.
+      fee: {
+        own: feePolicies.bySupplier[comercializadoraId] ?? { habitual: null, max: null },
+        general: feePolicies.general.habitual,
+        effective: feePolicyFor(feePolicies, comercializadoraId),
+      },
       canManage: access.context.canManage,
       canManageCatalog: access.context.canManageCatalog,
     });

@@ -181,6 +181,7 @@ export function SupplierRatesView({
           {section === "tarifas" ? (
             <>
               {hasIndexed && <IndexHistoryPanel data={data} onSaved={load} />}
+              <FeePanel data={data} onSaved={load} />
               <AncillaryDefaultPanel data={data} onSaved={load} />
               {activity}
               {!hasIndexed && <IndexHistoryPanel data={data} onSaved={load} />}
@@ -594,6 +595,131 @@ function RowPrices({
         </p>
       )}
     </div>
+  );
+}
+
+/** «30» o «30,5» como número; null si está vacío; NaN si no es un número. */
+const feeOf = (text: string) => (text.trim() ? Number(text.replace(",", ".")) : null);
+const feeText = (value: number | null) => (value === null ? "" : String(value).replace(".", ","));
+const validFee = (value: number | null) => value === null || (Number.isFinite(value) && value >= 0 && value <= 500);
+
+/**
+ * El fee que la agencia suma a los precios base de la comercializadora: el
+ * habitual (el que se aplica en el estudio si el comercial no pone otro) y el
+ * máximo. Los anexos no lo traen: lo decide cada agencia. Uno general sirve
+ * para las comercializadoras sin uno propio.
+ */
+function FeePanel({ data, onSaved }: { data: SupplierRatesResponse; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({ habitual: "", max: "", general: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const baseProducts = data.rates.filter((product) => product.rows.some((row) => row.feeEnergyMinPerMwh !== null)).length;
+  const values = { habitual: feeOf(draft.habitual), max: feeOf(draft.max), general: feeOf(draft.general) };
+  const valid = validFee(values.habitual) && validFee(values.max) && validFee(values.general);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await ratesApi.saveFee(data.supplier.id, { habitual: values.habitual, max: values.max });
+      if (values.general !== data.fee.general) await ratesApi.saveFee(null, { habitual: values.general });
+      setEditing(false);
+      onSaved();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se ha podido guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const { own, general, effective } = data.fee;
+  return (
+    <Panel>
+      <PanelHeader
+        title="Fee de los precios base"
+        description={`Lo que suma vuestra agencia a los precios base de ${data.supplier.name}: los anexos no lo traen. En el estudio se aplica el habitual si el comercial no pone otro.`}
+        action={
+          data.canManage && !editing ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg"
+              onClick={() => {
+                setDraft({ habitual: feeText(own.habitual), max: feeText(own.max), general: feeText(general) });
+                setEditing(true);
+              }}
+            >
+              {own.habitual !== null || own.max !== null ? "Cambiar" : "Poner"}
+            </Button>
+          ) : undefined
+        }
+      />
+      <div className="space-y-3 px-5 pb-5 pt-3">
+        {editing ? (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="space-y-1 text-xs text-gray-600">
+                Habitual (€/MWh)
+                <input
+                  className="w-full rounded-md border px-2 py-1.5 text-sm"
+                  inputMode="decimal"
+                  placeholder={general !== null ? `General: ${feeText(general)}` : "Sin fijar"}
+                  value={draft.habitual}
+                  onChange={(event) => setDraft((current) => ({ ...current, habitual: event.target.value }))}
+                />
+              </label>
+              <label className="space-y-1 text-xs text-gray-600">
+                Máximo (€/MWh)
+                <input
+                  className="w-full rounded-md border px-2 py-1.5 text-sm"
+                  inputMode="decimal"
+                  placeholder="Sin tope"
+                  value={draft.max}
+                  onChange={(event) => setDraft((current) => ({ ...current, max: event.target.value }))}
+                />
+              </label>
+            </div>
+            <label className="block space-y-1 text-xs text-gray-600">
+              Habitual general, para las comercializadoras sin uno propio (€/MWh)
+              <input
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                inputMode="decimal"
+                placeholder="Sin fijar"
+                value={draft.general}
+                onChange={(event) => setDraft((current) => ({ ...current, general: event.target.value }))}
+              />
+            </label>
+            {!valid && <p className="text-xs text-danger">Escribe un número entre 0 y 500, o déjalo vacío.</p>}
+            {error && <p className="text-xs text-danger">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" disabled={saving} onClick={() => setEditing(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" disabled={saving || !valid} onClick={save}>
+                Guardar
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-semibold tabular-nums text-gray-900">
+              {effective.habitual !== null ? `Habitual ${feeText(effective.habitual)} €/MWh` : "Sin fee habitual"}
+              {effective.max !== null ? ` · máximo ${feeText(effective.max)} €/MWh` : ""}
+            </p>
+            <p className="text-xs text-gray-500">
+              {own.habitual === null && general !== null ? "Es el general de la agencia. " : ""}
+              {effective.habitual === null
+                ? "Sin él, los precios base se ofertan con el fee mínimo del anexo hasta que el comercial ponga otro. "
+                : ""}
+              {baseProducts > 0
+                ? `${baseProducts} ${baseProducts === 1 ? "tarifa" : "tarifas"} de ${data.supplier.name} ${baseProducts === 1 ? "es" : "son"} de precio base.`
+                : `Ninguna tarifa de ${data.supplier.name} es de precio base.`}
+            </p>
+          </>
+        )}
+      </div>
+    </Panel>
   );
 }
 

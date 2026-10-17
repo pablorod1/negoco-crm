@@ -31,6 +31,12 @@ export interface SupplierRatesResponse {
   mailbox: string | null;
   /** SSAA por defecto del tenant para las tarifas que los cobran aparte. */
   ancillaryDefault: AncillarySimulation | null;
+  /** Fee que la agencia suma a los precios base de esta comercializadora (€/MWh). */
+  fee: {
+    own: { habitual: number | null; max: number | null };
+    general: number | null;
+    effective: { habitual: number | null; max: number | null };
+  };
   /** Histórico del indexado: de toda la comercializadora (rateId null) o de una tarifa. */
   indexHistory: IndexHistoryRow[];
   canManage: boolean;
@@ -123,6 +129,12 @@ export const ratesApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ancillaryDefault: value }),
+    }),
+  saveFee: (comercializadoraId: string | null, value: { habitual: number | null; max?: number | null }) =>
+    request<unknown>("/api/v2/comparador/rates/fee", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comercializadoraId, ...value }),
     }),
   saveIndexHistory: (comercializadoraId: string, rateId: string | null, months: IndexHistoryMonth[]) =>
     request<{ saved: number }>("/api/v2/comparador/rates/index-history", {

@@ -260,7 +260,8 @@ export function toProposedRates(
       // Los servicios de ajuste son de la luz. En gas el campo dice si el
       // variable lleva los peajes (si no, se suman los del BOE).
       includesAncillaryServices: gas ? tollsIncluded : ancillaryIncluded(rate, sourceText),
-      feeEnergyMinPerMwh: rate.feeMinMwh,
+      // Un precio base admite el fee de la agencia aunque el anexo no dé el mínimo.
+      feeEnergyMinPerMwh: rate.feeMinMwh ?? (isBasePrice(rate) ? 0 : null),
       feeEnergyMaxPerMwh: rate.feeMaxMwh,
       feePowerAllowed: rate.feeOnPower,
       discounts: normalizeDiscounts(rate),

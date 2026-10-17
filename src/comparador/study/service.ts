@@ -47,7 +47,7 @@ import {
   type SavedStudyOptions,
   type StudyRecord,
 } from "./repository";
-import { getDefaultAncillary } from "./settings";
+import { getDefaultAncillary, getFeePolicies } from "./settings";
 import { detectSupplierInText } from "./supplier";
 import {
   annualKwhFromSips,
@@ -536,12 +536,13 @@ export async function rankSavedStudy({
   const effective: SavedStudyOptions = { ...study.options, ...options };
   const pricing = currentPricingOf(study, effective);
   const gas = study.supply.energy === "gas";
-  const [offers, rules, suggested, current, indexHistory] = await Promise.all([
+  const [offers, rules, suggested, current, indexHistory, feePolicies] = await Promise.all([
     listActiveOfferPrices(client, study.priceDate, gas ? "gas" : "electricity"),
     listCurrentCommissionRules(client, study.priceDate),
     getDefaultAncillary(client),
     resolveCurrent(client, study, pricing),
     listIndexHistory(client),
+    getFeePolicies(client),
   ]);
   // Los SSAA solo cuentan si el estudio los aplica; los del tenant son la propuesta.
   const ancillary = { value: effective.ancillary ?? null, suggested };
@@ -558,6 +559,7 @@ export async function rankSavedStudy({
     gasRegulated: gas ? withGasInvoiceTaxes(getGasRegulatedParams(study.priceDate), gasReading ? gasInvoiceTaxRates(gasReading) : {}) : undefined,
     options: { ...effective, customerType: customerType.value, ancillary: gas ? null : ancillary.value, date: study.priceDate },
     indexHistory,
+    feePolicies,
   });
   return {
     ranking,
