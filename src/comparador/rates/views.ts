@@ -11,7 +11,7 @@ import {
   type IngestRecord,
 } from "./repository";
 import { freshness, medianDecisionHours } from "./staleness";
-import { RateIngestError } from "./service";
+import { PENDING_PART_PREFIX, RateIngestError } from "./service";
 
 type TenantClient = Pick<Client, "execute" | "batch">;
 
@@ -21,7 +21,7 @@ export function summarizeIngest(ingest: IngestRecord) {
     status?: string;
     reason?: string;
     extraction?: { rates?: unknown[]; commissions?: unknown[] };
-    autoApproval?: { reason?: string };
+    autoApproval?: { reason?: string; approvedRows?: number; totalRows?: number; pendingIngestId?: string };
   } | null;
   const read = extraction?.extraction;
   return {
@@ -33,6 +33,17 @@ export function summarizeIngest(ingest: IngestRecord) {
     emailFrom: ingest.emailFrom,
     emailSubject: ingest.emailSubject,
     reason: extraction?.status === "out_of_scope" ? (extraction.reason ?? null) : null,
+    /** Aprobada en parte: cuántas tarifas se han aplicado y la parte que revisa Negoco. */
+    progress:
+      ingest.status === "approved" && extraction?.autoApproval?.pendingIngestId
+        ? {
+            approvedRows: extraction.autoApproval.approvedRows ?? 0,
+            totalRows: extraction.autoApproval.totalRows ?? 0,
+            pendingIngestId: extraction.autoApproval.pendingIngestId,
+          }
+        : null,
+    /** Si es lo que se apartó de otro anexo, el anexo del que sale. */
+    pendingPartOf: ingest.createdBy?.startsWith(PENDING_PART_PREFIX) ? ingest.createdBy.slice(PENDING_PART_PREFIX.length) : null,
     /** Por qué no se ha aprobado sola, si se ha intentado. */
     pendingReason: ["ready", "needs_review"].includes(ingest.status) ? (extraction?.autoApproval?.reason ?? null) : null,
     /** Qué trae el anexo, si ya se ha leído: cada vista (tarifas, comisiones) enseña lo suyo. */

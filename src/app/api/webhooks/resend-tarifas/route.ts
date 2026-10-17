@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
         approvedBy: senderId ?? `email:${senderAddress(from)}`,
         receivedOn: todayInSpain(),
       };
-      after(() => runInboundQueue(queue, new URL(INBOUND_QUEUE_PATH, request.url).toString(), secret));
+      after(() => runInboundQueue(queue, new URL(INBOUND_QUEUE_PATH, request.url).toString(), secret, request));
     }
 
     return NextResponse.json({ created: created.length });

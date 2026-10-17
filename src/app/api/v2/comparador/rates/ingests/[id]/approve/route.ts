@@ -1,9 +1,10 @@
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 import { z } from "zod";
 import { getTursoControlClient } from "@/core/libsql/client";
+import { notifyPricesUpdated } from "@/comparador/rates/notify-prices-updated";
 import { getIngest } from "@/comparador/rates/repository";
 import { approveIngest, RateIngestError, todayInSpain } from "@/comparador/rates/service";
-import { ok, ratesError, requireRatesAccess } from "@/comparador/server/rates-route";
+import { ok, ratesError, requireNegocoReview, requireRatesAccess } from "@/comparador/server/rates-route";
 
 const ApprovalSchema = z.object({
   validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -31,13 +32,14 @@ export async function POST(
   try {
     const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
+    requireNegocoReview(access.context);
     const { id } = await params;
     const parsed = ApprovalSchema.safeParse(await request.json());
     if (!parsed.success) {
       throw new RateIngestError("Indica la fecha de entrada en vigor (AAAA-MM-DD).");
     }
 
-    const { client, user } = access.context;
+    const { client, user, tenantSlug } = access.context;
     const ingest = await getIngest(client, id);
     if (!ingest) throw new RateIngestError("Ingesta no encontrada", 404);
 
@@ -49,6 +51,9 @@ export async function POST(
       user,
       today: todayInSpain(),
     });
+    // Si era lo último que faltaba del anexo, se avisa a quien lo envió.
+    const approved = await getIngest(client, id);
+    if (approved) after(() => notifyPricesUpdated({ client, ingest: approved, tenantSlug, request }));
     return ok(result);
   } catch (error) {
     return ratesError("approve ingest", error);

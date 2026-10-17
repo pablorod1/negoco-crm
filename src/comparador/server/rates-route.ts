@@ -42,6 +42,16 @@ export async function requireRatesAccess(request: NextRequest): Promise<RatesGua
   };
 }
 
+/**
+ * Decidir sobre un anexo (aprobar, descartar, corregir y volver a leer) es de
+ * Negoco: el tenant envía y Negoco revisa lo que no se aplica solo.
+ */
+export function requireNegocoReview(context: Pick<RatesContext, "canManageCatalog">) {
+  if (!context.canManageCatalog) {
+    throw new RateIngestError("Negoco está revisando este anexo: se aplicará en cuanto esté revisado.", 403);
+  }
+}
+
 export function ok<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(
     { success: true, data },

@@ -11,6 +11,7 @@ import { energyOfTariff } from "@/comparador/gas/regulated";
 import { powerToPerDay, toProposedCommissions } from "./normalize";
 import {
   claimIngest,
+  createIngest,
   decideIngestStatement,
   findApprovedIngestByHash,
   getActiveVersion,
@@ -125,7 +126,9 @@ export async function processIngest({
     if (sha256) {
       await setIngestFileHash(client, ingest.id, sha256);
       // El mismo fichero reenviado (dos personas, dos veces): ya está aprobado.
-      const approved = await findApprovedIngestByHash(client, sha256, ingest.id);
+      const approved = ingest.createdBy?.startsWith(PENDING_PART_PREFIX)
+        ? null
+        : await findApprovedIngestByHash(client, sha256, ingest.id);
       if (approved) {
         await client.batch(
           [
@@ -841,7 +844,14 @@ export async function approveIngest({
 
 /** Por qué un anexo del buzón no se ha aprobado solo. */
 export type AutoApproval =
-  | { approved: true; versionId: string | null }
+  | {
+      approved: true;
+      versionId: string | null;
+      /** Si se ha apartado algo: la ingesta en revisión y cuántas tarifas se han aprobado. */
+      pendingIngestId?: string;
+      approvedRows?: number;
+      totalRows?: number;
+    }
   | { approved: false; reason: string };
 
 /**
@@ -870,7 +880,7 @@ interface AutoApprovalInput {
  */
 export async function autoApproveIngest(input: AutoApprovalInput): Promise<AutoApproval> {
   const result = await tryAutoApprove(input);
-  if (!result.approved) await recordAutoApproval(input.client, input.ingest.id, result.reason);
+  if (!result.approved) await recordAutoApproval(input.client, input.ingest.id, { approved: false, reason: result.reason });
   return result;
 }
 
@@ -892,16 +902,42 @@ async function tryAutoApprove({
   }
   const built = await buildReview({ client, control, ingest, today, decisions: { partialUpdate: true } });
   if (!built) return { approved: false, reason: "no hay una lectura que aprobar" };
-  const { review } = built;
 
-  const blocking = review.issues.filter(({ severity }) => severity === "blocking");
-  if (blocking.length > 0) {
-    return { approved: false, reason: blocking.map(({ message }) => message).join(" · ") };
+  // Lo dudoso se aparta y se aprueba el resto: una fila con una cifra que no
+  // está en el documento no tiene por qué parar las otras nueve. Lo que afecta
+  // al anexo entero (una plantilla que no encaja) no se aprueba en parte.
+  const blocking = built.review.issues.filter(({ severity }) => severity === "blocking");
+  const isCommission = (code: string) => code.startsWith("commission");
+  const whole = blocking.filter(({ rowKey: key, code }) => !key && !isCommission(code));
+  if (whole.length > 0) {
+    return { approved: false, reason: whole.map(({ message }) => message).join(" · ") };
   }
+  const doubtfulRows = [...new Set(blocking.flatMap(({ rowKey: key, code }) => (key && !isCommission(code) ? [key] : [])))];
   // Una comisión con un nivel que no casa con ninguna tarifa no pagaría nunca.
-  const unmapped = review.commissionLevels.filter(({ mappedTo }) => !mappedTo).map(({ level }) => `«${level}»`);
-  if (unmapped.length > 0) {
-    return { approved: false, reason: `hay que indicar a qué nivel de las tarifas equivalen los niveles de comisión ${unmapped.join(", ")}` };
+  const unmapped = built.review.commissionLevels.filter(({ mappedTo }) => !mappedTo).map(({ level }) => `«${level}»`);
+  const commissionDoubts = [
+    ...blocking.filter(({ code }) => isCommission(code)).map(({ message }) => message),
+    ...(unmapped.length > 0 ? [`los niveles de comisión ${unmapped.join(", ")} no casan con ninguna tarifa`] : []),
+  ];
+  const decisions: ReviewDecisions = {
+    partialUpdate: true,
+    excludedRowKeys: doubtfulRows,
+    includeCommissions: commissionDoubts.length === 0,
+  };
+  const pendingReason = [
+    ...blocking.filter(({ rowKey: key, code }) => key && !isCommission(code)).map(({ message }) => message),
+    ...commissionDoubts,
+  ].join(" · ");
+
+  const kept = doubtfulRows.length > 0 || commissionDoubts.length > 0
+    ? await buildReview({ client, control, ingest, today, decisions })
+    : built;
+  if (!kept) return { approved: false, reason: "no hay una lectura que aprobar" };
+  const { review } = kept;
+  const rowsToSave = review.entries.filter(({ kind }) => kind !== "carried").length;
+  const commissionsToSave = decisions.includeCommissions ? review.commissions.length : 0;
+  if (rowsToSave === 0 && commissionsToSave === 0) {
+    return { approved: false, reason: pendingReason || "no hay ninguna fila que guardar" };
   }
 
   const validFrom = review.validFrom ?? receivedOn;
@@ -922,11 +958,78 @@ async function tryAutoApprove({
     client,
     control,
     ingest,
-    input: { validFrom, partialUpdate: true, notes: "Aprobada sola: llegó al buzón de anexos" },
+    input: { ...decisions, validFrom, notes: "Aprobada sola: llegó al buzón de anexos" },
     user: { id: approvedBy },
     today,
   });
-  return { approved: true, versionId };
+  if (!pendingReason) return { approved: true, versionId };
+
+  // Lo apartado queda en una ingesta aparte, para que lo revise Negoco.
+  const pendingIngestId = await createPendingPart(client, ingest, {
+    rowKeys: doubtfulRows,
+    commissions: commissionDoubts.length > 0,
+    validFrom,
+    reason: pendingReason,
+  });
+  const totalRows = rowsToSave + doubtfulRows.length;
+  await recordAutoApproval(client, ingest.id, {
+    approved: true,
+    reason: pendingReason,
+    approvedRows: rowsToSave,
+    totalRows,
+    pendingIngestId,
+  });
+  return { approved: true, versionId, pendingIngestId, approvedRows: rowsToSave, totalRows };
+}
+
+/** Prefijo de `created_by` de una parte pendiente: la ingesta de la que sale. */
+export const PENDING_PART_PREFIX = "comparador:parte-de:";
+
+/**
+ * Las filas (y, si toca, las comisiones) que la aprobación automática ha
+ * apartado de un anexo, como una ingesta nueva en revisión. Lleva la misma
+ * lectura recortada y el mismo fichero, para verlo y volver a leerlo.
+ */
+async function createPendingPart(
+  client: TenantClient,
+  parent: IngestRecord,
+  { rowKeys, commissions, validFrom, reason }: { rowKeys: string[]; commissions: boolean; validFrom: string; reason: string },
+): Promise<string> {
+  const result = parent.extraction as ExtractedResult;
+  const keep = new Set(rowKeys);
+  const indexes = result.proposed.flatMap((row, index) => (keep.has(rowKey(row)) ? [index] : []));
+  const extraction: ExtractedResult = {
+    ...result,
+    extraction: {
+      ...result.extraction,
+      validFrom: result.extraction.validFrom ?? validFrom,
+      rates: indexes.map((index) => result.extraction.rates[index]),
+      commissions: commissions ? result.extraction.commissions : [],
+    },
+    proposed: indexes.map((index) => result.proposed[index]),
+    issues: result.issues.filter(({ rowKey: key, code }) =>
+      key ? keep.has(key) : code.startsWith("commission") ? commissions : true,
+    ),
+  };
+  const id = await createIngest(client, {
+    channel: parent.channel,
+    comercializadoraId: parent.comercializadoraId,
+    files: parent.files,
+    bodyText: parent.bodyText,
+    emailFrom: parent.emailFrom,
+    emailSubject: parent.emailSubject,
+    createdBy: `${PENDING_PART_PREFIX}${parent.id}`,
+  });
+  await saveIngestResult(client, id, {
+    status: "needs_review",
+    comercializadoraId: parent.comercializadoraId,
+    classification: result.classification,
+    extraction: { ...extraction, autoApproval: { approved: false, reason, at: new Date().toISOString() } },
+    validation: extraction.issues,
+    models: [],
+    costUsd: null,
+  });
+  return id;
 }
 
 export async function rejectIngest({

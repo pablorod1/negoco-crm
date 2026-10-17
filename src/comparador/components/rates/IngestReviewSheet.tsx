@@ -357,7 +357,9 @@ export function IngestReviewSheet({
     ({ severity, code }) =>
       severity === "blocking" && !(code === "commission_not_in_source" && !includeCommissions),
   );
-  const canDecide = detail?.canManage && ["ready", "needs_review"].includes(detail.ingest.status);
+  // Decidir es de Negoco: el tenant envía el anexo y ve en qué está.
+  const canDecide = detail?.canManageCatalog && ["ready", "needs_review"].includes(detail.ingest.status);
+  const negocoReviewing = !detail?.canManageCatalog && ["ready", "needs_review", "failed"].includes(detail?.ingest.status ?? "");
   // Un anexo solo de comisiones no toca los precios: la tabla solo repetiría los vigentes.
   const bringsPrices = Boolean(review?.entries.some(({ kind }) => kind !== "carried"));
   const savesCommissions = Boolean(review?.commissions.length) && includeCommissions;
@@ -444,7 +446,17 @@ export function IngestReviewSheet({
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {loading && <Loader2 className="h-5 w-5 animate-spin" />}
           {error && <p className="text-sm text-danger">{error}</p>}
-          {ingest?.pendingReason && (
+          {negocoReviewing && (
+            <p className="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-800">
+              Negoco está revisando este anexo: se aplicará en cuanto esté revisado. No tenéis que hacer nada.
+            </p>
+          )}
+          {ingest?.progress && (
+            <p className="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-700">
+              Se han aplicado {ingest.progress.approvedRows} de {ingest.progress.totalRows} tarifas. Negoco está revisando el resto.
+            </p>
+          )}
+          {ingest?.pendingReason && detail?.canManageCatalog && (
             <p className="text-sm text-warning-600">No se ha aprobado sola: {ingest.pendingReason}.</p>
           )}
 
@@ -454,7 +466,7 @@ export function IngestReviewSheet({
               {ingest.status === "failed" && <p className="text-danger">Ha fallado: {ingest.error}</p>}
               {["received", "failed", "needs_review", "out_of_scope"].includes(ingest.status) && (
                 <>
-                  {!ingest.comercializadoraId && (
+                  {!ingest.comercializadoraId && detail?.canManageCatalog && (
                     <div className="space-y-1 max-w-sm">
                       <Label htmlFor="ingest-supplier">¿De qué comercializadora es?</Label>
                       <select
@@ -472,7 +484,7 @@ export function IngestReviewSheet({
                       </select>
                     </div>
                   )}
-                  {detail?.canManage && (
+                  {(ingest.status === "received" ? detail?.canManage : detail?.canManageCatalog) && (
                     <Button
                       variant="outline"
                       disabled={busy !== null || (!ingest.comercializadoraId && !supplierId)}

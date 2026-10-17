@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { getTursoClientByTenant, getTursoControlClient } from "@/core/libsql/client";
+import { notifyPricesUpdated } from "@/comparador/rates/notify-prices-updated";
 import { getIngest } from "@/comparador/rates/repository";
 import { autoApproveIngest, processIngest, todayInSpain } from "@/comparador/rates/service";
 
@@ -33,7 +34,7 @@ export function verifyInboundQueue(body: string, signature: string | null, secre
 }
 
 /** Lee y aprueba el primer anexo de la cola y pasa el resto a otra llamada. */
-export async function runInboundQueue(queue: InboundQueue, continueUrl: string, secret: string) {
+export async function runInboundQueue(queue: InboundQueue, continueUrl: string, secret: string, request: Request) {
   const [id, ...rest] = queue.ids;
   const { tenantSlug } = queue;
   if (id) {
@@ -54,6 +55,10 @@ export async function runInboundQueue(queue: InboundQueue, continueUrl: string, 
           });
           if (result.approved) {
             console.info("[comparador] anexo aprobado solo", { tenantSlug, id, versionId: result.versionId });
+            if (!result.pendingIngestId) {
+              const approved = await getIngest(client, id);
+              if (approved) await notifyPricesUpdated({ client, ingest: approved, tenantSlug, request });
+            }
           } else {
             console.warn("[comparador] anexo sin aprobar", { tenantSlug, id, reason: result.reason });
           }

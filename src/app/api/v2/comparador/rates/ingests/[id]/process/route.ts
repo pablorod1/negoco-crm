@@ -1,8 +1,9 @@
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 import { getTursoControlClient } from "@/core/libsql/client";
+import { notifyPricesUpdated } from "@/comparador/rates/notify-prices-updated";
 import { getIngest } from "@/comparador/rates/repository";
 import { autoApproveIngest, dayInSpain, processIngest, RateIngestError, todayInSpain } from "@/comparador/rates/service";
-import { ok, ratesError, requireRatesAccess } from "@/comparador/server/rates-route";
+import { ok, ratesError, requireNegocoReview, requireRatesAccess } from "@/comparador/server/rates-route";
 
 /** La extracción de un anexo largo (Iberdrola, Axpo) tarda hasta un par de minutos. */
 export const maxDuration = 300;
@@ -24,6 +25,8 @@ export async function POST(
 
     const ingest = await getIngest(client, id);
     if (!ingest) throw new RateIngestError("Ingesta no encontrada", 404);
+    // Leer un anexo recién subido es del tenant; volver a leerlo, de Negoco.
+    if (ingest.status !== "received") requireNegocoReview(access.context);
 
     const status = await processIngest({ client, ingest, tenantSlug, userId: user.id });
     if (status !== "ready" && status !== "needs_review") return ok({ id, status });
@@ -38,6 +41,10 @@ export async function POST(
       receivedOn: dayInSpain(ingest.receivedAt),
       today: todayInSpain(),
     });
+    if (result.approved && !result.pendingIngestId) {
+      const approved = await getIngest(client, id);
+      if (approved) after(() => notifyPricesUpdated({ client, ingest: approved, tenantSlug, request }));
+    }
     return ok({ id, status: result.approved ? "approved" : status });
   } catch (error) {
     return ratesError("process ingest", error);

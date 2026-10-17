@@ -164,7 +164,9 @@ export function SupplierRatesView({
     <div className="space-y-6">
       <RatesHeader data={data} section={section} onUpload={() => setUploadOpen(true)} />
 
-      {attention.length > 0 && <AttentionPanel ingests={attention} onOpen={setReviewing} />}
+      {attention.length > 0 && (
+        <AttentionPanel ingests={attention} onOpen={setReviewing} reviewer={data.canManageCatalog} />
+      )}
 
       {/* La columna lateral va arriba: el histórico se ve sin bajar por todas las tarifas. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
@@ -335,12 +337,30 @@ function MailboxAddress({ address }: { address: string }) {
 }
 
 /** Solo si algo necesita a una persona: lecturas dudosas, errores o anexos sin leer. */
-function AttentionPanel({ ingests, onOpen }: { ingests: IngestSummary[]; onOpen: (id: string) => void }) {
+function AttentionPanel({
+  ingests,
+  onOpen,
+  reviewer,
+}: {
+  ingests: IngestSummary[];
+  onOpen: (id: string) => void;
+  /** Negoco revisa; el tenant solo ve que se está revisando. */
+  reviewer: boolean;
+}) {
+  const many = ingests.length > 1;
   return (
     <Panel className="bg-warning-50/40 ring-warning-200">
       <PanelHeader
-        title={ingests.length === 1 ? "Un anexo necesita revisión" : `${ingests.length} anexos necesitan revisión`}
-        description="No se han podido aplicar solos: la lectura no cuadra con el documento o ha fallado."
+        title={
+          reviewer
+            ? many ? `${ingests.length} anexos necesitan revisión` : "Un anexo necesita revisión"
+            : many ? `Negoco está revisando ${ingests.length} anexos` : "Negoco está revisando un anexo"
+        }
+        description={
+          reviewer
+            ? "No se han podido aplicar solos: la lectura no cuadra con el documento o ha fallado."
+            : "Se aplicarán en cuanto estén revisados. No tenéis que hacer nada."
+        }
       />
       <ul className="divide-y divide-warning-100 px-5 pb-3 pt-2">
         {ingests.map((ingest) => (
@@ -350,8 +370,8 @@ function AttentionPanel({ ingests, onOpen }: { ingests: IngestSummary[]; onOpen:
               <p className="truncate text-sm font-medium text-gray-900">{ingestTitle(ingest)}</p>
               <p className="truncate text-xs text-gray-500">{ingest.error ?? ingest.reason ?? statusText(ingest).label}</p>
             </div>
-            <Button size="sm" className="rounded-lg" onClick={() => onOpen(ingest.id)}>
-              Revisar
+            <Button size="sm" variant={reviewer ? "default" : "outline"} className="rounded-lg" onClick={() => onOpen(ingest.id)}>
+              {reviewer ? "Revisar" : "Ver"}
             </Button>
           </li>
         ))}
@@ -784,10 +804,15 @@ const ingestTitle = (ingest: IngestSummary) => ingest.fileName ?? ingest.emailSu
 function statusText(ingest: IngestSummary): { label: string; className: string } {
   switch (ingest.status) {
     case "approved":
-      return {
-        label: ingest.channel === "email" ? "Aplicado solo" : "Aplicado",
-        className: "bg-success-50 text-success-700 ring-success-200",
-      };
+      return ingest.progress
+        ? {
+            label: `Aplicado en parte · ${ingest.progress.approvedRows}/${ingest.progress.totalRows}`,
+            className: "bg-success-50 text-success-700 ring-success-200",
+          }
+        : {
+            label: ingest.channel === "email" ? "Aplicado solo" : "Aplicado",
+            className: "bg-success-50 text-success-700 ring-success-200",
+          };
     case "rejected":
       return { label: "Descartado", className: "bg-gray-100 text-gray-600 ring-gray-200" };
     case "out_of_scope":
@@ -798,7 +823,7 @@ function statusText(ingest: IngestSummary): { label: string; className: string }
     case "received":
       return { label: "Leyendo", className: "bg-info-50 text-info-700 ring-info-200" };
     default:
-      return { label: "Por revisar", className: "bg-warning-50 text-warning-700 ring-warning-200" };
+      return { label: "En revisión por Negoco", className: "bg-warning-50 text-warning-700 ring-warning-200" };
   }
 }
 

@@ -2,9 +2,9 @@
 import { createClient, type Client } from "@libsql/client";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { RateExtractionResult } from "./extract";
-import { toProposedRates } from "./normalize";
+import { toProposedCommissions, toProposedRates } from "./normalize";
 import {
   claimIngest,
   createIngest,
@@ -18,6 +18,19 @@ import {
 } from "./repository";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
 import { memoryReadingCache } from "./reading-cache";
+import { notifyPricesUpdated, tenantAppUrl } from "./notify-prices-updated";
+
+const sendMail = vi.fn(async () => ({}));
+vi.mock("nodemailer", () => ({ default: { createTransport: () => ({ sendMail }) } }));
+vi.mock("@/core/branding/email", () => ({
+  resolveEmailBranding: async () => ({
+    branding: { displayName: "Negoco" },
+    logoUrl: "https://negococloud.es/logo.png",
+    theme: { bodyBg: "#fff", headerBg: "#fff", heading: "#000", buttonBg: "#000", mutedBg: "#eee", subtleBg: "#eee", border: "#ddd", link: "#00f" },
+  }),
+  getEmailTransportConfig: () => ({}),
+  getEmailFrom: () => ({ address: "noreply@negococloud.es", name: "Negoco" }),
+}));
 import { summarizeIngest } from "./views";
 import { approveIngest, autoApproveIngest, buildReview, processIngest, RateIngestError } from "./service";
 import { rowKey, validateProposedCommissions, validateProposedRates } from "./validate";
@@ -423,6 +436,89 @@ describe("rate ingest service", () => {
     if (nameless.status !== "out_of_scope") nameless.extraction.supplierName = "Comercializadora que no existe";
     const unknown = await ingestWith(client, nameless, null);
     expect(await auto(unknown)).toMatchObject({ approved: false, reason: "no se ha reconocido la comercializadora del anexo" });
+  });
+
+  test("a doubtful row is set aside for Negoco and the rest is approved", async () => {
+    // Fénix está en el documento; Unicornio trae una energía que no aparece.
+    const ingest = await ingestWith(
+      client,
+      extractionResult([
+        rate({ energyP1: 0.99999 }),
+        rate({ productName: "Fénix", energyP1: 0.23011, energyP2: 0.1612, energyP3: 0.13554, powerMode: "regulated", powerUnit: null, powerP1: null, powerP2: null }),
+      ]),
+      "COM-040",
+    );
+    expect(ingest.status).toBe("needs_review");
+    const result = await autoApproveIngest({ client, control, ingest, approvedBy: "email:jorge", receivedOn: "2026-10-08", today: "2026-10-08" });
+    expect(result).toMatchObject({ approved: true, approvedRows: 1, totalRows: 2, pendingIngestId: expect.any(String) });
+
+    const prices = await getVersionPrices(client, (result as { versionId: string }).versionId);
+    expect(prices.map(({ rateName }) => rateName)).toEqual(["Fénix"]);
+
+    const pending = (await getIngest(client, (result as { pendingIngestId: string }).pendingIngestId))!;
+    expect(pending).toMatchObject({ status: "needs_review", comercializadoraId: "COM-040", createdBy: `comparador:parte-de:${ingest.id}` });
+    expect((pending.extraction as { proposed: { productName: string }[] }).proposed.map(({ productName }) => productName)).toEqual(["Unicornio"]);
+    expect(summarizeIngest((await getIngest(client, ingest.id))!)).toMatchObject({ status: "approved" });
+  });
+
+  test("doubtful commissions wait for Negoco while the prices are approved", async () => {
+    const band = { energy: null, accessTariff: "2.0TD", pricing: "fixed" as const, channel: null, minKwh: null, maxKwh: null, ruleType: "fixed" as const, feeBase: null, minKw: null, maxKw: null, minAmount: null };
+    const read = extractionResult([rate({})], { commissions: [{ ...band, productName: "Unicornio", level: null, amount: 777 }] });
+    if (read.status !== "out_of_scope") read.issues.push(...validateProposedCommissions(toProposedCommissions(read.extraction), QUIMERA_TEXT));
+    const ingest = await ingestWith(client, read, "COM-040");
+    const result = await autoApproveIngest({ client, control, ingest, approvedBy: "email:jorge", receivedOn: "2026-10-08", today: "2026-10-08" });
+    expect(result).toMatchObject({ approved: true, pendingIngestId: expect.any(String) });
+    expect(await listCurrentCommissionRules(client, "2026-10-08")).toEqual([]);
+    const pending = (await getIngest(client, (result as { pendingIngestId: string }).pendingIngestId))!;
+    expect((pending.extraction as { extraction: { commissions: unknown[]; rates: unknown[] } }).extraction).toMatchObject({ rates: [], commissions: [expect.anything()] });
+  });
+
+  test("a problem with the whole annex is not approved in part", async () => {
+    const result = extractionResult([rate({})]);
+    if (result.status !== "out_of_scope") result.issues.push({ severity: "blocking", code: "partial_read", message: "La plantilla no encaja: hoja X." });
+    const ingest = await ingestWith(client, result, "COM-040");
+    expect(await autoApproveIngest({ client, control, ingest, approvedBy: "email:jorge", receivedOn: "2026-10-08", today: "2026-10-08" })).toEqual({
+      approved: false,
+      reason: "La plantilla no encaja: hoja X.",
+    });
+  });
+
+  test("the sender hears about the updated prices once the whole annex is applied", async () => {
+    vi.stubEnv("COMPARADOR_PRICE_UPDATE_EMAILS", "1");
+    sendMail.mockClear();
+    await client.execute("CREATE TABLE user (id TEXT PRIMARY KEY, email TEXT, name TEXT, banned INTEGER)");
+    await client.execute("INSERT INTO user (id, email, name) VALUES ('u-jorge', 'jorge@beenergy.es', 'Jorge')");
+    const request = new Request("https://api.negococloud.es/api/webhooks/resend-tarifas");
+
+    // Unicornio no trae potencia y no hay versión anterior: se aparta.
+    const read = extractionResult([
+      rate({ powerMode: "not_stated", powerUnit: null, powerP1: null, powerP2: null }),
+      rate({ productName: "Fénix", energyP1: 0.23011, energyP2: 0.1612, energyP3: 0.13554, powerMode: "regulated", powerUnit: null, powerP1: null, powerP2: null }),
+    ]);
+    const id = await createIngest(client, { channel: "email", comercializadoraId: "COM-040", files: [], bodyText: QUIMERA_TEXT, emailFrom: "Jorge <jorge@beenergy.es>", createdBy: null });
+    await processIngest({ client, ingest: (await getIngest(client, id))!, tenantSlug: "beenergy", userId: null, extract: async () => read, readings: null });
+    const result = await autoApproveIngest({ client, control, ingest: (await getIngest(client, id))!, approvedBy: "u-jorge", receivedOn: "2026-10-08", today: "2026-10-08" });
+    expect(result).toMatchObject({ approved: true, pendingIngestId: expect.any(String) });
+
+    // Falta la parte que revisa Negoco: todavía no se avisa.
+    expect(await notifyPricesUpdated({ client, ingest: (await getIngest(client, id))!, tenantSlug: "beenergy", request })).toBe(false);
+
+    const pending = (await getIngest(client, (result as { pendingIngestId: string }).pendingIngestId))!;
+    const key = rowKey((pending.extraction as { proposed: Parameters<typeof rowKey>[0][] }).proposed[0]);
+    await approveIngest({ client, control, ingest: pending, input: { validFrom: "2026-10-08", regulatedPowerRowKeys: [key] }, user: { id: "negoco-1" }, today: "2026-10-08" });
+    expect(await notifyPricesUpdated({ client, ingest: (await getIngest(client, pending.id))!, tenantSlug: "beenergy", request })).toBe(true);
+    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: "jorge@beenergy.es", subject: "Precios de Quimera actualizados" }));
+    vi.unstubAllEnvs();
+  });
+
+  test("price emails stay off unless they are switched on, and link to each tenant's CRM", async () => {
+    vi.stubEnv("COMPARADOR_PRICE_UPDATE_EMAILS", "");
+    const ingest = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    expect(await notifyPricesUpdated({ client, ingest, tenantSlug: "beenergy", request: new Request("https://x.es/") })).toBe(false);
+    vi.unstubAllEnvs();
+    expect(tenantAppUrl("beenergy", new Request("https://beenergy-comparador.negococloud.es/api/v2/x"))).toBe("https://beenergy-comparador.negococloud.es");
+    expect(tenantAppUrl("beenergy", new Request("https://api.negococloud.es/api/webhooks/x"), { COMPARADOR_TENANT_URL: "https://{tenant}-comparador.negococloud.es" })).toBe("https://beenergy-comparador.negococloud.es");
+    expect(tenantAppUrl("nasertel", undefined, {})).toBe("https://nasertel.negococloud.es");
   });
 
   test("the reviewer can type the power a supplier sends in another document", async () => {

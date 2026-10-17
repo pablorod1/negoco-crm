@@ -5,7 +5,7 @@ import { getComercializadora, getIngest } from "@/comparador/rates/repository";
 import { buildReview, RateIngestError, todayInSpain } from "@/comparador/rates/service";
 import { ingestFileUrl } from "@/comparador/rates/storage";
 import { summarizeIngest } from "@/comparador/rates/views";
-import { ok, ratesError, requireRatesAccess } from "@/comparador/server/rates-route";
+import { ok, ratesError, requireNegocoReview, requireRatesAccess } from "@/comparador/server/rates-route";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -49,6 +49,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
+    requireNegocoReview(access.context);
     const { id } = await params;
     const parsed = PatchSchema.safeParse(await request.json());
     if (!parsed.success) throw new RateIngestError("Falta comercializadora_id");

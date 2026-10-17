@@ -22,6 +22,6 @@ export async function POST(request: NextRequest) {
   }
 
   const queue = JSON.parse(body) as InboundQueue;
-  after(() => runInboundQueue(queue, request.url, secret));
+  after(() => runInboundQueue(queue, request.url, secret, request));
   return NextResponse.json({ queued: queue.ids.length }, { status: 202 });
 }
