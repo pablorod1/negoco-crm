@@ -51,19 +51,27 @@ function visibleCommission(
 }
 
 /** Una propuesta generada, con el enlace a su PDF. */
-export function proposalView(proposal: ProposalRecord, audience: CommissionAudience, energy: "electricity" | "gas") {
+export function proposalView(
+  proposal: ProposalRecord,
+  audience: CommissionAudience,
+  energy: "electricity" | "gas",
+  principalId: string | null = null,
+) {
   return {
     id: proposal.id,
     number: proposal.number,
     offerKey: proposal.offerKey,
     comercializadoraName: proposal.comercializadoraName,
     productName: proposal.productName,
+    pricing: proposal.document.offer.pricing === "indexed" ? ("indexed" as const) : ("fixed" as const),
     feeEnergyPerMwh: proposal.feeEnergyPerMwh,
     annualTotal: proposal.annualTotal,
     savings: proposal.savings,
     commission: visibleCommission(audience, proposal, energy),
     createdAt: proposal.createdAt,
     chosen: proposal.chosenAt !== null,
+    /** Con varias aceptadas, la principal: la de la comercializadora de la comparativa. */
+    principal: proposal.id === principalId,
     pdfUrl: `/api/v2/comparador/proposals/${proposal.id}/pdf`,
   };
 }
@@ -154,7 +162,7 @@ export function studyView(
     /** Indexadas que no se ofertan por falta de histórico de sus meses de consumo. */
     withoutHistory: ranking?.withoutHistory ?? [],
     noSavings: ranking?.noSavings ?? false,
-    proposals: proposals.map((proposal) => proposalView(proposal, audience, energy)),
+    proposals: proposals.map((proposal) => proposalView(proposal, audience, energy, study.chosenOffer?.proposalId ?? null)),
   };
 }
 

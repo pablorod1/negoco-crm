@@ -6,6 +6,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { CostBreakdown } from "@/comparador/engine/types";
 import { StudyClientDataSchema } from "./client-data";
+import { acceptedProposalsError } from "./accepted";
 import { closeStudy, type ProposalUploader } from "./close";
 import { createProposal, findSameProposal, listProposals, proposalFileName } from "./proposals";
 import type { StudyOffer } from "./ranking";
@@ -186,7 +187,7 @@ describe("close study", () => {
     const chosen = await propose();
     const { upload } = uploader();
 
-    const { fileId } = await closeStudy({ client, study, proposal: chosen, pdf: new Uint8Array([1, 2, 3]), userId: "user-1", upload });
+    const { fileIds: [fileId] } = await closeStudy({ client, study, accepted: [{ proposal: chosen, pdf: new Uint8Array([1, 2, 3]) }], userId: "user-1", upload });
 
     expect(upload).toHaveBeenCalledWith(
       expect.objectContaining({ path: expect.stringMatching(/^org-1\/comparativas\/cmp-1\/.+Propuesta 2 - Eleia/) }),
@@ -225,7 +226,7 @@ describe("close study", () => {
       name: "Ana", lastName: "García", kind: "Particular", documentNumber: "12345678Z",
       iban: "ES91 2100 0418 4502 0005 1332", postalCode: "28001", city: "Madrid", province: "Madrid",
     });
-    await closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload, clientData });
+    await closeStudy({ client, study, accepted: [{ proposal: await propose(), pdf: new Uint8Array([1]) }], userId: "user-1", upload, clientData });
     expect((await getStudy(client, study.id))?.clientData).toMatchObject({
       name: "Ana", documentNumber: "12345678Z", email: null, postalCode: "28001",
     });
@@ -236,7 +237,7 @@ describe("close study", () => {
     const { upload } = uploader();
     const chosen = await propose({ pricing: "indexed", indexHistory: { from: "2025-05", to: "2026-04" } });
     expect(chosen.document.offer).toMatchObject({ pricing: "indexed", indexHistory: { from: "2025-05", to: "2026-04" } });
-    await closeStudy({ client, study, proposal: chosen, pdf: new Uint8Array([1]), userId: "user-1", upload });
+    await closeStudy({ client, study, accepted: [{ proposal: chosen, pdf: new Uint8Array([1]) }], userId: "user-1", upload });
     expect((await client.execute("SELECT plan, comision_fijo, comision_indexado FROM comparativas")).rows[0]).toMatchObject({
       plan: '["fijo","indexado"]',
       comision_fijo: null,
@@ -244,10 +245,62 @@ describe("close study", () => {
     });
   });
 
+  test("a fixed and an indexed one: both documents, both plans, each with its commission, the principal's supplier", async () => {
+    await client.execute(`UPDATE comparativas SET plan = '[]'`);
+    const { upload } = uploader();
+    const indexed = await propose({ key: "price-idx", pricing: "indexed", comercializadoraId: "COM-005", commission: 30 });
+    const fixed = await propose({ key: "price-net", comercializadoraId: "COM-009", comercializadoraName: "NET", commission: 45 });
+    const { fileIds } = await closeStudy({
+      client,
+      study,
+      accepted: [{ proposal: fixed, pdf: new Uint8Array([1]) }, { proposal: indexed, pdf: new Uint8Array([2]) }],
+      userId: "user-1",
+      upload,
+    });
+    expect(fileIds).toHaveLength(2);
+    expect((await client.execute("SELECT plan, company_id, comision_fijo, comision_indexado FROM comparativas")).rows[0]).toMatchObject({
+      plan: '["fijo","indexado"]',
+      company_id: "COM-009",
+      comision_fijo: 45,
+      comision_indexado: 30,
+    });
+    expect((await client.execute("SELECT COUNT(*) AS n FROM comparativa_files")).rows[0].n).toBe(2);
+    expect((await listProposals(client, study.id)).every(({ chosenAt }) => chosenAt !== null)).toBe(true);
+    expect((await getStudy(client, study.id))?.chosenOffer).toMatchObject({ proposalId: fixed.id, alsoAccepted: [indexed.id] });
+  });
+
+  test("a multiple of fixed rates takes the principal's commission; other combinations are refused before uploading", async () => {
+    const { upload } = uploader();
+    const first = await propose({ key: "a", commission: 45 });
+    const second = await propose({ key: "b", commission: 80 });
+    const third = await propose({ key: "c", commission: 20 });
+    const indexed = await propose({ key: "d", pricing: "indexed" });
+    const pdf = new Uint8Array([1]);
+    await expect(
+      closeStudy({ client, study, accepted: [first, second, indexed].map((proposal) => ({ proposal, pdf })), userId: "user-1", upload }),
+    ).rejects.toThrow("solo una fija");
+    expect(upload).not.toHaveBeenCalled();
+
+    await closeStudy({ client, study, accepted: [second, first, third].map((proposal) => ({ proposal, pdf })), userId: "user-1", upload });
+    expect((await client.execute("SELECT comision_fijo FROM comparativas")).rows[0].comision_fijo).toBe(80);
+    expect(upload).toHaveBeenCalledTimes(3);
+  });
+
+  test("which proposals can be accepted together", () => {
+    expect(acceptedProposalsError(["fixed"])).toBeNull();
+    expect(acceptedProposalsError(["indexed"])).toBeNull();
+    expect(acceptedProposalsError(["fixed", "indexed"])).toBeNull();
+    expect(acceptedProposalsError(["fixed", "fixed", "fixed"])).toBeNull();
+    expect(acceptedProposalsError([])).not.toBeNull();
+    expect(acceptedProposalsError(["indexed", "indexed"])).not.toBeNull();
+    expect(acceptedProposalsError(["fixed", "fixed", "indexed"])).not.toBeNull();
+    expect(acceptedProposalsError(["fixed", "fixed", "fixed", "fixed"])).not.toBeNull();
+  });
+
   test("a commission that was already set is not overwritten", async () => {
     await client.execute("UPDATE comparativas SET comision_fijo = 30");
     const { upload } = uploader();
-    await closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload });
+    await closeStudy({ client, study, accepted: [{ proposal: await propose(), pdf: new Uint8Array([1]) }], userId: "user-1", upload });
     expect((await client.execute("SELECT comision_fijo FROM comparativas")).rows[0].comision_fijo).toBe(30);
   });
 
@@ -255,7 +308,7 @@ describe("close study", () => {
     await client.execute("UPDATE comparativas SET status = 'completed'");
     const { upload } = uploader();
     await expect(
-      closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload }),
+      closeStudy({ client, study, accepted: [{ proposal: await propose(), pdf: new Uint8Array([1]) }], userId: "user-1", upload }),
     ).rejects.toThrow("ya no está pendiente");
     expect(upload).not.toHaveBeenCalled();
   });
@@ -264,7 +317,7 @@ describe("close study", () => {
     await client.execute("DROP TABLE comparativa_files");
     const { upload, remove } = uploader();
     await expect(
-      closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload }),
+      closeStudy({ client, study, accepted: [{ proposal: await propose(), pdf: new Uint8Array([1]) }], userId: "user-1", upload }),
     ).rejects.toThrow();
     expect(remove).toHaveBeenCalled();
     expect((await getStudy(client, study.id))?.status).toBe("analyzed");
@@ -287,7 +340,7 @@ describe("study metrics", () => {
     const { studyMetrics } = await import("./metrics");
     await client.execute("ALTER TABLE comparativas ADD COLUMN tramite_id TEXT");
     const { upload } = { upload: vi.fn<ProposalUploader>(async () => ({ downloadUrl: "u", remove: async () => undefined })) };
-    await closeStudy({ client, study, proposal: await propose(), pdf: new Uint8Array([1]), userId: "user-1", upload });
+    await closeStudy({ client, study, accepted: [{ proposal: await propose(), pdf: new Uint8Array([1]) }], userId: "user-1", upload });
     await createStudy(client, { ...study, status: "analyzed", createdBy: "user-1" });
     await client.execute("UPDATE comparativas SET tramite_id = 'TRM-1', status = 'processed'");
     const month = (await client.execute("SELECT substr(created_at, 1, 7) AS m FROM comparison_studies LIMIT 1")).rows[0].m;

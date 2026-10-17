@@ -36,7 +36,7 @@ describe("the commission each user sees", () => {
     expect(await commissionAudience(db, { id: "x", role: "admin" })).toEqual({ kind: "agency" });
     expect(await commissionAudience(db, { id: "x", role: "1" })).toEqual({ kind: "agency" });
     const sales = await commissionAudience(db, { id: "jorge", role: "2" });
-    const proposal = { id: "p", number: 1, offerKey: "k", comercializadoraId: "COM-005", comercializadoraName: "Eleia", productName: "SIMPLEX", feeEnergyPerMwh: 30, annualTotal: 900, savings: 100, commission: 120, createdAt: "", chosenAt: null } as unknown as ProposalRecord;
+    const proposal = { id: "p", number: 1, offerKey: "k", comercializadoraId: "COM-005", comercializadoraName: "Eleia", productName: "SIMPLEX", feeEnergyPerMwh: 30, annualTotal: 900, savings: 100, commission: 120, createdAt: "", chosenAt: null, document: { offer: { pricing: "fixed" } } } as unknown as ProposalRecord;
     expect(proposalView(proposal, { kind: "agency" }, "electricity").commission).toBe(120);
     expect(proposalView(proposal, sales, "electricity").commission).toBe(90);
   });

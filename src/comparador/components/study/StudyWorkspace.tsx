@@ -77,7 +77,7 @@ function StudyResult({
   clientName: string | null;
   onOptions: (options: StudyOptionsInput) => void;
   onPropose: (offer: StudyOfferView, options: StudyOptionsInput, alternatives?: StudyOfferView[]) => void;
-  onComplete: (proposalId: string, client: StudyClientDataInput | null) => Promise<void>;
+  onComplete: (proposalIds: string[], client: StudyClientDataInput | null) => Promise<void>;
   onReviewInvoice: (invoice: InvoiceExtraction, acceptMismatch: boolean) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -367,12 +367,12 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
   };
 
   /** Completa el estudio y vuelve a la comparativa, que ya está pendiente de revisión. */
-  const complete = async (proposalId: string, client: StudyClientDataInput | null) => {
+  const complete = async (proposalIds: string[], client: StudyClientDataInput | null) => {
     if (!study) return;
-    await studyApi.close(study.id, proposalId, client);
+    await studyApi.close(study.id, proposalIds, client);
     showCustomToast({
       title: "Estudio completado",
-      message: "El PDF está en los documentos y la comparativa, pendiente de revisión.",
+      message: `${proposalIds.length === 1 ? "El PDF está" : "Los PDFs están"} en los documentos y la comparativa, pendiente de revisión.`,
       icon: CheckCircle2,
       iconColor: "var(--success-color)",
     });

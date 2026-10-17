@@ -111,11 +111,12 @@ export const studyApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ invoice, acceptMismatch }),
     }),
-  close: (studyId: string, proposalId: string, client: StudyClientDataInput | null) =>
-    request<{ fileId: string }>(`/api/v2/comparador/studies/${studyId}/close`, {
+  /** Las propuestas que acepta el cliente, la principal primero. */
+  close: (studyId: string, proposalIds: string[], client: StudyClientDataInput | null) =>
+    request<{ fileIds: string[] }>(`/api/v2/comparador/studies/${studyId}/close`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ proposalId, client }),
+      body: JSON.stringify({ proposalIds, client }),
     }),
 };
 

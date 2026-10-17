@@ -13,6 +13,7 @@ import {
 } from "@/core/components/ui/dialog";
 import { Input } from "@/core/components/ui/input";
 import { Label } from "@/core/components/ui/label";
+import { ACCEPTED_RULE, acceptedProposalsError } from "@/comparador/study/accepted";
 import type { StudyClientDataInput } from "@/comparador/study/client-data";
 import { euros, type ProposalView, type StudyView } from "./api";
 
@@ -101,7 +102,8 @@ function ClientFields({ form, onChange }: { form: ClientForm; onChange: (form: C
 }
 
 /**
- * Completar el estudio en dos pasos: con qué propuesta se queda el cliente y,
+ * Completar el estudio en dos pasos: qué propuestas acepta el cliente (una
+ * fija, una indexada, una de cada o de 2 a 3 fijas; una es la principal) y,
  * si se tienen, sus datos para el trámite.
  */
 export function CompleteDialog({
@@ -115,20 +117,29 @@ export function CompleteDialog({
   initial: ClientForm;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete: (proposalId: string, client: StudyClientDataInput | null) => Promise<void>;
+  onComplete: (proposalIds: string[], client: StudyClientDataInput | null) => Promise<void>;
 }) {
   const [step, setStep] = useState<"proposal" | "client">("proposal");
-  const [selected, setSelected] = useState(proposals.at(-1)?.id ?? "");
+  // En el orden en que se marcan; la principal va aparte.
+  const [selected, setSelected] = useState<string[]>(proposals.length ? [proposals.at(-1)!.id] : []);
+  const [principal, setPrincipal] = useState<string | null>(proposals.at(-1)?.id ?? null);
   const [client, setClient] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const chosen = proposals.find(({ id }) => id === selected);
+  const main = principal && selected.includes(principal) ? principal : (selected[0] ?? null);
+  // La principal primero: su comercializadora es la de la comparativa.
+  const ordered = main ? [main, ...selected.filter((id) => id !== main)] : [];
+  const chosen = ordered.map((id) => proposals.find((proposal) => proposal.id === id)!).filter(Boolean);
+  const invalid = selected.length > 0 ? acceptedProposalsError(chosen.map(({ pricing }) => pricing)) : null;
+
+  const toggle = (id: string) =>
+    setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
 
   const submit = async () => {
     setSaving(true);
     setError(null);
     try {
-      await onComplete(selected, clientPayload(client));
+      await onComplete(ordered, clientPayload(client));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se ha podido completar el estudio");
     } finally {
@@ -141,34 +152,49 @@ export function CompleteDialog({
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <p className="text-xs font-medium text-muted-foreground">Paso {step === "proposal" ? 1 : 2} de 2</p>
-          <DialogTitle>{step === "proposal" ? "¿Qué propuesta acepta el cliente?" : "Datos del cliente"}</DialogTitle>
+          <DialogTitle>{step === "proposal" ? "¿Qué propuestas acepta el cliente?" : "Datos del cliente"}</DialogTitle>
           <DialogDescription>
             {step === "proposal"
-              ? "Su PDF se guarda en los documentos y la comparativa pasa a «Pendiente de revisión» con esa comercializadora y su comisión."
+              ? `${ACCEPTED_RULE} Sus PDFs se guardan en los documentos y la comparativa pasa a «Pendiente de revisión» con la comercializadora de la principal y la comisión de cada plan.`
               : "Lo leído de la factura y del SIPS ya está escrito: revísalo. Rellenan el trámite al convertir la comparativa; lo que falte se pide entonces."}
           </DialogDescription>
         </DialogHeader>
 
         {step === "proposal" ? (
-          <div className="space-y-2" role="radiogroup" aria-label="Propuestas">
+          <div className="space-y-2" role="group" aria-label="Propuestas">
             {proposals.map((proposal) => (
               <label
                 key={proposal.id}
                 className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-3 text-sm has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary"
               >
                 <input
-                  type="radio"
-                  name="final-proposal"
+                  type="checkbox"
                   className="accent-primary"
-                  checked={selected === proposal.id}
-                  onChange={() => setSelected(proposal.id)}
+                  checked={selected.includes(proposal.id)}
+                  onChange={() => toggle(proposal.id)}
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-gray-900">
                     {proposal.comercializadoraName}
                     <span className="font-normal text-muted-foreground"> · Propuesta {proposal.number}</span>
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">{proposal.productName}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {proposal.pricing === "indexed" ? "Indexada" : "Fija"} · {proposal.productName}
+                  </span>
+                  {selected.length > 1 && selected.includes(proposal.id) && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setPrincipal(proposal.id);
+                      }}
+                      className={`mt-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        main === proposal.id ? "bg-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {main === proposal.id ? "Principal" : "Hacer principal"}
+                    </button>
+                  )}
                 </span>
                 <span className="text-right">
                   <span className="block font-medium tabular-nums text-gray-900">{euros(proposal.annualTotal)}/año</span>
@@ -195,19 +221,22 @@ export function CompleteDialog({
           </div>
         ) : (
           <div className="space-y-3">
-            {chosen && (
-              <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                Propuesta {chosen.number}: <span className="font-medium text-gray-900">{chosen.comercializadoraName}</span>{" "}
-                · {chosen.productName}
-              </p>
-            )}
+            <ul className="space-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              {chosen.map((proposal, index) => (
+                <li key={proposal.id}>
+                  Propuesta {proposal.number}: <span className="font-medium text-gray-900">{proposal.comercializadoraName}</span> ·{" "}
+                  {proposal.productName}
+                  {chosen.length > 1 && index === 0 && <span className="text-primary"> · principal</span>}
+                </li>
+              ))}
+            </ul>
             <ClientFields form={client} onChange={setClient} />
           </div>
         )}
 
-        {error && (
+        {(error ?? (step === "proposal" ? invalid : null)) && (
           <p role="alert" className="text-sm text-danger">
-            {error}
+            {error ?? invalid}
           </p>
         )}
         <DialogFooter>
@@ -216,7 +245,7 @@ export function CompleteDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button disabled={!selected} onClick={() => setStep("client")}>
+              <Button disabled={selected.length === 0 || invalid !== null} onClick={() => setStep("client")}>
                 Siguiente
               </Button>
             </>
@@ -225,7 +254,7 @@ export function CompleteDialog({
               <Button variant="outline" disabled={saving} onClick={() => setStep("proposal")}>
                 Atrás
               </Button>
-              <Button disabled={saving || !selected} onClick={submit}>
+              <Button disabled={saving || selected.length === 0 || invalid !== null} onClick={submit}>
                 {saving && <Loader2 className="size-4 animate-spin" />}
                 {saving ? "Completando…" : "Completar estudio"}
               </Button>

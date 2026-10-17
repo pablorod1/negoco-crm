@@ -1,5 +1,6 @@
 import type { Client, InValue, Transaction } from "@libsql/client";
 import { randomUUID } from "node:crypto";
+import { acceptedProposalsError } from "./accepted";
 import type { StudyClientData } from "./client-data";
 import { OPEN_STATUSES } from "./comparativa";
 import { proposalFileName, type ProposalRecord } from "./proposals";
@@ -40,35 +41,46 @@ async function audit(
   });
 }
 
+const planOf = (proposal: ProposalRecord) => (proposal.document.offer.pricing === "indexed" ? "indexado" : "fijo");
+
 /**
- * Completa el estudio con la propuesta elegida: su PDF pasa a los documentos
- * de la comparativa y la comparativa queda «Pendiente de revisión» con la
- * comercializadora, el tipo de tarifa y la comisión de agencia, como cuando
- * llega un estudio de Abarca. El reparto con el comercial lo calcula la
- * revisión con las reglas de siempre.
+ * Completa el estudio con las propuestas que acepta el cliente: una fija, una
+ * indexada, una de cada o de 2 a 3 fijas (comparativa múltiple). Sus PDFs
+ * pasan a los documentos de la comparativa y la comparativa queda «Pendiente
+ * de revisión» con la comercializadora de la principal (la primera), los
+ * planes y la comisión de agencia de cada plan, la de su primera propuesta;
+ * como cuando llega un estudio de Abarca. El reparto con el comercial lo
+ * calcula la revisión con las reglas de siempre.
  *
- * El PDF se sube antes de la transacción; si la transacción falla, se borra.
+ * Los PDFs se suben antes de la transacción; si la transacción falla, se borran.
  */
 export async function closeStudy({
   client,
   study,
-  proposal,
-  pdf,
+  accepted,
   userId,
   upload,
   clientData = null,
 }: {
   client: Pick<Client, "execute" | "transaction">;
   study: StudyRecord;
-  proposal: ProposalRecord;
-  pdf: Uint8Array;
+  /** Las propuestas aceptadas con su PDF; la primera es la principal. */
+  accepted: readonly { proposal: ProposalRecord; pdf: Uint8Array }[];
   userId: string;
   upload: ProposalUploader;
   /** Datos del cliente apuntados al completar; rellenan el trámite. */
   clientData?: StudyClientData | null;
-}): Promise<{ fileId: string }> {
+}): Promise<{ fileIds: string[] }> {
   if (study.status === "closed") throw new StudyError("Este estudio ya está completado.", 409);
-  if (proposal.studyId !== study.id) throw new StudyError("Esa propuesta no es de este estudio.", 404);
+  if (accepted.some(({ proposal }) => proposal.studyId !== study.id)) {
+    throw new StudyError("Esa propuesta no es de este estudio.", 404);
+  }
+  if (new Set(accepted.map(({ proposal }) => proposal.id)).size !== accepted.length) {
+    throw new StudyError("Hay una propuesta repetida.", 400);
+  }
+  const invalid = acceptedProposalsError(accepted.map(({ proposal }) => (planOf(proposal) === "indexado" ? "indexed" : "fixed")));
+  if (invalid) throw new StudyError(invalid, 400);
+  const proposal = accepted[0].proposal;
 
   const subject = await client.execute({
     sql: "SELECT status FROM comparativas WHERE id = ? LIMIT 1",
@@ -82,12 +94,23 @@ export async function closeStudy({
   const organizationId = String(organization.rows[0]?.id ?? "");
   if (!organizationId) throw new Error("Tenant without organization");
 
-  const fileName = proposalFileName(proposal);
-  const fileId = randomUUID();
-  const stored = await upload({
-    path: `${organizationId}/comparativas/${study.comparativaId}/${fileId}-${fileName}`,
-    data: pdf,
-  });
+  const files: { proposal: ProposalRecord; fileId: string; fileName: string; size: number; downloadUrl: string; remove: () => Promise<void> }[] = [];
+  const removeUploaded = () =>
+    Promise.all(files.map(({ remove }) => remove().catch((cause) => console.error("[comparador] orphan proposal PDF", cause))));
+  try {
+    for (const { proposal: item, pdf } of accepted) {
+      const fileName = proposalFileName(item);
+      const fileId = randomUUID();
+      const stored = await upload({
+        path: `${organizationId}/comparativas/${study.comparativaId}/${fileId}-${fileName}`,
+        data: pdf,
+      });
+      files.push({ proposal: item, fileId, fileName, size: pdf.byteLength, ...stored });
+    }
+  } catch (error) {
+    await removeUploaded();
+    throw error;
+  }
 
   const transaction = await client.transaction("write");
   try {
@@ -107,26 +130,27 @@ export async function closeStudy({
     if (claimed.rowsAffected === 0) throw new StudyError("Este estudio ya está completado.", 409);
 
     const now = new Date().toISOString();
-    await transaction.execute({
-      sql: `INSERT INTO comparativa_files
-        (id, comparativa_id, filename, size, extension, upload_date, download_url, preview_url)
-        VALUES (?, ?, ?, ?, 'pdf', ?, ?, NULL)`,
-      args: [fileId, study.comparativaId, fileName, pdf.byteLength, now, stored.downloadUrl],
-    });
-    await audit(transaction, study.comparativaId, userId, {
-      type: "document_upload",
-      field: "filename",
-      oldValue: null,
-      newValue: fileName,
-      description: `Documento subido: ${fileName}`,
-    });
+    for (const file of files) {
+      await transaction.execute({
+        sql: `INSERT INTO comparativa_files
+          (id, comparativa_id, filename, size, extension, upload_date, download_url, preview_url)
+          VALUES (?, ?, ?, ?, 'pdf', ?, ?, NULL)`,
+        args: [file.fileId, study.comparativaId, file.fileName, file.size, now, file.downloadUrl],
+      });
+      await audit(transaction, study.comparativaId, userId, {
+        type: "document_upload",
+        field: "filename",
+        oldValue: null,
+        newValue: file.fileName,
+        description: `Documento subido: ${file.fileName}`,
+      });
+    }
 
-    // El plan y la comisión van al lado de la oferta elegida: fijo o indexado.
-    const plan = proposal.document.offer.pricing === "indexed" ? "indexado" : "fijo";
-    const commissionField = plan === "indexado" ? "comision_indexado" : "comision_fijo";
+    // Los planes de las ofertas aceptadas: fijo, indexado o los dos.
     const plans = JSON.parse(String(comparativa.plan ?? "[]")) as string[];
-    if (!plans.includes(plan)) {
-      const next = JSON.stringify([...plans, plan]);
+    const missingPlans = [...new Set(accepted.map(({ proposal: item }) => planOf(item)))].filter((plan) => !plans.includes(plan));
+    if (missingPlans.length > 0) {
+      const next = JSON.stringify([...plans, ...missingPlans]);
       await transaction.execute({ sql: "UPDATE comparativas SET plan = ? WHERE id = ?", args: [next, study.comparativaId] });
       await audit(transaction, study.comparativaId, userId, {
         type: "plan_update",
@@ -158,18 +182,22 @@ export async function closeStudy({
       });
     }
 
-    // Como con Abarca: una comisión que ya estaba puesta no se pisa; la
-    // revisión decide.
-    if (proposal.commission !== null && comparativa[commissionField] === null) {
+    // La comisión de cada plan, la de su primera propuesta (en una múltiple
+    // de fijas, la principal). Como con Abarca: una comisión que ya estaba
+    // puesta no se pisa; la revisión decide.
+    for (const plan of ["fijo", "indexado"] as const) {
+      const first = accepted.find(({ proposal: item }) => planOf(item) === plan)?.proposal;
+      const commissionField = plan === "indexado" ? "comision_indexado" : "comision_fijo";
+      if (!first || first.commission === null || comparativa[commissionField] !== null) continue;
       await transaction.execute({
         sql: `UPDATE comparativas SET ${commissionField} = ? WHERE id = ?`,
-        args: [proposal.commission, study.comparativaId],
+        args: [first.commission, study.comparativaId],
       });
       await audit(transaction, study.comparativaId, userId, {
         type: "commission_update",
         field: commissionField,
         oldValue: null,
-        newValue: proposal.commission,
+        newValue: first.commission,
         description: `Comisión de agencia (${plan}) del estudio Negoco Cloud`,
       });
     }
@@ -183,13 +211,20 @@ export async function closeStudy({
       field: "status",
       oldValue: String(comparativa.status),
       newValue: "awaiting_review",
-      description: "Estudio Negoco Cloud completado: pendiente de revisión",
+      description:
+        accepted.length === 1
+          ? "Estudio Negoco Cloud completado: pendiente de revisión"
+          : `Estudio Negoco Cloud completado con ${accepted.length} propuestas aceptadas (${accepted
+              .map(({ proposal: item }) => `${item.comercializadoraName} · ${item.productName}, ${planOf(item)}`)
+              .join("; ")}): pendiente de revisión`,
     });
 
-    await transaction.execute({
-      sql: "UPDATE comparison_study_proposals SET chosen_at = ?, comparativa_file_id = ? WHERE id = ?",
-      args: [now, fileId, proposal.id],
-    });
+    for (const file of files) {
+      await transaction.execute({
+        sql: "UPDATE comparison_study_proposals SET chosen_at = ?, comparativa_file_id = ? WHERE id = ?",
+        args: [now, file.fileId, file.proposal.id],
+      });
+    }
     await transaction.execute({
       sql: `UPDATE comparison_studies SET chosen_offer = ?, current_total = ?, chosen_total = ?,
           savings = ?, commission = ?, client_data = ?
@@ -203,6 +238,7 @@ export async function closeStudy({
           comercializadoraName: proposal.comercializadoraName,
           productName: proposal.productName,
           feeEnergyPerMwh: proposal.feeEnergyPerMwh,
+          ...(accepted.length > 1 ? { alsoAccepted: accepted.slice(1).map(({ proposal: item }) => item.id) } : {}),
         }),
         proposal.document.current?.cost.total ?? null,
         proposal.annualTotal,
@@ -213,10 +249,10 @@ export async function closeStudy({
       ],
     });
     await transaction.commit();
-    return { fileId };
+    return { fileIds: files.map(({ fileId }) => fileId) };
   } catch (error) {
     await transaction.rollback().catch(() => undefined);
-    await stored.remove().catch((cause) => console.error("[comparador] orphan proposal PDF", cause));
+    await removeUploaded();
     throw error;
   } finally {
     transaction.close();

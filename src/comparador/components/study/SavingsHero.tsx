@@ -57,7 +57,7 @@ function ReviewHero({ onReview }: { onReview: () => void }) {
 
 export function SavingsHero({ study, best, onReview }: { study: StudyView; best: StudyOfferView | null; onReview: () => void }) {
   if (study.invoiceReview.required) return <ReviewHero onReview={onReview} />;
-  const chosen = study.proposals.find((proposal) => proposal.chosen);
+  const chosen = study.proposals.find((proposal) => proposal.principal) ?? study.proposals.find((proposal) => proposal.chosen);
   const current = study.current?.total ?? null;
   const target = chosen
     ? { name: chosen.comercializadoraName, product: chosen.productName, total: chosen.annualTotal, savings: chosen.savings, logo: study.offers.find(({ key }) => key === chosen.offerKey)?.comercializadoraLogo ?? null }

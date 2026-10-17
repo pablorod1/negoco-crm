@@ -19,6 +19,8 @@ export interface ChosenProposal {
   comercializadoraName: string;
   productName: string;
   feeEnergyPerMwh: number;
+  /** Las otras propuestas que aceptó el cliente (fija + indexada, o múltiple de fijas). */
+  alsoAccepted?: string[];
 }
 
 /** Opciones que el usuario puede cambiar; la fecha es la del estudio. */
