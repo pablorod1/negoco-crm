@@ -486,8 +486,12 @@ export async function buildReview({
   // Las añadidas a mano: las de esta revisión o, si no se han tocado, las del
   // anexo anterior (solo si este trae comisiones: uno de precios no las toca).
   const readRules = toProposedCommissions(extracted.extraction);
-  const extra =
-    decisions.extraCommissions ?? (readRules.length > 0 ? await rememberedExtraCommissions(client, supplier.id) : []);
+  // Solo en un anexo de comisiones: aprobarlas sustituye el marco entero, y en
+  // uno de precios una regla a mano dejaría solo esa.
+  const bringsCommissions = readRules.length > 0 || extracted.issues.some(({ code }) => code === "commission_unread");
+  const extra = !bringsCommissions
+    ? []
+    : (decisions.extraCommissions ?? (await rememberedExtraCommissions(client, supplier.id)));
   const proposedRules = [
     ...readRules.map((rule) => ({ ...rule, manual: false })),
     ...extra.map((rule) => ({

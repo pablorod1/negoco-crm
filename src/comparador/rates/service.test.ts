@@ -571,6 +571,11 @@ describe("rate ingest service", () => {
     const next = await ingestWith(client, framework(), "COM-040");
     const review = (await buildReview({ client, control, ingest: next, today: "2026-10-09" }))!.review;
     expect(review.commissions.filter(({ manual }) => manual).map(({ ruleType, amount }) => [ruleType, amount])).toEqual([["fee_share", 70]]);
+
+    // Un anexo solo de precios no puede llevar reglas a mano: dejaría solo esa.
+    const prices = await ingestWith(client, extractionResult([rate({ energyP1: 0.25 })], { text: null }), "COM-040");
+    const priceReview = (await buildReview({ client, control, ingest: prices, today: "2026-10-09", decisions: { extraCommissions: [seventy] } }))!.review;
+    expect(priceReview.commissions).toEqual([]);
   });
 
   test("the reviewer can type the power a supplier sends in another document", async () => {
