@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireNegocoStudiesAccess } from "@/comparador/server/guard";
 import { studyError } from "@/comparador/server/study-route";
 import { uploadToStorage } from "@/comparador/server/storage";
-import { getStudyComparativa, listComparativaInvoices } from "@/comparador/study/comparativa";
+import { getStudyComparativa, listComparativaInvoices, switchComparativaService } from "@/comparador/study/comparativa";
 import { attachUploadedInvoice } from "@/comparador/study/invoice-file";
 import { isValidCups, normalizeIdentifier } from "@/comparador/extraction/identifiers";
 import { isInvoiceImage } from "@/comparador/study/read-invoice";
@@ -63,7 +63,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-/** Analiza una factura: un PDF adjunto a la comparativa (`fileId`) o uno nuevo (`file`). */
+/**
+ * Analiza una factura: un PDF adjunto a la comparativa (`fileId`) o uno nuevo
+ * (`file`). Con `service` («Luz» o «Gas»), antes pasa la comparativa a ese servicio.
+ */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const access = await requireNegocoStudiesAccess(request);
@@ -112,6 +115,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       throw new StudyError("Elige una factura adjunta o súbela (PDF o foto).", 400);
     }
 
+    // La factura era de la otra energía y el comercial ha pedido pasar la
+    // comparativa a ella: se cambia antes de analizar, sin crear otra.
+    const switchTo = form.get("service");
+    if (switchTo === "Luz" || switchTo === "Gas") {
+      await switchComparativaService(client, { comparativaId: id, service: switchTo, userId: user.id });
+    }
+    const service = switchTo === "Luz" || switchTo === "Gas" ? switchTo : comparativa.service;
+
     const studyId = await analyzeInvoice({
       client,
       tenantSlug,
@@ -121,7 +132,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       channel: comparativa.hasRenovacion ? "renewal" : "acquisition",
       today: todayInSpain(),
       fetchSips,
-      energy: comparativa.service === "Gas" ? "gas" : "electricity",
+      energy: service === "Gas" ? "gas" : "electricity",
       // «Estudio sin SIPS»: consumo estimado con la factura.
       useSips: form.get("withoutSips") !== "1",
     });

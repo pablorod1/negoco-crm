@@ -1,6 +1,7 @@
 import type { Client, InValue, Transaction } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import type { StudyClientData } from "./client-data";
+import { OPEN_STATUSES } from "./comparativa";
 import { proposalFileName, type ProposalRecord } from "./proposals";
 import type { StudyRecord } from "./repository";
 import { StudyError } from "./service";
@@ -14,8 +15,6 @@ export type ProposalUploader = (input: {
 }) => Promise<{ downloadUrl: string; remove: () => Promise<void> }>;
 
 type Executor = Pick<Transaction, "execute">;
-
-const OPEN_STATUSES = ["pending", "processing"];
 
 async function audit(
   db: Executor,

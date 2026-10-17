@@ -84,6 +84,7 @@ export function InvoicePicker({
   invoices,
   busy,
   cupsPrompt,
+  energyPrompt,
   onAnalyze,
   onCancel,
   gas = false,
@@ -94,7 +95,14 @@ export function InvoicePicker({
   busy: boolean;
   /** La factura no trae un CUPS legible: el motivo, y se pide aquí mismo. */
   cupsPrompt?: string | null;
-  onAnalyze: (invoice: { fileId: string } | { files: File[] }, cups?: string, withoutSips?: boolean) => void;
+  /** La factura es de la otra energía: el motivo, y se ofrece cambiar la comparativa. */
+  energyPrompt?: string | null;
+  onAnalyze: (
+    invoice: { fileId: string } | { files: File[] },
+    cups?: string,
+    withoutSips?: boolean,
+    service?: "Luz" | "Gas",
+  ) => void;
   /** Volver al estudio que ya había, sin analizar otra factura. */
   onCancel?: () => void;
 }) {
@@ -298,6 +306,33 @@ export function InvoicePicker({
                   {cupsValid ? "CUPS válido." : "ES, 16 números y las dos letras de control (los espacios no importan)."}
                 </p>
               )}
+            </div>
+          </div>
+        )}
+
+        {energyPrompt && (
+          <div role="alert" className="mt-5 rounded-xl bg-warning-50 p-4 ring-1 ring-warning-200">
+            <p className="flex gap-2.5 text-sm text-gray-800">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning-600" />
+              <span>
+                {energyPrompt}
+                <span className="block text-xs text-gray-500">
+                  Si la comparativa se creó como {gas ? "gas" : "luz"} por error, pásala a {gas ? "luz" : "gas"} y se analiza esta misma factura, sin crear otra.
+                </span>
+              </span>
+            </p>
+            <div className="mt-3 pl-6">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl bg-white"
+                disabled={!file && !fileId}
+                onClick={() =>
+                  onAnalyze(files.length > 0 ? { files } : { fileId }, cupsValid ? cups : undefined, withoutSips, gas ? "Luz" : "Gas")
+                }
+              >
+                Pasar la comparativa a {gas ? "luz" : "gas"} y analizar
+              </Button>
             </div>
           </div>
         )}

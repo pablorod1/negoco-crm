@@ -63,6 +63,15 @@ describe("photos read with vision", () => {
     expect(fetchSips).toHaveBeenCalledWith(typed, "CONSUMOS", "ELECTRICIDAD");
   });
 
+  test("a gas photo in an electricity comparison offers to switch it", async () => {
+    const error = await run({ cups: VALID_CUPS, accessTariff: "RL.2", powerLines: [], energyLines: [] }).result.catch(
+      (cause: unknown) => cause,
+    );
+    expect(error).toBeInstanceOf(StudyError);
+    expect((error as StudyError).code).toBe("other_energy");
+    expect((error as StudyError).message).toMatch(/factura de gas/);
+  });
+
   test("a photo without the detail lines says so", async () => {
     const error = await run({ cups: VALID_CUPS, powerLines: [], energyLines: [] }).result.catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(StudyError);

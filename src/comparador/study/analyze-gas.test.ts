@@ -106,6 +106,8 @@ describe("analizar una factura de gas", () => {
     }).catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(StudyError);
     expect((error as StudyError).message).toMatch(/factura de luz/);
+    // Se puede pasar la comparativa a luz en la misma pantalla.
+    expect((error as StudyError).code).toBe("other_energy");
     expect(extractGas).not.toHaveBeenCalled();
   });
 });

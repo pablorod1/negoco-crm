@@ -1,5 +1,7 @@
 import type { Client } from "@libsql/client";
+import { randomUUID } from "node:crypto";
 import { getSubcomerciales } from "@/core/libsql/users/getSubcomerciales";
+import { StudyError } from "./errors";
 
 type QueryClient = Pick<Client, "execute">;
 
@@ -51,6 +53,65 @@ export async function getStudyComparativa(
     hasRenovacion: Number(row.has_renovacion ?? 0) === 1,
     clientName: typeof row.client === "string" && row.client.trim() ? row.client.trim() : null,
   };
+}
+
+/** Estados en los que la comparativa espera su estudio. */
+export const OPEN_STATUSES = ["pending", "processing"];
+
+/**
+ * Pasa la comparativa de luz a gas o al revés, cuando el comercial la creó
+ * con el servicio que no era y la factura lo delata. El segmento de comisión
+ * cambia como al editar el servicio en el CRM: «gas» en gas; en luz, sin
+ * segmento hasta que se sepa la tarifa. Solo mientras espera su estudio.
+ */
+export async function switchComparativaService(
+  client: Pick<Client, "transaction">,
+  { comparativaId, service, userId }: { comparativaId: string; service: "Luz" | "Gas"; userId: string },
+): Promise<void> {
+  const transaction = await client.transaction("write");
+  try {
+    const { rows } = await transaction.execute({
+      sql: "SELECT service, status, commission_segment FROM comparativas WHERE id = ? LIMIT 1",
+      args: [comparativaId],
+    });
+    const previous = rows[0];
+    if (!previous) throw new StudyError("Comparativa no encontrada", 404);
+    if (String(previous.service) === service) {
+      await transaction.rollback();
+      return;
+    }
+    if (!OPEN_STATUSES.includes(String(previous.status))) {
+      throw new StudyError("La comparativa ya no está pendiente de estudio: no se puede cambiar de luz a gas.", 409);
+    }
+    const segment = service === "Gas" ? "gas" : previous.commission_segment === "gas" ? null : undefined;
+    await transaction.execute({
+      sql:
+        segment === undefined
+          ? "UPDATE comparativas SET service = ? WHERE id = ?"
+          : "UPDATE comparativas SET service = ?, commission_segment = ?, commission_segment_origin = ? WHERE id = ?",
+      args: segment === undefined ? [service, comparativaId] : [service, segment, segment ? "service" : null, comparativaId],
+    });
+    await transaction.execute({
+      sql: `INSERT INTO comparativa_changes
+        (id, comparativa_id, user_id, change_type, field_name, old_value, new_value, description, created_at)
+        VALUES (?, ?, ?, 'service_update', 'service', ?, ?, ?, ?)`,
+      args: [
+        randomUUID(),
+        comparativaId,
+        userId,
+        String(previous.service),
+        service,
+        `Servicio actualizado de "${String(previous.service)}" a "${service}" por la factura del estudio Negoco Cloud`,
+        new Date().toISOString(),
+      ],
+    });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback().catch(() => undefined);
+    throw error;
+  } finally {
+    transaction.close();
+  }
 }
 
 /** Los documentos de la comparativa que pueden ser la factura (PDF o foto), el más reciente primero. */

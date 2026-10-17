@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { notAnInvoice } from "./document-kind";
+import { notAnInvoice, otherEnergyByTariff } from "./document-kind";
 
 // Textos inventados con la forma de los documentos reales.
 const INVOICE = "Nº factura: [CODIGO]\nPeriodo de facturación: 13/08/2026 - 13/09/2026\nPeaje de acceso: 2.0TD\nTotal a pagar 75,84 €";
@@ -44,9 +44,19 @@ Impuesto especial sobre hidrocarburos 1.234 kWh x 0,00234 €/kWh`;
   const lightInvoice = `Nº factura F-1 Total factura 44,07 € Peaje de acceso: 2.0TD Potencia contratada 3,45 kW
 Origen: ciclo combinado de gas natural 17,9 %`;
 
-  test("una factura de gas en una comparativa de luz, y al revés", () => {
-    expect(notAnInvoice(gasInvoice)?.kind).toBe("other_energy");
-    expect(notAnInvoice(lightInvoice, { energy: "gas" })?.kind).toBe("other_energy");
+  test("una factura de gas en una comparativa de luz, y al revés: dice de qué es", () => {
+    expect(notAnInvoice(gasInvoice)).toMatchObject({ kind: "other_energy", energy: "gas" });
+    expect(notAnInvoice(lightInvoice, { energy: "gas" })).toMatchObject({ kind: "other_energy", energy: "electricity" });
+  });
+
+  test("en una foto, por el peaje que ha leído la IA", () => {
+    expect(otherEnergyByTariff("RL.2", "electricity")).toMatchObject({ energy: "gas" });
+    expect(otherEnergyByTariff("TUR 1", "electricity")).toMatchObject({ energy: "gas" });
+    expect(otherEnergyByTariff("2.0TD", "gas")).toMatchObject({ energy: "electricity" });
+    expect(otherEnergyByTariff("3.0 TD", "gas")).toMatchObject({ energy: "electricity" });
+    expect(otherEnergyByTariff("2.0TD", "electricity")).toBeNull();
+    expect(otherEnergyByTariff("RL.3", "gas")).toBeNull();
+    expect(otherEnergyByTariff(null, "gas")).toBeNull();
   });
 
   test("cada una en su comparativa pasa; «gas natural» del origen de la luz no la hace de gas", () => {

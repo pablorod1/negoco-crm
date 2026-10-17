@@ -68,14 +68,22 @@ export const studyApi = {
     request<ComparativaStudies>(`/api/v2/comparador/comparisons/${comparativaId}/studies`),
   /**
    * Una factura adjunta, o la subida: un PDF o las fotos de sus páginas, en
-   * orden. `cups`, escrito a mano si la factura no lo trae legible.
+   * orden. `cups`, escrito a mano si la factura no lo trae legible; `service`,
+   * para pasar antes la comparativa a luz o a gas si la factura es de la otra.
    */
-  analyze: (comparativaId: string, invoice: { fileId: string } | { files: File[] }, cups?: string, withoutSips = false) => {
+  analyze: (
+    comparativaId: string,
+    invoice: { fileId: string } | { files: File[] },
+    cups?: string,
+    withoutSips = false,
+    service?: "Luz" | "Gas",
+  ) => {
     const form = new FormData();
     if ("fileId" in invoice) form.set("fileId", invoice.fileId);
     else for (const file of invoice.files) form.append("file", file);
     if (cups) form.set("cups", cups);
     if (withoutSips) form.set("withoutSips", "1");
+    if (service) form.set("service", service);
     return request<{ id: string }>(`/api/v2/comparador/comparisons/${comparativaId}/studies`, {
       method: "POST",
       body: form,

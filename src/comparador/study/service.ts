@@ -13,7 +13,7 @@ import {
 import type { InvoiceExtraction } from "@/comparador/extraction/invoice-schema";
 import { omieAverages, type OmieDayFetcher } from "@/comparador/market/omie";
 import { listIndexHistory } from "@/comparador/rates/index-history";
-import { NOT_INVOICE_MESSAGES, notAnInvoice } from "@/comparador/extraction/document-kind";
+import { NOT_INVOICE_MESSAGES, notAnInvoice, otherEnergyByTariff } from "@/comparador/extraction/document-kind";
 import { extractInvoice } from "@/comparador/extraction/extract-invoice";
 import { isValidCups, normalizeIdentifier } from "@/comparador/extraction/identifiers";
 import type { InvoiceIssue } from "@/comparador/extraction/validate";
@@ -194,6 +194,9 @@ export async function analyzeInvoice({
     // corto y la letra pequeña se perdía (Luna sola: 16 → 22 de 30 fotos).
     extraction = await read({ pages: images, zoomed: await zoomedBands(images) }, invoice.cups ?? null);
     const reading = extraction.extraction;
+    // Una foto de la otra energía se ve en el peaje que ha leído la IA.
+    const wrongEnergy = otherEnergyByTariff(reading.accessTariff, energy);
+    if (wrongEnergy) throw new StudyError(wrongEnergy.message, 422, "other_energy");
     const gasReading = gasReadingOf(reading);
     if (gasReading) {
       if (gasReading.fixedTermLines.length === 0 && gasReading.energyLines.length === 0 && gasReading.pricing !== "flat") {
@@ -213,7 +216,7 @@ export async function analyzeInvoice({
     // Contratos, estudios de otra comercializadora o facturas de otra tarifa:
     // se dice qué es antes de anonimizar y de gastar en la IA.
     const notInvoice = notAnInvoice(reading.text, { fromImage, energy });
-    if (notInvoice) throw new StudyError(notInvoice.message);
+    if (notInvoice) throw new StudyError(notInvoice.message, 422, notInvoice.kind === "other_energy" ? "other_energy" : undefined);
     // Datos del titular leídos en local: rellenan el cliente y, además, se
     // tapan en todo el texto aunque no lleven etiqueta.
     const redacted = redactInvoiceForStudy(reading.text, { fromImage });
@@ -246,6 +249,9 @@ export async function analyzeInvoice({
   const { sipsPoint, sipsConsumption } = sips;
   const aiCostUsd = extraction.attempts.reduce((sum, { costUsd }) => sum + (costUsd ?? 0), 0);
 
+  // El texto puede traer de las dos (luz y gas juntas) y el peaje leído decide.
+  const wrongEnergy = otherEnergyByTariff(facts.accessTariff, energy);
+  if (wrongEnergy) throw new StudyError(wrongEnergy.message, 422, "other_energy");
   const tariff = (facts.accessTariff ?? "").replace(/\s/g, "").toUpperCase();
   if (!gas && tariff && !tariff.startsWith("2.0")) {
     throw new StudyError(`El comparador propio compara 2.0TD; esta factura es ${facts.accessTariff}.`);

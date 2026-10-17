@@ -241,6 +241,8 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
   const [error, setError] = useState<string | null>(null);
   /** La factura no trae un CUPS legible: se pide en el propio paso de la factura. */
   const [cupsPrompt, setCupsPrompt] = useState<string | null>(null);
+  /** La factura es de gas y la comparativa de luz, o al revés: se ofrece cambiarla. */
+  const [energyPrompt, setEnergyPrompt] = useState<string | null>(null);
   const viewRequest = useRef(0);
   const comparativaHref = `/comparativas/${comparativaId}`;
 
@@ -267,19 +269,28 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
     void load();
   }, [load]);
 
-  const analyze = async (invoice: { fileId: string } | { files: File[] }, cups?: string, withoutSips = false) => {
+  const analyze = async (
+    invoice: { fileId: string } | { files: File[] },
+    cups?: string,
+    withoutSips = false,
+    service?: "Luz" | "Gas",
+  ) => {
     setBusy(true);
     setError(null);
     setCupsPrompt(null);
+    setEnergyPrompt(null);
     try {
-      const { id } = await studyApi.analyze(comparativaId, invoice, cups, withoutSips);
+      const { id } = await studyApi.analyze(comparativaId, invoice, cups, withoutSips, service);
       setStudy(await studyApi.view(id));
       setPicking(false);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "No se ha podido analizar la factura";
       if (cause instanceof StudyRequestError && cause.code === "cups_missing") setCupsPrompt(message);
+      else if (cause instanceof StudyRequestError && cause.code === "other_energy") setEnergyPrompt(message);
       else setError(message);
     } finally {
+      // La comparativa puede haber cambiado de servicio aunque el análisis falle después.
+      if (service) await studyApi.list(comparativaId).then(setList, () => undefined);
       setBusy(false);
     }
   };
@@ -416,6 +427,7 @@ export function StudyWorkspace({ comparativaId }: { comparativaId: string }) {
             invoices={list.invoices}
             busy={busy}
             cupsPrompt={cupsPrompt}
+            energyPrompt={energyPrompt}
             onAnalyze={analyze}
             onCancel={study ? () => setPicking(false) : undefined}
             gas={isGas}

@@ -27,8 +27,32 @@ const GAS_MARKERS = /\bRL\.?\s?0?[1-9]\b|\bTUR\.?\s?[1-4]\b|hidrocarburos|\bm(?:
 const ELECTRICITY_MARKERS = /\b[236][.,]?[01]\s?TD\b|potencia\s+contratada|impuesto\s+(?:especial\s+)?(?:sobre\s+la\s+)?electricidad|\bkW\b|impuesto\s+el[eé]ctrico/i;
 
 export type NotAnInvoice =
-  | { kind: "contract" | "comparison" | "price_sheet"; message: string }
-  | { kind: "other_tariff" | "other_energy"; message: string };
+  | { kind: "contract" | "comparison" | "price_sheet" | "other_tariff"; message: string }
+  /** `energy`, la de la factura: la comparativa se puede pasar a ella. */
+  | { kind: "other_energy"; energy: "electricity" | "gas"; message: string };
+
+/** Una factura de la otra energía: el comercial puede cambiar la comparativa. */
+function otherEnergy(invoice: "electricity" | "gas"): NotAnInvoice {
+  return {
+    kind: "other_energy",
+    energy: invoice,
+    message:
+      invoice === "gas"
+        ? "Es una factura de gas y esta comparativa es de luz."
+        : "Es una factura de luz y esta comparativa es de gas.",
+  };
+}
+
+/**
+ * Lo mismo con el peaje leído por la IA, para las fotos (no pasan por el
+ * texto): RL o TUR es gas; 2.0TD, 3.0TD… es luz.
+ */
+export function otherEnergyByTariff(accessTariff: string | null, energy: "electricity" | "gas"): NotAnInvoice | null {
+  const tariff = (accessTariff ?? "").replace(/\s/g, "").toUpperCase();
+  if (energy === "electricity" && /^(?:RL|TUR)\.?\d/.test(tariff)) return otherEnergy("gas");
+  if (energy === "gas" && /^\d[.,]?\dTD$/.test(tariff)) return otherEnergy("electricity");
+  return null;
+}
 
 export const NOT_INVOICE_MESSAGES = {
   contract: "Este documento es un contrato, no una factura. Sube la última factura de luz del cliente.",
@@ -60,13 +84,9 @@ export function notAnInvoice(
   // gas juntas traen las dos cosas: valen para las dos.
   const gasLike = GAS_MARKERS.test(text);
   const electricityLike = ELECTRICITY_MARKERS.test(text);
-  if (energy === "gas" && electricityLike && !gasLike) {
-    return { kind: "other_energy", message: "Es una factura de luz y esta comparativa es de gas. Sube la factura de gas del cliente." };
-  }
+  if (energy === "gas" && electricityLike && !gasLike) return otherEnergy("electricity");
   if (energy === "gas") return null;
-  if (gasLike && !electricityLike) {
-    return { kind: "other_energy", message: "Es una factura de gas y esta comparativa es de luz. Crea una comparativa de gas para compararla." };
-  }
+  if (gasLike && !electricityLike) return otherEnergy("gas");
   const tariffs = new Set([...text.matchAll(ACCESS_TARIFF)].map(([, major, minor]) => `${major}.${minor}`));
   if (tariffs.size === 1 && !tariffs.has("2.0")) {
     const [tariff] = tariffs;
