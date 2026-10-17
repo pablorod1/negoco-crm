@@ -531,6 +531,36 @@ describe("rate ingest service", () => {
     expect(review.commissionLevels).toEqual([]);
   });
 
+  test("a gas rate called like the product does not take the electricity commissions (Eleia «TU DECIDES»)", async () => {
+    await client.execute("UPDATE comercializadoras SET name = 'Eleia' WHERE id = 'COM-040'");
+    const gas = rate({
+      productName: "TU DECIDES", accessTariff: "RL.1", level: "TDE 0", singlePrice: true,
+      energyP1: 0.086731, energyP2: null, energyP3: null,
+      powerMode: "fixed", powerUnit: "eur_month", powerP1: 4.231, powerP2: null, gasTollsIncluded: true,
+    });
+    const electricity = rate({ productName: "PRODUCTO TU DECIDES S3826 TDE 0" });
+    const prices = await ingestWith(client, extractionResult([gas, electricity], { text: null }), "COM-040");
+    await approveIngest({
+      client, control, ingest: prices, input: { validFrom: "2026-10-01" },
+      user: { id: "negoco-1" }, today: "2026-10-07",
+    });
+
+    const band = { pricing: "fixed" as const, channel: null, minKwh: 0, maxKwh: 5000, ruleType: "fixed" as const, feeBase: null, minKw: null, maxKw: null, minAmount: null };
+    const commissions: RateDocumentExtraction["commissions"] = [
+      { ...band, energy: null, accessTariff: "2.0TD", productName: "TU DECIDES ELEIA FIJO", level: "TDE0", amount: 10 },
+      { ...band, energy: "gas", accessTariff: "RL.1", productName: "TU DECIDES ELEIA (GAS) PRECIO FIJO", level: "TDE0", amount: 56 },
+    ];
+    const ingest = await ingestWith(client, extractionResult([], { commissions, text: null }), "COM-040");
+    const review = (await buildReview({ client, control, ingest, today: "2026-10-07" }))!.review;
+    expect(review.commissions.map(({ energy, covers, uncovered }) => [energy ?? "electricity", covers.length, uncovered])).toEqual([
+      ["electricity", 1, null],
+      ["gas", 1, null],
+    ]);
+    // La de luz casa por nombre («TU DECIDES TDE 0»), no atada a la tarifa de gas.
+    expect(review.commissions[0].rateId).toBeNull();
+    expect(review.commissions[1].rateId).not.toBeNull();
+  });
+
   test("a level with no equivalent offers the rates of its product when they have no levels", async () => {
     const names = ["PRODUCTO SOL S1 Sol 0", "PRODUCTO SOL S1 Sol 1", "PRODUCTO LUNA S1"];
     const prices = await ingestWith(client, extractionResult(names.map((productName) => rate({ productName }))), "COM-040");

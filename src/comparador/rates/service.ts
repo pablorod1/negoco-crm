@@ -464,10 +464,14 @@ export async function buildReview({
     commissionLevels.find((choice) => choice.level === level && choice.energy === energy)?.mappedTo ?? level;
 
   const commissions = proposedRules.map((rule): ProposedCommission => {
-    const rateId = rule.productKey ? (commissionMatches.get(rule.productKey)?.rateId ?? null) : null;
     const energy = rule.energy ?? "electricity";
     const level = levelOf(rule.level, energy);
     const rates = ratesFor(rule);
+    // Se ata a la tarifa que se llama igual solo si tiene precios de su
+    // energía y su peaje: la «TU DECIDES» de gas de Eleia se quedaba con las
+    // comisiones de luz de «TU DECIDES», que son de «TU DECIDES TDE 0»…
+    const matched = rule.productKey ? (commissionMatches.get(rule.productKey)?.rateId ?? null) : null;
+    const rateId = matched && rates.some((rate) => rate.rateId === matched) ? matched : null;
     const covers = ratesCoveredBy({ rateId, product: rule.product, level }, rates);
     const named = rates.filter((rate) => ruleCoversRate({ rateId, product: rule.product, level: null }, rate));
     // Si el nombre no dice fijo o indexado, mandan las tarifas que nombra; sin
