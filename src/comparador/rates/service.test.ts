@@ -18,6 +18,7 @@ import {
 } from "./repository";
 import type { ExtractedRate, RateDocumentExtraction } from "./schema";
 import { memoryReadingCache } from "./reading-cache";
+import { summarizeIngest } from "./views";
 import { approveIngest, autoApproveIngest, buildReview, processIngest, RateIngestError } from "./service";
 import { rowKey, validateProposedCommissions, validateProposedRates } from "./validate";
 
@@ -377,6 +378,51 @@ describe("rate ingest service", () => {
     });
     const [price] = await getVersionPrices(client, approved.versionId!);
     expect(price).toMatchObject({ powerMode: "regulated", energy: { P1: 0.139, P2: 0.139, P3: 0.139 } });
+  });
+
+  test("the next annex without power keeps the one chosen before, without asking again", async () => {
+    const tariff = (energyP1: number) =>
+      rate({ productName: "Tarifa 24 horas", singlePrice: true, energyP1, energyP2: null, energyP3: null, powerMode: "not_stated", powerUnit: null, powerP1: null, powerP2: null });
+    const first = await ingestWith(client, extractionResult([tariff(0.139)], { text: "Tarifa 24 horas 0,139 €/kWh" }), "COM-041");
+    const key = rowKey((first.extraction as { proposed: Parameters<typeof rowKey>[0][] }).proposed[0]);
+    await approveIngest({
+      client, control, ingest: first, input: { validFrom: "2026-10-01", regulatedPowerRowKeys: [key] },
+      user: { id: "u1" }, today: "2026-10-07",
+    });
+
+    // Una semana después, otro anexo de Gana que tampoco da la potencia.
+    const next = await ingestWith(client, extractionResult([tariff(0.142)], { text: "Tarifa 24 horas 0,142 €/kWh" }), "COM-041");
+    const review = (await buildReview({ client, control, ingest: next, today: "2026-10-08" }))!.review;
+    expect(review.issues.filter(({ severity }) => severity === "blocking")).toEqual([]);
+    const approved = await approveIngest({ client, control, ingest: next, input: { validFrom: "2026-10-08" }, user: { id: "u1" }, today: "2026-10-08" });
+    const [price] = await getVersionPrices(client, approved.versionId!);
+    expect(price).toMatchObject({ powerMode: "regulated", energy: { P1: 0.142 } });
+  });
+
+  test("the mailbox approves a reading in review whose doubts resolve themselves, and says why when it cannot", async () => {
+    const tariff = (energyP1: number) =>
+      rate({ productName: "Tarifa 24 horas", singlePrice: true, energyP1, energyP2: null, energyP3: null, powerMode: "not_stated", powerUnit: null, powerP1: null, powerP2: null });
+    const first = await ingestWith(client, extractionResult([tariff(0.139)], { text: "Tarifa 24 horas 0,139 €/kWh" }), "COM-041");
+    expect(first.status).toBe("needs_review");
+    const auto = (ingest: typeof first) =>
+      autoApproveIngest({ client, control, ingest, approvedBy: "email:jorge", receivedOn: "2026-10-08", today: "2026-10-08" });
+
+    // Sin versión anterior no hay de dónde sacar la potencia: se queda, con el motivo.
+    expect(await auto(first)).toMatchObject({ approved: false, reason: expect.stringContaining("potencia") });
+    expect(summarizeIngest((await getIngest(client, first.id))!).pendingReason).toContain("potencia");
+
+    const key = rowKey((first.extraction as { proposed: Parameters<typeof rowKey>[0][] }).proposed[0]);
+    await approveIngest({ client, control, ingest: first, input: { validFrom: "2026-10-01", regulatedPowerRowKeys: [key] }, user: { id: "u1" }, today: "2026-10-07" });
+
+    // El siguiente anexo tampoco la da, pero ya se hereda: se aprueba solo.
+    const next = await ingestWith(client, extractionResult([tariff(0.142)], { text: "Tarifa 24 horas 0,142 €/kWh" }), "COM-041");
+    expect(next.status).toBe("needs_review");
+    expect(await auto(next)).toMatchObject({ approved: true });
+
+    const nameless = extractionResult([tariff(0.15)], { text: "Tarifa 24 horas 0,15 €/kWh" });
+    if (nameless.status !== "out_of_scope") nameless.extraction.supplierName = "Comercializadora que no existe";
+    const unknown = await ingestWith(client, nameless, null);
+    expect(await auto(unknown)).toMatchObject({ approved: false, reason: "no se ha reconocido la comercializadora del anexo" });
   });
 
   test("the reviewer can type the power a supplier sends in another document", async () => {
@@ -784,5 +830,14 @@ describe("rate ingest service", () => {
     );
     expect(ingest).toMatchObject({ status: "out_of_scope", comercializadoraId: "COM-040" });
     expect(await buildReview({ client, control, ingest, today: "2026-10-07" })).toBeNull();
+  });
+});
+
+describe("dayInSpain", () => {
+  test("an email received at 22:45 UTC in summer arrived the next day in Spain", async () => {
+    const { dayInSpain } = await import("./service");
+    expect(dayInSpain("2026-10-16 22:45:34")).toBe("2026-10-17");
+    expect(dayInSpain("2026-10-16 10:45:34")).toBe("2026-10-16");
+    expect(dayInSpain("2026-10-16T22:45:34Z")).toBe("2026-10-17");
   });
 });

@@ -25,6 +25,7 @@ import {
   releaseIngest,
   replaceCommissionRulesStatements,
   reserveIngestForApproval,
+  recordAutoApproval,
   saveIngestResult,
   setIngestFileHash,
   supersedeEarlierIngests,
@@ -44,6 +45,16 @@ export function todayInSpain(now: Date = new Date()): string {
     month: "2-digit",
     day: "2-digit",
   }).format(now);
+}
+
+/**
+ * Día en España de una marca de SQLite («2026-10-16 22:45:34», en UTC): el
+ * día UTC cambia de fecha entre las 22:00 y las 00:00 en verano.
+ */
+export function dayInSpain(timestamp: string): string {
+  const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(timestamp) ? timestamp : `${timestamp.replace(" ", "T")}Z`;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? timestamp.slice(0, 10) : todayInSpain(date);
 }
 
 export class RateIngestError extends Error {
@@ -559,14 +570,19 @@ export async function buildReview({
   });
 
   // Las incidencias de filas excluidas ya no cuentan; la potencia regulada
-  // elegida por el revisor resuelve la que faltaba.
+  // elegida por el revisor resuelve la que faltaba, y también la de la versión
+  // activa: un anexo que no repite la potencia conserva la que había (regulada
+  // o la que se escribió a mano), sin preguntar otra vez.
+  const inheritedPower = new Set(
+    diff.entries.filter(({ active, proposed }) => active && proposed && !proposed.powerStated).map(({ rowKey: key }) => key),
+  );
   const extractionIssues = extracted.issues.filter(
     (issue) =>
       !(issue.rowKey && excluded.has(issue.rowKey)) &&
       !(
         issue.code === "missing_power" &&
         issue.rowKey &&
-        (regulated.has(issue.rowKey) || manual[issue.rowKey])
+        (regulated.has(issue.rowKey) || manual[issue.rowKey] || inheritedPower.has(issue.rowKey))
       ) &&
       !(issue.code === "no_rates" && commissions.length > 0) &&
       !(issue.code === "commission_not_in_source" && decisions.includeCommissions === false),
@@ -630,8 +646,8 @@ export interface ApprovalInput extends ReviewDecisions {
 }
 
 /**
- * Aprueba una ingesta: da de alta en el catálogo los productos nuevos (solo
- * Negoco), crea en el tenant las tarifas que faltan, guarda la versión con
+ * Aprueba una ingesta: da de alta en el catálogo los productos nuevos,
+ * crea en el tenant las tarifas que faltan, guarda la versión con
  * sus precios y, si se piden, las comisiones. Todo el tenant en una sola
  * transacción.
  */
@@ -838,14 +854,7 @@ export type AutoApproval =
  * - vale desde la fecha del documento si la trae, o desde el día del correo;
  * - un anexo anterior a los precios vigentes no los pisa: se descarta.
  */
-export async function autoApproveIngest({
-  client,
-  control,
-  ingest,
-  approvedBy,
-  receivedOn,
-  today,
-}: {
+interface AutoApprovalInput {
   client: TenantClient;
   control: Pick<Client, "execute" | "batch">;
   ingest: IngestRecord;
@@ -853,9 +862,33 @@ export async function autoApproveIngest({
   /** Día en que llegó el correo (YYYY-MM-DD), si el documento no da fecha. */
   receivedOn: string;
   today: string;
-}): Promise<AutoApproval> {
-  if (ingest.status !== "ready") {
+}
+
+/**
+ * Aprueba sola una ingesta del tenant si no tiene dudas. Si no puede, guarda
+ * en la ingesta por qué, para enseñarlo y para medir cuánto se aprueba solo.
+ */
+export async function autoApproveIngest(input: AutoApprovalInput): Promise<AutoApproval> {
+  const result = await tryAutoApprove(input);
+  if (!result.approved) await recordAutoApproval(input.client, input.ingest.id, result.reason);
+  return result;
+}
+
+async function tryAutoApprove({
+  client,
+  control,
+  ingest,
+  approvedBy,
+  receivedOn,
+  today,
+}: AutoApprovalInput): Promise<AutoApproval> {
+  // Una lectura «en revisión» también vale si sus dudas se resuelven solas
+  // (la potencia que se hereda de la versión activa).
+  if (!["ready", "needs_review"].includes(ingest.status)) {
     return { approved: false, reason: `la lectura ha quedado en «${ingest.status}»` };
+  }
+  if (!ingest.comercializadoraId) {
+    return { approved: false, reason: "no se ha reconocido la comercializadora del anexo" };
   }
   const built = await buildReview({ client, control, ingest, today, decisions: { partialUpdate: true } });
   if (!built) return { approved: false, reason: "no hay una lectura que aprobar" };

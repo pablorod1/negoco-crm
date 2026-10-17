@@ -488,6 +488,18 @@ export async function claimIngest(client: QueryClient, id: string): Promise<bool
   return result.rowsAffected === 1;
 }
 
+/**
+ * Por qué no se ha aprobado sola: se enseña en la revisión y sirve para medir.
+ * Va con la lectura, así que una lectura nueva lo borra.
+ */
+export async function recordAutoApproval(client: QueryClient, id: string, reason: string) {
+  await client.execute({
+    sql: `UPDATE rate_ingests SET extraction = json_set(extraction, '$.autoApproval', json(?))
+      WHERE id = ? AND extraction IS NOT NULL`,
+    args: [JSON.stringify({ approved: false, reason: reason.slice(0, 1000), at: new Date().toISOString() }), id],
+  });
+}
+
 /** Guarda la huella del fichero de una ingesta (las anteriores no la tienen). */
 export async function setIngestFileHash(client: QueryClient, id: string, sha256: string) {
   await client.execute({

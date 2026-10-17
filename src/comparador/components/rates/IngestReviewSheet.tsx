@@ -444,6 +444,9 @@ export function IngestReviewSheet({
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {loading && <Loader2 className="h-5 w-5 animate-spin" />}
           {error && <p className="text-sm text-danger">{error}</p>}
+          {ingest?.pendingReason && (
+            <p className="text-sm text-warning-600">No se ha aprobado sola: {ingest.pendingReason}.</p>
+          )}
 
           {ingest && !review && !loading && (
             <div className="space-y-3 text-sm">

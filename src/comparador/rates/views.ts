@@ -21,6 +21,7 @@ export function summarizeIngest(ingest: IngestRecord) {
     status?: string;
     reason?: string;
     extraction?: { rates?: unknown[]; commissions?: unknown[] };
+    autoApproval?: { reason?: string };
   } | null;
   const read = extraction?.extraction;
   return {
@@ -32,6 +33,8 @@ export function summarizeIngest(ingest: IngestRecord) {
     emailFrom: ingest.emailFrom,
     emailSubject: ingest.emailSubject,
     reason: extraction?.status === "out_of_scope" ? (extraction.reason ?? null) : null,
+    /** Por qué no se ha aprobado sola, si se ha intentado. */
+    pendingReason: ["ready", "needs_review"].includes(ingest.status) ? (extraction?.autoApproval?.reason ?? null) : null,
     /** Qué trae el anexo, si ya se ha leído: cada vista (tarifas, comisiones) enseña lo suyo. */
     contents: read
       ? { prices: (read.rates?.length ?? 0) > 0, commissions: (read.commissions?.length ?? 0) > 0 }
