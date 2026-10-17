@@ -30,6 +30,8 @@ function presentEntry(entry: DiffEntry) {
       entry.proposed?.pricing === "indexed" ? "Indexada · histórico" : energyText((entry.proposed ?? entry.active)?.energy ?? null),
     previousEnergyText: entry.kind === "changed" && entry.active ? energyText(entry.active.energy) : null,
     powerText: describePower({ ...row, accessTariff: entry.conditions.accessTariff }),
+    /** Precio base: admite el fee de la agencia. */
+    admitsFee: (entry.proposed ?? entry.active)?.feeEnergyMinPerMwh != null,
     sourceExcerpt: entry.proposed?.sourceExcerpt ?? null,
   };
 }

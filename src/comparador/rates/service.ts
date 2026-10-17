@@ -335,6 +335,12 @@ export interface ReviewDecisions {
    * comisiones («S» → «SUPER (N1)»); null: no equivale a ninguno.
    */
   levelMap?: Readonly<Record<string, string | null>>;
+  /**
+   * rowKey → si la tarifa es de precio base (admite el fee de la agencia) o
+   * cerrada. Corrige lo que no detecta la lectura y se hereda en los anexos
+   * siguientes.
+   */
+  feeOverrides?: Readonly<Record<string, boolean>>;
 }
 
 /**
@@ -406,9 +412,17 @@ export async function buildReview({
   const manual = decisions.manualPower ?? {};
 
   const inScope = extracted.proposed.filter(isInScope);
+  const feeOverrides = decisions.feeOverrides ?? {};
   const kept = inScope
     .filter((row) => !excluded.has(rowKey(row)))
-    .map((row) => {
+    .map((read) => {
+      const decided = feeOverrides[rowKey(read)];
+      const row =
+        decided === undefined
+          ? read
+          : decided
+            ? { ...read, feeEnergyMinPerMwh: read.feeEnergyMinPerMwh ?? 0, feeDecided: true }
+            : { ...read, feeEnergyMinPerMwh: null, feeEnergyMaxPerMwh: null, feeDecided: true };
       if (row.powerStated) return row;
       const typed = manual[rowKey(row)];
       if (typed) {

@@ -521,6 +521,28 @@ describe("rate ingest service", () => {
     expect(tenantAppUrl("nasertel", undefined, {})).toBe("https://nasertel.negococloud.es");
   });
 
+  test("a base price stays a base price in the next annex, unless the reviewer says otherwise", async () => {
+    const first = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    const key = rowKey((first.extraction as { proposed: Parameters<typeof rowKey>[0][] }).proposed[0]);
+    // Negoco marca en la revisión que Unicornio es precio base.
+    const approved = await approveIngest({
+      client, control, ingest: first, input: { validFrom: "2026-10-01", feeOverrides: { [key]: true } }, user: { id: "u1" }, today: "2026-10-07",
+    });
+    expect((await getVersionPrices(client, approved.versionId!))[0].feeEnergyMinPerMwh).toBe(0);
+
+    // El anexo siguiente no dice nada del fee: lo hereda.
+    const next = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    const kept = await approveIngest({ client, control, ingest: next, input: { validFrom: "2026-10-08" }, user: { id: "u1" }, today: "2026-10-08" });
+    expect((await getVersionPrices(client, kept.versionId!))[0].feeEnergyMinPerMwh).toBe(0);
+
+    // Y si quien revisa dice que es cerrado, deja de serlo.
+    const third = await ingestWith(client, extractionResult([rate({})]), "COM-040");
+    const closed = await approveIngest({
+      client, control, ingest: third, input: { validFrom: "2026-10-09", feeOverrides: { [key]: false } }, user: { id: "u1" }, today: "2026-10-09",
+    });
+    expect((await getVersionPrices(client, closed.versionId!))[0].feeEnergyMinPerMwh).toBeNull();
+  });
+
   test("the reviewer can type the power a supplier sends in another document", async () => {
     // Holaluz: los precios en un PDF y la potencia (29,93 €/kW·año) en otro.
     const text = "Clásico 1 precio 0,139 €/kWh";

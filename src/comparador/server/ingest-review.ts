@@ -36,6 +36,7 @@ export const DecisionsSchema = z.object({
   partialUpdate: z.boolean().optional(),
   levelMap: z.record(z.string(), z.string().nullable()).optional(),
   includeCommissions: z.boolean().optional(),
+  feeOverrides: z.record(z.string(), z.boolean()).optional(),
 });
 
 export const ApprovalSchema = DecisionsSchema.extend({

@@ -64,6 +64,11 @@ export interface ProposedRate extends RateConditions, RatePrices {
   productKey: string;
   /** La potencia no aparece en el documento (actualización parcial o anexo incompleto). */
   powerStated: boolean;
+  /**
+   * Si admite fee lo ha decidido quien revisa: no se hereda de la versión
+   * activa (ni para quitarlo ni para ponerlo).
+   */
+  feeDecided?: boolean;
   sourceExcerpt: string;
   /** Valores tal como venían en el documento, con su unidad. */
   sourceValues: Record<string, number | string | null>;

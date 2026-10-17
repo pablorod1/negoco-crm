@@ -117,16 +117,23 @@ function compare(before: RatePrices, after: RatePrices): FieldChange[] {
 /**
  * Fila propuesta completada con la versión activa: si el documento no da la
  * potencia (una actualización que solo cambia la energía), se conserva la que
- * había.
+ * había. Y si la tarifa era de precio base (admitía el fee de la agencia), lo
+ * sigue siendo aunque el anexo nuevo no lo diga: la nota que lo explica suele
+ * estar fuera de las tablas («a estos precios base hay que incluirles el COE»)
+ * y una plantilla guardada no la lee.
  */
-function withActivePower(row: ResolvedRow, active: StoredRatePrice | null): RatePrices {
-  if (row.powerStated || !active) return row;
-  return {
-    ...row,
-    powerMode: active.powerMode,
-    powerMarginPerKwYear: active.powerMarginPerKwYear,
-    power: active.power,
-  };
+function withActive(
+  row: ResolvedRow,
+  active: StoredRatePrice | null,
+  baseOfProduct: StoredRatePrice | null,
+): ResolvedRow {
+  const powered: ResolvedRow =
+    row.powerStated || !active
+      ? row
+      : { ...row, powerMode: active.powerMode, powerMarginPerKwYear: active.powerMarginPerKwYear, power: active.power };
+  const fee = active?.feeEnergyMinPerMwh != null ? active : baseOfProduct;
+  if (row.feeDecided || row.feeEnergyMinPerMwh !== null || !fee) return powered;
+  return { ...powered, feeEnergyMinPerMwh: fee.feeEnergyMinPerMwh, feeEnergyMaxPerMwh: fee.feeEnergyMaxPerMwh };
 }
 
 /**
@@ -141,6 +148,8 @@ export function buildDiff(
   { partialUpdate }: { partialUpdate: boolean },
 ): { entries: DiffEntry[]; versionRows: VersionRow[]; issues: RateIssue[] } {
   const activeByKey = new Map(active.map((row) => [activeKey(row), row]));
+  // Una fila de cada producto que admite fee: de ella hereda una fila nueva del mismo producto.
+  const baseByRate = new Map(active.filter((row) => row.feeEnergyMinPerMwh !== null).map((row) => [row.rateId, row]));
   const used = new Set<string>();
   const energies = new Set(rows.map((row) => energyOfTariff(row.accessTariff)));
   const entries: DiffEntry[] = [];
@@ -151,7 +160,8 @@ export function buildDiff(
     const key = proposedKey(row);
     const previous = activeByKey.get(key) ?? null;
     if (previous) used.add(key);
-    const prices = withActivePower(row, previous);
+    const effective = withActive(row, previous, row.match.rateId ? (baseByRate.get(row.match.rateId) ?? null) : null);
+    const prices: RatePrices = effective;
 
     if (!row.powerStated && !previous && row.powerMode === "fixed") {
       issues.push({
@@ -169,7 +179,7 @@ export function buildDiff(
       rowKey: rowKey(row),
       productName: row.match.productName,
       conditions: conditionsOf(row),
-      proposed: row,
+      proposed: effective,
       active: previous,
       changes,
     });

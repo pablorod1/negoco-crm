@@ -214,10 +214,16 @@ export function describeConditions(
   // En gas el campo dice si el variable lleva los peajes.
   if (row.includesAncillaryServices === false) parts.push(row.accessTariff && energyOfTariff(row.accessTariff) === "gas" ? "variable sin peajes" : "sin SS.AA.");
   if (row.feeEnergyMinPerMwh !== null && row.feeEnergyMinPerMwh !== undefined) {
+    const max = row.feeEnergyMaxPerMwh ?? null;
+    // Un precio base: el fee lo pone la agencia; el anexo, como mucho, un mínimo o un máximo.
     parts.push(
-      row.feeEnergyMaxPerMwh !== null && row.feeEnergyMaxPerMwh !== row.feeEnergyMinPerMwh
-        ? `fee ${row.feeEnergyMinPerMwh}–${row.feeEnergyMaxPerMwh} €/MWh`
-        : `fee ${row.feeEnergyMinPerMwh} €/MWh`,
+      max !== null && max !== row.feeEnergyMinPerMwh
+        ? `fee ${row.feeEnergyMinPerMwh}–${max} €/MWh`
+        : max !== null
+          ? `fee ${max} €/MWh`
+          : row.feeEnergyMinPerMwh > 0
+            ? `precio base · fee desde ${row.feeEnergyMinPerMwh} €/MWh`
+            : "precio base · admite fee",
     );
   }
   return parts.join(" · ") || "General";

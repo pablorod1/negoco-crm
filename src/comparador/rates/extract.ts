@@ -8,6 +8,7 @@ import {
   RATE_CLASSIFICATION_MODEL,
 } from "@/comparador/ai/models";
 import type { AiJobContext } from "@/comparador/ai/usage";
+import { basePriceSheets, markBasePrices } from "./base-price";
 import type { PreparedDocument } from "./document";
 import { normalizeGasTariff } from "@/comparador/gas/regulated";
 import { dateInText, toProposedCommissions, toProposedRates } from "./normalize";
@@ -205,7 +206,10 @@ export async function extractRateDocument({
       models: recipeModels,
       generate,
     });
-    return { ...result, reader: recipe };
+    // Si la hoja dice que sus precios son base (una nota fuera de las tablas,
+    // que la plantilla no lee), admiten el fee de la agencia.
+    const marked = result.status === "out_of_scope" ? result : markBasePrices(result, basePriceSheets(document.grids));
+    return { ...marked, reader: recipe };
   }
 
   let costUsd: number | null = null;
