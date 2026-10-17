@@ -9,9 +9,13 @@ export async function proxy(request: NextRequest) {
     host.startsWith("api.") || host === "api.negococloud.es";
   const isDev = host.startsWith("localhost");
 
-  // Subdominio api.negococloud.es: solo permite acceso a webhooks
+  // Webhooks y la API interna del backoffice de Negoco (firmada): solo por
+  // api.negococloud.es, nunca por el dominio de un tenant.
+  const isServerToServer = path.startsWith("/api/webhooks/") || path.startsWith("/api/internal/");
+
+  // Subdominio api.negococloud.es: solo permite acceso a webhooks y a la API interna
   if (isApiSubdomain) {
-    if (path.startsWith("/api/webhooks/")) {
+    if (isServerToServer) {
       return NextResponse.next();
     }
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -19,7 +23,7 @@ export async function proxy(request: NextRequest) {
 
   // Subdominio de tenant: bloquear acceso a webhooks (solo vía api.negococloud.es)
   // En desarrollo (localhost) se permite el acceso para testing
-  if (path.startsWith("/api/webhooks/") && !isDev) {
+  if (isServerToServer && !isDev) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

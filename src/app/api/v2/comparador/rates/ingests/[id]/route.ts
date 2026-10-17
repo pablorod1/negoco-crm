@@ -1,10 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { getTursoControlClient } from "@/core/libsql/client";
-import { getComercializadora, getIngest } from "@/comparador/rates/repository";
-import { buildReview, RateIngestError, todayInSpain } from "@/comparador/rates/service";
-import { ingestFileUrl } from "@/comparador/rates/storage";
-import { summarizeIngest } from "@/comparador/rates/views";
+import { RateIngestError } from "@/comparador/rates/service";
+import { assignIngestSupplier, getIngestDetail } from "@/comparador/server/ingest-review";
 import { ok, ratesError, requireNegocoReview, requireRatesAccess } from "@/comparador/server/rates-route";
 
 type Params = { params: Promise<{ id: string }> };
@@ -15,22 +12,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     const access = await requireRatesAccess(request);
     if (!access.ok) return access.response;
     const { id } = await params;
-
-    const ingest = await getIngest(access.context.client, id);
-    if (!ingest) throw new RateIngestError("Ingesta no encontrada", 404);
-
-    const built = await buildReview({
-      client: access.context.client,
-      control: getTursoControlClient(),
-      ingest,
-      today: todayInSpain(),
-    });
     return ok({
-      ingest: summarizeIngest(ingest),
-      originalUrl: ingest.files[0] ? await ingestFileUrl(ingest.files[0]) : null,
-      bodyText: ingest.files[0] ? null : ingest.bodyText,
-      issues: ingest.validation,
-      review: built?.review ?? null,
+      ...(await getIngestDetail(access.context.client, id)),
       canManage: access.context.canManage,
       canManageCatalog: access.context.canManageCatalog,
     });
@@ -53,22 +36,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const { id } = await params;
     const parsed = PatchSchema.safeParse(await request.json());
     if (!parsed.success) throw new RateIngestError("Falta comercializadora_id");
-
-    const { client } = access.context;
-    const ingest = await getIngest(client, id);
-    if (!ingest) throw new RateIngestError("Ingesta no encontrada", 404);
-    if (["approved", "rejected", "processing"].includes(ingest.status)) {
-      throw new RateIngestError("Esta ingesta ya está decidida o se está procesando.", 409);
-    }
-    if (!(await getComercializadora(client, parsed.data.comercializadora_id))) {
-      throw new RateIngestError("Comercializadora no encontrada", 404);
-    }
-
-    await client.execute({
-      sql: "UPDATE rate_ingests SET comercializadora_id = ? WHERE id = ?",
-      args: [parsed.data.comercializadora_id, id],
-    });
-    return ok({ id });
+    return ok(await assignIngestSupplier(access.context.client, id, parsed.data.comercializadora_id));
   } catch (error) {
     return ratesError("assign ingest supplier", error);
   }

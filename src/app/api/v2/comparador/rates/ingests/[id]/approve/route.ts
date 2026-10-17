@@ -1,24 +1,7 @@
-import { after, NextRequest } from "next/server";
-import { z } from "zod";
-import { getTursoControlClient } from "@/core/libsql/client";
-import { notifyPricesUpdated } from "@/comparador/rates/notify-prices-updated";
-import { getIngest } from "@/comparador/rates/repository";
-import { approveIngest, RateIngestError, todayInSpain } from "@/comparador/rates/service";
+import { NextRequest } from "next/server";
+import { RateIngestError } from "@/comparador/rates/service";
+import { ApprovalSchema, approveIngestById } from "@/comparador/server/ingest-review";
 import { ok, ratesError, requireNegocoReview, requireRatesAccess } from "@/comparador/server/rates-route";
-
-const ApprovalSchema = z.object({
-  validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  validTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  excludedRowKeys: z.array(z.string()).default([]),
-  regulatedPowerRowKeys: z.array(z.string()).default([]),
-  manualPower: z
-    .record(z.string(), z.object({ p1: z.number().positive().max(500), p2: z.number().nonnegative().max(500) }))
-    .default({}),
-  partialUpdate: z.boolean().optional(),
-  levelMap: z.record(z.string(), z.string().nullable()).optional(),
-  includeCommissions: z.boolean().default(true),
-  notes: z.string().max(1000).nullable().optional(),
-});
 
 /**
  * Aprueba una ingesta: guarda la versión de precios (activa o programada) y
@@ -38,23 +21,8 @@ export async function POST(
     if (!parsed.success) {
       throw new RateIngestError("Indica la fecha de entrada en vigor (AAAA-MM-DD).");
     }
-
     const { client, user, tenantSlug } = access.context;
-    const ingest = await getIngest(client, id);
-    if (!ingest) throw new RateIngestError("Ingesta no encontrada", 404);
-
-    const result = await approveIngest({
-      client,
-      control: getTursoControlClient(),
-      ingest,
-      input: parsed.data,
-      user,
-      today: todayInSpain(),
-    });
-    // Si era lo último que faltaba del anexo, se avisa a quien lo envió.
-    const approved = await getIngest(client, id);
-    if (approved) after(() => notifyPricesUpdated({ client, ingest: approved, tenantSlug, request }));
-    return ok(result);
+    return ok(await approveIngestById({ client, id, input: parsed.data, userId: user.id, tenantSlug, request }));
   } catch (error) {
     return ratesError("approve ingest", error);
   }
