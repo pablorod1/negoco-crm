@@ -825,7 +825,10 @@ function Periods({ doc, palette, colors }: { doc: ProposalDocument; palette: Pal
   const today = doc.current?.prices ?? null;
   return (
     <View style={styles.section} wrap={false}>
-      <SectionTitle title="Cuándo consume y a qué precio" lead="La tarifa 2.0TD tiene tres tramos horarios con precios distintos" />
+      <SectionTitle
+        title="Cuándo consume y a qué precio"
+        lead="La tarifa 2.0TD tiene tres tramos horarios. Precio del término de energía (€/kWh), sin potencia, impuestos ni otros conceptos"
+      />
       <View style={styles.periods}>
         {periodInfo(doc.supply.territory).map((period) => {
           const value = doc.supply.annualKwh[period.key];
@@ -849,11 +852,11 @@ function Periods({ doc, palette, colors }: { doc: ProposalDocument; palette: Pal
                   <View style={{ width: `${share}%`, height: 5, backgroundColor: colors[period.key] }} />
                 </View>
                 <View style={[styles.cardLine, { marginTop: 5 }]}>
-                  <Text style={styles.muted}>kWh hoy</Text>
+                  <Text style={styles.muted}>Energía hoy</Text>
                   <Text style={{ color: TODAY }}>{todayPrice === undefined ? "—" : `${price3(todayPrice)} €`}</Text>
                 </View>
                 <View style={styles.cardLine}>
-                  <Text style={styles.muted}>kWh propuesta</Text>
+                  <Text style={styles.muted}>Energía propuesta</Text>
                   <Text style={[styles.bold, { color: palette.ink, marginLeft: 6 }]}>
                     {price3(offerPrice)} €
                     {todayPrice !== undefined && <Text style={{ color: offerPrice <= todayPrice ? GOOD : BAD }}>  {change(todayPrice, offerPrice)}</Text>}
@@ -1132,7 +1135,7 @@ function IndexedPrices({ doc, months, palette }: { doc: ProposalDocument; months
     <View style={styles.section} wrap={false}>
       <SectionTitle
         title="Cómo se mueve el precio cada mes"
-        lead="Precio medio del kWh de energía de cada mes, sin impuestos. Una tarifa indexada sube y baja con el mercado."
+        lead="Término de energía de cada mes (€/kWh de media), sin potencia ni impuestos. Una tarifa indexada sube y baja con el mercado."
       />
       <Svg width={CONTENT_WIDTH} height={height} style={{ borderBottomWidth: 1, borderBottomColor: LINE }}>
         {series.map(({ key, values, color }) => (
